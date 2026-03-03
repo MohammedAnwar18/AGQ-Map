@@ -19,6 +19,12 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
     const startCamera = async () => {
         try {
             setError('');
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                setError('متصفحك لا يدعم الكاميرا أو يحتاج لاتصال آمن (HTTPS).');
+                return;
+            }
+
             // Try back camera first
             let stream;
             try {
@@ -39,8 +45,14 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
             streamRef.current = stream;
             setUseCamera(true);
         } catch (err) {
-            setError('فشل الوصول إلى الكاميرا. يرجى التأكد من منح الإذن للمتصفح.');
             console.error('Camera error:', err);
+            if (err.name === 'NotAllowedError' || err.name === 'SecurityError') {
+                setError('فشل الوصول: يرجى منح صلاحية الكاميرا للمتصفح من الإعدادات.');
+            } else if (err.name === 'NotFoundError') {
+                setError('لم يتم العثور على كاميرا في جهازك.');
+            } else {
+                setError('خطأ غير متوقع عند تشغيل الكاميرا.');
+            }
         }
     };
 
