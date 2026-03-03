@@ -14,13 +14,29 @@ exports.processQuery = async (req, res) => {
     }
 
     try {
-        // 1. Fetch Shops Context directly from DB
+        // 1. Fetch Shops Context
         const shopsRes = await pool.query('SELECT id, name, bio, category, latitude, longitude FROM shops');
         const shops = shopsRes.rows.map(s =>
-            `- ID: ${s.id} | NAME: "${s.name}" | CATEGORY: "${s.category || 'General'}" | DESC: "${s.bio || 'None'}" | LOC: [${s.latitude}, ${s.longitude}]`
+            `SHOP - ID: ${s.id} | NAME: "${s.name}" | CATEGORY: "${s.category || 'General'}" | DESC: "${s.bio || 'None'}" | LOC: [${s.latitude}, ${s.longitude}]`
         ).join('\n');
 
-        console.log(`AI Context: Loaded ${shopsRes.rows.length} shops into context.`);
+        // 2. Fetch Users Context (excluding current user possibly, but let's just fetch public info)
+        const usersRes = await pool.query('SELECT id, full_name, username, bio FROM users LIMIT 100');
+        const systemUsers = usersRes.rows.map(u =>
+            `USER - ID: ${u.id} | NAME: "${u.full_name || u.username}" | USERNAME: "${u.username}" | BIO: "${u.bio || 'None'}"`
+        ).join('\n');
+
+        // 3. Fetch Posts Context (locations)
+        const postsRes = await pool.query(`
+            SELECT p.id, p.content, ST_Y(p.location::geometry) as latitude, ST_X(p.location::geometry) as longitude, u.full_name 
+            FROM posts p JOIN users u ON p.user_id = u.id 
+            LIMIT 50
+        `);
+        const posts = postsRes.rows.map(p =>
+            `POST - ID: ${p.id} | BY: "${p.full_name}" | CONTENT: "${p.content}" | LOC: [${p.latitude}, ${p.longitude}]`
+        ).join('\n');
+
+        console.log(`AI Context Loaded: ${shopsRes.rows.length} shops, ${usersRes.rows.length} users, ${postsRes.rows.length} posts.`);
 
         const response = await cohere.chat({
             chatHistory: req.body.chatHistory || [],
@@ -28,11 +44,16 @@ exports.processQuery = async (req, res) => {
             preamble: `You are PalNova, an intelligent local guide.
             
             === STRICT BOUNDARY ===
-            You are ONLY allowed to suggest or navigate to places listed in the "AVAILABLE SYSTEM SHOPS" section below. 
-            Do NOT use any outside general knowledge about other places. If it's not in the list, it doesn't exist for you.
+            You are ONLY allowed to suggest or talk about places, people, or posts listed in the "AVAILABLE SYSTEM DATA" section below. 
+            Do NOT use any outside general knowledge. If it's not in the list, it doesn't exist for you.
 
-            AVAILABLE SYSTEM SHOPS:
+            AVAILABLE SYSTEM DATA:
+            --- SHOPS ---
             ${shops}
+            --- USERS ---
+            ${systemUsers}
+            --- POSTS ---
+            ${posts}
             =========================
 
             User Information:
@@ -44,20 +65,13 @@ exports.processQuery = async (req, res) => {
 
             INSTRUCTIONS:
             1. **PERSONALIZATION**: 
-               - Address the user by their name occasionally.
-               - Adapt your tone slightly based on their age (e.g., more energetic for youth, more formal for older adults), but keep it comfortably professional.
-               - Use appropriate gender pronouns if clear, but avoid over-gendering unless necessary in Arabic.
-            2. **SEARCH ONLY IN LIST**: Search strictly within "AVAILABLE SYSTEM SHOPS".
-            3. **FUZZY MATCHING**: 
-               - If the user asks for "Qatanna Shop" and you have "قطنة شوب", that is a MATCH. 
-               - If the shop has DESC: "None", infer what it is from its NAME and CATEGORY.
-            4. **MATCH FOUND**: 
-               - If the user asks for a specific place and you find it: Use type="navigation_options" with single result.
-               - If the user asks for a category (e.g. "restaurants", "shops near me") or multiple options: Use type="search_list".
-               - For "search_list", return an array of matching shops in "results".
-               - "reply": "Here are the [Category] I found:"
-
-            5. **NO MATCH**: If no shop matches, reply: "Sorry [Name], I can only help with shops registered in our system."
+               - Address the user by their name casually.
+            2. **SEARCH ONLY IN LIST**: Search strictly within "AVAILABLE SYSTEM DATA". You can answer questions about shops, users, and public posts on the map.
+            3. **MATCH FOUND**: 
+               - If the user asks for a specific shop: Use type="navigation_options" with single result.
+               - If the user asks for a category of shops (e.g. "restaurants"): Use type="search_list", return an array of matching shops in "results".
+               - If the user asks about a user or a post, you can just reply with chat: type="chat", and describe the post/user. If it has a location, you might still want to list it if it helps.
+            4. **NO MATCH**: If no data matches, reply clearly that you can only provide information present on the map system.
             6. **MODE**: Always ask for driving vs walking if not specified (for navigation).
 
             RESPONSE FORMAT (JSON ONLY, NO MARKDOWN):
