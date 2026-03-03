@@ -294,12 +294,19 @@
 /* User Info Mobile Override */
 @media (max-width: 768px) {
     .top-bar {
-        top: 10px;
-        left: 10px;
-        right: 10px;
-        height: 70px;
-        padding: 0 10px;
-        border-radius: 12px;
+        top: 15px;
+        right: 15px;
+        left: auto;
+        width: auto;
+        height: auto;
+        background: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0;
+    }
+
+    .top-bar-left {
+        display: none !important;
     }
 
     /* Shrink logo on mobile */
@@ -351,28 +358,19 @@
 
     /* Adjust User Info card */
     .user-info {
-        bottom: 80px;
-        left: 10px;
-        padding: 10px;
-        min-width: 200px;
+        display: none !important;
+        /* Hide user profile on mobile completely */
     }
 
-    .user-avatar {
-        width: 45px;
-        height: 45px;
-    }
-
-    .user-details h3 {
-        font-size: 0.9rem;
-    }
-
-    .user-posts-count {
-        font-size: 0.8rem;
-    }
-
-    /* Reposition FABs */
+    /* Reposition FABs horizontally at bottom center */
     .floating-actions {
-        bottom: 90px;
-        right: 10px;
+        bottom: 25px;
+        right: auto;
+        left: 50%;
+        transform: translateX(-50%);
+        flex-direction: row;
+        gap: 20px;
+        z-index: 1000;
+        width: max-content;
     }
 }
