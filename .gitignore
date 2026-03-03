@@ -43,3 +43,11 @@ coverage/
 # Misc
 *.pem
 .cache/
+
+# Secret Files
+DEBUG_MAP.md
+backend/CREATE_ENV_FILE.txt
+backend/env-template.txt
+client/CREATE_ENV_FILE.txt
+client/env-template.txt
+client/public/test-map.html
