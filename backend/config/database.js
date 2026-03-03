@@ -12,9 +12,12 @@ if (dbUrl) {
   console.error('❌ DATABASE_URL is missing in environment variables!');
 }
 
+const isProduction = process.env.NODE_ENV === 'production' ||
+  (process.env.DATABASE_URL && process.env.DATABASE_URL.includes('supabase'));
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: isProduction ? { rejectUnauthorized: false } : false
 });
 
 // اختبار الاتصال
