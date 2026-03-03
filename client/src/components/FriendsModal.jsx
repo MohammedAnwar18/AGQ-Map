@@ -21,19 +21,23 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
 
     useEffect(() => {
         loadData();
-    }, []);
+    }, [activeTab, isShopsMode]); // Re-run when tab changes
 
     const loadData = async () => {
         try {
             setLoading(true);
-            const [friendsData, requestsData, shopsData] = await Promise.all([
-                friendService.getFriends(),
-                friendService.getPendingRequests(),
-                shopService.getFollowing() // Load followed shops
-            ]);
-            setFriends(friendsData.friends);
-            setRequests(requestsData.requests);
-            setFollowedShops(shopsData.shops || []);
+
+            // Only load what is necessary for the current view!
+            if (isShopsMode || activeTab === 'shops') {
+                const shopsData = await shopService.getFollowing();
+                setFollowedShops(shopsData.shops || []);
+            } else if (activeTab === 'friends') {
+                const friendsData = await friendService.getFriends();
+                setFriends(friendsData.friends);
+            } else if (activeTab === 'requests') {
+                const requestsData = await friendService.getPendingRequests();
+                setRequests(requestsData.requests);
+            }
         } catch (error) {
             console.error('Failed to load data:', error);
         } finally {
