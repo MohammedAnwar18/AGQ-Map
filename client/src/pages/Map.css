@@ -271,6 +271,7 @@
 .leaflet-control-zoom {
     display: none !important;
 }
+
 /* Top Bar - Default (Desktop) */
 .top-bar {
     position: absolute;
@@ -308,22 +309,31 @@
         width: 35px !important;
         height: 35px !important;
     }
-    
+
     .top-bar-right .btn-icon svg {
         width: 18px !important;
         height: 18px !important;
     }
 
     .top-bar-right {
-        gap: 5px !important;
+        gap: 8px !important;
+        overflow-x: auto !important;
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+        flex-wrap: nowrap;
+        padding-bottom: 5px;
+    }
+
+    .top-bar-right::-webkit-scrollbar {
+        display: none;
     }
 
     /* Adjust User Info card */
     .user-info {
-        bottom: 80px; /* Move up to avoid covering bottom controls if any */
+        bottom: 80px;
         left: 10px;
         padding: 10px;
-        min-width: auto;
+        min-width: 200px;
     }
 
     .user-avatar {
@@ -334,15 +344,14 @@
     .user-details h3 {
         font-size: 0.9rem;
     }
-    
+
     .user-posts-count {
         font-size: 0.8rem;
     }
-    
+
     /* Reposition FABs */
     .floating-actions {
         bottom: 90px;
         right: 10px;
     }
 }
-

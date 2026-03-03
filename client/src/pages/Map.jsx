@@ -163,6 +163,7 @@ const MapComponent = () => {
     const [showShops, setShowShops] = useState(false);
     const [showProfile, setShowProfile] = useState(false);
     const [showCreatePost, setShowCreatePost] = useState(false);
+    const [isUserInfoExpanded, setIsUserInfoExpanded] = useState(false);
 
     const [showChat, setShowChat] = useState(false);
     const [showAIChat, setShowAIChat] = useState(false);
@@ -718,7 +719,7 @@ const MapComponent = () => {
                         </svg>
                     </div>
                 </div>
-                <div className="top-bar-right" style={{ display: 'flex', gap: '10px' }}>
+                <div className="top-bar-right" style={{ display: 'flex', gap: '8px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                     <button className="btn-icon active-style" onClick={() => setActiveMapType(prev => {
                         if (prev === 'satellite') return 'geomolg';
                         return 'satellite';
@@ -1025,19 +1026,36 @@ const MapComponent = () => {
             </div>
 
             {/* User Info Bar */}
-            <div className="user-info glass">
-                <div className="user-avatar"><img src={user.profile_picture || '/default-avatar.png'} alt={user.username} /></div>
-                <div className="user-details">
-                    <h3>{user.full_name || user.username}</h3>
-                    <div className="user-posts-count" style={{ display: 'flex', flexDirection: 'column', fontSize: '0.8rem', opacity: 0.9 }}>
-                        <span style={{ fontWeight: 'bold', color: '#fbab15' }}>
-                            {currentTime.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        <span>
-                            {currentTime.toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                        </span>
+            <div
+                className={`user-info glass ${isUserInfoExpanded ? 'expanded' : ''}`}
+                onClick={() => setIsUserInfoExpanded(!isUserInfoExpanded)}
+                style={{ cursor: 'pointer', flexDirection: 'column', alignItems: 'flex-start', transition: 'all 0.3s ease' }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', width: '100%' }}>
+                    <div className="user-avatar"><img src={user.profile_picture || '/default-avatar.png'} alt={user.username} /></div>
+                    <div className="user-details" style={{ flex: 1, minWidth: '100px' }}>
+                        <h3 style={{ margin: 0, fontSize: '1rem' }}>{user.full_name || user.username}</h3>
+                        {!isUserInfoExpanded && (
+                            <div style={{ fontSize: '0.75rem', color: '#fbab15', marginTop: '2px' }}>اضغط للتفاصيل</div>
+                        )}
                     </div>
+                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" style={{ transform: isUserInfoExpanded ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.3s ease', color: 'white' }}>
+                        <polyline points="6 9 12 15 18 9" />
+                    </svg>
                 </div>
+
+                {isUserInfoExpanded && (
+                    <div className="user-details-expanded" style={{ marginTop: '15px', width: '100%', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '10px' }}>
+                        <div className="user-posts-count" style={{ display: 'flex', flexDirection: 'column', fontSize: '0.85rem', opacity: 0.9, gap: '8px' }}>
+                            <span style={{ fontWeight: 'bold', color: '#fbab15', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                🕒 {currentTime.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'white' }}>
+                                📅 {currentTime.toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                            </span>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Navigation Panel */}
