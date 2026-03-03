@@ -294,8 +294,8 @@
 /* User Info Mobile Override */
 @media (max-width: 768px) {
     .top-bar {
-        top: 15px;
-        right: 15px;
+        top: 20px;
+        right: 20px;
         left: auto;
         width: auto;
         height: auto;
@@ -303,6 +303,7 @@
         box-shadow: none !important;
         border: none !important;
         padding: 0;
+        z-index: 2000;
     }
 
     .top-bar-left {
@@ -329,13 +330,18 @@
     .mobile-menu-toggle {
         display: block;
         margin-left: auto;
+        background: rgba(30, 41, 59, 0.8) !important;
+        border-radius: 8px;
+        border: 1px solid #fbab15 !important;
+        padding: 8px !important;
+        backdrop-filter: blur(5px);
     }
 
     .top-bar-right {
         display: none !important;
         position: absolute;
-        top: 70px;
-        right: 10px;
+        top: 60px;
+        right: 0;
         background: rgba(30, 41, 59, 0.95);
         backdrop-filter: blur(10px);
         border: 1px solid #fbab15;
@@ -344,7 +350,7 @@
         flex-direction: column !important;
         gap: 12px !important;
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-        z-index: 1001;
+        z-index: 2001;
     }
 
     .top-bar-right.mobile-open {
@@ -352,8 +358,8 @@
     }
 
     .top-bar-right .btn-icon {
-        width: 40px !important;
-        height: 40px !important;
+        width: 45px !important;
+        height: 45px !important;
     }
 
     /* Adjust User Info card */
@@ -364,13 +370,15 @@
 
     /* Reposition FABs horizontally at bottom center */
     .floating-actions {
-        bottom: 25px;
-        right: auto;
-        left: 50%;
-        transform: translateX(-50%);
+        bottom: 40px;
+        left: 0;
+        right: 0;
+        transform: none;
         flex-direction: row;
-        gap: 20px;
-        z-index: 1000;
-        width: max-content;
+        justify-content: center;
+        align-items: center;
+        gap: 25px;
+        z-index: 2000;
+        width: 100%;
     }
 }
