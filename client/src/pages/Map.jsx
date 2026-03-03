@@ -164,6 +164,7 @@ const MapComponent = () => {
     const [showProfile, setShowProfile] = useState(false);
     const [showCreatePost, setShowCreatePost] = useState(false);
     const [isUserInfoExpanded, setIsUserInfoExpanded] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     const [showChat, setShowChat] = useState(false);
     const [showAIChat, setShowAIChat] = useState(false);
@@ -719,7 +720,21 @@ const MapComponent = () => {
                         </svg>
                     </div>
                 </div>
-                <div className="top-bar-right" style={{ display: 'flex', gap: '8px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+
+                {/* Mobile Menu Toggle Button */}
+                <button
+                    className="mobile-menu-toggle"
+                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', padding: '10px' }}
+                >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="28" height="28">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+
+                <div className={`top-bar-right ${isMobileMenuOpen ? 'mobile-open' : ''}`} style={{ display: 'flex', gap: '8px' }}>
                     <button className="btn-icon active-style" onClick={() => setActiveMapType(prev => {
                         if (prev === 'satellite') return 'geomolg';
                         return 'satellite';

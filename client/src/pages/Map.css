@@ -287,6 +287,10 @@
     height: 100px;
 }
 
+.mobile-menu-toggle {
+    display: none;
+}
+
 /* User Info Mobile Override */
 @media (max-width: 768px) {
     .top-bar {
@@ -315,17 +319,34 @@
         height: 18px !important;
     }
 
-    .top-bar-right {
-        gap: 8px !important;
-        overflow-x: auto !important;
-        scroll-behavior: smooth;
-        -webkit-overflow-scrolling: touch;
-        flex-wrap: nowrap;
-        padding-bottom: 5px;
+    .mobile-menu-toggle {
+        display: block;
+        margin-left: auto;
     }
 
-    .top-bar-right::-webkit-scrollbar {
-        display: none;
+    .top-bar-right {
+        display: none !important;
+        position: absolute;
+        top: 70px;
+        right: 10px;
+        background: rgba(30, 41, 59, 0.95);
+        backdrop-filter: blur(10px);
+        border: 1px solid #fbab15;
+        border-radius: 12px;
+        padding: 10px;
+        flex-direction: column !important;
+        gap: 12px !important;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        z-index: 1001;
+    }
+
+    .top-bar-right.mobile-open {
+        display: flex !important;
+    }
+
+    .top-bar-right .btn-icon {
+        width: 40px !important;
+        height: 40px !important;
     }
 
     /* Adjust User Info card */
