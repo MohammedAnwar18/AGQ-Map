@@ -27,7 +27,7 @@ const createPost = async (req, res) => {
 
         if (req.files && req.files.length > 0) {
             // Map all files to their URLs
-            media_urls = req.files.map(file => `/uploads/${file.filename}`);
+            media_urls = req.files.map(file => file.path);
 
             // Set defaults from the first file
             image_url = media_urls[0];
@@ -39,7 +39,7 @@ const createPost = async (req, res) => {
             }
         } else if (req.file) {
             // Fallback for single file upload if needed (though route is array now)
-            image_url = `/uploads/${req.file.filename}`;
+            image_url = req.file.path;
             media_urls = [image_url];
             if (req.file.mimetype.startsWith('video/')) {
                 media_type = 'video';

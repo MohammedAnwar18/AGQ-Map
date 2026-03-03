@@ -116,7 +116,7 @@ const updateProfile = async (req, res) => {
     try {
         const userId = req.user.userId;
         const { full_name, bio, gender, date_of_birth } = req.body;
-        const profile_picture = req.file ? `/uploads/${req.file.filename}` : null;
+        const profile_picture = req.file ? req.file.path : null;
 
         let query = 'UPDATE users SET';
         let params = [];

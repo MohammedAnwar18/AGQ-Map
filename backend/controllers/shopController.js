@@ -265,12 +265,12 @@ const updateShopImages = async (req, res) => {
 
         if (req.files['profile_picture']) {
             updateQueryPart.push(`profile_picture = $${index++}`);
-            params.push(`/uploads/${req.files['profile_picture'][0].filename}`);
+            params.push(req.files['profile_picture'][0].path);
         }
 
         if (req.files['cover_picture']) {
             updateQueryPart.push(`cover_picture = $${index++}`);
-            params.push(`/uploads/${req.files['cover_picture'][0].filename}`);
+            params.push(req.files['cover_picture'][0].path);
         }
 
         if (updateQueryPart.length === 0) {
@@ -316,7 +316,7 @@ const createShopPost = async (req, res) => {
         const { latitude, longitude } = shopRes.rows[0];
 
         if (req.files && req.files.length > 0) {
-            media_urls = req.files.map(file => `/uploads/${file.filename}`);
+            media_urls = req.files.map(file => file.path);
             image_url = media_urls[0];
             media_type = req.files[0].mimetype.startsWith('video/') ? 'video' : 'image';
         }
@@ -360,7 +360,7 @@ const addProduct = async (req, res) => {
 
         let image_url = null;
         if (req.file) { // Assuming single file for product for now
-            image_url = `/uploads/${req.file.filename}`;
+            image_url = req.file.path;
         }
 
         const result = await pool.query(`
@@ -400,7 +400,7 @@ const updateProduct = async (req, res) => {
 
         if (req.file) {
             queryParts.push(`image_url = $${index++}`);
-            values.push(`/uploads/${req.file.filename}`);
+            values.push(req.file.path);
         }
 
         if (queryParts.length === 0) return res.json({ message: 'No changes provided' });

@@ -9,7 +9,7 @@ exports.createNews = async (req, res) => {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        const image = req.file ? `/uploads/${req.file.filename}` : null;
+        const image = req.file ? req.file.path : null;
 
         const result = await pool.query(
             `INSERT INTO local_news (admin_id, title, description, image, location) 

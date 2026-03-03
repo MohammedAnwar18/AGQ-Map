@@ -14,25 +14,19 @@ router.delete('/:id/follow', shopController.unfollowShop);
 // Temporary Admin Create Route
 router.post('/', shopController.createShop);
 
-// We need multer for file uploads
-const multer = require('multer');
-const path = require('path');
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, 'uploads/'),
-    filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
-});
-const upload = multer({ storage });
+// Use Cloudinary for file uploads
+const { uploadCloud } = require('../config/cloudinary');
 
 // Shop Profile & Posts
 router.get('/:id', shopController.getShopProfile);
 router.put('/:id', shopController.updateShopProfile);
-router.put('/:id/images', upload.fields([{ name: 'profile_picture', maxCount: 1 }, { name: 'cover_picture', maxCount: 1 }]), shopController.updateShopImages);
+router.put('/:id/images', uploadCloud.fields([{ name: 'profile_picture', maxCount: 1 }, { name: 'cover_picture', maxCount: 1 }]), shopController.updateShopImages);
 
-router.post('/:id/posts', upload.array('images', 5), shopController.createShopPost);
+router.post('/:id/posts', uploadCloud.array('images', 5), shopController.createShopPost);
 
 // Shop Products
-router.post('/:id/products', upload.single('image'), shopController.addProduct);
-router.put('/:id/products/:productId', upload.single('image'), shopController.updateProduct);
+router.post('/:id/products', uploadCloud.single('image'), shopController.addProduct);
+router.put('/:id/products/:productId', uploadCloud.single('image'), shopController.updateProduct);
 router.delete('/:id/products/:productId', shopController.deleteProduct);
 
 // Ownership Delegation & Management
