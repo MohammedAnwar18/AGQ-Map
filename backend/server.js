@@ -30,16 +30,33 @@ const server = http.createServer(app);
 // إعداد Socket.IO للدردشة
 const io = new Server(server, {
     cors: {
-        origin: process.env.CLIENT_URL || 'http://localhost:5173',
-        methods: ['GET', 'POST']
+        origin: [
+            'http://localhost:5173',
+            'https://agq-map.vercel.app',
+            process.env.CLIENT_URL
+        ].filter(Boolean),
+        methods: ['GET', 'POST'],
+        credentials: true
     }
 });
 
 app.set('io', io);
 
+const allowedOrigins = [
+    'http://localhost:5173',
+    'https://agq-map.vercel.app',
+    process.env.CLIENT_URL
+].filter(Boolean);
+
 // Middleware
 app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: function (origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true
 }));
 app.use(express.json());
