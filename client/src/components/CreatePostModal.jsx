@@ -18,16 +18,28 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
     // فتح الكاميرا
     const startCamera = async () => {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment' },
-                audio: false
-            });
+            setError('');
+            // Try back camera first
+            let stream;
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' },
+                    audio: false
+                });
+            } catch (backErr) {
+                // Fallback to any camera if back camera is not available or fails
+                console.warn('Back camera failed, trying any available camera...', backErr);
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: true,
+                    audio: false
+                });
+            }
 
             videoRef.current.srcObject = stream;
             streamRef.current = stream;
             setUseCamera(true);
         } catch (err) {
-            setError('فشل الوصول إلى الكاميرا');
+            setError('فشل الوصول إلى الكاميرا. يرجى التأكد من منح الإذن للمتصفح.');
             console.error('Camera error:', err);
         }
     };
