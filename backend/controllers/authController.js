@@ -15,7 +15,12 @@ const register = async (req, res) => {
             return res.status(400).json({ errors: errors.array() });
         }
 
-        const { username, email, password, full_name, date_of_birth, gender } = req.body;
+        let { username, email, password, full_name, date_of_birth, gender } = req.body;
+
+        // Convert empty strings to null for PostgreSQL compatibility
+        if (date_of_birth === '') date_of_birth = null;
+        if (gender === '') gender = null;
+        if (full_name === '') full_name = null;
 
         // التحقق من وجود المستخدم
         const userExists = await pool.query(
