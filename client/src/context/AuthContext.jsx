@@ -67,7 +67,8 @@ export const AuthProvider = ({ children }) => {
 
     const fetchUserData = async () => {
         try {
-            const response = await fetch('/api/auth/me', {
+            const apiUrl = import.meta.env.VITE_API_URL || '/api';
+            const response = await fetch(`${apiUrl}/auth/me`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
