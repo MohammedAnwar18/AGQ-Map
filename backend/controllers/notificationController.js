@@ -1,0 +1,103 @@
+const pool = require('../config/database');
+
+// Get user notifications
+const getNotifications = async (req, res) => {
+    try {
+        const userId = req.user.id || req.user.userId;
+
+        const result = await pool.query(
+            `SELECT 
+                n.id,
+                n.type,
+                n.message,
+                n.is_read,
+                n.created_at,
+                u.username as sender_name,
+                u.profile_picture as sender_picture
+            FROM notifications n
+            LEFT JOIN users u ON n.sender_id = u.id
+            WHERE n.user_id = $1
+            ORDER BY n.created_at DESC
+            LIMIT 50`,
+            [userId]
+        );
+
+        res.json({ notifications: result.rows });
+    } catch (error) {
+        console.error('Error fetching notifications:', error);
+        res.status(500).json({ error: 'Failed to fetch notifications' });
+    }
+};
+
+// Mark notification as read
+const markAsRead = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id || req.user.userId;
+
+        await pool.query(
+            'UPDATE notifications SET is_read = true WHERE id = $1 AND user_id = $2',
+            [id, userId]
+        );
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error marking notification as read:', error);
+        res.status(500).json({ error: 'Failed to mark notification as read' });
+    }
+};
+
+// Mark all notifications as read
+const markAllAsRead = async (req, res) => {
+    try {
+        const userId = req.user.id || req.user.userId;
+
+        await pool.query(
+            'UPDATE notifications SET is_read = true WHERE user_id = $1',
+            [userId]
+        );
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error marking all notifications as read:', error);
+        res.status(500).json({ error: 'Failed to mark all notifications as read' });
+    }
+};
+
+// Get unread count
+const getUnreadCount = async (req, res) => {
+    try {
+        const userId = req.user.id || req.user.userId;
+
+        const result = await pool.query(
+            'SELECT COUNT(*) as count FROM notifications WHERE user_id = $1 AND is_read = false',
+            [userId]
+        );
+
+        res.json({ count: parseInt(result.rows[0].count) });
+    } catch (error) {
+        console.error('Error getting unread count:', error);
+        res.status(500).json({ error: 'Failed to get unread count' });
+    }
+};
+
+// Create notification (helper function)
+const createNotification = async (userId, senderId, type, message) => {
+    try {
+        await pool.query(
+            'INSERT INTO notifications (user_id, sender_id, type, message) VALUES ($1, $2, $3, $4)',
+            [userId, senderId, type, message]
+        );
+    } catch (error) {
+        // إنشاء الإشعار اختياري - لا نوقف العملية إذا فشل (مثلاً الجدول غير موجود)
+        console.warn('⚠️ Notification creation failed (optional):', error.message);
+    }
+};
+
+module.exports = {
+    getNotifications,
+    markAsRead,
+    markAllAsRead,
+    getUnreadCount,
+    createNotification
+};

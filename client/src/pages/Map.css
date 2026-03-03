@@ -1,0 +1,348 @@
+/* Floating Actions */
+.floating-actions {
+    position: absolute;
+    bottom: 100px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    z-index: 1000;
+}
+
+.fab {
+    width: 55px;
+    height: 55px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.fab:active {
+    transform: scale(0.95);
+}
+
+.fab.primary {
+    background: linear-gradient(135deg, #fbab15 0%, #f59e0b 100%);
+    color: white;
+    /* Border handled by .fab */
+    box-shadow: 0 4px 15px rgba(251, 171, 21, 0.4);
+}
+
+.fab.primary:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(251, 171, 21, 0.6);
+}
+
+.fab.secondary,
+.fab.tertiary {
+    background: linear-gradient(135deg, #fbab15 0%, #f59e0b 100%);
+    color: white;
+    /* Border handled by .fab */
+    box-shadow: 0 4px 15px rgba(251, 171, 21, 0.4);
+}
+
+.fab.secondary:hover,
+.fab.tertiary:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(251, 171, 21, 0.6);
+}
+
+.fab-icon {
+    width: 24px;
+    height: 24px;
+}
+
+/* User Info */
+.user-info {
+    position: absolute;
+    bottom: 30px;
+    left: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px 20px;
+    border-radius: 20px;
+    z-index: 1000;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    min-width: 240px;
+    background: rgba(30, 41, 59, 0.95) !important;
+    /* Strong dark background */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.user-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid #6366f1;
+    box-shadow: 0 0 0 2px rgba(30, 41, 59, 0.8);
+}
+
+.user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.user-details h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.user-posts-count {
+    font-size: 0.9rem;
+    color: #cbd5e1;
+    font-weight: 500;
+}
+
+/* Custom Location Marker (User) */
+.custom-location-marker {
+    background: none !important;
+    border: none !important;
+}
+
+/* Pulsing User Marker (Legacy/Backup) */
+.current-user-marker {
+    background-color: #3b82f6;
+    border: 2px solid white;
+    border-radius: 50%;
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+    animation: pulse-blue 2s infinite;
+}
+
+@keyframes pulse-blue {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+    }
+
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 15px rgba(59, 130, 246, 0);
+    }
+
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+    }
+}
+
+/* Top Bar Logo */
+.logo-image-small {
+    height: 90px;
+    width: auto;
+    filter: brightness(0) invert(1) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    transition: transform 0.3s ease;
+    opacity: 1;
+}
+
+.logo-image-small:hover {
+    transform: scale(1.05);
+}
+
+/* Ensure glass effect is applied */
+.glass {
+    background: rgba(30, 41, 59, 0.85) !important;
+    /* Slightly darker/more opaque for better contrast */
+    backdrop-filter: blur(12px);
+    border: 1px solid #fbab15 !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Top Bar Icons Styling */
+.top-bar-right .btn-icon {
+    width: 45px;
+    height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid #fbab15 !important;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    color: white;
+}
+
+.top-bar-right .btn-icon:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+.top-bar-right .btn-icon svg {
+    width: 24px !important;
+    height: 24px !important;
+    stroke-width: 2px;
+}
+
+.top-bar-right .btn-icon.active-style {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: #fbab15 !important;
+}
+
+.btn-logout:hover {
+    background-color: #dc2626 !important;
+    /* Red 600 */
+    border-color: #dc2626 !important;
+}
+
+/* Notification Badge Update */
+.notification-btn {
+    position: relative;
+    /* Ensure badge is positioned relative to button */
+}
+
+.notification-badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 18px;
+    height: 18px;
+    background-color: #ef4444;
+    /* Red 500 */
+    color: white;
+    border-radius: 50%;
+    font-size: 0.7rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #1e293b;
+    /* Match bg to create cutout effect */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    z-index: 10;
+}
+
+/* Update FABs to have orange border */
+.fab {
+    width: 55px;
+    height: 55px;
+    border-radius: 50%;
+    border: 1px solid #fbab15 !important;
+    /* Orange Border */
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Update User Info Border */
+.user-info {
+    position: absolute;
+    bottom: 30px;
+    left: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px 20px;
+    border-radius: 20px;
+    z-index: 1000;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    min-width: 240px;
+    background: rgba(30, 41, 59, 0.95) !important;
+    border: 1px solid #fbab15 !important;
+    backdrop-filter: blur(10px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .fab-text {
+        display: none;
+    }
+}
+
+/* Hide Map Controls */
+.leaflet-control-attribution {
+    display: none !important;
+}
+
+.leaflet-control-zoom {
+    display: none !important;
+}
+/* Top Bar - Default (Desktop) */
+.top-bar {
+    position: absolute;
+    top: 15px;
+    left: 50px;
+    right: 50px;
+    z-index: 1000;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    border-radius: 16px;
+    height: 100px;
+}
+
+/* User Info Mobile Override */
+@media (max-width: 768px) {
+    .top-bar {
+        top: 10px;
+        left: 10px;
+        right: 10px;
+        height: 70px;
+        padding: 0 10px;
+        border-radius: 12px;
+    }
+
+    /* Shrink logo on mobile */
+    .logo-image-small {
+        height: 50px !important;
+        width: auto !important;
+    }
+
+    /* Compact buttons on mobile */
+    .top-bar-right .btn-icon {
+        width: 35px !important;
+        height: 35px !important;
+    }
+    
+    .top-bar-right .btn-icon svg {
+        width: 18px !important;
+        height: 18px !important;
+    }
+
+    .top-bar-right {
+        gap: 5px !important;
+    }
+
+    /* Adjust User Info card */
+    .user-info {
+        bottom: 80px; /* Move up to avoid covering bottom controls if any */
+        left: 10px;
+        padding: 10px;
+        min-width: auto;
+    }
+
+    .user-avatar {
+        width: 45px;
+        height: 45px;
+    }
+
+    .user-details h3 {
+        font-size: 0.9rem;
+    }
+    
+    .user-posts-count {
+        font-size: 0.8rem;
+    }
+    
+    /* Reposition FABs */
+    .floating-actions {
+        bottom: 90px;
+        right: 10px;
+    }
+}
+

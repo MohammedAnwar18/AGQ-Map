@@ -1,0 +1,12 @@
+const express = require('express');
+const router = express.Router();
+const { authenticateToken } = require('../middleware/auth');
+const { getComments, addComment } = require('../controllers/commentController');
+
+// الحصول على تعليقات منشور
+router.get('/:postId', authenticateToken, getComments);
+
+// إضافة تعليق
+router.post('/:postId', authenticateToken, addComment);
+
+module.exports = router;

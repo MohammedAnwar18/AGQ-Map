@@ -1,0 +1,149 @@
+.comments-section {
+    margin-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 15px;
+    display: flex;
+    flex-direction: column;
+    height: 300px;
+    /* Fixed height for scrollable area */
+}
+
+.comments-title {
+    font-size: 0.9rem;
+    color: #bbb;
+    margin-bottom: 10px;
+}
+
+.comments-list {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 5px;
+    /* Space for scrollbar */
+    margin-bottom: 10px;
+}
+
+/* Custom Scrollbar */
+.comments-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.comments-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+
+.comment-item {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.comment-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.comment-content-wrapper {
+    background: rgba(255, 255, 255, 0.05);
+    /* Very subtle glass */
+    padding: 8px 12px;
+    border-radius: 12px;
+    border-top-left-radius: 2px;
+    /* Chat bubble style */
+    flex: 1;
+}
+
+.comment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+}
+
+.comment-user {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #fff;
+}
+
+.comment-time {
+    font-size: 0.7rem;
+    color: #888;
+}
+
+.comment-text {
+    font-size: 0.9rem;
+    color: #ddd;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.no-comments {
+    text-align: center;
+    color: #777;
+    font-size: 0.9rem;
+    margin-top: 20px;
+}
+
+.comment-form {
+    display: flex;
+    gap: 8px;
+    margin-top: auto;
+}
+
+.comment-input {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 8px 15px;
+    color: white;
+    font-size: 0.9rem;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.comment-input:focus {
+    background: rgba(0, 0, 0, 0.5);
+    border-color: rgba(66, 133, 244, 0.5);
+}
+
+.comment-submit-btn {
+    background: #4285F4;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.comment-submit-btn:hover:not(:disabled) {
+    transform: scale(1.1);
+}
+
+.comment-submit-btn:disabled {
+    background: #333;
+    cursor: default;
+    opacity: 0.5;
+}
