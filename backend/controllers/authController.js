@@ -37,7 +37,7 @@ const register = async (req, res) => {
         const password_hash = await bcrypt.hash(password, saltRounds);
 
         // إنشاء كود التحقق
-        const otpCode = process.env.EMAIL_PASS ? crypto.randomInt(100000, 999999).toString() : '123456';
+        const otpCode = crypto.randomInt(100000, 999999).toString();
         const otpExpiresAt = new Date(Date.now() + 5 * 60000); // صالح لمدة 5 دقائق
 
         // إضافة المستخدم (غير مفعل افتراضياً)
@@ -153,7 +153,7 @@ const login = async (req, res) => {
         }
 
         // === إذا لم يكن مفعل (أول مرة): أرسل رمز التحقق ===
-        const otpCode = process.env.EMAIL_PASS ? crypto.randomInt(100000, 999999).toString() : '123456';
+        const otpCode = crypto.randomInt(100000, 999999).toString();
         const otpExpiresAt = new Date(Date.now() + 5 * 60000); // صالح لمدة 5 دقائق
 
         // حفظ الكود في قاعدة البيانات
@@ -369,7 +369,7 @@ const forgotPassword = async (req, res) => {
         const user = result.rows[0];
 
         // إنشاء كود التحقق
-        const otpCode = process.env.EMAIL_PASS ? crypto.randomInt(100000, 999999).toString() : '123456';
+        const otpCode = crypto.randomInt(100000, 999999).toString();
         const otpExpiresAt = new Date(Date.now() + 10 * 60000); // صالح لمدة 10 دقائق
 
         // حفظ الكود في قاعدة البيانات
