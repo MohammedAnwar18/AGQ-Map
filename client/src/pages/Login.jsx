@@ -447,24 +447,20 @@ const Login = () => {
 
             <div style={{
                 position: 'absolute',
-                bottom: '20px',
+                bottom: '30px', /* مسافة أفضل من الأسفل */
                 width: '100%',
                 left: 0,
                 textAlign: 'center',
-                color: 'rgba(255, 255, 255, 0.8)',
-                fontSize: '0.9rem',
+                color: 'rgba(255, 255, 255, 0.9)', /* لون أكثر سطوعاً ووضوحاً */
+                fontSize: '0.95rem',
                 fontFamily: 'Tajawal, sans-serif',
                 zIndex: 10,
-                textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+                textShadow: '0 2px 4px rgba(0,0,0,0.6)', /* ظل أجمل للخط */
+                letterSpacing: '0.5px' /* مسافة مريحة بين الأحرف */
             }}>
-                <p style={{ margin: 0, padding: 0, fontWeight: '500' }}>
-                    &copy; {new Date().getFullYear()} AGQ. جميع الحقوق محفوظة.
+                <p style={{ margin: 0, padding: 0, fontWeight: '600' /* خط أعرض قليلاً */ }}>
+                    &copy; {new Date().getFullYear()} PalNova. جميع الحقوق محفوظة.
                 </p>
-                <div style={{ margin: '6px 0 0', padding: 0, fontSize: '0.8rem', opacity: 0.9, display: 'flex', justifyContent: 'center', gap: '15px' }}>
-                    <span style={{ cursor: 'pointer' }}>شروط الاستخدام</span>
-                    <span>|</span>
-                    <span style={{ cursor: 'pointer' }}>سياسة الخصوصية</span>
-                </div>
             </div>
         </div>
     );
