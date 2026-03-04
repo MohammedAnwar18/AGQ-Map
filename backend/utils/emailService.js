@@ -1,74 +1,56 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-let transporter;
+let resendClient = null;
 
-const createTransporter = async () => {
-    if (transporter) return transporter;
+const getResendClient = () => {
+    if (resendClient) return resendClient;
 
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-        transporter = nodemailer.createTransport({
-            service: process.env.EMAIL_SERVICE,
-            host: process.env.EMAIL_HOST,
-            port: process.env.EMAIL_PORT,
-            secure: process.env.EMAIL_SECURE === 'true',
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS
-            },
-            connectionTimeout: 10000, // 10 seconds timeout
-            greetingTimeout: 10000,
-            socketTimeout: 10000
-        });
-        return transporter;
-    } else {
-        console.log('⚠️ No real email config found. Skipping Ethereal (prevent timeout on Render).');
-        // Return a dummy transporter that just resolves
-        return {
-            sendMail: async (mailOptions) => {
-                console.log('Mock email sent to:', mailOptions.to);
-                return { messageId: 'mock-id-123' };
-            }
-        };
+    if (process.env.RESEND_API_KEY) {
+        resendClient = new Resend(process.env.RESEND_API_KEY);
+        return resendClient;
     }
+
+    console.log('⚠️ No RESEND_API_KEY found. Using fallback mock.');
+    return null;
 };
 
 const sendOtpEmail = async (to, otpCode) => {
     try {
-        const mailTransporter = await createTransporter();
-        if (!mailTransporter) return false;
+        const client = getResendClient();
 
-        const mailOptions = {
-            from: process.env.EMAIL_FROM || '"PalNova Security" <noreply@palnova.com>',
-            to: to,
-            subject: 'PalNova - رمز التحقق الخاص بك',
-            html: `
-                <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; direction: rtl; text-align: right;">
-                    <h2 style="color: #4A90E2;">PalNova Verification</h2>
-                    <p>مرحباً،</p>
-                    <p>رمز الدخول الخاص بك هو:</p>
-                    <h1 style="background-color: #f4f4f4; padding: 10px; text-align: center; letter-spacing: 5px; border-radius: 5px; font-family: monospace;">${otpCode}</h1>
-                    <p>هذا الرمز صالح لمدة 5 دقائق.</p>
-                </div>
-            `
-        };
-
-        const sendPromise = mailTransporter.sendMail(mailOptions);
-        const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Email sending timed out (Render SMTP port restriction)')), 4000)
-        );
-
-        const info = await Promise.race([sendPromise, timeoutPromise]);
-        console.log('📨 Message sent: %s', info.messageId);
-
-        if (!process.env.EMAIL_PASS) {
+        if (!client) {
             console.log('🔑 ⚠️ (TEST MODE) OTP Code is:', otpCode);
+            return false; // Will trigger the UI fallback
+        }
+
+        const emailHtml = `
+            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; direction: rtl; text-align: right;">
+                <h2 style="color: #4A90E2;">PalNova Verification</h2>
+                <p>مرحباً،</p>
+                <p>رمز الدخول الخاص بك هو:</p>
+                <h1 style="background-color: #f4f4f4; padding: 10px; text-align: center; letter-spacing: 5px; border-radius: 5px; font-family: monospace;">${otpCode}</h1>
+                <p>هذا الرمز صالح لمدة 5 دقائق.</p>
+            </div>
+        `;
+
+        const { data, error } = await client.emails.send({
+            from: 'PalNova Security <onboarding@resend.dev>', // resend.dev is the default testing domain provided by Resend
+            to: [to],
+            subject: 'PalNova - رمز التحقق الخاص بك',
+            html: emailHtml,
+        });
+
+        if (error) {
+            console.error('❌ Error from Resend API:', error);
+            console.log('🔑 OTP Code (Fallback):', otpCode);
             return false;
         }
 
+        console.log('📨 Message sent successfully via Resend. ID:', data.id);
         return true;
+
     } catch (error) {
-        console.error('❌ Error sending email (or timed out):', error.message);
-        // Fallback for dev: return false so the controller knows it failed
+        console.error('❌ Fatal error sending email via Resend:', error.message);
         console.log('🔑 OTP Code (Fallback):', otpCode);
         return false;
     }
