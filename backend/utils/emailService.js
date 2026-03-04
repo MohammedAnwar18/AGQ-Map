@@ -62,6 +62,7 @@ const sendOtpEmail = async (to, otpCode) => {
 
         if (!process.env.EMAIL_PASS) {
             console.log('🔑 ⚠️ (TEST MODE) OTP Code is:', otpCode);
+            return false;
         }
 
         return true;
