@@ -48,7 +48,9 @@ const Login = () => {
                     // طلب استعادة كلمة المرور
                     response = await authService.forgotPassword(formData.email);
                     setResetStep(2);
-                    // يمكنك عرض رسالة نجاح هنا إذا أردت
+                    if (response.message) {
+                        alert(response.message);
+                    }
                 } else {
                     // إعادة تعيين كلمة المرور
                     response = await authService.resetPassword({
@@ -85,6 +87,9 @@ const Login = () => {
                     if (response.requireOtp) {
                         setIsOtpStep(true);
                         setFormData(prev => ({ ...prev, email: response.email }));
+                        if (response.message) {
+                            alert(response.message);
+                        }
                     } else {
                         login(response.user, response.token);
                         navigate('/map');
@@ -104,6 +109,9 @@ const Login = () => {
                     setIsLogin(true);
                     setIsOtpStep(true);
                     // formData.email is already correct
+                    if (response.message) {
+                        alert(response.message);
+                    }
                 } else {
                     login(response.user, response.token);
                     navigate('/map');

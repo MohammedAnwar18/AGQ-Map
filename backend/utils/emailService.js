@@ -14,7 +14,10 @@ const createTransporter = async () => {
             auth: {
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_PASS
-            }
+            },
+            connectionTimeout: 10000, // 10 seconds timeout
+            greetingTimeout: 10000,
+            socketTimeout: 10000
         });
         return transporter;
     } else {
@@ -49,21 +52,24 @@ const sendOtpEmail = async (to, otpCode) => {
             `
         };
 
-        const info = await mailTransporter.sendMail(mailOptions);
+        const sendPromise = mailTransporter.sendMail(mailOptions);
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Email sending timed out (Render SMTP port restriction)')), 4000)
+        );
+
+        const info = await Promise.race([sendPromise, timeoutPromise]);
         console.log('📨 Message sent: %s', info.messageId);
 
-        // Always log OTP for safety when we know it's not a real production email sent successfully
-        // Because if EMAIL_PASS is missing, it's a mock!
         if (!process.env.EMAIL_PASS) {
             console.log('🔑 ⚠️ (TEST MODE) OTP Code is:', otpCode);
         }
 
         return true;
     } catch (error) {
-        console.error('❌ Error sending email:', error);
-        // Fallback for dev
+        console.error('❌ Error sending email (or timed out):', error.message);
+        // Fallback for dev: return false so the controller knows it failed
         console.log('🔑 OTP Code (Fallback):', otpCode);
-        return true; // نرجع true حتى يكمل النظام العملية في وضع التطوير
+        return false;
     }
 };
 
