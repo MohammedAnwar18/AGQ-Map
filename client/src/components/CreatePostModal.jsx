@@ -11,76 +11,13 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
     const [error, setError] = useState('');
 
     const fileInputRef = useRef(null);
-    const videoRef = useRef(null);
-    const canvasRef = useRef(null);
-    const streamRef = useRef(null);
+    const cameraInputRef = useRef(null);
 
-    // فتح الكاميرا
-    const startCamera = async () => {
-        try {
-            setError('');
-
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                setError('متصفحك لا يدعم الكاميرا أو يحتاج لاتصال آمن (HTTPS).');
-                return;
-            }
-
-            // Try back camera first
-            let stream;
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment' },
-                    audio: false
-                });
-            } catch (backErr) {
-                // Fallback to any camera if back camera is not available or fails
-                console.warn('Back camera failed, trying any available camera...', backErr);
-                stream = await navigator.mediaDevices.getUserMedia({
-                    video: true,
-                    audio: false
-                });
-            }
-
-            videoRef.current.srcObject = stream;
-            streamRef.current = stream;
-            setUseCamera(true);
-        } catch (err) {
-            console.error('Camera error:', err);
-            if (err.name === 'NotAllowedError' || err.name === 'SecurityError') {
-                setError('فشل الوصول: يرجى منح صلاحية الكاميرا للمتصفح من الإعدادات.');
-            } else if (err.name === 'NotFoundError') {
-                setError('لم يتم العثور على كاميرا في جهازك.');
-            } else {
-                setError('خطأ غير متوقع عند تشغيل الكاميرا.');
-            }
+    // فتح الكاميرا الأصلية للهاتف
+    const startCamera = () => {
+        if (cameraInputRef.current) {
+            cameraInputRef.current.click();
         }
-    };
-
-    // التقاط صورة من الكاميرا
-    const capturePhoto = () => {
-        const video = videoRef.current;
-        const canvas = canvasRef.current;
-        const context = canvas.getContext('2d');
-
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        context.drawImage(video, 0, 0);
-
-        canvas.toBlob((blob) => {
-            const file = new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' });
-            setImages(prev => [...prev, file]);
-            setImagePreviews(prev => [...prev, URL.createObjectURL(blob)]);
-            stopCamera();
-        }, 'image/jpeg', 0.95);
-    };
-
-    // إيقاف الكاميرا
-    const stopCamera = () => {
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
-            streamRef.current = null;
-        }
-        setUseCamera(false);
     };
 
     // اختار صورة أو فيديو من الملف
@@ -192,7 +129,6 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
 
     // تنظيف عند الإغلاق
     const handleClose = () => {
-        stopCamera();
         imagePreviews.forEach(url => URL.revokeObjectURL(url));
         onClose();
     };
@@ -241,30 +177,7 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
                         </div>
                     )}
 
-
-                    {/* معاينة الكاميرا */}
-                    {useCamera && (
-                        <div className="camera-container">
-                            <video ref={videoRef} autoPlay playsInline className="camera-video" />
-                            <div className="camera-controls">
-                                <button
-                                    type="button"
-                                    className="btn btn-primary"
-                                    onClick={capturePhoto}
-                                >
-                                    📷 التقاط
-                                </button>
-                                <button
-                                    type="button"
-                                    className="btn btn-secondary"
-                                    onClick={stopCamera}
-                                >
-                                    ✕ إلغاء
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
+                    {/* تم إزالة معاينة الكاميرا المدمجة لأننا نستخدم كاميرا النظام الأساسية */}
                     {/* معاينة الوسائط */}
                     {imagePreviews.length > 0 && !useCamera && (
                         <div className="media-preview-container" style={{
@@ -339,6 +252,15 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
                         </div>
                     )}
 
+                    {/* Input مخفي الكاميرا */}
+                    <input
+                        ref={cameraInputRef}
+                        type="file"
+                        accept="image/*,video/*"
+                        capture="environment" // يفتح الكاميرا مباشرة من الجهاز
+                        onChange={handleFileChange}
+                        style={{ display: 'none' }}
+                    />
                     {/* Input مخفي دائما موجود لاستقبال الملفات */}
                     <input
                         ref={fileInputRef}
@@ -376,7 +298,7 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
                     <button
                         type="submit"
                         className="btn btn-primary btn-submit"
-                        disabled={loading || useCamera}
+                        disabled={loading}
                     >
                         {loading ? (
                             <>
@@ -388,9 +310,6 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
                         )}
                     </button>
                 </form>
-
-                {/* Canvas مخفي للكاميرا */}
-                <canvas ref={canvasRef} style={{ display: 'none' }} />
             </div>
         </div>
     );
