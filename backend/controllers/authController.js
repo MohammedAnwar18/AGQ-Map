@@ -40,27 +40,42 @@ const register = async (req, res) => {
         const otpCode = crypto.randomInt(100000, 999999).toString();
         const otpExpiresAt = new Date(Date.now() + 5 * 60000); // صالح لمدة 5 دقائق
 
-        // إضافة المستخدم (غير مفعل افتراضياً)
+        // إضافة المستخدم (تم تجعله مفعل افتراضياً مؤقتاً لتخطي الإيميل)
         const result = await pool.query(
             `INSERT INTO users (username, email, password_hash, full_name, date_of_birth, gender, otp_code, otp_expires_at, is_verified) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, FALSE) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE) 
        RETURNING id, username, email`,
             [username, email, password_hash, full_name, date_of_birth, gender, otpCode, otpExpiresAt]
         );
 
         const user = result.rows[0];
 
-        // إرسال كود التحقق
-        const emailSent = await sendOtpEmail(user.email, otpCode);
-        if (!emailSent) {
-            console.log(`⚠️ Email failed (Check .env). OTP for ${user.email}: ${otpCode}`);
-        }
+        // ⚠️ تم إيقاف إرسال الإيميل مؤقتاً بناءً على طلبك
+        // const emailSent = await sendOtpEmail(user.email, otpCode);
 
-        // الرد بأن مطلوب OTP
+        // إنشاء Token للدخول المباشر
+        const token = jwt.sign(
+            {
+                userId: user.id,
+                username: user.username,
+                email: user.email,
+                role: 'user'
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        // الرد بالدخول المباشر (تجاوز شاشة الكود)
         res.status(201).json({
-            message: 'Registration successful. Please verify your email.',
-            requireOtp: true,
-            email: user.email
+            message: 'تم التسجيل بنجاح! جاري الدخول...',
+            requireOtp: false,
+            token,
+            user: {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                role: 'user'
+            }
         });
 
     } catch (error) {
@@ -177,7 +192,9 @@ const login = async (req, res) => {
         res.json({
             requireOtp: true,
             email: user.email,
-            message: 'Verification code sent to your email'
+            message: emailSent
+                ? 'Verification code sent to your email'
+                : `فشل الإرسال (حظر من السيرفر). كود الدخول المؤقت هو: ${otpCode}`
         });
 
     } catch (error) {
@@ -388,7 +405,12 @@ const forgotPassword = async (req, res) => {
             console.log(`⚠️ Email failed (Check .env). OTP for ${user.email}: ${otpCode}`);
         }
 
-        res.json({ message: 'If the email exists, a verification code has been sent.', email: user.email });
+        res.json({
+            message: emailSent
+                ? 'If the email exists, a verification code has been sent.'
+                : `فشل الإرسال (حظر من السيرفر). كود الدخول المؤقت هو: ${otpCode}`,
+            email: user.email
+        });
 
     } catch (error) {
         console.error('Forgot password error:', error);
