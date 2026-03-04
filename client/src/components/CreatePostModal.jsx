@@ -13,13 +13,6 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
     const fileInputRef = useRef(null);
     const cameraInputRef = useRef(null);
 
-    // فتح الكاميرا الأصلية للهاتف
-    const startCamera = () => {
-        if (cameraInputRef.current) {
-            cameraInputRef.current.click();
-        }
-    };
-
     // اختار صورة أو فيديو من الملف
     const handleFileChange = (e) => {
         const files = Array.from(e.target.files);
@@ -177,9 +170,8 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
                         </div>
                     )}
 
-                    {/* تم إزالة معاينة الكاميرا المدمجة لأننا نستخدم كاميرا النظام الأساسية */}
                     {/* معاينة الوسائط */}
-                    {imagePreviews.length > 0 && !useCamera && (
+                    {imagePreviews.length > 0 && (
                         <div className="media-preview-container" style={{
                             display: 'flex',
                             gap: '10px',
@@ -209,9 +201,7 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
                                 </div>
                             ))}
                             {/* زر إضافة المزيد */}
-                            <button
-                                type="button"
-                                onClick={() => fileInputRef.current.click()}
+                            <label
                                 style={{
                                     flex: '0 0 auto',
                                     width: '150px',
@@ -228,48 +218,43 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
                                 }}
                             >
                                 +
-                            </button>
+                                <input
+                                    type="file"
+                                    accept="image/*,video/*"
+                                    multiple
+                                    onChange={handleFileChange}
+                                    style={{ display: 'none' }}
+                                />
+                            </label>
                         </div>
                     )}
 
                     {/* أزرار الإضافة الأولية */}
-                    {imagePreviews.length === 0 && !useCamera && (
+                    {imagePreviews.length === 0 && (
                         <div className="image-actions">
-                            <button
-                                type="button"
-                                className="btn btn-secondary"
-                                onClick={startCamera}
-                            >
+                            <label className="btn btn-secondary" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 📷 فتح الكاميرا
-                            </button>
-                            <button
-                                type="button"
-                                className="btn btn-secondary"
-                                onClick={() => fileInputRef.current.click()}
-                            >
+                                <input
+                                    type="file"
+                                    accept="image/*,video/*"
+                                    capture="environment"
+                                    onChange={handleFileChange}
+                                    style={{ display: 'none' }}
+                                />
+                            </label>
+
+                            <label className="btn btn-secondary" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 🖼️ اختيار ملفات
-                            </button>
+                                <input
+                                    type="file"
+                                    accept="image/*,video/*"
+                                    multiple
+                                    onChange={handleFileChange}
+                                    style={{ display: 'none' }}
+                                />
+                            </label>
                         </div>
                     )}
-
-                    {/* Input مخفي الكاميرا */}
-                    <input
-                        ref={cameraInputRef}
-                        type="file"
-                        accept="image/*,video/*"
-                        capture="environment" // يفتح الكاميرا مباشرة من الجهاز
-                        onChange={handleFileChange}
-                        style={{ display: 'none' }}
-                    />
-                    {/* Input مخفي دائما موجود لاستقبال الملفات */}
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*,video/*"
-                        multiple // Allow multiple
-                        onChange={handleFileChange}
-                        style={{ display: 'none' }}
-                    />
 
                     {/* النص */}
                     <div className="form-group">
