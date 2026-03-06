@@ -249,8 +249,43 @@ app.use((err, req, res, next) => {
 
 // تشغيل السيرفر
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
+
+// Database Auto-Migrations
+const runMigrations = async () => {
+    try {
+        console.log('🏗️ Checking database schema...');
+
+        // Add owner_id to shops if missing
+        await pool.query(`
+            DO $$ 
+            BEGIN 
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='shops' AND column_name='owner_id') THEN
+                    ALTER TABLE shops ADD COLUMN owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+                    RAISE NOTICE 'Added owner_id column to shops table';
+                END IF;
+            END $$;
+        `);
+
+        // Ensure enable_proximity_notifications exists
+        await pool.query(`
+            DO $$ 
+            BEGIN 
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='shops' AND column_name='enable_proximity_notifications') THEN
+                    ALTER TABLE shops ADD COLUMN enable_proximity_notifications BOOLEAN DEFAULT FALSE;
+                    RAISE NOTICE 'Added enable_proximity_notifications column to shops table';
+                END IF;
+            END $$;
+        `);
+
+        console.log('✅ Database schema verified');
+    } catch (err) {
+        console.error('❌ Migration error:', err);
+    }
+};
+
+server.listen(PORT, async () => {
     console.log('Server running on port ' + PORT);
+    await runMigrations();
     console.log('📡 WebSocket server ready');
     console.log('🌐 API: http://localhost:' + PORT);
 });
