@@ -6,7 +6,7 @@ const pool = require('../config/database');
 const searchUsers = async (req, res) => {
     try {
         const { query } = req.query;
-        const currentUserId = req.user.userId;
+        const currentUserId = req.user.id || req.user.userId;
 
         if (!query || query.trim().length < 2) {
             return res.status(400).json({ error: 'Search query must be at least 2 characters' });
@@ -53,7 +53,7 @@ const searchUsers = async (req, res) => {
 const getUserProfile = async (req, res) => {
     try {
         const { userId } = req.params;
-        const currentUserId = req.user.userId;
+        const currentUserId = req.user.id || req.user.userId;
 
         const result = await pool.query(
             `SELECT 
@@ -114,7 +114,7 @@ const getUserProfile = async (req, res) => {
  */
 const updateProfile = async (req, res) => {
     try {
-        const userId = req.user.userId;
+        const userId = req.user.id || req.user.userId;
         const { full_name, bio, gender, date_of_birth } = req.body;
         const profile_picture = req.file ? req.file.path : null;
 
