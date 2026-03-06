@@ -24,7 +24,8 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
     }, [activeTab, isShopsMode]); // Re-run when tab changes
 
     useEffect(() => {
-        if (propFollowedShops) {
+        // Only sync from prop if it contains data, to avoid wiping internal loadData results
+        if (propFollowedShops && propFollowedShops.length > 0) {
             setFollowedShops(propFollowedShops);
         }
     }, [propFollowedShops]);
@@ -119,12 +120,9 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
             const response = await shopService.follow(shop.id);
             console.log("Follow response:", response);
 
-            // Add to local followed list state immediately for optimistic UI
-            // But make sure we don't add duplicates
-            setFollowedShops(prev => {
-                if (prev.some(s => s.id == shop.id)) return prev;
-                return [...prev, { ...shop, is_followed: true }];
-            });
+            // Fetch the updated following list to ensure complete shop data (like lat/lon)
+            const updatedFollowing = await shopService.getFollowing();
+            setFollowedShops(updatedFollowing.shops || []);
 
             if (onShopFollowed) onShopFollowed();
             alert(`تم متابعة ${shop.name} بنجاح! سيظهر الآن على الخريطة.`);

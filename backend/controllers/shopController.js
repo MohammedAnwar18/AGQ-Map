@@ -71,10 +71,10 @@ const unfollowShop = async (req, res) => {
 // --- 4. Get Followed Shops ---
 const getFollowedShops = async (req, res) => {
     try {
-        const userId = req.user.id || req.user.userId;
+        const userId = parseInt(req.user.id || req.user.userId);
 
         const result = await pool.query(`
-            SELECT DISTINCT s.*,
+            SELECT s.*,
             (
                 SELECT json_agg(json_build_object(
                     'id', u.id,
@@ -96,7 +96,7 @@ const getFollowedShops = async (req, res) => {
             JOIN shop_followers sf ON s.id = sf.shop_id
             WHERE sf.user_id = $1::int
             ORDER BY s.name ASC
-        `, [parseInt(userId)]);
+        `, [userId]);
 
         console.log(`📋 User ${userId} has ${result.rows.length} followed shops in DB`);
         res.json({ shops: result.rows });
