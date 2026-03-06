@@ -523,19 +523,11 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                         </div>
                                                     </div>
                                                     <div className="user-item-actions">
-                                                        {isFollowingShop(shop.id) ? (
+                                                        {isFollowingShop(shop.id) && (
                                                             <span style={{ color: 'var(--success)', fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
                                                                 متابع
                                                             </span>
-                                                        ) : (
-                                                            <button
-                                                                className="btn-small btn-add-friend"
-                                                                onClick={(e) => { e.stopPropagation(); handleFollowShop(shop); }}
-                                                                style={{ background: 'var(--text-primary)', color: 'var(--bg-primary)' }}
-                                                            >
-                                                                متابعة
-                                                            </button>
                                                         )}
                                                     </div>
                                                 </div>
