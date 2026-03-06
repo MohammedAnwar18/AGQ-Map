@@ -96,11 +96,13 @@ const getFollowedShops = async (req, res) => {
 const createShop = async (req, res) => {
     try {
         const { name, latitude, longitude, category } = req.body;
+        const ownerId = req.user.userId;
+
         const result = await pool.query(`
-            INSERT INTO shops (name, latitude, longitude, category)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO shops (name, latitude, longitude, category, owner_id, location)
+            VALUES ($1, $2, $3, $4, $5, ST_SetSRID(ST_MakePoint($3, $2), 4326)::geography)
             RETURNING *
-        `, [name, latitude, longitude, category]);
+        `, [name, latitude, longitude, category, ownerId]);
         res.json(result.rows[0]);
     } catch (e) {
         console.error(e);

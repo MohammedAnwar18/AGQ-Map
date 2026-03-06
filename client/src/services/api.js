@@ -291,7 +291,7 @@ export const shopService = {
     },
 
     getFollowing: async () => {
-        const response = await api.get('/shops/following');
+        const response = await api.get(`/shops/following?t=${Date.now()}`);
         return response.data;
     },
 
@@ -301,7 +301,7 @@ export const shopService = {
     },
 
     getProfile: async (id) => {
-        const response = await api.get(`/shops/${id}`);
+        const response = await api.get(`/shops/${id}?t=${Date.now()}`);
         return response.data;
     },
 
