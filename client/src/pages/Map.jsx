@@ -927,36 +927,38 @@ const MapComponent = () => {
                                 setShowShopProfile(true);
                             }}
                         >
-                            <div className="shop-pin" style={{ cursor: 'pointer', transition: 'transform 0.2s' }}
+                            <div className="shop-pin-marker" style={{
+                                width: '45px',
+                                height: '45px',
+                                backgroundImage: `url(${getImageUrl(shop.profile_picture) || getImageUrl(shop.image_url) || '/default-shop.png'})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                                borderRadius: '50%',
+                                border: '3px solid #fbab15',
+                                boxShadow: '0 4px 8px rgba(0,0,0,0.4)',
+                                cursor: 'pointer',
+                                transition: 'transform 0.2s',
+                                position: 'relative'
+                            }}
                                 onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1) translateY(-5px)'}
                                 onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
                             >
-                                <svg width="60" height="70" viewBox="0 0 60 70" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.3))' }}>
-                                    {/* Pin body */}
-                                    <path d="M30 0C13.4315 0 0 13.4315 0 30C0 50 30 70 30 70C30 70 60 50 60 30C60 13.4315 46.5685 0 30 0Z" fill="#fbab15" />
-                                    {/* White circle for the image */}
-                                    <circle cx="30" cy="30" r="24" fill="white" />
-                                    {/* Clip path for the image */}
-                                    <defs>
-                                        <clipPath id={`clip-${shop.id}`}>
-                                            <circle cx="30" cy="30" r="22" />
-                                        </clipPath>
-                                    </defs>
-                                    {/* Image */}
-                                    <image
-                                        href={getImageUrl(shop.profile_picture) || getImageUrl(shop.image_url) || '/default-shop.png'}
-                                        x="8" y="8" width="44" height="44"
-                                        clipPath={`url(#clip-${shop.id})`}
-                                        preserveAspectRatio="xMidYMid slice"
-                                    />
-                                    {/* Optional category icon overlay */}
-                                    {shop.category === 'مكتب تاكسي' && (
-                                        <circle cx="50" cy="50" r="10" fill="#1e293b" />
-                                    )}
-                                </svg>
-                                {shop.category === 'مكتب تاكسي' && (
-                                    <div style={{ position: 'absolute', bottom: 15, right: 0, fontSize: '14px' }}>🚕</div>
-                                )}
+                                <div style={{
+                                    position: 'absolute',
+                                    bottom: '-4px',
+                                    right: '-4px',
+                                    background: '#fff',
+                                    borderRadius: '50%',
+                                    width: '20px',
+                                    height: '20px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '12px',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                }}>
+                                    {shop.category === 'مكتب تاكسي' ? '🚕' : '🏪'}
+                                </div>
                             </div>
                         </Marker>
 
