@@ -277,12 +277,19 @@ const runMigrations = async () => {
     }
 };
 
-server.listen(PORT, async () => {
-    console.log('Server running on port ' + PORT);
-    await runMigrations();
-    console.log('📡 WebSocket server ready');
-    console.log('🌐 API: http://localhost:' + PORT);
-});
+// تشغيل السيرفر (فقط إذا لم يكن على Vercel)
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+    const PORT = process.env.PORT || 5000;
+    server.listen(PORT, async () => {
+        console.log('Server running on port ' + PORT);
+        await runMigrations();
+        console.log('📡 WebSocket server ready');
+        console.log('🌐 API: http://localhost:' + PORT);
+    });
+} else {
+    // على Vercel، نقوم فقط بتدقيق قاعدة البيانات عند الحاجة أو عبر وظائف أخرى
+    // ولكن للتأكد من عمل الـ API، نقوم بتصدير الـ app
+}
 
-module.exports = { app, server, io };
+module.exports = app;
 
