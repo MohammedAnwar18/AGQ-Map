@@ -19,7 +19,7 @@ import GeomolgViewer from '../components/GeomolgViewer';
 import NavigationPanel from '../components/NavigationPanel';
 import ManagedShopsModal from '../components/ManagedShopsModal';
 import ShopProfileModal from '../components/ShopProfileModal';
-import { postService, friendService, authService, notificationService, communityService, shopService } from '../services/api';
+import { postService, friendService, authService, notificationService, communityService, shopService, getImageUrl } from '../services/api';
 import './Map.css';
 
 // Helper: Smart Smoothing (Low-Impact Chaikin)
@@ -94,13 +94,7 @@ const haversineDistance = (coords1, coords2) => {
 const MapComponent = () => {
     const { user, logout } = useAuth();
 
-    // Helper: Image URL Resolver
-    const getImageUrl = (url) => {
-        if (!url) return null;
-        if (url.startsWith('http')) return url;
-        const baseUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : '';
-        return `${baseUrl}${url}`;
-    };
+
 
     // Time state
     const [currentTime, setCurrentTime] = useState(new Date());
@@ -888,7 +882,7 @@ const MapComponent = () => {
                         }}
                     >
                         <div style={{
-                            backgroundImage: `url(${post.user?.profile_picture || '/default-avatar.png'})`,
+                            backgroundImage: `url(${getImageUrl(post.user?.profile_picture) || '/default-avatar.png'})`,
                             width: '45px', height: '45px',
                             backgroundSize: 'cover', backgroundPosition: 'center',
                             borderRadius: '50%', border: '2px solid white',
@@ -909,7 +903,7 @@ const MapComponent = () => {
                         anchor="bottom"
                     >
                         <div style={{
-                            backgroundImage: `url(${friend.profile_picture || '/default-avatar.png'})`,
+                            backgroundImage: `url(${getImageUrl(friend.profile_picture) || '/default-avatar.png'})`,
                             width: '45px', height: '45px',
                             backgroundSize: 'cover', backgroundPosition: 'center',
                             borderRadius: '50%', border: '2px solid #22c55e',
@@ -920,7 +914,7 @@ const MapComponent = () => {
                 ))}
 
                 {/* Followed Shops Markers */}
-                {!currentCommunity && viewState.zoom > 5 && followedShopsMap.map(shop => (
+                {!currentCommunity && followedShopsMap.map(shop => (
                     <React.Fragment key={`shop-group-${shop.id}`}>
                         <Marker
                             key={`shop-${shop.id}`}
@@ -933,21 +927,35 @@ const MapComponent = () => {
                                 setShowShopProfile(true);
                             }}
                         >
-                            <div style={{
-                                backgroundImage: `url(${getImageUrl(shop.profile_picture) || getImageUrl(shop.image_url) || '/default-shop.png'})`,
-                                width: '50px', height: '50px',
-                                backgroundSize: 'cover', backgroundPosition: 'center',
-                                borderRadius: '50%',
-                                border: '3px solid #fbab15', // Orange border matching branding
-                                boxShadow: '0 4px 10px rgba(0,0,0,0.4)',
-                                cursor: 'pointer',
-                                transition: 'transform 0.2s',
-                            }}
-                                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+                            <div className="shop-pin" style={{ cursor: 'pointer', transition: 'transform 0.2s' }}
+                                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1) translateY(-5px)'}
                                 onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
                             >
-                                {!shop.profile_picture && !shop.image_url && (
-                                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>🏪</div>
+                                <svg width="60" height="70" viewBox="0 0 60 70" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.3))' }}>
+                                    {/* Pin body */}
+                                    <path d="M30 0C13.4315 0 0 13.4315 0 30C0 50 30 70 30 70C30 70 60 50 60 30C60 13.4315 46.5685 0 30 0Z" fill="#fbab15" />
+                                    {/* White circle for the image */}
+                                    <circle cx="30" cy="30" r="24" fill="white" />
+                                    {/* Clip path for the image */}
+                                    <defs>
+                                        <clipPath id={`clip-${shop.id}`}>
+                                            <circle cx="30" cy="30" r="22" />
+                                        </clipPath>
+                                    </defs>
+                                    {/* Image */}
+                                    <image
+                                        href={getImageUrl(shop.profile_picture) || getImageUrl(shop.image_url) || '/default-shop.png'}
+                                        x="8" y="8" width="44" height="44"
+                                        clipPath={`url(#clip-${shop.id})`}
+                                        preserveAspectRatio="xMidYMid slice"
+                                    />
+                                    {/* Optional category icon overlay */}
+                                    {shop.category === 'مكتب تاكسي' && (
+                                        <circle cx="50" cy="50" r="10" fill="#1e293b" />
+                                    )}
+                                </svg>
+                                {shop.category === 'مكتب تاكسي' && (
+                                    <div style={{ position: 'absolute', bottom: 15, right: 0, fontSize: '14px' }}>🚕</div>
                                 )}
                             </div>
                         </Marker>
@@ -965,7 +973,7 @@ const MapComponent = () => {
                                         title={`سائق: ${driver.full_name || driver.username}`}
                                         style={{
                                             width: '40px', height: '40px',
-                                            backgroundImage: `url(${driver.profile_picture || '/default-avatar.png'})`,
+                                            backgroundImage: `url(${getImageUrl(driver.profile_picture) || '/default-avatar.png'})`,
                                             backgroundSize: 'cover',
                                             borderRadius: '50%',
                                             border: '3px solid #fbab15',
@@ -1056,7 +1064,7 @@ const MapComponent = () => {
                 style={{ cursor: 'pointer', flexDirection: 'column', alignItems: 'flex-start', transition: 'all 0.3s ease' }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px', width: '100%' }}>
-                    <div className="user-avatar"><img src={user.profile_picture || '/default-avatar.png'} alt={user.username} /></div>
+                    <div className="user-avatar"><img src={getImageUrl(user.profile_picture) || '/default-avatar.png'} alt={user.username} /></div>
                     <div className="user-details" style={{ flex: 1, minWidth: '100px' }}>
                         <h3 style={{ margin: 0, fontSize: '1rem' }}>{user.full_name || user.username}</h3>
                         {!isUserInfoExpanded && (

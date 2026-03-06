@@ -24,7 +24,13 @@ const searchShops = async (req, res) => {
 const followShop = async (req, res) => {
     try {
         const userId = req.user.userId;
-        const shopId = req.params.id;
+        const shopId = parseInt(req.params.id);
+
+        if (isNaN(shopId)) {
+            return res.status(400).json({ error: 'Invalid shop ID' });
+        }
+
+        console.log(`User ${userId} attempting to follow shop ${shopId}`);
 
         await pool.query(`
             INSERT INTO shop_followers (user_id, shop_id)
@@ -32,7 +38,7 @@ const followShop = async (req, res) => {
             ON CONFLICT (user_id, shop_id) DO NOTHING
         `, [userId, shopId]);
 
-        res.json({ message: 'Shop followed successfully' });
+        res.json({ message: 'Shop followed successfully', shopId });
     } catch (error) {
         console.error('Follow shop error:', error);
         res.status(500).json({ error: 'Failed to follow shop' });
@@ -43,14 +49,20 @@ const followShop = async (req, res) => {
 const unfollowShop = async (req, res) => {
     try {
         const userId = req.user.userId;
-        const shopId = req.params.id;
+        const shopId = parseInt(req.params.id);
+
+        if (isNaN(shopId)) {
+            return res.status(400).json({ error: 'Invalid shop ID' });
+        }
+
+        console.log(`User ${userId} attempting to unfollow shop ${shopId}`);
 
         await pool.query(`
             DELETE FROM shop_followers 
             WHERE user_id = $1 AND shop_id = $2
         `, [userId, shopId]);
 
-        res.json({ message: 'Shop unfollowed' });
+        res.json({ message: 'Shop unfollowed', shopId });
     } catch (error) {
         console.error('Unfollow shop error:', error);
         res.status(500).json({ error: 'Failed to unfollow shop' });
@@ -63,7 +75,7 @@ const getFollowedShops = async (req, res) => {
         const userId = req.user.userId;
 
         const result = await pool.query(`
-            SELECT s.*,
+            SELECT DISTINCT s.*,
             (
                 SELECT json_agg(json_build_object(
                     'id', u.id,
@@ -79,12 +91,15 @@ const getFollowedShops = async (req, res) => {
                 FROM shop_drivers sd
                 JOIN users u ON sd.user_id = u.id
                 WHERE sd.shop_id = s.id AND sd.is_active = TRUE AND u.last_latitude IS NOT NULL
-            ) as active_drivers
+            ) as active_drivers,
+            TRUE as is_followed
             FROM shops s
             JOIN shop_followers sf ON s.id = sf.shop_id
             WHERE sf.user_id = $1
+            ORDER BY s.name ASC
         `, [userId]);
 
+        console.log(`Fetched ${result.rows.length} followed shops for user ${userId}`);
         res.json({ shops: result.rows });
     } catch (error) {
         console.error('Get followed shops error:', error);
@@ -100,7 +115,7 @@ const createShop = async (req, res) => {
 
         const result = await pool.query(`
             INSERT INTO shops (name, latitude, longitude, category, owner_id, location)
-            VALUES ($1, $2, $3, $4, $5, ST_SetSRID(ST_MakePoint($3, $2), 4326)::geography)
+            VALUES ($1, $2::numeric, $3::numeric, $4, $5, ST_SetSRID(ST_MakePoint($3::double precision, $2::double precision), 4326)::geography)
             RETURNING *
         `, [name, latitude, longitude, category, ownerId]);
         res.json(result.rows[0]);

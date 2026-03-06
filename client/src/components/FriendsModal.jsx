@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { friendService, shopService } from '../services/api'; // Import shopService
+import { friendService, shopService, getImageUrl } from '../services/api'; // Import shopService
 import './Modal.css';
 
 const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, currentUser, onShopClick, onShopFollowed, followedShops: propFollowedShops }) => {
@@ -51,12 +51,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
         }
     };
 
-    const getImageUrl = (url) => {
-        if (!url) return null;
-        if (url.startsWith('http')) return url;
-        const baseUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : '';
-        return `${baseUrl}${url}`;
-    };
+
 
     // --- Friends Functions ---
     const handleAcceptRequest = async (requestId) => {
@@ -121,14 +116,21 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
 
     const handleFollowShop = async (shop) => {
         try {
-            await shopService.follow(shop.id);
-            // Add to followed list
-            setFollowedShops(prev => [...prev, shop]);
+            const response = await shopService.follow(shop.id);
+            console.log("Follow response:", response);
+
+            // Add to local followed list state immediately for optimistic UI
+            // But make sure we don't add duplicates
+            setFollowedShops(prev => {
+                if (prev.some(s => s.id == shop.id)) return prev;
+                return [...prev, { ...shop, is_followed: true }];
+            });
+
             if (onShopFollowed) onShopFollowed();
-            // Remove from search results (optional UX choice, keeping it makes sense)
             alert(`تم متابعة ${shop.name} بنجاح! سيظهر الآن على الخريطة.`);
         } catch (error) {
             console.error("Follow failed", error);
+            alert("حدث خطأ أثناء محاولة متابعة المحل. يرجى التأكد من الاتصال بالإنترنت.");
         }
     };
 
@@ -136,10 +138,11 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
         if (!confirm("هل تريد إلغاء متابعة هذا المحل؟")) return;
         try {
             await shopService.unfollow(shopId);
-            setFollowedShops(prev => prev.filter(s => s.id !== shopId));
+            setFollowedShops(prev => prev.filter(s => s.id != shopId));
             if (onShopFollowed) onShopFollowed();
         } catch (error) {
             console.error("Unfollow failed", error);
+            alert("حدث خطأ أثناء محاولة إلغاء المتابعة.");
         }
     };
 
@@ -264,7 +267,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                     <div key={friend.id} className="user-item">
                                         <div className="chat-avatar">
                                             {friend.profile_picture ? (
-                                                <img src={friend.profile_picture} alt={friend.username} />
+                                                <img src={getImageUrl(friend.profile_picture)} alt={friend.username} />
                                             ) : (
                                                 <div className="avatar-placeholder">
                                                     {friend.username.charAt(0).toUpperCase()}
@@ -312,7 +315,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                     <div key={request.id} className="user-item">
                                         <div className="chat-avatar">
                                             {request.profile_picture ? (
-                                                <img src={request.profile_picture} alt={request.username} />
+                                                <img src={getImageUrl(request.profile_picture)} alt={request.username} />
                                             ) : (
                                                 <div className="avatar-placeholder">
                                                     {request.username.charAt(0).toUpperCase()}

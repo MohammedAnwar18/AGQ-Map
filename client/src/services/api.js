@@ -9,6 +9,15 @@ const api = axios.create({
     }
 });
 
+// Helper: Image URL Resolver
+export const getImageUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith('http') || url.startsWith('data:')) return url;
+    // Remove /api from the end of the URL if present, then append the file path
+    const baseUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : '';
+    return `${baseUrl}${url}`;
+};
+
 // إضافة Token تلقائياً للطلبات
 api.interceptors.request.use(
     (config) => {

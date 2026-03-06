@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { shopService, postService, commentService } from '../services/api';
+import { shopService, postService, commentService, getImageUrl } from '../services/api';
 import { cartService } from '../services/cartService';
 import CartModal from './CartModal';
 import './Modal.css';
@@ -712,7 +712,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                         }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                                    <img src={req.profile_picture || '/default-user.png'} style={{
+                                                    <img src={getImageUrl(req.profile_picture) || '/default-user.png'} style={{
                                                         width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', border: '2px solid #fbab15'
                                                     }} />
                                                     <div>
@@ -845,7 +845,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                             <div key={driver.id} style={{ background: 'var(--bg-primary)', borderRadius: 12, padding: 15, border: '1px solid var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: 10 }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
                                                     <div style={{ position: 'relative' }}>
-                                                        <img src={driver.profile_picture || '/default-user.png'} style={{ width: 50, height: 50, borderRadius: '50%', objectFit: 'cover', border: '2px solid #fbab15' }} />
+                                                        <img src={getImageUrl(driver.profile_picture) || '/default-user.png'} style={{ width: 50, height: 50, borderRadius: '50%', objectFit: 'cover', border: '2px solid #fbab15' }} />
                                                         <div style={{ position: 'absolute', bottom: -5, right: -5, background: '#fbab15', color: 'white', borderRadius: '50%', padding: 4, fontSize: '0.7rem' }}>🚕</div>
                                                     </div>
                                                     <div>
@@ -1259,7 +1259,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
                                                         <div style={{ position: 'relative' }}>
                                                             <img
-                                                                src={driver.profile_picture || '/default-user.png'}
+                                                                src={getImageUrl(driver.profile_picture) || '/default-user.png'}
                                                                 style={{ width: 50, height: 50, borderRadius: '50%', objectFit: 'cover' }}
                                                                 alt={driver.username}
                                                             />
@@ -1300,7 +1300,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                             }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 15 }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
-                                                        <img src={req.profile_picture || '/default-user.png'} style={{
+                                                        <img src={getImageUrl(req.profile_picture) || '/default-user.png'} style={{
                                                             width: 50, height: 50, borderRadius: '50%', objectFit: 'cover', border: '2px solid #fbab15'
                                                         }} />
                                                         <div>
@@ -1495,11 +1495,9 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                                         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                                             <div style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', background: '#fbab15', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', border: '1px solid var(--border-color)' }}>
-                                                {profileUrl ? (
-                                                    <img src={profileUrl} alt={shopData.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                ) : (
-                                                    shopData.name[0]
-                                                )}
+                                                <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                                                    <img src={getImageUrl(shopData.profile_picture) || '/default-shop.png'} alt={shopData.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                </div>
                                             </div>
                                             <strong>{shopData.name}</strong>
                                         </div>
