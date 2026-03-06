@@ -4,7 +4,7 @@ const pool = require('../config/database');
 const searchShops = async (req, res) => {
     try {
         const { query } = req.query;
-        const userId = parseInt(req.user.userId);
+        const userId = req.user.id || req.user.userId;
 
         if (!query) return res.json({ shops: [] });
 
@@ -14,7 +14,7 @@ const searchShops = async (req, res) => {
             FROM shops s
             WHERE s.name ILIKE $1 
             LIMIT 10
-        `, [`%${query}%`, userId]);
+        `, [`%${query}%`, parseInt(userId)]);
 
         res.json({ shops: result.rows });
     } catch (error) {
@@ -26,7 +26,7 @@ const searchShops = async (req, res) => {
 // --- 2. Follow Shop ---
 const followShop = async (req, res) => {
     try {
-        const userId = parseInt(req.user.userId);
+        const userId = req.user.id || req.user.userId;
         const shopId = parseInt(req.params.id);
 
         if (isNaN(shopId)) {
@@ -39,7 +39,7 @@ const followShop = async (req, res) => {
             INSERT INTO shop_followers (user_id, shop_id)
             VALUES ($1::int, $2::int)
             ON CONFLICT (user_id, shop_id) DO NOTHING
-        `, [userId, shopId]);
+        `, [parseInt(userId), shopId]);
 
         console.log(`✅ User ${userId} successfully followed shop ${shopId}`);
         res.json({ message: 'Shop followed successfully', shopId });
@@ -52,14 +52,14 @@ const followShop = async (req, res) => {
 // --- 3. Unfollow Shop ---
 const unfollowShop = async (req, res) => {
     try {
-        const userId = parseInt(req.user.userId);
+        const userId = req.user.id || req.user.userId;
         const shopId = parseInt(req.params.id);
 
         if (isNaN(shopId)) {
             return res.status(400).json({ error: 'Invalid shop ID' });
         }
 
-        await pool.query('DELETE FROM shop_followers WHERE user_id = $1::int AND shop_id = $2::int', [userId, shopId]);
+        await pool.query('DELETE FROM shop_followers WHERE user_id = $1::int AND shop_id = $2::int', [parseInt(userId), shopId]);
 
         res.json({ message: 'Shop unfollowed', shopId });
     } catch (error) {
@@ -71,7 +71,7 @@ const unfollowShop = async (req, res) => {
 // --- 4. Get Followed Shops ---
 const getFollowedShops = async (req, res) => {
     try {
-        const userId = parseInt(req.user.userId);
+        const userId = req.user.id || req.user.userId;
 
         const result = await pool.query(`
             SELECT DISTINCT s.*,
@@ -96,7 +96,7 @@ const getFollowedShops = async (req, res) => {
             JOIN shop_followers sf ON s.id = sf.shop_id
             WHERE sf.user_id = $1::int
             ORDER BY s.name ASC
-        `, [userId]);
+        `, [parseInt(userId)]);
 
         console.log(`📋 User ${userId} has ${result.rows.length} followed shops in DB`);
         res.json({ shops: result.rows });
@@ -172,7 +172,7 @@ const deleteShop = async (req, res) => {
 const getShopProfile = async (req, res) => {
     try {
         const shopId = parseInt(req.params.id);
-        const currentUserId = parseInt(req.user.userId);
+        const currentUserId = req.user.id || req.user.userId;
 
         // 1. Get Shop Details
         const shopResult = await pool.query(`
@@ -183,7 +183,7 @@ const getShopProfile = async (req, res) => {
             FROM shops s
             LEFT JOIN users u ON s.owner_id = u.id -- Join with users
             WHERE s.id = $1::int
-        `, [shopId, currentUserId]);
+        `, [shopId, parseInt(currentUserId)]);
 
         if (shopResult.rows.length === 0) {
             return res.status(404).json({ error: 'Shop not found' });
