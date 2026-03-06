@@ -914,7 +914,7 @@ const MapComponent = () => {
                 ))}
 
                 {/* Followed Shops Markers */}
-                {!currentCommunity && followedShopsMap.map(shop => (
+                {!currentCommunity && followedShopsMap.filter(shop => shop.latitude && shop.longitude && !isNaN(parseFloat(shop.latitude))).map(shop => (
                     <React.Fragment key={`shop-group-${shop.id}`}>
                         <Marker
                             key={`shop-${shop.id}`}
@@ -1111,11 +1111,15 @@ const MapComponent = () => {
             {showCreatePost && <CreatePostModal onClose={() => setShowCreatePost(false)} onPostCreated={handlePostCreated} currentLocation={userLocation} communityId={currentCommunity?.id} />}
             {selectedPost && <PostDetailModal post={selectedPost} onClose={() => setSelectedPost(null)} onDelete={handleDeletePost} />}
             {showChat && <ChatModal onClose={() => setShowChat(false)} />}
-            {showFriends && <FriendsModal onClose={() => setShowFriends(false)} onShopFollowed={handleShopFollowed} onShopClick={(shop) => {
-                setSelectedShopProfile(shop);
-                setShowShopProfile(true);
-                mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: 18, pitch: 45 });
-            }} />}
+            {showFriends && <FriendsModal
+                onClose={() => setShowFriends(false)}
+                followedShops={followedShopsMap}
+                onShopFollowed={handleShopFollowed}
+                onShopClick={(shop) => {
+                    setSelectedShopProfile(shop);
+                    setShowShopProfile(true);
+                    mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: 18, pitch: 45 });
+                }} />}
             {showShops && <FriendsModal
                 onClose={() => setShowShops(false)}
                 isShopsMode={true}
