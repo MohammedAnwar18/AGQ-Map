@@ -23,12 +23,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
         loadData();
     }, [activeTab, isShopsMode]); // Re-run when tab changes
 
-    useEffect(() => {
-        // Only sync from prop if it contains data, to avoid wiping internal loadData results
-        if (propFollowedShops && propFollowedShops.length > 0) {
-            setFollowedShops(propFollowedShops);
-        }
-    }, [propFollowedShops]);
+    // Removed propFollowedShops useEffect to prevent it from wiping internal loadData results
 
     const loadData = async () => {
         try {
