@@ -4,12 +4,16 @@ exports.createNews = async (req, res) => {
     try {
         const adminId = req.user.userId;
         const { title, description, latitude, longitude } = req.body;
+        const { uploadToSupabase } = require('../utils/storage');
 
         if (!title || !description || !latitude || !longitude) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        const image = req.file ? req.file.path : null;
+        let image = null;
+        if (req.file) {
+            image = await uploadToSupabase(req.file.buffer, req.file.originalname, req.file.mimetype);
+        }
 
         const result = await pool.query(
             `INSERT INTO local_news (admin_id, title, description, image, location) 

@@ -116,7 +116,12 @@ const updateProfile = async (req, res) => {
     try {
         const userId = req.user.id || req.user.userId;
         const { full_name, bio, gender, date_of_birth } = req.body;
-        const profile_picture = req.file ? req.file.path : null;
+        const { uploadToSupabase } = require('../utils/storage');
+
+        let profile_picture = null;
+        if (req.file) {
+            profile_picture = await uploadToSupabase(req.file.buffer, req.file.originalname, req.file.mimetype);
+        }
 
         let query = 'UPDATE users SET';
         let params = [];
@@ -139,7 +144,7 @@ const updateProfile = async (req, res) => {
             params.push(dobValue);
             query += ` date_of_birth = $${paramCount++},`;
         }
-        if (profile_picture && profile_picture !== 'undefined' && profile_picture !== 'null') {
+        if (profile_picture) {
             params.push(profile_picture);
             query += ` profile_picture = $${paramCount++},`;
         }

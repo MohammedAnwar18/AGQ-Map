@@ -309,6 +309,7 @@ const updateShopImages = async (req, res) => {
         const shopId = req.params.id;
         const userId = req.user.userId;
         const userRole = req.user.role;
+        const { uploadToSupabase } = require('../utils/storage');
 
         // Check Permissions
         const shopCheck = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [shopId]);
@@ -324,13 +325,17 @@ const updateShopImages = async (req, res) => {
         let index = 1;
 
         if (req.files['profile_picture']) {
+            const file = req.files['profile_picture'][0];
+            const url = await uploadToSupabase(file.buffer, file.originalname, file.mimetype);
             updateQueryPart.push(`profile_picture = $${index++}`);
-            params.push(req.files['profile_picture'][0].path);
+            params.push(url);
         }
 
         if (req.files['cover_picture']) {
+            const file = req.files['cover_picture'][0];
+            const url = await uploadToSupabase(file.buffer, file.originalname, file.mimetype);
             updateQueryPart.push(`cover_picture = $${index++}`);
-            params.push(req.files['cover_picture'][0].path);
+            params.push(url);
         }
 
         if (updateQueryPart.length === 0) {
@@ -356,6 +361,7 @@ const createShopPost = async (req, res) => {
         const { content } = req.body;
         const userId = req.user.userId;
         const userRole = req.user.role;
+        const { uploadToSupabase } = require('../utils/storage');
 
         // Check Permissions
         const shopCheck = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [shopId]);
@@ -376,7 +382,10 @@ const createShopPost = async (req, res) => {
         const { latitude, longitude } = shopRes.rows[0];
 
         if (req.files && req.files.length > 0) {
-            media_urls = req.files.map(file => file.path);
+            const uploadPromises = req.files.map(file =>
+                uploadToSupabase(file.buffer, file.originalname, file.mimetype)
+            );
+            media_urls = await Promise.all(uploadPromises);
             image_url = media_urls[0];
             media_type = req.files[0].mimetype.startsWith('video/') ? 'video' : 'image';
         }
@@ -412,6 +421,7 @@ const addProduct = async (req, res) => {
         const { name, price, description, old_price } = req.body;
         const userId = req.user.userId;
         const userRole = req.user.role;
+        const { uploadToSupabase } = require('../utils/storage');
 
         // Permissions
         const shopCheck = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [shopId]);
@@ -419,8 +429,8 @@ const addProduct = async (req, res) => {
         if (userRole !== 'admin' && shopCheck.rows[0].owner_id !== userId) return res.status(403).json({ error: 'Unauthorized' });
 
         let image_url = null;
-        if (req.file) { // Assuming single file for product for now
-            image_url = req.file.path;
+        if (req.file) {
+            image_url = await uploadToSupabase(req.file.buffer, req.file.originalname, req.file.mimetype);
         }
 
         const result = await pool.query(`
@@ -443,6 +453,7 @@ const updateProduct = async (req, res) => {
         const { name, price, description, old_price } = req.body;
         const userId = req.user.userId;
         const userRole = req.user.role;
+        const { uploadToSupabase } = require('../utils/storage');
 
         // Permissions
         const shopCheck = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [id]);
@@ -459,8 +470,9 @@ const updateProduct = async (req, res) => {
         if (old_price !== undefined) { queryParts.push(`old_price = $${index++}`); values.push(old_price || null); }
 
         if (req.file) {
+            const url = await uploadToSupabase(req.file.buffer, req.file.originalname, req.file.mimetype);
             queryParts.push(`image_url = $${index++}`);
-            values.push(req.file.path);
+            values.push(url);
         }
 
         if (queryParts.length === 0) return res.json({ message: 'No changes provided' });

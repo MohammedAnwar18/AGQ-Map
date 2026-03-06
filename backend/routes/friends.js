@@ -33,16 +33,23 @@ router.delete('/:friendId', authenticateToken, removeFriend);
 // تبديل مشاركة الموقع (محمي)
 router.post('/:friendId/location-sharing', authenticateToken, toggleLocationSharing);
 
-const { uploadCloud } = require('../config/cloudinary');
+const upload = require('../middleware/upload');
+const { uploadToSupabase } = require('../utils/storage');
 
 // رفع صورة للمحادثة
-router.post('/upload-image', authenticateToken, uploadCloud.single('image'), (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ error: 'No file uploaded' });
+router.post('/upload-image', authenticateToken, upload.single('image'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        // رفع لـ Supabase بدلاً من Cloudinary
+        const imageUrl = await uploadToSupabase(req.file.buffer, req.file.originalname, req.file.mimetype);
+        res.json({ imageUrl });
+    } catch (error) {
+        console.error('Chat image upload error:', error);
+        res.status(500).json({ error: 'Failed to upload image' });
     }
-    // Return cloudinary url
-    const imageUrl = req.file.path;
-    res.json({ imageUrl });
 });
 
 module.exports = router;
