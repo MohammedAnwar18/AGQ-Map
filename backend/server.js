@@ -27,26 +27,22 @@ const shopRoutes = require('./routes/shops');
 const app = express();
 const server = http.createServer(app);
 
-// إعداد Socket.IO للدردشة
-const io = new Server(server, {
-    cors: {
-        origin: [
-            'http://localhost:5173',
-            'https://agq-map.vercel.app',
-            process.env.CLIENT_URL
-        ].filter(Boolean),
-        methods: ['GET', 'POST'],
-        credentials: true
-    }
-});
-
-app.set('io', io);
-
-const allowedOrigins = [
-    'http://localhost:5173',
-    'https://agq-map.vercel.app',
-    process.env.CLIENT_URL
-].filter(Boolean);
+// إعداد Socket.IO للدردشة (فقط إذا لم نكن على Vercel)
+let io;
+if (!process.env.VERCEL) {
+    io = new Server(server, {
+        cors: {
+            origin: [
+                'http://localhost:5173',
+                'https://agq-map.vercel.app',
+                process.env.CLIENT_URL
+            ].filter(Boolean),
+            methods: ['GET', 'POST'],
+            credentials: true
+        }
+    });
+    app.set('io', io);
+}
 
 // Middleware
 app.use(cors({
@@ -56,9 +52,9 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// إنشاء مجلد uploads فقط إذا لم نكن على Vercel
+// إعداد مسار الصور بشكل صحيح
+const uploadsDir = path.join(__dirname, 'uploads');
 if (!process.env.VERCEL) {
-    const uploadsDir = path.join(__dirname, 'uploads');
     if (!fs.existsSync(uploadsDir)) {
         fs.mkdirSync(uploadsDir, { recursive: true });
     }
