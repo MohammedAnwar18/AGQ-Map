@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { friendService, shopService } from '../services/api'; // Import shopService
 import './Modal.css';
 
-const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, currentUser, onShopClick }) => {
+const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, currentUser, onShopClick, onShopFollowed }) => {
     const [activeTab, setActiveTab] = useState(isShopsMode ? 'shops' : initialTab);
     const [friends, setFriends] = useState([]);
     const [requests, setRequests] = useState([]);
@@ -111,6 +111,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
             await shopService.follow(shop.id);
             // Add to followed list
             setFollowedShops(prev => [...prev, shop]);
+            if (onShopFollowed) onShopFollowed();
             // Remove from search results (optional UX choice, keeping it makes sense)
             alert(`تم متابعة ${shop.name} بنجاح! سيظهر الآن على الخريطة.`);
         } catch (error) {
@@ -123,6 +124,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
         try {
             await shopService.unfollow(shopId);
             setFollowedShops(prev => prev.filter(s => s.id !== shopId));
+            if (onShopFollowed) onShopFollowed();
         } catch (error) {
             console.error("Unfollow failed", error);
         }

@@ -3,7 +3,7 @@ const pool = require('./config/database');
 
 async function test() {
     try {
-        const userId = 1;
+        const userId = 1; // Try user 1 initially
         const followedRes = await pool.query(`
             SELECT s.*,
             (
@@ -26,7 +26,10 @@ async function test() {
             JOIN shop_followers sf ON s.id = sf.shop_id
             WHERE sf.user_id = $1
     `, [userId]);
-        console.log("Followed shops count via actual query:", followedRes.rows.length);
+        console.log("Followed shops count:", followedRes.rows.length);
+        if (followedRes.rows.length > 0) {
+            console.log(followedRes.rows[0]);
+        }
     } catch (err) {
         console.error("Test error:", err.message);
     }

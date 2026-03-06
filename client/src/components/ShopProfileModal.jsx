@@ -52,7 +52,7 @@ const SearchIcon = () => (
     </svg>
 );
 
-const ShopProfileModal = ({ shop, onClose, currentUser }) => {
+const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
     const [shopData, setShopData] = useState(shop);
     const [posts, setPosts] = useState([]);
     const [products, setProducts] = useState([]);
@@ -154,6 +154,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser }) => {
             if (isFollowing) await shopService.unfollow(shopData.id);
             else await shopService.follow(shopData.id);
             setIsFollowing(!isFollowing);
+            if (onFollowChange) onFollowChange();
         } catch (e) {
             console.error(e);
         }
