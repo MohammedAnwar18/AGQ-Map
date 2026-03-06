@@ -22,12 +22,14 @@ const pool = new Pool({
 
 // اختبار الاتصال
 pool.on('connect', () => {
-  console.log('✅ Connected to PostgreSQL database');
+  if (process.env.NODE_ENV !== 'test') {
+    console.log('✅ Connected to PostgreSQL database');
+  }
 });
 
 pool.on('error', (err) => {
   console.error('❌ Unexpected error on idle client', err);
-  process.exit(-1);
+  // DO NOT process.exit(-1) on Vercel as it crashes the lambda
 });
 
 module.exports = pool;
