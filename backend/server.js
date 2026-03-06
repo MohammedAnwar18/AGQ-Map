@@ -83,7 +83,7 @@ app.use('/api/shops', shopRoutes);
 app.get('/', (req, res) => {
     res.json({
         message: '🗺️ Spatial Social Network API',
-        version: '1.0.1-debug',
+        version: '1.0.2-debug-detailed',
         endpoints: {
             auth: '/api/auth',
             posts: '/api/posts',
