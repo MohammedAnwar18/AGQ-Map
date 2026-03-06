@@ -23,7 +23,11 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
         loadData();
     }, [activeTab, isShopsMode]); // Re-run when tab changes
 
-    // Removed propFollowedShops useEffect to prevent it from wiping internal loadData results
+    useEffect(() => {
+        if (propFollowedShops !== undefined) {
+            setFollowedShops(propFollowedShops);
+        }
+    }, [propFollowedShops]);
 
     const loadData = async () => {
         try {
@@ -237,6 +241,13 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                             style={activeTab === 'requests' ? { color: '#fbab15', borderBottomColor: '#fbab15' } : {}}
                         >
                             الطلبات ({requests.length})
+                        </button>
+                        <button
+                            className={`tab ${activeTab === 'shops' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('shops')}
+                            style={activeTab === 'shops' ? { color: '#fbab15', borderBottomColor: '#fbab15' } : {}}
+                        >
+                            المحلات
                         </button>
                     </div>
                 )}
