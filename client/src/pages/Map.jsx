@@ -913,52 +913,92 @@ const MapComponent = () => {
                     </Marker>
                 ))}
 
-                {/* Followed Shops Markers */}
-                {!currentCommunity && followedShopsMap.filter(shop => shop.latitude && shop.longitude && !isNaN(parseFloat(shop.latitude))).map(shop => (
+                {/* Followed Shops Markers - Visible only in World Mode */}
+                {!currentCommunity && followedShopsMap.filter(shop =>
+                    shop.latitude != null &&
+                    shop.longitude != null &&
+                    !isNaN(parseFloat(shop.latitude))
+                ).map(shop => (
                     <React.Fragment key={`shop-group-${shop.id}`}>
                         <Marker
                             key={`shop-${shop.id}`}
                             longitude={parseFloat(shop.longitude)}
                             latitude={parseFloat(shop.latitude)}
                             anchor="bottom"
+                            style={{ zIndex: 10 }}
                             onClick={e => {
                                 e.originalEvent.stopPropagation();
                                 setSelectedShopProfile(shop);
                                 setShowShopProfile(true);
                             }}
                         >
-                            <div className="shop-pin-marker" style={{
-                                width: '45px',
-                                height: '45px',
-                                backgroundImage: `url(${getImageUrl(shop.profile_picture) || getImageUrl(shop.image_url) || '/default-shop.png'})`,
-                                backgroundSize: 'cover',
-                                backgroundPosition: 'center',
-                                borderRadius: '50%',
-                                border: '3px solid #fbab15',
-                                boxShadow: '0 4px 8px rgba(0,0,0,0.4)',
+                            <div className="shop-marker-wrapper" style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: '5px',
                                 cursor: 'pointer',
-                                transition: 'transform 0.2s',
-                                position: 'relative'
+                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                             }}
                                 onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1) translateY(-5px)'}
                                 onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
                             >
+                                {/* Name Label Bubble */}
                                 <div style={{
-                                    position: 'absolute',
-                                    bottom: '-4px',
-                                    right: '-4px',
-                                    background: '#fff',
-                                    borderRadius: '50%',
-                                    width: '20px',
-                                    height: '20px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
+                                    backgroundColor: 'white',
+                                    padding: '4px 10px',
+                                    borderRadius: '12px',
                                     fontSize: '12px',
-                                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                    fontWeight: 'bold',
+                                    color: '#1e293b',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                                    whiteSpace: 'nowrap',
+                                    border: '1px solid #fbab15'
                                 }}>
-                                    {shop.category === 'مكتب تاكسي' ? '🚕' : '🏪'}
+                                    {shop.name}
                                 </div>
+
+                                {/* Circular Profile Pin */}
+                                <div className="shop-pin-marker" style={{
+                                    width: '48px',
+                                    height: '48px',
+                                    backgroundColor: '#fff',
+                                    backgroundImage: `url(${getImageUrl(shop.profile_picture) || getImageUrl(shop.image_url) || '/default-shop.png'})`,
+                                    backgroundSize: 'cover',
+                                    backgroundPosition: 'center',
+                                    borderRadius: '50%',
+                                    border: '3px solid #fbab15',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                                    position: 'relative'
+                                }}>
+                                    {/* Icon Indicator */}
+                                    <div style={{
+                                        position: 'absolute',
+                                        bottom: '-2px',
+                                        right: '-2px',
+                                        background: '#fbab15',
+                                        borderRadius: '50%',
+                                        width: '22px',
+                                        height: '22px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '14px',
+                                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                                        border: '2px solid white'
+                                    }}>
+                                        {shop.category === 'مكتب تاكسي' ? '🚕' : '🏪'}
+                                    </div>
+                                </div>
+                                {/* Marker Tail/Point */}
+                                <div style={{
+                                    width: '0',
+                                    height: '0',
+                                    borderLeft: '6px solid transparent',
+                                    borderRight: '6px solid transparent',
+                                    borderTop: '8px solid #fbab15',
+                                    marginTop: '-2px'
+                                }}></div>
                             </div>
                         </Marker>
 
@@ -970,6 +1010,7 @@ const MapComponent = () => {
                                     longitude={parseFloat(driver.longitude)}
                                     latitude={parseFloat(driver.latitude)}
                                     anchor="bottom"
+                                    style={{ zIndex: 11 }}
                                 >
                                     <div
                                         title={`سائق: ${driver.full_name || driver.username}`}
