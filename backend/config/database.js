@@ -1,20 +1,27 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-// إعداد خيارات الاتصال - بسيطة جداً لضمان عدم الانهيار في Vercel
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  },
-  // إعدادات إضافية للسرعة في Vercel
-  max: 1,
-  connectionTimeoutMillis: 5000,
-  idleTimeoutMillis: 10000
-});
+let pool;
 
-pool.on('error', (err) => {
-  console.error('❌ Database error:', err.message);
-});
+const getPool = () => {
+  if (!pool) {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+      max: 1 // مهم جداً لـ Vercel لعدم استهلاك الاتصالات
+    });
 
-module.exports = pool;
+    pool.on('error', (err) => {
+      console.error('❌ database pool error:', err.message);
+      pool = null; // إعادة التعيين للمحاولة لاحقاً
+    });
+  }
+  return pool;
+};
+
+// تصدير كائن يحاكي الـ pool الأصلي لكنه يستخدم الـ lazy pool
+module.exports = {
+  query: (text, params) => getPool().query(text, params),
+  on: (event, handler) => getPool().on(event, handler),
+  getPool
+};
