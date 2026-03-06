@@ -116,25 +116,41 @@ const createShop = async (req, res) => {
         const { name, latitude, longitude, category } = req.body;
         const ownerId = req.user.userId;
 
+        console.log('Creating shop with data:', { name, latitude, longitude, category, ownerId });
+
+        // Ensure lat/long are valid numbers
+        const lat = parseFloat(latitude);
+        const lon = parseFloat(longitude);
+
+        if (isNaN(lat) || isNaN(lon)) {
+            return res.status(400).json({ error: 'Invalid coordinates provided' });
+        }
+
         const result = await pool.query(`
             INSERT INTO shops (name, latitude, longitude, category, owner_id, location)
-            VALUES ($1, $2::numeric, $3::numeric, $4, $5, ST_SetSRID(ST_MakePoint($3::double precision, $2::double precision), 4326)::geography)
+            VALUES ($1, $2, $3, $4, $5, ST_SetSRID(ST_MakePoint($3, $2), 4326)::geography)
             RETURNING *
-        `, [name, latitude, longitude, category, ownerId]);
+        `, [name, lat, lon, category || 'General', ownerId]);
 
         const newShop = result.rows[0];
+        console.log('Shop created successfully:', newShop.id);
 
-        // Auto-follow for the creator so it appears on their map
-        await pool.query(`
-            INSERT INTO shop_followers (user_id, shop_id)
-            VALUES ($1, $2)
-            ON CONFLICT DO NOTHING
-        `, [ownerId, newShop.id]);
+        // Auto-follow for the creator
+        try {
+            await pool.query(`
+                INSERT INTO shop_followers (user_id, shop_id)
+                VALUES ($1, $2)
+                ON CONFLICT DO NOTHING
+            `, [ownerId, newShop.id]);
+        } catch (followError) {
+            console.error('Auto-follow failed but shop was created:', followError);
+            // We don't fail the whole request if follow fails
+        }
 
         res.json(newShop);
     } catch (e) {
-        console.error('Create shop error:', e);
-        res.status(500).json({ error: 'Failed to create shop' });
+        console.error('Create shop error database level:', e);
+        res.status(500).json({ error: 'Failed to create shop: ' + (e.message || 'Server error') });
     }
 };
 

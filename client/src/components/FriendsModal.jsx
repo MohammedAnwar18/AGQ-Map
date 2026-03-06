@@ -168,9 +168,9 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
             setNewShopData({ name: '', category: 'General', lat: '', lon: '' });
             // Refresh logic if needed or auto-follow
             await handleFollowShop(createdShop);
-        } catch (error) {
             console.error("Create shop failed", error);
-            alert("فشل إنشاء المحل. يرجى المحاولة مرة أخرى.");
+            const errorMsg = error.response?.data?.error || "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.";
+            alert(`فشل إنشاء المحل: ${errorMsg}`);
         } finally {
             setIsSubmittingShop(false);
         }
