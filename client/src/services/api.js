@@ -300,6 +300,11 @@ export const shopService = {
         return response.data;
     },
 
+    deleteShop: async (id) => {
+        const response = await api.delete(`/shops/${id}`);
+        return response.data;
+    },
+
     getProfile: async (id) => {
         const response = await api.get(`/shops/${id}?t=${Date.now()}`);
         return response.data;

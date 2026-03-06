@@ -110,6 +110,24 @@ const createShop = async (req, res) => {
     }
 };
 
+// --- 5.1 Delete Shop (Admin) ---
+const deleteShop = async (req, res) => {
+    try {
+        const shopId = req.params.id;
+
+        const result = await pool.query('DELETE FROM shops WHERE id = $1 RETURNING id', [shopId]);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'Shop not found' });
+        }
+
+        res.json({ message: 'Shop deleted successfully' });
+    } catch (e) {
+        console.error('Delete shop error:', e);
+        res.status(500).json({ error: 'Failed to delete shop' });
+    }
+};
+
 // --- 6. Get Shop Profile (Info + Posts + Products) ---
 const getShopProfile = async (req, res) => {
     try {
@@ -733,6 +751,7 @@ module.exports = {
     unfollowShop,
     getFollowedShops,
     createShop,
+    deleteShop,
     getShopProfile,
     updateShopProfile,
     updateShopImages,

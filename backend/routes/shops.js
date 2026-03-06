@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, isAdmin } = require('../middleware/auth');
 const shopController = require('../controllers/shopController');
 
 // All routes require auth
@@ -20,6 +20,7 @@ const { uploadCloud } = require('../config/cloudinary');
 // Shop Profile & Posts
 router.get('/:id', shopController.getShopProfile);
 router.put('/:id', shopController.updateShopProfile);
+router.delete('/:id', isAdmin, shopController.deleteShop);
 router.put('/:id/images', uploadCloud.fields([{ name: 'profile_picture', maxCount: 1 }, { name: 'cover_picture', maxCount: 1 }]), shopController.updateShopImages);
 
 router.post('/:id/posts', uploadCloud.array('images', 5), shopController.createShopPost);

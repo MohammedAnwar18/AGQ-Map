@@ -149,6 +149,19 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
 
     // --- Actions ---
 
+    const handleDeleteShop = async () => {
+        if (!confirm('هل أنت متأكد من حذف هذا المحل بشكل نهائي؟')) return;
+        try {
+            await shopService.deleteShop(shopData.id);
+            alert('تم حذف المحل بنجاح.');
+            if (onFollowChange) onFollowChange(); // Trigger map refresh
+            onClose();
+        } catch (e) {
+            console.error(e);
+            alert('حدث خطأ أثناء محاولة حذف المحل.');
+        }
+    };
+
     const handleFollow = async () => {
         try {
             if (isFollowing) await shopService.unfollow(shopData.id);
@@ -600,9 +613,16 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                 <span><b>{posts.length}</b> منشور</span>
                             </div>
                         </div>
-                        <button onClick={handleFollow} className={`btn-small ${isFollowing ? 'btn-reject' : 'btn-accept'}`} style={{ fontFamily: 'inherit' }}>
-                            {isFollowing ? 'إلغاء المتابعة' : 'متابعة'}
-                        </button>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            {currentUser?.role === 'admin' && (
+                                <button onClick={handleDeleteShop} className="btn-small btn-reject" style={{ fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px' }}>
+                                    <TrashIcon /> حذف المحل
+                                </button>
+                            )}
+                            <button onClick={handleFollow} className={`btn-small ${isFollowing ? 'btn-reject' : 'btn-accept'}`} style={{ fontFamily: 'inherit' }}>
+                                {isFollowing ? 'إلغاء المتابعة' : 'متابعة'}
+                            </button>
+                        </div>
                     </div>
                 </div>
 
