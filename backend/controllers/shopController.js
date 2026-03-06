@@ -128,7 +128,7 @@ const createShop = async (req, res) => {
 
         const result = await pool.query(`
             INSERT INTO shops (name, latitude, longitude, category, owner_id, location)
-            VALUES ($1, $2, $3, $4, $5, ST_SetSRID(ST_MakePoint($3, $2), 4326)::geography)
+            VALUES ($1, $2::numeric, $3::numeric, $4, $5, ST_SetSRID(ST_MakePoint($3::double precision, $2::double precision), 4326)::geography)
             RETURNING *
         `, [name, lat, lon, category || 'General', ownerId]);
 
