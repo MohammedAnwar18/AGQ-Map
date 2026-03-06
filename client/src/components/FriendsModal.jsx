@@ -38,8 +38,12 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                 const shopsData = await shopService.getFollowing();
                 setFollowedShops(shopsData.shops || []);
             } else if (activeTab === 'friends') {
-                const friendsData = await friendService.getFriends();
+                const [friendsData, shopsData] = await Promise.all([
+                    friendService.getFriends(),
+                    shopService.getFollowing()
+                ]);
                 setFriends(friendsData.friends);
+                setFollowedShops(shopsData.shops || []);
             } else if (activeTab === 'requests') {
                 const requestsData = await friendService.getPendingRequests();
                 setRequests(requestsData.requests);
@@ -258,56 +262,123 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                             <div className="spinner"></div>
                         </div>
                     ) : activeTab === 'friends' ? (
-                        // ... Friends List UI (Same as before) ...
-                        friends.length === 0 ? (
-                            <div className="empty-state">
-                                <p>ليس لديك أصدقاء بعد</p>
-                                <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>
-                                    استخدم البحث لإيجاد أصدقاء جدد
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="user-list">
-                                {friends.map(friend => (
-                                    <div key={friend.id} className="user-item">
-                                        <div className="chat-avatar">
-                                            {friend.profile_picture ? (
-                                                <img src={getImageUrl(friend.profile_picture)} alt={friend.username} />
-                                            ) : (
-                                                <div className="avatar-placeholder">
-                                                    {friend.username.charAt(0).toUpperCase()}
+                        <>
+                            {friends.length === 0 ? (
+                                <div className="empty-state">
+                                    <p>ليس لديك أصدقاء بعد</p>
+                                    <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>
+                                        استخدم البحث لإيجاد أصدقاء جدد
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="user-list">
+                                    {friends.map(friend => (
+                                        <div key={friend.id} className="user-item">
+                                            <div className="chat-avatar">
+                                                {friend.profile_picture ? (
+                                                    <img src={getImageUrl(friend.profile_picture)} alt={friend.username} />
+                                                ) : (
+                                                    <div className="avatar-placeholder">
+                                                        {friend.username.charAt(0).toUpperCase()}
+                                                    </div>
+                                                )}
+                                                {friend.is_online && <div className="online-indicator" />}
+                                            </div>
+                                            <div className="chat-info">
+                                                <div className="chat-name">
+                                                    {friend.full_name || friend.username}
                                                 </div>
-                                            )}
-                                            {friend.is_online && <div className="online-indicator" />}
-                                        </div>
-                                        <div className="chat-info">
-                                            <div className="chat-name">
-                                                {friend.full_name || friend.username}
+                                                <div className="chat-last-message">
+                                                    @{friend.username}
+                                                </div>
                                             </div>
-                                            <div className="chat-last-message">
-                                                @{friend.username}
+                                            <div className="user-item-actions">
+                                                <button
+                                                    className={`btn-small ${friend.am_i_sharing ? 'btn-location-active' : 'btn-location'}`}
+                                                    onClick={() => handleToggleLocation(friend.id)}
+                                                    style={{ fontFamily: 'inherit' }}
+                                                >
+                                                    {friend.am_i_sharing ? 'إيقاف الموقع' : 'مشاركة الموقع'}
+                                                </button>
+                                                <button
+                                                    className="btn-small btn-reject"
+                                                    onClick={() => handleRemoveFriend(friend.id)}
+                                                    style={{ fontFamily: 'inherit' }}
+                                                >
+                                                    إلغاء الصداقة
+                                                </button>
                                             </div>
                                         </div>
-                                        <div className="user-item-actions">
-                                            <button
-                                                className={`btn-small ${friend.am_i_sharing ? 'btn-location-active' : 'btn-location'}`}
-                                                onClick={() => handleToggleLocation(friend.id)}
-                                                style={{ fontFamily: 'inherit' }}
-                                            >
-                                                {friend.am_i_sharing ? 'إيقاف الموقع' : 'مشاركة الموقع'}
-                                            </button>
-                                            <button
-                                                className="btn-small btn-reject"
-                                                onClick={() => handleRemoveFriend(friend.id)}
-                                                style={{ fontFamily: 'inherit' }}
-                                            >
-                                                إلغاء الصداقة
-                                            </button>
-                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Always show Followed Shops in the Friends tab */}
+                            <div className="user-list" style={{ marginTop: '10px' }}>
+                                <h4 style={{
+                                    padding: '15px 15px 5px',
+                                    margin: 0,
+                                    fontSize: '0.9rem',
+                                    color: 'var(--text-secondary)',
+                                    fontWeight: '700',
+                                    borderTop: '1px solid var(--bg-tertiary)'
+                                }}>المحلات التي أتابعها</h4>
+                                {followedShops.length === 0 ? (
+                                    <div className="empty-state" style={{ padding: '20px' }}>
+                                        <p style={{ color: 'var(--text-secondary)' }}>لا تتابع أي محل حالياً</p>
                                     </div>
-                                ))}
+                                ) : (
+                                    followedShops.map(shop => (
+                                        <div
+                                            key={shop.id}
+                                            className="user-item"
+                                            onClick={() => onShopClick && onShopClick(shop)}
+                                            style={{ cursor: 'pointer' }}
+                                        >
+                                            <div className="chat-avatar" style={{ overflow: 'visible' }}>
+                                                <div style={{
+                                                    width: '50px',
+                                                    height: '50px',
+                                                    borderRadius: '14px',
+                                                    background: 'linear-gradient(135deg, #fbab15, #f59e0b)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    color: 'white',
+                                                    boxShadow: '0 4px 6px rgba(251, 171, 21, 0.2)'
+                                                }}>
+                                                    {!shop.profile_picture ? (
+                                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                            <path d="M3 21h18v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z"></path>
+                                                            <path d="M6 6h12v7H6z"></path>
+                                                            <path d="M6 18h12"></path>
+                                                        </svg>
+                                                    ) : (
+                                                        <img src={getImageUrl(shop.profile_picture)} style={{ width: '100%', height: '100%', borderRadius: '14px', objectFit: 'cover' }} />
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="chat-info">
+                                                <div className="chat-name" style={{ fontSize: '1rem' }}>{shop.name}</div>
+                                                <div className="chat-last-message" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fbab15', display: 'inline-block' }}></span>
+                                                    {shop.category}
+                                                </div>
+                                            </div>
+                                            <div className="user-item-actions">
+                                                <button
+                                                    className="btn-small btn-reject"
+                                                    onClick={(e) => { e.stopPropagation(); handleUnfollowShop(shop.id); }}
+                                                    style={{ border: '1px solid var(--error)', color: 'var(--error)', fontFamily: 'inherit' }}
+                                                >
+                                                    إلغاء المتابعة
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
                             </div>
-                        )
+                        </>
                     ) : activeTab === 'requests' ? (
                         // ... Requests List UI (Same as before) ...
                         requests.length === 0 ? (
