@@ -11,12 +11,17 @@ const authenticateToken = (req, res, next) => {
         return res.status(401).json({ error: 'Access token required' });
     }
 
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
         if (err) {
             return res.status(403).json({ error: 'Invalid or expired token' });
         }
 
-        req.user = user; // { userId, username, email, role }
+        // Robust user object: ensure userId exists for all controllers
+        req.user = {
+            ...decoded,
+            userId: decoded.userId || decoded.id // Handle both legacy and current formats
+        };
+
         next();
     });
 };
