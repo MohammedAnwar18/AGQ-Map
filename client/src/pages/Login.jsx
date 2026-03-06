@@ -117,8 +117,11 @@ const Login = () => {
                     navigate('/map');
                 }
             }
-        } catch (err) {
-            setError(err.response?.data?.error || 'حدث خطأ، يرجى المحاولة مرة أخرى');
+        } catch (error) {
+            const errorMsg = error.response?.data?.error ||
+                (error.response?.data?.errors ? error.response.data.errors[0].msg : null) ||
+                'حدث خطأ في الاتصال بالسيرفر، يرجى المحاولة مرة أخرى';
+            setError(errorMsg);
         } finally {
             setLoading(false);
         }

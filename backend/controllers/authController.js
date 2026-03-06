@@ -80,8 +80,8 @@ const register = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Register error:', error);
-        res.status(500).json({ error: `خطأ في السيرفر: ${error.message}` });
+        console.error('Register error details:', error);
+        res.status(500).json({ error: `خطأ في التسجيل: ${error.message || 'حدث خطأ غير متوقع'}` });
     }
 };
 
