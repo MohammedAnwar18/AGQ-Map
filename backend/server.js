@@ -26,18 +26,22 @@ app.get('/', (req, res) => {
     });
 });
 
-// 4. تحميل المسارات عند الطلب (Dynamic Routes)
-app.use('/api/auth', (req, res, next) => require('./routes/auth')(req, res, next));
-app.use('/api/posts', (req, res, next) => require('./routes/posts')(req, res, next));
-app.use('/api/users', (req, res, next) => require('./routes/users')(req, res, next));
-app.use('/api/friends', (req, res, next) => require('./routes/friends')(req, res, next));
-app.use('/api/ai', (req, res, next) => require('./routes/ai')(req, res, next));
-app.use('/api/comments', (req, res, next) => require('./routes/comments')(req, res, next));
-app.use('/api/admin', (req, res, next) => require('./routes/admin')(req, res, next));
-app.use('/api/notifications', (req, res, next) => require('./routes/notifications')(req, res, next));
-app.use('/api/news', (req, res, next) => require('./routes/news')(req, res, next));
-app.use('/api/communities', (req, res, next) => require('./routes/communities')(req, res, next));
-app.use('/api/shops', (req, res, next) => require('./routes/shops')(req, res, next));
+// 4. تحميل المسارات (Routes) بشكل ديناميكي
+// هذا النمط يسمح بدعم كل من الروابط التي تبدأ بـ /api والروابط العادية
+const routes = ['auth', 'users', 'friends', 'posts', 'comments', 'ai', 'notifications', 'news', 'communities', 'shops', 'admin'];
+
+routes.forEach(route => {
+    const routeHandler = (req, res, next) => {
+        try {
+            require(`./routes/${route}`)(req, res, next);
+        } catch (e) {
+            console.error(`Error loading route ${route}:`, e);
+            res.status(500).json({ error: 'Route loading failed' });
+        }
+    };
+    app.use(`/${route}`, routeHandler);
+    app.use(`/api/${route}`, routeHandler);
+});
 
 // 5. التشغيل المحلي (فقط للمبرمج)
 if (!process.env.VERCEL) {
