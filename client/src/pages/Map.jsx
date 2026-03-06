@@ -93,6 +93,15 @@ const haversineDistance = (coords1, coords2) => {
 
 const MapComponent = () => {
     const { user, logout } = useAuth();
+
+    // Helper: Image URL Resolver
+    const getImageUrl = (url) => {
+        if (!url) return null;
+        if (url.startsWith('http')) return url;
+        const baseUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : '';
+        return `${baseUrl}${url}`;
+    };
+
     // Time state
     const [currentTime, setCurrentTime] = useState(new Date());
     // Live Tracking State
@@ -925,7 +934,7 @@ const MapComponent = () => {
                             }}
                         >
                             <div style={{
-                                backgroundImage: `url(${shop.profile_picture || shop.image_url || '/default-shop.png'})`,
+                                backgroundImage: `url(${getImageUrl(shop.profile_picture) || getImageUrl(shop.image_url) || '/default-shop.png'})`,
                                 width: '50px', height: '50px',
                                 backgroundSize: 'cover', backgroundPosition: 'center',
                                 borderRadius: '50%',

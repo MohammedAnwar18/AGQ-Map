@@ -45,6 +45,13 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
         }
     };
 
+    const getImageUrl = (url) => {
+        if (!url) return null;
+        if (url.startsWith('http')) return url;
+        const baseUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : '';
+        return `${baseUrl}${url}`;
+    };
+
     // --- Friends Functions ---
     const handleAcceptRequest = async (requestId) => {
         try {
@@ -175,7 +182,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
     };
 
     const isFollowingShop = (shopId) => {
-        return followedShops.some(s => s.id === shopId);
+        return followedShops.some(s => s.id == shopId); // Loose equality to handle string/number mix
     };
 
     const formatTime = (timestamp) => {
@@ -496,7 +503,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                                     <path d="M6 18h12"></path>
                                                                 </svg>
                                                             ) : (
-                                                                <img src={shop.profile_picture} style={{ width: '100%', height: '100%', borderRadius: '14px', objectFit: 'cover' }} />
+                                                                <img src={getImageUrl(shop.profile_picture)} style={{ width: '100%', height: '100%', borderRadius: '14px', objectFit: 'cover' }} />
                                                             )}
                                                         </div>
                                                     </div>
@@ -577,7 +584,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                                     <path d="M6 18h12"></path>
                                                                 </svg>
                                                             ) : (
-                                                                <img src={shop.profile_picture} style={{ width: '100%', height: '100%', borderRadius: '14px', objectFit: 'cover' }} />
+                                                                <img src={getImageUrl(shop.profile_picture)} style={{ width: '100%', height: '100%', borderRadius: '14px', objectFit: 'cover' }} />
                                                             )}
                                                         </div>
                                                     </div>
