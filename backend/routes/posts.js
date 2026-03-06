@@ -1,12 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { uploadCloud } = require('../config/cloudinary');
-
+const upload = require('../middleware/upload');
 const { authenticateToken } = require('../middleware/auth');
 const { createPost, getPosts, deletePost, toggleLike } = require('../controllers/postController');
 
 // إنشاء منشور جديد (محمي)
-router.post('/', authenticateToken, uploadCloud.array('media', 10), createPost);
+router.post('/', authenticateToken, upload.array('media', 10), createPost);
 
 // الحصول على المنشورات (محمي)
 router.get('/', authenticateToken, getPosts);

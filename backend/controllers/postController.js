@@ -20,16 +20,20 @@ const createPost = async (req, res) => {
             return res.status(400).json({ error: 'Invalid coordinates' });
         }
 
-        // معالجة الملفات المتعددة
+        // معالجة الملفات المتعددة ورفعها لـ Supabase
+        const { uploadToSupabase } = require('../utils/storage');
         let media_urls = [];
         let image_url = null;
         let media_type = 'text';
 
         if (req.files && req.files.length > 0) {
-            // Map all files to their URLs
-            media_urls = req.files.map(file => file.path);
+            // رفع كل الملفات بالتوازي لـ Supabase
+            const uploadPromises = req.files.map(file =>
+                uploadToSupabase(file.buffer, file.originalname, file.mimetype)
+            );
+            media_urls = await Promise.all(uploadPromises);
 
-            // Set defaults from the first file
+            // تحديد النوع والصورة الرئيسية
             image_url = media_urls[0];
             const firstFile = req.files[0];
             if (firstFile.mimetype.startsWith('video/')) {
@@ -38,8 +42,8 @@ const createPost = async (req, res) => {
                 media_type = 'image';
             }
         } else if (req.file) {
-            // Fallback for single file upload if needed (though route is array now)
-            image_url = req.file.path;
+            // معالجة ملف واحد
+            image_url = await uploadToSupabase(req.file.buffer, req.file.originalname, req.file.mimetype);
             media_urls = [image_url];
             if (req.file.mimetype.startsWith('video/')) {
                 media_type = 'video';
