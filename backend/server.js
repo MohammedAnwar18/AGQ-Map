@@ -7,24 +7,43 @@ require('dotenv').config();
 const app = express();
 
 // 2. إعدادات Middleware
-app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(cors()); // Allow all for now to debug
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 3. صفحة البداية - (بدون أي تعقيدات)
+// 3. مسار الصحة الأساسي وفحص الاتصال بقاعدة البيانات
+app.get('/health', async (req, res) => {
+    try {
+        const pool = require('./config/database');
+        await pool.query('SELECT NOW()');
+        res.json({
+            status: "SUCCESS",
+            database: "CONNECTED",
+            time: new Date(),
+            platform: "Vercel"
+        });
+    } catch (e) {
+        res.status(500).json({
+            status: "ERROR",
+            database: "DISCONNECTED",
+            error: e.message
+        });
+    }
+});
+
 app.get('/', (req, res) => {
-    res.status(200).json({
-        message: '🗺️ Spatial Social Network API - ACTIVE',
-        status: 'SUCCESS',
-        platform: 'Vercel Lambda',
-        environment: 'Production',
-        version: '1.0.7-final-stable'
+    res.json({
+        message: "🗺️ Spatial Social Network API - ACTIVE",
+        status: "SUCCESS",
+        platform: "Vercel Lambda",
+        environment: "Production",
+        version: "1.0.7-final-stable"
     });
 });
+
+// Alias for common path
+app.get('/api', (req, res) => res.redirect('/'));
+app.get('/api/health', (req, res) => res.redirect('/health'));
 
 // 4. تحميل المسارات (Routes) بشكل ديناميكي
 // هذا النمط يسمح بدعم كل من الروابط التي تبدأ بـ /api والروابط العادية

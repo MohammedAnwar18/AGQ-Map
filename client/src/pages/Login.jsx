@@ -118,10 +118,17 @@ const Login = () => {
                 }
             }
         } catch (error) {
-            const errorMsg = error.response?.data?.error ||
-                (error.response?.data?.errors ? error.response.data.errors[0].msg : null) ||
-                'حدث خطأ في الاتصال بالسيرفر، يرجى المحاولة مرة أخرى';
-            setError(errorMsg);
+            console.error('Connection Error:', error);
+            const status = error.response?.status;
+            const dataError = error.response?.data?.error;
+            const detail = error.message;
+
+            let errorStr = 'حدث خطأ في الاتصال بالسيرفر';
+            if (status) errorStr += ` (Status: ${status})`;
+            if (dataError) errorStr = dataError;
+            else if (detail) errorStr += ` - [${detail}]`;
+
+            setError(errorStr);
         } finally {
             setLoading(false);
         }
