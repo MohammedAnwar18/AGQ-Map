@@ -1106,11 +1106,18 @@ const MapComponent = () => {
                 setShowShopProfile(true);
                 mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: 18, pitch: 45 });
             }} />}
-            {showShops && <FriendsModal onClose={() => setShowShops(false)} isShopsMode={true} currentUser={user} onShopFollowed={handleShopFollowed} onShopClick={(shop) => {
-                setSelectedShopProfile(shop);
-                setShowShopProfile(true);
-                mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: 18, pitch: 45 });
-            }} />}
+            {showShops && <FriendsModal
+                onClose={() => setShowShops(false)}
+                isShopsMode={true}
+                currentUser={user}
+                followedShops={followedShopsMap}
+                onShopFollowed={handleShopFollowed}
+                onShopClick={(shop) => {
+                    setSelectedShopProfile(shop);
+                    setShowShopProfile(true);
+                    mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: 18, pitch: 45 });
+                }}
+            />}
             {showShopProfile && selectedShopProfile && (
                 <ShopProfileModal
                     shop={selectedShopProfile}

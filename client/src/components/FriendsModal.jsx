@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { friendService, shopService } from '../services/api'; // Import shopService
 import './Modal.css';
 
-const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, currentUser, onShopClick, onShopFollowed }) => {
+const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, currentUser, onShopClick, onShopFollowed, followedShops: propFollowedShops }) => {
     const [activeTab, setActiveTab] = useState(isShopsMode ? 'shops' : initialTab);
     const [friends, setFriends] = useState([]);
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // Shops State
-    const [followedShops, setFollowedShops] = useState([]);
+    const [followedShops, setFollowedShops] = useState(propFollowedShops || []);
     const [shopSearchQuery, setShopSearchQuery] = useState('');
     const [shopSearchResults, setShopSearchResults] = useState([]);
     const [isSearchingShop, setIsSearchingShop] = useState(false);
@@ -22,6 +22,12 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
     useEffect(() => {
         loadData();
     }, [activeTab, isShopsMode]); // Re-run when tab changes
+
+    useEffect(() => {
+        if (propFollowedShops) {
+            setFollowedShops(propFollowedShops);
+        }
+    }, [propFollowedShops]);
 
     const loadData = async () => {
         try {
