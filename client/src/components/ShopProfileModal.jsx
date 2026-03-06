@@ -164,8 +164,19 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
 
     const handleFollow = async () => {
         try {
-            if (isFollowing) await shopService.unfollow(shopData.id);
-            else await shopService.follow(shopData.id);
+            if (isFollowing) {
+                await shopService.unfollow(shopData.id);
+                setShopData(prev => ({
+                    ...prev,
+                    followers_count: Math.max(0, parseInt(prev.followers_count || 0) - 1)
+                }));
+            } else {
+                await shopService.follow(shopData.id);
+                setShopData(prev => ({
+                    ...prev,
+                    followers_count: parseInt(prev.followers_count || 0) + 1
+                }));
+            }
             setIsFollowing(!isFollowing);
             if (onFollowChange) onFollowChange();
         } catch (e) {

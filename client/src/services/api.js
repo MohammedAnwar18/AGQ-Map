@@ -276,7 +276,7 @@ export const communityService = {
 // Shop Services (Social)
 export const shopService = {
     search: async (query) => {
-        const response = await api.get(`/shops/search?query=${encodeURIComponent(query)}`);
+        const response = await api.get(`/shops/search?query=${encodeURIComponent(query)}&t=${Date.now()}`);
         return response.data;
     },
 

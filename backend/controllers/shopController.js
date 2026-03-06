@@ -7,7 +7,7 @@ const searchShops = async (req, res) => {
         if (!query) return res.json({ shops: [] });
 
         const result = await pool.query(`
-            SELECT id, name, category, profile_picture 
+            SELECT id, name, category, profile_picture, latitude, longitude 
             FROM shops 
             WHERE name ILIKE $1 
             LIMIT 10
