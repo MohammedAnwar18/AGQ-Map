@@ -4,13 +4,13 @@ const pool = require('../config/database');
 const searchShops = async (req, res) => {
     try {
         const { query } = req.query;
-        const userId = req.user.userId;
+        const userId = parseInt(req.user.userId);
 
         if (!query) return res.json({ shops: [] });
 
         const result = await pool.query(`
             SELECT s.id, s.name, s.category, s.profile_picture, s.latitude, s.longitude,
-                   EXISTS(SELECT 1 FROM shop_followers WHERE shop_id = s.id AND user_id = $2) as is_followed
+                   EXISTS(SELECT 1 FROM shop_followers WHERE shop_id = s.id AND user_id = $2::int) as is_followed
             FROM shops s
             WHERE s.name ILIKE $1 
             LIMIT 10
@@ -26,7 +26,7 @@ const searchShops = async (req, res) => {
 // --- 2. Follow Shop ---
 const followShop = async (req, res) => {
     try {
-        const userId = req.user.userId;
+        const userId = parseInt(req.user.userId);
         const shopId = parseInt(req.params.id);
 
         if (isNaN(shopId)) {
@@ -37,33 +37,29 @@ const followShop = async (req, res) => {
 
         await pool.query(`
             INSERT INTO shop_followers (user_id, shop_id)
-            VALUES ($1, $2)
+            VALUES ($1::int, $2::int)
             ON CONFLICT (user_id, shop_id) DO NOTHING
         `, [userId, shopId]);
 
+        console.log(`✅ User ${userId} successfully followed shop ${shopId}`);
         res.json({ message: 'Shop followed successfully', shopId });
     } catch (error) {
-        console.error('Follow shop error:', error);
-        res.status(500).json({ error: 'Failed to follow shop' });
+        console.error('❌ Follow shop error:', error);
+        res.status(500).json({ error: 'Failed to follow shop: ' + error.message });
     }
 };
 
 // --- 3. Unfollow Shop ---
 const unfollowShop = async (req, res) => {
     try {
-        const userId = req.user.userId;
+        const userId = parseInt(req.user.userId);
         const shopId = parseInt(req.params.id);
 
         if (isNaN(shopId)) {
             return res.status(400).json({ error: 'Invalid shop ID' });
         }
 
-        console.log(`User ${userId} attempting to unfollow shop ${shopId}`);
-
-        await pool.query(`
-            DELETE FROM shop_followers 
-            WHERE user_id = $1 AND shop_id = $2
-        `, [userId, shopId]);
+        await pool.query('DELETE FROM shop_followers WHERE user_id = $1::int AND shop_id = $2::int', [userId, shopId]);
 
         res.json({ message: 'Shop unfollowed', shopId });
     } catch (error) {
@@ -75,7 +71,7 @@ const unfollowShop = async (req, res) => {
 // --- 4. Get Followed Shops ---
 const getFollowedShops = async (req, res) => {
     try {
-        const userId = req.user.userId;
+        const userId = parseInt(req.user.userId);
 
         const result = await pool.query(`
             SELECT DISTINCT s.*,
@@ -98,14 +94,14 @@ const getFollowedShops = async (req, res) => {
             TRUE as is_followed
             FROM shops s
             JOIN shop_followers sf ON s.id = sf.shop_id
-            WHERE sf.user_id = $1
+            WHERE sf.user_id = $1::int
             ORDER BY s.name ASC
         `, [userId]);
 
-        console.log(`Fetched ${result.rows.length} followed shops for user ${userId}`);
+        console.log(`📋 User ${userId} has ${result.rows.length} followed shops in DB`);
         res.json({ shops: result.rows });
     } catch (error) {
-        console.error('Get followed shops error:', error);
+        console.error('❌ Get followed shops error:', error);
         res.status(500).json({ error: 'Failed to get followed shops' });
     }
 };
@@ -175,18 +171,18 @@ const deleteShop = async (req, res) => {
 // --- 6. Get Shop Profile (Info + Posts + Products) ---
 const getShopProfile = async (req, res) => {
     try {
-        const shopId = req.params.id;
-        const currentUserId = req.user.userId;
+        const shopId = parseInt(req.params.id);
+        const currentUserId = parseInt(req.user.userId);
 
         // 1. Get Shop Details
         const shopResult = await pool.query(`
             SELECT s.*, 
                    u.username as owner_name, -- Fetch owner name
                    (SELECT COUNT(*)::int FROM shop_followers WHERE shop_id = s.id) as followers_count,
-                   EXISTS(SELECT 1 FROM shop_followers WHERE shop_id = s.id AND user_id = $2) as is_followed
+                   EXISTS(SELECT 1 FROM shop_followers WHERE shop_id = s.id AND user_id = $2::int) as is_followed
             FROM shops s
             LEFT JOIN users u ON s.owner_id = u.id -- Join with users
-            WHERE s.id = $1
+            WHERE s.id = $1::int
         `, [shopId, currentUserId]);
 
         if (shopResult.rows.length === 0) {
