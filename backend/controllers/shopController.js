@@ -4,14 +4,17 @@ const pool = require('../config/database');
 const searchShops = async (req, res) => {
     try {
         const { query } = req.query;
+        const userId = req.user.userId;
+
         if (!query) return res.json({ shops: [] });
 
         const result = await pool.query(`
-            SELECT id, name, category, profile_picture, latitude, longitude 
-            FROM shops 
-            WHERE name ILIKE $1 
+            SELECT s.id, s.name, s.category, s.profile_picture, s.latitude, s.longitude,
+                   EXISTS(SELECT 1 FROM shop_followers WHERE shop_id = s.id AND user_id = $2) as is_followed
+            FROM shops s
+            WHERE s.name ILIKE $1 
             LIMIT 10
-        `, [`%${query}%`]);
+        `, [`%${query}%`, userId]);
 
         res.json({ shops: result.rows });
     } catch (error) {
@@ -118,10 +121,20 @@ const createShop = async (req, res) => {
             VALUES ($1, $2::numeric, $3::numeric, $4, $5, ST_SetSRID(ST_MakePoint($3::double precision, $2::double precision), 4326)::geography)
             RETURNING *
         `, [name, latitude, longitude, category, ownerId]);
-        res.json(result.rows[0]);
+
+        const newShop = result.rows[0];
+
+        // Auto-follow for the creator so it appears on their map
+        await pool.query(`
+            INSERT INTO shop_followers (user_id, shop_id)
+            VALUES ($1, $2)
+            ON CONFLICT DO NOTHING
+        `, [ownerId, newShop.id]);
+
+        res.json(newShop);
     } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: 'Create fail' });
+        console.error('Create shop error:', e);
+        res.status(500).json({ error: 'Failed to create shop' });
     }
 };
 
