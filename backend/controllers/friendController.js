@@ -6,7 +6,7 @@ const { createNotification } = require('./notificationController');
  */
 const sendFriendRequest = async (req, res) => {
     try {
-        const senderId = req.user.userId;
+        const senderId = req.user.id || req.user.userId;
         const { receiverId } = req.body;
 
         if (!receiverId) {
@@ -92,7 +92,7 @@ const acceptFriendRequest = async (req, res) => {
         await client.query('BEGIN');
 
         const { requestId } = req.params;
-        const userId = req.user.userId;
+        const userId = req.user.id || req.user.userId;
 
         // الحصول على الطلب
         const requestResult = await client.query(
@@ -144,7 +144,7 @@ const acceptFriendRequest = async (req, res) => {
 const rejectFriendRequest = async (req, res) => {
     try {
         const { requestId } = req.params;
-        const userId = req.user.userId;
+        const userId = req.user.id || req.user.userId;
 
         const result = await pool.query(
             `UPDATE friend_requests 
@@ -170,7 +170,7 @@ const rejectFriendRequest = async (req, res) => {
  */
 const getPendingRequests = async (req, res) => {
     try {
-        const userId = req.user.userId;
+        const userId = req.user.id || req.user.userId;
 
         const result = await pool.query(
             `SELECT 
@@ -195,7 +195,7 @@ const getPendingRequests = async (req, res) => {
  */
 const getFriends = async (req, res) => {
     try {
-        const userId = req.user.userId;
+        const userId = req.user.id || req.user.userId;
 
         const result = await pool.query(
             `SELECT 
@@ -239,7 +239,7 @@ const getFriends = async (req, res) => {
  */
 const removeFriend = async (req, res) => {
     try {
-        const userId = req.user.userId;
+        const userId = req.user.id || req.user.userId;
         const { friendId } = req.params;
 
         // 1. حذف الصداقة
@@ -274,7 +274,7 @@ const removeFriend = async (req, res) => {
  */
 const toggleLocationSharing = async (req, res) => {
     try {
-        const userId = req.user.userId;
+        const userId = req.user.id || req.user.userId;
         const { friendId } = req.params;
 
         // Determine if current user is user1 or user2 in the relationship
