@@ -595,12 +595,12 @@ const MapComponent = () => {
         const fetchFriendsLocs = async () => {
             try {
                 const [friendsData, shopsData] = await Promise.all([
-                    friendService.getFriends(),
-                    shopService.getFollowing()
+                    friendService.getFriends().catch(e => ({ friends: [] })),
+                    shopService.getFollowing().catch(e => ({ shops: [] }))
                 ]);
-                setFriendsMap(friendsData.friends.filter(f => f.last_latitude && f.last_longitude));
-                setFollowedShopsMap(shopsData.shops || []);
-            } catch (e) { console.error(e); }
+                setFriendsMap((friendsData?.friends || []).filter(f => f.last_latitude && f.last_longitude));
+                setFollowedShopsMap(shopsData?.shops || []);
+            } catch (e) { console.error("Error in fetchFriendsLocs:", e); }
         };
         fetchFriendsLocs();
         const interval = setInterval(fetchFriendsLocs, 10000);
@@ -925,7 +925,6 @@ const MapComponent = () => {
                             longitude={parseFloat(shop.longitude)}
                             latitude={parseFloat(shop.latitude)}
                             anchor="bottom"
-                            style={{ zIndex: 10 }}
                             onClick={e => {
                                 e.originalEvent.stopPropagation();
                                 setSelectedShopProfile(shop);
@@ -1010,7 +1009,6 @@ const MapComponent = () => {
                                     longitude={parseFloat(driver.longitude)}
                                     latitude={parseFloat(driver.latitude)}
                                     anchor="bottom"
-                                    style={{ zIndex: 11 }}
                                 >
                                     <div
                                         title={`سائق: ${driver.full_name || driver.username}`}
