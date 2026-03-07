@@ -41,19 +41,35 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
 
         // Optimistic update
         const newIsLiked = !isLiked;
+        const newCount = newIsLiked ? likesCount + 1 : (likesCount > 0 ? likesCount - 1 : 0);
+
         setIsLiked(newIsLiked);
-        setLikesCount(prev => newIsLiked ? prev + 1 : prev - 1);
+        setLikesCount(newCount);
         setLikeAnimating(true);
         setTimeout(() => setLikeAnimating(false), 300);
 
+        // Notify parent immediately for visual sync in map markers
+        if (onUpdate) {
+            onUpdate({
+                ...post,
+                is_liked: newIsLiked,
+                likes_count: newCount
+            });
+        }
+
         try {
-            await postService.toggleLike(post.id);
-            // Optionally refresh post data
+            const data = await postService.toggleLike(post.id);
+            // Sync with actual server count if different
+            if (data.likes_count !== newCount) {
+                setLikesCount(data.likes_count);
+                if (onUpdate) onUpdate({ ...post, likes_count: data.likes_count, is_liked: data.is_liked });
+            }
         } catch (error) {
             console.error("Failed to toggle like", error);
-            // Revert on error
+            // Revert state on error
             setIsLiked(!newIsLiked);
-            setLikesCount(prev => !newIsLiked ? prev + 1 : prev - 1);
+            setLikesCount(likesCount);
+            if (onUpdate) onUpdate(post);
         }
     };
 
@@ -214,7 +230,17 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
 
                         {/* Comments System */}
                         <div className="post-modal-comments-area">
-                            <CommentsSection postId={post.id} />
+                            <CommentsSection
+                                postId={post.id}
+                                onCommentAdded={() => {
+                                    if (onUpdate) {
+                                        onUpdate({
+                                            ...post,
+                                            comments_count: (post.comments_count || 0) + 1
+                                        });
+                                    }
+                                }}
+                            />
                         </div>
                     </div>
 

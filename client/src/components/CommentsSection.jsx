@@ -3,16 +3,29 @@ import { commentService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import './CommentsSection.css'; // We will create this CSS
 
-const CommentsSection = ({ postId }) => {
+const CommentsSection = ({ postId, onCommentAdded }) => {
     const { user } = useAuth();
     const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState('');
     const [replyingTo, setReplyingTo] = useState(null); // { id, username }
     const [loading, setLoading] = useState(true);
+    const listRef = React.useRef(null);
+
+    const scrollToBottom = () => {
+        if (listRef.current) {
+            listRef.current.scrollTop = listRef.current.scrollHeight;
+        }
+    };
 
     useEffect(() => {
         loadComments();
     }, [postId]);
+
+    useEffect(() => {
+        if (comments.length > 0) {
+            setTimeout(scrollToBottom, 100);
+        }
+    }, [comments]);
 
     const loadComments = async () => {
         try {
@@ -44,6 +57,7 @@ const CommentsSection = ({ postId }) => {
             setComments([...comments, commentWithUser]);
             setNewComment('');
             setReplyingTo(null);
+            if (onCommentAdded) onCommentAdded();
         } catch (error) {
             console.error('Failed to post comment:', error);
         }
@@ -63,7 +77,7 @@ const CommentsSection = ({ postId }) => {
         <div className="comments-section">
             <h4 className="comments-title">التعليقات ({comments.length})</h4>
 
-            <div className="comments-list">
+            <div className="comments-list" ref={listRef}>
                 {comments.length === 0 ? (
                     <p className="no-comments">كن أول المعلقين!</p>
                 ) : (

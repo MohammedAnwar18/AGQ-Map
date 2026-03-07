@@ -59,11 +59,18 @@ app.use('/communities', require('./routes/communities'));
 app.use('/shops', require('./routes/shops'));
 app.use('/admin', require('./routes/admin'));
 
-// API Aliases (/api/...)
+// API Aliases (/api/...) - لضمان عمل المسارات بكلا الصيغتين
 app.use('/api/auth', require('./routes/auth'));
-app.use('/api/shops', require('./routes/shops'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/friends', require('./routes/friends'));
 app.use('/api/posts', require('./routes/posts'));
+app.use('/api/comments', require('./routes/comments'));
+app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/shops', require('./routes/shops'));
+app.use('/api/news', require('./routes/news'));
+app.use('/api/communities', require('./routes/communities'));
+app.use('/api/ai', require('./routes/ai'));
+app.use('/api/admin', require('./routes/admin'));
 
 // 5. التشغيل المحلي (فقط للمبرمج)
 if (!process.env.VERCEL) {

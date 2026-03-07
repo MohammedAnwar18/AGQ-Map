@@ -1135,7 +1135,15 @@ const MapComponent = () => {
 
             {/* Modals */}
             {showCreatePost && <CreatePostModal onClose={() => setShowCreatePost(false)} onPostCreated={handlePostCreated} currentLocation={userLocation} communityId={currentCommunity?.id} />}
-            {selectedPost && <PostDetailModal post={selectedPost} onClose={() => setSelectedPost(null)} onDelete={handleDeletePost} />}
+            {selectedPost && <PostDetailModal
+                post={selectedPost}
+                onClose={() => setSelectedPost(null)}
+                onDelete={handleDeletePost}
+                onUpdate={(updatedPost) => {
+                    setSelectedPost(updatedPost);
+                    setPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p));
+                }}
+            />}
             {showChat && <ChatModal onClose={() => setShowChat(false)} />}
             {showFriends && <FriendsModal
                 onClose={() => setShowFriends(false)}
