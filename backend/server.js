@@ -11,21 +11,29 @@ app.use(cors()); // Allow all for now to debug
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 3. مسار الصحة الأساسي وفحص الاتصال بقاعدة البيانات
+// 3. مسار الصحة الأساسي وفحص الاتصال بقاعدة البيانات والتخزين
 app.get('/health', async (req, res) => {
     try {
         const pool = require('./config/database');
+        const supabase = require('./config/supabase');
+
+        // فحص قاعدة البيانات
         await pool.query('SELECT NOW()');
+
+        // فحص التخزين (محاولة جلب قائمة الـ buckets لـ التحقق من المفاتيح)
+        const { data: buckets, error: storageError } = await supabase.storage.listBuckets();
+
         res.json({
             status: "SUCCESS",
             database: "CONNECTED",
+            storage: storageError ? `ERROR: ${storageError.message}` : "CONNECTED",
             time: new Date(),
             platform: "Vercel"
         });
     } catch (e) {
         res.status(500).json({
             status: "ERROR",
-            database: "DISCONNECTED",
+            database: "CHECK_FAILED",
             error: e.message
         });
     }
