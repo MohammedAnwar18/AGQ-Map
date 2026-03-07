@@ -256,7 +256,12 @@ const deletePost = async (req, res) => {
 const createAdminPost = async (req, res) => {
     try {
         const { content, latitude, longitude, address } = req.body;
-        const image_url = req.file ? req.file.path : null;
+        const { uploadToSupabase } = require('../utils/storage');
+        let image_url = null;
+
+        if (req.file) {
+            image_url = await uploadToSupabase(req.file.buffer, req.file.originalname, req.file.mimetype);
+        }
 
         const result = await pool.query(
             `INSERT INTO posts (user_id, content, image_url, location, address)

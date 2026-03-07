@@ -14,20 +14,20 @@ router.delete('/:id/follow', shopController.unfollowShop);
 // Temporary Admin Create Route
 router.post('/', shopController.createShop);
 
-// Use Cloudinary for file uploads
-const { uploadCloud } = require('../config/cloudinary');
+// Use Memory Storage for Supabase
+const upload = require('../middleware/upload');
 
 // Shop Profile & Posts
 router.get('/:id', shopController.getShopProfile);
 router.put('/:id', shopController.updateShopProfile);
 router.delete('/:id', isAdmin, shopController.deleteShop);
-router.put('/:id/images', uploadCloud.fields([{ name: 'profile_picture', maxCount: 1 }, { name: 'cover_picture', maxCount: 1 }]), shopController.updateShopImages);
+router.put('/:id/images', upload.fields([{ name: 'profile_picture', maxCount: 1 }, { name: 'cover_picture', maxCount: 1 }]), shopController.updateShopImages);
 
-router.post('/:id/posts', uploadCloud.array('images', 5), shopController.createShopPost);
+router.post('/:id/posts', upload.array('images', 5), shopController.createShopPost);
 
 // Shop Products
-router.post('/:id/products', uploadCloud.single('image'), shopController.addProduct);
-router.put('/:id/products/:productId', uploadCloud.single('image'), shopController.updateProduct);
+router.post('/:id/products', upload.single('image'), shopController.addProduct);
+router.put('/:id/products/:productId', upload.single('image'), shopController.updateProduct);
 router.delete('/:id/products/:productId', shopController.deleteProduct);
 
 // Ownership Delegation & Management

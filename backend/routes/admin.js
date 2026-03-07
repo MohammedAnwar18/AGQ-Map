@@ -15,7 +15,7 @@ const {
     createAdminPost
 } = require('../controllers/adminController');
 
-const { uploadCloud } = require('../config/cloudinary');
+const upload = require('../middleware/upload');
 
 // جميع الـ routes محمية بـ authenticateToken و isAdmin
 router.use(authenticateToken);
@@ -33,6 +33,6 @@ router.patch('/users/:userId/status', toggleUserStatus);
 // Post Management
 router.get('/posts', getAllPosts);
 router.delete('/posts/:postId', deletePost);
-router.post('/posts', uploadCloud.single('image'), createAdminPost);
+router.post('/posts', upload.single('image'), createAdminPost);
 
 module.exports = router;

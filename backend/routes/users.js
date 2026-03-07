@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { uploadCloud } = require('../config/cloudinary');
+const upload = require('../middleware/upload');
 const { authenticateToken } = require('../middleware/auth');
 const { searchUsers, getUserProfile, updateProfile } = require('../controllers/userController');
 
@@ -11,6 +11,6 @@ router.get('/search', authenticateToken, searchUsers);
 router.get('/:userId', authenticateToken, getUserProfile);
 
 // تحديث الملف الشخصي (محمي)
-router.put('/profile', authenticateToken, uploadCloud.single('profile_picture'), updateProfile);
+router.put('/profile', authenticateToken, upload.single('profile_picture'), updateProfile);
 
 module.exports = router;
