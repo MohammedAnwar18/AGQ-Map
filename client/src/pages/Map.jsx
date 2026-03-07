@@ -597,12 +597,18 @@ const MapComponent = () => {
         if (!user) return;
         const fetchFriendsLocs = async () => {
             try {
-                const [friendsData, shopsData] = await Promise.all([
+                const [friendsData, shopsData, managedShopsData] = await Promise.all([
                     friendService.getFriends().catch(e => ({ friends: [] })),
-                    shopService.getFollowing().catch(e => ({ shops: [] }))
+                    shopService.getFollowing().catch(e => ({ shops: [] })),
+                    shopService.getManagedShops().catch(e => ({ shops: [] }))
                 ]);
                 setFriendsMap((friendsData?.friends || []).filter(f => f.last_latitude && f.last_longitude));
                 setFollowedShopsMap(shopsData?.shops || []);
+
+                if (managedShopsData?.shops) {
+                    setManagedShopsMap(managedShopsData.shops);
+                    if (managedShopsData.shops.length > 0) setHasManagedShops(true);
+                }
             } catch (e) { console.error("Error in fetchFriendsLocs:", e); }
         };
         fetchFriendsLocs();
@@ -917,6 +923,7 @@ const MapComponent = () => {
                 ))}
 
                 {/* Managed and Followed Shops Markers - Visible only in World Mode */}
+                {console.log("Shops combined for map:", [...followedShopsMap, ...managedShopsMap].length)}
                 {!currentCommunity && [...followedShopsMap, ...managedShopsMap.filter(m => !followedShopsMap.some(f => f.id === m.id))].filter(shop =>
                     shop.latitude != null &&
                     shop.longitude != null &&
@@ -926,80 +933,62 @@ const MapComponent = () => {
                         key={`shop-${shop.id}`}
                         longitude={parseFloat(shop.longitude)}
                         latitude={parseFloat(shop.latitude)}
-                        anchor="bottom"
+                        anchor="center"
+                        style={{ cursor: 'pointer', zIndex: 50 }}
                         onClick={e => {
                             e.originalEvent.stopPropagation();
                             setSelectedShopProfile(shop);
                             setShowShopProfile(true);
                         }}
                     >
-                        <div className="shop-marker-wrapper" style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            gap: '5px',
-                            cursor: 'pointer',
-                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                        }}
-                            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1) translateY(-5px)'}
-                            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                        >
-                            {/* Name Label Bubble */}
+                        <div style={{
+                            width: '60px',
+                            height: '60px',
+                            borderRadius: '50%',
+                            backgroundColor: '#fbab15',
+                            backgroundImage: `url(${getImageUrl(shop.profile_picture) || getImageUrl(shop.image_url) || '/default-shop.png'})`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                            border: '3px solid white',
+                            boxShadow: '0 4px 10px rgba(0,0,0,0.4)',
+                            position: 'relative'
+                        }}>
+                            {/* Simple Name Badge */}
                             <div style={{
+                                position: 'absolute',
+                                bottom: '-22px',
+                                left: '50%',
+                                transform: 'translateX(-50%)',
                                 backgroundColor: 'white',
-                                padding: '4px 10px',
+                                padding: '2px 8px',
                                 borderRadius: '12px',
-                                fontSize: '12px',
+                                fontSize: '11px',
                                 fontWeight: 'bold',
-                                color: '#1e293b',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                                color: 'black',
+                                border: '1px solid #fbab15',
                                 whiteSpace: 'nowrap',
-                                border: '1px solid #fbab15'
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                             }}>
                                 {shop.name}
                             </div>
-
-                            {/* Circular Profile Pin */}
-                            <div className="shop-pin-marker" style={{
-                                width: '48px',
-                                height: '48px',
-                                backgroundColor: '#fff',
-                                backgroundImage: `url(${getImageUrl(shop.profile_picture) || getImageUrl(shop.image_url) || '/default-shop.png'})`,
-                                backgroundSize: 'cover',
-                                backgroundPosition: 'center',
-                                borderRadius: '50%',
-                                border: '3px solid #fbab15',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                                position: 'relative'
-                            }}>
-                                {/* Icon Indicator */}
-                                <div style={{
-                                    position: 'absolute',
-                                    bottom: '-2px',
-                                    right: '-2px',
-                                    background: '#fbab15',
-                                    borderRadius: '50%',
-                                    width: '22px',
-                                    height: '22px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: '14px',
-                                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                                    border: '2px solid white'
-                                }}>
-                                    {shop.category === 'مكتب تاكسي' ? '🚕' : '🏪'}
-                                </div>
-                            </div>
-                            {/* Marker Tail/Point */}
+                            {/* Category Emoji Badge */}
                             <div style={{
-                                width: '0',
-                                height: '0',
-                                borderLeft: '6px solid transparent',
-                                borderRight: '6px solid transparent',
-                                borderTop: '8px solid #fbab15',
-                                marginTop: '-2px'
-                            }}></div>
+                                position: 'absolute',
+                                top: '-4px',
+                                right: '-4px',
+                                background: 'white',
+                                borderRadius: '50%',
+                                width: '22px',
+                                height: '22px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '13px',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                                border: '1px solid #ddd'
+                            }}>
+                                {shop.category === 'مكتب تاكسي' ? '🚕' : '🏪'}
+                            </div>
                         </div>
                     </Marker>,
 
