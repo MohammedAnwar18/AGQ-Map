@@ -245,7 +245,7 @@ const Login = () => {
                                 {!isOtpStep && (
                                     <>
                                         <div className="form-group">
-                                            <label htmlFor="username">اسم المستخدم</label>
+                                            <label htmlFor="username">{isLogin ? 'اسم المستخدم أو البريد الإلكتروني' : 'اسم المستخدم للدخول (بالإنجليزي)'}</label>
                                             <input
                                                 type="text"
                                                 id="username"
@@ -253,7 +253,7 @@ const Login = () => {
                                                 value={formData.username}
                                                 onChange={handleChange}
                                                 className="input"
-                                                placeholder="username"
+                                                placeholder="مثلاً: mohammad_99"
                                                 required
                                                 autoFocus
                                             />
@@ -276,7 +276,7 @@ const Login = () => {
                                                 </div>
 
                                                 <div className="form-group">
-                                                    <label htmlFor="full_name">الاسم الكامل</label>
+                                                    <label htmlFor="full_name">الاسم الكامل (سيظهر للجميع)</label>
                                                     <input
                                                         type="text"
                                                         id="full_name"
@@ -284,7 +284,8 @@ const Login = () => {
                                                         value={formData.full_name}
                                                         onChange={handleChange}
                                                         className="input"
-                                                        placeholder="الاسم الكامل"
+                                                        placeholder="مثلاً: محمد أنور"
+                                                        required
                                                     />
                                                 </div>
 

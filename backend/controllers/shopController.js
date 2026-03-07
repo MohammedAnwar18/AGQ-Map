@@ -346,7 +346,15 @@ const updateShopImages = async (req, res) => {
         const query = `UPDATE shops SET ${updateQueryPart.join(', ')} WHERE id = $${index}`;
 
         await pool.query(query, params);
-        res.json({ message: 'Shop updated successfully' });
+
+        // Fetch updated images to return to frontend
+        const updatedRes = await pool.query('SELECT profile_picture, cover_picture FROM shops WHERE id = $1', [shopId]);
+
+        res.json({
+            message: 'Shop updated successfully',
+            profile_picture: updatedRes.rows[0].profile_picture,
+            cover_picture: updatedRes.rows[0].cover_picture
+        });
 
     } catch (e) {
         console.error('Update shop images error:', e);

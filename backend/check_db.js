@@ -4,9 +4,9 @@ async function check() {
         const res = await pool.query(`
       SELECT column_name, data_type 
       FROM information_schema.columns 
-      WHERE table_name = 'shop_followers'
+      WHERE table_name = 'shops'
     `);
-        console.log('shop_followers Columns:', res.rows);
+        console.log('Shops Columns:', res.rows);
         process.exit(0);
     } catch (e) {
         console.error('Check failed:', e);

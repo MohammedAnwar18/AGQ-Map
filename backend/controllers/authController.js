@@ -12,7 +12,7 @@ const register = async (req, res) => {
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
+            return res.status(400).json({ error: errors.array()[0].msg });
         }
 
         let { username, email, password, full_name, date_of_birth, gender } = req.body;
@@ -29,7 +29,8 @@ const register = async (req, res) => {
         );
 
         if (userExists.rows.length > 0) {
-            return res.status(400).json({ error: 'Username or email already exists' });
+            const field = userExists.rows[0].email === email ? 'البريد الإلكتروني' : 'اسم المستخدم';
+            return res.status(400).json({ error: `${field} مسجل مسبقاً` });
         }
 
         // تشفير كلمة المرور
@@ -44,7 +45,7 @@ const register = async (req, res) => {
         const result = await pool.query(
             `INSERT INTO users (username, email, password_hash, full_name, date_of_birth, gender, otp_code, otp_expires_at, is_verified) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE) 
-       RETURNING id, username, email`,
+       RETURNING id, username, email, full_name, bio, profile_picture, role`,
             [username, email, password_hash, full_name, date_of_birth, gender, otpCode, otpExpiresAt]
         );
 
@@ -60,7 +61,7 @@ const register = async (req, res) => {
                 userId: user.id,
                 username: user.username,
                 email: user.email,
-                role: 'user'
+                role: user.role || 'user'
             },
             secret,
             { expiresIn: '7d' }
@@ -75,7 +76,10 @@ const register = async (req, res) => {
                 id: user.id,
                 username: user.username,
                 email: user.email,
-                role: 'user'
+                full_name: user.full_name,
+                bio: user.bio,
+                profile_picture: user.profile_picture,
+                role: user.role || 'user'
             }
         });
 
@@ -96,17 +100,17 @@ const login = async (req, res) => {
         const { username, password } = req.body;
 
         if (!username || !password) {
-            return res.status(400).json({ error: 'Username and password required' });
+            return res.status(400).json({ error: 'يرجى إدخال اسم المستخدم وكلمة المرور' });
         }
 
         // البحث عن المستخدم
         const result = await pool.query(
-            'SELECT * FROM users WHERE username = $1 OR email = $1',
+            'SELECT * FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1)',
             [username]
         );
 
         if (result.rows.length === 0) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+            return res.status(401).json({ error: 'بيانات الدخول غير صحيحة' });
         }
 
         const user = result.rows[0];
@@ -115,20 +119,20 @@ const login = async (req, res) => {
         if (user.lock_until && new Date(user.lock_until) > new Date()) {
             const waitMinutes = Math.ceil((new Date(user.lock_until) - new Date()) / 60000);
             return res.status(403).json({
-                error: `Account temporarily locked. Please try again in ${waitMinutes} minutes.`
+                error: `الحساب مقفل مؤقتاً. يرجى المحاولة بعد ${waitMinutes} دقيقة.`
             });
         }
 
         // التحقق من كلمة المرور
         const validPassword = await bcrypt.compare(password, user.password_hash);
         if (!validPassword) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+            return res.status(401).json({ error: 'بيانات الدخول غير صحيحة' });
         }
 
         // التحقق من أن الحساب نشط
         // التحقق من أن الحساب نشط
         if (!user.is_active && user.is_active !== undefined) {
-            return res.status(403).json({ error: 'Account suspended. Please contact support.' });
+            return res.status(403).json({ error: 'الحساب معطل. يرجى التواصل مع الدعم الفني.' });
         }
 
         // === تعديل: إذا كان الحساب مفعل مسبقاً، يدخل مباشرة بدون رمز ===

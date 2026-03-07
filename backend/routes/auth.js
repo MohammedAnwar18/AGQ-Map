@@ -6,10 +6,10 @@ const { authenticateToken } = require('../middleware/auth');
 
 // تسجيل مستخدم جديد
 router.post('/register', [
-    body('username').trim().isLength({ min: 3, max: 50 }).withMessage('Username must be 3-50 characters'),
-    body('email').isEmail().withMessage('Invalid email'),
-    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-    body('full_name').optional().trim().isLength({ max: 100 })
+    body('username').trim().isLength({ min: 3, max: 50 }).withMessage('اسم المستخدم يجب أن يكون بين 3 و 50 حرفاً'),
+    body('email').isEmail().withMessage('البريد الإلكتروني غير صالح'),
+    body('password').isLength({ min: 6 }).withMessage('كلمة المرور يجب أن تكون 6 أحرف على الأقل'),
+    body('full_name').optional().trim().isLength({ max: 100 }).withMessage('الاسم الكامل طويل جداً (الحد الأقصى 100 حرف)')
 ], register);
 
 // تسجيل الدخول

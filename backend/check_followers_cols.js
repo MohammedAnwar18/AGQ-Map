@@ -6,7 +6,7 @@ async function check() {
       FROM information_schema.columns 
       WHERE table_name = 'shop_followers'
     `);
-        console.log('shop_followers Columns:', res.rows);
+        console.log('Followers Table Columns:', res.rows);
         process.exit(0);
     } catch (e) {
         console.error('Check failed:', e);

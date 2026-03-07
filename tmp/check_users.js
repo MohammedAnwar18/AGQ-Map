@@ -1,12 +1,12 @@
-const pool = require('./config/database');
+const pool = require('../backend/config/database');
 async function check() {
     try {
         const res = await pool.query(`
       SELECT column_name, data_type 
       FROM information_schema.columns 
-      WHERE table_name = 'shop_followers'
+      WHERE table_name = 'users'
     `);
-        console.log('shop_followers Columns:', res.rows);
+        console.log('Users Columns:', res.rows);
         process.exit(0);
     } catch (e) {
         console.error('Check failed:', e);
