@@ -921,119 +921,114 @@ const MapComponent = () => {
                     shop.latitude != null &&
                     shop.longitude != null &&
                     !isNaN(parseFloat(shop.latitude))
-                ).map(shop => (
-                    <React.Fragment key={`shop-group-${shop.id}`}>
-                        <Marker
-                            key={`shop-${shop.id}`}
-                            longitude={parseFloat(shop.longitude)}
-                            latitude={parseFloat(shop.latitude)}
-                            anchor="bottom"
-                            onClick={e => {
-                                e.originalEvent.stopPropagation();
-                                setSelectedShopProfile(shop);
-                                setShowShopProfile(true);
-                            }}
+                ).flatMap(shop => [
+                    <Marker
+                        key={`shop-${shop.id}`}
+                        longitude={parseFloat(shop.longitude)}
+                        latitude={parseFloat(shop.latitude)}
+                        anchor="bottom"
+                        onClick={e => {
+                            e.originalEvent.stopPropagation();
+                            setSelectedShopProfile(shop);
+                            setShowShopProfile(true);
+                        }}
+                    >
+                        <div className="shop-marker-wrapper" style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '5px',
+                            cursor: 'pointer',
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                        }}
+                            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1) translateY(-5px)'}
+                            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
                         >
-                            <div className="shop-marker-wrapper" style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                gap: '5px',
-                                cursor: 'pointer',
-                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                            }}
-                                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1) translateY(-5px)'}
-                                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                            >
-                                {/* Name Label Bubble */}
-                                <div style={{
-                                    backgroundColor: 'white',
-                                    padding: '4px 10px',
-                                    borderRadius: '12px',
-                                    fontSize: '12px',
-                                    fontWeight: 'bold',
-                                    color: '#1e293b',
-                                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                                    whiteSpace: 'nowrap',
-                                    border: '1px solid #fbab15'
-                                }}>
-                                    {shop.name}
-                                </div>
+                            {/* Name Label Bubble */}
+                            <div style={{
+                                backgroundColor: 'white',
+                                padding: '4px 10px',
+                                borderRadius: '12px',
+                                fontSize: '12px',
+                                fontWeight: 'bold',
+                                color: '#1e293b',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                                whiteSpace: 'nowrap',
+                                border: '1px solid #fbab15'
+                            }}>
+                                {shop.name}
+                            </div>
 
-                                {/* Circular Profile Pin */}
-                                <div className="shop-pin-marker" style={{
-                                    width: '48px',
-                                    height: '48px',
-                                    backgroundColor: '#fff',
-                                    backgroundImage: `url(${getImageUrl(shop.profile_picture) || getImageUrl(shop.image_url) || '/default-shop.png'})`,
+                            {/* Circular Profile Pin */}
+                            <div className="shop-pin-marker" style={{
+                                width: '48px',
+                                height: '48px',
+                                backgroundColor: '#fff',
+                                backgroundImage: `url(${getImageUrl(shop.profile_picture) || getImageUrl(shop.image_url) || '/default-shop.png'})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                                borderRadius: '50%',
+                                border: '3px solid #fbab15',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                                position: 'relative'
+                            }}>
+                                {/* Icon Indicator */}
+                                <div style={{
+                                    position: 'absolute',
+                                    bottom: '-2px',
+                                    right: '-2px',
+                                    background: '#fbab15',
+                                    borderRadius: '50%',
+                                    width: '22px',
+                                    height: '22px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '14px',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                                    border: '2px solid white'
+                                }}>
+                                    {shop.category === 'مكتب تاكسي' ? '🚕' : '🏪'}
+                                </div>
+                            </div>
+                            {/* Marker Tail/Point */}
+                            <div style={{
+                                width: '0',
+                                height: '0',
+                                borderLeft: '6px solid transparent',
+                                borderRight: '6px solid transparent',
+                                borderTop: '8px solid #fbab15',
+                                marginTop: '-2px'
+                            }}></div>
+                        </div>
+                    </Marker>,
+
+                    // Active Drivers
+                    ...(shop.active_drivers || []).filter(driver => driver.latitude && driver.longitude).map(driver => (
+                        <Marker
+                            key={`driver-${driver.id}`}
+                            longitude={parseFloat(driver.longitude)}
+                            latitude={parseFloat(driver.latitude)}
+                            anchor="bottom"
+                        >
+                            <div
+                                title={`سائق: ${driver.full_name || driver.username}`}
+                                style={{
+                                    width: '40px', height: '40px',
+                                    backgroundImage: `url(${getImageUrl(driver.profile_picture) || '/default-avatar.png'})`,
                                     backgroundSize: 'cover',
-                                    backgroundPosition: 'center',
                                     borderRadius: '50%',
                                     border: '3px solid #fbab15',
-                                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                                    position: 'relative'
-                                }}>
-                                    {/* Icon Indicator */}
-                                    <div style={{
-                                        position: 'absolute',
-                                        bottom: '-2px',
-                                        right: '-2px',
-                                        background: '#fbab15',
-                                        borderRadius: '50%',
-                                        width: '22px',
-                                        height: '22px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontSize: '14px',
-                                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                                        border: '2px solid white'
-                                    }}>
-                                        {shop.category === 'مكتب تاكسي' ? '🚕' : '🏪'}
-                                    </div>
-                                </div>
-                                {/* Marker Tail/Point */}
-                                <div style={{
-                                    width: '0',
-                                    height: '0',
-                                    borderLeft: '6px solid transparent',
-                                    borderRight: '6px solid transparent',
-                                    borderTop: '8px solid #fbab15',
-                                    marginTop: '-2px'
-                                }}></div>
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                                    position: 'relative',
+                                    cursor: 'help'
+                                }}
+                            >
+                                <div style={{ position: 'absolute', bottom: -8, right: -8, fontSize: '20px', filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.3))' }}>🚕</div>
                             </div>
                         </Marker>
-
-                        {/* Active Drivers (Taxi) */}
-                        {shop.active_drivers && shop.active_drivers.map(driver => (
-                            driver.latitude && driver.longitude && (
-                                <Marker
-                                    key={`driver-${driver.id}`}
-                                    longitude={parseFloat(driver.longitude)}
-                                    latitude={parseFloat(driver.latitude)}
-                                    anchor="bottom"
-                                >
-                                    <div
-                                        title={`سائق: ${driver.full_name || driver.username}`}
-                                        style={{
-                                            width: '40px', height: '40px',
-                                            backgroundImage: `url(${getImageUrl(driver.profile_picture) || '/default-avatar.png'})`,
-                                            backgroundSize: 'cover',
-                                            borderRadius: '50%',
-                                            border: '3px solid #fbab15',
-                                            boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                                            position: 'relative',
-                                            cursor: 'help'
-                                        }}
-                                    >
-                                        <div style={{ position: 'absolute', bottom: -8, right: -8, fontSize: '20px', filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.3))' }}>🚕</div>
-                                    </div>
-                                </Marker>
-                            )
-                        ))}
-                    </React.Fragment>
-                ))}
-
+                    ))
+                ])}
 
 
                 {/* Search Results */}
