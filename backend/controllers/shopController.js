@@ -350,7 +350,11 @@ const updateShopImages = async (req, res) => {
 
     } catch (e) {
         console.error('Update shop images error:', e);
-        res.status(500).json({ error: 'Failed to update images' });
+        res.status(500).json({
+            error: 'Failed to update images',
+            details: e.message,
+            stack: e.stack.split('\n')[0] // Log just the first line of the stack
+        });
     }
 };
 
@@ -410,7 +414,11 @@ const createShopPost = async (req, res) => {
         });
     } catch (error) {
         console.error('Create shop post error:', error);
-        res.status(500).json({ error: 'Failed to create post' });
+        res.status(500).json({
+            error: 'Failed to create post',
+            details: error.message,
+            stack: error.stack.split('\n')[0]
+        });
     }
 };
 
@@ -442,7 +450,11 @@ const addProduct = async (req, res) => {
         res.json(result.rows[0]);
     } catch (e) {
         console.error('Add product error:', e);
-        res.status(500).json({ error: 'Failed to add product' });
+        res.status(500).json({
+            error: 'Failed to add product',
+            details: e.message,
+            stack: e.stack.split('\n')[0]
+        });
     }
 };
 
@@ -488,7 +500,11 @@ const updateProduct = async (req, res) => {
         res.json(result.rows[0]);
     } catch (e) {
         console.error('Update product error:', e);
-        res.status(500).json({ error: 'Failed to update product' });
+        res.status(500).json({
+            error: 'Failed to update product',
+            details: e.message,
+            stack: e.stack.split('\n')[0]
+        });
     }
 };
 
