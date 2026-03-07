@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { commentService, postService } from '../services/api'; // Assuming postService is needed for delete
+import { commentService, postService, friendService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import CommentsSection from './CommentsSection';
+import FriendButton from './FriendButton';
 import './PostDetailModal.css';
 
 const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
@@ -137,7 +138,7 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
                     <div className="post-modal-details">
 
                         {/* User Header */}
-                        <div className="post-modal-header">
+                        <div className="post-modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div className="post-modal-user-info">
                                 <img
                                     src={post.user.profile_picture || '/default-avatar.png'}
@@ -150,12 +151,23 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
                                 </div>
                             </div>
 
-                            {/* Delete Option for Owner */}
-                            {user && user.id === post.user.id && (
-                                <button className="post-modal-delete-btn" onClick={handleDelete} title="حذف المنشور">
-                                    🗑️
-                                </button>
-                            )}
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                {/* Add Friend Button */}
+                                {user && user.id !== post.user.id && (
+                                    <FriendButton
+                                        userId={post.user.id}
+                                        isFriend={post.user.is_friend}
+                                        hasRequest={post.user.has_pending_request}
+                                    />
+                                )}
+
+                                {/* Delete Option for Owner */}
+                                {user && user.id === post.user.id && (
+                                    <button className="post-modal-delete-btn" onClick={handleDelete} title="حذف المنشور">
+                                        🗑️
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
                         {/* Caption (if image exists, show caption here) */}

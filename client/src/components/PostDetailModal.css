@@ -269,7 +269,43 @@
     transition: all 0.2s;
 }
 
-.indicator-dot.active {
-    background: white;
-    transform: scale(1.2);
+/* Friend Button Styles */
+.post-modal-add-friend-btn {
+    background: #4285F4;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.post-modal-add-friend-btn:hover:not(:disabled) {
+    background: #3367d6;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(66, 133, 244, 0.3);
+}
+
+.post-modal-add-friend-btn:disabled {
+    opacity: 0.7;
+    cursor: default;
+}
+
+.friend-status-tag {
+    background: rgba(255, 255, 255, 0.1);
+    color: #bbb;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.friend-status-tag.pending {
+    background: rgba(251, 171, 21, 0.1);
+    color: #fbab15;
+    border-color: rgba(251, 171, 21, 0.2);
 }

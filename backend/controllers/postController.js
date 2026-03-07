@@ -117,7 +117,7 @@ const getPosts = async (req, res) => {
         let params;
 
         if (latitude && longitude) {
-            // الحصول على المنشورات ضمن نطاق معين
+            // الحصول على المنشورات ضمن نطاق معين (الكل)
             query = `
         SELECT 
           p.id, p.user_id, p.content, p.image_url, p.media_urls, p.media_type,
@@ -128,6 +128,8 @@ const getPosts = async (req, res) => {
           (SELECT COUNT(*)::int FROM comments WHERE post_id = p.id) as comments_count,
           (SELECT COUNT(*)::int FROM likes WHERE post_id = p.id) as likes_count,
           EXISTS(SELECT 1 FROM likes WHERE post_id = p.id AND user_id = $4) as is_liked,
+          EXISTS(SELECT 1 FROM friendships WHERE (user1_id = $4 AND user2_id = u.id) OR (user1_id = u.id AND user2_id = $4)) as is_friend,
+          EXISTS(SELECT 1 FROM friend_requests WHERE (sender_id = $4 AND receiver_id = u.id) OR (sender_id = u.id AND receiver_id = $4)) as has_pending_request,
           ST_Distance(p.location, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography) as distance
         FROM posts p
         JOIN users u ON p.user_id = u.id
@@ -137,24 +139,12 @@ const getPosts = async (req, res) => {
           $3
         )
         AND p.community_id IS NULL
-        AND (
-          p.user_id = $4
-          OR p.user_id IN (
-            SELECT CASE 
-              WHEN user1_id = $4 THEN user2_id 
-              ELSE user1_id 
-            END
-            FROM friendships
-            WHERE user1_id = $4 OR user2_id = $4
-          )
-        )
-        OR (p.user_id = $4 AND p.community_id IS NULL)
         ORDER BY distance, p.created_at DESC
         LIMIT 100
       `;
             params = [longitude, latitude, radius, userId];
         } else {
-            // الحصول على جميع منشورات الأصدقاء
+            // الحصول على جميع المنشورات (الكل)
             query = `
         SELECT 
           p.id, p.user_id, p.content, p.image_url, p.media_urls, p.media_type,
@@ -164,22 +154,13 @@ const getPosts = async (req, res) => {
           (SELECT COUNT(*)::int FROM comments WHERE post_id = p.id) as comments_count,
           (SELECT COUNT(*)::int FROM likes WHERE post_id = p.id) as likes_count,
           EXISTS(SELECT 1 FROM likes WHERE post_id = p.id AND user_id = $1) as is_liked,
+          EXISTS(SELECT 1 FROM friendships WHERE (user1_id = $1 AND user2_id = u.id) OR (user1_id = u.id AND user2_id = $1)) as is_friend,
+          EXISTS(SELECT 1 FROM friend_requests WHERE (sender_id = $1 AND receiver_id = u.id) OR (sender_id = u.id AND receiver_id = $1)) as has_pending_request,
           u.username, u.full_name, u.profile_picture
         FROM posts p
         JOIN users u ON p.user_id = u.id
         WHERE 
           p.community_id IS NULL
-          AND (
-            p.user_id = $1
-            OR p.user_id IN (
-              SELECT CASE 
-                WHEN user1_id = $1 THEN user2_id 
-                ELSE user1_id 
-              END
-              FROM friendships
-              WHERE user1_id = $1 OR user2_id = $1
-            )
-          )
         ORDER BY p.created_at DESC
         LIMIT 100
       `;
@@ -206,7 +187,9 @@ const getPosts = async (req, res) => {
                     id: post.user_id,
                     username: post.username,
                     full_name: post.full_name,
-                    profile_picture: post.profile_picture
+                    profile_picture: post.profile_picture,
+                    is_friend: post.is_friend || false,
+                    has_pending_request: post.has_pending_request || false
                 },
                 comments_count: post.comments_count || 0,
                 likes_count: post.likes_count || 0,

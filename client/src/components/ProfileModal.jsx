@@ -3,6 +3,7 @@ import { userService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import ImageCropper from './ImageCropper';
 import CustomCalendar from './CustomCalendar';
+import FriendButton from './FriendButton';
 import './Modal.css';
 
 const ProfileModal = ({ userId, onClose }) => {
@@ -282,9 +283,19 @@ const ProfileModal = ({ userId, onClose }) => {
                                     </div>
                                 ) : (
                                     <>
-                                        <h2 style={{ marginBottom: '0.5rem' }}>
-                                            {profile.full_name || profile.username}
-                                        </h2>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px' }}>
+                                            <h2 style={{ marginBottom: '0.5rem' }}>
+                                                {profile.full_name || profile.username}
+                                            </h2>
+                                            {!isOwnProfile && (
+                                                <FriendButton
+                                                    userId={profile.id}
+                                                    isFriend={profile.is_friend}
+                                                    hasRequest={profile.has_pending_request}
+                                                    style={{ transform: 'translateY(-2px)' }}
+                                                />
+                                            )}
+                                        </div>
 
 
                                     </>

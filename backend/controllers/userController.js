@@ -61,7 +61,8 @@ const getUserProfile = async (req, res) => {
         CASE 
           WHEN f.id IS NOT NULL THEN true 
           ELSE false 
-        END as is_friend
+        END as is_friend,
+        EXISTS(SELECT 1 FROM friend_requests WHERE (sender_id = $2 AND receiver_id = u.id AND status = 'pending') OR (sender_id = u.id AND receiver_id = $2 AND status = 'pending')) as has_pending_request
       FROM users u
       LEFT JOIN friendships f ON (
         (f.user1_id = $2 AND f.user2_id = u.id) OR
