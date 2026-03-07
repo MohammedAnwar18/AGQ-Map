@@ -110,12 +110,15 @@ const MapComponent = () => {
     const [showManagedShops, setShowManagedShops] = useState(false);
     const [hasManagedShops, setHasManagedShops] = useState(false);
 
+    const [managedShopsMap, setManagedShopsMap] = useState([]);
+
     useEffect(() => {
         const checkManagedShops = async () => {
             try {
                 const data = await shopService.getManagedShops();
                 if (data.shops && data.shops.length > 0) {
                     setHasManagedShops(true);
+                    setManagedShopsMap(data.shops);
                 }
             } catch (e) {
                 console.error("Failed to check managed shops", e);
@@ -913,8 +916,8 @@ const MapComponent = () => {
                     </Marker>
                 ))}
 
-                {/* Followed Shops Markers - Visible only in World Mode */}
-                {!currentCommunity && followedShopsMap.filter(shop =>
+                {/* Managed and Followed Shops Markers - Visible only in World Mode */}
+                {!currentCommunity && [...followedShopsMap, ...managedShopsMap.filter(m => !followedShopsMap.some(f => f.id === m.id))].filter(shop =>
                     shop.latitude != null &&
                     shop.longitude != null &&
                     !isNaN(parseFloat(shop.latitude))
