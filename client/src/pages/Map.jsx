@@ -486,34 +486,25 @@ const MapComponent = () => {
         return () => clearInterval(interval);
     }, [user, currentCommunity]);
 
-    // Live Location Tracking (Persistent)
+    // Native-Grade Geolocation Tracking
     useEffect(() => {
         let watchId;
         let retryTimeout;
 
-        // 1. Try to get a fast initial fix immediately (don't wait for watchPosition)
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    setUserLocation(prev => {
-                        // Only update if we don't have a fresher timestamp from watch yet
-                        if (prev && prev.timestamp > pos.timestamp) return prev;
-                        return {
-                            latitude: pos.coords.latitude,
-                            longitude: pos.coords.longitude,
-                            speed: pos.coords.speed,
-                            accuracy: pos.coords.accuracy,
-                            timestamp: pos.timestamp
-                        };
-                    });
-                },
-                (err) => console.warn("Initial quick location failed:", err),
-                { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 } // Low accuracy is fine for instant feedback
-            );
-        }
+        const requestLocationPermission = async () => {
+            if (!navigator.geolocation) {
+                console.error("Geolocation is not supported by this device.");
+                return;
+            }
 
-        const startWatching = () => {
-            if (navigator.geolocation) {
+            // High-Precision Options for App-like experience
+            const geoOptions = {
+                enableHighAccuracy: true,
+                timeout: 30000,
+                maximumAge: 0 // Always get fresh GPS data
+            };
+
+            const startWatching = () => {
                 watchId = navigator.geolocation.watchPosition(
                     (pos) => {
                         setUserLocation({
@@ -521,29 +512,47 @@ const MapComponent = () => {
                             longitude: pos.coords.longitude,
                             speed: pos.coords.speed,
                             accuracy: pos.coords.accuracy,
+                            altitude: pos.coords.altitude,
+                            heading: pos.coords.heading,
                             timestamp: pos.timestamp
                         });
                     },
                     (err) => {
-                        console.error("Geolocation error:", err);
-                        // Do NOT clear userLocation on error to keep marker visible
-
-                        // Retry watching after a delay if it wasn't a permission denied error
-                        if (err.code !== 1) { // 1 is PERMISSION_DENIED
+                        console.error("GPS Error:", err);
+                        if (err.code === 1) {
+                            // Permission Denied - Guide the user
+                            console.warn("User denied GPS permissions.");
+                        } else {
+                            // Technical error, retry after 5s
                             if (watchId) navigator.geolocation.clearWatch(watchId);
                             retryTimeout = setTimeout(startWatching, 5000);
                         }
                     },
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 30000, // Wait 30s for a fix
-                        maximumAge: 10000 // Accept positions up to 10s old
-                    }
+                    geoOptions
                 );
-            }
+            };
+
+            // Proactively request current position to trigger OS permission prompt immediately
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    setUserLocation({
+                        latitude: pos.coords.latitude,
+                        longitude: pos.coords.longitude,
+                        accuracy: pos.coords.accuracy,
+                        timestamp: pos.timestamp
+                    });
+                    startWatching();
+                },
+                (err) => {
+                    console.warn("Initial permission request failed:", err);
+                    // Still try to watch as it might be a timeout
+                    startWatching();
+                },
+                { enableHighAccuracy: true, timeout: 15000 }
+            );
         };
 
-        startWatching();
+        requestLocationPermission();
 
         return () => {
             if (watchId) navigator.geolocation.clearWatch(watchId);
