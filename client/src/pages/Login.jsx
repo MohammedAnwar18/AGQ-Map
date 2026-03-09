@@ -253,7 +253,7 @@ const Login = () => {
                                                 value={formData.username}
                                                 onChange={handleChange}
                                                 className="input"
-                                                placeholder="مثلاً: mohammad_99"
+                                                placeholder="مثلاً: mohammad"
                                                 required
                                                 autoFocus
                                             />
