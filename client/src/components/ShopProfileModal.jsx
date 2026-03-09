@@ -553,7 +553,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                             <button onClick={() => coverInputRef.current.click()} style={{ background: 'rgba(0,0,0,0.5)', border: 'none', color: 'white', padding: '8px 12px', borderRadius: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <CameraIcon /> تغيير الغلاف
                             </button>
-                            <input type="file" ref={coverInputRef} hidden onChange={e => handleImageUpload('cover_picture', e.target.files[0])} />
+                            <input type="file" ref={coverInputRef} accept="image/*" hidden onChange={e => handleImageUpload('cover_picture', e.target.files[0])} />
                         </div>
                     )}
 
@@ -578,7 +578,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                     <CameraIcon />
                                 </button>
                             )}
-                            <input type="file" ref={profileInputRef} hidden onChange={e => handleImageUpload('profile_picture', e.target.files[0])} />
+                            <input type="file" ref={profileInputRef} accept="image/*" hidden onChange={e => handleImageUpload('profile_picture', e.target.files[0])} />
                         </div>
                     </div>
                 </div>

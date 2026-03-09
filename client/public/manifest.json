@@ -1,0 +1,29 @@
+{
+    "short_name": "AGQ Map",
+    "name": "AGQ Spatial Network",
+    "icons": [
+        {
+            "src": "/logo.png",
+            "type": "image/png",
+            "sizes": "192x192",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/logo.png",
+            "type": "image/png",
+            "sizes": "512x512",
+            "purpose": "any maskable"
+        }
+    ],
+    "start_url": ".",
+    "display": "standalone",
+    "theme_color": "#1e293b",
+    "background_color": "#0f172a",
+    "orientation": "portrait",
+    "description": "Spatial social network for Palestinian cities. Connect, share, and explore.",
+    "permissions": [
+        "geolocation",
+        "camera",
+        "photos"
+    ]
+}
