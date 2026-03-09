@@ -209,14 +209,32 @@ const deletePost = async (req, res) => {
     try {
         const { postId } = req.params;
         const userId = req.user.userId;
+        const { deleteFileFromCloud } = require('../utils/storage');
 
-        const result = await pool.query(
-            'DELETE FROM posts WHERE id = $1 AND user_id = $2 RETURNING id',
+        // Fetch post details first to get image URLs
+        const postData = await pool.query(
+            'SELECT image_url, media_urls FROM posts WHERE id = $1 AND user_id = $2',
             [postId, userId]
         );
 
-        if (result.rows.length === 0) {
+        if (postData.rows.length === 0) {
             return res.status(404).json({ error: 'Post not found or unauthorized' });
+        }
+
+        const { image_url, media_urls } = postData.rows[0];
+
+        // Delete from database
+        await pool.query(
+            'DELETE FROM posts WHERE id = $1 AND user_id = $2',
+            [postId, userId]
+        );
+
+        // Delete from Cloudinary asynchronously
+        if (image_url) deleteFileFromCloud(image_url);
+        if (media_urls && Array.isArray(media_urls)) {
+            media_urls.forEach(url => {
+                if (url !== image_url) deleteFileFromCloud(url);
+            });
         }
 
         res.json({ message: 'Post deleted successfully' });

@@ -117,7 +117,11 @@ const updateProfile = async (req, res) => {
     try {
         const userId = req.user.id || req.user.userId;
         const { full_name, bio, gender, date_of_birth } = req.body;
-        const { uploadToSupabase } = require('../utils/storage');
+        const { uploadToSupabase, deleteFileFromCloud } = require('../utils/storage');
+
+        // Fetch old profile picture to delete later if needed
+        const oldUserRes = await pool.query('SELECT profile_picture FROM users WHERE id = $1', [userId]);
+        const oldProfilePic = oldUserRes.rows[0]?.profile_picture;
 
         let profile_picture = null;
         if (req.file) {
@@ -160,6 +164,11 @@ const updateProfile = async (req, res) => {
         query += ` WHERE id = $${paramCount} RETURNING id, username, email, full_name, bio, profile_picture, gender, date_of_birth`;
 
         const result = await pool.query(query, params);
+
+        // Cleanup: Delete old profile picture from Cloudinary if successfully updated with a new one
+        if (profile_picture && oldProfilePic) {
+            deleteFileFromCloud(oldProfilePic);
+        }
 
         res.json({
             message: 'Profile updated successfully',

@@ -2,20 +2,20 @@ const { cloudinary } = require('../config/cloudinary');
 const { v4: uuidv4 } = require('uuid');
 
 /**
- * وظيفة لرفع الصور والفيديوهات - تستخدم Cloudinary حالياً لضمان الاستقرار
- * @param {Buffer} fileBuffer - محتوى الملف
- * @param {string} fileName - الاسم الأصلي للملف
- * @param {string} mimeType - نوع الملف (image/jpeg, etc)
- * @returns {Promise<string>} - رابط الملف المباشر
+ * Uploads a file to Cloudinary
+ * @param {Buffer} fileBuffer - File content
+ * @param {string} fileName - Original file name
+ * @param {string} mimeType - File mime type
+ * @returns {Promise<string>} - Direct secure URL
  */
-const uploadToSupabase = async (fileBuffer, fileName, mimeType) => {
+const uploadToCloud = async (fileBuffer, fileName, mimeType) => {
     try {
         if (!fileBuffer) throw new Error('No file buffer provided');
 
-        // تحويل Buffer إلى Base64 ليتمكن Cloudinary من معالجته
+        // Convert Buffer to Base64 for Cloudinary
         const base64File = `data:${mimeType};base64,${fileBuffer.toString('base64')}`;
 
-        // الرفع إلى Cloudinary
+        // Upload to Cloudinary
         const result = await cloudinary.uploader.upload(base64File, {
             folder: 'agq_uploads',
             resource_type: 'auto'
@@ -30,4 +30,30 @@ const uploadToSupabase = async (fileBuffer, fileName, mimeType) => {
     }
 };
 
-module.exports = { uploadToSupabase };
+/**
+ * Deletes a file from Cloudinary given its URL
+ * @param {string} fileUrl - The full Cloudinary URL
+ */
+const deleteFileFromCloud = async (fileUrl) => {
+    if (!fileUrl || !fileUrl.includes('cloudinary')) return;
+
+    try {
+        // Extract public_id from URL (e.g., https://.../agq_uploads/abc123.jpg)
+        const parts = fileUrl.split('/');
+        const fileNameWithExtension = parts[parts.length - 1];
+        const publicIdWithoutExtension = fileNameWithExtension.split('.')[0];
+        const folder = parts[parts.length - 2];
+        const publicId = `${folder}/${publicIdWithoutExtension}`;
+
+        await cloudinary.uploader.destroy(publicId);
+        console.log('🗑️ Deleted from Cloudinary:', publicId);
+    } catch (err) {
+        console.error('❌ Cloudinary Delete Error:', err.message);
+    }
+};
+
+module.exports = {
+    uploadToSupabase: uploadToCloud, // Keep alias for backward compatibility
+    uploadToCloud,
+    deleteFileFromCloud
+};

@@ -309,13 +309,14 @@ const updateShopImages = async (req, res) => {
         const shopId = req.params.id;
         const userId = req.user.userId;
         const userRole = req.user.role;
-        const { uploadToSupabase } = require('../utils/storage');
+        const { uploadToSupabase, deleteFileFromCloud } = require('../utils/storage');
 
-        // Check Permissions
-        const shopCheck = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [shopId]);
+        // Check Permissions & Get old images
+        const shopCheck = await pool.query('SELECT owner_id, profile_picture, cover_picture FROM shops WHERE id = $1', [shopId]);
         if (shopCheck.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
 
-        const ownerId = shopCheck.rows[0].owner_id;
+        const { owner_id: ownerId, profile_picture: oldProfilePic, cover_picture: oldCoverPic } = shopCheck.rows[0];
+
         if (userRole !== 'admin' && ownerId !== userId) {
             return res.status(403).json({ error: 'Not authorized' });
         }
@@ -329,6 +330,8 @@ const updateShopImages = async (req, res) => {
             const url = await uploadToSupabase(file.buffer, file.originalname, file.mimetype);
             updateQueryPart.push(`profile_picture = $${index++}`);
             params.push(url);
+            // Cleanup old pic
+            if (oldProfilePic) deleteFileFromCloud(oldProfilePic);
         }
 
         if (req.files['cover_picture']) {
@@ -336,6 +339,8 @@ const updateShopImages = async (req, res) => {
             const url = await uploadToSupabase(file.buffer, file.originalname, file.mimetype);
             updateQueryPart.push(`cover_picture = $${index++}`);
             params.push(url);
+            // Cleanup old pic
+            if (oldCoverPic) deleteFileFromCloud(oldCoverPic);
         }
 
         if (updateQueryPart.length === 0) {
@@ -522,13 +527,21 @@ const deleteProduct = async (req, res) => {
         const { id, productId } = req.params; // id is shopId
         const userId = req.user.userId;
         const userRole = req.user.role;
+        const { deleteFileFromCloud } = require('../utils/storage');
 
         // Permissions
         const shopCheck = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [id]);
         if (!shopCheck.rows.length) return res.status(404).json({ error: 'Shop not found' });
         if (userRole !== 'admin' && shopCheck.rows[0].owner_id !== userId) return res.status(403).json({ error: 'Unauthorized' });
 
+        // Get product image before delete
+        const prodData = await pool.query('SELECT image_url FROM shop_products WHERE id = $1 AND shop_id = $2', [productId, id]);
+        const imageUrl = prodData.rows[0]?.image_url;
+
         await pool.query('DELETE FROM shop_products WHERE id = $1 AND shop_id = $2', [productId, id]);
+
+        if (imageUrl) deleteFileFromCloud(imageUrl);
+
         res.json({ message: 'Product deleted' });
     } catch (e) {
         console.error('Delete product error:', e);
