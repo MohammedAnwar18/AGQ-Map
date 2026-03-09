@@ -176,6 +176,7 @@ const MapComponent = () => {
     const [showAIChat, setShowAIChat] = useState(false);
     const [showNews, setShowNews] = useState(false);
     const [showCommunities, setShowCommunities] = useState(false);
+    const [showMoreMenu, setShowMoreMenu] = useState(false);
     const [hasUnreadCommunity, setHasUnreadCommunity] = useState(false);
 
     // Community Mode State
@@ -708,8 +709,8 @@ const MapComponent = () => {
     return (
         <div className="map-page" style={{ position: 'relative', height: '100vh', width: '100vw', overflow: 'hidden' }}>
 
-            {/* Top Bar */}
-            <div className="top-bar glass" >
+            {/* Top Bar - Clean & Minimalist */}
+            <div className="top-bar">
                 <div className="top-bar-left">
                     <div className="app-logo">
                         <svg version="1.0" xmlns="http://www.w3.org/2000/svg"
@@ -718,7 +719,7 @@ const MapComponent = () => {
                             className="logo-image-small"
                         >
                             <g transform="translate(0.000000,500.000000) scale(0.100000,-0.100000)"
-                                fill="#000000" stroke="none">
+                                fill="#fbab15" stroke="none">
                                 <path d="M2405 4330 c-192 -50 -340 -198 -396 -395 -18 -63 -18 -241 0 -315 20 -82 70 -227 102 -294 16 -33 29 -65 29 -71 0 -7 -27 -18 -59 -24 l-60 -12 -233 -286 c-128 -157 -238 -291 -243 -297 -13 -13 -199 -241 -308 -375 -42 -52 -76 -100 -74 -106 7 -19 72 -9 212 34 77 24 154 47 170 51 17 5 68 20 115 34 47 14 93 26 102 26 9 0 149 -67 310 -149 l293 -149 55 15 c30 8 87 23 125 33 39 10 122 32 185 49 63 17 143 38 178 47 l62 17 160 191 c87 105 198 238 245 296 48 58 97 116 109 130 12 14 46 54 75 90 29 36 70 85 91 110 140 167 170 206 170 222 0 27 4 28 -347 -61 -133 -34 -249 -61 -258 -61 -13 0 -229 105 -263 128 -9 6 -6 20 13 61 77 158 119 293 137 436 29 238 -92 469 -304 581 -121 63 -261 79 -393 44z m237 -51 c171 -36 321 -172 381 -347 25 -74 26 -228 2 -327 -56 -235 -206 -518 -409 -772 -27 -35 -53 -63 -56 -63 -11 0 -189 228 -246 316 -113 172 -204 374 -245 544 -18 72 -18 254 0 300 34 90 71 149 131 210 121 123 279 173 442 139z m-449 -1111 c8 -13 33 -53 57 -91 45 -72 45 -73 0 -117 -3 -3 -25 -30 -50 -60 -25 -30 -52 -64 -61 -75 -10 -11 -46 -54 -80 -96 -35 -42 -118 -142 -183 -223 l-119 -146 -66 -20 c-154 -46 -406 -118 -408 -116 -1 1 26 36 60 77 34 42 113 138 176 215 63 76 141 171 172 209 32 39 126 153 209 255 126 154 157 187 188 196 60 19 90 17 105 -8z m848 -69 c106 -54 118 -63 107 -77 -22 -28 -352 -427 -358 -432 -3 -3 -24 -27 -46 -55 -22 -27 -118 -143 -212 -257 l-172 -207 -58 27 c-112 54 -467 234 -475 241 -6 6 224 299 347 441 11 14 50 60 84 103 35 42 65 77 66 77 2 0 23 -26 47 -57 45 -61 157 -193 174 -205 5 -4 15 -8 21 -8 25 0 211 244 299 393 26 42 49 77 51 77 3 0 59 -27 125 -61z m659 35 c0 -5 -75 -100 -90 -114 -6 -5 -498 -597 -608 -731 -60 -73 -65 -77 -130 -94 -69 -18 -142 -37 -272 -73 -41 -11 -92 -24 -114 -28 l-39 -7 78 94 c43 52 108 130 144 174 36 43 169 203 295 355 125 151 234 283 240 292 8 11 90 36 246 76 261 67 250 64 250 56z" />
                                 <path d="M2465 4077 c-56 -19 -81 -33 -127 -75 -158 -142 -116 -403 81 -499 46 -23 69 -28 131 -28 95 1 162 29 223 94 181 193 57 501 -208 517 -33 2 -78 -2 -100 -9z m206 -83 c112 -61 159 -202 105 -315 -22 -48 -81 -107 -126 -126 -53 -24 -156 -21 -205 4 -142 74 -188 248 -98 365 82 106 210 134 324 72z" />
                                 <path d="M988 1674 c-16 -5 -18 -24 -18 -220 l0 -214 35 0 35 0 0 85 0 85 58 0 c84 1 133 15 163 48 37 41 45 94 22 139 -31 63 -57 75 -174 79 -57 1 -112 1 -121 -2z m207 -68 c20 -13 25 -25 25 -60 0 -62 -21 -77 -107 -79 l-68 -2 -3 69 c-4 98 -3 100 69 93 33 -3 71 -12 84 -21z" />
@@ -733,390 +734,340 @@ const MapComponent = () => {
                     </div>
                 </div>
 
-                {/* Mobile Menu Toggle Button */}
-                <button
-                    className="mobile-menu-toggle"
-                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                    style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', padding: '10px' }}
-                >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="28" height="28">
-                        <line x1="3" y1="12" x2="21" y2="12"></line>
-                        <line x1="3" y1="6" x2="21" y2="6"></line>
-                        <line x1="3" y1="18" x2="21" y2="18"></line>
-                    </svg>
-                </button>
+                <div className="top-bar-right" style={{ display: 'flex', gap: '15px' }}>
+                    <button className="btn-icon" onClick={() => setShowNotifications(true)} style={{ position: 'relative', border: 'none', background: 'transparent' }}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                        </svg>
+                        {unreadCount > 0 && <span className="notification-badge" style={{ top: '-5px', right: '-5px' }}>{unreadCount}</span>}
+                    </button>
 
-                <div className={`top-bar-right ${isMobileMenuOpen ? 'mobile-open' : ''}`} style={{ display: 'flex', gap: '8px' }}>
-                    <button className="btn-icon active-style" onClick={() => setActiveMapType(prev => {
-                        if (prev === 'satellite') return 'geomolg';
-                        return 'satellite';
-                    })} title="تغيير نوع الخريطة">
-                        {activeMapType === 'satellite' ? (
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <polygon points="12 2 2 7 12 12 22 7 12 2" />
-                                <polyline points="2 17 12 22 22 17" />
-                                <polyline points="2 12 12 17 22 12" />
-                            </svg>
-                        ) : (
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                                <circle cx="12" cy="10" r="3" />
-                            </svg>
-                        )}
-                    </button>
-                    <button className="btn-icon" onClick={() => setShowSearch(true)}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-                    </button>
-                    <button className="btn-icon" onClick={() => setShowAIChat(true)}>
-                        <svg viewBox="0 -960 960 960" width="24px" height="24px" fill="currentColor">
-                            <path d="M640-560v-126 126ZM174-132q-20 8-37-4.5T120-170v-560q0-13 7.5-23t20.5-15l212-72 240 84 186-72q20-8 37 4.5t17 33.5v337q-15-23-35.5-42T760-528v-204l-120 46v126q-21 0-41 3.5T560-546v-140l-160-56v523l-226 87Zm26-96 120-46v-468l-120 40v474Zm440-12q34 0 56.5-20t23.5-60q1-34-22.5-57T640-400q-34 0-57 23t-23 57q0 34 23 57t57 23Zm0 80q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 23-5.5 43.5T778-238l102 102-56 56-102-102q-18 11-38.5 16.5T640-160ZM320-742v468-468Z" />
+                    <button className="btn-icon" onClick={() => setActiveMapType(prev => prev === 'satellite' ? 'geomolg' : 'satellite')} style={{ border: 'none', background: 'transparent' }}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24">
+                            <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                            <polyline points="2 17 12 22 22 17" />
+                            <polyline points="2 12 12 17 22 12" />
                         </svg>
                     </button>
-                    <button className="btn-icon" onClick={() => { setShowCommunities(true); setHasUnreadCommunity(false); }} title="المجتمعات" style={{ position: 'relative' }}>
-                        <svg viewBox="0 -960 960 960" width="24px" height="24px" fill="currentColor">
-                            <path d="M38-428q-18-36-28-73T0-576q0-112 76-188t188-76q63 0 120 26.5t96 73.5q39-47 96-73.5T696-840q112 0 188 76t76 188q0 38-10 75t-28 73q-11-19-26-34t-35-24q9-23 14-45t5-45q0-78-53-131t-131-53q-81 0-124.5 44.5T480-616q-48-56-91.5-100T264-760q-78 0-131 53T80-576q0 23 5 45t14 45q-20 9-35 24t-26 34ZM0-80v-63q0-44 44.5-70.5T160-240q13 0 25 .5t23 2.5q-14 20-21 43t-7 49v65H0Zm240 0v-65q0-65 66.5-105T480-290q108 0 174 40t66 105v65H240Zm540 0v-65q0-26-6.5-49T754-237q11-2 22.5-2.5t23.5-.5q72 0 116 26.5t44 70.5v63H780ZM480-210q-57 0-102 15t-53 35h311q-9-20-53.5-35T480-210Zm-320-70q-33 0-56.5-23.5T80-360q0-34 23.5-57t56.5-23q34 0 57 23t23 57q0 33-23 56.5T160-280Zm640 0q-33 0-56.5-23.5T720-360q0-34 23.5-57t56.5-23q34 0 57 23t23 57q0 33-23 56.5T800-280Zm-320-40q-50 0-85-35t-35-85q0-51 35-85.5t85-34.5q51 0 85.5 34.5T600-440q0 50-34.5 85T480-320Zm0-160q-17 0-28.5 11.5T440-440q0 17 11.5 28.5T480-400q17 0 28.5-11.5T520-440q0-17-11.5-28.5T480-480Zm0 40Zm1 280Z" />
+
+                    <button className="btn-icon" onClick={() => setShowMoreMenu(!showMoreMenu)} style={{ border: 'none', background: 'transparent' }}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24">
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line>
                         </svg>
-                        {hasUnreadCommunity && (
-                            <span style={{
-                                position: 'absolute',
-                                top: '8px',
-                                right: '8px',
-                                width: '10px',
-                                height: '10px',
-                                backgroundColor: '#ff4757',
-                                borderRadius: '50%',
-                                border: '2px solid white'
-                            }}></span>
-                        )}
-                    </button>
-                    <button className="btn-icon notification-btn" onClick={() => setShowNotifications(true)}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
-                        {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
-                    </button>
-                    <button className="btn-icon" onClick={() => setShowShops(true)} title="محلاتي">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 0 1-8 0" /></svg>
-                    </button>
-                    {hasManagedShops && (
-                        <button className="btn-icon" onClick={() => setShowManagedShops(true)} title="إدارة محلاتي">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>
-                        </button>
-                    )}
-                    <button className="btn-icon" onClick={() => setShowFriends(true)} title="الأصدقاء">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-                    </button>
-                    <button className="btn-icon" onClick={() => setShowProfile(true)}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="7" r="4" /><path d="M5.5 21c0-3.5 2.5-6 6.5-6s6.5 2.5 6.5 6" /></svg>
-                    </button>
-                    <button className="btn-icon" onClick={() => setShowNews(true)} title="News Layer">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2" /><path d="M18 14h-8" /><path d="M15 18h-5" /><path d="M10 6h8v4h-8V6Z" /></svg>
-                    </button>
-                    {user?.role === 'admin' && (
-                        <button className="btn-icon" onClick={() => window.location.href = '/admin'}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px', height: '20px' }}><circle cx="12" cy="12" r="3" /><path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24" /></svg>
-                        </button>
-                    )}
-                    <button className="btn-icon btn-logout" onClick={logout}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px', height: '20px' }}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
                     </button>
                 </div>
             </div>
 
-            {/* Community Header Overlay */}
-            {currentCommunity && (
-                <div style={{
-                    position: 'absolute', top: '120px', left: '50%', transform: 'translateX(-50%)',
-                    zIndex: 900, background: 'rgba(255,255,255,0.9)', padding: '10px 20px', borderRadius: '20px',
-                    boxShadow: '0 4px 15px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '10px',
-                    backdropFilter: 'blur(5px)'
-                }}>
-                    <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#1a5f7a' }}>مجتمع: {currentCommunity.name}</span>
-                    <button onClick={handleExitCommunity} style={{
-                        background: '#ff4757', color: 'white', border: 'none', borderRadius: '15px',
-                        padding: '5px 12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem'
-                    }}>خروج</button>
+            {/* More Menu Dropdown */}
+            {showMoreMenu && (
+                <div className="more-menu-dropdown fade-in">
+                    <button onClick={() => { setShowCommunities(true); setShowMoreMenu(false); }}>
+                        <span>مجتمعاتي</span>
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+                    </button>
+                    <button onClick={() => { setShowShops(true); setShowMoreMenu(false); }}>
+                        <span>محلاتي</span>
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 0 1-8 0" /></svg>
+                    </button>
+                    <button onClick={() => { setShowFriends(true); setShowMoreMenu(false); }}>
+                        <span>الأصدقاء</span>
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+                    </button>
+                    <button onClick={() => { setShowNews(true); setShowMoreMenu(false); }}>
+                        <span>الأخبار</span>
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2" /><path d="M18 14h-8" /><path d="M15 18h-5" /><path d="M10 6h8v4h-8V6Z" /></svg>
+                    </button>
+                    {user?.role === 'admin' && (
+                        <button onClick={() => window.location.href = '/admin'}>
+                            <span>الإدارة</span>
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24" /></svg>
+                        </button>
+                    )}
+                    <div className="menu-divider"></div>
+                    <button onClick={logout} style={{ color: '#ff4757' }}>
+                        <span>تسجيل خروج</span>
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
+                    </button>
                 </div>
             )}
 
-            {/* MapLibre Map */}
-            <Map
-
-                ref={mapRef}
-                {...viewState}
-                onMove={evt => setViewState(evt.viewState)}
-                mapStyle={mapStyle}
-                style={{ width: '100%', height: '100%' }}
-                maxPitch={85} // Allow profound 3D tilt
-                attributionControl={false} // Hide attribution as requested
-
-            >
-                {/* Visual Route */}
-                {routePath && (
-                    <Source id="route" type="geojson" data={routePath}>
-                        <Layer
-                            id="route-layer"
-                            type="line"
-                            layout={{ "line-join": "round", "line-cap": "round" }}
-                            paint={{
-                                "line-color": "#fbab15",
-                                "line-width": 6,
-                                "line-opacity": 0.85
-                            }}
-                        />
-                    </Source>
+            {/* Main Content Area */}
+            <div className="map-container-wrapper" style={{ height: 'calc(100vh - 75px)', width: '100%' }}>
+                {/* Community Header Overlay */}
+                {currentCommunity && (
+                    <div style={{
+                        position: 'absolute', top: '120px', left: '50%', transform: 'translateX(-50%)',
+                        zIndex: 900, background: 'rgba(255,255,255,0.9)', padding: '10px 20px', borderRadius: '20px',
+                        boxShadow: '0 4px 15px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '10px',
+                        backdropFilter: 'blur(5px)'
+                    }}>
+                        <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#1a5f7a' }}>مجتمع: {currentCommunity.name}</span>
+                        <button onClick={handleExitCommunity} style={{
+                            background: '#ff4757', color: 'white', border: 'none', borderRadius: '15px',
+                            padding: '5px 12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem'
+                        }}>خروج</button>
+                    </div>
                 )}
 
-                {/* User Location Marker */}
-                {userLocation && (
-                    <Marker longitude={userLocation.longitude} latitude={userLocation.latitude} anchor="center">
-                        <div className="custom-location-marker" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
-                                <circle cx="40" cy="40" r="10" fill="#fbab15" opacity="0.6"><animate attributeName="r" from="10" to="38" dur="2s" repeatCount="indefinite" /><animate attributeName="opacity" from="0.6" to="0" dur="2s" repeatCount="indefinite" /></circle>
-                                <circle cx="40" cy="40" r="10" fill="#ffffff" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.3))' }} />
-                                <circle cx="40" cy="40" r="7" fill="#fbab15" />
-                            </svg>
-                        </div>
-                    </Marker>
-                )}
-
-                {/* Posts Markers */}
-                {posts.map(post => (
-                    <Marker
-                        key={post.id}
-                        longitude={parseFloat(post.location.longitude)}
-                        latitude={parseFloat(post.location.latitude)}
-                        anchor="bottom"
-                        onClick={e => {
-                            e.originalEvent.stopPropagation();
-                            setSelectedPost(post);
-                        }}
-                    >
-                        <div style={{
-                            backgroundImage: `url(${getImageUrl(post.user?.profile_picture) || '/default-avatar.png'})`,
-                            width: '45px', height: '45px',
-                            backgroundSize: 'cover', backgroundPosition: 'center',
-                            borderRadius: '50%', border: '2px solid white',
-                            boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
-                            cursor: 'pointer'
-                        }}></div>
-                    </Marker>
-                ))}
-
-
-
-                {/* Friends Markers (Hide in Community Mode) */}
-                {!currentCommunity && friendsMap.map(friend => (
-                    <Marker
-                        key={`friend-${friend.id}`}
-                        longitude={parseFloat(friend.last_longitude)}
-                        latitude={parseFloat(friend.last_latitude)}
-                        anchor="bottom"
-                    >
-                        <div style={{
-                            backgroundImage: `url(${getImageUrl(friend.profile_picture) || '/default-avatar.png'})`,
-                            width: '45px', height: '45px',
-                            backgroundSize: 'cover', backgroundPosition: 'center',
-                            borderRadius: '50%', border: '2px solid #22c55e',
-                            boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
-                            cursor: 'pointer'
-                        }}></div>
-                    </Marker>
-                ))}
-
-                {/* Managed and Followed Shops Markers - Visible only in World Mode */}
-                {console.log("Shops combined for map:", [...followedShopsMap, ...managedShopsMap].length)}
-                {!currentCommunity && [...followedShopsMap, ...managedShopsMap.filter(m => !followedShopsMap.some(f => f.id === m.id))].filter(shop =>
-                    shop.latitude != null &&
-                    shop.longitude != null &&
-                    !isNaN(parseFloat(shop.latitude))
-                ).flatMap(shop => [
-                    <Marker
-                        key={`shop-${shop.id}`}
-                        longitude={parseFloat(shop.longitude)}
-                        latitude={parseFloat(shop.latitude)}
-                        anchor="center"
-                        style={{ cursor: 'pointer', zIndex: 50 }}
-                        onClick={e => {
-                            e.originalEvent.stopPropagation();
-                            setSelectedShopProfile(shop);
-                            setShowShopProfile(true);
-                        }}
-                    >
-                        <div style={{
-                            width: '60px',
-                            height: '60px',
-                            borderRadius: '50%',
-                            backgroundColor: '#fbab15',
-                            backgroundImage: `url(${getImageUrl(shop.profile_picture) || getImageUrl(shop.image_url) || '/default-shop.png'})`,
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
-                            border: '3px solid white',
-                            boxShadow: '0 4px 10px rgba(0,0,0,0.4)',
-                            position: 'relative'
-                        }}>
-                            {/* Simple Name Badge */}
-                            <div style={{
-                                position: 'absolute',
-                                bottom: '-22px',
-                                left: '50%',
-                                transform: 'translateX(-50%)',
-                                backgroundColor: 'white',
-                                padding: '2px 8px',
-                                borderRadius: '12px',
-                                fontSize: '11px',
-                                fontWeight: 'bold',
-                                color: 'black',
-                                border: '1px solid #fbab15',
-                                whiteSpace: 'nowrap',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                            }}>
-                                {shop.name}
-                            </div>
-                            {/* Category Emoji Badge */}
-                            <div style={{
-                                position: 'absolute',
-                                top: '-4px',
-                                right: '-4px',
-                                background: 'white',
-                                borderRadius: '50%',
-                                width: '22px',
-                                height: '22px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '13px',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                                border: '1px solid #ddd'
-                            }}>
-                                {shop.category === 'مكتب تاكسي' ? '🚕' : '🏪'}
-                            </div>
-                        </div>
-                    </Marker>,
-
-                    // Active Drivers
-                    ...(shop.active_drivers || []).filter(driver => driver.latitude && driver.longitude).map(driver => (
-                        <Marker
-                            key={`driver-${driver.id}`}
-                            longitude={parseFloat(driver.longitude)}
-                            latitude={parseFloat(driver.latitude)}
-                            anchor="bottom"
-                        >
-                            <div
-                                title={`سائق: ${driver.full_name || driver.username}`}
-                                style={{
-                                    width: '40px', height: '40px',
-                                    backgroundImage: `url(${getImageUrl(driver.profile_picture) || '/default-avatar.png'})`,
-                                    backgroundSize: 'cover',
-                                    borderRadius: '50%',
-                                    border: '3px solid #fbab15',
-                                    boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                                    position: 'relative',
-                                    cursor: 'help'
+                <Map
+                    ref={mapRef}
+                    {...viewState}
+                    onMove={evt => setViewState(evt.viewState)}
+                    mapStyle={mapStyle}
+                    style={{ width: '100%', height: '100%' }}
+                    maxPitch={85}
+                    attributionControl={false}
+                >
+                    {/* Visual Route */}
+                    {routePath && (
+                        <Source id="route" type="geojson" data={routePath}>
+                            <Layer
+                                id="route-layer"
+                                type="line"
+                                layout={{ "line-join": "round", "line-cap": "round" }}
+                                paint={{
+                                    "line-color": "#fbab15",
+                                    "line-width": 6,
+                                    "line-opacity": 0.85
                                 }}
-                            >
-                                <div style={{ position: 'absolute', bottom: -8, right: -8, fontSize: '20px', filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.3))' }}>🚕</div>
+                            />
+                        </Source>
+                    )}
+
+                    {/* User Location Marker */}
+                    {userLocation && (
+                        <Marker longitude={userLocation.longitude} latitude={userLocation.latitude} anchor="center">
+                            <div className="custom-location-marker" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
+                                    <circle cx="40" cy="40" r="10" fill="#fbab15" opacity="0.6"><animate attributeName="r" from="10" to="38" dur="2s" repeatCount="indefinite" /><animate attributeName="opacity" from="0.6" to="0" dur="2s" repeatCount="indefinite" /></circle>
+                                    <circle cx="40" cy="40" r="10" fill="#ffffff" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.3))' }} />
+                                    <circle cx="40" cy="40" r="7" fill="#fbab15" />
+                                </svg>
                             </div>
                         </Marker>
-                    ))
-                ])}
+                    )}
+
+                    {/* Posts Markers */}
+                    {posts.map(post => (
+                        <Marker
+                            key={post.id}
+                            longitude={parseFloat(post.location.longitude)}
+                            latitude={parseFloat(post.location.latitude)}
+                            anchor="bottom"
+                            onClick={e => {
+                                e.originalEvent.stopPropagation();
+                                setSelectedPost(post);
+                            }}
+                        >
+                            <div style={{
+                                backgroundImage: `url(${getImageUrl(post.user?.profile_picture) || '/default-avatar.png'})`,
+                                width: '45px', height: '45px',
+                                backgroundSize: 'cover', backgroundPosition: 'center',
+                                borderRadius: '50%', border: '2px solid white',
+                                boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
+                                cursor: 'pointer'
+                            }}></div>
+                        </Marker>
+                    ))}
 
 
-                {/* Search Results */}
-                {aiResults.map((place, index) => (
-                    <Marker key={`ai-${index}`} longitude={parseFloat(place.lon)} latitude={parseFloat(place.lat)} color="red">
-                        {/* Default Red Pin */}
-                    </Marker>
-                ))}
 
-                {/* Palestinian Cities Labels (Satellite Only) - Hide when zoomed in to show shops */}
-                {activeMapType === 'satellite' && viewState.zoom <= 13.5 && PALESTINIAN_CITIES.map((city, index) => (
-                    <Marker key={`city-${index}`} longitude={city.lon} latitude={city.lat} anchor="bottom">
-                        <div style={{
-                            color: 'white',
-                            textShadow: '0 2px 4px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.5)',
-                            fontWeight: '600',
-                            fontSize: '13px',
-                            textAlign: 'center',
-                            whiteSpace: 'nowrap',
-                            pointerEvents: 'none',
-                            fontFamily: "'Tajawal', 'Segoe UI', sans-serif",
-                            transform: 'translateY(-5px)', // Slight lift
-                            background: 'rgba(0, 0, 0, 0.2)', // Subtle backing
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            backdropFilter: 'blur(2px)'
-                        }}>
-                            {city.name}
-                        </div>
-                    </Marker>
-                ))}
+                    {/* Friends Markers (Hide in Community Mode) */}
+                    {!currentCommunity && friendsMap.map(friend => (
+                        <Marker
+                            key={`friend-${friend.id}`}
+                            longitude={parseFloat(friend.last_longitude)}
+                            latitude={parseFloat(friend.last_latitude)}
+                            anchor="bottom"
+                        >
+                            <div style={{
+                                backgroundImage: `url(${getImageUrl(friend.profile_picture) || '/default-avatar.png'})`,
+                                width: '45px', height: '45px',
+                                backgroundSize: 'cover', backgroundPosition: 'center',
+                                borderRadius: '50%', border: '2px solid #22c55e',
+                                boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
+                                cursor: 'pointer'
+                            }}></div>
+                        </Marker>
+                    ))}
 
-                {/* Popups */}
-                {selectedPost && selectedPost.location && (
-                    <Popup
-                        longitude={parseFloat(selectedPost.location.longitude)}
-                        latitude={parseFloat(selectedPost.location.latitude)}
-                        anchor="top"
-                        onClose={() => setSelectedPost(null)}
-                        closeOnClick={false}
-                    >
-                        <div>
-                            {/* Needs PostDetailModal to handle full view, but this is simple popup text if needed */}
-                            {/* We don't really use this popup with the modal logic, but let's keep it clean */}
-                        </div>
-                    </Popup>
-                )}
-            </Map>
+                    {/* Managed and Followed Shops Markers - Visible only in World Mode */}
+                    {console.log("Shops combined for map:", [...followedShopsMap, ...managedShopsMap].length)}
+                    {!currentCommunity && [...followedShopsMap, ...managedShopsMap.filter(m => !followedShopsMap.some(f => f.id === m.id))].filter(shop =>
+                        shop.latitude != null &&
+                        shop.longitude != null &&
+                        !isNaN(parseFloat(shop.latitude))
+                    ).flatMap(shop => [
+                        <Marker
+                            key={`shop-${shop.id}`}
+                            longitude={parseFloat(shop.longitude)}
+                            latitude={parseFloat(shop.latitude)}
+                            anchor="center"
+                            style={{ cursor: 'pointer', zIndex: 50 }}
+                            onClick={e => {
+                                e.originalEvent.stopPropagation();
+                                setSelectedShopProfile(shop);
+                                setShowShopProfile(true);
+                            }}
+                        >
+                            <div style={{
+                                width: '60px',
+                                height: '60px',
+                                borderRadius: '50%',
+                                backgroundColor: '#fbab15',
+                                backgroundImage: `url(${getImageUrl(shop.profile_picture) || getImageUrl(shop.image_url) || '/default-shop.png'})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                                border: '3px solid white',
+                                boxShadow: '0 4px 10px rgba(0,0,0,0.4)',
+                                position: 'relative'
+                            }}>
+                                {/* Simple Name Badge */}
+                                <div style={{
+                                    position: 'absolute',
+                                    bottom: '-22px',
+                                    left: '50%',
+                                    transform: 'translateX(-50%)',
+                                    backgroundColor: 'white',
+                                    padding: '2px 8px',
+                                    borderRadius: '12px',
+                                    fontSize: '11px',
+                                    fontWeight: 'bold',
+                                    color: 'black',
+                                    border: '1px solid #fbab15',
+                                    whiteSpace: 'nowrap',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                }}>
+                                    {shop.name}
+                                </div>
+                                {/* Category Emoji Badge */}
+                                <div style={{
+                                    position: 'absolute',
+                                    top: '-4px',
+                                    right: '-4px',
+                                    background: 'white',
+                                    borderRadius: '50%',
+                                    width: '22px',
+                                    height: '22px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '13px',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                                    border: '1px solid #ddd'
+                                }}>
+                                    {shop.category === 'مكتب تاكسي' ? '🚕' : '🏪'}
+                                </div>
+                            </div>
+                        </Marker>,
 
-            {/* Floating Actions */}
-            <div className="floating-actions">
-                <button className="fab primary" onClick={() => setShowCreatePost(true)}>
-                    <svg className="fab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="4" ry="4" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></svg>
-                </button>
-                <button className="fab secondary" onClick={() => setShowChat(true)}>
-                    <svg className="fab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" fill="rgba(255,255,255,0.1)" />
-                        <circle cx="8" cy="11.5" r="1.5" fill="currentColor" stroke="none" />
-                        <circle cx="12" cy="11.5" r="1.5" fill="currentColor" stroke="none" />
-                        <circle cx="16" cy="11.5" r="1.5" fill="currentColor" stroke="none" />
-                    </svg>
-                </button>
-                <button className="fab tertiary" onClick={handleCenterOnUser}>
-                    <svg className="fab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="10" r="3" /><path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 6.9 8 11.7z" /></svg>
-                </button>
+                        // Active Drivers
+                        ...(shop.active_drivers || []).filter(driver => driver.latitude && driver.longitude).map(driver => (
+                            <Marker
+                                key={`driver-${driver.id}`}
+                                longitude={parseFloat(driver.longitude)}
+                                latitude={parseFloat(driver.latitude)}
+                                anchor="bottom"
+                            >
+                                <div
+                                    title={`سائق: ${driver.full_name || driver.username}`}
+                                    style={{
+                                        width: '40px', height: '40px',
+                                        backgroundImage: `url(${getImageUrl(driver.profile_picture) || '/default-avatar.png'})`,
+                                        backgroundSize: 'cover',
+                                        borderRadius: '50%',
+                                        border: '3px solid #fbab15',
+                                        boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                                        position: 'relative',
+                                        cursor: 'help'
+                                    }}
+                                >
+                                    <div style={{ position: 'absolute', bottom: -8, right: -8, fontSize: '20px', filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.3))' }}>🚕</div>
+                                </div>
+                            </Marker>
+                        ))
+                    ])}
+
+
+                    {/* Search Results */}
+                    {aiResults.map((place, index) => (
+                        <Marker key={`ai-${index}`} longitude={parseFloat(place.lon)} latitude={parseFloat(place.lat)} color="red">
+                            {/* Default Red Pin */}
+                        </Marker>
+                    ))}
+
+                    {/* Palestinian Cities Labels (Satellite Only) - Hide when zoomed in to show shops */}
+                    {activeMapType === 'satellite' && viewState.zoom <= 13.5 && PALESTINIAN_CITIES.map((city, index) => (
+                        <Marker key={`city-${index}`} longitude={city.lon} latitude={city.lat} anchor="bottom">
+                            <div style={{
+                                color: 'white',
+                                textShadow: '0 2px 4px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.5)',
+                                fontWeight: '600',
+                                fontSize: '13px',
+                                textAlign: 'center',
+                                whiteSpace: 'nowrap',
+                                pointerEvents: 'none',
+                                fontFamily: "'Tajawal', 'Segoe UI', sans-serif",
+                                transform: 'translateY(-5px)', // Slight lift
+                                background: 'rgba(0, 0, 0, 0.2)', // Subtle backing
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                backdropFilter: 'blur(2px)'
+                            }}>
+                                {city.name}
+                            </div>
+                        </Marker>
+                    ))}
+
+                </Map>
             </div>
 
-            {/* User Info Bar */}
-            <div
-                className={`user-info glass ${isUserInfoExpanded ? 'expanded' : ''}`}
-                onClick={() => setIsUserInfoExpanded(!isUserInfoExpanded)}
-                style={{ cursor: 'pointer', flexDirection: 'column', alignItems: 'flex-start', transition: 'all 0.3s ease' }}
-            >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', width: '100%' }}>
-                    <div className="user-avatar"><img src={getImageUrl(user.profile_picture) || '/default-avatar.png'} alt={user.username} /></div>
-                    <div className="user-details" style={{ flex: 1, minWidth: '100px' }}>
-                        <h3 style={{ margin: 0, fontSize: '1rem' }}>{user.full_name || user.username}</h3>
-                        {!isUserInfoExpanded && (
-                            <div style={{ fontSize: '0.75rem', color: '#fbab15', marginTop: '2px' }}>اضغط للتفاصيل</div>
-                        )}
-                    </div>
-                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" style={{ transform: isUserInfoExpanded ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.3s ease', color: 'white' }}>
-                        <polyline points="6 9 12 15 18 9" />
+            {/* Bottom Navigation Panel - Instagram Style */}
+            <nav className="bottom-nav">
+                <button className={`nav-item ${!showSearch && !showAIChat && !showProfile && !showCommunities ? 'active' : ''}`} onClick={handleCenterOnUser}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                        <polyline points="9 22 9 12 15 12 15 22" />
                     </svg>
-                </div>
+                    <span>الخريطة</span>
+                </button>
 
-                {isUserInfoExpanded && (
-                    <div className="user-details-expanded" style={{ marginTop: '15px', width: '100%', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '10px' }}>
-                        <div className="user-posts-count" style={{ display: 'flex', flexDirection: 'column', fontSize: '0.85rem', opacity: 0.9, gap: '8px' }}>
-                            <span style={{ fontWeight: 'bold', color: '#fbab15', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                🕒 {currentTime.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'white' }}>
-                                📅 {currentTime.toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                            </span>
-                        </div>
-                    </div>
-                )}
-            </div>
+                <button className={`nav-item ${showSearch ? 'active' : ''}`} onClick={() => { setShowSearch(true); setShowAIChat(false); setShowCommunities(false); setShowProfile(false); }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                    <span>استكشاف</span>
+                </button>
+
+                <button className="nav-item center-btn" onClick={() => setShowCreatePost(true)}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                </button>
+
+                <button className={`nav-item ${showAIChat ? 'active' : ''}`} onClick={() => { setShowAIChat(true); setShowSearch(false); setShowCommunities(false); setShowProfile(false); }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                    </svg>
+                    <span>الذكاء الآلي</span>
+                </button>
+
+                <button className={`nav-item ${showProfile ? 'active' : ''}`} onClick={() => { setShowProfile(true); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); }}>
+                    <img
+                        src={getImageUrl(user.profile_picture) || '/default-avatar.png'}
+                        alt="Profile"
+                        style={{ width: '26px', height: '26px', borderRadius: '50%', border: showProfile ? '2px solid var(--primary)' : '1px solid #ddd' }}
+                    />
+                    <span>بروفيلي</span>
+                </button>
+            </nav>
+
+            {/* Floating Info Overlays for Navigation */}
 
             {/* Navigation Panel */}
             <NavigationPanel
