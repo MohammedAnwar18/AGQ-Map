@@ -465,23 +465,22 @@ const Login = () => {
             </div>
 
             <div style={{
-                position: 'absolute',
-                bottom: '30px', /* مسافة أفضل من الأسفل */
-                width: '100%',
-                left: 0,
                 textAlign: 'center',
-                color: 'rgba(255, 255, 255, 0.9)', /* لون أكثر سطوعاً ووضوحاً */
+                color: 'rgba(255, 255, 255, 0.9)',
                 fontSize: '0.95rem',
                 fontFamily: 'Tajawal, sans-serif',
                 zIndex: 10,
-                textShadow: '0 2px 4px rgba(0,0,0,0.6)', /* ظل أجمل للخط */
-                letterSpacing: '0.5px' /* مسافة مريحة بين الأحرف */
+                textShadow: '0 2px 4px rgba(0,0,0,0.6)',
+                letterSpacing: '0.5px',
+                marginTop: '2rem',
+                paddingBottom: '2rem'
             }}>
-                <p style={{ margin: 0, padding: 0, fontWeight: '600' /* خط أعرض قليلاً */ }}>
+                <p style={{ margin: 0, padding: 0, fontWeight: '600' }}>
                     &copy; {new Date().getFullYear()} PalNova. جميع الحقوق محفوظة.
                 </p>
             </div>
         </div>
+        </div >
     );
 };
 
