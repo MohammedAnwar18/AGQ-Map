@@ -707,7 +707,7 @@ const MapComponent = () => {
     if (!user) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading...</div>;
 
     return (
-        <div className="map-page" style={{ position: 'relative', height: '100vh', width: '100vw', overflow: 'hidden' }}>
+        <div className="map-page" style={{ position: 'relative', height: '100dvh', width: '100vw', overflow: 'hidden' }}>
 
             {/* Top Bar - Clean & Minimalist */}
             <div className="top-bar">
@@ -795,7 +795,7 @@ const MapComponent = () => {
             )}
 
             {/* Main Content Area */}
-            <div className="map-container-wrapper" style={{ height: 'calc(100vh - 75px)', width: '100%' }}>
+            <div className="map-container-wrapper" style={{ height: '100%', width: '100%' }}>
                 {/* Community Header Overlay */}
                 {currentCommunity && (
                     <div style={{

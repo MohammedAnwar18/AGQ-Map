@@ -139,12 +139,12 @@
 
 /* Top Bar Styling - Professional Header */
 .top-bar {
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     right: 0;
     height: 60px;
-    z-index: 1000;
+    z-index: 2100;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -297,7 +297,7 @@
 
 /* Bottom Navigation Bar - Instagram Style */
 .bottom-nav {
-    position: absolute;
+    position: fixed;
     bottom: 0px;
     left: 0;
     right: 0;
@@ -311,7 +311,7 @@
     align-items: center;
     padding: 0 10px;
     padding-bottom: env(safe-area-inset-bottom);
-    z-index: 1500;
+    z-index: 2200;
     box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4);
 }
 
@@ -433,7 +433,7 @@
 
 /* More Menu Dropdown Styles */
 .more-menu-dropdown {
-    position: absolute;
+    position: fixed;
     top: 65px;
     right: 20px;
     width: 220px;
@@ -443,7 +443,7 @@
     border: 1px solid rgba(251, 171, 21, 0.3);
     border-radius: 18px;
     padding: 10px;
-    z-index: 2000;
+    z-index: 3000;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
     display: flex;
     flex-direction: column;
