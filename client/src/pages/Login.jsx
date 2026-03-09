@@ -253,7 +253,7 @@ const Login = () => {
                                                 value={formData.username}
                                                 onChange={handleChange}
                                                 className="input"
-                                                placeholder="مثلاً: mohammad"
+                                                placeholder="أدخل اسم المستخدم"
                                                 required
                                                 autoFocus
                                             />
@@ -284,7 +284,7 @@ const Login = () => {
                                                         value={formData.full_name}
                                                         onChange={handleChange}
                                                         className="input"
-                                                        placeholder="مثلاً: محمد أنور"
+                                                        placeholder="أدخل اسمك الكامل"
                                                         required
                                                     />
                                                 </div>
