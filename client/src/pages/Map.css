@@ -333,14 +333,11 @@
 .nav-item svg {
     width: 26px;
     height: 26px;
-    margin-bottom: 4px;
     transition: transform 0.2s ease;
 }
 
 .nav-item span {
-    font-size: 0.65rem;
-    font-weight: 600;
-    font-family: 'Tajawal', sans-serif;
+    display: none;
 }
 
 .nav-item:hover {
@@ -369,6 +366,33 @@
 .nav-item.center-btn:hover {
     transform: scale(1.1) translateY(-5px);
     box-shadow: 0 12px 30px rgba(251, 171, 21, 0.6);
+}
+
+.nav-profile-frame {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+    background: linear-gradient(135deg, #fbab15 0%, #f59e0b 100%);
+    box-shadow: 0 2px 8px rgba(251, 171, 21, 0.3);
+    transition: all 0.3s ease;
+}
+
+.profile-nav-item.active .nav-profile-frame {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 2px rgba(251, 171, 21, 0.5), 0 4px 12px rgba(251, 171, 21, 0.4);
+}
+
+.nav-profile-img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #0f172a;
+    /* Same as background to create a gap */
 }
 
 .nav-item.center-btn svg {

@@ -1041,7 +1041,6 @@ const MapComponent = () => {
                         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                         <polyline points="9 22 9 12 15 12 15 22" />
                     </svg>
-                    <span>الخريطة</span>
                 </button>
 
                 <button className={`nav-item ${showSearch ? 'active' : ''}`} onClick={() => { setShowSearch(true); setShowAIChat(false); setShowCommunities(false); setShowProfile(false); }}>
@@ -1049,7 +1048,6 @@ const MapComponent = () => {
                         <circle cx="11" cy="11" r="8" />
                         <line x1="21" y1="21" x2="16.65" y2="16.65" />
                     </svg>
-                    <span>استكشاف</span>
                 </button>
 
                 <button className="nav-item center-btn" onClick={() => setShowCreatePost(true)}>
@@ -1063,16 +1061,16 @@ const MapComponent = () => {
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
                     </svg>
-                    <span>الذكاء الآلي</span>
                 </button>
 
-                <button className={`nav-item ${showProfile ? 'active' : ''}`} onClick={() => { setShowProfile(true); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); }}>
-                    <img
-                        src={getImageUrl(user.profile_picture) || '/default-avatar.png'}
-                        alt="Profile"
-                        style={{ width: '26px', height: '26px', borderRadius: '50%', border: showProfile ? '2px solid var(--primary)' : '1px solid #ddd' }}
-                    />
-                    <span>بروفيلي</span>
+                <button className={`nav-item profile-nav-item ${showProfile ? 'active' : ''}`} onClick={() => { setShowProfile(true); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); }}>
+                    <div className="nav-profile-frame">
+                        <img
+                            src={getImageUrl(user.profile_picture) || '/default-avatar.png'}
+                            alt="Profile"
+                            className="nav-profile-img"
+                        />
+                    </div>
                 </button>
             </nav>
 
