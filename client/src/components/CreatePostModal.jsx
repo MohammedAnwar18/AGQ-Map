@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { postService } from '../services/api';
+import { optimizeImage } from '../utils/imageOptimizer';
 import './Modal.css';
 
 const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId }) => {
@@ -85,9 +86,11 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
                 formData.append('community_id', communityId);
             }
 
-            images.forEach((img) => {
-                formData.append('media', img);
-            });
+            // Optimize images before upload
+            for (const img of images) {
+                const optimizedFile = await optimizeImage(img, { maxWidth: 1200, quality: 0.7 });
+                formData.append('media', optimizedFile);
+            }
 
             // محاولة الحصول على العنوان (Reverse Geocoding)
             try {

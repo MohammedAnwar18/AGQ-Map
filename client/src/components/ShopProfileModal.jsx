@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { shopService, postService, commentService, getImageUrl } from '../services/api';
 import { cartService } from '../services/cartService';
+import { optimizeImage } from '../utils/imageOptimizer';
 import CartModal from './CartModal';
 import './Modal.css';
 
@@ -186,9 +187,14 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
 
     const handleImageUpload = async (type, file) => {
         if (!file) return;
-        const formData = new FormData();
-        formData.append(type, file);
+
         try {
+            // Optimize image before upload
+            const optimizedFile = await optimizeImage(file, { maxWidth: 1024, quality: 0.75 });
+
+            const formData = new FormData();
+            formData.append(type, optimizedFile);
+
             const res = await shopService.uploadImages(shopData.id, formData);
             setShopData(prev => ({
                 ...prev,
@@ -306,9 +312,16 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
     const handleCreatePost = async (e) => {
         e.preventDefault();
         try {
+            setLoading(true);
             const formData = new FormData();
             formData.append('content', newPostContent);
-            Array.from(postImages).forEach(f => formData.append('images', f));
+
+            // Loop through images and optimize each one
+            for (let i = 0; i < postImages.length; i++) {
+                const optimizedFile = await optimizeImage(postImages[i], { maxWidth: 1200 });
+                formData.append('images', optimizedFile);
+            }
+
             const post = await shopService.createPost(shopData.id, formData);
             setPosts([post, ...posts]);
             setNewPostContent('');
@@ -317,6 +330,8 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
         } catch (e) {
             console.error(e);
             alert('فشل النشر');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -347,10 +362,22 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
 
             let savedProduct;
             if (editingProduct) {
+                // Optimize product image if provided
+                if (newProduct.image) {
+                    const optimizedFile = await optimizeImage(newProduct.image, { maxWidth: 800 });
+                    formData.append('image', optimizedFile);
+                }
+
                 savedProduct = await shopService.updateProduct(shopData.id, editingProduct.id, formData);
                 setProducts(products.map(p => p.id === editingProduct.id ? savedProduct : p));
                 alert('تم تعديل المنتج');
             } else {
+                // Optimize product image
+                if (newProduct.image) {
+                    const optimizedFile = await optimizeImage(newProduct.image, { maxWidth: 800 });
+                    formData.append('image', optimizedFile);
+                }
+
                 savedProduct = await shopService.addProduct(shopData.id, formData);
                 setProducts([savedProduct, ...products]);
                 alert('تم إضافة المنتج');
