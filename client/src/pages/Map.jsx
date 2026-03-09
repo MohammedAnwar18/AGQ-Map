@@ -1059,7 +1059,15 @@ const MapComponent = () => {
 
                 <button className={`nav-item ${showAIChat ? 'active' : ''}`} onClick={() => { setShowAIChat(true); setShowSearch(false); setShowCommunities(false); setShowProfile(false); }}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                        <path d="M12 2v4" />
+                        <path d="M12 18v4" />
+                        <path d="M4.93 4.93l2.83 2.83" />
+                        <path d="M16.24 16.24l2.83 2.83" />
+                        <path d="M2 12h4" />
+                        <path d="M18 12h4" />
+                        <path d="M4.93 19.07l2.83-2.83" />
+                        <path d="M16.24 7.76l2.83-2.83" />
+                        <path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" />
                     </svg>
                 </button>
 
