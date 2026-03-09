@@ -1,27 +1,22 @@
 .news-modal-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(4px);
-    z-index: 2000;
+    inset: 0;
+    background: var(--bg-primary);
+    z-index: 4000;
     display: flex;
-    justify-content: flex-end;
-    /* Sidebar style */
+    flex-direction: column;
 }
 
 .news-panel {
-    background: rgba(255, 255, 255, 0.95);
-    width: 100%;
-    max-width: 450px;
-    height: 100%;
-    box-shadow: -5px 0 25px rgba(0, 0, 0, 0.1);
+    background: var(--bg-primary);
+    width: 100vw;
+    height: 100vh;
+    max-width: 100vw;
+    box-shadow: none;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: fadeInPage 0.3s ease-out;
 }
 
 @keyframes slideInRight {

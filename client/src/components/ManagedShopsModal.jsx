@@ -22,7 +22,7 @@ const ManagedShopsModal = ({ onClose, onShopClick }) => {
 
     return (
         <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-container" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-container" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
                     <h2>إدارة محلاتي</h2>
                     <button className="btn-close" onClick={onClose}>✕</button>

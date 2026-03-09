@@ -1,8 +1,8 @@
 /* Chat Modal Specific Fixes */
 .chat-modal-container {
-    height: 85vh !important;
-    /* Fixed tall height */
-    max-height: 90vh !important;
+    width: 100vw;
+    height: 100vh !important;
+    max-height: 100vh !important;
     display: flex;
     flex-direction: column;
 }

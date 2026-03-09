@@ -520,18 +520,14 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
     const profileUrl = getImageUrl(shopData.profile_picture);
 
     return (
-        <div className="modal-overlay" onClick={onClose} style={{ zIndex: 2000 }}>
+        <div className="modal-overlay" onClick={onClose}>
             <div className="modal-container"
                 style={{
                     padding: 0,
-                    overflowY: 'auto', // Restore standard scrolling
-                    borderRadius: '16px',
-                    background: 'var(--bg-primary)', // Use variables!
+                    overflowY: 'auto',
+                    background: 'var(--bg-primary)',
                     color: 'var(--text-primary)',
-                    width: '95%',
-                    maxWidth: '900px',
-                    height: '90vh',
-                    display: 'block' // Restore block display
+                    display: 'block'
                 }}
                 onClick={e => e.stopPropagation()}>
 

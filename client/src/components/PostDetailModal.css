@@ -1,34 +1,29 @@
-/* Overlay */
+/* Full-Page Post Detail Modal */
 .post-modal-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.85);
-    /* Darker overlay for focus */
-    backdrop-filter: blur(8px);
-    z-index: 2000;
-    /* Above everything */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-}
-
-/* Container */
-.post-modal-container {
-    background: #1e1e1e;
-    width: 100%;
-    max-width: 900px;
-    height: 80vh;
-    border-radius: 16px;
-    overflow: hidden;
+    inset: 0;
+    background-color: var(--bg-primary);
+    z-index: 4000;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0;
+    animation: fadeInPage 0.3s ease-out;
+}
+
+.post-modal-container {
+    background: var(--bg-primary);
+    width: 100vw;
+    height: 100vh;
+    max-width: 100vw;
+    max-height: 100vh;
+    border-radius: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    box-shadow: none;
+    border: none;
     position: relative;
+    animation: slideInPage 0.4s ease-out;
 }
 
 /* Close Button */

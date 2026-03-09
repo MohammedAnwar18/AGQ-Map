@@ -245,7 +245,7 @@ const AIChatModal = ({ onClose, onSearchResults, onRouteRequest, onClearMap, use
 
     return (
         <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px', height: '600px', display: 'flex', flexDirection: 'column' }}>
+            <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column' }}>
                 <div className="modal-header">
                     <h2> المساعد الذكي</h2>
                     <button className="btn-close" onClick={onClose}>✕</button>
