@@ -143,17 +143,19 @@
     top: 0;
     left: 0;
     right: 0;
-    height: 60px;
+    height: 75px;
+    /* زدنا ارتفاع البار العلوي ليتناسب مع الشعار الجديد */
     z-index: 2100;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 1.5rem;
-    background: rgba(15, 23, 42, 0.7) !important;
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border-bottom: 1px solid rgba(251, 171, 21, 0.2) !important;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    padding: 0 2rem;
+    /* مساحة جانبية أوسع */
+    background: rgba(15, 23, 42, 0.8) !important;
+    backdrop-filter: blur(25px) saturate(180%);
+    -webkit-backdrop-filter: blur(25px) saturate(180%);
+    border-bottom: 1px solid rgba(251, 171, 21, 0.3) !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
 }
 
 .top-bar-left {
@@ -163,17 +165,18 @@
 }
 
 .logo-image-main {
-    height: 52px;
-    /* كبرنا الشعار */
+    height: 65px;
+    /* كبرنا الشعار بشكل ملحوظ */
     width: auto;
-    filter: drop-shadow(0 0 12px rgba(217, 119, 6, 0.4));
-    /* شعاع أغمق قليلاً */
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    filter: drop-shadow(0 0 15px rgba(251, 171, 21, 0.2));
+    transition: all 0.3s ease;
+    cursor: pointer;
 }
 
 .logo-image-main:hover {
-    transform: scale(1.08) rotate(-3deg);
-    filter: drop-shadow(0 0 15px rgba(217, 119, 6, 0.6));
+    transform: scale(1.05);
+    /* تكبير خفيف جداً للحفاظ على الرسمية */
+    filter: drop-shadow(0 0 20px rgba(251, 171, 21, 0.4));
 }
 
 /* Glassmorphism Base */
