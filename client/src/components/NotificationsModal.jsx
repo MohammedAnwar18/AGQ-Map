@@ -70,6 +70,27 @@ const NotificationsModal = ({ onClose, onNotificationClick }) => {
         }
     };
 
+    const handleRejectFriend = async (senderId) => {
+        const request = pendingRequests.find(r => r.sender_id === senderId);
+        if (!request) {
+            setSelectedRequest(null);
+            return;
+        }
+
+        setActionLoading(true);
+        try {
+            await friendService.rejectFriendRequest(request.id);
+            setPendingRequests(prev => prev.filter(r => r.id !== request.id));
+            setSelectedRequest(null);
+            fetchNotifications();
+        } catch (error) {
+            console.error('Error rejecting friend request:', error);
+            alert('فشل رفض الطلب، حاول مرة أخرى');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
     const calculateAge = (dob) => {
         if (!dob) return null;
         const birthDate = new Date(dob);
@@ -189,6 +210,13 @@ const NotificationsModal = ({ onClose, onNotificationClick }) => {
                                     disabled={actionLoading}
                                 >
                                     {actionLoading ? 'جاري القبول...' : 'الموافقة على الطلب'}
+                                </button>
+                                <button
+                                    className="btn-reject"
+                                    onClick={() => handleRejectFriend(selectedRequest.sender_id)}
+                                    disabled={actionLoading}
+                                >
+                                    {actionLoading ? 'جاري الرفض...' : 'رفض الطلب'}
                                 </button>
                                 <button className="btn-back" onClick={() => setSelectedRequest(null)}>العودة</button>
                             </div>

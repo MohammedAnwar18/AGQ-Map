@@ -82,9 +82,10 @@
 .btn-close {
     width: 2.5rem;
     height: 2.5rem;
-    border: none;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     background: var(--bg-tertiary);
-    color: var(--text-secondary);
+    color: #fbab15;
+    /* المميز للموقع */
     border-radius: 50%;
     cursor: pointer;
     font-size: 1.2rem;
@@ -95,8 +96,9 @@
 }
 
 .btn-close:hover {
-    background: var(--error);
-    color: white;
+    background: rgba(251, 171, 21, 0.1);
+    border-color: #fbab15;
+    color: #fbab15;
     transform: rotate(90deg);
 }
 
