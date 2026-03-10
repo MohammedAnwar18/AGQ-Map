@@ -158,10 +158,9 @@
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
 }
 
-.top-bar-left {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
+.app-logo {
+    display: none;
+    /* تجميد الشعار حالياً كما طلب المستخدم */
 }
 
 .logo-image-main {
