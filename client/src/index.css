@@ -266,6 +266,63 @@ body {
   }
 }
 
+/* Global Close Button Style */
+.btn-close,
+.close-btn {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-tertiary);
+  color: var(--primary) !important;
+  /* #fbab15 */
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: all var(--transition-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.btn-close:hover,
+.close-btn:hover {
+  background: rgba(251, 171, 21, 0.1);
+  border-color: var(--primary);
+  transform: rotate(90deg);
+}
+
+/* Map Popup Close Button */
+.leaflet-popup-close-button {
+  color: var(--primary) !important;
+  font-size: 1.5rem !important;
+  padding: 10px !important;
+}
+
+.leaflet-popup-close-button:hover {
+  color: var(--primary-dark) !important;
+  background: transparent !important;
+}
+
+/* Scrollbar for Modals and Content */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-tertiary);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .container {

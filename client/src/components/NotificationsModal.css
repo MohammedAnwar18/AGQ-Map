@@ -284,26 +284,32 @@
     transform: none;
 }
 
-.close-btn {
-    background: rgba(255, 255, 255, 0.05);
+/* We now use global styles for .close-btn to ensure consistency */
+
+.btn-back {
+    background: rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #fbab15;
-    /* المميز للموقع */
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
+    padding: 1.1rem;
+    border-radius: 16px;
+    font-size: 1rem;
+    font-weight: 600;
     cursor: pointer;
-    font-size: 1.2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    margin-top: 0.5rem;
 }
 
-.close-btn:hover {
-    background: rgba(251, 171, 21, 0.1);
-    border-color: #fbab15;
-    transform: rotate(90deg);
+.btn-back:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+.btn-back:active {
+    transform: translateY(0);
 }
 
 .btn-reject {
