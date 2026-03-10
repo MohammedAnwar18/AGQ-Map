@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { notificationService } from '../services/api';
+import { notificationService, friendService, getImageUrl } from '../services/api';
 import './NotificationsModal.css';
 
 const NotificationsModal = ({ onClose, onNotificationClick }) => {
@@ -30,7 +30,6 @@ const NotificationsModal = ({ onClose, onNotificationClick }) => {
 
     const fetchPendingRequests = async () => {
         try {
-            const { friendService } = await import('../services/api');
             const data = await friendService.getPendingRequests();
             setPendingRequests(data.requests || []);
         } catch (error) {
@@ -58,7 +57,6 @@ const NotificationsModal = ({ onClose, onNotificationClick }) => {
 
         setActionLoading(true);
         try {
-            const { friendService } = await import('../services/api');
             await friendService.acceptFriendRequest(request.id);
             // Update UI
             setPendingRequests(prev => prev.filter(r => r.id !== request.id));
@@ -159,7 +157,6 @@ const NotificationsModal = ({ onClose, onNotificationClick }) => {
         }
     };
 
-    const { getImageUrl } = require('../services/api');
 
     return (
         <div className="modal-overlay" onClick={onClose}>
