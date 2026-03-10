@@ -1044,15 +1044,15 @@ const MapComponent = () => {
                 </button>
 
                 <button className={`nav-item ${showSearch ? 'active' : ''}`} onClick={() => { setShowSearch(true); setShowAIChat(false); setShowCommunities(false); setShowProfile(false); }}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        {/* User Head */}
-                        <circle cx="10" cy="7" r="4" />
-                        {/* User Body */}
-                        <path d="M3 21v-2a6 6 0 0 1 6-6h2" />
-                        {/* Plus Circle */}
-                        <circle cx="18" cy="18" r="5" />
-                        <line x1="18" y1="15" x2="18" y2="21" />
-                        <line x1="15" y1="18" x2="21" y2="18" />
+                    <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" style={{ width: '28px', height: '28px' }}>
+                        {/* User Head - Solid & Clear */}
+                        <circle cx="42" cy="30" r="20" strokeWidth="8" />
+                        {/* User Body Curve */}
+                        <path d="M10 88 C 10 60, 30 55, 45 55" strokeWidth="8" />
+                        {/* Plus Circle - Very Bold */}
+                        <circle cx="72" cy="72" r="22" strokeWidth="8" />
+                        {/* The Plus Sign - Extra Thick */}
+                        <path d="M72 60 V 84 M 60 72 H 84" strokeWidth="12" />
                     </svg>
                 </button>
 
