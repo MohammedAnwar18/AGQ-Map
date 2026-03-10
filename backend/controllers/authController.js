@@ -41,46 +41,30 @@ const register = async (req, res) => {
         const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
         const otpExpiresAt = new Date(Date.now() + 5 * 60000); // صالح لمدة 5 دقائق
 
-        // إضافة المستخدم (تم تجعله مفعل افتراضياً مؤقتاً لتخطي الإيميل)
+        // إضافة المستخدم (غير مفعل بشكل افتراضي ليتم التحقق عبر الإيميل)
         const result = await pool.query(
             `INSERT INTO users (username, email, password_hash, full_name, date_of_birth, gender, otp_code, otp_expires_at, is_verified) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, FALSE) 
        RETURNING id, username, email, full_name, bio, profile_picture, role`,
             [username, email, password_hash, full_name, date_of_birth, gender, otpCode, otpExpiresAt]
         );
 
         const user = result.rows[0];
 
-        // ⚠️ تم إيقاف إرسال الإيميل مؤقتاً بناءً على طلبك
-        // const emailSent = await sendOtpEmail(user.email, otpCode);
+        // إرسال الإيميل للمستخدم الجديد
+        const emailSent = await sendOtpEmail(user.email, otpCode);
 
-        // إنشاء Token للدخول المباشر
-        const secret = process.env.JWT_SECRET || 'fallback_secret_for_emergency_debugging';
-        const token = jwt.sign(
-            {
-                userId: user.id,
-                username: user.username,
-                email: user.email,
-                role: user.role || 'user'
-            },
-            secret,
-            { expiresIn: '7d' }
-        );
+        if (!emailSent) {
+            console.log(`⚠️ Email failed during register. OTP for ${user.email}: ${otpCode}`);
+        }
 
-        // الرد بالدخول المباشر (تجاوز شاشة الكود)
+        // الرد بأن مطلوب تفعيل الحساب عبر OTP
         res.status(201).json({
-            message: 'تم التسجيل بنجاح! جاري الدخول...',
-            requireOtp: false,
-            token,
-            user: {
-                id: user.id,
-                username: user.username,
-                email: user.email,
-                full_name: user.full_name,
-                bio: user.bio,
-                profile_picture: user.profile_picture,
-                role: user.role || 'user'
-            }
+            message: emailSent
+                ? 'تم إنشاء الحساب! يرجى إدخال رمز التحقق المرسل لبريدك الإلكتروني'
+                : `تم إنشاء الحساب، ولكن فشل إرسال البريد. كود التفعيل هو: ${otpCode}`,
+            requireOtp: true,
+            email: user.email
         });
 
     } catch (error) {
