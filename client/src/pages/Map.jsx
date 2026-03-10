@@ -1058,23 +1058,20 @@ const MapComponent = () => {
                 </button>
 
                 <button className={`nav-item ${showAIChat ? 'active' : ''}`} onClick={() => { setShowAIChat(true); setShowSearch(false); setShowCommunities(false); setShowProfile(false); }}>
-                    <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" style={{ width: '30px', height: '30px' }}>
-                        {/* Thin Top Arc */}
-                        <path d="M10 50 A40 40 0 0 1 90 50" strokeWidth="2" opacity="0.4" />
+                    <svg viewBox="0 0 100 100" fill="currentColor" style={{ width: '28px', height: '28px' }}>
+                        {/* The Sparkles/Stars */}
+                        {/* Large Star */}
+                        <path d="M22 15 C24 28 28 32 40 34 C28 36 24 40 22 53 C20 40 16 36 4 34 C16 32 20 28 22 15 Z" />
+                        {/* Small Top Star */}
+                        <path d="M35 2 C36 7 38 9 43 10 C38 11 36 13 35 18 C34 13 32 11 27 10 C32 9 34 7 35 2 Z" />
+                        {/* Medium Inner Star */}
+                        <path d="M42 36 C43 42 45 44 50 45 C45 46 43 48 42 54 C41 48 39 46 34 45 C39 44 41 42 42 36 Z" />
 
-                        {/* Chat Bubble (Top Left) */}
-                        <path d="M25 30 H45 C47 30 48 31 48 33 V50 C48 52 47 53 45 53 H35 L30 60 V53 H25 C23 53 22 52 22 50 V33 C22 31 23 30 25 30 Z" />
-                        <path d="M28 36 H42 M28 42 H42 M28 48 H36" strokeWidth="3" opacity="0.6" />
+                        {/* Magnifying Glass Ring (with gap for sparkles) */}
+                        <path d="M48 12 A38 38 0 1 1 12 50" fill="none" stroke="currentColor" strokeWidth="10" strokeLinecap="round" />
 
-                        {/* Target (Top Right) */}
-                        <circle cx="65" cy="35" r="16" strokeWidth="4" />
-                        <circle cx="65" cy="35" r="8" strokeWidth="3" />
-                        <circle cx="65" cy="35" r="2" fill="currentColor" stroke="none" />
-                        <path d="M76 24 L86 14 M86 14 H80 M86 14 V20" strokeWidth="4" />
-
-                        {/* Search (Bottom Right) */}
-                        <circle cx="58" cy="68" r="14" strokeWidth="4" />
-                        <path d="M69 79 L80 90" strokeWidth="5" />
+                        {/* Thick Handle */}
+                        <path d="M68 68 L92 92" fill="none" stroke="currentColor" strokeWidth="14" strokeLinecap="round" />
                     </svg>
                 </button>
 
