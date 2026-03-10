@@ -1044,9 +1044,15 @@ const MapComponent = () => {
                 </button>
 
                 <button className={`nav-item ${showSearch ? 'active' : ''}`} onClick={() => { setShowSearch(true); setShowAIChat(false); setShowCommunities(false); setShowProfile(false); }}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="11" cy="11" r="8" />
-                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        {/* User Head */}
+                        <circle cx="10" cy="7" r="4" />
+                        {/* User Body */}
+                        <path d="M3 21v-2a6 6 0 0 1 6-6h2" />
+                        {/* Plus Circle */}
+                        <circle cx="18" cy="18" r="5" />
+                        <line x1="18" y1="15" x2="18" y2="21" />
+                        <line x1="15" y1="18" x2="21" y2="18" />
                     </svg>
                 </button>
 
