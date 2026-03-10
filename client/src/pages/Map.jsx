@@ -1058,16 +1058,23 @@ const MapComponent = () => {
                 </button>
 
                 <button className={`nav-item ${showAIChat ? 'active' : ''}`} onClick={() => { setShowAIChat(true); setShowSearch(false); setShowCommunities(false); setShowProfile(false); }}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 2v4" />
-                        <path d="M12 18v4" />
-                        <path d="M4.93 4.93l2.83 2.83" />
-                        <path d="M16.24 16.24l2.83 2.83" />
-                        <path d="M2 12h4" />
-                        <path d="M18 12h4" />
-                        <path d="M4.93 19.07l2.83-2.83" />
-                        <path d="M16.24 7.76l2.83-2.83" />
-                        <path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" />
+                    <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" style={{ width: '30px', height: '30px' }}>
+                        {/* Thin Top Arc */}
+                        <path d="M10 50 A40 40 0 0 1 90 50" strokeWidth="2" opacity="0.4" />
+
+                        {/* Chat Bubble (Top Left) */}
+                        <path d="M25 30 H45 C47 30 48 31 48 33 V50 C48 52 47 53 45 53 H35 L30 60 V53 H25 C23 53 22 52 22 50 V33 C22 31 23 30 25 30 Z" />
+                        <path d="M28 36 H42 M28 42 H42 M28 48 H36" strokeWidth="3" opacity="0.6" />
+
+                        {/* Target (Top Right) */}
+                        <circle cx="65" cy="35" r="16" strokeWidth="4" />
+                        <circle cx="65" cy="35" r="8" strokeWidth="3" />
+                        <circle cx="65" cy="35" r="2" fill="currentColor" stroke="none" />
+                        <path d="M76 24 L86 14 M86 14 H80 M86 14 V20" strokeWidth="4" />
+
+                        {/* Search (Bottom Right) */}
+                        <circle cx="58" cy="68" r="14" strokeWidth="4" />
+                        <path d="M69 79 L80 90" strokeWidth="5" />
                     </svg>
                 </button>
 
