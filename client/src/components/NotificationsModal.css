@@ -37,25 +37,7 @@
     font-weight: 700;
 }
 
-.close-btn {
-    background: rgba(255, 255, 255, 0.1);
-    border: none;
-    color: white;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 1.2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-}
-
-.close-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-    transform: rotate(90deg);
-}
+/* Notification Close Button (X) is now handled globally in index.css */
 
 .notifications-content {
     flex: 1;
@@ -287,29 +269,31 @@
 /* We now use global styles for .close-btn to ensure consistency */
 
 .btn-back {
-    background: rgba(255, 255, 255, 0.08);
-    color: #cbd5e1;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 1.1rem;
+    background: rgba(30, 41, 59, 0.6);
+    color: #fbab15;
+    /* استخدام لون الموقع المميز للنص */
+    border: 2px solid #fbab15;
+    /* إطار بلون الموقع */
+    padding: 1rem;
     border-radius: 16px;
-    font-size: 1rem;
-    font-weight: 600;
+    font-size: 1.1rem;
+    font-weight: 700;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
     margin-top: 0.5rem;
+    text-align: center;
 }
 
 .btn-back:hover {
-    background: rgba(255, 255, 255, 0.15);
+    background: #fbab15;
     color: white;
-    transform: translateY(-2px);
-    border-color: rgba(255, 255, 255, 0.3);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(251, 171, 21, 0.4);
 }
 
 .btn-back:active {
-    transform: translateY(0);
+    transform: translateY(0) scale(0.98);
 }
 
 .btn-reject {
