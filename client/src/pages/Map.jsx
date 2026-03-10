@@ -1044,15 +1044,15 @@ const MapComponent = () => {
                 </button>
 
                 <button className={`nav-item ${showSearch ? 'active' : ''}`} onClick={() => { setShowSearch(true); setShowAIChat(false); setShowCommunities(false); setShowProfile(false); }}>
-                    <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" style={{ width: '28px', height: '28px' }}>
-                        {/* User Head - Solid & Clear */}
-                        <circle cx="42" cy="30" r="20" strokeWidth="8" />
-                        {/* User Body Curve */}
+                    <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" style={{ width: '28px', height: '28px' }}>
+                        {/* User Head */}
+                        <circle cx="42" cy="30" r="18" strokeWidth="8" />
+                        {/* User Body */}
                         <path d="M10 88 C 10 60, 30 55, 45 55" strokeWidth="8" />
-                        {/* Plus Circle - Very Bold */}
-                        <circle cx="72" cy="72" r="22" strokeWidth="8" />
-                        {/* The Plus Sign - Extra Thick */}
-                        <path d="M72 60 V 84 M 60 72 H 84" strokeWidth="12" />
+                        {/* Plus Circle */}
+                        <circle cx="72" cy="72" r="20" strokeWidth="7" />
+                        {/* Neat Plus - Normal thickness */}
+                        <path d="M72 62 V 82 M 62 72 H 82" strokeWidth="7" />
                     </svg>
                 </button>
 
@@ -1065,19 +1065,15 @@ const MapComponent = () => {
 
                 <button className={`nav-item ${showAIChat ? 'active' : ''}`} onClick={() => { setShowAIChat(true); setShowSearch(false); setShowCommunities(false); setShowProfile(false); }}>
                     <svg viewBox="0 0 100 100" fill="currentColor" style={{ width: '28px', height: '28px' }}>
-                        {/* The Sparkles/Stars */}
-                        {/* Large Star */}
+                        {/* Sparkles */}
                         <path d="M22 15 C24 28 28 32 40 34 C28 36 24 40 22 53 C20 40 16 36 4 34 C16 32 20 28 22 15 Z" />
-                        {/* Small Top Star */}
                         <path d="M35 2 C36 7 38 9 43 10 C38 11 36 13 35 18 C34 13 32 11 27 10 C32 9 34 7 35 2 Z" />
-                        {/* Medium Inner Star */}
                         <path d="M42 36 C43 42 45 44 50 45 C45 46 43 48 42 54 C41 48 39 46 34 45 C39 44 41 42 42 36 Z" />
-
-                        {/* Magnifying Glass Ring (with gap for sparkles) */}
-                        <path d="M48 12 A38 38 0 1 1 12 50" fill="none" stroke="currentColor" strokeWidth="10" strokeLinecap="round" />
-
-                        {/* Thick Handle */}
-                        <path d="M68 68 L92 92" fill="none" stroke="currentColor" strokeWidth="14" strokeLinecap="round" />
+                        {/* Ring with Gap */}
+                        <path d="M48 12 A38 38 0 1 1 15 55" fill="none" stroke="currentColor" strokeWidth="9" strokeLinecap="round" />
+                        {/* Elegant Connected Handle */}
+                        <path d="M66 66 L90 90" fill="none" stroke="currentColor" strokeWidth="12" strokeLinecap="round" />
+                        <circle cx="66" cy="66" r="6" fill="currentColor" stroke="none" />
                     </svg>
                 </button>
 
