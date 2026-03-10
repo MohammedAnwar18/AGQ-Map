@@ -1071,9 +1071,8 @@ const MapComponent = () => {
                         <path d="M42 36 C43 42 45 44 50 45 C45 46 43 48 42 54 C41 48 39 46 34 45 C39 44 41 42 42 36 Z" />
                         {/* Ring with Gap */}
                         <path d="M48 12 A38 38 0 1 1 15 55" fill="none" stroke="currentColor" strokeWidth="9" strokeLinecap="round" />
-                        {/* Elegant Connected Handle */}
-                        <path d="M66 66 L90 90" fill="none" stroke="currentColor" strokeWidth="12" strokeLinecap="round" />
-                        <circle cx="66" cy="66" r="6" fill="currentColor" stroke="none" />
+                        {/* Outer Handle - Starting exactly on the edge */}
+                        <path d="M77 77 L95 95" fill="none" stroke="currentColor" strokeWidth="13" strokeLinecap="round" />
                     </svg>
                 </button>
 
