@@ -12,8 +12,11 @@ const getNotifications = async (req, res) => {
                 n.message,
                 n.is_read,
                 n.created_at,
+                u.id as sender_id,
                 u.username as sender_name,
-                u.profile_picture as sender_picture
+                u.profile_picture as sender_picture,
+                u.date_of_birth,
+                u.gender
             FROM notifications n
             LEFT JOIN users u ON n.sender_id = u.id
             WHERE n.user_id = $1
