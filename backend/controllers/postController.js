@@ -117,7 +117,7 @@ const getPosts = async (req, res) => {
         let params;
 
         if (latitude && longitude) {
-            // الحصول على المنشورات ضمن نطاق معين (الكل)
+            // الحصول على المنشورات ضمن نطاق معين (فقط من الأصدقاء أو منشوري الخاص)
             query = `
         SELECT 
           p.id, p.user_id, p.content, p.image_url, p.media_urls, p.media_type,
@@ -139,12 +139,20 @@ const getPosts = async (req, res) => {
           $3
         )
         AND p.community_id IS NULL
+        AND (
+          p.user_id = $4 OR 
+          EXISTS (
+            SELECT 1 FROM friendships 
+            WHERE (user1_id = $4 AND user2_id = p.user_id) 
+            OR (user1_id = p.user_id AND user2_id = $4)
+          )
+        )
         ORDER BY distance, p.created_at DESC
         LIMIT 100
       `;
             params = [longitude, latitude, radius, userId];
         } else {
-            // الحصول على جميع المنشورات (الكل)
+            // الحصول على جميع المنشورات (فقط من الأصدقاء أو منشوري الخاص)
             query = `
         SELECT 
           p.id, p.user_id, p.content, p.image_url, p.media_urls, p.media_type,
@@ -161,6 +169,14 @@ const getPosts = async (req, res) => {
         JOIN users u ON p.user_id = u.id
         WHERE 
           p.community_id IS NULL
+          AND (
+            p.user_id = $1 OR 
+            EXISTS (
+              SELECT 1 FROM friendships 
+              WHERE (user1_id = $1 AND user2_id = p.user_id) 
+              OR (user1_id = p.user_id AND user2_id = $1)
+            )
+          )
         ORDER BY p.created_at DESC
         LIMIT 100
       `;
