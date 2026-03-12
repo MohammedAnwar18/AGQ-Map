@@ -860,7 +860,7 @@ const MapComponent = () => {
                     )}
 
                     {/* Posts Markers */}
-                    {posts.map(post => (
+                    {viewState.zoom >= 13 && posts.map(post => (
                         <Marker
                             key={post.id}
                             longitude={parseFloat(post.location.longitude)}
@@ -903,9 +903,8 @@ const MapComponent = () => {
                         </Marker>
                     ))}
 
-                    {/* Managed and Followed Shops Markers - Visible only in World Mode */}
-                    {console.log("Shops combined for map:", [...followedShopsMap, ...managedShopsMap].length)}
-                    {!currentCommunity && [...followedShopsMap, ...managedShopsMap.filter(m => !followedShopsMap.some(f => f.id === m.id))].filter(shop =>
+                    {/* Managed and Followed Shops Markers - Visible only at close zoom and World Mode */}
+                    {viewState.zoom >= 17 && !currentCommunity && [...followedShopsMap, ...managedShopsMap.filter(m => !followedShopsMap.some(f => f.id === m.id))].filter(shop =>
                         shop.latitude != null &&
                         shop.longitude != null &&
                         !isNaN(parseFloat(shop.latitude))
@@ -1134,7 +1133,7 @@ const MapComponent = () => {
                 onShopClick={(shop) => {
                     setSelectedShopProfile(shop);
                     setShowShopProfile(true);
-                    mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: 18, pitch: 45 });
+                    mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: 18.5, pitch: 45 });
                 }}
             />}
             {showShopProfile && selectedShopProfile && (
@@ -1158,7 +1157,7 @@ const MapComponent = () => {
                     setSelectedShopProfile(shopMock);
                     setShowShopProfile(true);
                     if (data.location?.latitude && data.location?.longitude) {
-                        mapRef.current?.flyTo({ center: [parseFloat(data.location.longitude), parseFloat(data.location.latitude)], zoom: 18, pitch: 45 });
+                        mapRef.current?.flyTo({ center: [parseFloat(data.location.longitude), parseFloat(data.location.latitude)], zoom: 18.5, pitch: 45 });
                     }
                 }
             }} />}
@@ -1170,7 +1169,7 @@ const MapComponent = () => {
                         setAiResults(results);
                         setRoutePath(null); setRouteStats(null); setDestination(null);
                         if (results.length > 0) {
-                            mapRef.current?.flyTo({ center: [parseFloat(results[0].lon), parseFloat(results[0].lat)], zoom: 18, pitch: 45 });
+                            mapRef.current?.flyTo({ center: [parseFloat(results[0].lon), parseFloat(results[0].lat)], zoom: 18.5, pitch: 45 });
                         }
                     }}
                     onRouteRequest={(destination, mode) => {
@@ -1191,7 +1190,7 @@ const MapComponent = () => {
                         setSelectedShopProfile(shop);
                         setShowShopProfile(true);
                         setShowManagedShops(false);
-                        mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: 18, pitch: 45 });
+                        mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: 18.5, pitch: 45 });
                     }}
                 />
             )}
