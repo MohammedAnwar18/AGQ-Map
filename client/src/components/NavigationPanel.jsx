@@ -17,75 +17,35 @@ const NavigationPanel = ({ destination, routeStats, onStopNavigation, isTracking
     // We might want to strip non-numeric for styling if needed, but strings are fine.
 
     return (
-        <div className="navigation-panel">
-            <div className="nav-header">
-                <h3 className="nav-title">
-                    <span className="status-indicator"></span>
-                    معلومات الرحلة
-                </h3>
-                <button className="nav-close-btn" onClick={onStopNavigation} title="إلغاء">✕</button>
-            </div>
-
-            <div className="nav-content">
-                <div className="nav-destination">
-                    <span className="dest-label">الوجهة:</span>
-                    <span className="dest-name">{destName}</span>
+        <div className="navigation-panel-compact">
+            <div className="nav-compact-main">
+                <div className="nav-time-pill">
+                    <span className="time-val">{routeStats.duration}</span>
                 </div>
-
-                <div className="nav-stats">
-                    <div className="stat-box">
-                        <span className="stat-value">{routeStats.duration}</span>
-                        <span className="stat-label">الوقت المتبقي</span>
+                
+                <div className="nav-info-group">
+                    <div className="nav-dest-mini">
+                        {destName}
                     </div>
-                    <div className="stat-box">
-                        <span className="stat-value">{routeStats.distance}</span>
-                        <span className="stat-label">المسافة</span>
+                    <div className="nav-dist-mini">
+                        {routeStats.distance}
                     </div>
                 </div>
 
-                <div className="nav-actions" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    <button
-                        className={`btn-track ${isTracking ? 'active' : ''}`}
+                <div className="nav-actions-mini">
+                    <button 
+                        className={`mini-action-btn ${isTracking ? 'active' : ''}`} 
                         onClick={onToggleTracking}
-                        style={{
-                            background: isTracking ? '#22c55e' : '#f3f4f6',
-                            color: isTracking ? 'white' : '#374151',
-                            border: 'none',
-                            padding: '12px',
-                            borderRadius: '12px',
-                            cursor: 'pointer',
-                            fontWeight: '600',
-                            fontFamily: "'Tajawal', sans-serif",
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '8px',
-                            fontSize: '0.9rem',
-                            transition: 'all 0.2s ease',
-                            height: '80px'
-                        }}
+                        title={isTracking ? 'إلغاء التتبع' : 'تتبع الموقع'}
                     >
-                        <span style={{ fontSize: '1.5rem', lineHeight: 1 }}>{isTracking ? '📍' : '◎'}</span>
-                        <span>{isTracking ? 'تتبع مفعل' : 'متابعة موقعي'}</span>
+                        {isTracking ? '📍' : '🎯'}
                     </button>
-                    <button
-                        className="btn-stop-nav"
+                    <button 
+                        className="mini-action-btn stop" 
                         onClick={onStopNavigation}
-                        style={{
-                            borderRadius: '12px',
-                            fontFamily: "'Tajawal', sans-serif",
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '8px',
-                            height: '80px',
-                            padding: '12px'
-                        }}
+                        title="إنهاء"
                     >
-                        <span style={{ fontSize: '1.5rem', lineHeight: 1 }}>🚫</span>
-                        <span>إنهاء الرحلة</span>
+                        ✕
                     </button>
                 </div>
             </div>
