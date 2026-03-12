@@ -1,0 +1,8 @@
+{
+  "name": "agq-map-monorepo",
+  "private": true,
+  "scripts": {
+    "build": "cd client && npm install && npm run build",
+    "install-all": "npm install && cd client && npm install && cd ../backend && npm install"
+  }
+}

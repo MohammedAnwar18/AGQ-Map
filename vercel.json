@@ -1,10 +1,18 @@
 {
   "version": 2,
-  "functions": {
-    "backend/server.js": {
-      "runtime": "@vercel/node"
+  "builds": [
+    {
+      "src": "backend/server.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "client/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
     }
-  },
+  ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/backend/server.js" },
     { "source": "/auth/(.*)", "destination": "/backend/server.js" },
@@ -16,6 +24,7 @@
     { "source": "/news/(.*)", "destination": "/backend/server.js" },
     { "source": "/communities/(.*)", "destination": "/backend/server.js" },
     { "source": "/admin/(.*)", "destination": "/backend/server.js" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/(.*)", "destination": "/client/$1" },
+    { "source": "/", "destination": "/client/index.html" }
   ]
 }
