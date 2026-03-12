@@ -1,12 +1,16 @@
 import axios from 'axios';
 
+// Improved: Use relative path by default for unified Vercel deployment
 const API_URL = import.meta.env.VITE_API_URL || '/api';
+
+console.log('🔌 Connecting to API at:', API_URL);
 
 const api = axios.create({
     baseURL: API_URL,
     headers: {
         'Content-Type': 'application/json'
-    }
+    },
+    timeout: 15000 // Add timeout to detect hanging connections
 });
 
 // Helper: Image URL Resolver
