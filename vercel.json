@@ -17,13 +17,17 @@
     { "source": "/api/(.*)", "destination": "/backend/server.js" },
     { "source": "/auth/(.*)", "destination": "/backend/server.js" },
     { "source": "/users/(.*)", "destination": "/backend/server.js" },
+    { "source": "/friends/(.*)", "destination": "/backend/server.js" },
     { "source": "/shops/(.*)", "destination": "/backend/server.js" },
     { "source": "/posts/(.*)", "destination": "/backend/server.js" },
+    { "source": "/comments/(.*)", "destination": "/backend/server.js" },
     { "source": "/ai/(.*)", "destination": "/backend/server.js" },
     { "source": "/notifications/(.*)", "destination": "/backend/server.js" },
     { "source": "/news/(.*)", "destination": "/backend/server.js" },
     { "source": "/communities/(.*)", "destination": "/backend/server.js" },
     { "source": "/admin/(.*)", "destination": "/backend/server.js" },
+    { "source": "/health", "destination": "/backend/server.js" },
+    { "source": "/assets/(.*)", "destination": "/assets/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
