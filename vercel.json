@@ -7,7 +7,10 @@
     },
     {
       "src": "client/package.json",
-      "use": "@vercel/static-build"
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
     }
   ],
   "rewrites": [
@@ -24,6 +27,10 @@
       "destination": "/backend/server.js"
     },
     {
+      "source": "/shops/(.*)",
+      "destination": "/backend/server.js"
+    },
+    {
       "source": "/posts/(.*)",
       "destination": "/backend/server.js"
     },
@@ -32,12 +39,24 @@
       "destination": "/backend/server.js"
     },
     {
-      "source": "/shops/(.*)",
+      "source": "/notifications/(.*)",
       "destination": "/backend/server.js"
     },
     {
+      "source": "/news/(.*)",
+      "destination": "/backend/server.js"
+    },
+    {
+      "source": "/communities/(.*)",
+      "destination": "/backend/server.js"
+    },
+    {
+      "source": "/assets/(.*)",
+      "destination": "/client/dist/assets/$1"
+    },
+    {
       "source": "/(.*)",
-      "destination": "/client/$1"
+      "destination": "/client/dist/index.html"
     }
   ]
 }
