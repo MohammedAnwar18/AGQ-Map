@@ -1,0 +1,56 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "backend/server.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "client/package.json",
+      "use": "@vercel/static-build",
+      "config": { "distDir": "dist" }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "backend/server.js"
+    },
+    {
+      "src": "/auth/(.*)",
+      "dest": "backend/server.js"
+    },
+    {
+      "src": "/users/(.*)",
+      "dest": "backend/server.js"
+    },
+    {
+      "src": "/shops/(.*)",
+      "dest": "backend/server.js"
+    },
+    {
+      "src": "/posts/(.*)",
+      "dest": "backend/server.js"
+    },
+    {
+      "src": "/ai/(.*)",
+      "dest": "backend/server.js"
+    },
+    {
+      "src": "/notifications/(.*)",
+      "dest": "backend/server.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "client/$1",
+      "check": true
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "client/index.html"
+    }
+  ]
+}
