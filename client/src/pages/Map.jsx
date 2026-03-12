@@ -252,7 +252,7 @@ const MapComponent = () => {
 
             console.log(`Routing from ${start} to ${end} via ${profile}`);
 
-            const url = `https://router.project-osrm.org/route/v1/${profile}/${start};${end}?overview=full&geometries=geojson&steps=true&alternatives=true`;
+            const url = `https://router.project-osrm.org/route/v1/${profile}/${start};${end}?overview=full&geometries=geojson&steps=true&alternatives=true&continue_straight=true&annotations=true`;
 
             const response = await axios.get(url);
 
@@ -830,17 +830,29 @@ const MapComponent = () => {
                     maxPitch={85}
                     attributionControl={false}
                 >
-                    {/* Visual Route */}
+                    {/* Visual Route with High Precision Layering */}
                     {routePath && (
-                        <Source id="route" type="geojson" data={routePath}>
+                        <Source id="route" type="geojson" data={routePath} tolerance={0}>
+                            {/* Outer Glow/Border for better visibility on satellite */}
+                            <Layer
+                                id="route-layer-glow"
+                                type="line"
+                                layout={{ "line-join": "round", "line-cap": "round" }}
+                                paint={{
+                                    "line-color": "#ffffff",
+                                    "line-width": 8,
+                                    "line-opacity": 0.3
+                                }}
+                            />
+                            {/* Main Precise Path */}
                             <Layer
                                 id="route-layer"
                                 type="line"
                                 layout={{ "line-join": "round", "line-cap": "round" }}
                                 paint={{
                                     "line-color": "#fbab15",
-                                    "line-width": 6,
-                                    "line-opacity": 0.85
+                                    "line-width": 5,
+                                    "line-opacity": 1
                                 }}
                             />
                         </Source>
