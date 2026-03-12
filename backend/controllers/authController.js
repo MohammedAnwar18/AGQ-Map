@@ -137,7 +137,7 @@ const login = async (req, res) => {
                     email: user.email,
                     role: user.role || 'user'
                 },
-                process.env.JWT_SECRET,
+                process.env.JWT_SECRET || 'fallback_secret_for_emergency_only',
                 { expiresIn: '7d' }
             );
 
@@ -168,8 +168,6 @@ const login = async (req, res) => {
             [otpCode, otpExpiresAt, user.id]
         );
 
-        const { sendOtpEmail } = require('../utils/emailService');
-
         // إرسال كود التحقق عبر البريد الإلكتروني
         const emailSent = await sendOtpEmail(user.email, otpCode);
 
@@ -188,7 +186,11 @@ const login = async (req, res) => {
 
     } catch (error) {
         console.error('Login error:', error);
-        res.status(500).json({ error: 'Server error during login' });
+        res.status(500).json({ 
+            error: 'Server error during login',
+            details: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
 };
 
