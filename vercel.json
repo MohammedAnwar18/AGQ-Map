@@ -7,55 +7,37 @@
     },
     {
       "src": "client/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
+      "use": "@vercel/static-build"
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "backend/server.js",
-      "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+      "source": "/api/(.*)",
+      "destination": "/backend/server.js"
     },
     {
-      "src": "/auth/(.*)",
-      "dest": "backend/server.js",
-      "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+      "source": "/auth/(.*)",
+      "destination": "/backend/server.js"
     },
     {
-      "src": "/users/(.*)",
-      "dest": "backend/server.js",
-      "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+      "source": "/users/(.*)",
+      "destination": "/backend/server.js"
     },
     {
-      "src": "/shops/(.*)",
-      "dest": "backend/server.js",
-      "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+      "source": "/posts/(.*)",
+      "destination": "/backend/server.js"
     },
     {
-      "src": "/posts/(.*)",
-      "dest": "backend/server.js",
-      "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+      "source": "/ai/(.*)",
+      "destination": "/backend/server.js"
     },
     {
-      "src": "/ai/(.*)",
-      "dest": "backend/server.js",
-      "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+      "source": "/shops/(.*)",
+      "destination": "/backend/server.js"
     },
     {
-      "src": "/(assets|static|public)/(.*)",
-      "dest": "client/$1/$2"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "client/$0",
-      "check": true
-    },
-    {
-      "src": "/(.*)",
-      "dest": "client/index.html"
+      "source": "/(.*)",
+      "destination": "/client/$1"
     }
   ]
 }
