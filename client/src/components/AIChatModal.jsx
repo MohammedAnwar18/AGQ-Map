@@ -300,44 +300,64 @@ const AIChatModal = ({ onClose, onSearchResults, onRouteRequest, onClearMap, use
 
                             {msg.results && (
                                 <div className="ai-results-list" style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
-                                    {msg.results.map((shop, idx) => (
-                                        <div key={idx} className="ai-shop-card" style={{
-                                            background: 'white',
-                                            padding: '12px',
-                                            borderRadius: '12px',
-                                            boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            gap: '10px',
-                                            border: '1px solid #f0f0f0'
-                                        }}>
-                                            <div style={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
-                                                <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#1f2937' }}>{shop.name}</div>
-                                                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{shop.category || 'متجر'}</div>
-                                            </div>
-                                            <button
-                                                onClick={() => handleFollow(shop.id)}
-                                                disabled={shop.isFollowed}
-                                                style={{
-                                                    background: shop.isFollowed ? '#e5e7eb' : '#fbab15',
-                                                    color: shop.isFollowed ? '#9ca3af' : 'white',
-                                                    border: 'none',
-                                                    padding: '6px 14px',
-                                                    borderRadius: '20px',
-                                                    cursor: shop.isFollowed ? 'default' : 'pointer',
-                                                    fontSize: '0.8rem',
-                                                    fontWeight: '600',
-                                                    whiteSpace: 'nowrap',
-                                                    transition: 'all 0.2s ease'
-                                                }}
-                                            >
-                                                {shop.isFollowed ? 'متابع' : 'متابعة'}
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                                     {msg.results.map((shop, idx) => (
+                                         <div 
+                                             key={idx} 
+                                             className="ai-shop-card" 
+                                             onClick={() => {
+                                                 // When user clicks a shop, show navigation options immediately
+                                                 setMessages(prev => [...prev, {
+                                                     role: 'USER',
+                                                     content: `أريد الذهاب إلى ${shop.name}`
+                                                 }, {
+                                                     id: Date.now() + 50,
+                                                     role: 'CHATBOT',
+                                                     content: `ممتاز! كيف تود الذهاب إلى ${shop.name}؟`,
+                                                     isOptions: true,
+                                                     destination: { lon: shop.location.lon, lat: shop.location.lat, name: shop.name }
+                                                 }]);
+                                             }}
+                                             style={{
+                                                 background: 'white',
+                                                 padding: '12px',
+                                                 borderRadius: '12px',
+                                                 boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                                                 display: 'flex',
+                                                 justifyContent: 'space-between',
+                                                 alignItems: 'center',
+                                                 gap: '10px',
+                                                 border: '1px solid #f0f0f0',
+                                                 cursor: 'pointer'
+                                             }}
+                                         >
+                                             <div style={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
+                                                 <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#1f2937' }}>{shop.name}</div>
+                                                 <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{shop.category || 'متجر'}</div>
+                                             </div>
+                                             <button
+                                                 onClick={(e) => {
+                                                     e.stopPropagation();
+                                                     handleFollow(shop.id);
+                                                 }}
+                                                 disabled={shop.isFollowed}
+                                                 style={{
+                                                     background: shop.isFollowed ? '#e5e7eb' : '#fbab15',
+                                                     color: shop.isFollowed ? '#9ca3af' : 'white',
+                                                     border: 'none',
+                                                     padding: '6px 14px',
+                                                     borderRadius: '20px',
+                                                     cursor: shop.isFollowed ? 'default' : 'pointer',
+                                                     fontSize: '0.8rem',
+                                                     fontWeight: '600',
+                                                     whiteSpace: 'nowrap'
+                                                 }}
+                                             >
+                                                 {shop.isFollowed ? 'متابع' : 'متابعة'}
+                                             </button>
+                                         </div>
+                                     ))}
+                                 </div>
+                             )}
                         </div>
                     ))}
                     {loading && <div style={{ alignSelf: 'flex-start', color: '#666' }}>جاري الكتابة...</div>}
