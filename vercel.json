@@ -13,50 +13,49 @@
       }
     }
   ],
-  "rewrites": [
+  "routes": [
     {
-      "source": "/api/(.*)",
-      "destination": "/backend/server.js"
+      "src": "/api/(.*)",
+      "dest": "backend/server.js",
+      "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
     },
     {
-      "source": "/auth/(.*)",
-      "destination": "/backend/server.js"
+      "src": "/auth/(.*)",
+      "dest": "backend/server.js",
+      "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
     },
     {
-      "source": "/users/(.*)",
-      "destination": "/backend/server.js"
+      "src": "/users/(.*)",
+      "dest": "backend/server.js",
+      "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
     },
     {
-      "source": "/shops/(.*)",
-      "destination": "/backend/server.js"
+      "src": "/shops/(.*)",
+      "dest": "backend/server.js",
+      "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
     },
     {
-      "source": "/posts/(.*)",
-      "destination": "/backend/server.js"
+      "src": "/posts/(.*)",
+      "dest": "backend/server.js",
+      "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
     },
     {
-      "source": "/ai/(.*)",
-      "destination": "/backend/server.js"
+      "src": "/ai/(.*)",
+      "dest": "backend/server.js",
+      "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
     },
     {
-      "source": "/notifications/(.*)",
-      "destination": "/backend/server.js"
+      "src": "/(assets|static|public)/(.*)",
+      "dest": "client/$1/$2"
     },
     {
-      "source": "/news/(.*)",
-      "destination": "/backend/server.js"
+      "src": "/(.*)",
+      "dest": "client/$0",
+      "check": true
     },
     {
-      "source": "/communities/(.*)",
-      "destination": "/backend/server.js"
-    },
-    {
-      "source": "/(?!api|auth|users|shops|posts|ai|notifications|news|communities)(.*)",
-      "destination": "/client/$1"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/client/index.html"
+      "src": "/(.*)",
+      "dest": "client/index.html"
     }
   ]
 }
