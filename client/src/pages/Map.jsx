@@ -859,8 +859,8 @@ const MapComponent = () => {
                         </Marker>
                     )}
 
-                    {/* Posts Markers */}
-                    {viewState.zoom >= 13 && posts.map(post => (
+                    {/* Posts Markers - Visible from West Bank level (zoom 8+) and hidden at Arab World level */}
+                    {viewState.zoom >= 8 && posts.map(post => (
                         <Marker
                             key={post.id}
                             longitude={parseFloat(post.location.longitude)}
