@@ -1,7 +1,7 @@
 const { CohereClient } = require('cohere-ai');
 
 const cohere = new CohereClient({
-    token: 'GOuJk1N4r63rU4GLDwJkHQ3QLIQvr1TBz5YdNBv8', // Using the key provided by user
+    token: process.env.COHERE_API_KEY || 'GOuJk1N4r63rU4GLDwJkHQ3QLIQvr1TBz5YdNBv8', // Fallback to provided key
 });
 
 const pool = require('../config/database');

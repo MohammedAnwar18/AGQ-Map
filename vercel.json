@@ -8,49 +8,55 @@
     {
       "src": "client/package.json",
       "use": "@vercel/static-build",
-      "config": { "distDir": "dist" }
+      "config": {
+        "distDir": "dist"
+      }
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "backend/server.js"
+      "source": "/api/(.*)",
+      "destination": "/backend/server.js"
     },
     {
-      "src": "/auth/(.*)",
-      "dest": "backend/server.js"
+      "source": "/auth/(.*)",
+      "destination": "/backend/server.js"
     },
     {
-      "src": "/users/(.*)",
-      "dest": "backend/server.js"
+      "source": "/users/(.*)",
+      "destination": "/backend/server.js"
     },
     {
-      "src": "/shops/(.*)",
-      "dest": "backend/server.js"
+      "source": "/shops/(.*)",
+      "destination": "/backend/server.js"
     },
     {
-      "src": "/posts/(.*)",
-      "dest": "backend/server.js"
+      "source": "/posts/(.*)",
+      "destination": "/backend/server.js"
     },
     {
-      "src": "/ai/(.*)",
-      "dest": "backend/server.js"
+      "source": "/ai/(.*)",
+      "destination": "/backend/server.js"
     },
     {
-      "src": "/notifications/(.*)",
-      "dest": "backend/server.js"
+      "source": "/notifications/(.*)",
+      "destination": "/backend/server.js"
     },
     {
-      "src": "/(.*)",
-      "dest": "client/$1",
-      "check": true
+      "source": "/news/(.*)",
+      "destination": "/backend/server.js"
     },
     {
-      "handle": "filesystem"
+      "source": "/communities/(.*)",
+      "destination": "/backend/server.js"
     },
     {
-      "src": "/(.*)",
-      "dest": "client/index.html"
+      "source": "/(?!api|auth|users|shops|posts|ai|notifications|news|communities)(.*)",
+      "destination": "/client/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/client/index.html"
     }
   ]
 }
