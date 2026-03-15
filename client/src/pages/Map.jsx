@@ -205,9 +205,11 @@ const MapComponent = () => {
             sources: {
                 'raster-tiles': {
                     type: 'raster',
-                    tiles: ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'],
-                    tileSize: 256,
-                    attribution: 'Google Maps'
+                    tiles: activeMapType === 'geomolg' 
+                        ? ['https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_WB_2023_15cm_jp2_PG1923_jp2/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&format=png&transparent=true&f=image']
+                        : ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'],
+                    tileSize: activeMapType === 'geomolg' ? 512 : 256,
+                    attribution: activeMapType === 'geomolg' ? 'Geomolg Palestine Orthophoto 2023' : 'Google Maps'
                 }
             },
             layers: [
@@ -220,7 +222,7 @@ const MapComponent = () => {
                 }
             ]
         };
-    }, []);
+    }, [activeMapType]);
 
     // Routing
     // Updated to accept explicit start/end for recalculations
@@ -1206,7 +1208,6 @@ const MapComponent = () => {
                     }}
                 />
             )}
-            {activeMapType === 'geomolg' && <GeomolgViewer onClose={() => setActiveMapType('satellite')} />}
         </div>
     );
 };
