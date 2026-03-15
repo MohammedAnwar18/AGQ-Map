@@ -4,7 +4,7 @@ import { loadModules } from 'esri-loader';
 const WB_URL = "https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_WB_2023_15cm_jp2_PG1923_jp2/MapServer";
 const GAZA_URL = "https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_GS_2024_m12_Satellite_tif_PG1923/MapServer";
 
-const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops }) => {
+const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops, onShopClick, onPostClick }) => {
     const mapDiv = useRef(null);
     const viewRef = useRef(null);
     const mapRef = useRef(null);
@@ -58,6 +58,28 @@ const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops }) => {
 
                 view.when(() => {
                     setIsMapReady(true);
+                    
+                    // Add click event listener for graphics
+                    view.on("click", (event) => {
+                        view.hitTest(event).then((response) => {
+                            if (response.results.length > 0) {
+                                // Find the graphic result
+                                const graphicResult = response.results.find(res => res.graphic && res.graphic.layer === graphicsLayerRef.current);
+                                if (graphicResult) {
+                                    const attrs = graphicResult.graphic.attributes;
+                                    if (attrs) {
+                                        if (attrs.type === 'shop' && onShopClick) {
+                                            onShopClick(attrs.data);
+                                            onClose(); // Close Geomolg view to return to main UI overlay
+                                        } else if (attrs.type === 'post' && onPostClick) {
+                                            onPostClick(attrs.data);
+                                            onClose();
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    });
                 });
 
             } catch (error) {
@@ -90,7 +112,8 @@ const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops }) => {
             const userGraphic = new Graphic({
                 geometry: { type: "point", longitude: parseFloat(userLocation.longitude), latitude: parseFloat(userLocation.latitude) },
                 symbol: { type: "simple-marker", color: "#fbab15", size: "18px", outline: { color: [255, 255, 255], width: 3 } },
-                popupTemplate: { title: "موقعي", content: "أنت هنا" }
+                popupTemplate: { title: "موقعي", content: "أنت هنا" },
+                attributes: { type: 'user' }
             });
             graphicsLayer.add(userGraphic);
         }
@@ -102,7 +125,8 @@ const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops }) => {
                 const postGraphic = new Graphic({
                     geometry: { type: "point", longitude: parseFloat(post.location.longitude), latitude: parseFloat(post.location.latitude) },
                     symbol: { type: "simple-marker", style: "diamond", color: "#1a5f7a", size: "14px", outline: { color: [255, 255, 255], width: 2 } },
-                    popupTemplate: { title: post.user?.username || "منشور", content: post.content }
+                    popupTemplate: { title: post.user?.username || "منشور", content: "اضغط لعرض المنشور" },
+                    attributes: { type: 'post', data: post }
                 });
                 graphicsLayer.add(postGraphic);
             });
@@ -115,7 +139,8 @@ const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops }) => {
                 const friendGraphic = new Graphic({
                     geometry: { type: "point", longitude: parseFloat(friend.last_longitude), latitude: parseFloat(friend.last_latitude) },
                     symbol: { type: "simple-marker", color: "#22c55e", size: "14px", outline: { color: [255, 255, 255], width: 2 } },
-                    popupTemplate: { title: friend.username || "صديق", content: "صديقك متواجد هنا" }
+                    popupTemplate: { title: friend.username || "صديق", content: "صديقك متواجد هنا" },
+                    attributes: { type: 'friend', data: friend }
                 });
                 graphicsLayer.add(friendGraphic);
             });
@@ -128,7 +153,8 @@ const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops }) => {
                 const shopGraphic = new Graphic({
                     geometry: { type: "point", longitude: parseFloat(shop.longitude), latitude: parseFloat(shop.latitude) },
                     symbol: { type: "simple-marker", style: "square", color: "#fbab15", size: "16px", outline: { color: [255, 255, 255], width: 2 } },
-                    popupTemplate: { title: shop.name, content: shop.category || "متجر" }
+                    popupTemplate: { title: shop.name, content: "اضغط لعرض المتجر" },
+                    attributes: { type: 'shop', data: shop }
                 });
                 graphicsLayer.add(shopGraphic);
             });

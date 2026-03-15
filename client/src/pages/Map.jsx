@@ -1214,6 +1214,13 @@ const MapComponent = () => {
                     posts={posts}
                     friends={friendsMap}
                     shops={[...followedShopsMap, ...managedShopsMap]}
+                    onShopClick={(shop) => {
+                        setSelectedShopProfile(shop);
+                        setShowShopProfile(true);
+                    }}
+                    onPostClick={(post) => {
+                        setSelectedPost(post);
+                    }}
                 />
             )}
         </div>
