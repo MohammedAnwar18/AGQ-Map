@@ -4,10 +4,12 @@ import { loadModules } from 'esri-loader';
 const WB_URL = "https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_WB_2023_15cm_jp2_PG1923_jp2/MapServer";
 const GAZA_URL = "https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_GS_2024_m12_Satellite_tif_PG1923/MapServer";
 
-const GeomolgViewer = ({ onClose }) => {
+const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops }) => {
     const mapDiv = useRef(null);
     const viewRef = useRef(null);
     const mapRef = useRef(null);
+    const graphicsLayerRef = useRef(null);
+    const esriModules = useRef(null);
     const TileLayerClassRef = useRef(null);
 
     // State to track loading and current region
@@ -20,22 +22,26 @@ const GeomolgViewer = ({ onClose }) => {
         const initializeMap = async () => {
             try {
                 // تحميل وحدات ArcGIS API
-                const [Map, MapView, TileLayer] = await loadModules(
-                    ["esri/Map", "esri/views/MapView", "esri/layers/TileLayer"],
+                const [Map, MapView, TileLayer, GraphicsLayer, Graphic] = await loadModules(
+                    ["esri/Map", "esri/views/MapView", "esri/layers/TileLayer", "esri/layers/GraphicsLayer", "esri/Graphic"],
                     { css: "https://js.arcgis.com/4.26/esri/themes/light/main.css" }
                 );
 
                 TileLayerClassRef.current = TileLayer;
+                esriModules.current = { Graphic };
 
                 // إعداد طبقة Orthophoto للضفة الغربية كبداية
                 const orthoLayer = new TileLayer({
                     url: WB_URL
                 });
 
+                const graphicsLayer = new GraphicsLayer();
+                graphicsLayerRef.current = graphicsLayer;
+
                 // إعداد الخريطة
                 const map = new Map({
                     basemap: null,
-                    layers: [orthoLayer]
+                    layers: [orthoLayer, graphicsLayer]
                 });
                 mapRef.current = map;
 
@@ -43,8 +49,8 @@ const GeomolgViewer = ({ onClose }) => {
                 view = new MapView({
                     container: mapDiv.current,
                     map: map,
-                    center: [35.2034, 31.9038], // وسط الضفة الغربية
-                    zoom: 14
+                    center: userLocation ? [parseFloat(userLocation.longitude), parseFloat(userLocation.latitude)] : [35.2034, 31.9038],
+                    zoom: userLocation ? 16 : 14
                 });
                 viewRef.current = view;
 
@@ -70,20 +76,81 @@ const GeomolgViewer = ({ onClose }) => {
         };
     }, []);
 
+    // Effect to render markers when map is ready or data changes
+    useEffect(() => {
+        if (!isMapReady || !graphicsLayerRef.current || !esriModules.current) return;
+
+        const graphicsLayer = graphicsLayerRef.current;
+        const { Graphic } = esriModules.current;
+        
+        graphicsLayer.removeAll();
+
+        // 1. User Location
+        if (userLocation) {
+            const userGraphic = new Graphic({
+                geometry: { type: "point", longitude: parseFloat(userLocation.longitude), latitude: parseFloat(userLocation.latitude) },
+                symbol: { type: "simple-marker", color: "#fbab15", size: "18px", outline: { color: [255, 255, 255], width: 3 } },
+                popupTemplate: { title: "موقعي", content: "أنت هنا" }
+            });
+            graphicsLayer.add(userGraphic);
+        }
+
+        // 2. Posts
+        if (posts && posts.length > 0) {
+            posts.forEach(post => {
+                if (!post.location?.latitude || !post.location?.longitude) return;
+                const postGraphic = new Graphic({
+                    geometry: { type: "point", longitude: parseFloat(post.location.longitude), latitude: parseFloat(post.location.latitude) },
+                    symbol: { type: "simple-marker", style: "diamond", color: "#1a5f7a", size: "14px", outline: { color: [255, 255, 255], width: 2 } },
+                    popupTemplate: { title: post.user?.username || "منشور", content: post.content }
+                });
+                graphicsLayer.add(postGraphic);
+            });
+        }
+
+        // 3. Friends
+        if (friends && friends.length > 0) {
+            friends.forEach(friend => {
+                if (!friend.last_latitude || !friend.last_longitude) return;
+                const friendGraphic = new Graphic({
+                    geometry: { type: "point", longitude: parseFloat(friend.last_longitude), latitude: parseFloat(friend.last_latitude) },
+                    symbol: { type: "simple-marker", color: "#22c55e", size: "14px", outline: { color: [255, 255, 255], width: 2 } },
+                    popupTemplate: { title: friend.username || "صديق", content: "صديقك متواجد هنا" }
+                });
+                graphicsLayer.add(friendGraphic);
+            });
+        }
+
+        // 4. Shops
+        if (shops && shops.length > 0) {
+            shops.forEach(shop => {
+                if (!shop.latitude || !shop.longitude) return;
+                const shopGraphic = new Graphic({
+                    geometry: { type: "point", longitude: parseFloat(shop.longitude), latitude: parseFloat(shop.latitude) },
+                    symbol: { type: "simple-marker", style: "square", color: "#fbab15", size: "16px", outline: { color: [255, 255, 255], width: 2 } },
+                    popupTemplate: { title: shop.name, content: shop.category || "متجر" }
+                });
+                graphicsLayer.add(shopGraphic);
+            });
+        }
+
+    }, [isMapReady, userLocation, posts, friends, shops]);
+
     const handleSwitchRegion = (region) => {
         if (!viewRef.current || !TileLayerClassRef.current || !mapRef.current) return;
 
         // تحديد الرابط والإحداثيات بناءً على المنطقة
         const url = region === 'gaza' ? GAZA_URL : WB_URL;
-        const center = region === 'gaza' ? [34.35, 31.4] : [35.2034, 31.9038]; // إحداثيات تقريبية لغزة والضفة
-        const zoom = region === 'gaza' ? 12 : 14;
+        const center = region === 'gaza' ? [34.35, 31.4] : (userLocation ? [parseFloat(userLocation.longitude), parseFloat(userLocation.latitude)] : [35.2034, 31.9038]);
+        const zoom = region === 'gaza' ? 12 : (userLocation ? 16 : 14);
 
-        // إزالة الطبقات القديمة
-        mapRef.current.removeAll();
+        // إزالة الطبقة القديمة الجوية فقط وإبقاء الرسومات
+        const layersToRemove = mapRef.current.layers.filter(l => l.type === "tile");
+        mapRef.current.removeMany(layersToRemove.toArray());
 
-        // إضافة الطبقة الجديدة
+        // إضافة الطبقة الجديدة بالخلف
         const newLayer = new TileLayerClassRef.current({ url });
-        mapRef.current.add(newLayer);
+        mapRef.current.add(newLayer, 0);
 
         // تحريك الكاميرا
         viewRef.current.goTo({

@@ -204,12 +204,9 @@ const MapComponent = () => {
             sources: {
                 'raster-tiles': {
                     type: 'raster',
-                    tiles: activeMapType === 'geomolg' 
-                        // Using the standard Web Mercator compatible tile service URL
-                        ? ['https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_WB_2023_15cm_jp2_PG1923_jp2/MapServer/tile/{z}/{y}/{x}']
-                        : ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'],
+                    tiles: ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'],
                     tileSize: 256,
-                    attribution: activeMapType === 'geomolg' ? 'Geomolg Palestine Orthophoto 2023' : 'Google Maps'
+                    attribution: 'Google Maps'
                 }
             },
             layers: [
@@ -222,7 +219,7 @@ const MapComponent = () => {
                 }
             ]
         };
-    }, [activeMapType]);
+    }, []);
 
     // Routing
     // Updated to accept explicit start/end for recalculations
@@ -1206,6 +1203,17 @@ const MapComponent = () => {
                         setShowManagedShops(false);
                         mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: 18.5, pitch: 45 });
                     }}
+                />
+            )}
+            
+            {/* Native Geomolg View with ArcGIS API */}
+            {activeMapType === 'geomolg' && (
+                <GeomolgViewer 
+                    onClose={() => setActiveMapType('satellite')} 
+                    userLocation={userLocation}
+                    posts={posts}
+                    friends={friendsMap}
+                    shops={[...followedShopsMap, ...managedShopsMap]}
                 />
             )}
         </div>
