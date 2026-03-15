@@ -1,14 +1,13 @@
 .login-container {
     min-height: 100vh;
+    min-height: 100dvh; /* For mobile browsers */
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    /* Changed to start to allow scrolling from top down */
     position: relative;
-    overflow-y: auto;
-    /* Allow vertical scroll */
     padding: 3rem 1rem;
+    padding-bottom: 5rem;
 }
 
 .login-background {

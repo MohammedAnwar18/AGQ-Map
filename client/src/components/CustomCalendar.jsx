@@ -17,16 +17,18 @@ const CustomCalendar = ({ selectedDate, onChange, onClose }) => {
     const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
 
     const handleDateClick = (day) => {
+        // Create the date in local time using the chosen day
         const newDate = new Date(viewYear, viewMonth, day);
-        // Adjust for timezone offset to keep date correct locally
-        const offset = newDate.getTimezoneOffset();
-        const adjustedDate = new Date(newDate.getTime() - (offset * 60 * 1000));
-
-        setDate(newDate); // Update internal state
+        setDate(newDate);
     };
 
     const handleConfirm = () => {
-        onChange(date.toISOString().split('T')[0]);
+        // Build the string manually using the components to avoid timezone shift from toISOString()
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const formattedDate = `${year}-${month}-${day}`;
+        onChange(formattedDate);
         onClose();
     };
 
