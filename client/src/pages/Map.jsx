@@ -197,7 +197,6 @@ const MapComponent = () => {
     const [destination, setDestination] = useState(null);
     const [friendsMap, setFriendsMap] = useState([]);
     const [followedShopsMap, setFollowedShopsMap] = useState([]);
-
     // --- Dynamic Map Style ---
     const mapStyle = useMemo(() => {
         return {
@@ -206,9 +205,10 @@ const MapComponent = () => {
                 'raster-tiles': {
                     type: 'raster',
                     tiles: activeMapType === 'geomolg' 
-                        ? ['https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_WB_2023_15cm_jp2_PG1923_jp2/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&format=png&transparent=true&f=image']
+                        // Using the standard Web Mercator compatible tile service URL
+                        ? ['https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_WB_2023_15cm_jp2_PG1923_jp2/MapServer/tile/{z}/{y}/{x}']
                         : ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'],
-                    tileSize: activeMapType === 'geomolg' ? 512 : 256,
+                    tileSize: 256,
                     attribution: activeMapType === 'geomolg' ? 'Geomolg Palestine Orthophoto 2023' : 'Google Maps'
                 }
             },
