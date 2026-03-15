@@ -23,5 +23,6 @@ const getPool = () => {
 module.exports = {
   query: (text, params) => getPool().query(text, params),
   on: (event, handler) => getPool().on(event, handler),
+  connect: () => getPool().connect(),
   getPool
 };
