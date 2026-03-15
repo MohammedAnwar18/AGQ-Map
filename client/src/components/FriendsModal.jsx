@@ -60,20 +60,30 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
     // --- Friends Functions ---
     const handleAcceptRequest = async (requestId) => {
         try {
+            // Optimistic UI Update for instant feedback
+            setRequests(prev => prev.filter(r => r.id !== requestId));
+            
             await friendService.acceptFriendRequest(requestId);
-            setRequests(requests.filter(r => r.id !== requestId));
-            await loadData(); // Reload to update friends list
+            
+            // Reload silently to fetch new friends list
+            friendService.getFriends().then(data => {
+                setFriends(data.friends || []);
+            });
         } catch (error) {
             console.error('Failed to accept request:', error);
+            // Optionally, we could revert the optimistic update here
+            loadData(); // Revert if failed
         }
     };
 
     const handleRejectRequest = async (requestId) => {
         try {
+            // Optimistic UI Update
+            setRequests(prev => prev.filter(r => r.id !== requestId));
             await friendService.rejectFriendRequest(requestId);
-            setRequests(requests.filter(r => r.id !== requestId));
         } catch (error) {
             console.error('Failed to reject request:', error);
+            loadData(); // Revert if failed
         }
     };
 
