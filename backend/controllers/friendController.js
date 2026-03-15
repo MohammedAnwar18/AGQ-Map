@@ -86,9 +86,11 @@ const sendFriendRequest = async (req, res) => {
  * قبول طلب صداقة
  */
 const acceptFriendRequest = async (req, res) => {
-    const client = await pool.connect();
+    let client;
+    let requestDetails = null;
 
     try {
+        client = await pool.connect();
         await client.query('BEGIN');
 
         const { requestId } = req.params;
@@ -103,6 +105,7 @@ const acceptFriendRequest = async (req, res) => {
 
         if (requestResult.rows.length === 0) {
             await client.query('ROLLBACK');
+            client.release();
             return res.status(404).json({ error: 'Friend request not found' });
         }
 
@@ -124,20 +127,29 @@ const acceptFriendRequest = async (req, res) => {
         );
 
         await client.query('COMMIT');
-        client.release(); // ✅ Release connection EARLY
+        client.release(); 
+        requestDetails = request;
 
-        // إنشاء إشعار بعد تحرير الاتصال لتجنب أي تعليق
-        await createNotification(request.sender_id, userId, 'friend_accepted', null);
-
-        res.json({ message: 'Friend request accepted' });
     } catch (error) {
         if (client) {
             try { await client.query('ROLLBACK'); } catch (e) {}
             client.release();
         }
         console.error('Accept friend request error:', error);
-        res.status(500).json({ error: 'Server error accepting friend request' });
+        return res.status(500).json({ error: 'Server error accepting friend request' });
     }
+
+    // إنشاء الإشعار خارج المعاملة
+    try {
+        if (requestDetails) {
+            const userId = req.user.id || req.user.userId;
+            await createNotification(requestDetails.sender_id, userId, 'friend_accepted', null);
+        }
+    } catch(e) {
+        console.error('Failed to create notification', e);
+    }
+
+    res.json({ message: 'Friend request accepted' });
 };
 
 /**
@@ -171,9 +183,11 @@ const rejectFriendRequest = async (req, res) => {
  * قبول طلب صداقة باستخدام معرف المرسل (للإشعارات)
  */
 const acceptBySender = async (req, res) => {
-    const client = await pool.connect();
+    let client;
+    let requestDetails = null;
 
     try {
+        client = await pool.connect();
         await client.query('BEGIN');
 
         const { senderId } = req.params;
@@ -188,6 +202,7 @@ const acceptBySender = async (req, res) => {
 
         if (requestResult.rows.length === 0) {
             await client.query('ROLLBACK');
+            client.release();
             return res.status(404).json({ error: 'Friend request not found' });
         }
 
@@ -209,20 +224,29 @@ const acceptBySender = async (req, res) => {
         );
 
         await client.query('COMMIT');
-        client.release(); // ✅ Release connection EARLY
+        client.release();
+        requestDetails = request;
 
-        // إنشاء إشعار بعد تحرير الاتصال لتجنب أي تعليق
-        await createNotification(request.sender_id, userId, 'friend_accepted', null);
-
-        res.json({ message: 'Friend request accepted' });
     } catch (error) {
         if (client) {
             try { await client.query('ROLLBACK'); } catch (e) {}
             client.release();
         }
         console.error('Accept friend request error:', error);
-        res.status(500).json({ error: 'Server error accepting friend request' });
+        return res.status(500).json({ error: 'Server error accepting friend request' });
     }
+
+    // إنشاء الإشعار خارج المعاملة
+    try {
+        if (requestDetails) {
+            const userId = req.user.id || req.user.userId;
+            await createNotification(requestDetails.sender_id, userId, 'friend_accepted', null);
+        }
+    } catch(e) {
+        console.error('Failed to create notification', e);
+    }
+
+    res.json({ message: 'Friend request accepted' });
 };
 
 /**
