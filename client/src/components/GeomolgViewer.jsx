@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { loadModules } from 'esri-loader';
 
-const WB_URL = "https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_WB_2023_15cm_jp2_PG1923_jp2/MapServer";
+const WB_URL = "https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_WB_2024_15cm_tif_PG1923/MapServer";
 const GAZA_URL = "https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_GS_2024_m12_Satellite_tif_PG1923/MapServer";
 
 const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops, onShopClick, onPostClick }) => {
@@ -245,7 +245,7 @@ const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops, onShopCli
                 borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
                 zIndex: 50, fontSize: '0.85rem', fontWeight: 'bold', color: '#1a5f7a'
             }}>
-                Geomolg Orthophoto {currentRegion === 'gaza' ? 'Gaza 2024' : 'West Bank 2023'}
+                Geomolg Orthophoto {currentRegion === 'gaza' ? 'Gaza 2024' : 'West Bank 2024'}
             </div>
         </div>
     );
