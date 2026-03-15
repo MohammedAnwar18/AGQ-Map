@@ -123,10 +123,10 @@ const acceptFriendRequest = async (req, res) => {
             Math.max(request.sender_id, request.receiver_id)]
         );
 
-        // إنشاء إشعار
-        await createNotification(request.sender_id, userId, 'friend_accepted', null);
-
         await client.query('COMMIT');
+
+        // إنشاء إشعار بعد نجاح التثبيت لتجنب حجز الاتصالات (Deadlock)
+        await createNotification(request.sender_id, userId, 'friend_accepted', null);
 
         res.json({ message: 'Friend request accepted' });
     } catch (error) {
@@ -206,10 +206,10 @@ const acceptBySender = async (req, res) => {
             Math.max(request.sender_id, request.receiver_id)]
         );
 
-        // إنشاء إشعار
-        await createNotification(request.sender_id, userId, 'friend_accepted', null);
-
         await client.query('COMMIT');
+
+        // إنشاء إشعار بعد نجاح التثبيت لتجنب حجز الاتصالات (Deadlock)
+        await createNotification(request.sender_id, userId, 'friend_accepted', null);
 
         res.json({ message: 'Friend request accepted' });
     } catch (error) {
