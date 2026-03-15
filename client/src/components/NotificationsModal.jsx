@@ -49,33 +49,26 @@ const NotificationsModal = ({ onClose, onNotificationClick }) => {
     };
 
     const handleAcceptFriend = async (senderId) => {
-        setActionLoading(true);
+        // Optimistic UI Update: remove it instantly
+        setNotifications(prev => prev.filter(n => !(n.type === 'friend_request' && n.sender_id === senderId)));
+        setSelectedRequest(null);
+        
         try {
             await friendService.acceptBySender(senderId);
-            // App-like behavior: silently remove request notification without distracting alerts
-            setNotifications(prev => prev.filter(n => !(n.type === 'friend_request' && n.sender_id === senderId)));
-            setSelectedRequest(null);
         } catch (error) {
             console.error('Error accepting friend request:', error);
-            // If it fails because it was already accepted, just close the view silently
-            setSelectedRequest(null); 
-        } finally {
-            setActionLoading(false);
         }
     };
 
     const handleRejectFriend = async (senderId) => {
-        setActionLoading(true);
+        // Optimistic UI Update
+        setNotifications(prev => prev.filter(n => !(n.type === 'friend_request' && n.sender_id === senderId)));
+        setSelectedRequest(null);
+
         try {
             await friendService.rejectBySender(senderId);
-            // App-like behavior: silently remove request notification
-            setNotifications(prev => prev.filter(n => !(n.type === 'friend_request' && n.sender_id === senderId)));
-            setSelectedRequest(null);
         } catch (error) {
             console.error('Error rejecting friend request:', error);
-            setSelectedRequest(null);
-        } finally {
-            setActionLoading(false);
         }
     };
 
