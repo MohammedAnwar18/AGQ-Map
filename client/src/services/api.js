@@ -127,8 +127,18 @@ export const friendService = {
         return response.data;
     },
 
+    acceptBySender: async (senderId) => {
+        const response = await api.post(`/friends/request/sender/${senderId}/accept`);
+        return response.data;
+    },
+
     rejectFriendRequest: async (requestId) => {
         const response = await api.post(`/friends/request/${requestId}/reject`);
+        return response.data;
+    },
+
+    rejectBySender: async (senderId) => {
+        const response = await api.post(`/friends/request/sender/${senderId}/reject`);
         return response.data;
     },
 

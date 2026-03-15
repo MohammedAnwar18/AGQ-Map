@@ -166,6 +166,89 @@ const rejectFriendRequest = async (req, res) => {
 };
 
 /**
+ * قبول طلب صداقة باستخدام معرف المرسل (للإشعارات)
+ */
+const acceptBySender = async (req, res) => {
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const { senderId } = req.params;
+        const userId = req.user.id || req.user.userId;
+
+        // الحصول على الطلب
+        const requestResult = await client.query(
+            `SELECT * FROM friend_requests 
+       WHERE sender_id = $1 AND receiver_id = $2 AND status = 'pending'`,
+            [senderId, userId]
+        );
+
+        if (requestResult.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Friend request not found' });
+        }
+
+        const request = requestResult.rows[0];
+
+        // تحديث حالة الطلب
+        await client.query(
+            `UPDATE friend_requests SET status = 'accepted', updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1`,
+            [request.id]
+        );
+
+        // إضافة صداقة
+        await client.query(
+            `INSERT INTO friendships (user1_id, user2_id)
+       VALUES ($1, $2)`,
+            [Math.min(request.sender_id, request.receiver_id),
+            Math.max(request.sender_id, request.receiver_id)]
+        );
+
+        // إنشاء إشعار
+        await createNotification(request.sender_id, userId, 'friend_accepted', null);
+
+        await client.query('COMMIT');
+
+        res.json({ message: 'Friend request accepted' });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Accept friend request error:', error);
+        res.status(500).json({ error: 'Server error accepting friend request' });
+    } finally {
+        client.release();
+    }
+};
+
+/**
+ * رفض طلب صداقة باستخدام معرف المرسل (للإشعارات)
+ */
+const rejectBySender = async (req, res) => {
+    try {
+        const { senderId } = req.params;
+        const userId = req.user.id || req.user.userId;
+
+        const result = await pool.query(
+            `UPDATE friend_requests 
+       SET status = 'rejected', updated_at = CURRENT_TIMESTAMP
+       WHERE sender_id = $1 AND receiver_id = $2 AND status = 'pending'
+       RETURNING id`,
+            [senderId, userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Friend request not found' });
+        }
+
+        res.json({ message: 'Friend request rejected' });
+    } catch (error) {
+        console.error('Reject friend request error:', error);
+        res.status(500).json({ error: 'Server error rejecting friend request' });
+    }
+};
+
+/**
  * الحصول على طلبات الصداقة الواردة
  */
 const getPendingRequests = async (req, res) => {
@@ -323,5 +406,7 @@ module.exports = {
     getPendingRequests,
     getFriends,
     removeFriend,
-    toggleLocationSharing
+    toggleLocationSharing,
+    acceptBySender,
+    rejectBySender
 };

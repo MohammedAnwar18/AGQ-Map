@@ -8,7 +8,9 @@ const {
     getPendingRequests,
     getFriends,
     removeFriend,
-    toggleLocationSharing
+    toggleLocationSharing,
+    acceptBySender,
+    rejectBySender
 } = require('../controllers/friendController');
 
 // إرسال طلب صداقة (محمي)
@@ -17,8 +19,14 @@ router.post('/request', authenticateToken, sendFriendRequest);
 // قبول طلب صداقة (محمي)
 router.post('/request/:requestId/accept', authenticateToken, acceptFriendRequest);
 
+// قبول طلب صداقة بمعرف المرسل (محمي)
+router.post('/request/sender/:senderId/accept', authenticateToken, acceptBySender);
+
 // رفض طلب صداقة (محمي)
 router.post('/request/:requestId/reject', authenticateToken, rejectFriendRequest);
+
+// رفض طلب صداقة بمعرف المرسل (محمي)
+router.post('/request/sender/:senderId/reject', authenticateToken, rejectBySender);
 
 // الحصول على الطلبات الواردة (محمي)
 router.get('/requests/pending', authenticateToken, getPendingRequests);

@@ -49,43 +49,31 @@ const NotificationsModal = ({ onClose, onNotificationClick }) => {
     };
 
     const handleAcceptFriend = async (senderId) => {
-        const request = pendingRequests.find(r => r.sender_id === senderId);
-        if (!request) {
-            alert('لم يتم العثور على طلب الصداقة، ربما تم قبوله بالفعل');
-            return;
-        }
-
         setActionLoading(true);
         try {
-            await friendService.acceptFriendRequest(request.id);
-            // Update UI
-            setPendingRequests(prev => prev.filter(r => r.id !== request.id));
+            await friendService.acceptBySender(senderId);
+            // App-like behavior: silently remove request notification without distracting alerts
+            setNotifications(prev => prev.filter(n => !(n.type === 'friend_request' && n.sender_id === senderId)));
             setSelectedRequest(null);
-            fetchNotifications(); // Refresh list
         } catch (error) {
             console.error('Error accepting friend request:', error);
-            alert('فشل قبول الطلب، حاول مرة أخرى');
+            // If it fails because it was already accepted, just close the view silently
+            setSelectedRequest(null); 
         } finally {
             setActionLoading(false);
         }
     };
 
     const handleRejectFriend = async (senderId) => {
-        const request = pendingRequests.find(r => r.sender_id === senderId);
-        if (!request) {
-            setSelectedRequest(null);
-            return;
-        }
-
         setActionLoading(true);
         try {
-            await friendService.rejectFriendRequest(request.id);
-            setPendingRequests(prev => prev.filter(r => r.id !== request.id));
+            await friendService.rejectBySender(senderId);
+            // App-like behavior: silently remove request notification
+            setNotifications(prev => prev.filter(n => !(n.type === 'friend_request' && n.sender_id === senderId)));
             setSelectedRequest(null);
-            fetchNotifications();
         } catch (error) {
             console.error('Error rejecting friend request:', error);
-            alert('فشل رفض الطلب، حاول مرة أخرى');
+            setSelectedRequest(null);
         } finally {
             setActionLoading(false);
         }
