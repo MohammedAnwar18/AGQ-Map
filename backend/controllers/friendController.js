@@ -124,17 +124,19 @@ const acceptFriendRequest = async (req, res) => {
         );
 
         await client.query('COMMIT');
+        client.release(); // ✅ Release connection EARLY
 
-        // إنشاء إشعار بعد نجاح التثبيت لتجنب حجز الاتصالات (Deadlock)
+        // إنشاء إشعار بعد تحرير الاتصال لتجنب أي تعليق
         await createNotification(request.sender_id, userId, 'friend_accepted', null);
 
         res.json({ message: 'Friend request accepted' });
     } catch (error) {
-        await client.query('ROLLBACK');
+        if (client) {
+            try { await client.query('ROLLBACK'); } catch (e) {}
+            client.release();
+        }
         console.error('Accept friend request error:', error);
         res.status(500).json({ error: 'Server error accepting friend request' });
-    } finally {
-        client.release();
     }
 };
 
@@ -207,17 +209,19 @@ const acceptBySender = async (req, res) => {
         );
 
         await client.query('COMMIT');
+        client.release(); // ✅ Release connection EARLY
 
-        // إنشاء إشعار بعد نجاح التثبيت لتجنب حجز الاتصالات (Deadlock)
+        // إنشاء إشعار بعد تحرير الاتصال لتجنب أي تعليق
         await createNotification(request.sender_id, userId, 'friend_accepted', null);
 
         res.json({ message: 'Friend request accepted' });
     } catch (error) {
-        await client.query('ROLLBACK');
+        if (client) {
+            try { await client.query('ROLLBACK'); } catch (e) {}
+            client.release();
+        }
         console.error('Accept friend request error:', error);
         res.status(500).json({ error: 'Server error accepting friend request' });
-    } finally {
-        client.release();
     }
 };
 
