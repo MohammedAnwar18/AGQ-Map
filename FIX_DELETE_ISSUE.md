@@ -49,7 +49,7 @@ console.log(payload);
 {
   "userId": 4,
   "username": "admin",
-  "email": "admin@palnova.com",
+  "email": "admin@palnovaa.com",
   "role": "admin",  ← هذا مهم!
   "iat": ...,
   "exp": ...

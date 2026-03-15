@@ -182,7 +182,7 @@ const AdminDashboard = () => {
             {/* Sidebar */}
             <div className="admin-sidebar">
                 <div className="admin-logo">
-                    <h1>🗺️ PalNova</h1>
+                    <h1>🗺️ PalNovaa</h1>
                     <p>Admin Dashboard</p>
                 </div>
 

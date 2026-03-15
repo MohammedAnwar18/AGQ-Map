@@ -7,7 +7,7 @@ import axios from 'axios';
 const AIChatModal = ({ onClose, onSearchResults, onRouteRequest, onClearMap, userLocation, onShopFollowed }) => {
     const { user } = useAuth();
     const [messages, setMessages] = useState([
-        { id: 1, role: 'CHATBOT', content: 'مرحباً! أنا مساعدك الذكي PalNova. كيف يمكنني مساعدتك اليوم؟' }
+        { id: 1, role: 'CHATBOT', content: 'مرحباً! أنا مساعدك الذكي PalNovaa. كيف يمكنني مساعدتك اليوم؟' }
     ]);
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(false);

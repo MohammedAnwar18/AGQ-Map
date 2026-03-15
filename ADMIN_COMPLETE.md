@@ -2,7 +2,7 @@
 
 ## ✅ ما تم إنجازه
 
-تم بناء **Admin Dashboard** احترافي كامل لمنصة PalNova مع جميع المتطلبات المطلوبة:
+تم بناء **Admin Dashboard** احترافي كامل لمنصة PalNovaa مع جميع المتطلبات المطلوبة:
 
 ---
 
@@ -288,7 +288,7 @@ http://localhost:5173/admin
 - 🔍 البحث والتصفية
 - 🔐 التحكم الكامل بالمنصة
 
-**🎉 PalNova Admin Dashboard جاهز للاستخدام!**
+**🎉 PalNovaa Admin Dashboard جاهز للاستخدام!**
 
 ---
 

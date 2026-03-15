@@ -47,7 +47,7 @@ EMAIL_PORT=587
 EMAIL_SECURE=false
 EMAIL_USER=${email.trim()}
 EMAIL_PASS=${password.trim()}
-EMAIL_FROM="PalNova Security" <${email.trim()}>
+EMAIL_FROM="PalNovaa Security" <${email.trim()}>
 `;
 
             fs.appendFileSync(envPath, emailConfig);

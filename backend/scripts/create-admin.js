@@ -10,9 +10,9 @@ async function createAdmin() {
         // بيانات الأدمن
         const adminData = {
             username: 'admin',
-            email: 'admin@palnova.com',
+            email: 'admin@palnovaa.com',
             password: 'admin123',  // يمكن تغييرها بعد أول تسجيل دخول
-            full_name: 'PalNova Administrator'
+            full_name: 'PalNovaa Administrator'
         };
 
         console.log('🚀 Creating admin account...\n');

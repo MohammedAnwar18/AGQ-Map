@@ -1,22 +1,38 @@
-const { Pool } = require('pg');
-const pool = new Pool({
-    connectionString: 'postgresql://postgres.ybrgvpubwnlskcledlaq:Mohammed%40%40002%40%40003@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres',
-    ssl: { rejectUnauthorized: false }
-});
+const pool = require('./config/database');
 
-async function main() {
-    try {
-        console.log('Querying getUserProfile logic...');
-        const userId = 1;
+async function test() {
+  let client;
+  try {
+    client = await pool.connect();
+    await client.query('BEGIN');
+    const sender_id = 14; 
+    const receiver_id = 15;
+    
+    // Test acceptBySender query
+    const requestResult = await client.query(
+      `SELECT * FROM friend_requests WHERE sender_id = $1 AND receiver_id = $2 AND status = 'pending'`,
+      [sender_id, receiver_id]
+    );
 
-        const likesCount = await pool.query(`SELECT COUNT(*)::int as count FROM likes JOIN posts ON likes.post_id = posts.id WHERE posts.user_id = $1`, [userId]);
-        console.log('likesCount:', likesCount.rows[0]);
+    console.log('Pending requests:', requestResult.rows);
 
-        console.log('Success!');
-    } catch (e) {
-        console.error(e);
-    } finally {
-        pool.end();
+    if (requestResult.rows.length > 0) {
+      const min = Math.min(sender_id, receiver_id);
+      const max = Math.max(sender_id, receiver_id);
+
+      await client.query('INSERT INTO friendships (user1_id, user2_id) VALUES ($1, $2)', [min, max]);
+      console.log('Inserted friendship!');
+      
+      const res = await client.query('SELECT * FROM friendships');
+      console.log('Friendships:', res.rows);
     }
+    await client.query('ROLLBACK'); 
+  } catch(e) { 
+    console.error('Error:', e); 
+    await client.query('ROLLBACK');
+  } finally { 
+    if (client) client.release();
+    process.exit(); 
+  }
 }
-main();
+test();

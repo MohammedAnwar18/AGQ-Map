@@ -476,7 +476,7 @@ const Login = () => {
                 paddingBottom: '2rem'
             }}>
                 <p style={{ margin: 0, padding: 0, fontWeight: '600' }}>
-                    &copy; {new Date().getFullYear()} PalNova. جميع الحقوق محفوظة.
+                    &copy; {new Date().getFullYear()} PalNovaa. جميع الحقوق محفوظة.
                 </p>
             </div>
         </div>

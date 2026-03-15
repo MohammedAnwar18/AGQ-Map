@@ -16,14 +16,14 @@ const transporter = nodemailer.createTransport({
  */
 const sendOtpEmail = async (to, otpCode) => {
     try {
-        const fromName = "PalNova Security";
+        const fromName = "PalNovaa Security";
         const fromEmail = process.env.EMAIL_USER;
 
         const emailHtml = `
             <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; direction: rtl; text-align: right; background-color: #f9f9f9;">
                 <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-top: 5px solid #fbab15;">
                     <div style="padding: 30px; text-align: center; background-color: #0f172a;">
-                        <h1 style="color: #fbab15; margin: 0; font-size: 28px;">PalNova</h1>
+                        <h1 style="color: #fbab15; margin: 0; font-size: 28px;">PalNovaa</h1>
                     </div>
                     <div style="padding: 40px;">
                         <h2 style="color: #1e293b; margin-top: 0;">تأكيد حسابك</h2>
@@ -36,7 +36,7 @@ const sendOtpEmail = async (to, otpCode) => {
                         <p style="font-size: 14px; color: #94a3b8;">هذا الرمز صالح لمدة 5 دقائق فقط. إذا لم تطلب هذا الرمز، يرجى تجاهل هذا البريد.</p>
                     </div>
                     <div style="padding: 20px; text-align: center; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-                        <p style="margin: 0; font-size: 12px; color: #64748b;">&copy; ${new Date().getFullYear()} PalNova. جميع الحقوق محفوظة.</p>
+                        <p style="margin: 0; font-size: 12px; color: #64748b;">&copy; ${new Date().getFullYear()} PalNovaa. جميع الحقوق محفوظة.</p>
                     </div>
                 </div>
             </div>
@@ -45,7 +45,7 @@ const sendOtpEmail = async (to, otpCode) => {
         const mailOptions = {
             from: `"${fromName}" <${fromEmail}>`,
             to,
-            subject: 'PalNova - رمز التحقق الخاص بك',
+            subject: 'PalNovaa - رمز التحقق الخاص بك',
             html: emailHtml
         };
 

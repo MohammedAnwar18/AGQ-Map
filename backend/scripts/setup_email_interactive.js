@@ -36,7 +36,7 @@ EMAIL_PORT=587
 EMAIL_SECURE=false
 EMAIL_USER=${email}
 EMAIL_PASS=${password}
-EMAIL_FROM="PalNova Security" <${email}>`;
+EMAIL_FROM="PalNovaa Security" <${email}>`;
 
         fs.writeFileSync(envPath, envContent + '\n' + newConfig);
         console.log('✅ تم تحديث الإعدادات.');
@@ -53,9 +53,9 @@ EMAIL_FROM="PalNova Security" <${email}>`;
 
         try {
             const info = await transporter.sendMail({
-                from: `"PalNova Test" <${email}>`,
+                from: `"PalNovaa Test" <${email}>`,
                 to: email, // Send to self
-                subject: "PalNova Email Test",
+                subject: "PalNovaa Email Test",
                 text: "إذا وصلت هذه الرسالة، فهذا يعني أن إعدادات البريد تعمل بنجاح! 🎉",
                 html: "<b>إذا وصلت هذه الرسالة، فهذا يعني أن إعدادات البريد تعمل بنجاح! 🎉</b>"
             });

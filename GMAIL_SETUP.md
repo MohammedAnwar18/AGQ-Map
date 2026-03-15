@@ -9,7 +9,7 @@
 4. بعد التفعيل، ارجع لصفحة الأمان وابحث عن خيار **كلمات مرور التطبيقات (App Passwords)**.
    - *ملاحظة:* يمكنك البحث عنها في شريط البحث بالأعلى إذا لم تجدها.
 5. أنشئ كلمة مرور جديدة:
-   - الاسم: `PalNova`
+   - الاسم: `PalNovaa`
    - اضغط **إنشاء (Create)**.
 6. ستظهر لك كلمة مرور مكونة من 16 حرفاً (مثل: `abcd efgh ijkl mnop`). **انسخها**.
 
@@ -36,7 +36,7 @@ EMAIL_PORT=587
 EMAIL_SECURE=false
 EMAIL_USER=example@gmail.com
 EMAIL_PASS=الصق_كلمة_مرور_التطبيقات_هنا_وليس_كلمة_السر_العادية
-EMAIL_FROM="PalNova Support" <example@gmail.com>
+EMAIL_FROM="PalNovaa Support" <example@gmail.com>
 ```
 
 3. احفظ الملف.

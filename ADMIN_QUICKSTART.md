@@ -116,4 +116,4 @@ SELECT id, username, role FROM users WHERE username = 'YOUR_USERNAME';
 
 ---
 
-**🎉 الآن أنت جاهز لإدارة PalNova!**
+**🎉 الآن أنت جاهز لإدارة PalNovaa!**
