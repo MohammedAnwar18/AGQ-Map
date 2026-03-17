@@ -136,7 +136,7 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                             </div>
                             <div className="uni-quick-stats">
                                 <div className="stat-box">
-                                    <span className="stat-value">{Object.values(mockFacilities['الكليات']).length}</span>
+                                    <span className="stat-value">{facilities['الكليات']?.length || 0}</span>
                                     <span className="stat-label">كليات</span>
                                 </div>
                                 <div className="stat-box">

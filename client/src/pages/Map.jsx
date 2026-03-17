@@ -1032,6 +1032,18 @@ const MapComponent = () => {
                         </Marker>
                     ))}
 
+                    {/* Selected Profiles (e.g., from Search before following) */}
+                    {(showShopProfile && selectedShopProfile && selectedShopProfile.latitude) && (
+                        <Marker longitude={parseFloat(selectedShopProfile.longitude)} latitude={parseFloat(selectedShopProfile.latitude)} anchor="bottom">
+                            <div style={{ fontSize: '40px', filter: 'drop-shadow(0px 4px 4px rgba(0,0,0,0.4))', zIndex: 1000, cursor: 'pointer' }}>📍</div>
+                        </Marker>
+                    )}
+                    {(showUniversityProfile && selectedUniversityProfile && selectedUniversityProfile.latitude) && (
+                        <Marker longitude={parseFloat(selectedUniversityProfile.longitude)} latitude={parseFloat(selectedUniversityProfile.latitude)} anchor="bottom">
+                            <div style={{ fontSize: '45px', filter: 'drop-shadow(0px 4px 4px rgba(0,0,0,0.4))', zIndex: 1000, cursor: 'pointer' }}>🎓</div>
+                        </Marker>
+                    )}
+
                     {/* Palestinian Cities Labels (Satellite Only) - Hide when zoomed in to show shops */}
                     {activeMapType === 'satellite' && viewState.zoom <= 13.5 && PALESTINIAN_CITIES.map((city, index) => (
                         <Marker key={`city-${index}`} longitude={city.lon} latitude={city.lat} anchor="bottom">
