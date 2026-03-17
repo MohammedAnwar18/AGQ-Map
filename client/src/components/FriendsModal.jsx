@@ -19,6 +19,11 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
     const [newShopData, setNewShopData] = useState({ name: '', category: 'General', lat: '', lon: '' });
     const [isSubmittingShop, setIsSubmittingShop] = useState(false);
 
+    // Create University State
+    const [showCreateOptions, setShowCreateOptions] = useState(false);
+    const [isCreatingUniversity, setIsCreatingUniversity] = useState(false);
+    const [newUniversityData, setNewUniversityData] = useState({ name: '', lat: '', lon: '' });
+
     useEffect(() => {
         loadData();
     }, [activeTab, isShopsMode]); // Re-run when tab changes
@@ -188,14 +193,50 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
         }
     };
 
-    const getCurrentLocation = () => {
+    const handleCreateUniversity = async (e) => {
+        e.preventDefault();
+        if (!newUniversityData.name || !newUniversityData.lat || !newUniversityData.lon) {
+            alert("يرجى تعبئة جميع الحقول المطلوبة (الاسم والموقع)");
+            return;
+        }
+
+        setIsSubmittingShop(true);
+        try {
+            const createdShop = await shopService.create({
+                name: newUniversityData.name,
+                category: 'University', // Designates it as a university
+                latitude: parseFloat(newUniversityData.lat),
+                longitude: parseFloat(newUniversityData.lon)
+            });
+
+            alert("تم إنشاء الجامعة بنجاح!");
+            setIsCreatingUniversity(false);
+            setNewUniversityData({ name: '', lat: '', lon: '' });
+            await handleFollowShop(createdShop);
+        } catch (error) {
+            console.error("Create university failed", error);
+            alert("فشل إنشاء الجامعة.");
+        } finally {
+            setIsSubmittingShop(false);
+        }
+    };
+
+    const getCurrentLocation = (isUni = false) => {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition((pos) => {
-                setNewShopData(prev => ({
-                    ...prev,
-                    lat: pos.coords.latitude.toFixed(6),
-                    lon: pos.coords.longitude.toFixed(6)
-                }));
+                if (isUni) {
+                    setNewUniversityData(prev => ({
+                        ...prev,
+                        lat: pos.coords.latitude.toFixed(6),
+                        lon: pos.coords.longitude.toFixed(6)
+                    }));
+                } else {
+                    setNewShopData(prev => ({
+                        ...prev,
+                        lat: pos.coords.latitude.toFixed(6),
+                        lon: pos.coords.longitude.toFixed(6)
+                    }));
+                }
             }, () => alert("تعذر الحصول على الموقع"));
         } else {
             alert("المتصفح لا يدعم تحديد الموقع");
@@ -223,20 +264,25 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                 <div className="modal-header">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <h2>{isShopsMode ? 'المحلات' : 'الأصدقاء'}</h2>
-                        {isShopsMode && !isCreatingShop && currentUser?.role === 'admin' && (
+                        {isShopsMode && !isCreatingShop && !showCreateOptions && !isCreatingUniversity && currentUser?.role === 'admin' && (
                             <button
                                 className="btn-small btn-add-friend"
-                                onClick={() => setIsCreatingShop(true)}
-                                style={{ borderRadius: '50%', width: '30px', height: '30px', padding: 0, fontSize: '1.2rem' }}
-                                title="إضافة محل جديد"
+                                onClick={() => setShowCreateOptions(true)}
+                                style={{ borderRadius: '50%', width: '30px', height: '30px', padding: 0, fontSize: '1.2rem', background: '#10b981', color: 'white', border: 'none' }}
+                                title="إضافة مكان جديد"
                             >
                                 +
                             </button>
                         )}
                     </div>
                     <button className="btn-close" onClick={() => {
-                        if (isCreatingShop) setIsCreatingShop(false);
-                        else onClose();
+                        if (isCreatingShop || isCreatingUniversity || showCreateOptions) {
+                            setIsCreatingShop(false);
+                            setIsCreatingUniversity(false);
+                            setShowCreateOptions(false);
+                        } else {
+                            onClose();
+                        }
                     }}>✕</button>
                 </div>
 
@@ -437,7 +483,76 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                     ) : (
                         // --- SHOPS TAB ---
                         <div className="shops-container">
-                            {isCreatingShop ? (
+                            {showCreateOptions ? (
+                                <div style={{ padding: '30px 20px', textAlign: 'center' }}>
+                                    <h3 style={{ marginBottom: '20px', color: 'var(--primary)', fontSize: '1.2rem' }}>ماذا تريد أن تضيف؟</h3>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                                        <div 
+                                            onClick={() => { setShowCreateOptions(false); setIsCreatingShop(true); }}
+                                            style={{ background: 'var(--bg-primary)', padding: '20px', borderRadius: '16px', border: '1px solid var(--bg-tertiary)', cursor: 'pointer', transition: '0.2s', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}
+                                            onMouseOver={e => e.currentTarget.style.transform = 'translateY(-3px)'}
+                                            onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+                                        >
+                                            <div style={{ fontSize: '3rem', marginBottom: '10px' }}>🏪</div>
+                                            <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-primary)' }}>محل / شركة</h4>
+                                            <p style={{ margin: '5px 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>مطعم، تكسي، ملابس...</p>
+                                        </div>
+                                        <div 
+                                            onClick={() => { setShowCreateOptions(false); setIsCreatingUniversity(true); }}
+                                            style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', padding: '20px', borderRadius: '16px', cursor: 'pointer', transition: '0.2s', boxShadow: '0 4px 10px rgba(16,185,129,0.3)', color: 'white' }}
+                                            onMouseOver={e => e.currentTarget.style.transform = 'translateY(-3px)'}
+                                            onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+                                        >
+                                            <div style={{ fontSize: '3rem', marginBottom: '10px' }}>🎓</div>
+                                            <h4 style={{ margin: 0, fontSize: '1rem', color: 'white' }}>مؤسسة / جامعة</h4>
+                                            <p style={{ margin: '5px 0 0 0', fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)' }}>مرافق، كليات، ذكية...</p>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setShowCreateOptions(false)} style={{ marginTop: '30px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.9rem' }}>
+                                        إلغاء
+                                    </button>
+                                </div>
+                            ) : isCreatingUniversity ? (
+                                <div style={{ padding: '20px' }}>
+                                    <h3 style={{ marginBottom: '15px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span>🎓</span> تسجيل مؤسسة/جامعة تفاعلية
+                                    </h3>
+                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
+                                        ستتمكن لاحقاً من إضافة مرافق داخلية مثل الكليات والمكاتب والعيادات لهذه المؤسسة لتكون خريطة تفاعلية للمستخدمين.
+                                    </p>
+                                    <form onSubmit={handleCreateUniversity} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>اسم الجامعة / المؤسسة</label>
+                                            <input
+                                                type="text" className="input" value={newUniversityData.name}
+                                                onChange={e => setNewUniversityData({ ...newUniversityData, name: e.target.value })}
+                                                placeholder="مثلاً: جامعة النجاح الوطنية"
+                                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '1rem' }}
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>موقع المبنى الرئيسي</label>
+                                            <div style={{ display: 'flex', gap: '10px' }}>
+                                                <input type="number" step="any" placeholder="خط العرض" value={newUniversityData.lat} onChange={e => setNewUniversityData({ ...newUniversityData, lat: e.target.value })} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} required />
+                                                <input type="number" step="any" placeholder="خط الطول" value={newUniversityData.lon} onChange={e => setNewUniversityData({ ...newUniversityData, lon: e.target.value })} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} required />
+                                            </div>
+                                            <button type="button" className="btn-small" onClick={() => getCurrentLocation(true)} style={{ marginTop: '10px', width: '100%', background: '#10b981', color: 'white', border: 'none' }}>
+                                                📍 استخدام موقعي الحالي لإحداثيات المركز
+                                            </button>
+                                        </div>
+
+                                        <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
+                                            <button type="button" onClick={() => { setIsCreatingUniversity(false); setShowCreateOptions(true); }} className="btn-small" style={{ flex: 1, background: 'transparent', border: '1px solid var(--text-muted)' }}>
+                                                رجوع
+                                            </button>
+                                            <button type="submit" disabled={isSubmittingShop} className="btn-small" style={{ flex: 2, background: '#10b981', color: 'white', border: 'none', fontWeight: 'bold' }}>
+                                                {isSubmittingShop ? 'جاري الحفظ...' : 'إنشاء الجامعة وبدء الخريطة'}
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            ) : isCreatingShop ? (
                                 <div style={{ padding: '20px' }}>
                                     <h3 style={{ marginBottom: '15px' }}>تسجيل محل جديد</h3>
                                     <form onSubmit={handleCreateShop} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -495,7 +610,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                             <button
                                                 type="button"
                                                 className="btn-small is-primary"
-                                                onClick={getCurrentLocation}
+                                                onClick={() => getCurrentLocation(false)}
                                                 style={{ marginTop: '10px', width: '100%', background: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}
                                             >
                                                 📍 استخدام موقعي الحالي
@@ -505,11 +620,11 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                         <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
                                             <button
                                                 type="button"
-                                                onClick={() => setIsCreatingShop(false)}
+                                                onClick={() => { setIsCreatingShop(false); setShowCreateOptions(true); }}
                                                 className="btn-small"
                                                 style={{ flex: 1, background: 'transparent', border: '1px solid var(--text-muted)' }}
                                             >
-                                                إلغاء
+                                                الخلف
                                             </button>
                                             <button
                                                 type="submit"

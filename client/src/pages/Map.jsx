@@ -19,6 +19,7 @@ import GeomolgViewer from '../components/GeomolgViewer';
 import NavigationPanel from '../components/NavigationPanel';
 import ManagedShopsModal from '../components/ManagedShopsModal';
 import ShopProfileModal from '../components/ShopProfileModal';
+import UniversityProfileModal from '../components/UniversityProfileModal';
 import { postService, friendService, authService, notificationService, communityService, shopService, getImageUrl } from '../services/api';
 import './Map.css';
 
@@ -185,6 +186,20 @@ const MapComponent = () => {
     // Shop Profile State
     const [showShopProfile, setShowShopProfile] = useState(false);
     const [selectedShopProfile, setSelectedShopProfile] = useState(null);
+
+    // University Profile State
+    const [showUniversityProfile, setShowUniversityProfile] = useState(false);
+    const [selectedUniversityProfile, setSelectedUniversityProfile] = useState(null);
+
+    const handleOpenShopProfile = (shop) => {
+        if (shop.category === 'University') {
+            setSelectedUniversityProfile(shop);
+            setShowUniversityProfile(true);
+        } else {
+            setSelectedShopProfile(shop);
+            setShowShopProfile(true);
+        }
+    };
 
     // Data States
     const [posts, setPosts] = useState([]);
@@ -928,8 +943,7 @@ const MapComponent = () => {
                             style={{ cursor: 'pointer', zIndex: 50 }}
                             onClick={e => {
                                 e.originalEvent.stopPropagation();
-                                setSelectedShopProfile(shop);
-                                setShowShopProfile(true);
+                                handleOpenShopProfile(shop);
                             }}
                         >
                             <div style={{
@@ -1131,8 +1145,7 @@ const MapComponent = () => {
                 followedShops={followedShopsMap}
                 onShopFollowed={handleShopFollowed}
                 onShopClick={(shop) => {
-                    setSelectedShopProfile(shop);
-                    setShowShopProfile(true);
+                    handleOpenShopProfile(shop);
                     mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: 18, pitch: 45 });
                 }} />}
             {showShops && <FriendsModal
@@ -1142,8 +1155,7 @@ const MapComponent = () => {
                 followedShops={followedShopsMap}
                 onShopFollowed={handleShopFollowed}
                 onShopClick={(shop) => {
-                    setSelectedShopProfile(shop);
-                    setShowShopProfile(true);
+                    handleOpenShopProfile(shop);
                     mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: 18.5, pitch: 45 });
                 }}
             />}
@@ -1152,6 +1164,14 @@ const MapComponent = () => {
                     shop={selectedShopProfile}
                     currentUser={user}
                     onClose={() => setShowShopProfile(false)}
+                    onFollowChange={handleShopFollowed}
+                />
+            )}
+            {showUniversityProfile && selectedUniversityProfile && (
+                <UniversityProfileModal
+                    university={selectedUniversityProfile}
+                    currentUser={user}
+                    onClose={() => setShowUniversityProfile(false)}
                     onFollowChange={handleShopFollowed}
                 />
             )}
@@ -1165,8 +1185,7 @@ const MapComponent = () => {
                         latitude: data.location?.latitude,
                         longitude: data.location?.longitude
                     };
-                    setSelectedShopProfile(shopMock);
-                    setShowShopProfile(true);
+                    handleOpenShopProfile(shopMock);
                     if (data.location?.latitude && data.location?.longitude) {
                         mapRef.current?.flyTo({ center: [parseFloat(data.location.longitude), parseFloat(data.location.latitude)], zoom: 18.5, pitch: 45 });
                     }
@@ -1198,8 +1217,7 @@ const MapComponent = () => {
                 <ManagedShopsModal
                     onClose={() => setShowManagedShops(false)}
                     onShopClick={(shop) => {
-                        setSelectedShopProfile(shop);
-                        setShowShopProfile(true);
+                        handleOpenShopProfile(shop);
                         setShowManagedShops(false);
                         mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: 18.5, pitch: 45 });
                     }}
@@ -1215,8 +1233,7 @@ const MapComponent = () => {
                     friends={friendsMap}
                     shops={[...followedShopsMap, ...managedShopsMap]}
                     onShopClick={(shop) => {
-                        setSelectedShopProfile(shop);
-                        setShowShopProfile(true);
+                        handleOpenShopProfile(shop);
                     }}
                     onPostClick={(post) => {
                         setSelectedPost(post);

@@ -420,6 +420,16 @@ export const shopService = {
     updateRequestStatus: async (requestId, status, driverId) => {
         const response = await api.put(`/shops/requests/${requestId}`, { status, driverId });
         return response.data;
+    },
+
+    getFacilities: async (shopId) => {
+        const response = await api.get(`/shops/${shopId}/facilities?t=${Date.now()}`);
+        return response.data;
+    },
+
+    addFacility: async (shopId, facilityData) => {
+        const response = await api.post(`/shops/${shopId}/facilities`, facilityData);
+        return response.data;
     }
 };
 

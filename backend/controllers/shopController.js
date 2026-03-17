@@ -834,6 +834,58 @@ const updateRequestStatus = async (req, res) => {
     }
 };
 
+// --- 18. Add University Facility ---
+const addUniversityFacility = async (req, res) => {
+    try {
+        const { id } = req.params; // Shop/University ID
+        const userId = req.user.userId;
+        const userRole = req.user.role;
+        const { name, category, icon, latitude, longitude, description } = req.body;
+
+        // Permissions: Only Owner or Admin can add
+        const shopRes = await pool.query('SELECT owner_id, category FROM shops WHERE id = $1', [id]);
+        if (shopRes.rows.length === 0) return res.status(404).json({ error: 'University not found' });
+        if (shopRes.rows[0].category !== 'University') return res.status(400).json({ error: 'Not a University' });
+        if (userRole !== 'admin' && shopRes.rows[0].owner_id !== userId) return res.status(403).json({ error: 'Unauthorized to add facilities' });
+
+        const result = await pool.query(`
+            INSERT INTO university_facilities (university_id, name, category, icon, latitude, longitude, description)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING *
+        `, [id, name, category, icon || '📍', latitude, longitude, description || '']);
+
+        res.status(201).json({ message: 'Facility added', facility: result.rows[0] });
+    } catch (error) {
+        console.error('Add facility error:', error);
+        res.status(500).json({ error: 'Failed to add facility' });
+    }
+};
+
+// --- 19. Get University Facilities ---
+const getUniversityFacilities = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const result = await pool.query(`
+            SELECT * FROM university_facilities WHERE university_id = $1 ORDER BY category, name
+        `, [id]);
+
+        // Group by category for easier frontend rendering
+        const facilitiesByCategory = {};
+        result.rows.forEach(fac => {
+            if (!facilitiesByCategory[fac.category]) {
+                facilitiesByCategory[fac.category] = [];
+            }
+            facilitiesByCategory[fac.category].push(fac);
+        });
+
+        res.json({ facilities: facilitiesByCategory, list: result.rows });
+    } catch (error) {
+        console.error('Get facilities error:', error);
+        res.status(500).json({ error: 'Failed to get facilities' });
+    }
+};
+
 module.exports = {
     searchShops,
     followShop,
@@ -857,5 +909,7 @@ module.exports = {
     removeShopDriver,
     requestTaxi,
     getShopRequests,
-    updateRequestStatus
+    updateRequestStatus,
+    addUniversityFacility,
+    getUniversityFacilities
 };
