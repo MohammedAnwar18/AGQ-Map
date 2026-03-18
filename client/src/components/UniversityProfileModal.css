@@ -233,87 +233,123 @@
     border-radius: 12px;
     border-right: 4px solid #3b82f6;
 }
-/* Mobile Responsiveness */
+/* Mobile Responsiveness - iPhone/Android Optimized */
 @media (max-width: 768px) {
     .university-modal-container {
         height: 100vh;
         border-radius: 0;
         max-width: 100%;
         animation: slideUpMobile 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     @keyframes slideUpMobile { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-    .uni-cover-section { height: 180px; }
+    .uni-cover-section { 
+        height: 160px; 
+        min-height: 160px;
+    }
     
     .uni-profile-info {
-        bottom: -40px;
-        padding: 0 15px;
+        position: relative;
+        bottom: 0;
+        margin-top: -50px; /* Pull it up into the cover area */
+        padding: 0 15px 20px;
         flex-direction: column;
         align-items: center;
         text-align: center;
-        gap: 8px;
-        position: relative;
+        gap: 12px;
+        z-index: 10;
+        background: transparent;
     }
 
     .uni-logo-wrapper {
-        width: 90px;
-        height: 90px;
-        margin-top: -45px;
-        border-width: 4px;
-        z-index: 10;
+        width: 100px;
+        height: 100px;
+        margin-bottom: 5px;
+        border: 4px solid var(--bg-primary);
+        background: white;
+        border-radius: 25px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
     }
 
     .uni-title-section {
-        margin-top: 5px;
         color: var(--text-primary);
+        text-shadow: none;
+        width: 100%;
     }
     
     .uni-name { 
-        font-size: 1.5rem; 
+        font-size: 1.4rem; 
         color: var(--text-primary);
         text-shadow: none;
+        margin-bottom: 2px;
     }
     
-    .uni-category { color: var(--text-muted); }
-    .uni-followers-count { color: var(--text-muted) !important; }
+    .uni-category { 
+        color: var(--text-muted); 
+        font-size: 0.85rem;
+    }
+    
+    .uni-followers-count { 
+        color: var(--text-muted) !important; 
+        margin-top: 2px !important;
+    }
 
     .uni-follow-btn {
         width: 100%;
-        max-width: 280px;
-        margin-top: 10px;
+        max-width: 300px;
         padding: 12px;
         font-size: 1rem;
+        margin-top: 5px;
     }
 
     .uni-tabs {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: var(--bg-primary);
+        margin-top: 10px;
         padding: 0 5px;
-        margin-top: 15px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
 
     .uni-tab {
-        font-size: 0.9rem;
-        padding: 15px 5px;
+        font-size: 0.85rem;
+        padding: 14px 2px;
+        white-space: nowrap;
     }
 
     .uni-content-area {
         padding: 15px;
-        padding-bottom: 80px;
+        padding-bottom: env(safe-area-inset-bottom, 80px); /* Allow for mobile safe area */
+        background: var(--bg-secondary);
+        min-height: calc(100vh - 400px);
     }
 
     .uni-quick-stats {
-        gap: 12px;
+        gap: 10px;
     }
 
-    .stat-box { padding: 12px; }
-    .stat-value { font-size: 1.6rem; }
+    .stat-box { 
+        padding: 12px 8px; 
+    }
+    
+    .stat-value { font-size: 1.4rem; }
     
     .uni-categories-grid {
         grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .uni-about-card {
+        padding: 15px;
     }
 
     .news-card {
         padding: 15px !important;
+        margin-bottom: 15px;
     }
     
     .news-card-header h3 {

@@ -462,33 +462,37 @@
     }
 }
 
-/* More Menu Sidebar Styles */
+/* 
+   More Menu Sidebar Styles 
+   Optimized for Laptop & Mobile (iPhone/Android)
+*/
 .more-menu-dropdown {
     position: fixed;
     top: 0;
     right: 0;
     width: 320px;
-    max-width: 85%;
-    height: 100vh;
-    background: rgba(15, 23, 42, 0.98);
-    backdrop-filter: blur(25px) saturate(210%);
-    -webkit-backdrop-filter: blur(25px) saturate(210%);
-    border-left: 1px solid rgba(251, 171, 21, 0.3);
-    border-radius: 0;
-    padding: 20px 10px;
-    z-index: 3000;
-    box-shadow: -15px 0 60px rgba(0, 0, 0, 0.6);
+    max-width: 85%; /* Never cover full screen on tablets/large phones */
+    height: 100dvh; /* dynamic viewport height */
+    background: #0f172a; /* Solid dark blue for clarity */
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-left: 2px solid rgba(251, 171, 21, 0.4);
+    z-index: 9999;
+    box-shadow: -10px 0 50px rgba(0, 0, 0, 0.7);
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    padding: 0; /* padding handled inside for header/footer */
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 @media (max-width: 480px) {
     .more-menu-dropdown {
-        width: 100%;
-        max-width: 100%;
+        width: 280px;
+        max-width: 80%; /* Ensure some of the map/overlay is still visible for context */
     }
 }
+
 
 .menu-header {
     padding: 15px 15px 30px;
@@ -580,8 +584,9 @@
 .logout-btn {
     margin-top: auto;
     margin-bottom: 20px;
-    background: rgba(239, 68, 68, 0.05) !important;
-    border: 1px solid rgba(239, 68, 68, 0.1) !important;
+    background: rgba(239, 68, 68, 0.08) !important;
+    border: 1px solid rgba(239, 68, 68, 0.15) !important;
+    min-height: 60px; /* Bigger tap target for mobile */
 }
 
 .logout-btn span {
