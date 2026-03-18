@@ -145,7 +145,7 @@
     right: 0;
     height: 75px;
     /* زدنا ارتفاع البار العلوي ليتناسب مع الشعار الجديد */
-    z-index: 2100;
+    z-index: 2600;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -465,52 +465,114 @@
 /* More Menu Dropdown Styles */
 .more-menu-dropdown {
     position: fixed;
-    top: 65px;
+    top: 85px;
     right: 20px;
-    width: 220px;
-    background: rgba(15, 23, 42, 0.95);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(251, 171, 21, 0.3);
-    border-radius: 18px;
-    padding: 10px;
+    width: 250px;
+    background: rgba(15, 23, 42, 0.9);
+    backdrop-filter: blur(25px) saturate(210%);
+    -webkit-backdrop-filter: blur(25px) saturate(210%);
+    border: 1px solid rgba(251, 171, 21, 0.4);
+    border-radius: 22px;
+    padding: 12px;
     z-index: 3000;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.6);
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
+    transform-origin: top right;
+}
+
+.menu-header {
+    padding: 10px 15px 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 8px;
+}
+
+.menu-header h3 {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 0;
+    font-weight: 800;
 }
 
 .more-menu-dropdown button {
     background: none;
     border: none;
     color: white;
-    padding: 12px 15px;
-    border-radius: 12px;
+    padding: 14px 16px;
+    border-radius: 14px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 0.9rem;
-    font-weight: 500;
-    transition: all 0.2s ease;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     text-align: right;
     width: 100%;
 }
 
 .more-menu-dropdown button:hover {
-    background: rgba(251, 171, 21, 0.1);
+    background: rgba(251, 171, 21, 0.15);
     color: #fbab15;
+    transform: translateX(-5px);
+}
+
+.menu-item-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.menu-icon {
+    font-size: 1.2rem;
+    min-width: 24px;
+    display: flex;
+    justify-content: center;
 }
 
 .more-menu-dropdown button svg {
-    opacity: 0.7;
+    opacity: 0.4;
+    transition: all 0.2s ease;
+}
+
+.more-menu-dropdown button:hover svg {
+    opacity: 1;
+    color: #fbab15;
+}
+
+.logout-btn:hover {
+    background: rgba(239, 68, 68, 0.1) !important;
+    color: #ef4444 !important;
+}
+
+.logout-btn:hover svg {
+    color: #ef4444 !important;
+    opacity: 1 !important;
 }
 
 .menu-divider {
     height: 1px;
-    background: rgba(255, 255, 255, 0.1);
-    margin: 5px 10px;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 8px 10px;
+}
+
+/* Animations */
+.slide-down {
+    animation: slideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
 /* Scroll adjustments to prevent map overlap from nav bars */
@@ -518,21 +580,4 @@
     overflow: hidden;
     position: relative;
     z-index: 10;
-}
-
-/* Fade in animation */
-.fade-in {
-    animation: fadeIn 0.3s ease-out;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
+}
