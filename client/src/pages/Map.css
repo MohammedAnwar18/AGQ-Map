@@ -527,35 +527,41 @@
     gap: 18px;
 }
 
-.menu-icon-img {
-    width: 28px;
-    height: 28px;
-    min-width: 28px;
-    min-height: 28px;
-    object-fit: contain;
-    /* Force white visibility on icons that might be dark */
-    filter: drop-shadow(0 0 1px rgba(255,255,255,0.8)) brightness(1.2);
-    display: block;
-}
-
 .menu-icon-wrapper {
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
 }
 
-.more-menu-dropdown button svg {
-    opacity: 0.5;
+.menu-icon-svg {
+    width: 100%;
+    height: 100%;
+    color: rgba(255, 255, 255, 0.7);
+    transition: all 0.3s ease;
+}
+
+.more-menu-dropdown button:hover .menu-icon-svg {
+    color: #fbab15;
+    transform: scale(1.1);
+}
+
+.more-menu-dropdown button:hover .menu-icon-svg[style*="color: #ef4444"] {
+    color: #ff4d4d !important;
+}
+
+.more-menu-dropdown button > svg:last-child {
+    opacity: 0.3;
     transition: all 0.3s ease;
     flex-shrink: 0;
 }
 
-.more-menu-dropdown button:hover svg {
+.more-menu-dropdown button:hover > svg:last-child {
     opacity: 1;
     color: #fbab15;
+    transform: translateX(-3px);
 }
 
 .logout-btn {
