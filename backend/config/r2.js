@@ -1,5 +1,6 @@
 const { S3Client } = require('@aws-sdk/client-s3');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const r2Client = new S3Client({
     region: 'auto',

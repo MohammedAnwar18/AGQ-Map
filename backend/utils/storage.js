@@ -1,9 +1,8 @@
 const { r2Client } = require('../config/r2');
 const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const { v4: uuidv4 } = require('uuid');
-require('dotenv').config();
 
-const BUCKET_NAME = process.env.R2_BUCKET_NAME || 'palnovaa-products';
+const BUCKET_NAME = process.env.R2_BUCKET_NAME;
 const PUBLIC_URL = process.env.R2_PUBLIC_URL; // e.g. https://pub-xyz.r2.dev
 
 /**
