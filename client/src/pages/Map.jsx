@@ -191,18 +191,26 @@ const MapComponent = () => {
     // University Profile State
     const [showUniversityProfile, setShowUniversityProfile] = useState(false);
     const [selectedUniversityProfile, setSelectedUniversityProfile] = useState(null);
+    const [selectedUniFacilities, setSelectedUniFacilities] = useState([]);
 
     // Facility Profile State
     const [showFacilityProfile, setShowFacilityProfile] = useState(false);
     const [selectedFacilityId, setSelectedFacilityId] = useState(null);
 
-    const handleOpenShopProfile = (shop) => {
+    const handleOpenShopProfile = async (shop) => {
         if (shop.category === 'University') {
             setSelectedUniversityProfile(shop);
             setShowUniversityProfile(true);
+            try {
+                const data = await shopService.getFacilities(shop.id);
+                setSelectedUniFacilities(data.list || []);
+            } catch (e) {
+                console.error("Failed to load facilities", e);
+            }
         } else {
             setSelectedShopProfile(shop);
             setShowShopProfile(true);
+            setSelectedUniFacilities([]);
         }
     };
 
@@ -1081,6 +1089,41 @@ const MapComponent = () => {
                         </Marker>
                     ))}
 
+                    {/* University Facilities Markers - Visible when zoomed in close */}
+                    {viewState.zoom >= 17.5 && selectedUniFacilities.map(fac => (
+                        <Marker
+                            key={`fac-${fac.id}`}
+                            longitude={parseFloat(fac.longitude)}
+                            latitude={parseFloat(fac.latitude)}
+                            anchor="bottom"
+                            onClick={e => {
+                                e.originalEvent.stopPropagation();
+                                setSelectedFacilityId(fac.id);
+                                setShowFacilityProfile(true);
+                            }}
+                        >
+                            <div className="facility-map-marker" style={{
+                                display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer'
+                            }}>
+                                <div style={{
+                                    fontSize: '24px', background: 'white', borderRadius: '50%', padding: '5px',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.4)', border: '2px solid #3b82f6',
+                                    transition: 'transform 0.2s'
+                                }}>
+                                    {fac.icon || '🏛️'}
+                                </div>
+                                <div style={{
+                                    background: 'rgba(255,255,255,0.95)', color: 'black', fontSize: '11px',
+                                    fontWeight: 'bold', padding: '2px 8px', borderRadius: '10px',
+                                    marginTop: '4px', border: '1px solid #3b82f6', whiteSpace: 'nowrap',
+                                    boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+                                }}>
+                                    {fac.name}
+                                </div>
+                            </div>
+                        </Marker>
+                    ))}
+
                 </Map>
             </div>
 
@@ -1199,11 +1242,25 @@ const MapComponent = () => {
                 <UniversityProfileModal
                     university={selectedUniversityProfile}
                     currentUser={user}
-                    onClose={() => setShowUniversityProfile(false)}
+                    onClose={() => {
+                        setShowUniversityProfile(false);
+                        setSelectedUniFacilities([]);
+                    }}
                     onFollowChange={handleShopFollowed}
                     onFacilityClick={(facility) => {
                         setSelectedFacilityId(facility.id);
                         setShowFacilityProfile(true);
+                        // Hide university list but keep markers
+                        setShowUniversityProfile(false);
+                        // Fly to location
+                        if (facility.latitude && facility.longitude) {
+                            mapRef.current?.flyTo({
+                                center: [parseFloat(facility.longitude), parseFloat(facility.latitude)],
+                                zoom: 19,
+                                pitch: 45,
+                                duration: 1500
+                            });
+                        }
                     }}
                 />
             )}
