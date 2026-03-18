@@ -998,9 +998,9 @@ const MapComponent = () => {
                     {!currentCommunity && [...followedShopsMap, ...managedShopsMap.filter(m => !followedShopsMap.some(f => f.id === m.id))].filter(shop => {
                         if (shop.latitude == null || shop.longitude == null || isNaN(parseFloat(shop.latitude))) return false;
                         
-                        // Educational Institutions (Universities, Colleges): visible from afar, hides when zoomed in close (e.g >= 16.5) to reveal area map
+                        // Educational Institutions (Universities, Colleges): visible from mid zoom (13) to reveal town area, hides when zoomed in close (e.g >= 16.5) to reveal buildings
                         if (shop.category === 'University' || shop.category === 'مؤسسة تعليمية') {
-                            return viewState.zoom < 16.5;
+                            return viewState.zoom >= 13 && viewState.zoom < 16.5;
                         } 
                         // Normal Shop: visible only when zoomed in close (e.g >= 17)
                         return viewState.zoom >= 17;

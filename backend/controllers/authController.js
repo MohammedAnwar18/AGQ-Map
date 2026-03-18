@@ -268,7 +268,7 @@ const verifyOtp = async (req, res) => {
                 email: user.email,
                 role: user.role || 'user'
             },
-            process.env.JWT_SECRET,
+            process.env.JWT_SECRET || 'fallback_secret_for_emergency_only',
             { expiresIn: '7d' }
         );
 
@@ -288,7 +288,10 @@ const verifyOtp = async (req, res) => {
 
     } catch (error) {
         console.error('Verify OTP error:', error);
-        res.status(500).json({ error: 'Server error during verification' });
+        res.status(500).json({ 
+            error: 'Server error during verification',
+            details: error.message 
+        });
     }
 };
 
