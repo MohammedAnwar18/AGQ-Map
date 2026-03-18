@@ -15,8 +15,17 @@ let pool;
  */
 const getPool = () => {
   if (!pool) {
-    const connectionString = process.env.DATABASE_URL;
+    let connectionString = process.env.DATABASE_URL;
     
+    // تنظيف مسافات وعلامات تنصيص إن وجدت بالخطأ
+    if (connectionString) {
+      connectionString = connectionString.trim().replace(/^["']|["']$/g, '');
+    }
+
+    if (!connectionString || (!connectionString.startsWith('postgres://') && !connectionString.startsWith('postgresql://'))) {
+      console.error('❌ CRITICAL: DATABASE_URL is missing or invalid. It must start with postgres:// or postgresql://');
+    }
+
     // التحقق من أن الرابط يستخدم المنفذ الصحيح للـ Pooling
     if (connectionString && connectionString.includes(':5432') && process.env.VERCEL) {
       console.warn('⚠️ تنبيه: أنت تستخدم المنفذ 5432 على Vercel. يفضل استخدام 6543 لتجنب نفاذ الاتصالات.');
