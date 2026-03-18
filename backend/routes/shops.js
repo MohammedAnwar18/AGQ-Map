@@ -24,6 +24,7 @@ router.delete('/:id', isAdmin, shopController.deleteShop);
 router.put('/:id/images', upload.fields([{ name: 'profile_picture', maxCount: 1 }, { name: 'cover_picture', maxCount: 1 }]), shopController.updateShopImages);
 
 router.post('/:id/posts', upload.array('images', 5), shopController.createShopPost);
+router.delete('/:id/posts/:postId', shopController.deleteShopPost);
 
 // Shop Products
 router.post('/:id/products', upload.single('image'), shopController.addProduct);

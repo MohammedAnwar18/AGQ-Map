@@ -2,6 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { shopService, getImageUrl } from '../services/api';
 import './UniversityProfileModal.css';
 
+const TrashIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+    </svg>
+);
+
+const HeartIcon = ({ filled }) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+    </svg>
+);
+
+const MessageIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+    </svg>
+);
+
 const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChange, onFacilityClick }) => {
     const [activeTab, setActiveTab] = useState('overview');
     const [selectedFacilityCategory, setSelectedFacilityCategory] = useState(null);
@@ -116,6 +135,17 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
             setUniNews(prev => prev.map(p => p.id === postId ? { ...p, comments_count: (p.comments_count || 0) + 1 } : p));
             setNewComment('');
         } catch (e) { console.error(e); }
+    };
+
+    const handleDeletePost = async (postId) => {
+        if (!confirm('هل أنت متأكد من حذف هذا المنشور؟')) return;
+        try {
+            await shopService.deletePost(university.id, postId);
+            setUniNews(prev => prev.filter(p => p.id !== postId));
+            alert('تم حذف المنشور بنجاح.');
+        } catch (e) {
+            alert('فشل حذف المنشور.');
+        }
     };
 
     const handleAssignOwner = async (e) => {
@@ -331,7 +361,7 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
 
                             <div className="uni-about-card" style={{ marginTop: '15px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                    <h3>🕒 أوقات الدوام</h3>
+                                    <h3>أوقات الدوام</h3>
                                     {isAdminOrOwner && !isEditingHours && (
                                         <button onClick={() => setIsEditingHours(true)} className="edit-hours-btn">تعديل</button>
                                     )}
@@ -524,69 +554,89 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                                     </div>
                                 ) : (
                                     uniNews.map(post => (
-                                        <div key={post.id} className="news-card slide-in-right" style={{ background: 'var(--bg-primary)', padding: '15px', borderRadius: '16px', marginBottom: '15px', border: '1px solid var(--bg-tertiary)' }}>
-                                            <div className="news-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                                                <div>
-                                                    <span style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '10px', background: post.post_type === 'announcement' ? '#fee2e2' : '#dcfce7', color: post.post_type === 'announcement' ? '#991b1b' : '#166534', fontWeight: 'bold' }}>
-                                                        {post.post_type === 'announcement' ? 'إعلان رسمي' : 'خبر'}
-                                                    </span>
-                                                    <h3 style={{ margin: '5px 0', fontSize: '1.1rem' }}>{post.title}</h3>
+                                        <div key={post.id} className="news-card slide-in-right" style={{ background: 'var(--bg-primary)', padding: '18px', borderRadius: '16px', marginBottom: '18px', border: '1px solid var(--bg-tertiary)', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                                            <div className="news-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                                        <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '6px', background: post.post_type === 'announcement' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)', color: post.post_type === 'announcement' ? '#ef4444' : '#10b981', fontWeight: '800', textTransform: 'uppercase' }}>
+                                                            {post.post_type === 'announcement' ? 'إعلان رسمي' : 'خبر'}
+                                                        </span>
+                                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>• {new Date(post.created_at).toLocaleDateString('ar-EG')}</span>
+                                                    </div>
+                                                    <h3 style={{ margin: '4px 0', fontSize: '1.2rem', fontWeight: '800', color: 'var(--text-primary)' }}>{post.title}</h3>
                                                 </div>
-                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(post.created_at).toLocaleDateString('ar-EG')}</span>
+                                                {isAdminOrOwner && (
+                                                    <button 
+                                                        onClick={() => handleDeletePost(post.id)}
+                                                        style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: '5px', transition: 'color 0.2s' }}
+                                                        onMouseOver={e => e.currentTarget.style.color = '#ef4444'}
+                                                        onMouseOut={e => e.currentTarget.style.color = '#9ca3af'}
+                                                    >
+                                                        <TrashIcon />
+                                                    </button>
+                                                )}
                                             </div>
 
-                                            <p style={{ fontSize: '0.95rem', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{post.content}</p>
+                                            <p style={{ fontSize: '1rem', lineHeight: 1.6, color: 'var(--text-secondary)', marginBottom: '12px' }}>{post.content}</p>
 
                                             {post.image_url && (
-                                                <img src={getImageUrl(post.image_url)} style={{ width: '100%', borderRadius: '12px', marginTop: '10px', maxHeight: '300px', objectFit: 'cover' }} />
+                                                <div style={{ borderRadius: '12px', overflow: 'hidden', marginBottom: '12px' }}>
+                                                    <img src={getImageUrl(post.image_url)} style={{ width: '100%', maxHeight: '350px', objectFit: 'cover' }} />
+                                                </div>
                                             )}
 
                                             {post.external_link && (
-                                                <a href={post.external_link.startsWith('http') ? post.external_link : `https://${post.external_link}`} target="_blank" rel="noreferrer" style={{ display: 'block', marginTop: '10px', color: '#10b981', fontSize: '0.9rem', fontWeight: 'bold', textDecoration: 'none' }}>
-                                                    🔗 رابط المرفق
+                                                <a href={post.external_link.startsWith('http') ? post.external_link : `https://${post.external_link}`} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', marginBottom: '15px', color: '#3b82f6', fontSize: '0.9rem', fontWeight: 'bold', textDecoration: 'none', background: 'rgba(59, 130, 246, 0.05)', padding: '6px 12px', borderRadius: '8px' }}>
+                                                    🔗 رابط المعلومات
                                                 </a>
                                             )}
 
-                                            <div className="news-card-actions" style={{ display: 'flex', gap: '20px', marginTop: '15px', borderTop: '1px solid var(--bg-tertiary)', paddingTop: '10px' }}>
-                                                <button onClick={() => handleLikePost(post.id)} style={{ background: 'none', border: 'none', color: post.is_liked ? '#ef4444' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                                    <span style={{ fontSize: '1.2rem' }}>{post.is_liked ? '❤️' : '🤍'}</span>
-                                                    {post.likes_count || 0}
+                                            <div className="news-card-actions" style={{ display: 'flex', gap: '24px', marginTop: '12px', borderTop: '1px solid var(--bg-tertiary)', paddingTop: '15px' }}>
+                                                <button 
+                                                    onClick={() => handleLikePost(post.id)} 
+                                                    style={{ background: 'none', border: 'none', color: post.is_liked ? '#ef4444' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.95rem', fontWeight: '600', transition: 'all 0.2s' }}
+                                                >
+                                                    <HeartIcon filled={post.is_liked} />
+                                                    <span>{post.likes_count || 0}</span>
                                                 </button>
-                                                <button onClick={() => { 
-                                                    if (activeCommentPost === post.id) setActiveCommentPost(null);
-                                                    else { setActiveCommentPost(post.id); loadComments(post.id); } 
-                                                }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                                    <span style={{ fontSize: '1.2rem' }}>💬</span>
-                                                    {post.comments_count || 0}
+                                                <button 
+                                                    onClick={() => { 
+                                                        if (activeCommentPost === post.id) setActiveCommentPost(null);
+                                                        else { setActiveCommentPost(post.id); loadComments(post.id); } 
+                                                    }} 
+                                                    style={{ background: 'none', border: 'none', color: activeCommentPost === post.id ? '#3b82f6' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.95rem', fontWeight: '600', transition: 'all 0.2s' }}
+                                                >
+                                                    <MessageIcon />
+                                                    <span>{post.comments_count || 0}</span>
                                                 </button>
                                             </div>
 
                                             {activeCommentPost === post.id && (
-                                                <div className="comments-section" style={{ marginTop: '15px', padding: '10px', background: 'var(--bg-secondary)', borderRadius: '12px' }}>
-                                                    <div className="comments-list" style={{ maxHeight: '200px', overflowY: 'auto', marginBottom: '10px' }}>
+                                                <div className="comments-section" style={{ marginTop: '15px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '14px', border: '1px solid var(--bg-tertiary)' }}>
+                                                    <div className="comments-list" style={{ maxHeight: '250px', overflowY: 'auto', marginBottom: '12px' }}>
                                                         {(comments[post.id] || []).length === 0 ? (
-                                                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>لا توجد تعليقات بعد.</p>
+                                                            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', padding: '10px' }}>لا توجد تعليقات بعد. كن أول من يعلق!</p>
                                                         ) : (
                                                             comments[post.id].map(c => (
-                                                                <div key={c.id} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                                                                    <img src={getImageUrl(c.profile_picture)} style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
-                                                                    <div style={{ background: 'var(--bg-tertiary)', padding: '6px 12px', borderRadius: '14px', flex: 1 }}>
-                                                                        <div style={{ fontWeight: 'bold', fontSize: '0.75rem' }}>{c.username}</div>
-                                                                        <div style={{ fontSize: '0.85rem' }}>{c.content}</div>
+                                                                <div key={c.id} style={{ display: 'flex', gap: '10px', marginBottom: '12px', animation: 'fadeIn 0.3s ease' }}>
+                                                                    <img src={getImageUrl(c.profile_picture)} style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--bg-tertiary)' }} />
+                                                                    <div style={{ background: 'var(--bg-tertiary)', padding: '8px 14px', borderRadius: '16px', flex: 1, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                                                                        <div style={{ fontWeight: '800', fontSize: '0.8rem', color: 'var(--text-primary)', marginBottom: '2px' }}>{c.username}</div>
+                                                                        <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>{c.content}</div>
                                                                     </div>
                                                                 </div>
                                                             ))
                                                         )}
                                                     </div>
-                                                    <form onSubmit={(e) => handleAddComment(e, post.id)} style={{ display: 'flex', gap: '8px' }}>
+                                                    <form onSubmit={(e) => handleAddComment(e, post.id)} style={{ display: 'flex', gap: '10px' }}>
                                                         <input 
                                                             className="input" 
-                                                            placeholder="اضف تعليقاً..." 
-                                                            style={{ flex: 1, fontSize: '0.85rem', padding: '6px 12px' }} 
+                                                            placeholder="أضف تعليقاً..." 
+                                                            style={{ flex: 1, fontSize: '0.9rem', padding: '10px 15px', borderRadius: '12px', background: 'var(--bg-primary)', border: '1px solid var(--bg-tertiary)' }} 
                                                             value={newComment}
                                                             onChange={e => setNewComment(e.target.value)}
                                                         />
-                                                        <button type="submit" className="btn-small is-primary">نشر</button>
+                                                        <button type="submit" className="btn-small is-primary" style={{ borderRadius: '12px' }}>نشر</button>
                                                     </form>
                                                 </div>
                                             )}

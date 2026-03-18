@@ -462,6 +462,11 @@ export const shopService = {
     addPostComment: async (postId, content) => {
         const response = await api.post(`/shops/posts/${postId}/comments`, { content });
         return response.data;
+    },
+
+    deletePost: async (shopId, postId) => {
+        const response = await api.delete(`/shops/${shopId}/posts/${postId}`);
+        return response.data;
     }
 };
 
