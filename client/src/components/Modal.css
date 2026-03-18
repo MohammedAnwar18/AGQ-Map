@@ -628,6 +628,16 @@
         max-height: none;
         /* Full scroll */
     }
+
+    .user-item {
+        flex-wrap: wrap;
+    }
+
+    .user-item-actions {
+        width: 100%;
+        justify-content: flex-end;
+        margin-top: 0.5rem;
+    }
 }
 
 /* Chat Send Button - Circular */

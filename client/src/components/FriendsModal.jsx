@@ -348,18 +348,18 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                     @{friend.username}
                                                 </div>
                                             </div>
-                                            <div className="user-item-actions">
+                                            <div className="user-item-actions" style={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                                                 <button
                                                     className={`btn-small ${friend.am_i_sharing ? 'btn-location-active' : 'btn-location'}`}
                                                     onClick={() => handleToggleLocation(friend.id)}
-                                                    style={{ fontFamily: 'inherit' }}
+                                                    style={{ fontFamily: 'inherit', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
                                                 >
-                                                    {friend.am_i_sharing ? 'إيقاف الموقع' : 'مشاركة الموقع'}
+                                                    {friend.am_i_sharing ? 'إيقاف 📍' : 'مشاركة 📍'}
                                                 </button>
                                                 <button
                                                     className="btn-small btn-reject"
                                                     onClick={() => handleRemoveFriend(friend.id)}
-                                                    style={{ fontFamily: 'inherit' }}
+                                                    style={{ fontFamily: 'inherit', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
                                                 >
                                                     إلغاء الصداقة
                                                 </button>
