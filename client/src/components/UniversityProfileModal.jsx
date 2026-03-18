@@ -12,6 +12,11 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
     const [isCreatingFacility, setIsCreatingFacility] = useState(false);
     const [newFacilityData, setNewFacilityData] = useState({ name: '', category: 'الكليات', icon: '🏛️', lat: '', lon: '', description: '' });
 
+    // Local image states
+    const [localProfilePic, setLocalProfilePic] = useState(university.profile_picture);
+    const [localCoverPic, setLocalCoverPic] = useState(university.cover_image);
+    const [isUploadingImage, setIsUploadingImage] = useState(false);
+
     const predefinedCategories = [
         { name: 'الكليات', defaultIcon: '🏛️' },
         { name: 'المباني', defaultIcon: '🏢' },
@@ -73,6 +78,34 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
 
     const isAdminOrOwner = currentUser?.role === 'admin' || currentUser?.userId === university.owner_id || currentUser?.id === university.owner_id;
 
+    const handleImageUpload = async (e, type) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append(type, file);
+
+        setIsUploadingImage(true);
+        try {
+            const response = await shopService.uploadImages(university.id, formData);
+            if (response.shop) {
+                if (type === 'profile_picture') {
+                    setLocalProfilePic(response.shop.profile_picture);
+                } else {
+                    setLocalCoverPic(response.shop.cover_image);
+                }
+                
+                if (onFollowChange) onFollowChange(); // Optional: to refresh parent state
+                alert('تم تحديث الصورة بنجاح!');
+            }
+        } catch (error) {
+            console.error('Image upload failed', error);
+            alert('فشل في رفع الصورة.');
+        } finally {
+            setIsUploadingImage(false);
+        }
+    };
+
     // Build categories derived from data + predefined
     const categories = Object.keys(facilities);
 
@@ -88,20 +121,34 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                 {/* Header & Cover */}
                 <div className="uni-cover-section">
                     <img 
-                        src={university.cover_image ? getImageUrl(university.cover_image) : 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'} 
+                        src={localCoverPic ? getImageUrl(localCoverPic) : 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'} 
                         alt="University Cover" 
                         className="uni-cover-img" 
+                        style={{ opacity: isUploadingImage ? 0.5 : 1 }}
                     />
+                    {isAdminOrOwner && (
+                        <label className="upload-btn" style={{ position: 'absolute', top: '20px', right: '60px', background: 'rgba(0,0,0,0.6)', color: 'white', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', zIndex: 10, fontSize: '0.85rem' }}>
+                            📷 تغيير الغلاف
+                            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleImageUpload(e, 'cover_image')} disabled={isUploadingImage} />
+                        </label>
+                    )}
                     <button className="uni-close-btn" onClick={onClose}>✕</button>
                     <div className="uni-cover-overlay"></div>
                     
                     <div className="uni-profile-info">
-                        <div className="uni-logo-wrapper">
+                        <div className="uni-logo-wrapper" style={{ position: 'relative' }}>
                             <img 
-                                src={university.profile_picture ? getImageUrl(university.profile_picture) : 'https://cdn-icons-png.flaticon.com/512/3202/3202796.png'} 
+                                src={localProfilePic ? getImageUrl(localProfilePic) : 'https://cdn-icons-png.flaticon.com/512/3202/3202796.png'} 
                                 alt="University Logo" 
                                 className="uni-logo-img" 
+                                style={{ opacity: isUploadingImage ? 0.5 : 1 }}
                             />
+                            {isAdminOrOwner && (
+                                <label style={{ position: 'absolute', bottom: 0, right: 0, background: '#3b82f6', color: 'white', width: '30px', height: '30px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.3)', border: '2px solid white' }}>
+                                    +
+                                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleImageUpload(e, 'profile_picture')} disabled={isUploadingImage} />
+                                </label>
+                            )}
                         </div>
                         <div className="uni-title-section">
                             <h2 className="uni-name">{university.name}</h2>

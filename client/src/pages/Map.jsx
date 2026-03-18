@@ -929,12 +929,17 @@ const MapComponent = () => {
                         </Marker>
                     ))}
 
-                    {/* Managed and Followed Shops Markers - Visible only at close zoom and World Mode */}
-                    {viewState.zoom >= 17 && !currentCommunity && [...followedShopsMap, ...managedShopsMap.filter(m => !followedShopsMap.some(f => f.id === m.id))].filter(shop =>
-                        shop.latitude != null &&
-                        shop.longitude != null &&
-                        !isNaN(parseFloat(shop.latitude))
-                    ).flatMap(shop => [
+                    {/* Managed and Followed Shops/Universities Markers - Visibility based on Zoom */}
+                    {!currentCommunity && [...followedShopsMap, ...managedShopsMap.filter(m => !followedShopsMap.some(f => f.id === m.id))].filter(shop => {
+                        if (shop.latitude == null || shop.longitude == null || isNaN(parseFloat(shop.latitude))) return false;
+                        
+                        // University: visible from afar, hides when zoomed in close (e.g >= 17.5) to reveal area
+                        if (shop.category === 'University') {
+                            return viewState.zoom < 17.5;
+                        } 
+                        // Normal Shop: visible only when zoomed in close (e.g >= 17)
+                        return viewState.zoom >= 17;
+                    }).flatMap(shop => [
                         <Marker
                             key={`shop-${shop.id}`}
                             longitude={parseFloat(shop.longitude)}
@@ -1034,14 +1039,18 @@ const MapComponent = () => {
 
                     {/* Selected Profiles (e.g., from Search before following) */}
                     {(showShopProfile && selectedShopProfile && selectedShopProfile.latitude) && (
-                        <Marker longitude={parseFloat(selectedShopProfile.longitude)} latitude={parseFloat(selectedShopProfile.latitude)} anchor="bottom">
-                            <div style={{ fontSize: '40px', filter: 'drop-shadow(0px 4px 4px rgba(0,0,0,0.4))', zIndex: 1000, cursor: 'pointer' }}>📍</div>
-                        </Marker>
+                        viewState.zoom >= 17 && (
+                            <Marker longitude={parseFloat(selectedShopProfile.longitude)} latitude={parseFloat(selectedShopProfile.latitude)} anchor="bottom">
+                                <div style={{ fontSize: '40px', filter: 'drop-shadow(0px 4px 4px rgba(0,0,0,0.4))', zIndex: 1000, cursor: 'pointer' }}>📍</div>
+                            </Marker>
+                        )
                     )}
                     {(showUniversityProfile && selectedUniversityProfile && selectedUniversityProfile.latitude) && (
-                        <Marker longitude={parseFloat(selectedUniversityProfile.longitude)} latitude={parseFloat(selectedUniversityProfile.latitude)} anchor="bottom">
-                            <div style={{ fontSize: '45px', filter: 'drop-shadow(0px 4px 4px rgba(0,0,0,0.4))', zIndex: 1000, cursor: 'pointer' }}>🎓</div>
-                        </Marker>
+                        viewState.zoom < 17.5 && (
+                            <Marker longitude={parseFloat(selectedUniversityProfile.longitude)} latitude={parseFloat(selectedUniversityProfile.latitude)} anchor="bottom">
+                                <div style={{ fontSize: '45px', filter: 'drop-shadow(0px 4px 4px rgba(0,0,0,0.4))', zIndex: 1000, cursor: 'pointer' }}>🎓</div>
+                            </Marker>
+                        )
                     )}
 
                     {/* Palestinian Cities Labels (Satellite Only) - Hide when zoomed in to show shops */}
@@ -1158,7 +1167,8 @@ const MapComponent = () => {
                 onShopFollowed={handleShopFollowed}
                 onShopClick={(shop) => {
                     handleOpenShopProfile(shop);
-                    mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: 18, pitch: 45 });
+                    const isUni = shop.category === 'University';
+                    mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: isUni ? 17 : 18, pitch: 45 });
                 }} />}
             {showShops && <FriendsModal
                 onClose={() => setShowShops(false)}
@@ -1168,7 +1178,8 @@ const MapComponent = () => {
                 onShopFollowed={handleShopFollowed}
                 onShopClick={(shop) => {
                     handleOpenShopProfile(shop);
-                    mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: 18.5, pitch: 45 });
+                    const isUni = shop.category === 'University';
+                    mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: isUni ? 17 : 18.5, pitch: 45 });
                 }}
             />}
             {showShopProfile && selectedShopProfile && (
