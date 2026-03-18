@@ -118,3 +118,65 @@
 
 @keyframes slideInRight { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 .slide-in-right { animation: slideInRight 0.3s ease forwards; }
+
+/* News Feed Styles */
+.uni-news-tab {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.news-card {
+    transition: transform 0.2s;
+}
+
+.news-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+}
+
+.uni-follow-btn.is-unfollow {
+    background: rgba(255, 255, 255, 0.2);
+    box-shadow: none;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.news-form .input, .news-form .textarea, .news-form .select {
+    background: var(--bg-primary);
+    border: 1px solid var(--bg-tertiary);
+    color: var(--text-primary);
+    border-radius: 10px;
+    padding: 10px;
+    font-family: inherit;
+}
+
+.btn-small {
+    padding: 8px 16px;
+    border-radius: 10px;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.9rem;
+    transition: 0.2s;
+}
+
+.btn-small.is-primary {
+    background: #3b82f6;
+    color: white;
+}
+
+.btn-small.is-accept {
+    background: #10b981;
+    color: white;
+}
+
+.comments-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.comments-list::-webkit-scrollbar-thumb {
+    background: var(--bg-tertiary);
+    border-radius: 10px;
+}

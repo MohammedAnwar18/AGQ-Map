@@ -53,4 +53,9 @@ router.get('/facilities/:facilityId', shopController.getFacilityProfile);
 router.post('/facilities/:facilityId/posts', upload.array('images', 5), shopController.addFacilityPost);
 router.post('/facilities/:facilityId/specialties', shopController.addCollegeSpecialty);
 
+// Post Interactions
+router.post('/posts/:postId/like', shopController.togglePostLike);
+router.get('/posts/:postId/comments', shopController.getPostComments);
+router.post('/posts/:postId/comments', shopController.addPostComment);
+
 module.exports = router;

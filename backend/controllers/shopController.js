@@ -393,6 +393,7 @@ const createShopPost = async (req, res) => {
         let media_urls = [];
         let image_url = null;
         let media_type = 'text';
+        const { title, external_link, post_type } = req.body;
 
         // 1. Get Shop Location
         const shopRes = await pool.query('SELECT latitude, longitude FROM shops WHERE id = $1', [shopId]);
@@ -410,16 +411,16 @@ const createShopPost = async (req, res) => {
         const result = await pool.query(`
             INSERT INTO posts (
                 shop_id, content, image_url, media_urls, media_type,
-                location, address, created_at
+                location, address, title, external_link, post_type, created_at
             )
             VALUES (
                 $1, $2, $3, $4, $5, 
                 ST_SetSRID(ST_MakePoint($6, $7), 4326)::geography, 
-                'Shop Location', 
+                'Shop Location', $8, $9, $10,
                 NOW()
             )
             RETURNING *, ST_X(location::geometry) as longitude, ST_Y(location::geometry) as latitude
-        `, [shopId, content, image_url, media_urls, media_type, longitude, latitude]);
+        `, [shopId, content, image_url, media_urls, media_type, longitude, latitude, title || null, external_link || null, post_type || 'news']);
 
         res.json({
             ...result.rows[0],
@@ -1005,6 +1006,60 @@ const addCollegeSpecialty = async (req, res) => {
     }
 };
 
+// --- 23. Post Interactions (Like/Comment) ---
+const togglePostLike = async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const userId = req.user.userId;
+
+        const checkRes = await pool.query('SELECT 1 FROM likes WHERE user_id = $1 AND post_id = $2', [userId, postId]);
+
+        if (checkRes.rows.length > 0) {
+            await pool.query('DELETE FROM likes WHERE user_id = $1 AND post_id = $2', [userId, postId]);
+            res.json({ liked: false });
+        } else {
+            await pool.query('INSERT INTO likes (user_id, post_id) VALUES ($1, $2)', [userId, postId]);
+            res.json({ liked: true });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'Like failed' });
+    }
+};
+
+const addPostComment = async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { content } = req.body;
+        const userId = req.user.userId;
+
+        const result = await pool.query(`
+            INSERT INTO comments (user_id, post_id, content)
+            VALUES ($1, $2, $3)
+            RETURNING *, (SELECT username FROM users WHERE id = $1) as username, (SELECT profile_picture FROM users WHERE id = $1) as profile_picture
+        `, [userId, postId, content]);
+
+        res.status(201).json(result.rows[0]);
+    } catch (error) {
+        res.status(500).json({ error: 'Comment failed' });
+    }
+};
+
+const getPostComments = async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const result = await pool.query(`
+            SELECT c.*, u.username, u.profile_picture
+            FROM comments c
+            JOIN users u ON c.user_id = u.id
+            WHERE c.post_id = $1
+            ORDER BY c.created_at ASC
+        `, [postId]);
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to get comments' });
+    }
+};
+
 module.exports = {
     searchShops,
     followShop,
@@ -1033,5 +1088,8 @@ module.exports = {
     getUniversityFacilities,
     getFacilityProfile,
     addFacilityPost,
-    addCollegeSpecialty
+    addCollegeSpecialty,
+    togglePostLike,
+    addPostComment,
+    getPostComments
 };

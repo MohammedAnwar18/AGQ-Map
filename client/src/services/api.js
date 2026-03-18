@@ -447,6 +447,21 @@ export const shopService = {
     addCollegeSpecialty: async (facilityId, data) => {
         const response = await api.post(`/shops/facilities/${facilityId}/specialties`, data);
         return response.data;
+    },
+
+    togglePostLike: async (postId) => {
+        const response = await api.post(`/shops/posts/${postId}/like`);
+        return response.data;
+    },
+
+    getPostComments: async (postId) => {
+        const response = await api.get(`/shops/posts/${postId}/comments`);
+        return response.data;
+    },
+
+    addPostComment: async (postId, content) => {
+        const response = await api.post(`/shops/posts/${postId}/comments`, { content });
+        return response.data;
     }
 };
 

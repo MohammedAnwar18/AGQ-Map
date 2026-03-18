@@ -12,6 +12,16 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
     const [isCreatingFacility, setIsCreatingFacility] = useState(false);
     const [newFacilityData, setNewFacilityData] = useState({ name: '', category: 'الكليات', icon: '🏛️', lat: '', lon: '', description: '' });
 
+    // University News State
+    const [uniNews, setUniNews] = useState([]);
+    const [isSubmittingNews, setIsSubmittingNews] = useState(false);
+    const [showNewsForm, setShowNewsForm] = useState(false);
+    const [newNews, setNewNews] = useState({ content: '', title: '', external_link: '', post_type: 'news' });
+    const [newsMedia, setNewsMedia] = useState(null);
+    const [activeCommentPost, setActiveCommentPost] = useState(null);
+    const [newComment, setNewComment] = useState('');
+    const [comments, setComments] = useState({}); // { postId: [comments] }
+
     // Local University State (for bio, cover, etc. not in initial search)
     const [uniData, setUniData] = useState(university);
     const [localProfilePic, setLocalProfilePic] = useState(university.profile_picture);
@@ -40,9 +50,66 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
             setUniData(data.shop);
             setLocalProfilePic(data.shop.profile_picture);
             setLocalCoverPic(data.shop.cover_picture);
+            setUniNews(data.posts || []);
         } catch (error) {
             console.error('Failed to load university full data', error);
         }
+    };
+
+    const handleCreateNews = async (e) => {
+        e.preventDefault();
+        setIsSubmittingNews(true);
+        try {
+            const formData = new FormData();
+            formData.append('content', newNews.content);
+            formData.append('title', newNews.title);
+            formData.append('external_link', newNews.external_link);
+            formData.append('post_type', newNews.post_type);
+            if (newsMedia) formData.append('images', newsMedia);
+
+            await shopService.createPost(university.id, formData);
+            alert('تم نشر الخبر بنجاح!');
+            setShowNewsForm(false);
+            setNewNews({ content: '', title: '', external_link: '', post_type: 'news' });
+            setNewsMedia(null);
+            loadUniversityData();
+        } catch (e) {
+            alert('فشل في نشر الخبر');
+        } finally {
+            setIsSubmittingNews(false);
+        }
+    };
+
+    const handleLikePost = async (postId) => {
+        try {
+            const { liked } = await shopService.togglePostLike(postId);
+            setUniNews(prev => prev.map(p => 
+                p.id === postId 
+                    ? { ...p, is_liked: liked, likes_count: liked ? (p.likes_count + 1) : (p.likes_count - 1) } 
+                    : p
+            ));
+        } catch (e) { console.error(e); }
+    };
+
+    const loadComments = async (postId) => {
+        try {
+            const data = await shopService.getPostComments(postId);
+            setComments(prev => ({ ...prev, [postId]: data }));
+        } catch (e) { console.error(e); }
+    };
+
+    const handleAddComment = async (e, postId) => {
+        e.preventDefault();
+        if (!newComment.trim()) return;
+        try {
+            const comment = await shopService.addPostComment(postId, newComment);
+            setComments(prev => ({ 
+                ...prev, 
+                [postId]: [...(prev[postId] || []), comment] 
+            }));
+            setUniNews(prev => prev.map(p => p.id === postId ? { ...p, comments_count: (p.comments_count || 0) + 1 } : p));
+            setNewComment('');
+        } catch (e) { console.error(e); }
     };
 
     const loadFacilities = async () => {
@@ -128,7 +195,11 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
             } else {
                 await shopService.follow(uniData.id);
             }
-            setUniData(prev => ({ ...prev, is_followed: !prev.is_followed }));
+            setUniData(prev => ({ 
+                ...prev, 
+                is_followed: !prev.is_followed,
+                followers_count: !prev.is_followed ? (prev.followers_count + 1) : (prev.followers_count - 1)
+            }));
             if (onFollowChange) onFollowChange();
         } catch (e) {
             console.error('Follow toggle error', e);
@@ -184,10 +255,13 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                         </div>
                         <div className="uni-title-section">
                             <h2 className="uni-name">{uniData.name}</h2>
-                            <p className="uni-category">مؤسسة تعليمية ذكية 🎓</p>
+                            <p className="uni-category">مؤسسة تعليمية</p>
+                            <div className="uni-followers-count" style={{ fontSize: '0.85rem', color: '#ccc', marginTop: '4px' }}>
+                                👥 {uniData.followers_count || 0} متابع
+                            </div>
                         </div>
-                        <button className="uni-follow-btn" onClick={(e) => { e.stopPropagation(); handleFollow(); }}>
-                            {uniData.is_followed ? 'إلغاء المتابعة 🔔' : 'متابعة الجامعة 🔔'}
+                        <button className={`uni-follow-btn ${uniData.is_followed ? 'is-unfollow' : ''}`} onClick={handleFollow}>
+                            {uniData.is_followed ? 'إلغاء المتابعة' : 'متابعة'}
                         </button>
                     </div>
                 </div>
@@ -337,8 +411,107 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
 
                     {activeTab === 'news' && (
                         <div className="uni-news-tab">
-                            <div className="empty-state">
-                                <p>لا توجد إعلانات حالياً.</p>
+                            {isAdminOrOwner && (
+                                <div className="news-admin-actions" style={{ marginBottom: '20px' }}>
+                                    {!showNewsForm ? (
+                                        <button className="btn-small is-primary" onClick={() => setShowNewsForm(true)}>+ إضافة خبر أو إعلان جديد</button>
+                                    ) : (
+                                        <form onSubmit={handleCreateNews} className="news-form slide-up" style={{ background: 'var(--bg-tertiary)', padding: '20px', borderRadius: '16px' }}>
+                                            <input placeholder="العنوان" className="input" value={newNews.title} onChange={e => setNewNews({...newNews, title: e.target.value})} style={{ width: '100%', marginBottom: '10px' }} required />
+                                            <textarea placeholder="ماذا تريد أن تعلن؟" className="textarea" value={newNews.content} onChange={e => setNewNews({...newNews, content: e.target.value})} style={{ width: '100%', marginBottom: '10px' }} required />
+                                            <input placeholder="رابط مرفق (اختياري)" className="input" value={newNews.external_link} onChange={e => setNewNews({...newNews, external_link: e.target.value})} style={{ width: '100%', marginBottom: '10px' }} />
+                                            <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                                                <select className="select" value={newNews.post_type} onChange={e => setNewNews({...newNews, post_type: e.target.value})} style={{ flex: 1 }}>
+                                                    <option value="news">خبر 📢</option>
+                                                    <option value="announcement">إعلان رسمي ✉️</option>
+                                                </select>
+                                                <input type="file" onChange={e => setNewsMedia(e.target.files[0])} style={{ flex: 1, fontSize: '0.8rem' }} />
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '10px' }}>
+                                                <button type="submit" className="btn-small is-accept" disabled={isSubmittingNews}>{isSubmittingNews ? 'جاري النشر...' : 'نشر'}</button>
+                                                <button type="button" className="btn-small" onClick={() => setShowNewsForm(false)}>إلغاء</button>
+                                            </div>
+                                        </form>
+                                    )}
+                                </div>
+                            )}
+
+                            <div className="news-feed">
+                                {uniNews.length === 0 ? (
+                                    <div className="empty-state">
+                                        <p>لا توجد إعلانات حالياً.</p>
+                                    </div>
+                                ) : (
+                                    uniNews.map(post => (
+                                        <div key={post.id} className="news-card slide-in-right" style={{ background: 'var(--bg-primary)', padding: '15px', borderRadius: '16px', marginBottom: '15px', border: '1px solid var(--bg-tertiary)' }}>
+                                            <div className="news-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                                                <div>
+                                                    <span style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '10px', background: post.post_type === 'announcement' ? '#fee2e2' : '#dcfce7', color: post.post_type === 'announcement' ? '#991b1b' : '#166534', fontWeight: 'bold' }}>
+                                                        {post.post_type === 'announcement' ? 'إعلان رسمي' : 'خبر'}
+                                                    </span>
+                                                    <h3 style={{ margin: '5px 0', fontSize: '1.1rem' }}>{post.title}</h3>
+                                                </div>
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(post.created_at).toLocaleDateString('ar-EG')}</span>
+                                            </div>
+
+                                            <p style={{ fontSize: '0.95rem', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{post.content}</p>
+
+                                            {post.image_url && (
+                                                <img src={getImageUrl(post.image_url)} style={{ width: '100%', borderRadius: '12px', marginTop: '10px', maxHeight: '300px', objectFit: 'cover' }} />
+                                            )}
+
+                                            {post.external_link && (
+                                                <a href={post.external_link.startsWith('http') ? post.external_link : `https://${post.external_link}`} target="_blank" rel="noreferrer" style={{ display: 'block', marginTop: '10px', color: '#10b981', fontSize: '0.9rem', fontWeight: 'bold', textDecoration: 'none' }}>
+                                                    🔗 رابط المرفق
+                                                </a>
+                                            )}
+
+                                            <div className="news-card-actions" style={{ display: 'flex', gap: '20px', marginTop: '15px', borderTop: '1px solid var(--bg-tertiary)', paddingTop: '10px' }}>
+                                                <button onClick={() => handleLikePost(post.id)} style={{ background: 'none', border: 'none', color: post.is_liked ? '#ef4444' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                    <span style={{ fontSize: '1.2rem' }}>{post.is_liked ? '❤️' : '🤍'}</span>
+                                                    {post.likes_count || 0}
+                                                </button>
+                                                <button onClick={() => { 
+                                                    if (activeCommentPost === post.id) setActiveCommentPost(null);
+                                                    else { setActiveCommentPost(post.id); loadComments(post.id); } 
+                                                }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                    <span style={{ fontSize: '1.2rem' }}>💬</span>
+                                                    {post.comments_count || 0}
+                                                </button>
+                                            </div>
+
+                                            {activeCommentPost === post.id && (
+                                                <div className="comments-section" style={{ marginTop: '15px', padding: '10px', background: 'var(--bg-secondary)', borderRadius: '12px' }}>
+                                                    <div className="comments-list" style={{ maxHeight: '200px', overflowY: 'auto', marginBottom: '10px' }}>
+                                                        {(comments[post.id] || []).length === 0 ? (
+                                                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>لا توجد تعليقات بعد.</p>
+                                                        ) : (
+                                                            comments[post.id].map(c => (
+                                                                <div key={c.id} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                                                                    <img src={getImageUrl(c.profile_picture)} style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
+                                                                    <div style={{ background: 'var(--bg-tertiary)', padding: '6px 12px', borderRadius: '14px', flex: 1 }}>
+                                                                        <div style={{ fontWeight: 'bold', fontSize: '0.75rem' }}>{c.username}</div>
+                                                                        <div style={{ fontSize: '0.85rem' }}>{c.content}</div>
+                                                                    </div>
+                                                                </div>
+                                                            ))
+                                                        )}
+                                                    </div>
+                                                    <form onSubmit={(e) => handleAddComment(e, post.id)} style={{ display: 'flex', gap: '8px' }}>
+                                                        <input 
+                                                            className="input" 
+                                                            placeholder="اضف تعليقاً..." 
+                                                            style={{ flex: 1, fontSize: '0.85rem', padding: '6px 12px' }} 
+                                                            value={newComment}
+                                                            onChange={e => setNewComment(e.target.value)}
+                                                        />
+                                                        <button type="submit" className="btn-small is-primary">نشر</button>
+                                                    </form>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))
+                                )}
                             </div>
                         </div>
                     )}
