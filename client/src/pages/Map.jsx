@@ -1181,23 +1181,16 @@ const MapComponent = () => {
 
             {/* Bottom Navigation Panel - Instagram Style */}
             <nav className="bottom-nav">
+                <button className={`nav-item ${showSearch ? 'active' : ''}`} onClick={() => { setShowSearch(true); setShowAIChat(false); setShowCommunities(false); setShowProfile(false); }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor">
+                        <path d="M720-400v-120H600v-80h120v-120h80v120h120v80H800v120h-80ZM247-527q-47-47-47-113t47-113q47-47 113-47t113 47q47 47 47 113t-47 113q-47 47-113 47t-113-47ZM40-160v-112q0-34 17.5-62.5T104-378q62-31 126-46.5T360-440q66 0 130 15.5T616-378q29 15 46.5 43.5T680-272v112H40Zm80-80h480v-32q0-11-5.5-20T580-306q-54-27-109-40.5T360-360q-56 0-111 13.5T140-306q-9 5-14.5 14t-5.5 20v32Zm296.5-343.5Q440-607 440-640t-23.5-56.5Q393-720 360-720t-56.5 23.5Q280-673 280-640t23.5 56.5Q327-560 360-560t56.5-23.5ZM360-640Zm0 400Z"/>
+                    </svg>
+                </button>
+
                 <button className={`nav-item ${!showSearch && !showAIChat && !showProfile && !showCommunities ? 'active' : ''}`} onClick={handleCenterOnUser}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                         <polyline points="9 22 9 12 15 12 15 22" />
-                    </svg>
-                </button>
-
-                <button className={`nav-item ${showSearch ? 'active' : ''}`} onClick={() => { setShowSearch(true); setShowAIChat(false); setShowCommunities(false); setShowProfile(false); }}>
-                    <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round">
-                        {/* User Head */}
-                        <circle cx="42" cy="30" r="18" strokeWidth="8" />
-                        {/* User Body */}
-                        <path d="M10 88 C 10 60, 30 55, 45 55" strokeWidth="8" />
-                        {/* Plus Circle */}
-                        <circle cx="72" cy="72" r="20" strokeWidth="7" />
-                        {/* Neat Plus - Normal thickness */}
-                        <path d="M72 62 V 82 M 62 72 H 82" strokeWidth="7" />
                     </svg>
                 </button>
 
