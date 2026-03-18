@@ -1260,6 +1260,7 @@ const MapComponent = () => {
                 onShopFollowed={handleShopFollowed}
                 onShopClick={(shop) => {
                     handleOpenShopProfile(shop);
+                    setShowFriends(false); // Close friends list to return to map on exit
                     const isUni = shop.category === 'University';
                     mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: isUni ? 17 : 18, pitch: 45 });
                 }} />}
@@ -1271,6 +1272,7 @@ const MapComponent = () => {
                 onShopFollowed={handleShopFollowed}
                 onShopClick={(shop) => {
                     handleOpenShopProfile(shop);
+                    setShowShops(false); // Close shops list to return to map on exit
                     const isUni = shop.category === 'University';
                     mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: isUni ? 17 : 18.5, pitch: 45 });
                 }}
@@ -1320,6 +1322,7 @@ const MapComponent = () => {
                         longitude: data.location?.longitude
                     };
                     handleOpenShopProfile(shopMock);
+                    setShowNotifications(false); // Close notifications list to return to map on exit
                     if (data.location?.latitude && data.location?.longitude) {
                         mapRef.current?.flyTo({ center: [parseFloat(data.location.longitude), parseFloat(data.location.latitude)], zoom: 18.5, pitch: 45 });
                     }
