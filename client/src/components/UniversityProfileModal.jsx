@@ -22,6 +22,12 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
     const [newComment, setNewComment] = useState('');
     const [comments, setComments] = useState({}); // { postId: [comments] }
 
+    // Admin/Settings State
+    const [isAssigningOwner, setIsAssigningOwner] = useState(false);
+    const [ownerUsername, setOwnerUsername] = useState('');
+    const [isEditingHours, setIsEditingHours] = useState(false);
+    const [hoursInput, setHoursInput] = useState(university.opening_hours || '');
+
     // Local University State (for bio, cover, etc. not in initial search)
     const [uniData, setUniData] = useState(university);
     const [localProfilePic, setLocalProfilePic] = useState(university.profile_picture);
@@ -110,6 +116,31 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
             setUniNews(prev => prev.map(p => p.id === postId ? { ...p, comments_count: (p.comments_count || 0) + 1 } : p));
             setNewComment('');
         } catch (e) { console.error(e); }
+    };
+
+    const handleAssignOwner = async (e) => {
+        e.preventDefault();
+        if (!ownerUsername.trim()) return;
+        try {
+            await shopService.assignOwner(university.id, ownerUsername);
+            alert(`تم تعيين ${ownerUsername} كمسؤول للصفحة بنجاح!`);
+            setIsAssigningOwner(false);
+            setOwnerUsername('');
+            loadUniversityData();
+        } catch (error) {
+            alert(error.response?.data?.error || 'فشل تعيين المسؤول. تأكد من صحة اسم المستخدم.');
+        }
+    };
+
+    const handleUpdateHours = async () => {
+        try {
+            await shopService.updateProfile(university.id, { opening_hours: hoursInput });
+            setUniData(prev => ({ ...prev, opening_hours: hoursInput }));
+            setIsEditingHours(false);
+            alert('تم تحديث ساعات العمل بنجاح!');
+        } catch (error) {
+            alert('فشل تحديث ساعات العمل');
+        }
     };
 
     const loadFacilities = async () => {
@@ -257,7 +288,7 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                             <h2 className="uni-name">{uniData.name}</h2>
                             <p className="uni-category">مؤسسة تعليمية</p>
                             <div className="uni-followers-count" style={{ fontSize: '0.85rem', color: '#ccc', marginTop: '4px' }}>
-                                👥 {uniData.followers_count || 0} متابع
+                                {uniData.followers_count || 0} متابع
                             </div>
                         </div>
                         <button className={`uni-follow-btn ${uniData.is_followed ? 'is-unfollow' : ''}`} onClick={handleFollow}>
@@ -299,12 +330,37 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                             </div>
 
                             <div className="uni-about-card" style={{ marginTop: '15px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                    <h3>🕒 أوقات الدوام</h3>
+                                    {isAdminOrOwner && !isEditingHours && (
+                                        <button onClick={() => setIsEditingHours(true)} className="edit-hours-btn">تعديل</button>
+                                    )}
+                                </div>
+                                {isEditingHours ? (
+                                    <div className="hours-edit-panel">
+                                        <textarea 
+                                            value={hoursInput} 
+                                            onChange={e => setHoursInput(e.target.value)} 
+                                            placeholder="مثلاً: يومياً من 8 صباحاً حتى 4 مساءً"
+                                            className="textarea"
+                                        />
+                                        <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                            <button className="btn-small is-accept" onClick={handleUpdateHours}>حفظ</button>
+                                            <button className="btn-small" onClick={() => setIsEditingHours(false)}>إلغاء</button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="hours-display">{uniData.opening_hours || 'غير محدد بعد.'}</p>
+                                )}
+                            </div>
+
+                            <div className="uni-about-card" style={{ marginTop: '15px' }}>
                                 <h3>الوصف</h3>
                                 <p>{uniData.bio || 'لا يوجد وصف متاح حالياً.'}</p>
                             </div>
                             
                             {isAdminOrOwner && (
-                                <div style={{ marginTop: '20px', textAlign: 'center' }}>
+                                <div className="uni-admin-actions" style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                     <button 
                                         className="uni-follow-btn" 
                                         style={{ background: '#3b82f6', boxShadow: '0 4px 10px rgba(59, 130, 246, 0.4)' }}
@@ -312,6 +368,31 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                                     >
                                         + إضافة مرفق جديد للجامعة
                                     </button>
+
+                                    {/* Only System Admin can assign a page owner */}
+                                    {currentUser?.role === 'admin' && (
+                                        <div className="assign-owner-section" style={{ marginTop: '15px', padding: '15px', border: '1px solid #ddd', borderRadius: '12px', background: 'white' }}>
+                                            <p style={{ fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '10px' }}>إدارة مسؤول الصفحة (Admin) 🛠️</p>
+                                            <p style={{ fontSize: '0.8rem', color: '#666', marginBottom: '10px' }}>
+                                                المسؤول الحالي: {uniData.owner_name || 'لا يوجد (إدارة النظام)'}
+                                            </p>
+                                            {!isAssigningOwner ? (
+                                                <button className="btn-small is-primary" onClick={() => setIsAssigningOwner(true)}>تعيين مسؤول جديد</button>
+                                            ) : (
+                                                <form onSubmit={handleAssignOwner} style={{ display: 'flex', gap: '10px' }}>
+                                                    <input 
+                                                        className="input" 
+                                                        placeholder="اسم المستخدم" 
+                                                        value={ownerUsername} 
+                                                        onChange={e => setOwnerUsername(e.target.value)}
+                                                        required
+                                                    />
+                                                    <button type="submit" className="btn-small is-accept">تأكيد</button>
+                                                    <button type="button" className="btn-small" onClick={() => setIsAssigningOwner(false)}>إلغاء</button>
+                                                </form>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
