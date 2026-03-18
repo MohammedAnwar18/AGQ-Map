@@ -530,12 +530,27 @@
 .menu-icon-img {
     width: 28px;
     height: 28px;
+    min-width: 28px;
+    min-height: 28px;
     object-fit: contain;
+    /* Force white visibility on icons that might be dark */
+    filter: drop-shadow(0 0 1px rgba(255,255,255,0.8)) brightness(1.2);
+    display: block;
+}
+
+.menu-icon-wrapper {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }
 
 .more-menu-dropdown button svg {
-    opacity: 0.2;
+    opacity: 0.5;
     transition: all 0.3s ease;
+    flex-shrink: 0;
 }
 
 .more-menu-dropdown button:hover svg {

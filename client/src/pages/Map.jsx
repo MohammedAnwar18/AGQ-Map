@@ -819,36 +819,38 @@ const MapComponent = () => {
                         </div>
                         <button onClick={() => { setShowCommunities(true); setShowMoreMenu(false); }}>
                             <div className="menu-item-content">
-                                <img src="/assets/icons/menu/communities.png" className="menu-icon-img" alt="" />
+                                <img src="/assets/icons/menu/communities.png" className="menu-icon-img" alt="Communities" />
                                 <span>مجتمعاتي</span>
                             </div>
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
                         <button onClick={() => { setShowShops(true); setShowMoreMenu(false); }}>
                             <div className="menu-item-content">
-                                <img src="/assets/icons/menu/shops.png" className="menu-icon-img" alt="" />
+                                <img src="/assets/icons/menu/shops.png" className="menu-icon-img" alt="Shops" />
                                 <span>محلاتي</span>
                             </div>
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /></svg>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
                         <button onClick={() => { setShowFriends(true); setShowMoreMenu(false); }}>
                             <div className="menu-item-content">
-                                <img src="/assets/icons/menu/friends.png" className="menu-icon-img" alt="" />
+                                <img src="/assets/icons/menu/friends.png" className="menu-icon-img" alt="Friends" />
                                 <span>الأصدقاء</span>
                             </div>
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
                         <button onClick={() => { setShowNews(true); setShowMoreMenu(false); }}>
                             <div className="menu-item-content">
-                                <img src="/assets/icons/menu/news.png" className="menu-icon-img" alt="" />
+                                <img src="/assets/icons/menu/news.png" className="menu-icon-img" alt="News" />
                                 <span>الأخبار</span>
                             </div>
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2" /></svg>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
                         {user?.role === 'admin' && (
                             <button onClick={() => window.location.href = '/admin'}>
                                 <div className="menu-item-content">
-                                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: '#fbab15' }}><circle cx="12" cy="12" r="3" /><path d="M12 1v6m0 6v6" /></svg>
+                                    <div className="menu-icon-wrapper" style={{ color: '#fbab15' }}>
+                                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2.5" className="menu-icon-img-svg"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+                                    </div>
                                     <span>لوحة الإدارة</span>
                                 </div>
                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
@@ -857,7 +859,7 @@ const MapComponent = () => {
                         <div className="menu-divider"></div>
                         <button onClick={logout} className="logout-btn">
                             <div className="menu-item-content">
-                                <img src="/assets/icons/menu/logout.png" className="menu-icon-img" alt="" />
+                                <img src="/assets/icons/menu/logout.png" className="menu-icon-img" alt="Logout" />
                                 <span>تسجيل خروج</span>
                             </div>
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /></svg>
