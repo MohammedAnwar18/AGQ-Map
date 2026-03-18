@@ -886,6 +886,125 @@ const getUniversityFacilities = async (req, res) => {
     }
 };
 
+// --- 20. Get Single Facility Profile (Info + Posts + Specialties) ---
+const getFacilityProfile = async (req, res) => {
+    try {
+        const { facilityId } = req.params;
+        const userId = req.user.userId;
+
+        // 1. Get Facility Details
+        const facilityRes = await pool.query(`
+            SELECT f.*, s.name as university_name, s.owner_id as uni_owner_id
+            FROM university_facilities f
+            JOIN shops s ON f.university_id = s.id
+            WHERE f.id = $1
+        `, [facilityId]);
+
+        if (facilityRes.rows.length === 0) return res.status(404).json({ error: 'Facility not found' });
+        const facility = facilityRes.rows[0];
+
+        // 2. Get Posts (Events, News, etc.)
+        const postsRes = await pool.query(`
+            SELECT fp.*, u.username, u.profile_picture as user_avatar
+            FROM facility_posts fp
+            LEFT JOIN users u ON fp.user_id = u.id
+            WHERE fp.facility_id = $1
+            ORDER BY fp.created_at DESC
+        `, [facilityId]);
+
+        // 3. Get Specialties (Colleges only)
+        let specialties = [];
+        if (facility.category === 'الكليات') {
+            const specRes = await pool.query(`
+                SELECT * FROM university_specialties WHERE facility_id = $1 ORDER BY name
+            `, [facilityId]);
+            specialties = specRes.rows;
+        }
+
+        res.json({
+            facility,
+            posts: postsRes.rows,
+            specialties,
+            is_admin: req.user.role === 'admin' || facility.uni_owner_id === userId
+        });
+    } catch (error) {
+        console.error('Get facility profile error:', error);
+        res.status(500).json({ error: 'Failed to get facility details' });
+    }
+};
+
+// --- 21. Add Post to Facility ---
+const addFacilityPost = async (req, res) => {
+    try {
+        const { facilityId } = req.params;
+        const { title, content, post_type, event_date } = req.body;
+        const userId = req.user.userId;
+
+        // Check permission (Uni owner or Admin)
+        const checkRes = await pool.query(`
+            SELECT s.owner_id FROM university_facilities f 
+            JOIN shops s ON f.university_id = s.id 
+            WHERE f.id = $1
+        `, [facilityId]);
+
+        if (checkRes.rows.length === 0) return res.status(404).json({ error: 'Facility not found' });
+        if (req.user.role !== 'admin' && checkRes.rows[0].owner_id !== userId) {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+
+        const { uploadToSupabase } = require('../utils/storage');
+        let media_urls = [];
+        if (req.files && req.files.length > 0) {
+            for (const file of req.files) {
+                const url = await uploadToSupabase(file.buffer, file.originalname, file.mimetype);
+                media_urls.push(url);
+            }
+        }
+
+        const result = await pool.query(`
+            INSERT INTO facility_posts (facility_id, user_id, title, content, post_type, event_date, media_urls, media_type)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING *
+        `, [facilityId, userId, title, content, post_type || 'news', event_date || null, media_urls, media_urls.length > 0 ? 'image' : 'text']);
+
+        res.status(201).json(result.rows[0]);
+    } catch (error) {
+        console.error('Add facility post error:', error);
+        res.status(500).json({ error: 'Failed' });
+    }
+};
+
+// --- 22. Add Specialty to College ---
+const addCollegeSpecialty = async (req, res) => {
+    try {
+        const { facilityId } = req.params;
+        const { name, description, degree_level } = req.body;
+        const userId = req.user.userId;
+
+        // Permission check
+        const checkRes = await pool.query(`
+            SELECT s.owner_id, f.category FROM university_facilities f 
+            JOIN shops s ON f.university_id = s.id 
+            WHERE f.id = $1
+        `, [facilityId]);
+
+        if (checkRes.rows.length === 0) return res.status(404).json({ error: 'College not found' });
+        if (checkRes.rows[0].category !== 'الكليات') return res.status(400).json({ error: 'Not a College' });
+        if (req.user.role !== 'admin' && checkRes.rows[0].owner_id !== userId) return res.status(403).json({ error: 'Unauthorized' });
+
+        const result = await pool.query(`
+            INSERT INTO university_specialties (facility_id, name, description, degree_level)
+            VALUES ($1, $2, $3, $4)
+            RETURNING *
+        `, [facilityId, name, description, degree_level]);
+
+        res.status(201).json(result.rows[0]);
+    } catch (error) {
+        console.error('Add specialty error:', error);
+        res.status(500).json({ error: 'Failed' });
+    }
+};
+
 module.exports = {
     searchShops,
     followShop,
@@ -911,5 +1030,8 @@ module.exports = {
     getShopRequests,
     updateRequestStatus,
     addUniversityFacility,
-    getUniversityFacilities
+    getUniversityFacilities,
+    getFacilityProfile,
+    addFacilityPost,
+    addCollegeSpecialty
 };

@@ -430,6 +430,23 @@ export const shopService = {
     addFacility: async (shopId, facilityData) => {
         const response = await api.post(`/shops/${shopId}/facilities`, facilityData);
         return response.data;
+    },
+
+    getFacilityProfile: async (facilityId) => {
+        const response = await api.get(`/shops/facilities/${facilityId}?t=${Date.now()}`);
+        return response.data;
+    },
+
+    addFacilityPost: async (facilityId, formData) => {
+        const response = await api.post(`/shops/facilities/${facilityId}/posts`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    },
+
+    addCollegeSpecialty: async (facilityId, data) => {
+        const response = await api.post(`/shops/facilities/${facilityId}/specialties`, data);
+        return response.data;
     }
 };
 

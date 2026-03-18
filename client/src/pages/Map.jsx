@@ -20,6 +20,7 @@ import NavigationPanel from '../components/NavigationPanel';
 import ManagedShopsModal from '../components/ManagedShopsModal';
 import ShopProfileModal from '../components/ShopProfileModal';
 import UniversityProfileModal from '../components/UniversityProfileModal';
+import FacilityProfileModal from '../components/FacilityProfileModal';
 import { postService, friendService, authService, notificationService, communityService, shopService, getImageUrl } from '../services/api';
 import './Map.css';
 
@@ -190,6 +191,10 @@ const MapComponent = () => {
     // University Profile State
     const [showUniversityProfile, setShowUniversityProfile] = useState(false);
     const [selectedUniversityProfile, setSelectedUniversityProfile] = useState(null);
+
+    // Facility Profile State
+    const [showFacilityProfile, setShowFacilityProfile] = useState(false);
+    const [selectedFacilityId, setSelectedFacilityId] = useState(null);
 
     const handleOpenShopProfile = (shop) => {
         if (shop.category === 'University') {
@@ -1196,6 +1201,10 @@ const MapComponent = () => {
                     currentUser={user}
                     onClose={() => setShowUniversityProfile(false)}
                     onFollowChange={handleShopFollowed}
+                    onFacilityClick={(facility) => {
+                        setSelectedFacilityId(facility.id);
+                        setShowFacilityProfile(true);
+                    }}
                 />
             )}
             {showSearch && <SearchModal onClose={() => setShowSearch(false)} />}
@@ -1261,6 +1270,14 @@ const MapComponent = () => {
                     onPostClick={(post) => {
                         setSelectedPost(post);
                     }}
+                />
+            )}
+
+            {showFacilityProfile && (
+                <FacilityProfileModal 
+                    facilityId={selectedFacilityId} 
+                    currentUser={user} 
+                    onClose={() => setShowFacilityProfile(false)} 
                 />
             )}
         </div>

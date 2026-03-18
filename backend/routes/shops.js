@@ -49,5 +49,8 @@ router.put('/requests/:requestId', shopController.updateRequestStatus);
 // University Facilities
 router.get('/:id/facilities', shopController.getUniversityFacilities);
 router.post('/:id/facilities', shopController.addUniversityFacility);
+router.get('/facilities/:facilityId', shopController.getFacilityProfile);
+router.post('/facilities/:facilityId/posts', upload.array('images', 5), shopController.addFacilityPost);
+router.post('/facilities/:facilityId/specialties', shopController.addCollegeSpecialty);
 
 module.exports = router;

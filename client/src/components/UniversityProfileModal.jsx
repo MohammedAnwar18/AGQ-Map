@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { shopService, getImageUrl } from '../services/api';
 import './UniversityProfileModal.css';
 
-const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChange }) => {
+const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChange, onFacilityClick }) => {
     const [activeTab, setActiveTab] = useState('overview');
     const [selectedFacilityCategory, setSelectedFacilityCategory] = useState(null);
     const [facilities, setFacilities] = useState({});
@@ -139,8 +139,11 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
     const categories = Object.keys(facilities);
 
     const handleFeatureClick = (feature) => {
-        // Will be implemented later: open feature page or zoom on map
-        alert(`تم النقر على: ${feature.name}. سيتم لاحقاً فتح صفحة مفصلة لهذا المرفق على الخريطة!`);
+        if (onFacilityClick) {
+            onFacilityClick(feature);
+        } else {
+            alert(`تم النقر على: ${feature.name}.`);
+        }
     };
 
     return (
