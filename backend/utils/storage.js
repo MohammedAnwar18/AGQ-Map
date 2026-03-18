@@ -1,54 +1,65 @@
-const { cloudinary } = require('../config/cloudinary');
+const { r2Client } = require('../config/r2');
+const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const { v4: uuidv4 } = require('uuid');
+require('dotenv').config();
+
+const BUCKET_NAME = process.env.R2_BUCKET_NAME || 'palnovaa-products';
+const PUBLIC_URL = process.env.R2_PUBLIC_URL; // e.g. https://pub-xyz.r2.dev
 
 /**
- * Uploads a file to Cloudinary
+ * Uploads a file to Cloudflare R2
  * @param {Buffer} fileBuffer - File content
  * @param {string} fileName - Original file name
  * @param {string} mimeType - File mime type
- * @returns {Promise<string>} - Direct secure URL
+ * @returns {Promise<string>} - Public URL of the uploaded file
  */
 const uploadToCloud = async (fileBuffer, fileName, mimeType) => {
     try {
         if (!fileBuffer) throw new Error('No file buffer provided');
 
-        // Convert Buffer to Base64 for Cloudinary
-        const base64File = `data:${mimeType};base64,${fileBuffer.toString('base64')}`;
+        const extension = fileName.split('.').pop();
+        const key = `uploads/${uuidv4()}.${extension}`;
 
-        // Upload to Cloudinary
-        const result = await cloudinary.uploader.upload(base64File, {
-            folder: 'agq_uploads',
-            resource_type: 'auto'
+        const command = new PutObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: key,
+            Body: fileBuffer,
+            ContentType: mimeType,
         });
 
-        console.log('✅ Upload successful to Cloudinary:', result.secure_url);
-        return result.secure_url;
+        await r2Client.send(command);
+
+        // Generate public URL
+        const fileUrl = `${PUBLIC_URL}/${key}`;
+        console.log('✅ Upload successful to R2:', fileUrl);
+        return fileUrl;
 
     } catch (err) {
-        console.error('❌ Upload Utility Error:', err.message);
+        console.error('❌ R2 Upload Error:', err.message);
         throw err;
     }
 };
 
 /**
- * Deletes a file from Cloudinary given its URL
- * @param {string} fileUrl - The full Cloudinary URL
+ * Deletes a file from Cloudflare R2 given its URL
+ * @param {string} fileUrl - The full R2 URL
  */
 const deleteFileFromCloud = async (fileUrl) => {
-    if (!fileUrl || !fileUrl.includes('cloudinary')) return;
+    if (!fileUrl || !fileUrl.includes(PUBLIC_URL)) return;
 
     try {
-        // Extract public_id from URL (e.g., https://.../agq_uploads/abc123.jpg)
-        const parts = fileUrl.split('/');
-        const fileNameWithExtension = parts[parts.length - 1];
-        const publicIdWithoutExtension = fileNameWithExtension.split('.')[0];
-        const folder = parts[parts.length - 2];
-        const publicId = `${folder}/${publicIdWithoutExtension}`;
+        // Extract key from URL
+        const key = fileUrl.replace(`${PUBLIC_URL}/`, '');
 
-        await cloudinary.uploader.destroy(publicId);
-        console.log('🗑️ Deleted from Cloudinary:', publicId);
+        const command = new DeleteObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: key,
+        });
+
+        await r2Client.send(command);
+        console.log('🗑️ Deleted from R2:', key);
     } catch (err) {
-        console.error('❌ Cloudinary Delete Error:', err.message);
+        console.error('❌ R2 Delete Error:', err.message);
     }
 };
 
