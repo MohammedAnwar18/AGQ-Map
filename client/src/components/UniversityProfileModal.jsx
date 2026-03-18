@@ -12,9 +12,10 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
     const [isCreatingFacility, setIsCreatingFacility] = useState(false);
     const [newFacilityData, setNewFacilityData] = useState({ name: '', category: 'الكليات', icon: '🏛️', lat: '', lon: '', description: '' });
 
-    // Local image states
+    // Local University State (for bio, cover, etc. not in initial search)
+    const [uniData, setUniData] = useState(university);
     const [localProfilePic, setLocalProfilePic] = useState(university.profile_picture);
-    const [localCoverPic, setLocalCoverPic] = useState(university.cover_image);
+    const [localCoverPic, setLocalCoverPic] = useState(university.cover_picture || university.cover_image); // accommodate both
     const [isUploadingImage, setIsUploadingImage] = useState(false);
 
     const predefinedCategories = [
@@ -29,8 +30,20 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
     ];
 
     useEffect(() => {
+        loadUniversityData();
         loadFacilities();
     }, [university.id]);
+
+    const loadUniversityData = async () => {
+        try {
+            const data = await shopService.getProfile(university.id);
+            setUniData(data.shop);
+            setLocalProfilePic(data.shop.profile_picture);
+            setLocalCoverPic(data.shop.cover_picture);
+        } catch (error) {
+            console.error('Failed to load university full data', error);
+        }
+    };
 
     const loadFacilities = async () => {
         setIsLoadingFacs(true);
@@ -76,7 +89,9 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
         }
     };
 
-    const isAdminOrOwner = currentUser?.role === 'admin' || currentUser?.userId === university.owner_id || currentUser?.id === university.owner_id;
+    const isAdminOrOwner = currentUser?.role === 'admin' || 
+                         currentUser?.userId === uniData.owner_id || 
+                         currentUser?.id === uniData.owner_id;
 
     const handleImageUpload = async (e, type) => {
         const file = e.target.files[0];
@@ -88,14 +103,14 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
         setIsUploadingImage(true);
         try {
             const response = await shopService.uploadImages(university.id, formData);
-            if (response.shop) {
+            if (response.profile_picture || response.cover_picture) {
                 if (type === 'profile_picture') {
-                    setLocalProfilePic(response.shop.profile_picture);
+                    setLocalProfilePic(response.profile_picture);
                 } else {
-                    setLocalCoverPic(response.shop.cover_image);
+                    setLocalCoverPic(response.cover_picture);
                 }
                 
-                if (onFollowChange) onFollowChange(); // Optional: to refresh parent state
+                if (onFollowChange) onFollowChange(); 
                 alert('تم تحديث الصورة بنجاح!');
             }
         } catch (error) {
@@ -103,6 +118,20 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
             alert('فشل في رفع الصورة.');
         } finally {
             setIsUploadingImage(false);
+        }
+    };
+
+    const handleFollow = async () => {
+        try {
+            if (uniData.is_followed) {
+                await shopService.unfollow(uniData.id);
+            } else {
+                await shopService.follow(uniData.id);
+            }
+            setUniData(prev => ({ ...prev, is_followed: !prev.is_followed }));
+            if (onFollowChange) onFollowChange();
+        } catch (e) {
+            console.error('Follow toggle error', e);
         }
     };
 
@@ -129,7 +158,7 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                     {isAdminOrOwner && (
                         <label className="upload-btn" style={{ position: 'absolute', top: '20px', right: '60px', background: 'rgba(0,0,0,0.6)', color: 'white', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', zIndex: 10, fontSize: '0.85rem' }}>
                             📷 تغيير الغلاف
-                            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleImageUpload(e, 'cover_image')} disabled={isUploadingImage} />
+                            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleImageUpload(e, 'cover_picture')} disabled={isUploadingImage} />
                         </label>
                     )}
                     <button className="uni-close-btn" onClick={onClose}>✕</button>
@@ -138,7 +167,7 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                     <div className="uni-profile-info">
                         <div className="uni-logo-wrapper" style={{ position: 'relative' }}>
                             <img 
-                                src={localProfilePic ? getImageUrl(localProfilePic) : 'https://cdn-icons-png.flaticon.com/512/3202/3202796.png'} 
+                                src={localProfilePic ? getImageUrl(localProfilePic) : (uniData.profile_picture ? getImageUrl(uniData.profile_picture) : 'https://cdn-icons-png.flaticon.com/512/3202/3202796.png')} 
                                 alt="University Logo" 
                                 className="uni-logo-img" 
                                 style={{ opacity: isUploadingImage ? 0.5 : 1 }}
@@ -151,11 +180,11 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                             )}
                         </div>
                         <div className="uni-title-section">
-                            <h2 className="uni-name">{university.name}</h2>
+                            <h2 className="uni-name">{uniData.name}</h2>
                             <p className="uni-category">مؤسسة تعليمية ذكية 🎓</p>
                         </div>
-                        <button className="uni-follow-btn" onClick={(e) => { e.stopPropagation(); onFollowChange && onFollowChange(); }}>
-                            متابعة الجامعة 🔔
+                        <button className="uni-follow-btn" onClick={(e) => { e.stopPropagation(); handleFollow(); }}>
+                            {uniData.is_followed ? 'إلغاء المتابعة 🔔' : 'متابعة الجامعة 🔔'}
                         </button>
                     </div>
                 </div>
@@ -187,9 +216,14 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                                     <span className="stat-label">كليات</span>
                                 </div>
                                 <div className="stat-box">
-                                    <span className="stat-value">{categories.length}</span>
-                                    <span className="stat-label">أقسام مرافق</span>
+                                    <span className="stat-value">{Object.values(facilities).flat().length}</span>
+                                    <span className="stat-label">مرفق</span>
                                 </div>
+                            </div>
+
+                            <div className="uni-about-card" style={{ marginTop: '15px' }}>
+                                <h3>الوصف</h3>
+                                <p>{uniData.bio || 'لا يوجد وصف متاح حالياً.'}</p>
                             </div>
                             
                             {isAdminOrOwner && (
