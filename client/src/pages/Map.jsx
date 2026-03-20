@@ -770,7 +770,19 @@ const MapComponent = () => {
                     </div>
                 </div>
 
-                <div className="top-bar-right" style={{ display: 'flex', gap: '20px' }}>
+                <div className="top-bar-right" style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                    <button 
+                        className={`top-nav-icon profile-top-icon ${showProfile ? 'active' : ''}`} 
+                        onClick={() => { setShowProfile(true); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); setShowChat(false); }} 
+                        style={{ padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex' }}
+                    >
+                        <img
+                            src={getImageUrl(user.profile_picture) || '/default-avatar.png'}
+                            alt="Profile"
+                            style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #fbab15', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
+                        />
+                    </button>
+
                     <button className={`top-nav-icon ${showNotifications ? 'active' : ''}`} onClick={() => setShowNotifications(true)} style={{ position: 'relative' }}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
                             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -1214,14 +1226,10 @@ const MapComponent = () => {
                     </svg>
                 </button>
 
-                <button className={`nav-item profile-nav-item ${showProfile ? 'active' : ''}`} onClick={() => { setShowProfile(true); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); }}>
-                    <div className="nav-profile-frame">
-                        <img
-                            src={getImageUrl(user.profile_picture) || '/default-avatar.png'}
-                            alt="Profile"
-                            className="nav-profile-img"
-                        />
-                    </div>
+                <button className={`nav-item ${showChat ? 'active' : ''}`} onClick={() => { setShowChat(true); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); setShowProfile(false); }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="28" height="28">
+                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                    </svg>
                 </button>
             </nav>
 
