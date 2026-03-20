@@ -1,6 +1,8 @@
 .login-container {
-    min-height: 100vh;
-    min-height: 100dvh; /* For mobile browsers */
+    height: 100vh;
+    height: 100dvh; /* For mobile browsers - force it to exactly viewport height */
+    overflow-y: auto; /* Enable internal scrolling to fix freeze */
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
     display: flex;
     flex-direction: column;
     align-items: center;
