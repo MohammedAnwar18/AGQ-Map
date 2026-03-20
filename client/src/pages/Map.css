@@ -501,12 +501,11 @@
 }
 
 .menu-header h3 {
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     color: #fbab15;
-    text-transform: uppercase;
-    letter-spacing: 2px;
     margin: 0;
     font-weight: 900;
+    white-space: nowrap; /* Keep it on one line */
 }
 
 .more-menu-dropdown button {

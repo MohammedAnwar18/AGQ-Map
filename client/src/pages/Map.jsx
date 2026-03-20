@@ -826,7 +826,7 @@ const MapComponent = () => {
                     />
                     <div className="more-menu-dropdown slide-down">
                         <div className="menu-header">
-                            <h3>القائمة الرئيسية</h3>
+                            <h3>الشاشة الرئيسية</h3>
                         </div>
                         <button onClick={() => { setShowCommunities(true); setShowMoreMenu(false); }}>
                             <div className="menu-item-content">

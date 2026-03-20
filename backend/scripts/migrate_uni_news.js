@@ -3,7 +3,7 @@ const pool = require('../config/database');
 async function checkAndMigrate() {
   try {
     console.log('Checking database tables and columns...');
-    
+
     // Check posts table columns
     const columnsRes = await pool.query(`
       SELECT column_name 
