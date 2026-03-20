@@ -145,21 +145,38 @@ const Login = () => {
             <div className="login-content fade-in">
                 <div className="login-header">
                     <div className="logo" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem', marginTop: '1rem' }}>
-                        <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginBottom: '1rem' }}>
+                        <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginBottom: '1rem', overflow: 'visible' }}>
                             <style>
                                 {`
-                                @keyframes pulse-circle-anim {
-                                    0%, 100% { opacity: 0.3; transform: scale(1.2); }
-                                    50% { opacity: 0.1; transform: scale(1.3); }
+                                @keyframes ping-radar {
+                                    0% { transform: scale(0.9); opacity: 1; stroke-width: 4px; stroke: #fff; }
+                                    50% { transform: scale(2.5); opacity: 0.5; stroke-width: 2px; stroke: #fff; }
+                                    100% { transform: scale(4.5); opacity: 0; stroke-width: 0px; stroke: #fff; }
+                                }
+                                @keyframes dark-heartbeat {
+                                    0% { transform: scale(0.8); opacity: 0; fill: rgba(0,0,0,0); }
+                                    10% { transform: scale(1.1); opacity: 0.6; fill: rgba(0,0,0,0.7); } /* غمقان مرة واحدة */
+                                    40% { transform: scale(2.2); opacity: 0; fill: rgba(0,0,0,0); }
+                                    100% { transform: scale(2.5); opacity: 0; }
                                 }
                                 .pulse-circle {
-                                    animation: pulse-circle-anim 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+                                    animation: ping-radar 3s cubic-bezier(0, 0, 0.2, 1) infinite;
+                                    transform-origin: center;
+                                }
+                                .pulse-circle-delayed {
+                                    animation: ping-radar 3s cubic-bezier(0, 0, 0.2, 1) 1.5s infinite;
+                                    transform-origin: center;
+                                }
+                                .dark-flash {
+                                    animation: dark-heartbeat 3s ease-out infinite;
                                     transform-origin: center;
                                 }
                                 `}
                             </style>
-                            <circle className="pulse-circle" cx="50" cy="50" r="35" stroke="white" strokeWidth="2" />
-                            <path d="M50 15C36.2 15 25 26.2 25 40C25 58.75 50 85 50 85C50 85 75 58.75 75 40C75 26.2 63.8 15 50 15ZM50 48.75C45.175 48.75 41.25 44.825 41.25 40C41.25 35.175 45.175 31.25 50 31.25C54.825 31.25 58.75 35.175 58.75 40C58.75 44.825 54.825 48.75 50 48.75Z" fill="white"/>
+                            <circle className="dark-flash" cx="50" cy="50" r="35" />
+                            <circle className="pulse-circle" cx="50" cy="50" r="35" fill="none" />
+                            <circle className="pulse-circle-delayed" cx="50" cy="50" r="35" fill="none" />
+                            <path d="M50 15C36.2 15 25 26.2 25 40C25 58.75 50 85 50 85C50 85 75 58.75 75 40C75 26.2 63.8 15 50 15ZM50 48.75C45.175 48.75 41.25 44.825 41.25 40C41.25 35.175 45.175 31.25 50 31.25C54.825 31.25 58.75 35.175 58.75 40C58.75 44.825 54.825 48.75 50 48.75Z" fill="white" style={{ filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.5))' }} />
                         </svg>
                         <h1 
                             style={{ 
