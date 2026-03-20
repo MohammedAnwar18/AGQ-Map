@@ -747,7 +747,18 @@ const MapComponent = () => {
 
             {/* Top Bar - Clean & Minimalist */}
             <div className="top-bar">
-                <div className="top-bar-left">
+                <div className="top-bar-left" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <button 
+                        className={`top-nav-icon profile-top-icon ${showProfile ? 'active' : ''}`} 
+                        onClick={() => { setShowProfile(true); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); setShowChat(false); }} 
+                        style={{ padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex' }}
+                    >
+                        <img
+                            src={getImageUrl(user.profile_picture) || '/default-avatar.png'}
+                            alt="Profile"
+                            style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #fbab15', boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }}
+                        />
+                    </button>
                     <div className="app-logo">
                         <svg version="1.0" xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 500.000000 500.000000"
@@ -771,18 +782,6 @@ const MapComponent = () => {
                 </div>
 
                 <div className="top-bar-right" style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                    <button 
-                        className={`top-nav-icon profile-top-icon ${showProfile ? 'active' : ''}`} 
-                        onClick={() => { setShowProfile(true); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); setShowChat(false); }} 
-                        style={{ padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex' }}
-                    >
-                        <img
-                            src={getImageUrl(user.profile_picture) || '/default-avatar.png'}
-                            alt="Profile"
-                            style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #fbab15', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
-                        />
-                    </button>
-
                     <button className={`top-nav-icon ${showNotifications ? 'active' : ''}`} onClick={() => setShowNotifications(true)} style={{ position: 'relative' }}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
                             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
