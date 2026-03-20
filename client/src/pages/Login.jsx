@@ -163,6 +163,7 @@ const Login = () => {
                                 <path d="M3210 1643 c4 -15 22 -66 40 -113 17 -47 38 -103 45 -125 8 -22 25 -67 38 -100 l23 -60 43 0 c40 0 44 2 56 35 7 19 28 73 45 120 18 46 47 126 66 177 l33 93 -37 0 -37 0 -60 -180 c-33 -98 -62 -179 -65 -180 -3 0 -22 53 -43 118 -79 238 -78 237 -119 240 -36 3 -37 3 -28 -25z" />
                             </g>
                         </svg>
+                        <h1 className="logo-text" style={{ color: 'white', margin: 0, padding: 0, fontWeight: '800', letterSpacing: '2px', textShadow: '0 2px 4px rgba(0,0,0,0.4)' }}>PALNOVAA</h1>
                     </div>
                     <p className="tagline">اكتشف العالم من حولك، شارك لحظاتك المكانية</p>
                 </div>
