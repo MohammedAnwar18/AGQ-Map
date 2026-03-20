@@ -222,7 +222,6 @@ const Login = () => {
                             <>
                                 {resetStep === 1 ? (
                                     <div className="form-group">
-                                        <label htmlFor="email">البريد الإلكتروني</label>
                                         <input
                                             type="email"
                                             id="email"
@@ -230,7 +229,7 @@ const Login = () => {
                                             value={formData.email}
                                             onChange={handleChange}
                                             className="input"
-                                            placeholder="email@example.com"
+                                            placeholder="البريد الإلكتروني (email@example.com)"
                                             required
                                             autoFocus
                                         />
@@ -256,7 +255,6 @@ const Login = () => {
                                             />
                                         </div>
                                         <div className="form-group">
-                                            <label htmlFor="newPassword">كلمة المرور الجديدة</label>
                                             <input
                                                 type="password"
                                                 id="newPassword"
@@ -264,7 +262,7 @@ const Login = () => {
                                                 value={formData.password}
                                                 onChange={handleChange}
                                                 className="input"
-                                                placeholder="••••••••"
+                                                placeholder="كلمة المرور الجديدة"
                                                 required
                                             />
                                         </div>
@@ -276,7 +274,6 @@ const Login = () => {
                                 {!isOtpStep && (
                                     <>
                                         <div className="form-group">
-                                            <label htmlFor="username">{isLogin ? 'اسم المستخدم أو البريد الإلكتروني' : 'اسم المستخدم للدخول (بالإنجليزي)'}</label>
                                             <input
                                                 type="text"
                                                 id="username"
@@ -284,7 +281,7 @@ const Login = () => {
                                                 value={formData.username}
                                                 onChange={handleChange}
                                                 className="input"
-                                                placeholder="أدخل اسم المستخدم"
+                                                placeholder={isLogin ? 'اسم المستخدم أو البريد الإلكتروني' : 'اسم المستخدم للدخول (بالإنجليزي)'}
                                                 required
                                                 autoFocus
                                             />
@@ -293,7 +290,6 @@ const Login = () => {
                                         {!isLogin && (
                                             <>
                                                 <div className="form-group">
-                                                    <label htmlFor="email">البريد الإلكتروني</label>
                                                     <input
                                                         type="email"
                                                         id="email"
@@ -301,13 +297,12 @@ const Login = () => {
                                                         value={formData.email}
                                                         onChange={handleChange}
                                                         className="input"
-                                                        placeholder="email@example.com"
+                                                        placeholder="البريد الإلكتروني (email@example.com)"
                                                         required
                                                     />
                                                 </div>
 
                                                 <div className="form-group">
-                                                    <label htmlFor="full_name">الاسم الكامل (سيظهر للجميع)</label>
                                                     <input
                                                         type="text"
                                                         id="full_name"
@@ -315,13 +310,11 @@ const Login = () => {
                                                         value={formData.full_name}
                                                         onChange={handleChange}
                                                         className="input"
-                                                        placeholder="أدخل اسمك الكامل"
+                                                        placeholder="الاسم الكامل (سيظهر للجميع)"
                                                         required
                                                     />
                                                 </div>
-
                                                 <div className="form-group">
-                                                    <label htmlFor="gender">الجنس</label>
                                                     <select
                                                         id="gender"
                                                         name="gender"
@@ -335,15 +328,13 @@ const Login = () => {
                                                         <option value="female">أنثى</option>
                                                     </select>
                                                 </div>
-
                                                 <div className="form-group" style={{ position: 'relative' }}>
-                                                    <label htmlFor="date_of_birth">تاريخ الميلاد</label>
                                                     <div
                                                         className="input"
                                                         onClick={() => setShowCalendar(true)}
                                                         style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                                                     >
-                                                        <span>{formData.date_of_birth || 'DD/MM/YYYY'}</span>
+                                                        <span style={{ color: formData.date_of_birth ? 'inherit' : 'rgba(255, 255, 255, 0.5)' }}>{formData.date_of_birth || 'تاريخ الميلاد'}</span>
                                                         <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#fff">
                                                             <path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Zm280 240q-17 0-28.5-11.5T440-440q0-17 11.5-28.5T480-480q17 0 28.5 11.5T520-440q0 17-11.5 28.5T480-400Zm-160 0q-17 0-28.5-11.5T280-440q0-17 11.5-28.5T320-480q17 0 28.5 11.5T360-440q0 17-11.5 28.5T320-400Zm320 0q-17 0-28.5-11.5T600-440q0-17 11.5-28.5T640-480q17 0 28.5 11.5T680-440q0 17-11.5 28.5T640-400ZM480-240q-17 0-28.5-11.5T440-280q0-17 11.5-28.5T480-320q17 0 28.5 11.5T520-280q0 17-11.5 28.5T480-240Zm-160 0q-17 0-28.5-11.5T280-280q0-17 11.5-28.5T320-320q17 0 28.5 11.5T360-280q0 17-11.5 28.5T320-240Zm320 0q-17 0-28.5-11.5T600-280q0-17 11.5-28.5T640-320q17 0 28.5 11.5T680-280q0 17-11.5 28.5T640-240Z" />
                                                         </svg>
@@ -362,7 +353,6 @@ const Login = () => {
                                         )}
 
                                         <div className="form-group">
-                                            <label htmlFor="password">كلمة المرور</label>
                                             <input
                                                 type="password"
                                                 id="password"
@@ -370,7 +360,7 @@ const Login = () => {
                                                 value={formData.password}
                                                 onChange={handleChange}
                                                 className="input"
-                                                placeholder="••••••••"
+                                                placeholder="كلمة المرور"
                                                 required
                                             />
                                         </div>
