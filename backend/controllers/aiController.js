@@ -96,7 +96,7 @@ ${posts}
         }
 
         const response = await axios.post('https://api.sambanova.ai/v1/chat/completions', {
-            model: "Meta-Llama-3.1-70B-Instruct",
+            model: "Meta-Llama-3.3-70B-Instruct",
             messages: messages,
             temperature: 0.1,
             top_p: 0.1
