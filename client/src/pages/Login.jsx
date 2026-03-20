@@ -144,17 +144,23 @@ const Login = () => {
 
             <div className="login-content fade-in">
                 <div className="login-header">
-                    <div className="logo" style={{ position: 'relative', display: 'inline-flex', padding: '1rem 0.5rem', marginBottom: '1.5rem', marginTop: '1rem' }}>
-                        <div 
-                            style={{ 
-                                position: 'absolute', 
-                                top: 0, left: 0, right: 0, bottom: 0, 
-                                border: '2px solid rgba(255, 255, 255, 0.3)', 
-                                borderRadius: '9999px', /* rounded-full */
-                                transform: 'scale(1.25)', /* scale-125 */
-                                animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' /* animate-pulse */
-                            }}
-                        ></div>
+                    <div className="logo" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem', marginTop: '1rem' }}>
+                        <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginBottom: '1rem' }}>
+                            <style>
+                                {`
+                                @keyframes pulse-circle-anim {
+                                    0%, 100% { opacity: 0.3; transform: scale(1.2); }
+                                    50% { opacity: 0.1; transform: scale(1.3); }
+                                }
+                                .pulse-circle {
+                                    animation: pulse-circle-anim 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+                                    transform-origin: center;
+                                }
+                                `}
+                            </style>
+                            <circle className="pulse-circle" cx="50" cy="50" r="35" stroke="white" strokeWidth="2" />
+                            <path d="M50 15C36.2 15 25 26.2 25 40C25 58.75 50 85 50 85C50 85 75 58.75 75 40C75 26.2 63.8 15 50 15ZM50 48.75C45.175 48.75 41.25 44.825 41.25 40C41.25 35.175 45.175 31.25 50 31.25C54.825 31.25 58.75 35.175 58.75 40C58.75 44.825 54.825 48.75 50 48.75Z" fill="white"/>
+                        </svg>
                         <h1 
                             style={{ 
                                 fontSize: '2.25rem', /* text-4xl */
@@ -163,6 +169,7 @@ const Login = () => {
                                 letterSpacing: '0.1em', /* tracking-widest */
                                 margin: 0,
                                 marginBottom: '0.75rem', /* mb-3 */
+                                textShadow: '0 2px 4px rgba(0,0,0,0.4)',
                                 zIndex: 1
                             }}
                         >
