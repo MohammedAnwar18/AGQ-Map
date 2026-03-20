@@ -145,30 +145,30 @@ const Login = () => {
             <div className="login-content fade-in">
                 <div className="login-header">
                     <div className="logo" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem', marginTop: '1rem' }}>
-                        <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginBottom: '1rem', overflow: 'visible' }}>
+                        <svg width="130" height="130" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginBottom: '1rem', overflow: 'visible' }}>
                             <style>
                                 {`
                                 @keyframes ping-radar {
-                                    0% { transform: scale(0.9); opacity: 1; stroke-width: 4px; stroke: #ffffff; }
-                                    50% { transform: scale(2.0); opacity: 0.6; stroke-width: 2px; stroke: #fbab15; }
-                                    100% { transform: scale(3.0); opacity: 0; stroke-width: 0px; stroke: #fbab15; }
+                                    0% { transform: scale(0.9); opacity: 0.4; stroke-width: 3px; stroke: #ffffff; }
+                                    50% { transform: scale(1.8); opacity: 0.3; stroke-width: 2px; stroke: #fbab15; }
+                                    100% { transform: scale(2.8); opacity: 0; stroke-width: 0px; stroke: #fbab15; }
                                 }
                                 @keyframes soft-glow {
                                     0% { transform: scale(0.8); opacity: 0; fill: rgba(255,255,255,0); }
-                                    20% { transform: scale(1.2); opacity: 0.5; fill: rgba(255,255,255,0.5); }
-                                    60% { transform: scale(1.6); opacity: 0; fill: rgba(251,171,21,0.3); }
-                                    100% { transform: scale(1.8); opacity: 0; }
+                                    20% { transform: scale(1.1); opacity: 0.3; fill: rgba(255,255,255,0.3); }
+                                    60% { transform: scale(1.5); opacity: 0; fill: rgba(251,171,21,0.2); }
+                                    100% { transform: scale(1.7); opacity: 0; }
                                 }
                                 .pulse-circle {
-                                    animation: ping-radar 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+                                    animation: ping-radar 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
                                     transform-origin: center;
                                 }
                                 .pulse-circle-delayed {
-                                    animation: ping-radar 3s cubic-bezier(0.4, 0, 0.2, 1) 1.5s infinite;
+                                    animation: ping-radar 3.5s cubic-bezier(0.4, 0, 0.2, 1) 1.75s infinite;
                                     transform-origin: center;
                                 }
                                 .smooth-flash {
-                                    animation: soft-glow 3s ease-out infinite;
+                                    animation: soft-glow 3.5s ease-out infinite;
                                     transform-origin: center;
                                 }
                                 `}
