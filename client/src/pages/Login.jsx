@@ -149,39 +149,36 @@ const Login = () => {
                             <style>
                                 {`
                                 @keyframes ping-radar {
-                                    0% { transform: scale(0.9); opacity: 1; stroke-width: 4px; stroke: #fff; }
-                                    50% { transform: scale(2.0); opacity: 0.8; stroke-width: 2px; stroke: #fff; }
-                                    100% { transform: scale(3.0); opacity: 0; stroke-width: 0px; stroke: #fff; }
+                                    0% { transform: scale(0.9); opacity: 1; stroke-width: 4px; stroke: #ffffff; }
+                                    50% { transform: scale(2.0); opacity: 0.6; stroke-width: 2px; stroke: #fbab15; }
+                                    100% { transform: scale(3.0); opacity: 0; stroke-width: 0px; stroke: #fbab15; }
                                 }
-                                @keyframes light-heartbeat {
+                                @keyframes soft-glow {
                                     0% { transform: scale(0.8); opacity: 0; fill: rgba(255,255,255,0); }
-                                    10% { transform: scale(1.1); opacity: 1; fill: rgba(255,255,255,0.5); }
-                                    40% { transform: scale(1.6); opacity: 0; fill: rgba(255,255,255,0); }
-                                    100% { transform: scale(1.6); opacity: 0; }
+                                    20% { transform: scale(1.2); opacity: 0.5; fill: rgba(255,255,255,0.5); }
+                                    60% { transform: scale(1.6); opacity: 0; fill: rgba(251,171,21,0.3); }
+                                    100% { transform: scale(1.8); opacity: 0; }
                                 }
                                 .pulse-circle {
-                                    animation: ping-radar 3s cubic-bezier(0, 0, 0.2, 1) infinite;
+                                    animation: ping-radar 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
                                     transform-origin: center;
                                 }
                                 .pulse-circle-delayed {
-                                    animation: ping-radar 3s cubic-bezier(0, 0, 0.2, 1) 1.5s infinite;
+                                    animation: ping-radar 3s cubic-bezier(0.4, 0, 0.2, 1) 1.5s infinite;
                                     transform-origin: center;
                                 }
-                                .light-flash {
-                                    animation: light-heartbeat 3s ease-out infinite;
+                                .smooth-flash {
+                                    animation: soft-glow 3s ease-out infinite;
                                     transform-origin: center;
                                 }
                                 `}
                             </style>
-                            <circle className="light-flash" cx="50" cy="50" r="35" />
+                            <circle className="smooth-flash" cx="50" cy="50" r="35" />
                             <circle className="pulse-circle" cx="50" cy="50" r="35" fill="none" />
                             <circle className="pulse-circle-delayed" cx="50" cy="50" r="35" fill="none" />
                             
-                            {/* الدائرة البيضاء الثابتة كخلفية */}
-                            <circle cx="50" cy="50" r="35" fill="white" />
-                            
-                            {/* أيقونة الموقع مفرغة بلون الموقع المميز */}
-                            <path d="M50 15C36.2 15 25 26.2 25 40C25 58.75 50 85 50 85C50 85 75 58.75 75 40C75 26.2 63.8 15 50 15ZM50 48.75C45.175 48.75 41.25 44.825 41.25 40C41.25 35.175 45.175 31.25 50 31.25C54.825 31.25 58.75 35.175 58.75 40C58.75 44.825 54.825 48.75 50 48.75Z" fill="#fbab15" />
+                            {/* أيقونة الموقع بيضاء لتبدو مريحة للعين */}
+                            <path d="M50 15C36.2 15 25 26.2 25 40C25 58.75 50 85 50 85C50 85 75 58.75 75 40C75 26.2 63.8 15 50 15ZM50 48.75C45.175 48.75 41.25 44.825 41.25 40C41.25 35.175 45.175 31.25 50 31.25C54.825 31.25 58.75 35.175 58.75 40C58.75 44.825 54.825 48.75 50 48.75Z" fill="white" />
                         </svg>
                         <h1 
                             style={{ 
