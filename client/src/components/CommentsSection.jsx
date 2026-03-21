@@ -3,13 +3,21 @@ import { commentService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import './CommentsSection.css';
 
-const CommentsSection = ({ postId, onCommentAdded, hideInput = false }) => {
+const CommentsSection = ({ postId, onCommentAdded, onReply, hideInput = false }) => {
     const { user } = useAuth();
     const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState('');
     const [replyingTo, setReplyingTo] = useState(null); // { id, username }
     const [loading, setLoading] = useState(true);
     const listRef = React.useRef(null);
+
+    const handleReplyClick = (id, username) => {
+        if (onReply) {
+            onReply({ id, username });
+        } else {
+            setReplyingTo({ id, username });
+        }
+    };
 
     const scrollToBottom = () => {
         if (listRef.current) {
@@ -96,7 +104,7 @@ const CommentsSection = ({ postId, onCommentAdded, hideInput = false }) => {
                                     <p className="comment-text">{comment.content}</p>
                                     <button
                                         className="comment-reply-btn"
-                                        onClick={() => setReplyingTo({ id: comment.id, username: comment.username })}
+                                        onClick={() => handleReplyClick(comment.id, comment.username)}
                                     >
                                         رد
                                     </button>

@@ -13,9 +13,10 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
     const [likeAnimating, setLikeAnimating] = useState(false);
     const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
     const [showDetails, setShowDetails] = useState(false);
-    const [isCommenting, setIsCommenting] = useState(false); // New state for comment mode
-    const [newCommentText, setNewCommentText] = useState(''); // New state for comment input
-    const [commentsRefreshTrigger, setCommentsRefreshTrigger] = useState(0); // Trigger to refresh CommentsSection
+    const [isCommenting, setIsCommenting] = useState(false);
+    const [newCommentText, setNewCommentText] = useState('');
+    const [commentsRefreshTrigger, setCommentsRefreshTrigger] = useState(0);
+    const [replyingTo, setReplyingTo] = useState(null); // New state for tracking replies
 
     const mediaList = post.media_urls || (post.image_url ? [post.image_url] : []);
     const hasMultipleMedia = mediaList.length > 1;
@@ -90,13 +91,16 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
         if (e) e.preventDefault();
         if (!newCommentText.trim()) {
             setIsCommenting(false);
+            setReplyingTo(null);
             return;
         }
 
         try {
-            await commentService.addComment(post.id, newCommentText);
+            const parentId = replyingTo ? replyingTo.id : null;
+            await commentService.addComment(post.id, newCommentText, parentId);
             setNewCommentText('');
             setIsCommenting(false);
+            setReplyingTo(null);
             setShowDetails(true); // Open sidebar to see the new comment
             setCommentsRefreshTrigger(prev => prev + 1); // Trigger refresh
             if (onUpdate) {
@@ -149,8 +153,12 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
         <div className="post-modal-overlay" onClick={onClose}>
             <div className="post-modal-container" onClick={(e) => e.stopPropagation()}>
 
-                {/* Header / Close Button for Mobile */}
-                <button className="post-modal-close-btn" onClick={onClose}>✕</button>
+                {/* New Back Button in Top Bar Area */}
+                <button className="post-modal-back-btn" onClick={onClose} title="العودة">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M19 12H5M12 19l-7-7 7-7" />
+                    </svg>
+                </button>
 
                 <div className={`post-modal-content ${showDetails ? 'show-details' : 'image-only'}`}>
                     {/* Image/Video Section */}
@@ -209,16 +217,24 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
                                                     <span className="pill-comments-text">COMMENTS</span>
                                                 </button>
                                             ) : (
-                                                <input 
-                                                    autoFocus
-                                                    className="pill-comment-input"
-                                                    placeholder="اكتب تعليقك هنا..."
-                                                    value={newCommentText}
-                                                    onChange={(e) => setNewCommentText(e.target.value)}
-                                                    onBlur={() => {
-                                                        if (!newCommentText.trim()) setIsCommenting(false);
-                                                    }}
-                                                />
+                                                <div className="pill-input-container">
+                                                    {replyingTo && (
+                                                        <span className="pill-reply-tag">
+                                                            الرد على @{replyingTo.username} 
+                                                            <button className="cancel-pill-reply" onClick={() => setReplyingTo(null)}>×</button>
+                                                        </span>
+                                                    )}
+                                                    <input 
+                                                        autoFocus
+                                                        className="pill-comment-input"
+                                                        placeholder={replyingTo ? `اكتب ردك هنا...` : "اكتب تعليقك هنا..."}
+                                                        value={newCommentText}
+                                                        onChange={(e) => setNewCommentText(e.target.value)}
+                                                        onBlur={() => {
+                                                            if (!newCommentText.trim() && !replyingTo) setIsCommenting(false);
+                                                        }}
+                                                    />
+                                                </div>
                                             )}
                                         </div>
 
@@ -327,6 +343,10 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
                                 key={commentsRefreshTrigger}
                                 postId={post.id}
                                 hideInput={true}
+                                onReply={(replyData) => {
+                                    setReplyingTo(replyData);
+                                    setIsCommenting(true);
+                                }}
                                 onCommentAdded={() => {
                                     if (onUpdate) {
                                         onUpdate({
