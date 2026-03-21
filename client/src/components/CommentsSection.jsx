@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { commentService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import './CommentsSection.css'; // We will create this CSS
+import './CommentsSection.css';
 
-const CommentsSection = ({ postId, onCommentAdded }) => {
+const CommentsSection = ({ postId, onCommentAdded, hideInput = false }) => {
     const { user } = useAuth();
     const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState('');
@@ -39,14 +39,13 @@ const CommentsSection = ({ postId, onCommentAdded }) => {
     };
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
         if (!newComment.trim()) return;
 
         try {
             const parentId = replyingTo ? replyingTo.id : null;
             const response = await commentService.addComment(postId, newComment, parentId);
 
-            // Add the new comment with user info (server returns partial, but we add what we have)
             const commentWithUser = {
                 ...response.comment,
                 username: user.username,
@@ -104,7 +103,6 @@ const CommentsSection = ({ postId, onCommentAdded }) => {
                                 </div>
                             </div>
 
-                            {/* Replies */}
                             <div className="replies-list" style={{ marginRight: '30px', borderRight: '1px solid rgba(255,255,255,0.1)', paddingRight: '15px' }}>
                                 {getReplies(comment.id).map(reply => (
                                     <div key={reply.id} className="comment-item reply-item">
@@ -128,27 +126,29 @@ const CommentsSection = ({ postId, onCommentAdded }) => {
                 )}
             </div>
 
-            <form className="comment-form-container" onSubmit={handleSubmit}>
-                {replyingTo && (
-                    <div className="reply-indicator">
-                        <span>الرد على @{replyingTo.username}</span>
-                        <button type="button" className="cancel-reply" onClick={cancelReply}>✕</button>
+            {!hideInput && (
+                <form className="comment-form-container" onSubmit={handleSubmit}>
+                    {replyingTo && (
+                        <div className="reply-indicator">
+                            <span>الرد على @{replyingTo.username}</span>
+                            <button type="button" className="cancel-reply" onClick={cancelReply}>✕</button>
+                        </div>
+                    )}
+                    <div className="comment-form">
+                        <input
+                            type="text"
+                            value={newComment}
+                            onChange={(e) => setNewComment(e.target.value)}
+                            placeholder={replyingTo ? `رد على ${replyingTo.username}...` : "اكتب تعليقاً..."}
+                            className="comment-input"
+                            autoFocus={!!replyingTo}
+                        />
+                        <button type="submit" className="comment-submit-btn" disabled={!newComment.trim()}>
+                            ➤
+                        </button>
                     </div>
-                )}
-                <div className="comment-form">
-                    <input
-                        type="text"
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        placeholder={replyingTo ? `رد على ${replyingTo.username}...` : "اكتب تعليقاً..."}
-                        className="comment-input"
-                        autoFocus={!!replyingTo}
-                    />
-                    <button type="submit" className="comment-submit-btn" disabled={!newComment.trim()}>
-                        ➤
-                    </button>
-                </div>
-            </form>
+                </form>
+            )}
         </div>
     );
 };

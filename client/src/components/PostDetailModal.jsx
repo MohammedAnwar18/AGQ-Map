@@ -12,7 +12,10 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
     const [isLiked, setIsLiked] = useState(post?.is_liked || false);
     const [likeAnimating, setLikeAnimating] = useState(false);
     const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
-    const [showDetails, setShowDetails] = useState(false); // New state to toggle visibility of comments/user info
+    const [showDetails, setShowDetails] = useState(false);
+    const [isCommenting, setIsCommenting] = useState(false); // New state for comment mode
+    const [newCommentText, setNewCommentText] = useState(''); // New state for comment input
+    const [commentsRefreshTrigger, setCommentsRefreshTrigger] = useState(0); // Trigger to refresh CommentsSection
 
     const mediaList = post.media_urls || (post.image_url ? [post.image_url] : []);
     const hasMultipleMedia = mediaList.length > 1;
@@ -75,9 +78,35 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
     };
 
     const handleDelete = () => {
-        if (onDelete) {
-            onDelete(post.id);
-            onClose();
+        if (window.confirm("هل أنت متأكد من حذف هذا المنشور؟")) {
+            if (onDelete) {
+                onDelete(post.id);
+                onClose();
+            }
+        }
+    };
+
+    const handleSendComment = async (e) => {
+        if (e) e.preventDefault();
+        if (!newCommentText.trim()) {
+            setIsCommenting(false);
+            return;
+        }
+
+        try {
+            await commentService.addComment(post.id, newCommentText);
+            setNewCommentText('');
+            setIsCommenting(false);
+            setShowDetails(true); // Open sidebar to see the new comment
+            setCommentsRefreshTrigger(prev => prev + 1); // Trigger refresh
+            if (onUpdate) {
+                onUpdate({
+                    ...post,
+                    comments_count: (post.comments_count || 0) + 1
+                });
+            }
+        } catch (error) {
+            console.error("Failed to send comment", error);
         }
     };
 
@@ -149,8 +178,9 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
 
                                 {/* NEW DESIGN: ACTION BAR PILL */}
                                 <div className="post-pill-action-bar-container">
-                                    <div className="post-pill-action-bar" onClick={(e) => e.stopPropagation()}>
+                                    <form className={`post-pill-action-bar ${isCommenting ? 'comment-mode' : ''}`} onClick={(e) => e.stopPropagation()} onSubmit={handleSendComment}>
                                         <button 
+                                            type="button"
                                             className={`pill-btn like-btn ${isLiked ? 'liked' : ''} ${likeAnimating ? 'animating' : ''}`} 
                                             onClick={handleLike}
                                             title="Like"
@@ -163,24 +193,50 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
 
                                         <div className="pill-divider-line"></div>
 
-                                        <button 
-                                            className={`pill-comments-btn ${showDetails ? 'active' : ''}`}
-                                            onClick={() => setShowDetails(!showDetails)}
-                                        >
-                                            <svg viewBox="0 0 24 24" width="20" height="20" className="pill-comment-icon">
-                                                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-                                            </svg>
-                                            <span className="pill-comments-text">COMMENTS</span>
-                                        </button>
+                                        <div className="pill-center-area">
+                                            {!isCommenting ? (
+                                                <button 
+                                                    type="button"
+                                                    className={`pill-comments-btn ${showDetails ? 'active' : ''}`}
+                                                    onClick={() => {
+                                                        setIsCommenting(true);
+                                                        setShowDetails(true);
+                                                    }}
+                                                >
+                                                    <svg viewBox="0 0 24 24" width="20" height="20" className="pill-comment-icon">
+                                                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                                                    </svg>
+                                                    <span className="pill-comments-text">COMMENTS</span>
+                                                </button>
+                                            ) : (
+                                                <input 
+                                                    autoFocus
+                                                    className="pill-comment-input"
+                                                    placeholder="اكتب تعليقك هنا..."
+                                                    value={newCommentText}
+                                                    onChange={(e) => setNewCommentText(e.target.value)}
+                                                    onBlur={() => {
+                                                        if (!newCommentText.trim()) setIsCommenting(false);
+                                                    }}
+                                                />
+                                            )}
+                                        </div>
 
                                         <div className="pill-divider-line"></div>
 
-                                        <button className="pill-btn share-btn" title="Share/Send">
+                                        <button 
+                                            type={isCommenting ? "submit" : "button"}
+                                            className={`pill-btn share-btn ${isCommenting ? 'send-mode' : ''}`} 
+                                            title={isCommenting ? "إرسال التعليق" : "Share/Send"}
+                                            onClick={(e) => {
+                                                if (isCommenting) handleSendComment(e);
+                                            }}
+                                        >
                                             <svg viewBox="0 0 24 24" width="22" height="22">
                                                 <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                             </svg>
                                         </button>
-                                    </div>
+                                    </form>
                                 </div>
                             </div>
 
@@ -246,10 +302,12 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
                                     />
                                 )}
 
-                                {/* Delete Option for Owner */}
+                                {/* Delete Option for Owner - Redesigned Trash Icon */}
                                 {user && user.id === post.user.id && (
-                                    <button className="post-modal-delete-btn" onClick={handleDelete} title="حذف المنشور">
-                                        🗑️
+                                    <button className="post-modal-delete-pill" onClick={handleDelete} title="حذف المنشور">
+                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6" />
+                                        </svg>
                                     </button>
                                 )}
                             </div>
@@ -266,7 +324,9 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
                         {/* Comments System */}
                         <div className="post-modal-comments-area">
                             <CommentsSection
+                                key={commentsRefreshTrigger}
                                 postId={post.id}
+                                hideInput={true}
                                 onCommentAdded={() => {
                                     if (onUpdate) {
                                         onUpdate({
