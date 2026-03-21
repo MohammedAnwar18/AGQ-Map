@@ -29,8 +29,9 @@
 /* Back Button */
 .post-modal-back-btn {
     position: absolute;
-    top: 25px;
-    left: 25px;
+    top: 20px;
+    right: 25px; /* Moved to Right */
+    left: auto;
     background: rgba(0, 0, 0, 0.4);
     color: #fbab15; /* Site Accent Color */
     border: 1px solid rgba(251, 171, 21, 0.3);
@@ -428,33 +429,39 @@
     color: #ff3b30;
 }
 
-/* Floating User Info */
+/* Floating User Info - Centered and Neater */
 .post-modal-user-floating {
     position: absolute;
-    top: 30px;
-    left: 30px;
+    top: 20px; /* Same level as back button */
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 8px 16px;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(10px);
+    padding: 6px 20px;
+    background: rgba(15, 15, 15, 0.7);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
     border-radius: 40px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1.5px solid rgba(251, 171, 21, 0.5); /* Accent Color Border */
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 15px rgba(251, 171, 21, 0.2);
+    z-index: 1000;
     animation: fadeIn 0.5s ease;
 }
 
 .post-modal-user-floating img {
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
     object-fit: cover;
+    border: 2px solid #fbab15;
 }
 
 .post-modal-user-floating span {
-    color: #fff;
-    font-size: 0.95rem;
-    font-weight: 600;
+    color: #fbab15; /* Accent Color Text */
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
 }
 
 /* Details Close Button */
