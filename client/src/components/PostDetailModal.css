@@ -54,75 +54,93 @@
 .post-modal-content {
     display: flex;
     height: 100%;
+    width: 100%;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Image Side (Left/Top) */
-.post-modal-image-container {
-    flex: 1.5;
-    /* Takes more space */
+.post-modal-main-container {
+    flex: 2;
     background: #000;
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
 }
 
+/* Image Side (Normal) */
+.post-modal-image-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
 .post-modal-image {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
+    transition: transform 0.3s ease;
 }
 
-.post-modal-text-only-container {
-    flex: 1.5;
-    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 40px;
-    text-align: center;
-}
-
-.post-modal-text-large {
-    font-size: 1.5rem;
-    color: white;
-    line-height: 1.6;
-}
-
-/* Details Side (Right/Bottom) */
-.post-modal-details {
+/* Image Only Mode Adjustments */
+.post-modal-content.image-only .post-modal-main-container {
     flex: 1;
-    /* Sidebar width */
-    background: #1e1e1e;
+}
+
+.post-modal-content.image-only .post-modal-details {
+    display: none;
+}
+
+/* Details Side (Drawer) */
+.post-modal-details {
+    flex: 0.8;
+    background: #121212;
     display: flex;
     flex-direction: column;
     padding: 20px;
     border-left: 1px solid rgba(255, 255, 255, 0.1);
-    min-width: 320px;
+    min-width: 380px;
+    z-index: 100;
+}
+
+.post-modal-details.hidden {
+    display: none;
 }
 
 /* Mobile Adjustments */
 @media (max-width: 768px) {
     .post-modal-content {
         flex-direction: column;
-        overflow-y: auto;
     }
 
+    .post-modal-main-container,
     .post-modal-image-container {
-        flex: none;
-        height: 300px;
-        /* Fixed height for image on mobile */
+        height: 100%;
+        flex: 1;
     }
 
     .post-modal-details {
-        flex: 1;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 70vh;
+        width: 100%;
         min-width: auto;
         border-left: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px 20px 0 0;
+        box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+        transform: translateY(100%);
+        transition: transform 0.3s ease;
+        display: flex;
     }
 
-    .post-modal-container {
-        height: 90vh;
-        /* Taller on mobile */
+    .post-modal-details.visible {
+        transform: translateY(0);
     }
 }
 
@@ -191,26 +209,179 @@
     margin: 10px 0;
 }
 
-/* Comments Specifics Override */
-.post-modal-comments-area {
-    flex: 1;
+/* NEW ACTION BAR PILL STYLES */
+.post-pill-action-bar-container {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    width: auto;
+    pointer-events: none;
+}
+
+.post-pill-action-bar {
     display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    /* Let CommentsSection handle scroll */
+    align-items: center;
+    background: rgba(30, 30, 30, 0.85);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    padding: 8px 24px;
+    border-radius: 60px;
+    gap: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+    pointer-events: auto;
+    animation: pillFadeIn 0.5s ease-out;
 }
 
-/* Adjust CommentsSection CSS when inside modal if needed */
-.post-modal-comments-area .comments-section {
-    border-top: none;
-    margin-top: 0;
-    padding-top: 0;
-    height: 100%;
-    /* Fill available space */
+@keyframes pillFadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-.post-modal-comments-area .comments-list {
-    flex: 1;
+.pill-btn {
+    background: transparent;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    opacity: 0.85;
+}
+
+.pill-btn:hover {
+    opacity: 1;
+    transform: scale(1.15);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.pill-count {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-left: 6px;
+}
+
+.pill-divider-line {
+    width: 1px;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Heart Icon State */
+.pill-btn.like-btn svg {
+    fill: none;
+    stroke: #fff;
+    stroke-width: 2;
+    transition: all 0.3s;
+}
+
+.pill-btn.like-btn.liked svg {
+    fill: #ff3b30;
+    stroke: #ff3b30;
+    filter: drop-shadow(0 0 8px rgba(255, 59, 48, 0.4));
+}
+
+/* Comments Button in Pill */
+.pill-comments-btn {
+    background: transparent;
+    border: 1.5px solid rgba(132, 142, 232, 0.5);
+    border-radius: 40px;
+    padding: 10px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 20px rgba(132, 142, 232, 0.15);
+}
+
+.pill-comments-btn:hover {
+    background: rgba(132, 142, 232, 0.1);
+    box-shadow: 0 0 25px rgba(132, 142, 232, 0.3);
+    transform: scale(1.02);
+}
+
+.pill-comments-btn.active {
+    background: rgba(132, 142, 232, 0.2);
+    border-color: #848ee8;
+}
+
+.pill-comment-icon {
+    fill: none;
+    stroke: #848ee8;
+    stroke-width: 2;
+}
+
+.pill-comments-text {
+    color: #a4adff;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+}
+
+/* Floating User Info */
+.post-modal-user-floating {
+    position: absolute;
+    top: 30px;
+    left: 30px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(10px);
+    border-radius: 40px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    animation: fadeIn 0.5s ease;
+}
+
+.post-modal-user-floating img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.post-modal-user-floating span {
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+/* Details Close Button */
+.details-close-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    transition: background 0.2s;
+}
+
+.details-close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.animating {
+    animation: heartBeat 0.4s ease-in-out;
+}
+
+@keyframes heartBeat {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+    100% { transform: scale(1); }
 }
 
 /* Media Navigation */
@@ -248,7 +419,7 @@
 /* Indicators */
 .media-indicators {
     position: absolute;
-    bottom: 20px;
+    bottom: 100px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
@@ -263,44 +434,27 @@
     background: rgba(255, 255, 255, 0.4);
     transition: all 0.2s;
 }
-
-/* Friend Button Styles */
-.post-modal-add-friend-btn {
-    background: #4285F4;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 6px 12px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-family: inherit;
+.indicator-dot.active {
+    background: #fff;
+    transform: scale(1.2);
 }
 
-.post-modal-add-friend-btn:hover:not(:disabled) {
-    background: #3367d6;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(66, 133, 244, 0.3);
+/* Comments Specifics Override */
+.post-modal-comments-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
-.post-modal-add-friend-btn:disabled {
-    opacity: 0.7;
-    cursor: default;
+.post-modal-comments-area .comments-section {
+    border-top: none;
+    margin-top: 0;
+    padding-top: 0;
+    height: 100%;
 }
 
-.friend-status-tag {
-    background: rgba(255, 255, 255, 0.1);
-    color: #bbb;
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    font-weight: 500;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+.post-modal-comments-area .comments-list {
+    flex: 1;
 }
-
-.friend-status-tag.pending {
-    background: rgba(251, 171, 21, 0.1);
-    color: #fbab15;
-    border-color: rgba(251, 171, 21, 0.2);
-}
+

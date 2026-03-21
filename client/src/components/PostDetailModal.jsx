@@ -12,6 +12,7 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
     const [isLiked, setIsLiked] = useState(post?.is_liked || false);
     const [likeAnimating, setLikeAnimating] = useState(false);
     const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+    const [showDetails, setShowDetails] = useState(false); // New state to toggle visibility of comments/user info
 
     const mediaList = post.media_urls || (post.image_url ? [post.image_url] : []);
     const hasMultipleMedia = mediaList.length > 1;
@@ -97,7 +98,8 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
                     src={fullUrl}
                     controls
                     className="post-modal-image"
-                    style={{ objectFit: 'contain' }}
+                    autoPlay
+                    loop
                 />
             );
         } else {
@@ -121,37 +123,101 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
                 {/* Header / Close Button for Mobile */}
                 <button className="post-modal-close-btn" onClick={onClose}>✕</button>
 
-                <div className="post-modal-content">
+                <div className={`post-modal-content ${showDetails ? 'show-details' : 'image-only'}`}>
                     {/* Image/Video Section */}
                     {mediaList.length > 0 ? (
-                        <div className="post-modal-image-container" style={{ position: 'relative' }}>
+                        <div className="post-modal-main-container">
+                            <div className="post-modal-image-container">
 
-                            {/* Navigation Buttons */}
-                            {hasMultipleMedia && (
-                                <>
-                                    <button className="media-nav-btn prev" onClick={prevMedia}>‹</button>
-                                    <button className="media-nav-btn next" onClick={nextMedia}>›</button>
-                                    <div className="media-indicators">
-                                        {mediaList.map((_, idx) => (
-                                            <span
-                                                key={idx}
-                                                className={`indicator-dot ${idx === currentMediaIndex ? 'active' : ''}`}
-                                            />
-                                        ))}
+                                {/* Navigation Buttons */}
+                                {hasMultipleMedia && (
+                                    <>
+                                        <button className="media-nav-btn prev" onClick={prevMedia}>‹</button>
+                                        <button className="media-nav-btn next" onClick={nextMedia}>›</button>
+                                        <div className="media-indicators">
+                                            {mediaList.map((_, idx) => (
+                                                <span
+                                                    key={idx}
+                                                    className={`indicator-dot ${idx === currentMediaIndex ? 'active' : ''}`}
+                                                />
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+
+                                {renderMediaItem(mediaList[currentMediaIndex])}
+
+                                {/* NEW DESIGN: ACTION BAR PILL */}
+                                <div className="post-pill-action-bar-container">
+                                    <div className="post-pill-action-bar" onClick={(e) => e.stopPropagation()}>
+                                        <button 
+                                            className={`pill-btn like-btn ${isLiked ? 'liked' : ''} ${likeAnimating ? 'animating' : ''}`} 
+                                            onClick={handleLike}
+                                            title="Like"
+                                        >
+                                            <svg viewBox="0 0 24 24" width="24" height="24">
+                                                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                                            </svg>
+                                            <span className="pill-count">{likesCount}</span>
+                                        </button>
+
+                                        <div className="pill-divider-line"></div>
+
+                                        <button 
+                                            className={`pill-comments-btn ${showDetails ? 'active' : ''}`}
+                                            onClick={() => setShowDetails(!showDetails)}
+                                        >
+                                            <svg viewBox="0 0 24 24" width="20" height="20" className="pill-comment-icon">
+                                                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                                            </svg>
+                                            <span className="pill-comments-text">COMMENTS</span>
+                                        </button>
+
+                                        <div className="pill-divider-line"></div>
+
+                                        <button className="pill-btn share-btn" title="Share/Send">
+                                            <svg viewBox="0 0 24 24" width="22" height="22">
+                                                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                            </svg>
+                                        </button>
                                     </div>
-                                </>
-                            )}
+                                </div>
+                            </div>
 
-                            {renderMediaItem(mediaList[currentMediaIndex])}
+                            {/* Optional: Simple user info floating in image-only mode */}
+                            {!showDetails && (
+                                <div className="post-modal-user-floating">
+                                    <img src={post.user.profile_picture || '/default-avatar.png'} alt="user" />
+                                    <span>{post.user.username}</span>
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <div className="post-modal-text-only-container">
                             <p className="post-modal-text-large">{post.content}</p>
+                            {/* Same action bar for text-only posts */}
+                             <div className="post-pill-action-bar-container">
+                                    <div className="post-pill-action-bar" onClick={(e) => e.stopPropagation()}>
+                                        <button className={`pill-btn like-btn ${isLiked ? 'liked' : ''}`} onClick={handleLike}>
+                                             <svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" /></svg>
+                                             <span className="pill-count">{likesCount}</span>
+                                        </button>
+                                        <div className="pill-divider-line"></div>
+                                        <button className="pill-comments-btn" onClick={() => setShowDetails(!showDetails)}>
+                                            <svg viewBox="0 0 24 24" width="20" height="20" className="pill-comment-icon"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>
+                                            <span className="pill-comments-text">COMMENTS</span>
+                                        </button>
+                                        <div className="pill-divider-line"></div>
+                                        <button className="pill-btn share-btn">
+                                            <svg viewBox="0 0 24 24" width="22" height="22"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                                        </button>
+                                    </div>
+                                </div>
                         </div>
                     )}
 
-                    {/* Details Section (Sidebar or Bottom) */}
-                    <div className="post-modal-details">
+                    {/* Details Section (Sidebar or Bottom) - Now conditional or drawer-like */}
+                    <div className={`post-modal-details ${showDetails ? 'visible' : 'hidden'}`}>
 
                         {/* User Header */}
                         <div className="post-modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -168,6 +234,9 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
                             </div>
 
                             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                 {/* Close Details Button */}
+                                 <button className="details-close-btn" onClick={() => setShowDetails(false)}>✕</button>
+
                                 {/* Add Friend Button */}
                                 {user && user.id !== post.user.id && (
                                     <FriendButton
@@ -190,40 +259,6 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
                         {post.image_url && post.content && (
                             <p className="post-modal-caption">{post.content}</p>
                         )}
-
-                        {/* Likes & Interaction Bar */}
-                        <div className="post-modal-actions" style={{ padding: '0 1rem 0.5rem', display: 'flex', alignItems: 'center', gap: '15px' }}>
-                            <div
-                                className={`like-button-container ${likeAnimating ? 'animating' : ''}`}
-                                onClick={handleLike}
-                                style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    cursor: 'pointer',
-                                    transition: 'transform 0.2s ease'
-                                }}
-                            >
-                                <svg
-                                    viewBox="0 0 24 24"
-                                    width="30"
-                                    height="30"
-                                    className={`heart-icon ${isLiked ? 'liked' : ''}`}
-                                    style={{
-                                        fill: isLiked ? '#ed4956' : 'none',
-                                        stroke: isLiked ? '#ed4956' : 'currentColor',
-                                        strokeWidth: '2',
-                                        filter: isLiked ? 'drop-shadow(0 0 5px rgba(237, 73, 86, 0.5))' : 'none',
-                                        transition: 'all 0.3s ease'
-                                    }}
-                                >
-                                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                                </svg>
-                                <span style={{ fontSize: '0.9rem', fontWeight: 'bold', marginTop: '4px', color: isLiked ? '#ed4956' : 'inherit' }}>
-                                    {likesCount}
-                                </span>
-                            </div>
-                        </div>
 
                         {/* Divider */}
                         <div className="post-modal-divider"></div>
