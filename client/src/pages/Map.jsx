@@ -360,13 +360,16 @@ const MapComponent = () => {
             let routeData = null;
 
             // --- TRY OpenRouteService FIRST ---
-            // Key extracted and combined from your base64 string
-            const ORS_TOKEN = '5b3ce3597851110001cf6248277b04e2b9514aaa820ebddf3e0fe6f6';
+            const ORS_TOKEN = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjI3N2IwNGUyYjk1MTRhYWE4MjBlYmRkZjNlMGZlNmY2IiwiaCI6Im11cm11cjY0In0=';
             
             if (ORS_TOKEN) {
                 try {
-                    const url = `https://api.openrouteservice.org/v2/directions/${orsProfile}?api_key=${ORS_TOKEN}&start=${startLon},${startLat}&end=${endLon},${endLat}`;
-                    const response = await axios.get(url);
+                    const url = `https://api.openrouteservice.org/v2/directions/${orsProfile}?start=${startLon},${startLat}&end=${endLon},${endLat}`;
+                    const response = await axios.get(url, {
+                        headers: {
+                            'Authorization': ORS_TOKEN
+                        }
+                    });
                     if (response.data.features && response.data.features.length > 0) {
                         const feature = response.data.features[0];
                         routeData = {
