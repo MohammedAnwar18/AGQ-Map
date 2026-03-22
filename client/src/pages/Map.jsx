@@ -1217,16 +1217,7 @@ const MapComponent = () => {
                                 alignItems: 'center',
                                 justifyContent: 'center'
                             }}>
-                                {/* Bank Marker Theme Badge Overlay - White Theme */}
-                                {(shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') && (
-                                    <div style={{
-                                        position: 'absolute', top: '-10px', right: '-10px', width: '28px', height: '28px',
-                                        backgroundColor: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        border: '2px solid #e2e8f0', zIndex: 2, boxShadow: '0 2px 5px rgba(0,0,0,0.1)', fontSize: '14px', color: '#1e293b'
-                                    }}>
-                                        {shop.category === 'صراف آلي' ? '🏧' : '🏦'}
-                                    </div>
-                                )}
+
                                 {/* Mall Marker */}
                                 {/* Simple Name Badge */}
                                 <div style={{
