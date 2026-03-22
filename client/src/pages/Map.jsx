@@ -594,37 +594,43 @@ const MapComponent = () => {
     useEffect(() => {
         const interval = setInterval(async () => {
             if (locationRef.current) {
-                try { await authService.updateLocation(locationRef.current.latitude, locationRef.current.longitude); }
-                catch (e) { console.error(e); }
+                try { 
+                    // Update backend every 3 seconds for true 'live' experience
+                    await authService.updateLocation(locationRef.current.latitude, locationRef.current.longitude); 
+                }
+                catch (e) { console.error("Live sync failed:", e); }
             }
-        }, 10000);
+        }, 3000); // Changed from 10s to 3s
         return () => clearInterval(interval);
     }, []);
 
-    // Initial Center on User (Once)
-    const hasCenteredRef = useRef(false);
+    // Initial Center on User (Multiple times to catch first stable lock)
+    const hasCenteredRef = useRef(0); // Counter for centering
     useEffect(() => {
-        if (userLocation && !hasCenteredRef.current && mapRef.current) {
+        if (userLocation && hasCenteredRef.current < 2 && mapRef.current) {
             mapRef.current.flyTo({
                 center: [userLocation.longitude, userLocation.latitude],
-                zoom: 16,
+                zoom: 17,
                 pitch: 45,
                 bearing: 0,
-                duration: 2000 // Smooth fly to user
+                duration: 2000
             });
-            hasCenteredRef.current = true;
+            hasCenteredRef.current += 1;
         }
     }, [userLocation]);
 
-    // Live Follow Mode (Tracking)
+    // Live Follow Mode (Tracking) - Enhanced for smooth animation
     useEffect(() => {
         if (isTracking && userLocation && mapRef.current) {
             mapRef.current.easeTo({
                 center: [userLocation.longitude, userLocation.latitude],
-                zoom: 18,
-                pitch: 60,
-                bearing: userLocation.heading || mapRef.current.getBearing(),
-                duration: 1000,
+                zoom: 18.5,
+                pitch: 65,
+                // If heading is available (moving), rotate map to face direction of travel
+                bearing: userLocation.heading !== null && userLocation.heading !== undefined && userLocation.speed > 0.5 
+                    ? userLocation.heading 
+                    : mapRef.current.getBearing(),
+                duration: 1500, // Slightly longer duration for smoother transitions
                 easing: t => t * (2 - t)
             });
         }
@@ -1211,11 +1217,20 @@ const MapComponent = () => {
 
             {/* Bottom Navigation Panel - Instagram Style */}
             <nav className="bottom-nav">
-                <button className={`nav-item ${!showSearch && !showAIChat && !showProfile && !showCommunities ? 'active' : ''}`} onClick={handleCenterOnUser}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                        <polyline points="9 22 9 12 15 12 15 22" />
-                    </svg>
+                <button 
+                    className={`nav-item ${!showSearch && !showAIChat && !showProfile && !showCommunities && !showChat ? 'active' : ''}`} 
+                    onClick={() => {
+                        handleCenterOnUser();
+                        setIsTracking(true); // Automatically enable live follow when clicking home
+                    }}
+                >
+                    <div style={{ position: 'relative' }}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                            <polyline points="9 22 9 12 15 12 15 22" />
+                        </svg>
+                        {isTracking && <div className="live-dot-pulse"></div>}
+                    </div>
                 </button>
 
                 <button className={`nav-item ${showSearch ? 'active' : ''}`} onClick={() => { setShowSearch(true); setShowAIChat(false); setShowCommunities(false); setShowProfile(false); }}>
