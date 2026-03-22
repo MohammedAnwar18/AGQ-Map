@@ -1110,8 +1110,8 @@ const MapComponent = () => {
                         </Marker>
                     )}
 
-                    {/* Posts Markers - Visible from West Bank level (zoom 8+) and hidden at Arab World level */}
-                    {viewState.zoom >= 8 && posts.map(post => (
+                    {/* Posts Markers - Visible from City/Neighborhood level (zoom 12+) and hidden at Regional level */}
+                    {viewState.zoom >= 12 && posts.map(post => (
                         <Marker
                             key={post.id}
                             longitude={parseFloat(post.location.longitude)}
@@ -1176,8 +1176,9 @@ const MapComponent = () => {
                     {!currentCommunity && [...followedShopsMap, ...managedShopsMap.filter(m => !followedShopsMap.some(f => f.id === m.id))].filter(shop => {
                         if (shop.latitude == null || shop.longitude == null || isNaN(parseFloat(shop.latitude))) return false;
 
-                        // Educational Institutions (Universities, Colleges): visible from mid zoom (13) to reveal town area, hides when zoomed in close (e.g >= 16.5) to reveal buildings
-                        if (shop.category === 'University' || shop.category === 'مؤسسة تعليمية') {
+                        // Educational Institutions & Shopping Centers: visible from mid zoom (13) to reveal town area
+                        const isLandmark = ['University', 'مؤسسة تعليمية', 'مركز تسوق', 'مجمع تجاري', 'Mall'].includes(shop.category);
+                        if (isLandmark) {
                             return viewState.zoom >= 13 && viewState.zoom < 16.5;
                         }
                         // Normal Shop: visible only when zoomed in close (e.g >= 17)
