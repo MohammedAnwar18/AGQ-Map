@@ -105,15 +105,15 @@ const MapComponent = () => {
         // Priority 2: Reconstructed Key (Safe Fallback to avoid missing Env issues)
         const p1 = 'pk.ey';
         const p2 = 'J1IjoibW9oYW1tZWQtMTMzMSIsI';
-        const p3 = 'mEiOiJjbWpocnNkMjYxNzZ5M2';
-        const p4 = 'VxemMxcnNkcnRxIn0.';
-        const p5 = 'sbGKpdVSUVMpKj5rb1jtvQ';
+        const p3 = 'mEiOiJjbWlsaWh1anAxM2kzM2d';
+        const p4 = 'yNHR5eTU4am9hIn0.';
+        const p5 = 'arsZikWNpuoceyWdnM30VA';
         return p1 + p2 + p3 + p4 + p5;
     }, []);
 
     const MAPBOX_STREETS_STYLE = useMemo(() => {
         // Use official Mapbox Navigation style for the "Neat" professional look
-        return `mapbox://styles/mapbox/navigation-day-v1`;
+        return `mapbox://styles/mohammed-1331/cmbseyy16010101qwf9d5a8m3`;
     }, []);
 
     // Transform Request to handle mapbox:// URLs in MapLibre
@@ -262,12 +262,18 @@ const MapComponent = () => {
     const [visibleFriendName, setVisibleFriendName] = useState(null); // Track which friend's name is shown
     // --- Dynamic Map Style ---
     const mapStyle = useMemo(() => {
-        // If we have a route AND a valid token, switch to the professional Mapbox Navigation Day style
-        if (routePath && MAPBOX_TOKEN) {
+        // Preference 1: Automatically switch to Custom Mapbox Style during routing for a "Navigation" feel
+        if (MAPBOX_TOKEN && routePath) {
             return MAPBOX_STREETS_STYLE;
         }
 
-        // Default & Fallback: Google Tiles (Roadmap during routing without token, Satellite otherwise)
+        // Preference 2: Geomolg Layer (Handled by Overlay in return, so we use a base here or nothing)
+        if (activeMapType === 'geomolg') {
+             // We can return a very simple base or satellite while Geomolg overlay loads
+             // Same as satellite for now
+        }
+
+        // Default & Fallback: Google Tiles (Satellite for general view, Roadmap for routing if no token)
         const mapType = routePath ? 'm' : 's';
         const attribution = mapType === 'm' ? 'Google Roads' : 'Google Satellite';
 
@@ -291,7 +297,7 @@ const MapComponent = () => {
                 }
             ]
         };
-    }, [routePath, MAPBOX_TOKEN, MAPBOX_STREETS_STYLE]);
+    }, [routePath, MAPBOX_TOKEN, MAPBOX_STREETS_STYLE, activeMapType]);
 
     // Routing
     // Updated to accept explicit start/end for recalculations
@@ -365,10 +371,15 @@ const MapComponent = () => {
                 if (!startLoc) {
                     setDestination(endLoc);
                     if (mapRef.current) {
-                        const bounds = coordinates.reduce((bounds, coord) => {
-                            return bounds.extend(coord);
-                        }, new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
-                        mapRef.current.fitBounds(bounds, { padding: 100 });
+                        // Smoothly transition to a Navigation Perspective
+                        mapRef.current.flyTo({
+                            center: [startLon, startLat],
+                            zoom: 17.5,
+                            pitch: 60, // Deep tilt for professional navigation look
+                            bearing: 0,
+                            duration: 2500,
+                            essential: true
+                        });
                     }
                 }
 
@@ -849,7 +860,11 @@ const MapComponent = () => {
                         {unreadCount > 0 && <span className="notification-badge" style={{ top: '-4px', right: '-4px' }}>{unreadCount}</span>}
                     </button>
 
-                    <button className={`top-nav-icon ${activeMapType === 'geomolg' ? 'active' : ''}`} onClick={() => setActiveMapType(prev => prev === 'satellite' ? 'geomolg' : 'satellite')}>
+                    <button 
+                        className={`top-nav-icon ${activeMapType === 'geomolg' ? 'active' : ''}`} 
+                        onClick={() => setActiveMapType(prev => prev === 'satellite' ? 'geomolg' : 'satellite')}
+                        title="تبديل القمر الصناعي / الخريطة الرسمية"
+                    >
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
                             <polygon points="12 2 2 7 12 12 22 7 12 2" />
                             <polyline points="2 17 12 22 22 17" />
@@ -995,39 +1010,39 @@ const MapComponent = () => {
                                     "line-blur": 3
                                 }}
                             />
-                            {/* Layer 1: Casing (Border) - Defines the edges */}
+                            {/* Layer 1: Professional Navigation Casing */}
                             <Layer
                                 id="route-layer-casing"
                                 type="line"
                                 layout={{ "line-join": "round", "line-cap": "round" }}
                                 paint={{
-                                    "line-color": "rgba(255, 255, 255, 0.5)",
-                                    "line-width": 8,
-                                    "line-opacity": 0.8
+                                    "line-color": "#2c72b8", 
+                                    "line-width": 10,
+                                    "line-opacity": 0.3
                                 }}
                             />
-                            {/* Layer 2: Main Path - The core identity */}
+                            {/* Layer 2: Main Navigation Path - Precise Blue */}
                             <Layer
                                 id="route-layer-main"
                                 type="line"
                                 layout={{ "line-join": "round", "line-cap": "round" }}
                                 paint={{
-                                    "line-color": "#fbab15",
-                                    "line-width": 5,
+                                    "line-color": "#4EA3F3", 
+                                    "line-width": 6,
                                     "line-opacity": 1
                                 }}
                             />
-                            {/* Layer 3: Animated Pulse - Shows direction of travel */}
+                            {/* Layer 3: Subtle Directional Pulse */}
                             <Layer
                                 id="route-layer-pulse"
                                 type="line"
                                 layout={{ "line-join": "round", "line-cap": "round" }}
                                 paint={{
                                     "line-color": "#ffffff",
-                                    "line-width": 2.5,
-                                    "line-dasharray": [1, 3], // Tiny moving dots
+                                    "line-width": 2,
+                                    "line-dasharray": [2, 4],
                                     "line-dashoffset": lineDashOffset,
-                                    "line-opacity": 0.7
+                                    "line-opacity": 0.5
                                 }}
                             />
                         </Source>
