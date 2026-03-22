@@ -500,9 +500,9 @@ const Login = () => {
                 gap: '10px'
             }}>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '5px' }}>
-                    <Link to="/terms" style={{ color: '#fbab15', textDecoration: 'none', fontWeight: 'bold' }}>شروط الخدمة</Link>
-                    <span style={{ opacity: 0.5 }}>|</span>
-                    <Link to="/privacy" style={{ color: '#fbab15', textDecoration: 'none', fontWeight: 'bold' }}>سياسة الخصوصية</Link>
+                    <Link to="/terms" style={{ color: 'rgba(255, 255, 255, 0.6)', textDecoration: 'none', fontWeight: '500', fontSize: '0.9rem' }}>شروط الخدمة</Link>
+                    <span style={{ opacity: 0.3 }}>|</span>
+                    <Link to="/privacy" style={{ color: 'rgba(255, 255, 255, 0.6)', textDecoration: 'none', fontWeight: '500', fontSize: '0.9rem' }}>سياسة الخصوصية</Link>
                 </div>
                 <p style={{ margin: 0, padding: 0, opacity: 0.8 }}>
                     &copy; {new Date().getFullYear()} PalNovaa. جميع الحقوق محفوظة.
