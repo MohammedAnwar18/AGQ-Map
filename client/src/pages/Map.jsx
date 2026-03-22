@@ -835,7 +835,7 @@ const MapComponent = () => {
                                 <div className="menu-icon-wrapper">
                                     <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 0 1-8 0" /></svg>
                                 </div>
-                                <span>المحلات</span>
+                                <span>المحلات والمؤسسات</span>
                             </div>
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
@@ -1221,8 +1221,12 @@ const MapComponent = () => {
                 </button>
 
                 <button className={`nav-item ${showSearch ? 'active' : ''}`} onClick={() => { setShowSearch(true); setShowAIChat(false); setShowCommunities(false); setShowProfile(false); }}>
-                    <svg xmlns="http://www.w3.org/2000/svg" height="28" viewBox="0 -960 960 960" width="28" fill="currentColor">
-                        <path d="M720-400v-120H600v-80h120v-120h80v120h120v80H800v120h-80ZM247-527q-47-47-47-113t47-113q47-47 113-47t113 47q47 47 47 113t-47 113q-47 47-113 47t-113-47ZM40-160v-112q0-34 17.5-62.5T104-378q62-31 126-46.5T360-440q66 0 130 15.5T616-378q29 15 46.5 43.5T680-272v112H40Zm80-80h480v-32q0-11-5.5-20T580-306q-54-27-109-40.5T360-360q-56 0-111 13.5T140-306q-9 5-14.5 14t-5.5 20v32Zm296.5-343.5Q440-607 440-640t-23.5-56.5Q393-720 360-720t-56.5 23.5Q280-673 280-640t23.5 56.5Q327-560 360-560t56.5-23.5ZM360-640Zm0 400Z"/>
+                    {/* Add Friend Icon - Styled like the sidebar friends icon */}
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <line x1="19" y1="8" x2="19" y2="14" />
+                        <line x1="22" y1="11" x2="16" y2="11" />
                     </svg>
                 </button>
 
@@ -1234,7 +1238,7 @@ const MapComponent = () => {
                 </button>
 
                 <button className={`nav-item ${showAIChat ? 'active' : ''}`} onClick={() => { setShowAIChat(true); setShowSearch(false); setShowCommunities(false); setShowProfile(false); }}>
-                    <svg viewBox="0 0 100 100" fill="currentColor">
+                    <svg viewBox="0 0 100 100" fill="currentColor" width="28" height="28">
                         {/* Sparkles */}
                         <path d="M22 15 C24 28 28 32 40 34 C28 36 24 40 22 53 C20 40 16 36 4 34 C16 32 20 28 22 15 Z" />
                         <path d="M35 2 C36 7 38 9 43 10 C38 11 36 13 35 18 C34 13 32 11 27 10 C32 9 34 7 35 2 Z" />
@@ -1247,7 +1251,7 @@ const MapComponent = () => {
                 </button>
 
                 <button className={`nav-item ${showChat ? 'active' : ''}`} onClick={() => { setShowChat(true); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); setShowProfile(false); }}>
-                    <svg viewBox="0 0 512 512" fill="currentColor" width="28" height="28">
+                    <svg viewBox="0 0 512 512" fill="currentColor" stroke="currentColor" strokeWidth="18" width="28" height="28">
                         <g>
                             <path d="M306.265,206.421c17.836,0,32.349-14.51,32.349-32.348s-14.512-32.348-32.349-32.348
                                 c-17.836,0-32.348,14.51-32.348,32.348S288.429,206.421,306.265,206.421z M306.265,157.918c8.909,0,16.158,7.248,16.158,16.157
