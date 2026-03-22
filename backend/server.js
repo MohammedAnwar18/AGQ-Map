@@ -43,6 +43,7 @@ io.on('connection', (socket) => {
     // Authentication middleware for socket (optional but recommended)
     // Here we handle registration after connection
     socket.on('register', (userId) => {
+        socket.userId = userId;
         socket.join(`user_${userId}`);
         console.log(`User ${userId} registered to room user_${userId}`);
     });
