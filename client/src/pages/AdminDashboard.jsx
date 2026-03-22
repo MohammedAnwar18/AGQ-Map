@@ -179,11 +179,11 @@ const AdminDashboard = () => {
 
     return (
         <div className="admin-dashboard">
-            {/* Sidebar */}
+            {/* Sidebar / Bottom Nav (Mobile) */}
             <div className="admin-sidebar">
                 <div className="admin-logo">
                     <h1>🗺️ PalNovaa</h1>
-                    <p>Admin Dashboard</p>
+                    <p>إدارة الشبكة الاجتماعية</p>
                 </div>
 
                 <nav className="admin-nav">
@@ -193,7 +193,7 @@ const AdminDashboard = () => {
                         onClick={(e) => { e.preventDefault(); setActiveTab('overview'); setCurrentPage(1); }}
                     >
                         <span className="admin-nav-icon">📊</span>
-                        <span>Overview</span>
+                        <span>لوحة التحكم</span> {/* Overview */}
                     </a>
                     <a
                         href="#"
@@ -201,7 +201,7 @@ const AdminDashboard = () => {
                         onClick={(e) => { e.preventDefault(); setActiveTab('users'); setCurrentPage(1); }}
                     >
                         <span className="admin-nav-icon">👥</span>
-                        <span>Users</span>
+                        <span>المستخدمين</span> {/* Users */}
                     </a>
                     <a
                         href="#"
@@ -209,7 +209,7 @@ const AdminDashboard = () => {
                         onClick={(e) => { e.preventDefault(); setActiveTab('posts'); setCurrentPage(1); }}
                     >
                         <span className="admin-nav-icon">📸</span>
-                        <span>Posts</span>
+                        <span>المنشورات</span> {/* Posts */}
                     </a>
                     <a
                         href="#"
@@ -217,376 +217,295 @@ const AdminDashboard = () => {
                         onClick={(e) => { e.preventDefault(); setActiveTab('map'); }}
                     >
                         <span className="admin-nav-icon">🗺️</span>
-                        <span>Map View</span>
+                        <span>عرض الخريطة</span> {/* Map View */}
                     </a>
-
                 </nav>
 
                 <div className="admin-logout">
                     <button onClick={() => { logout(); navigate('/login'); }}>
-                        🚪 Logout
+                        🚪 تسجيل الخروج
                     </button>
                 </div>
             </div>
 
-            {/* Main Content */}
+            {/* Main Content Area */}
             <div className="admin-main">
-                {/* Overview Tab */}
-                {activeTab === 'overview' && (
-                    <>
-                        <div className="admin-header">
-                            <h2>Dashboard Overview</h2>
-                            <p>Welcome back, {user.full_name || user.username}</p>
-                        </div>
+                {/* Header Section */}
+                <div className="admin-header">
+                    <div className="admin-header-text">
+                        <h2>{activeTab === 'overview' ? 'لوحة التحكم الشاملة' : 
+                            activeTab === 'users' ? 'إدارة المستخدمين' : 
+                            activeTab === 'posts' ? 'إدارة المحتوى والمنشورات' : 'خريطة المنشورات'}</h2>
+                        <p>أهلاً بك مجدداً يا {user.full_name || user.username} • {new Date().toLocaleDateString('ar-SA', { day: 'numeric', month: 'long' })}</p>
+                    </div>
+                </div>
 
+                {/* Overview Tab Content */}
+                {activeTab === 'overview' && (
+                    <div className="admin-tab-content">
                         {loading ? (
-                            <div style={{ textAlign: 'center', padding: '3rem' }}>
+                            <div className="loading-container">
                                 <div className="spinner"></div>
                             </div>
                         ) : stats ? (
-                            <div className="stats-grid">
-                                <div className="stat-card">
-                                    <div className="stat-header">
-                                        <div className="stat-icon primary">👥</div>
+                            <>
+                                <div className="stats-grid">
+                                    <div className="stat-card" style={{ '--stat-color': '#fbab15' }}>
+                                        <div className="stat-icon">👥</div>
+                                        <div className="stat-value">
+                                            {stats.totalUsers}
+                                            <span className="stat-trend trend-up">↑ 12%</span>
+                                        </div>
+                                        <div className="stat-label">إجمالي المستخدمين</div>
                                     </div>
-                                    <div className="stat-value">{stats.totalUsers}</div>
-                                    <div className="stat-label">Total Users</div>
+
+                                    <div className="stat-card" style={{ '--stat-color': '#10b981' }}>
+                                        <div className="stat-icon">📸</div>
+                                        <div className="stat-value">
+                                            {stats.totalPosts}
+                                            <span className="stat-trend trend-up">↑ 8%</span>
+                                        </div>
+                                        <div className="stat-label">إجمالي المنشورات</div>
+                                    </div>
+
+                                    <div className="stat-card" style={{ '--stat-color': '#3b82f6' }}>
+                                        <div className="stat-icon">🟢</div>
+                                        <div className="stat-value">
+                                            {stats.activeUsers}
+                                        </div>
+                                        <div className="stat-label">المتصلين حالياً</div>
+                                    </div>
+
+                                    <div className="stat-card" style={{ '--stat-color': '#ef4444' }}>
+                                        <div className="stat-icon">📅</div>
+                                        <div className="stat-value">
+                                            {stats.todayPosts}
+                                        </div>
+                                        <div className="stat-label">منشورات اليوم</div>
+                                    </div>
                                 </div>
 
-                                <div className="stat-card">
-                                    <div className="stat-header">
-                                        <div className="stat-icon success">📸</div>
+                                {/* Quick Actions Section */}
+                                <div className="admin-header" style={{ marginTop: '3rem', marginBottom: '1.5rem' }}>
+                                    <div className="admin-header-text">
+                                        <h3>إجراءات سريعة</h3>
+                                        <p>الوصول السريع للمهام الإدارية الأكثر استخداماً</p>
                                     </div>
-                                    <div className="stat-value">{stats.totalPosts}</div>
-                                    <div className="stat-label">Total Posts</div>
+                                </div>
+                                <div className="quick-actions-grid">
+                                    <div className="quick-action-btn" onClick={() => setActiveTab('users')}>
+                                        <span className="icon">👤</span>
+                                        <span className="label">إضافة مستخدم</span>
+                                    </div>
+                                    <div className="quick-action-btn" onClick={() => setActiveTab('posts')}>
+                                        <span className="icon">📝</span>
+                                        <span className="label">مراجعة المنشورات</span>
+                                    </div>
+                                    <div className="quick-action-btn" onClick={() => setActiveTab('map')}>
+                                        <span className="icon">📍</span>
+                                        <span className="label">خارطة النشاط</span>
+                                    </div>
+                                    <div className="quick-action-btn">
+                                        <span className="icon">⚙️</span>
+                                        <span className="label">إعدادات النظام</span>
+                                    </div>
                                 </div>
 
-                                <div className="stat-card">
-                                    <div className="stat-header">
-                                        <div className="stat-icon info">🟢</div>
+                                {/* Network Activity Analysis */}
+                                <div className="admin-content-card" style={{ marginTop: '3rem' }}>
+                                    <div className="content-header">
+                                        <h3>تحليل التفاعل ونمو الشبكة</h3>
                                     </div>
-                                    <div className="stat-value">{stats.activeUsers}</div>
-                                    <div className="stat-label">Active Users (24h)</div>
-                                </div>
-
-                                <div className="stat-card">
-                                    <div className="stat-header">
-                                        <div className="stat-icon warning">📅</div>
+                                    <div className="activity-placeholder">
+                                        <div className="placeholder-icon" style={{ fontSize: '3rem' }}>📊</div>
+                                        <p style={{ maxWidth: '400px', margin: '0 auto' }}>قريباً: تحليل ذكي للبيانات والرسوم البيانية التفاعلية لتقديم إحصائيات دقيقة عن سلوك المستخدمين.</p>
                                     </div>
-                                    <div className="stat-value">{stats.todayPosts}</div>
-                                    <div className="stat-label">Posts Today</div>
                                 </div>
-                            </div>
+                            </>
                         ) : null}
-                    </>
+                    </div>
                 )}
 
-                {/* Users Tab */}
+                {/* Users Tab Content */}
                 {activeTab === 'users' && (
-                    <>
-                        <div className="admin-header">
-                            <h2>User Management</h2>
-                            <p>Manage all registered users</p>
-                        </div>
-
-                        <div className="admin-content-card">
-                            <div className="content-header">
-                                <h3>All Users</h3>
-                                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <div className="admin-content-card">
+                        <div className="content-header">
+                            <div className="header-actions" style={{ display: 'flex', gap: '1.5rem', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <h3>قائمة المستخدمين</h3>
+                                <div className="admin-search-group" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                                     {selectedUsers.length > 0 && (
-                                        <button
-                                            className="btn"
-                                            onClick={handleBulkDeleteUsers}
-                                            style={{
-                                                background: 'var(--error)',
-                                                color: 'white',
-                                                padding: '0.75rem 1.5rem'
-                                            }}
-                                        >
-                                            🗑️ Delete Selected ({selectedUsers.length})
+                                        <button className="action-btn delete" onClick={handleBulkDeleteUsers} style={{ width: 'auto', padding: '0 1.5rem', background: '#ef4444', color: 'white' }}>
+                                            حذف المحدد ({selectedUsers.length})
                                         </button>
                                     )}
                                     <div className="admin-search">
                                         <span className="admin-search-icon">🔍</span>
                                         <input
                                             type="text"
-                                            placeholder="Search users..."
+                                            placeholder="البحث عن مستخدم (اسم، بريد...)"
                                             value={searchQuery}
                                             onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                                         />
                                     </div>
                                 </div>
                             </div>
+                        </div>
 
+                        <div className="admin-table-wrapper">
                             {loading ? (
-                                <div style={{ textAlign: 'center', padding: '2rem' }}>
-                                    <div className="spinner"></div>
-                                </div>
+                                <div className="loading-container" style={{ padding: '3rem' }}><div className="spinner"></div></div>
                             ) : (
-                                <>
-                                    <table className="admin-table">
-                                        <thead>
-                                            <tr>
-                                                <th style={{ width: '50px' }}>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedUsers.length === users.length && users.length > 0}
-                                                        onChange={handleSelectAllUsers}
-                                                        style={{ cursor: 'pointer' }}
-                                                    />
-                                                </th>
-                                                <th>User</th>
-                                                <th>Email</th>
-                                                <th>Joined</th>
-                                                <th>Posts</th>
-                                                <th>Status</th>
-                                                <th>Actions</th>
+                                <table className="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>
+                                                <input type="checkbox" checked={selectedUsers.length === users.length && users.length > 0} onChange={handleSelectAllUsers} />
+                                            </th>
+                                            <th>المستخدم</th>
+                                            <th>البريد الإلكتروني</th>
+                                            <th>تاريخ الانضمام</th>
+                                            <th>المنشورات</th>
+                                            <th>الحالة</th>
+                                            <th>الإجراءات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {users.map(user => (
+                                            <tr key={user.id}>
+                                                <td>
+                                                    <input type="checkbox" checked={selectedUsers.includes(user.id)} onChange={() => handleSelectUser(user.id)} />
+                                                </td>
+                                                <td>
+                                                    <div className="user-cell">
+                                                        <img src={user.profile_picture || '/default-avatar.png'} alt={user.username} className="user-avatar" />
+                                                        <div className="user-info">
+                                                            <h4>{user.full_name || user.username}</h4>
+                                                            <p>@{user.username}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>{user.email}</td>
+                                                <td>{formatDate(user.created_at)}</td>
+                                                <td>{user.posts_count}</td>
+                                                <td>
+                                                    <span className={`status-badge ${user.is_active ? 'active' : 'inactive'}`}>
+                                                        {user.is_active ? 'نشط' : 'موقوف'}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div className="action-buttons">
+                                                        <button className="action-btn" title="عرض الملف" onClick={() => handleViewUser(user.id)}>👁️</button>
+                                                        <button className="action-btn" title={user.is_active ? 'إيقاف' : 'تفعيل'} onClick={() => handleToggleUserStatus(user.id, user.is_active)}>
+                                                            {user.is_active ? '🚫' : '✅'}
+                                                        </button>
+                                                        <button className="action-btn delete" title="حذف" onClick={() => handleDeleteUser(user.id)}>🗑️</button>
+                                                    </div>
+                                                </td>
                                             </tr>
-                                        </thead>
-                                        <tbody>
-                                            {users.map(user => (
-                                                <tr key={user.id}>
-                                                    <td>
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={selectedUsers.includes(user.id)}
-                                                            onChange={() => handleSelectUser(user.id)}
-                                                            style={{ cursor: 'pointer' }}
-                                                        />
-                                                    </td>
-                                                    <td>
-                                                        <div className="user-cell">
-                                                            <img
-                                                                src={user.profile_picture || '/default-avatar.png'}
-                                                                alt={user.username}
-                                                                className="user-avatar"
-                                                            />
-                                                            <div className="user-info">
-                                                                <h4>{user.full_name || user.username}</h4>
-                                                                <p>@{user.username}</p>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td>{user.email}</td>
-                                                    <td>{formatDate(user.created_at)}</td>
-                                                    <td>{user.posts_count}</td>
-                                                    <td>
-                                                        <span className={`status-badge ${user.is_active ? 'active' : 'inactive'}`}>
-                                                            <span className="status-dot"></span>
-                                                            {user.is_active ? 'Active' : 'Suspended'}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <div className="action-buttons">
-                                                            <button
-                                                                className="action-btn view"
-                                                                onClick={() => handleViewUser(user.id)}
-                                                            >
-                                                                View
-                                                            </button>
-                                                            <button
-                                                                className="action-btn suspend"
-                                                                onClick={() => handleToggleUserStatus(user.id, user.is_active)}
-                                                            >
-                                                                {user.is_active ? 'Suspend' : 'Activate'}
-                                                            </button>
-                                                            <button
-                                                                className="action-btn delete"
-                                                                onClick={() => handleDeleteUser(user.id)}
-                                                            >
-                                                                Delete
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-
-                                    {pagination && pagination.totalPages > 1 && (
-                                        <div className="pagination">
-                                            <button
-                                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                                disabled={currentPage === 1}
-                                            >
-                                                Previous
-                                            </button>
-                                            {[...Array(pagination.totalPages)].map((_, i) => (
-                                                <button
-                                                    key={i + 1}
-                                                    className={currentPage === i + 1 ? 'active' : ''}
-                                                    onClick={() => setCurrentPage(i + 1)}
-                                                >
-                                                    {i + 1}
-                                                </button>
-                                            ))}
-                                            <button
-                                                onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))}
-                                                disabled={currentPage === pagination.totalPages}
-                                            >
-                                                Next
-                                            </button>
-                                        </div>
-                                    )}
-                                </>
+                                        ))}
+                                    </tbody>
+                                </table>
                             )}
                         </div>
-                    </>
+                        {pagination && pagination.totalPages > 1 && (
+                            <div className="pagination">
+                                <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>السابق</button>
+                                {[...Array(pagination.totalPages)].map((_, i) => (
+                                    <button key={i + 1} className={currentPage === i + 1 ? 'active' : ''} onClick={() => setCurrentPage(i + 1)}>{i + 1}</button>
+                                ))}
+                                <button onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))} disabled={currentPage === pagination.totalPages}>التالي</button>
+                            </div>
+                        )}
+                    </div>
                 )}
 
-                {/* Posts Tab */}
+                {/* Posts Tab Content */}
                 {activeTab === 'posts' && (
-                    <>
-                        <div className="admin-header">
-                            <h2>Post Management</h2>
-                            <p>Manage all posts on the platform</p>
-                        </div>
-
-                        <div className="admin-content-card">
-                            <div className="content-header">
-                                <h3>All Posts</h3>
+                    <div className="admin-content-card">
+                        <div className="content-header">
+                            <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <h3>إدارة المنشورات</h3>
                                 {selectedPosts.length > 0 && (
-                                    <button
-                                        className="btn"
-                                        onClick={handleBulkDeletePosts}
-                                        style={{
-                                            background: 'var(--error)',
-                                            color: 'white',
-                                            padding: '0.75rem 1.5rem'
-                                        }}
-                                    >
-                                        🗑️ Delete Selected ({selectedPosts.length})
+                                    <button className="action-btn delete" onClick={handleBulkDeletePosts} style={{ width: 'auto', padding: '0 1.5rem', background: '#ef4444', color: 'white' }}>
+                                        حذف المحدد ({selectedPosts.length})
                                     </button>
                                 )}
                             </div>
+                        </div>
 
+                        <div className="admin-table-wrapper">
                             {loading ? (
-                                <div style={{ textAlign: 'center', padding: '2rem' }}>
-                                    <div className="spinner"></div>
-                                </div>
+                                <div className="loading-container" style={{ padding: '3rem' }}><div className="spinner"></div></div>
                             ) : (
-                                <>
-                                    <table className="admin-table">
-                                        <thead>
-                                            <tr>
-                                                <th style={{ width: '50px' }}>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedPosts.length === posts.length && posts.length > 0}
-                                                        onChange={handleSelectAllPosts}
-                                                        style={{ cursor: 'pointer' }}
-                                                    />
-                                                </th>
-                                                <th>Post</th>
-                                                <th>Author</th>
-                                                <th>Location</th>
-                                                <th>Date</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {posts.map(post => (
-                                                <tr key={post.id}>
-                                                    <td>
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={selectedPosts.includes(post.id)}
-                                                            onChange={() => handleSelectPost(post.id)}
-                                                            style={{ cursor: 'pointer' }}
-                                                        />
-                                                    </td>
-                                                    <td>
-                                                        <div className="user-cell">
-                                                            {post.image_url && (
-                                                                <img
-                                                                    src={post.image_url}
-                                                                    alt="Post"
-                                                                    className="user-avatar"
-                                                                    style={{ borderRadius: '8px' }}
-                                                                />
-                                                            )}
-                                                            <div className="user-info">
-                                                                <h4>{post.content?.substring(0, 50) || 'No content'}</h4>
-                                                                <p>{post.address || 'No address'}</p>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td>
+                                <table className="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th><input type="checkbox" checked={selectedPosts.length === posts.length && posts.length > 0} onChange={handleSelectAllPosts} /></th>
+                                            <th>المنشور</th>
+                                            <th>الناشر</th>
+                                            <th>الموقع</th>
+                                            <th>التاريخ</th>
+                                            <th>الإجراءات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {posts.map(post => (
+                                            <tr key={post.id}>
+                                                <td><input type="checkbox" checked={selectedPosts.includes(post.id)} onChange={() => handleSelectPost(post.id)} /></td>
+                                                <td>
+                                                    <div className="user-cell">
+                                                        {post.image_url && <img src={post.image_url} alt="Post" className="user-avatar" style={{ borderRadius: '8px' }} />}
                                                         <div className="user-info">
-                                                            <h4>{post.user.full_name || post.user.username}</h4>
-                                                            <p>@{post.user.username}</p>
+                                                            <h4>{post.content?.substring(0, 40) || 'بدون نص'}...</h4>
+                                                            <p>{post.address?.substring(0, 30) || 'بدون عنوان'}</p>
                                                         </div>
-                                                    </td>
-                                                    <td>
-                                                        {post.location.latitude.toFixed(4)}, {post.location.longitude.toFixed(4)}
-                                                    </td>
-                                                    <td>{formatDate(post.created_at)}</td>
-                                                    <td>
-                                                        <div className="action-buttons">
-                                                            <button
-                                                                className="action-btn delete"
-                                                                onClick={() => handleDeletePost(post.id)}
-                                                            >
-                                                                Delete
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-
-                                    {pagination && pagination.totalPages > 1 && (
-                                        <div className="pagination">
-                                            <button
-                                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                                disabled={currentPage === 1}
-                                            >
-                                                Previous
-                                            </button>
-                                            {[...Array(Math.min(5, pagination.totalPages))].map((_, i) => {
-                                                const pageNum = i + 1;
-                                                return (
-                                                    <button
-                                                        key={pageNum}
-                                                        className={currentPage === pageNum ? 'active' : ''}
-                                                        onClick={() => setCurrentPage(pageNum)}
-                                                    >
-                                                        {pageNum}
-                                                    </button>
-                                                );
-                                            })}
-                                            <button
-                                                onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))}
-                                                disabled={currentPage === pagination.totalPages}
-                                            >
-                                                Next
-                                            </button>
-                                        </div>
-                                    )}
-                                </>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div className="user-info">
+                                                        <h4>{post.user.full_name || post.user.username}</h4>
+                                                        <p>@{post.user.username}</p>
+                                                    </div>
+                                                </td>
+                                                <td style={{ fontSize: '0.8rem', opacity: 0.8 }}>
+                                                    {post.location.latitude.toFixed(3)}, {post.location.longitude.toFixed(3)}
+                                                </td>
+                                                <td>{formatDate(post.created_at)}</td>
+                                                <td>
+                                                    <button className="action-btn delete" title="حذف" onClick={() => handleDeletePost(post.id)}>🗑️</button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             )}
                         </div>
-                    </>
+                    </div>
                 )}
 
-                {/* Map Tab */}
+                {/* Map View Content */}
                 {activeTab === 'map' && (
-                    <>
-                        <div className="admin-header">
-                            <h2>Map View</h2>
-                            <p>View all posts on the map</p>
+                    <div className="admin-content-card" style={{ height: '70vh', position: 'relative' }}>
+                        <div style={{ 
+                            position: 'absolute', 
+                            inset: 0, 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            background: 'rgba(15, 23, 42, 0.8)',
+                            backdropFilter: blur('10px'),
+                            textAlign: 'center',
+                            padding: '2rem'
+                        }}>
+                            <div style={{ fontSize: '5rem', marginBottom: '1.5rem' }}>🛰️</div>
+                            <h3 style={{ fontSize: '2rem', marginBottom: '1rem' }}>الخارطة الإدارية التفاعلية</h3>
+                            <p style={{ maxWidth: '600px', opacity: 0.7, lineHeight: 1.6 }}>
+                                جاري العمل على دمج نظام التتبع الجغرافي المباشر لجميع منشورات الشبكة هنا. 
+                                ستتمكن قريباً من مراقبة النشاطات جغرافياً في الوقت الفعلي.
+                            </p>
                         </div>
-
-                        <div className="admin-content-card">
-                            <div style={{ textAlign: 'center', padding: '3rem' }}>
-                                <h3>🗺️ Map View Coming Soon</h3>
-                                <p style={{ color: 'var(--text-muted)', marginTop: '1rem' }}>
-                                    Interactive map with all posts will be available here
-                                </p>
-                            </div>
-                        </div>
-                    </>
+                    </div>
                 )}
             </div>
         </div>
