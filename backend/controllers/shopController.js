@@ -109,7 +109,7 @@ const getFollowedShops = async (req, res) => {
 // --- 5. Create Shop (Admin) ---
 const createShop = async (req, res) => {
     try {
-        const { name, latitude, longitude, category } = req.body;
+        const { name, latitude, longitude, category, parent_shop_id, floor } = req.body;
         const ownerId = req.user.userId;
 
         console.log('Creating shop with data:', { name, latitude, longitude, category, ownerId });
@@ -123,10 +123,10 @@ const createShop = async (req, res) => {
         }
 
         const result = await pool.query(`
-            INSERT INTO shops (name, latitude, longitude, category, owner_id, location)
-            VALUES ($1, $2::numeric, $3::numeric, $4, $5, ST_SetSRID(ST_MakePoint($3::double precision, $2::double precision), 4326)::geography)
+            INSERT INTO shops (name, latitude, longitude, category, owner_id, parent_shop_id, floor, location)
+            VALUES ($1, $2::numeric, $3::numeric, $4, $5, $6, $7, ST_SetSRID(ST_MakePoint($3::double precision, $2::double precision), 4326)::geography)
             RETURNING *
-        `, [name, lat, lon, category || 'General', ownerId]);
+        `, [name, lat, lon, category || 'General', ownerId, parent_shop_id || null, floor || null]);
 
         const newShop = result.rows[0];
         console.log('Shop created successfully:', newShop.id);
@@ -140,7 +140,6 @@ const createShop = async (req, res) => {
             `, [ownerId, newShop.id]);
         } catch (followError) {
             console.error('Auto-follow failed but shop was created:', followError);
-            // We don't fail the whole request if follow fails
         }
 
         res.json(newShop);
@@ -208,10 +207,19 @@ const getShopProfile = async (req, res) => {
             SELECT * FROM shop_products WHERE shop_id = $1 ORDER BY created_at DESC
         `, [shopId]);
 
+        // 4. Get Internal Shops (If this is a Mall/Complex)
+        const internalShopsResult = await pool.query(`
+            SELECT id, name, category, profile_picture, floor, is_verified 
+            FROM shops 
+            WHERE parent_shop_id = $1 
+            ORDER BY floor ASC, name ASC
+        `, [shopId]);
+
         res.json({
             shop: { ...shop, is_owner: isOwner },
             posts: postsResult.rows,
-            products: productsResult.rows
+            products: productsResult.rows,
+            internal_shops: internalShopsResult.rows
         });
     } catch (error) {
         console.error('Get shop profile error:', error);
@@ -264,6 +272,14 @@ const updateShopProfile = async (req, res) => {
         if (category !== undefined) {
             queryParts.push(`category = $${index++}`);
             values.push(category);
+        }
+        if (req.body.parent_shop_id !== undefined) {
+            queryParts.push(`parent_shop_id = $${index++}`);
+            values.push(req.body.parent_shop_id || null);
+        }
+        if (req.body.floor !== undefined) {
+            queryParts.push(`floor = $${index++}`);
+            values.push(req.body.floor || null);
         }
         if (req.body.enable_proximity_notifications !== undefined) {
             queryParts.push(`enable_proximity_notifications = $${index++}`);

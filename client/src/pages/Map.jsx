@@ -1195,30 +1195,44 @@ const MapComponent = () => {
                             }}
                         >
                             <div style={{
-                                width: '50px',
-                                height: '50px',
+                                width: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '60px' : '50px',
+                                height: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '60px' : '50px',
                                 borderRadius: '50%',
-                                backgroundColor: '#fbab15',
+                                backgroundColor: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '#fbab15' : 'white',
                                 backgroundImage: `url(${getImageUrl(shop.profile_picture) || getImageUrl(shop.image_url) || '/default-shop.png'})`,
                                 backgroundSize: 'cover',
                                 backgroundPosition: 'center',
-                                border: '3px solid white',
-                                boxShadow: '0 4px 10px rgba(0,0,0,0.4)',
-                                position: 'relative'
+                                border: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '4px solid #fbab15' : '3px solid white',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                                position: 'relative',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
                             }}>
+                                {(shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') && (
+                                    <div style={{ 
+                                        position: 'absolute', top: '-12px', right: '-12px', 
+                                        background: 'white', color: '#fbab15', width: '32px', height: '32px', 
+                                        borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        boxShadow: '0 2px 6px rgba(0,0,0,0.3)', border: '2px solid #fbab15',
+                                        fontSize: '18px', zIndex: 10
+                                    }}>
+                                        🏢
+                                    </div>
+                                )}
                                 {/* Simple Name Badge */}
                                 <div style={{
                                     position: 'absolute',
-                                    bottom: '-18px',
+                                    bottom: '-20px',
                                     left: '50%',
                                     transform: 'translateX(-50%)',
-                                    backgroundColor: 'white',
-                                    padding: '1px 6px',
-                                    borderRadius: '10px',
-                                    fontSize: '10px',
+                                    backgroundColor: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '#fbab15' : 'white',
+                                    padding: '2px 10px',
+                                    borderRadius: '12px',
+                                    fontSize: '11px',
                                     fontWeight: 'bold',
-                                    color: 'black',
-                                    border: '1px solid #fbab15',
+                                    color: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? 'white' : 'black',
+                                    border: '1px solid white',
                                     whiteSpace: 'nowrap',
                                     boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
                                     zIndex: 1

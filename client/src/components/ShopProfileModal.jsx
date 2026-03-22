@@ -60,6 +60,19 @@ const SearchIcon = () => (
     </svg>
 );
 
+const MallIcon = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 21h18"></path>
+        <path d="M3 7V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2"></path>
+        <path d="M5 21V7"></path>
+        <path d="M19 21V7"></path>
+        <path d="M9 7v14"></path>
+        <path d="M15 7v14"></path>
+        <path d="M11 3v4"></path>
+        <path d="M13 3v4"></path>
+    </svg>
+);
+
 const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
     const [shopData, setShopData] = useState(shop);
     const [posts, setPosts] = useState([]);
@@ -67,6 +80,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
     const [activeTab, setActiveTab] = useState('products');
     const [loading, setLoading] = useState(true);
     const [isFollowing, setIsFollowing] = useState(false);
+    const [internalShops, setInternalShops] = useState([]); // Shops inside this mall
 
     // Search State
     const [productSearchQuery, setProductSearchQuery] = useState('');
@@ -149,6 +163,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
             setShopData(data.shop);
             setPosts(data.posts || []);
             setProducts(data.products || []);
+            setInternalShops(data.internal_shops || []);
             setIsFollowing(data.shop.is_followed);
         } catch (error) {
             console.error(error);
@@ -317,6 +332,32 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
 
     // State for editing product
     const [editingProduct, setEditingProduct] = useState(null);
+
+    // Mall logic
+    const [showAddInternalShop, setShowAddInternalShop] = useState(false);
+    const [newInternalShopData, setNewInternalShopData] = useState({ name: '', category: '', floor: '', owner_username: '' });
+
+    const handleAddInternalShop = async (e) => {
+        e.preventDefault();
+        try {
+            // Logic to create a shop with parent_shop_id
+            // We use the same createShop API but with extra fields
+            await shopService.createShop({
+                name: newInternalShopData.name,
+                category: newInternalShopData.category,
+                floor: newInternalShopData.floor,
+                parent_shop_id: shopData.id,
+                latitude: shopData.latitude, // Same location as mall
+                longitude: shopData.longitude
+            });
+            setShowAddInternalShop(false);
+            setNewInternalShopData({ name: '', category: '', floor: '', owner_username: '' });
+            loadShopData(); // Refresh list
+            alert('تم إضافة المحل للمجمع بنجاح');
+        } catch (error) {
+            alert('فشل إضافة المحل');
+        }
+    };
 
     const handleUpdateName = async () => {
         if (!nameInput.trim()) return;
@@ -888,11 +929,15 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                         >
                             {/* Make tab label dynamic */}
                             {(() => {
-                                if (tab === 'products') return shopData.category === 'مكتب تاكسي' ? 'الخدمات' : 'المنتجات';
-                                if (tab === 'timeline') return 'أخبار';
-                                if (tab === 'drivers') return 'السائقين';
-                                if (tab === 'requests') return 'الطلبات';
-                                return 'حول';
+                                if (tab === 'products') {
+                                    if (shopData.category === 'مكتب تاكسي') return 'الخدمات 🚕';
+                                    if (shopData.category === 'مركز تسوق' || shopData.category === 'مجمع تجاري' || shopData.category === 'Mall') return 'الدليل 🏢';
+                                    return 'المنتجات 🛍️';
+                                }
+                                if (tab === 'timeline') return 'أخبار ✨';
+                                if (tab === 'drivers') return 'السائقين ⚙️';
+                                if (tab === 'requests') return 'الطلبات 📋';
+                                return 'حول ℹ️';
                             })()}
                         </button>
                     ))}
@@ -967,7 +1012,9 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                     )}
 
                     {/* --- Regular Products Tab --- */}
-                    {activeTab === 'products' && shopData.category !== 'مكتب تاكسي' && (
+                    {activeTab === 'products' && 
+                        shopData.category !== 'مكتب تاكسي' && 
+                        !(shopData.category === 'مركز تسوق' || shopData.category === 'مجمع تجاري' || shopData.category === 'Mall') && (
                         <div>
                             {canEditShop && (
                                 <button className="btn-small is-primary" style={{ marginBottom: 20 }} onClick={() => {
@@ -1464,6 +1511,161 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                     )}
 
                     {showCart && <CartModal onClose={() => setShowCart(false)} />}
+
+                    {/* --- Mall Directory View --- */}
+                    {activeTab === 'products' && (shopData.category === 'مركز تسوق' || shopData.category === 'مجمع تجاري' || shopData.category === 'Mall') && (
+                        <div style={{ animation: 'fadeIn 0.5s' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25, flexWrap: 'wrap', gap: 15 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
+                                    <div style={{ background: 'var(--primary)', color: 'white', width: 50, height: 50, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <MallIcon />
+                                    </div>
+                                    <div>
+                                        <h2 style={{ margin: 0, fontSize: '1.5rem' }}>دليل المحلات</h2>
+                                        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>تصفح المتاجر والخدمات داخل {shopData.name}</p>
+                                    </div>
+                                </div>
+                                {canEditShop && (
+                                    <button 
+                                        onClick={() => setShowAddInternalShop(!showAddInternalShop)}
+                                        style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '10px 20px', borderRadius: 10, fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+                                    >
+                                        {showAddInternalShop ? 'إلغاء' : '+ إضافة محل'}
+                                    </button>
+                                )}
+                            </div>
+
+                            {showAddInternalShop && (
+                                <div style={{ background: 'var(--bg-primary)', padding: 20, borderRadius: 16, marginBottom: 25, border: '2px solid var(--primary)', boxShadow: '0 8px 30px rgba(0,0,0,0.1)' }}>
+                                    <h3 style={{ marginTop: 0, marginBottom: 20 }}>تسجيل محل جديد في المجمع</h3>
+                                    <form onSubmit={handleAddInternalShop} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
+                                        <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                                            <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>اسم المحل</label>
+                                            <input 
+                                                className="input" 
+                                                placeholder="مثال: ديفاكتو، مطعم زيت وزعتر..." 
+                                                value={newInternalShopData.name} 
+                                                onChange={e => setNewInternalShopData({ ...newInternalShopData, name: e.target.value })} 
+                                                required 
+                                                style={{ width: '100%', padding: '12px' }}
+                                            />
+                                        </div>
+                                        <div className="form-group">
+                                            <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>التصنيف</label>
+                                            <select 
+                                                className="input" 
+                                                value={newInternalShopData.category} 
+                                                onChange={e => setNewInternalShopData({ ...newInternalShopData, category: e.target.value })} 
+                                                required
+                                                style={{ width: '100%', padding: '12px' }}
+                                            >
+                                                <option value="">اختر التصنيف...</option>
+                                                <option value="ملابس">ملابس 👕</option>
+                                                <option value="أحذية">أحذية 👟</option>
+                                                <option value="إلكترونيات">إلكترونيات 📱</option>
+                                                <option value="مطعم">مطعم 🍔</option>
+                                                <option value="كافيه">كافيه ☕</option>
+                                                <option value="سوبر ماركت">سوبر ماركت 🛒</option>
+                                                <option value="عطور">عطور 🧴</option>
+                                                <option value="أخرى">أخرى</option>
+                                            </select>
+                                        </div>
+                                        <div className="form-group">
+                                            <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>الطابق</label>
+                                            <select 
+                                                className="input" 
+                                                value={newInternalShopData.floor} 
+                                                onChange={e => setNewInternalShopData({ ...newInternalShopData, floor: e.target.value })} 
+                                                required
+                                                style={{ width: '100%', padding: '12px' }}
+                                            >
+                                                <option value="">اختيار الطابق...</option>
+                                                <option value="الأرضي">الطابق الأرضي</option>
+                                                <option value="الأول">الطابق الأول</option>
+                                                <option value="الثاني">الطابق الثاني</option>
+                                                <option value="الثالث">الطابق الثالث</option>
+                                                <option value="B1">الطابق B1</option>
+                                                <option value="B2">الطابق B2</option>
+                                            </select>
+                                        </div>
+                                        <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
+                                            <button type="submit" className="btn-small is-primary" style={{ padding: '12px 30px', fontSize: '1rem' }}>تأكيد الإضافة</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            )}
+
+                            {internalShops.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '60px', background: 'var(--bg-primary)', borderRadius: 16, color: 'var(--text-muted)' }}>
+                                    <div style={{ fontSize: '4rem', marginBottom: 20 }}>🏢</div>
+                                    <h3>لا توجد محلات مسجلة حالياً</h3>
+                                    <p>المجمع لا يزال جديداً، ترقبوا الافتتاحات قريباً!</p>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                                    {/* Group by Floor */}
+                                    {['الأرضي', 'الأول', 'الثاني', 'الثالث', 'B1', 'B2'].map(floor => {
+                                        const floorShops = internalShops.filter(s => s.floor === floor);
+                                        if (floorShops.length === 0) return null;
+                                        return (
+                                            <div key={floor}>
+                                                <h3 style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '2px solid var(--primary)', marginBottom: 15, fontSize: '1.2rem' }}>
+                                                    <span style={{ background: 'var(--primary)', color: 'white', padding: '2px 10px', borderRadius: 6, fontSize: '0.9rem' }}>الطابق {floor}</span>
+                                                </h3>
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 15 }}>
+                                                    {floorShops.map(s => (
+                                                        <div 
+                                                            key={s.id} 
+                                                            onClick={async () => {
+                                                                try {
+                                                                    const data = await shopService.getProfile(s.id);
+                                                                    setShopData(data.shop);
+                                                                    setInternalShops(data.internal_shops || []);
+                                                                    setProducts(data.products || []);
+                                                                    setPosts(data.posts || []);
+                                                                    setIsFollowing(data.shop.is_followed);
+                                                                    setActiveTab('products');
+                                                                    // Smoothly scroll to top of modal
+                                                                    const container = document.querySelector('.modal-container');
+                                                                    if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
+                                                                } catch (error) {
+                                                                    console.error("Failed to load internal shop profile", error);
+                                                                }
+                                                            }}
+                                                            style={{ 
+                                                                background: 'var(--bg-primary)', padding: 15, borderRadius: 12, border: '1px solid var(--border-color)', 
+                                                                display: 'flex', gap: 15, cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                                                            }}
+                                                            onMouseOver={e => {
+                                                                e.currentTarget.style.transform = 'translateY(-3px)';
+                                                                e.currentTarget.style.borderColor = 'var(--primary)';
+                                                            }}
+                                                            onMouseOut={e => {
+                                                                e.currentTarget.style.transform = 'translateY(0)';
+                                                                e.currentTarget.style.borderColor = 'var(--border-color)';
+                                                            }}
+                                                        >
+                                                            <div style={{ position: 'relative' }}>
+                                                                <img src={getImageUrl(s.profile_picture) || '/default-shop.png'} style={{ width: 60, height: 60, borderRadius: 10, objectFit: 'cover' }} />
+                                                                {s.is_verified && <div style={{ position: 'absolute', top: -5, right: -5, background: '#1da1f2', color: 'white', borderRadius: '50%', width: 18, height: 18, fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✓</div>}
+                                                            </div>
+                                                            <div style={{ flex: 1 }}>
+                                                                <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: 2 }}>{s.name}</div>
+                                                                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{s.category}</div>
+                                                            </div>
+                                                            <div style={{ display: 'flex', alignItems: 'center', color: 'var(--primary)' }}>
+                                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* --- Timeline Tab --- */}
                     {activeTab === 'timeline' && (

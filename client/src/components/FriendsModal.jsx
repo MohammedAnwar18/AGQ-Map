@@ -499,13 +499,36 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                         </div>
                                         <div 
                                             onClick={() => { setShowCreateOptions(false); setIsCreatingUniversity(true); }}
-                                            style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', padding: '20px', borderRadius: '16px', cursor: 'pointer', transition: '0.2s', boxShadow: '0 4px 10px rgba(16,185,129,0.3)', color: 'white' }}
+                                            style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', padding: '20px', borderRadius: '16px', cursor: 'pointer', transition: '0.2s', boxShadow: '0 4px 10px rgba(59,130,246,0.3)', color: 'white' }}
                                             onMouseOver={e => e.currentTarget.style.transform = 'translateY(-3px)'}
                                             onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
                                         >
                                             <div style={{ fontSize: '3rem', marginBottom: '10px' }}>🎓</div>
                                             <h4 style={{ margin: 0, fontSize: '1rem', color: 'white' }}>مؤسسة / جامعة</h4>
                                             <p style={{ margin: '5px 0 0 0', fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)' }}>مرافق، كليات، ذكية...</p>
+                                        </div>
+
+                                        <div 
+                                            onClick={() => { 
+                                                setShowCreateOptions(false); 
+                                                setIsCreatingShop(true); 
+                                                setNewShopData(prev => ({ ...prev, category: 'مركز تسوق' }));
+                                            }}
+                                            style={{ 
+                                                gridColumn: '1 / -1',
+                                                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
+                                                padding: '20px', borderRadius: '16px', cursor: 'pointer', transition: '0.2s', 
+                                                boxShadow: '0 4px 10px rgba(16,185,129,0.3)', color: 'white',
+                                                display: 'flex', alignItems: 'center', gap: '20px', textAlign: 'right'
+                                            }}
+                                            onMouseOver={e => e.currentTarget.style.transform = 'translateY(-3px)'}
+                                            onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+                                        >
+                                            <div style={{ fontSize: '3.5rem' }}>🏢</div>
+                                            <div>
+                                                <h4 style={{ margin: 0, fontSize: '1.2rem', color: 'white' }}>مركز تسوق / مجمع تجاري</h4>
+                                                <p style={{ margin: '5px 0 0 0', fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)' }}>مول، مجمع تجاري، مركز تسوق ضخم...</p>
+                                            </div>
                                         </div>
                                     </div>
                                     <button onClick={() => setShowCreateOptions(false)} style={{ marginTop: '30px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.9rem' }}>
@@ -577,6 +600,8 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                 style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                                             >
                                                 <option value="General">عام</option>
+                                                <option value="مركز تسوق">مركز تسوق (مول) 🏢</option>
+                                                <option value="مجمع تجاري">مجمع تجاري 🏘️</option>
                                                 <option value="Restaurant">مطعم</option>
                                                 <option value="Cafe">مقهى</option>
                                                 <option value="Clothing">ملابس</option>
