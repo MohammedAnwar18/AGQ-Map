@@ -362,7 +362,8 @@ const MapComponent = () => {
             if (MAPBOX_TOKEN) {
                 try {
                     // Increased radius to 30m for better "Snap to Road" recognition
-                    const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${start};${end}?geometries=geojson&overview=full&steps=true&radiuses=30;30&access_token=${MAPBOX_TOKEN}`;
+                    // High-Precision Routing Call: Snapped to roads with annotations and full overview
+                    const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${start};${end}?geometries=geojson&overview=full&steps=true&annotations=distance,duration&radiuses=25;25&access_token=${MAPBOX_TOKEN}`;
                     const response = await axios.get(url);
                     if (response.data.routes && response.data.routes.length > 0) {
                         routeData = response.data.routes[0];
@@ -1040,36 +1041,37 @@ const MapComponent = () => {
                                     "line-blur": 3
                                 }}
                             />
-                            {/* Professional Integrated Navigation Path - Positioned 'beforeId' for "Built-in" feel */}
+                            {/* Integrated Navigation Path - Site's Brand Identity Color (#fbab15) */}
                             <Layer
                                 id="route-layer-main"
                                 type="line"
-                                beforeId={firstLabelLayerId} // This puts the route UNDER street names
+                                beforeId={firstLabelLayerId} 
                                 layout={{ "line-join": "round", "line-cap": "round" }}
                                 paint={{
-                                    "line-color": "#4EA3F3", 
+                                    "line-color": "#fbab15", 
                                     "line-width": [
                                         'interpolate', ['exponential', 1.5], ['zoom'],
-                                        12, 3,
-                                        18, 12
+                                        12, 4,
+                                        18, 14
                                     ],
-                                    "line-opacity": 0.85
+                                    "line-opacity": 0.95
                                 }}
                             />
-                            {/* Casing for subtle depth */}
+                            {/* Premium Glow / Casing for High Visibility */}
                             <Layer
                                 id="route-layer-casing"
                                 type="line"
-                                beforeId="route-layer-main" // Under the main line
+                                beforeId="route-layer-main" 
                                 layout={{ "line-join": "round", "line-cap": "round" }}
                                 paint={{
-                                    "line-color": "#2c72b8", 
+                                    "line-color": "#92400e", // Darker amber for contrast
                                     "line-width": [
                                         'interpolate', ['exponential', 1.5], ['zoom'],
-                                        12, 5,
-                                        18, 16
+                                        12, 6,
+                                        18, 18
                                     ],
-                                    "line-opacity": 0.2
+                                    "line-opacity": 0.15,
+                                    "line-blur": 1
                                 }}
                             />
                         </Source>
