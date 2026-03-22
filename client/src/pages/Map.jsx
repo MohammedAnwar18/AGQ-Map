@@ -180,6 +180,8 @@ const MapComponent = () => {
     const [showCommunities, setShowCommunities] = useState(false);
     const [showMoreMenu, setShowMoreMenu] = useState(false);
     const [hasUnreadCommunity, setHasUnreadCommunity] = useState(false);
+    const [showGPSGuide, setShowGPSGuide] = useState(false);
+    const [gpsErrorType, setGpsErrorType] = useState(null); // 'denied' or 'generic'
 
     // Community Mode State
     const [currentCommunity, setCurrentCommunity] = useState(null);
@@ -548,7 +550,9 @@ const MapComponent = () => {
                     (err) => {
                         console.error("GPS Error:", err);
                         if (err.code === 1) {
-                            // Permission Denied - Guide the user
+                            // Permission Denied - Show Guide
+                            setGpsErrorType('denied');
+                            setShowGPSGuide(true);
                             console.warn("User denied GPS permissions.");
                         } else {
                             // Technical error, retry after 5s
@@ -1423,6 +1427,68 @@ const MapComponent = () => {
                     currentUser={user} 
                     onClose={() => setShowFacilityProfile(false)} 
                 />
+            )}
+
+            {/* GPS Helper - Mobile & Desktop Support */}
+            {showGPSGuide && (
+                <div style={{
+                    position: 'fixed', inset: 0, 
+                    background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)',
+                    zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+                }}>
+                    <div style={{
+                        background: '#0f172a', border: '1px solid #1e293b', 
+                        borderRadius: '24px', width: '100%', maxWidth: '400px',
+                        padding: '30px', color: 'white', textAlign: 'center',
+                        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+                        animation: 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
+                    }}>
+                        <div style={{ fontSize: '4rem', marginBottom: '20px' }}>📍</div>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '15px' }}>تفعيل تحديد الموقع</h2>
+                        
+                        {gpsErrorType === 'denied' ? (
+                            <>
+                                <p style={{ fontSize: '0.95rem', color: '#94a3b8', lineHeight: '1.6', marginBottom: '20px' }}>
+                                    يبدو أنك رفضت إذن الوصول للموقع. الموقع ضروري لعرض المحلات من حولك والتنقل على الخريطة.
+                                </p>
+                                
+                                <div style={{ textAlign: 'right', background: '#1e293b', padding: '15px', borderRadius: '16px', marginBottom: '20px' }}>
+                                    <p style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '0.9rem' }}>💡 كيفية التفعيل:</p>
+                                    <ul style={{ padding: '0 15px', margin: 0, fontSize: '0.85rem', color: '#cbd5e1', listStyleType: 'disc' }}>
+                                        <li style={{ marginBottom: '8px' }}>اضغط على أيقونة الإعدادات (أو القفل 🔒) بجانب رابط الموقع في شريط العنوان.</li>
+                                        <li style={{ marginBottom: '8px' }}>تأكد من تفعيل "الموقع" (Location) ليكون "سماح" (Allow).</li>
+                                        <li>ثم قم بتحديث الصفحة.</li>
+                                    </ul>
+                                </div>
+                            </>
+                        ) : (
+                            <p style={{ fontSize: '0.95rem', color: '#94a3b8', lineHeight: '1.6', marginBottom: '20px' }}>
+                                يرجى السماح بالوصول للموقع ليتمكن التطبيق من عرض الأماكن من حولك وتقديم خدمة دقيقة.
+                            </p>
+                        )}
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            <button 
+                                onClick={() => window.location.reload()}
+                                style={{
+                                    background: '#fbab15', color: 'black', fontWeight: 'bold',
+                                    padding: '12px', borderRadius: '12px', border: 'none', cursor: 'pointer'
+                                }}
+                            >
+                                تحديث الصفحة الآن
+                            </button>
+                            <button 
+                                onClick={() => setShowGPSGuide(false)}
+                                style={{
+                                    background: 'transparent', color: '#94a3b8', border: 'none', 
+                                    padding: '10px', cursor: 'pointer', fontSize: '0.9rem'
+                                }}
+                            >
+                                إغلاق
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );
