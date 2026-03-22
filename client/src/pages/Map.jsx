@@ -94,7 +94,7 @@ const haversineDistance = (coords1, coords2) => {
 };
 
 const MapComponent = () => {
-    const { user, logout } = useAuth();
+    const { user, logout, socket } = useAuth();
 
     // Mapbox Setup - Secure Triple Fallback
     const MAPBOX_TOKEN = useMemo(() => {
@@ -221,6 +221,7 @@ const MapComponent = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     const [showChat, setShowChat] = useState(false);
+    const [unreadChatCount, setUnreadChatCount] = useState(0);
     const [showAIChat, setShowAIChat] = useState(false);
     const [showNews, setShowNews] = useState(false);
     const [showCommunities, setShowCommunities] = useState(false);
@@ -823,19 +824,30 @@ const MapComponent = () => {
 
     }, [userLocation, followedShopsMap, user]);
 
-    // Community Notifications Socket
+    // Socket Notifications
     useEffect(() => {
-        const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
+        if (!socket) return;
 
-        socket.on('new_community_post', (data) => {
-            // Logic: If user is not currently viewing communities, show the dot
+        const handleCommunityPost = (data) => {
             if (!showCommunities) {
                 setHasUnreadCommunity(true);
             }
-        });
+        };
 
-        return () => socket.disconnect();
-    }, [showCommunities]);
+        const handleNewMessage = (data) => {
+            if (!showChat) {
+                setUnreadChatCount(prev => prev + 1);
+            }
+        };
+
+        socket.on('new_community_post', handleCommunityPost);
+        socket.on('receive-message', handleNewMessage);
+
+        return () => {
+            socket.off('new_community_post', handleCommunityPost);
+            socket.off('receive-message', handleNewMessage);
+        };
+    }, [socket, showCommunities, showChat]);
 
     // Refresh posts when mode changes or interval
     // (Logic included in main fetch effect above via dependency)
@@ -1369,10 +1381,13 @@ const MapComponent = () => {
                     </svg>
                 </button>
 
-                <button className={`nav-item ${showChat ? 'active' : ''}`} onClick={() => { setShowChat(true); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); setShowProfile(false); }}>
-                    <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
-                        <path d="M6.485,18.519a9.891,9.891,0,0,1-4.876.981c-.285,0-.584-.006-.887-.018a.739.739,0,0,1-.65-.432.738.738,0,0,1,.085-.775,11.192,11.192,0,0,0,2.072-3.787A9.751,9.751,0,1,1,10.751,19.5,9.661,9.661,0,0,1,6.485,18.519ZM6.808,17a8.247,8.247,0,1,0-3.139-3.015.75.75,0,0,1,.092.535A10.189,10.189,0,0,1,2.2,17.99a7.2,7.2,0,0,0,3.816-.947.745.745,0,0,1,.431-.136A.756.756,0,0,1,6.808,17Zm-.057-4.5a.75.75,0,0,1,0-1.5h7a.75.75,0,0,1,0,1.5Zm0-4a.75.75,0,0,1,0-1.5h5a.75.75,0,1,1,0,1.5Z" transform="translate(1.249 2.25)" />
-                    </svg>
+                <button className={`nav-item ${showChat ? 'active' : ''}`} onClick={() => { setShowChat(true); setUnreadChatCount(0); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); setShowProfile(false); }}>
+                    <div style={{ position: 'relative' }}>
+                        <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+                            <path d="M6.485,18.519a9.891,9.891,0,0,1-4.876.981c-.285,0-.584-.006-.887-.018a.739.739,0,0,1-.65-.432.738.738,0,0,1,.085-.775,11.192,11.192,0,0,0,2.072-3.787A9.751,9.751,0,1,1,10.751,19.5,9.661,9.661,0,0,1,6.485,18.519ZM6.808,17a8.247,8.247,0,1,0-3.139-3.015.75.75,0,0,1,.092.535A10.189,10.189,0,0,1,2.2,17.99a7.2,7.2,0,0,0,3.816-.947.745.745,0,0,1,.431-.136A.756.756,0,0,1,6.808,17Zm-.057-4.5a.75.75,0,0,1,0-1.5h7a.75.75,0,0,1,0,1.5Zm0-4a.75.75,0,0,1,0-1.5h5a.75.75,0,1,1,0,1.5Z" transform="translate(1.249 2.25)" />
+                        </svg>
+                        {unreadChatCount > 0 && <span className="notification-badge" style={{ top: '-2px', right: '-2px' }}>{unreadChatCount}</span>}
+                    </div>
                 </button>
             </nav>
 
