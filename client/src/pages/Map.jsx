@@ -364,12 +364,8 @@ const MapComponent = () => {
             
             if (ORS_TOKEN) {
                 try {
-                    const url = `https://api.openrouteservice.org/v2/directions/${orsProfile}?start=${startLon},${startLat}&end=${endLon},${endLat}`;
-                    const response = await axios.get(url, {
-                        headers: {
-                            'Authorization': ORS_TOKEN
-                        }
-                    });
+                    const url = `https://api.openrouteservice.org/v2/directions/${orsProfile}?api_key=${ORS_TOKEN}&start=${startLon},${startLat}&end=${endLon},${endLat}`;
+                    const response = await axios.get(url);
                     if (response.data.features && response.data.features.length > 0) {
                         const feature = response.data.features[0];
                         routeData = {
