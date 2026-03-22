@@ -63,7 +63,7 @@ const LegalPages = ({ type }) => {
     const currentContent = type === 'terms' ? content.terms : content.privacy;
 
     return (
-        <div className="legal-container fade-in">
+        <div className="legal-container legal-fade-in">
             <div className="legal-background">
                 <div className="gradient-orb orb-1"></div>
             </div>
