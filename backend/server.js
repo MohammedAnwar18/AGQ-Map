@@ -140,6 +140,7 @@ app.get('/health', async (req, res) => {
 app.use('/auth', require('./routes/auth'));
 app.use('/users', require('./routes/users'));
 app.use('/friends', require('./routes/friends'));
+app.use('/messages', require('./routes/messages'));
 app.use('/posts', require('./routes/posts'));
 app.use('/comments', require('./routes/comments'));
 app.use('/ai', require('./routes/ai'));

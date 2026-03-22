@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { friendService } from '../services/api';
+import { friendService, messageService } from '../services/api';
 import './Modal.css';
 import './ChatModalStyles.css';
 
@@ -26,7 +26,11 @@ const ChatModal = ({ onClose }) => {
         socket.on('receive-message', (message) => {
             if (selectedFriend &&
                 (message.sender_id === selectedFriend.id || message.receiver_id === selectedFriend.id)) {
-                setMessages(prev => [...prev, message]);
+                setMessages(prev => {
+                    // Avoid duplicate messages if API and socket both deliver
+                    if (prev.find(m => m.id === message.id)) return prev;
+                    return [...prev, message];
+                });
                 // If we receive a message from them, they stopped typing
                 if (message.sender_id === selectedFriend.id) setIsTyping(false);
             }
@@ -85,16 +89,23 @@ const ChatModal = ({ onClose }) => {
         }
     };
 
-    const loadMessages = (friend) => {
+    const loadMessages = async (friend) => {
         setSelectedFriend(friend);
         setMessages([]);
+        setLoading(true);
 
-        if (socket) {
-            socket.emit('get-messages', { friendId: friend.id, userId: user.id });
-            socket.on('messages-loaded', (loadedMessages) => {
-                setMessages(loadedMessages);
-                socket.off('messages-loaded');
-            });
+        try {
+            const data = await messageService.getMessages(friend.id);
+            setMessages(data.messages);
+            
+            // Also notify via socket about reading messages if connected
+            if (socket) {
+                socket.emit('get-messages', { friendId: friend.id, userId: user.id });
+            }
+        } catch (error) {
+            console.error('Failed to load messages:', error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -124,32 +135,41 @@ const ChatModal = ({ onClose }) => {
         }, 3000);
     };
 
-    const sendMessage = (e) => {
+    const sendMessage = async (e) => {
         e.preventDefault();
 
-        if (!newMessage.trim() || !socket || !selectedFriend) return;
+        if (!newMessage.trim() || !selectedFriend) return;
 
-        socket.emit('stop-typing', { receiverId: selectedFriend.id });
-        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-
-        socket.emit('send-message', {
-            receiverId: selectedFriend.id,
-            content: newMessage.trim(),
-            senderId: user.id
-        });
-
-        const tempMessage = {
-            id: Date.now(), // Temporary ID
-            sender_id: user.id,
-            receiver_id: selectedFriend.id,
-            content: newMessage.trim(),
-            created_at: new Date().toISOString(),
-            status: 'sent', // Assume sent to server (socket emits immediately)
-            is_liked: false
-        };
-
-        setMessages(prev => [...prev, tempMessage]);
+        const messageContent = newMessage.trim();
         setNewMessage('');
+
+        if (socket) {
+            socket.emit('stop-typing', { receiverId: selectedFriend.id });
+            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        }
+
+        try {
+            // Send via API (primary persistence)
+            const response = await messageService.sendMessage({
+                receiverId: selectedFriend.id,
+                content: messageContent
+            });
+
+            // Update UI with the real saved message
+            setMessages(prev => [...prev, response.message]);
+
+            // Also emit via socket for immediate real-time delivery if socket is connected
+            if (socket) {
+                socket.emit('send-message', {
+                    receiverId: selectedFriend.id,
+                    content: messageContent,
+                    senderId: user.id
+                });
+            }
+        } catch (error) {
+            console.error('Failed to send message:', error);
+            alert('فشل إرسال الرسالة، يرجى المحاولة لاحقاً');
+        }
     };
 
     const formatMessageTime = (timestamp) => {
@@ -382,33 +402,30 @@ const ChatModal = ({ onClose }) => {
                                             formData.append('image', file);
                                             const response = await friendService.uploadChatImage(formData);
 
-                                            // Send message with image URL
-                                            socket.emit('send-message', {
+                                            // Send via API
+                                            const apiResponse = await messageService.sendMessage({
                                                 receiverId: selectedFriend.id,
-                                                content: '', // Optional caption could be added here
-                                                imageUrl: response.imageUrl,
-                                                senderId: user.id
+                                                content: '',
+                                                imageUrl: response.imageUrl
                                             });
 
-                                            // Optimistic update
-                                            const tempMessage = {
-                                                id: Date.now(),
-                                                sender_id: user.id,
-                                                receiver_id: selectedFriend.id,
-                                                content: '',
-                                                image_url: response.imageUrl,
-                                                created_at: new Date().toISOString(),
-                                                status: 'sent',
-                                                is_liked: false
-                                            };
-                                            setMessages(prev => [...prev, tempMessage]);
+                                            setMessages(prev => [...prev, apiResponse.message]);
 
+                                            // Also emit via socket
+                                            if (socket) {
+                                                socket.emit('send-message', {
+                                                    receiverId: selectedFriend.id,
+                                                    content: '',
+                                                    imageUrl: response.imageUrl,
+                                                    senderId: user.id
+                                                });
+                                            }
                                         } catch (error) {
                                             console.error('Error uploading image:', error);
                                             alert('فشل رفع الصورة');
                                         } finally {
                                             setUploading(false);
-                                            e.target.value = null; // Reset input
+                                            e.target.value = null;
                                         }
                                     }
                                 }}

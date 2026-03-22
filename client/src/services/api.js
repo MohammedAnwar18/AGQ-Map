@@ -246,6 +246,19 @@ export const notificationService = {
         return response.data;
     }
 };
+
+// Message Services
+export const messageService = {
+    getMessages: async (friendId) => {
+        const response = await api.get(`/messages/${friendId}`);
+        return response.data;
+    },
+    sendMessage: async (data) => {
+        const response = await api.post('/messages', data);
+        return response.data;
+    }
+};
+
 // News Services
 export const newsService = {
     getNews: async (params) => {
