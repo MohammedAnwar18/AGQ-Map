@@ -289,9 +289,9 @@ const MapComponent = () => {
     };
     // --- Dynamic Map Style ---
     const mapStyle = useMemo(() => {
-        // Preference 1: Automatically switch to Custom Mapbox Style during routing for a "Navigation" feel
-        if (MAPBOX_TOKEN && routePath) {
-            return MAPBOX_STREETS_STYLE;
+        // Preference 1: Use CartoDB Voyager (a beautiful detailed street style) during navigation!
+        if (routePath) {
+            return "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json";
         }
 
         // Preference 2: Geomolg Layer (Handled by Overlay in return, so we use a base here or nothing)
@@ -300,16 +300,15 @@ const MapComponent = () => {
             // Same as satellite for now
         }
 
-        // Default & Fallback: Google Tiles (Satellite for general view, Roadmap for routing if no token)
-        const mapType = routePath ? 'm' : 's';
-        const attribution = mapType === 'm' ? 'Google Roads' : 'Google Satellite';
+        // Default & Fallback: Google Tiles (Satellite for general view)
+        const attribution = 'Google Satellite';
 
         return {
             version: 8,
             sources: {
                 'raster-tiles': {
                     type: 'raster',
-                    tiles: [`https://mt1.google.com/vt/lyrs=${mapType}&x={x}&y={y}&z={z}`],
+                    tiles: [`https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}`],
                     tileSize: 256,
                     attribution: attribution
                 }
@@ -324,7 +323,7 @@ const MapComponent = () => {
                 }
             ]
         };
-    }, [routePath, MAPBOX_TOKEN, MAPBOX_STREETS_STYLE, activeMapType]);
+    }, [routePath, activeMapType]);
 
     // Routing
     // Updated to accept explicit start/end for recalculations
