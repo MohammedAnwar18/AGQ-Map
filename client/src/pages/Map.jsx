@@ -116,11 +116,25 @@ const MapComponent = () => {
         return `mapbox://styles/mohammed-1331/cmbseyy16010101qwf9d5a8m3`;
     }, []);
 
-    // Transform Request to handle mapbox:// URLs in MapLibre
+    // Transform Request to handle mapbox:// URLs in MapLibre with full API versioning support
     const transformRequest = (url, resourceType) => {
         if (url.startsWith('mapbox://') && MAPBOX_TOKEN) {
+            // Handle different types of Mapbox resources
+            let finalUrl = url.replace('mapbox://', 'https://api.mapbox.com/');
+            
+            // Standard Mapbox API requires /v1/ for styles, fonts (glyphs), and sprites
+            if (url.includes('mapbox://styles/')) {
+                finalUrl = finalUrl.replace('/styles/', '/styles/v1/');
+            } else if (url.includes('mapbox://fonts/')) {
+                finalUrl = finalUrl.replace('/fonts/', '/fonts/v1/');
+            } else if (url.includes('mapbox://sprites/')) {
+                finalUrl = finalUrl.replace('/sprites/', '/sprites/v1/');
+            }
+            
+            // Append token carefully
+            const separator = finalUrl.includes('?') ? '&' : '?';
             return {
-                url: url.replace('mapbox://', 'https://api.mapbox.com/').concat(`?access_token=${MAPBOX_TOKEN}`),
+                url: `${finalUrl}${separator}access_token=${MAPBOX_TOKEN}`,
                 headers: {}
             };
         }
