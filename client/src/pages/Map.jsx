@@ -262,7 +262,12 @@ const MapComponent = () => {
     const [visibleFriendName, setVisibleFriendName] = useState(null); // Track which friend's name is shown
     // --- Dynamic Map Style ---
     const mapStyle = useMemo(() => {
-        // Toggle Map Type: Roadmap (m) during routing, Satellite (s) otherwise
+        // If we have a route AND a valid token, switch to the professional Mapbox Navigation Day style
+        if (routePath && MAPBOX_TOKEN) {
+            return MAPBOX_STREETS_STYLE;
+        }
+
+        // Default & Fallback: Google Tiles (Roadmap during routing without token, Satellite otherwise)
         const mapType = routePath ? 'm' : 's';
         const attribution = mapType === 'm' ? 'Google Roads' : 'Google Satellite';
 
@@ -286,7 +291,7 @@ const MapComponent = () => {
                 }
             ]
         };
-    }, [routePath]);
+    }, [routePath, MAPBOX_TOKEN, MAPBOX_STREETS_STYLE]);
 
     // Routing
     // Updated to accept explicit start/end for recalculations
