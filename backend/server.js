@@ -1,13 +1,29 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 // 1. إنشاء التطبيق
 const app = express();
 
-// 2. إعدادات Middleware
-app.use(cors()); // Allow all for now to debug
+// 2. إعدادات Middleware والحماية برمجياً
+// تحديد عدد الطلبات (Rate Limiter) لمنع الهجمات المزعجة
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 دقيقة
+    max: 300, // حد أقصى 300 طلب لكل جهاز
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "طلبات كثيرة جداً، يرجى المحاولة لاحقاً" }
+});
+
+app.use(limiter);
+app.use(helmet({
+    contentSecurityPolicy: false, // تم الإيقاف حالياً لضمان عمل خرائط Mapbox والصور بوضوح بلا مشاكل
+    crossOriginResourcePolicy: false 
+}));
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
