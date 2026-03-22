@@ -122,7 +122,7 @@ const MapComponent = () => {
         if (url.startsWith('mapbox://') && MAPBOX_TOKEN) {
             // Handle different types of Mapbox resources
             let finalUrl = url.replace('mapbox://', 'https://api.mapbox.com/');
-            
+
             // Standard Mapbox API requires /v1/ for styles, fonts (glyphs), and sprites
             if (url.includes('mapbox://styles/')) {
                 finalUrl = finalUrl.replace('/styles/', '/styles/v1/');
@@ -131,7 +131,7 @@ const MapComponent = () => {
             } else if (url.includes('mapbox://sprites/')) {
                 finalUrl = finalUrl.replace('/sprites/', '/sprites/v1/');
             }
-            
+
             // Append token carefully
             const separator = finalUrl.includes('?') ? '&' : '?';
             return {
@@ -296,8 +296,8 @@ const MapComponent = () => {
 
         // Preference 2: Geomolg Layer (Handled by Overlay in return, so we use a base here or nothing)
         if (activeMapType === 'geomolg') {
-             // We can return a very simple base or satellite while Geomolg overlay loads
-             // Same as satellite for now
+            // We can return a very simple base or satellite while Geomolg overlay loads
+            // Same as satellite for now
         }
 
         // Default & Fallback: Google Tiles (Satellite for general view, Roadmap for routing if no token)
@@ -910,8 +910,8 @@ const MapComponent = () => {
                         {unreadCount > 0 && <span className="notification-badge" style={{ top: '-4px', right: '-4px' }}>{unreadCount}</span>}
                     </button>
 
-                    <button 
-                        className={`top-nav-icon ${activeMapType === 'geomolg' ? 'active' : ''}`} 
+                    <button
+                        className={`top-nav-icon ${activeMapType === 'geomolg' ? 'active' : ''}`}
                         onClick={() => setActiveMapType(prev => prev === 'satellite' ? 'geomolg' : 'satellite')}
                         title="تبديل القمر الصناعي / الخريطة الرسمية"
                     >
@@ -1065,10 +1065,10 @@ const MapComponent = () => {
                             <Layer
                                 id="route-layer-main"
                                 type="line"
-                                beforeId={firstLabelLayerId} 
+                                beforeId={firstLabelLayerId}
                                 layout={{ "line-join": "round", "line-cap": "round" }}
                                 paint={{
-                                    "line-color": "#fbab15", 
+                                    "line-color": "#fbab15",
                                     "line-width": [
                                         'interpolate', ['exponential', 1.5], ['zoom'],
                                         12, 4,
@@ -1081,7 +1081,7 @@ const MapComponent = () => {
                             <Layer
                                 id="route-layer-casing"
                                 type="line"
-                                beforeId="route-layer-main" 
+                                beforeId="route-layer-main"
                                 layout={{ "line-join": "round", "line-cap": "round" }}
                                 paint={{
                                     "line-color": "#92400e", // Darker amber for contrast
@@ -1176,10 +1176,13 @@ const MapComponent = () => {
                     {!currentCommunity && [...followedShopsMap, ...managedShopsMap.filter(m => !followedShopsMap.some(f => f.id === m.id))].filter(shop => {
                         if (shop.latitude == null || shop.longitude == null || isNaN(parseFloat(shop.latitude))) return false;
 
-                        // Educational Institutions, Shopping Centers, & Banks: visible from mid zoom (13) to reveal town area
-                        const isLandmark = ['University', 'مؤسسة تعليمية', 'مركز تسوق', 'مجمع تجاري', 'Mall', 'بنك'].includes(shop.category);
-                        if (isLandmark) {
+                        // Educational Institutions (Universities, Colleges): visible from mid zoom (13) to reveal town area, hides when zoomed in close (e.g >= 16.5) to reveal buildings
+                        if (shop.category === 'University' || shop.category === 'مؤسسة تعليمية') {
                             return viewState.zoom >= 13 && viewState.zoom < 16.5;
+                        }
+                        // Banks and Malls visible from zoomed out view (zoom 13+)
+                        if (['بنك', 'مركز تسوق', 'مجمع تجاري', 'Mall'].includes(shop.category)) {
+                            return viewState.zoom >= 13;
                         }
                         // ATMs and bank branches visible slightly earlier or with normal shops
                         if (['صراف آلي', 'فرع بنك'].includes(shop.category)) {
@@ -1203,42 +1206,43 @@ const MapComponent = () => {
                                 width: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall' || shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '60px' : '50px',
                                 height: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall' || shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '60px' : '50px',
                                 borderRadius: '50%',
-                                backgroundColor: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '#e11d48' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '#fbab15' : 'white'),
+                                backgroundColor: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '#ffffff' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '#fbab15' : 'white'),
                                 backgroundImage: `url(${getImageUrl(shop.profile_picture) || getImageUrl(shop.image_url) || '/default-shop.png'})`,
                                 backgroundSize: 'cover',
                                 backgroundPosition: 'center',
-                                border: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '4px solid #e11d48' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '4px solid #fbab15' : '3px solid white'),
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                                border: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '4px solid #f1f5f9' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '4px solid #fbab15' : '3px solid white'),
+                                boxShadow: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '0 4px 15px rgba(0,0,0,0.15)' : '0 4px 12px rgba(0,0,0,0.5)',
                                 position: 'relative',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center'
                             }}>
-                                {/* Bank Marker Theme Badge Overlay - Red Theme */}
+                                {/* Bank Marker Theme Badge Overlay - White Theme */}
                                 {(shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') && (
                                     <div style={{
                                         position: 'absolute', top: '-10px', right: '-10px', width: '28px', height: '28px',
                                         backgroundColor: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        border: '3px solid #e11d48', zIndex: 2, boxShadow: '0 2px 5px rgba(0,0,0,0.2)', fontSize: '14px'
+                                        border: '2px solid #e2e8f0', zIndex: 2, boxShadow: '0 2px 5px rgba(0,0,0,0.1)', fontSize: '14px', color: '#1e293b'
                                     }}>
                                         {shop.category === 'صراف آلي' ? '🏧' : '🏦'}
                                     </div>
                                 )}
+                                {/* Mall Marker */}
                                 {/* Simple Name Badge */}
                                 <div style={{
                                     position: 'absolute',
                                     bottom: '-20px',
                                     left: '50%',
                                     transform: 'translateX(-50%)',
-                                    backgroundColor: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '#e11d48' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '#fbab15' : 'white'),
+                                    backgroundColor: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '#ffffff' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '#fbab15' : 'white'),
                                     padding: '2px 10px',
                                     borderRadius: '12px',
                                     fontSize: '11px',
                                     fontWeight: 'bold',
-                                    color: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي' || shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? 'white' : 'black',
-                                    border: '1px solid white',
+                                    color: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '#1e293b' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? 'white' : 'black'),
+                                    border: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '1px solid #e2e8f0' : '1px solid white',
                                     whiteSpace: 'nowrap',
-                                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
                                     zIndex: 1
                                 }}>
                                     {shop.name}

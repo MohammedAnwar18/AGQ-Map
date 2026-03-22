@@ -539,9 +539,10 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                             }}
                                             style={{ 
                                                 gridColumn: '1 / -1',
-                                                background: 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)', 
+                                                background: 'white', 
+                                                border: '1px solid var(--border-color)',
                                                 padding: '20px', borderRadius: '16px', cursor: 'pointer', transition: '0.2s', 
-                                                boxShadow: '0 4px 10px rgba(225,29,72,0.3)', color: 'white',
+                                                boxShadow: '0 4px 10px rgba(0,0,0,0.05)', color: 'var(--text-primary)',
                                                 display: 'flex', alignItems: 'center', gap: '20px', textAlign: 'right'
                                             }}
                                             onMouseOver={e => e.currentTarget.style.transform = 'translateY(-3px)'}
@@ -549,8 +550,8 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                         >
                                             <div style={{ fontSize: '3.5rem' }}>🏦</div>
                                             <div>
-                                                <h4 style={{ margin: 0, fontSize: '1.2rem', color: 'white' }}>بنك / إدارة صرافات</h4>
-                                                <p style={{ margin: '5px 0 0 0', fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)' }}>إنشاء علامة تجارية لبنك وفروعه وصرافاته المنتشرة...</p>
+                                                <h4 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>بنك / إدارة صرافات</h4>
+                                                <p style={{ margin: '5px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>إنشاء علامة تجارية لبنك وفروعه وصرافاته المنتشرة...</p>
                                             </div>
                                         </div>
                                     </div>

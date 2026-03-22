@@ -1016,18 +1016,18 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                         <div style={{ animation: 'fadeIn 0.5s' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25, flexWrap: 'wrap', gap: 15 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
-                                    <div style={{ background: 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)', color: 'white', width: 50, height: 50, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>
+                                    <div style={{ background: 'white', color: 'var(--text-primary)', border: '1px solid var(--border-color)', width: 50, height: 50, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
                                         🏦
                                     </div>
                                     <div>
-                                        <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#e11d48' }}>شبكة {shopData.name}</h2>
+                                        <h2 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-primary)' }}>شبكة {shopData.name}</h2>
                                         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>استكشف الفروع والصرافات الآلية التابعة للبنك</p>
                                     </div>
                                 </div>
                                 {canEditShop && (
                                     <button 
                                         onClick={() => setShowAddInternalShop(!showAddInternalShop)}
-                                        style={{ background: '#e11d48', color: 'white', border: 'none', padding: '10px 20px', borderRadius: 10, fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+                                        style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '10px 20px', borderRadius: 10, fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
                                     >
                                         {showAddInternalShop ? 'إلغاء' : '+ إضافة فرع/صراف'}
                                     </button>
@@ -1035,8 +1035,8 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                             </div>
 
                             {showAddInternalShop && (
-                                <div style={{ background: 'var(--bg-primary)', padding: 20, borderRadius: 16, marginBottom: 25, border: '2px solid #e11d48', boxShadow: '0 8px 30px rgba(0,0,0,0.1)' }}>
-                                    <h3 style={{ marginTop: 0, marginBottom: 20, color: '#e11d48' }}>تسجيل فرع أو صراف آلي جديد</h3>
+                                <div style={{ background: 'var(--bg-primary)', padding: 20, borderRadius: 16, marginBottom: 25, border: '1px solid var(--border-color)', boxShadow: '0 8px 30px rgba(0,0,0,0.1)' }}>
+                                    <h3 style={{ marginTop: 0, marginBottom: 20, color: 'var(--text-primary)' }}>تسجيل فرع أو صراف آلي جديد</h3>
                                     <form onSubmit={async (e) => {
                                         e.preventDefault();
                                         try {
@@ -1112,14 +1112,14 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '5px' }}>اتركه فارغاً لاعتماد موقع البنك الحالي</p>
                                         </div>
                                         <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
-                                            <button type="submit" className="btn-small is-primary" style={{ padding: '12px 30px', fontSize: '1rem', background: '#e11d48', border: 'none' }}>تأكيد الإضافة</button>
+                                            <button type="submit" className="btn-small is-primary" style={{ padding: '12px 30px', fontSize: '1rem', background: 'var(--primary)', border: 'none', color: 'white' }}>تأكيد الإضافة</button>
                                         </div>
                                     </form>
                                 </div>
                             )}
 
                             {internalShops.length === 0 ? (
-                                <div style={{ textAlign: 'center', padding: '60px', background: 'var(--bg-primary)', borderRadius: 16, color: '#e11d48' }}>
+                                <div style={{ textAlign: 'center', padding: '60px', background: 'var(--bg-primary)', borderRadius: 16, color: 'var(--text-primary)' }}>
                                     <h3>لا توجد فروع أو صرافات مسجلة حالياً</h3>
                                     <p style={{ color: 'var(--text-muted)' }}>يمكنك البدء بإنشاء شبكة فروع البنك لعرضها على الخريطة</p>
                                 </div>
@@ -1131,7 +1131,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                         if (items.length === 0) return null;
                                         return (
                                             <div key={category}>
-                                                <h3 style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '2px solid #e11d48', marginBottom: 15, fontSize: '1.2rem', color: '#e11d48' }}>
+                                                <h3 style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '2px solid var(--border-color)', marginBottom: 15, fontSize: '1.2rem', color: 'var(--text-primary)' }}>
                                                     {category === 'صراف آلي' ? '🏧 ' : '🏦 '} {category === 'صراف آلي' ? 'الصرافات الآلية' : 'الفروع'}
                                                 </h3>
                                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 15 }}>
@@ -1159,7 +1159,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                                             }}
                                                             onMouseOver={e => {
                                                                 e.currentTarget.style.transform = 'translateY(-3px)';
-                                                                e.currentTarget.style.borderColor = '#e11d48';
+                                                                e.currentTarget.style.borderColor = 'var(--primary)';
                                                             }}
                                                             onMouseOut={e => {
                                                                 e.currentTarget.style.transform = 'translateY(0)';
@@ -1167,7 +1167,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                                             }}
                                                         >
                                                             <div style={{ position: 'relative' }}>
-                                                                <div style={{ width: 60, height: 60, borderRadius: 10, background: 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '1.5rem', boxShadow: '0 2px 4px rgba(225,29,72,0.3)' }}>
+                                                                <div style={{ width: 60, height: 60, borderRadius: 10, background: 'white', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)', fontSize: '1.5rem', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
                                                                     {category === 'صراف آلي' ? '🏧' : '🏦'}
                                                                 </div>
                                                             </div>
@@ -1175,7 +1175,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                                                 <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: 2 }}>{s.name}</div>
                                                                 <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{s.category}</div>
                                                             </div>
-                                                            <div style={{ display: 'flex', alignItems: 'center', color: '#e11d48' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}>
                                                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
                                                             </div>
                                                         </div>
