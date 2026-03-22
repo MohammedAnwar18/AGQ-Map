@@ -619,22 +619,8 @@ const MapComponent = () => {
         }
     }, [userLocation]);
 
-    // Live Follow Mode (Tracking) - Enhanced for smooth animation
-    useEffect(() => {
-        if (isTracking && userLocation && mapRef.current) {
-            mapRef.current.easeTo({
-                center: [userLocation.longitude, userLocation.latitude],
-                zoom: 18.5,
-                pitch: 65,
-                // If heading is available (moving), rotate map to face direction of travel
-                bearing: userLocation.heading !== null && userLocation.heading !== undefined && userLocation.speed > 0.5 
-                    ? userLocation.heading 
-                    : mapRef.current.getBearing(),
-                duration: 1500, // Slightly longer duration for smoother transitions
-                easing: t => t * (2 - t)
-            });
-        }
-    }, [userLocation, isTracking]);
+    // Live Follow Mode (Removed continuous follow per user request)
+    // Map will now move only when user explicitly clicks the center button
 
     // Friends Location
     useEffect(() => {
@@ -1221,7 +1207,7 @@ const MapComponent = () => {
                     className={`nav-item ${!showSearch && !showAIChat && !showProfile && !showCommunities && !showChat ? 'active' : ''}`} 
                     onClick={() => {
                         handleCenterOnUser();
-                        setIsTracking(true); // Automatically enable live follow when clicking home
+                        setIsTracking(false); // Make sure tracking is OFF so it doesn't stick
                     }}
                 >
                     <div style={{ position: 'relative' }}>
@@ -1229,7 +1215,8 @@ const MapComponent = () => {
                             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                             <polyline points="9 22 9 12 15 12 15 22" />
                         </svg>
-                        {isTracking && <div className="live-dot-pulse"></div>}
+                        {/* Live Update Dot - Always show as long as user is active */}
+                        <div className="live-dot-pulse"></div>
                     </div>
                 </button>
 
