@@ -598,8 +598,12 @@ const MapComponent = () => {
                 }
 
                 // Fetch unread notifications count
-                const countData = await notificationService.getUnreadCount();
-                setUnreadCount(countData.count || 0);
+                const [notifData, msgData] = await Promise.all([
+                    notificationService.getUnreadCount(),
+                    notificationService.getUnreadMessagesCount()
+                ]);
+                setUnreadCount(notifData.count || 0);
+                setUnreadChatCount(msgData.count || 0);
 
             } catch (error) {
                 console.error("Error fetching data:", error);
@@ -610,8 +614,12 @@ const MapComponent = () => {
         // Poll for notifications every 30s
         const interval = setInterval(async () => {
             try {
-                const countData = await notificationService.getUnreadCount();
-                setUnreadCount(countData.count || 0);
+                const [notifData, msgData] = await Promise.all([
+                    notificationService.getUnreadCount(),
+                    notificationService.getUnreadMessagesCount()
+                ]);
+                setUnreadCount(notifData.count || 0);
+                setUnreadChatCount(msgData.count || 0);
             } catch (e) {
                 console.error("Error polling notifications", e);
             }

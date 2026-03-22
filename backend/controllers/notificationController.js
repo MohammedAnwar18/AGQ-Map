@@ -73,7 +73,7 @@ const getUnreadCount = async (req, res) => {
         const userId = req.user.id || req.user.userId;
 
         const result = await pool.query(
-            'SELECT COUNT(*) as count FROM notifications WHERE user_id = $1 AND is_read = false',
+            "SELECT COUNT(*) as count FROM notifications WHERE user_id = $1 AND is_read = false AND type != 'message'",
             [userId]
         );
 
@@ -81,6 +81,23 @@ const getUnreadCount = async (req, res) => {
     } catch (error) {
         console.error('Error getting unread count:', error);
         res.status(500).json({ error: 'Failed to get unread count' });
+    }
+};
+
+// Get unread messages count separately
+const getUnreadMessagesCount = async (req, res) => {
+    try {
+        const userId = req.user.id || req.user.userId;
+
+        const result = await pool.query(
+            "SELECT COUNT(*) as count FROM notifications WHERE user_id = $1 AND is_read = false AND type = 'message'",
+            [userId]
+        );
+
+        res.json({ count: parseInt(result.rows[0].count) });
+    } catch (error) {
+        console.error('Error getting unread messages count:', error);
+        res.status(500).json({ error: 'Failed to get unread messages count' });
     }
 };
 
@@ -102,5 +119,6 @@ module.exports = {
     markAsRead,
     markAllAsRead,
     getUnreadCount,
+    getUnreadMessagesCount,
     createNotification
 };

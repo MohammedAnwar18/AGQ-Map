@@ -237,6 +237,10 @@ export const notificationService = {
         const response = await api.get('/notifications/unread-count');
         return response.data;
     },
+    getUnreadMessagesCount: async () => {
+        const response = await api.get('/notifications/unread-messages-count');
+        return response.data;
+    },
     markAsRead: async (id) => {
         const response = await api.put(`/notifications/${id}/read`);
         return response.data;

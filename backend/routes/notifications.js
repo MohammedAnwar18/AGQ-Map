@@ -5,7 +5,8 @@ const {
     getNotifications,
     markAsRead,
     markAllAsRead,
-    getUnreadCount
+    getUnreadCount,
+    getUnreadMessagesCount
 } = require('../controllers/notificationController');
 
 // Get all notifications for user
@@ -13,6 +14,9 @@ router.get('/', authenticateToken, getNotifications);
 
 // Get unread count
 router.get('/unread-count', authenticateToken, getUnreadCount);
+
+// Get unread messages count
+router.get('/unread-messages-count', authenticateToken, getUnreadMessagesCount);
 
 // Mark specific notification as read
 router.put('/:id/read', authenticateToken, markAsRead);

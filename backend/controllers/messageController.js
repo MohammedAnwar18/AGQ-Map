@@ -24,6 +24,13 @@ const getMessages = async (req, res) => {
             [userId, friendId]
         );
 
+        // تحديث الإشعارات كـ "مقروءة" أيضاً
+        await pool.query(
+            `UPDATE notifications SET is_read = true 
+             WHERE user_id = $1 AND sender_id = $2 AND type = 'message'`,
+            [userId, friendId]
+        );
+
         res.json({ messages: result.rows });
     } catch (error) {
         console.error('Error fetching messages:', error);
