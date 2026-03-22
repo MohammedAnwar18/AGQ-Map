@@ -182,6 +182,7 @@ const MapComponent = () => {
     const [hasUnreadCommunity, setHasUnreadCommunity] = useState(false);
     const [showGPSGuide, setShowGPSGuide] = useState(false);
     const [gpsErrorType, setGpsErrorType] = useState(null); // 'denied' or 'generic'
+    const [lineDashOffset, setLineDashOffset] = useState(0);
 
     // Community Mode State
     const [currentCommunity, setCurrentCommunity] = useState(null);
@@ -282,7 +283,7 @@ const MapComponent = () => {
 
             console.log(`Routing from ${start} to ${end} via ${profile}`);
 
-            const url = `https://router.project-osrm.org/route/v1/${profile}/${start};${end}?overview=full&geometries=geojson&steps=true&alternatives=true&continue_straight=true&annotations=true`;
+            const url = `https://router.project-osrm.org/route/v1/${profile}/${start};${end}?overview=full&geometries=geojson&steps=true&annotations=true`;
 
             const response = await axios.get(url);
 
@@ -368,6 +369,19 @@ const MapComponent = () => {
             lastRecalcLocation.current = userLocation;
         }
     }, [userLocation, routePath, destination]);
+
+    // Animation Loop for Route Line
+    useEffect(() => {
+        let requestRef;
+        const animate = () => {
+            if (routePath) {
+                setLineDashOffset(prev => (prev + 0.5) % 20); // Smooth movement
+            }
+            requestRef = requestAnimationFrame(animate);
+        };
+        requestRef = requestAnimationFrame(animate);
+        return () => cancelAnimationFrame(requestRef);
+    }, [routePath]);
 
     // Center on User
     const handleCenterOnUser = () => {
@@ -917,29 +931,54 @@ const MapComponent = () => {
                     maxPitch={85}
                     attributionControl={false}
                 >
-                    {/* Visual Route with High Precision Layering */}
+                    {/* Visual Route with Advanced Premium Layering */}
                     {routePath && (
                         <Source id="route" type="geojson" data={routePath} tolerance={0}>
-                            {/* Outer Glow/Border for better visibility on satellite */}
+                            {/* Layer 0: Depth Shadow - Broad & Soft */}
                             <Layer
-                                id="route-layer-glow"
+                                id="route-layer-shadow"
                                 type="line"
                                 layout={{ "line-join": "round", "line-cap": "round" }}
                                 paint={{
-                                    "line-color": "#ffffff",
-                                    "line-width": 8,
-                                    "line-opacity": 0.3
+                                    "line-color": "#000000",
+                                    "line-width": 12,
+                                    "line-opacity": 0.2,
+                                    "line-blur": 3
                                 }}
                             />
-                            {/* Main Precise Path */}
+                            {/* Layer 1: Casing (Border) - Defines the edges */}
                             <Layer
-                                id="route-layer"
+                                id="route-layer-casing"
+                                type="line"
+                                layout={{ "line-join": "round", "line-cap": "round" }}
+                                paint={{
+                                    "line-color": "rgba(255, 255, 255, 0.5)",
+                                    "line-width": 8,
+                                    "line-opacity": 0.8
+                                }}
+                            />
+                            {/* Layer 2: Main Path - The core identity */}
+                            <Layer
+                                id="route-layer-main"
                                 type="line"
                                 layout={{ "line-join": "round", "line-cap": "round" }}
                                 paint={{
                                     "line-color": "#fbab15",
                                     "line-width": 5,
                                     "line-opacity": 1
+                                }}
+                            />
+                            {/* Layer 3: Animated Pulse - Shows direction of travel */}
+                            <Layer
+                                id="route-layer-pulse"
+                                type="line"
+                                layout={{ "line-join": "round", "line-cap": "round" }}
+                                paint={{
+                                    "line-color": "#ffffff",
+                                    "line-width": 2.5,
+                                    "line-dasharray": [1, 3], // Tiny moving dots
+                                    "line-dashoffset": lineDashOffset,
+                                    "line-opacity": 0.7
                                 }}
                             />
                         </Source>
