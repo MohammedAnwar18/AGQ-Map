@@ -112,8 +112,20 @@ const MapComponent = () => {
     }, []);
 
     const MAPBOX_STREETS_STYLE = useMemo(() => {
-        return `https://api.mapbox.com/styles/v1/mapbox/streets-v12?access_token=${MAPBOX_TOKEN}`;
-    }, [MAPBOX_TOKEN]);
+        // Use official Mapbox Navigation style for the "Neat" professional look
+        return `mapbox://styles/mapbox/navigation-day-v1`;
+    }, []);
+
+    // Transform Request to handle mapbox:// URLs in MapLibre
+    const transformRequest = (url, resourceType) => {
+        if (url.startsWith('mapbox://') && MAPBOX_TOKEN) {
+            return {
+                url: url.replace('mapbox://', 'https://api.mapbox.com/').concat(`?access_token=${MAPBOX_TOKEN}`),
+                headers: {}
+            };
+        }
+        return { url };
+    };
 
 
 
@@ -312,7 +324,8 @@ const MapComponent = () => {
             // --- TRY MAPBOX FIRST ---
             if (MAPBOX_TOKEN) {
                 try {
-                    const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${start};${end}?geometries=geojson&overview=full&steps=true&access_token=${MAPBOX_TOKEN}`;
+                    // Increased radius to 30m for better "Snap to Road" recognition
+                    const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${start};${end}?geometries=geojson&overview=full&steps=true&radiuses=30;30&access_token=${MAPBOX_TOKEN}`;
                     const response = await axios.get(url);
                     if (response.data.routes && response.data.routes.length > 0) {
                         routeData = response.data.routes[0];
@@ -957,6 +970,7 @@ const MapComponent = () => {
                     {...viewState}
                     onMove={evt => setViewState(evt.viewState)}
                     mapStyle={mapStyle}
+                    transformRequest={transformRequest}
                     style={{ width: '100%', height: '100%' }}
                     maxPitch={85}
                     attributionControl={false}
