@@ -73,7 +73,7 @@ const MallIcon = () => (
     </svg>
 );
 
-const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
+const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, onLocateShop }) => {
     const [shopData, setShopData] = useState(shop);
     const [posts, setPosts] = useState([]);
     const [products, setProducts] = useState([]);
@@ -1139,6 +1139,10 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                                         <div 
                                                             key={s.id} 
                                                             onClick={async () => {
+                                                                if (onLocateShop && (s.category === 'صراف آلي' || s.category === 'فرع بنك')) {
+                                                                    onLocateShop(s);
+                                                                    return;
+                                                                }
                                                                 try {
                                                                     const data = await shopService.getProfile(s.id);
                                                                     setShopData(data.shop);

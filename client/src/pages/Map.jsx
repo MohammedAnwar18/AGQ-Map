@@ -1199,7 +1199,16 @@ const MapComponent = () => {
                             style={{ cursor: 'pointer', zIndex: 50 }}
                             onClick={e => {
                                 e.originalEvent.stopPropagation();
-                                handleOpenShopProfile(shop);
+                                if (shop.category === 'صراف آلي' || shop.category === 'فرع بنك') {
+                                    mapRef.current?.flyTo({
+                                        center: [parseFloat(shop.longitude), parseFloat(shop.latitude)],
+                                        zoom: 18.5,
+                                        pitch: 45,
+                                        duration: 1500
+                                    });
+                                } else {
+                                    handleOpenShopProfile(shop);
+                                }
                             }}
                         >
                             <div style={{
@@ -1481,6 +1490,17 @@ const MapComponent = () => {
                     currentUser={user}
                     onClose={() => setShowShopProfile(false)}
                     onFollowChange={handleShopFollowed}
+                    onLocateShop={(s) => {
+                        setShowShopProfile(false);
+                        if (s.latitude && s.longitude && mapRef.current) {
+                            mapRef.current.flyTo({
+                                center: [parseFloat(s.longitude), parseFloat(s.latitude)],
+                                zoom: 18.5,
+                                pitch: 45,
+                                duration: 1500
+                            });
+                        }
+                    }}
                 />
             )}
             {showUniversityProfile && selectedUniversityProfile && (
