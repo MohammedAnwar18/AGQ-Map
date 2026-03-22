@@ -511,7 +511,7 @@ const Login = () => {
 
             <div style={{
                 textAlign: 'center',
-                color: 'rgba(255, 255, 255, 0.5)',
+                color: 'rgba(255, 255, 255, 0.35)',
                 fontSize: '0.9rem',
                 fontFamily: 'Tajawal, sans-serif',
                 zIndex: 10,
@@ -527,7 +527,7 @@ const Login = () => {
                     <span style={{ opacity: 0.2 }}>|</span>
                     <Link to="/privacy" style={{ color: 'rgba(255, 255, 255, 0.7)', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem' }}>سياسة الخصوصية</Link>
                 </div>
-                <p style={{ margin: 0, padding: 0, opacity: 0.8 }}>
+                <p style={{ margin: 0, padding: 0, opacity: 0.7 }}>
                     &copy; {new Date().getFullYear()} PalNovaa. جميع الحقوق محفوظة.
                 </p>
             </div>

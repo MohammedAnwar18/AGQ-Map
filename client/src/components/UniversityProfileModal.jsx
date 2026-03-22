@@ -46,6 +46,8 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
     const [ownerUsername, setOwnerUsername] = useState('');
     const [isEditingHours, setIsEditingHours] = useState(false);
     const [hoursInput, setHoursInput] = useState(university.opening_hours || '');
+    const [isEditingAbout, setIsEditingAbout] = useState(false);
+    const [aboutInput, setAboutInput] = useState(university.bio || '');
 
     // Local University State (for bio, cover, etc. not in initial search)
     const [uniData, setUniData] = useState(university);
@@ -170,6 +172,17 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
             alert('تم تحديث ساعات العمل بنجاح!');
         } catch (error) {
             alert('فشل تحديث ساعات العمل');
+        }
+    };
+
+    const handleUpdateAbout = async () => {
+        try {
+            await shopService.updateProfile(university.id, { bio: aboutInput });
+            setUniData(prev => ({ ...prev, bio: aboutInput }));
+            setIsEditingAbout(false);
+            alert('تم تحديث معلومات "عن الجامعة" بنجاح!');
+        } catch (error) {
+            alert('فشل تحديث المعلومات');
         }
     };
 
@@ -344,9 +357,30 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                 <div className="uni-content-area">
                     {activeTab === 'overview' && (
                         <div className="uni-overview-tab">
-                            <div className="uni-about-card">
-                                <h3>عن الجامعة</h3>
-                                <p>مرحباً بك في الحرم الجامعي الذكي. من خلال هذه الصفحة يمكنك استكشاف جميع مرافق الجامعة، كلياتها، وخدماتها بشكل تفاعلي على الخريطة.</p>
+                             <div className="uni-about-card">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                    <h3>عن الجامعة</h3>
+                                    {isAdminOrOwner && !isEditingAbout && (
+                                        <button onClick={() => { setIsEditingAbout(true); setAboutInput(uniData.bio || ''); }} className="edit-hours-btn">تعديل</button>
+                                    )}
+                                </div>
+                                {isEditingAbout ? (
+                                    <div className="hours-edit-panel">
+                                        <textarea 
+                                            value={aboutInput} 
+                                            onChange={e => setAboutInput(e.target.value)} 
+                                            placeholder="اكتب نبذة عن الجامعة وطبيعة عملها..."
+                                            className="textarea"
+                                            rows={4}
+                                        />
+                                        <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                            <button className="btn-small is-accept" onClick={handleUpdateAbout}>حفظ</button>
+                                            <button className="btn-small" onClick={() => setIsEditingAbout(false)}>إلغاء</button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="bio-display">{uniData.bio || 'مرحباً بك في الحرم الجامعي الذكي. لا يوجد وصف متاح حالياً.'}</p>
+                                )}
                             </div>
                             <div className="uni-quick-stats">
                                 <div className="stat-box">
@@ -384,10 +418,6 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                                 )}
                             </div>
 
-                            <div className="uni-about-card" style={{ marginTop: '15px' }}>
-                                <h3>الوصف</h3>
-                                <p>{uniData.bio || 'لا يوجد وصف متاح حالياً.'}</p>
-                            </div>
                             
                             {isAdminOrOwner && (
                                 <div className="uni-admin-actions" style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
