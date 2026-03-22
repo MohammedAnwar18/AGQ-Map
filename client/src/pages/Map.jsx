@@ -325,7 +325,7 @@ const MapComponent = () => {
             console.log(`Routing from ${start} to ${end} via Mapbox ${profile}`);
 
             let routeData = null;
-            
+
             // --- TRY MAPBOX FIRST ---
             if (MAPBOX_TOKEN) {
                 try {
@@ -660,9 +660,9 @@ const MapComponent = () => {
     useEffect(() => {
         const interval = setInterval(async () => {
             if (locationRef.current) {
-                try { 
+                try {
                     // Update backend every 3 seconds for true 'live' experience
-                    await authService.updateLocation(locationRef.current.latitude, locationRef.current.longitude); 
+                    await authService.updateLocation(locationRef.current.latitude, locationRef.current.longitude);
                 }
                 catch (e) { console.error("Live sync failed:", e); }
             }
@@ -807,9 +807,9 @@ const MapComponent = () => {
             {/* Top Bar - Clean & Minimalist */}
             <div className="top-bar">
                 <div className="top-bar-left" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <button 
-                        className={`top-nav-icon profile-top-icon ${showProfile ? 'active' : ''}`} 
-                        onClick={() => { setShowProfile(true); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); setShowChat(false); }} 
+                    <button
+                        className={`top-nav-icon profile-top-icon ${showProfile ? 'active' : ''}`}
+                        onClick={() => { setShowProfile(true); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); setShowChat(false); }}
                         style={{ padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex' }}
                     >
                         <img
@@ -870,18 +870,18 @@ const MapComponent = () => {
             {/* More Menu Dropdown & Backdrop */}
             {showMoreMenu && (
                 <>
-                    <div 
-                        className="menu-backdrop" 
-                        onClick={() => setShowMoreMenu(false)} 
-                        style={{ 
-                            position: 'fixed', 
-                            top: 0, 
-                            left: 0, 
-                            right: 0, 
-                            bottom: 0, 
+                    <div
+                        className="menu-backdrop"
+                        onClick={() => setShowMoreMenu(false)}
+                        style={{
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
                             zIndex: 2500,
                             background: 'transparent' // Capture clicks everywhere
-                        }} 
+                        }}
                     />
                     <div className="more-menu-dropdown slide-down">
                         <div className="menu-header">
@@ -1111,11 +1111,11 @@ const MapComponent = () => {
                     {/* Managed and Followed Shops/Universities Markers - Visibility based on Zoom */}
                     {!currentCommunity && [...followedShopsMap, ...managedShopsMap.filter(m => !followedShopsMap.some(f => f.id === m.id))].filter(shop => {
                         if (shop.latitude == null || shop.longitude == null || isNaN(parseFloat(shop.latitude))) return false;
-                        
+
                         // Educational Institutions (Universities, Colleges): visible from mid zoom (13) to reveal town area, hides when zoomed in close (e.g >= 16.5) to reveal buildings
                         if (shop.category === 'University' || shop.category === 'مؤسسة تعليمية') {
                             return viewState.zoom >= 13 && viewState.zoom < 16.5;
-                        } 
+                        }
                         // Normal Shop: visible only when zoomed in close (e.g >= 17)
                         return viewState.zoom >= 17;
                     }).flatMap(shop => [
@@ -1278,8 +1278,8 @@ const MapComponent = () => {
 
             {/* Bottom Navigation Panel - Instagram Style */}
             <nav className="bottom-nav">
-                <button 
-                    className={`nav-item ${!showSearch && !showAIChat && !showProfile && !showCommunities && !showChat ? 'active' : ''}`} 
+                <button
+                    className={`nav-item ${!showSearch && !showAIChat && !showProfile && !showCommunities && !showChat ? 'active' : ''}`}
                     onClick={() => {
                         handleCenterOnUser();
                         setIsTracking(false); // Make sure tracking is OFF so it doesn't stick
@@ -1492,11 +1492,11 @@ const MapComponent = () => {
                     }}
                 />
             )}
-            
+
             {/* Native Geomolg View with ArcGIS API */}
             {activeMapType === 'geomolg' && (
-                <GeomolgViewer 
-                    onClose={() => setActiveMapType('satellite')} 
+                <GeomolgViewer
+                    onClose={() => setActiveMapType('satellite')}
                     userLocation={userLocation}
                     posts={posts}
                     friends={friendsMap}
@@ -1511,22 +1511,22 @@ const MapComponent = () => {
             )}
 
             {showFacilityProfile && (
-                <FacilityProfileModal 
-                    facilityId={selectedFacilityId} 
-                    currentUser={user} 
-                    onClose={() => setShowFacilityProfile(false)} 
+                <FacilityProfileModal
+                    facilityId={selectedFacilityId}
+                    currentUser={user}
+                    onClose={() => setShowFacilityProfile(false)}
                 />
             )}
 
             {/* GPS Helper - Mobile & Desktop Support */}
             {showGPSGuide && (
                 <div style={{
-                    position: 'fixed', inset: 0, 
+                    position: 'fixed', inset: 0,
                     background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)',
                     zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
                 }}>
                     <div style={{
-                        background: '#0f172a', border: '1px solid #1e293b', 
+                        background: '#0f172a', border: '1px solid #1e293b',
                         borderRadius: '24px', width: '100%', maxWidth: '400px',
                         padding: '30px', color: 'white', textAlign: 'center',
                         boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
@@ -1534,13 +1534,13 @@ const MapComponent = () => {
                     }}>
                         <div style={{ fontSize: '4rem', marginBottom: '20px' }}>📍</div>
                         <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '15px' }}>تفعيل تحديد الموقع</h2>
-                        
+
                         {gpsErrorType === 'denied' ? (
                             <>
                                 <p style={{ fontSize: '0.95rem', color: '#94a3b8', lineHeight: '1.6', marginBottom: '20px' }}>
                                     يبدو أنك رفضت إذن الوصول للموقع. الموقع ضروري لعرض المحلات من حولك والتنقل على الخريطة.
                                 </p>
-                                
+
                                 <div style={{ textAlign: 'right', background: '#1e293b', padding: '15px', borderRadius: '16px', marginBottom: '20px' }}>
                                     <p style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '0.9rem' }}>💡 كيفية التفعيل:</p>
                                     <ul style={{ padding: '0 15px', margin: 0, fontSize: '0.85rem', color: '#cbd5e1', listStyleType: 'disc' }}>
@@ -1555,9 +1555,9 @@ const MapComponent = () => {
                                 يرجى السماح بالوصول للموقع ليتمكن التطبيق من عرض الأماكن من حولك وتقديم خدمة دقيقة.
                             </p>
                         )}
-                        
+
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            <button 
+                            <button
                                 onClick={() => window.location.reload()}
                                 style={{
                                     background: '#fbab15', color: 'black', fontWeight: 'bold',
@@ -1566,10 +1566,10 @@ const MapComponent = () => {
                             >
                                 تحديث الصفحة الآن
                             </button>
-                            <button 
+                            <button
                                 onClick={() => setShowGPSGuide(false)}
                                 style={{
-                                    background: 'transparent', color: '#94a3b8', border: 'none', 
+                                    background: 'transparent', color: '#94a3b8', border: 'none',
                                     padding: '10px', cursor: 'pointer', fontSize: '0.9rem'
                                 }}
                             >
