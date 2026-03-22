@@ -379,12 +379,12 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                     fontWeight: '700',
                                     borderTop: '1px solid var(--bg-tertiary)'
                                 }}>المحلات التي أتابعها</h4>
-                                {followedShops.length === 0 ? (
+                                {followedShops.filter(s => s.is_followed).length === 0 ? (
                                     <div className="empty-state" style={{ padding: '20px' }}>
                                         <p style={{ color: 'var(--text-secondary)' }}>لا تتابع أي محل حالياً</p>
                                     </div>
                                 ) : (
-                                    followedShops.map(shop => (
+                                    followedShops.filter(s => s.is_followed).map(shop => (
                                         <div
                                             key={shop.id}
                                             className="user-item"
@@ -530,6 +530,29 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                 <p style={{ margin: '5px 0 0 0', fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)' }}>مول، مجمع تجاري، مركز تسوق ضخم...</p>
                                             </div>
                                         </div>
+
+                                        <div 
+                                            onClick={() => { 
+                                                setShowCreateOptions(false); 
+                                                setIsCreatingShop(true); 
+                                                setNewShopData(prev => ({ ...prev, category: 'بنك' }));
+                                            }}
+                                            style={{ 
+                                                gridColumn: '1 / -1',
+                                                background: 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)', 
+                                                padding: '20px', borderRadius: '16px', cursor: 'pointer', transition: '0.2s', 
+                                                boxShadow: '0 4px 10px rgba(225,29,72,0.3)', color: 'white',
+                                                display: 'flex', alignItems: 'center', gap: '20px', textAlign: 'right'
+                                            }}
+                                            onMouseOver={e => e.currentTarget.style.transform = 'translateY(-3px)'}
+                                            onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+                                        >
+                                            <div style={{ fontSize: '3.5rem' }}>🏦</div>
+                                            <div>
+                                                <h4 style={{ margin: 0, fontSize: '1.2rem', color: 'white' }}>بنك / إدارة صرافات</h4>
+                                                <p style={{ margin: '5px 0 0 0', fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)' }}>إنشاء علامة تجارية لبنك وفروعه وصرافاته المنتشرة...</p>
+                                            </div>
+                                        </div>
                                     </div>
                                     <button onClick={() => setShowCreateOptions(false)} style={{ marginTop: '30px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.9rem' }}>
                                         إلغاء
@@ -600,6 +623,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                 style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                                             >
                                                 <option value="General">عام</option>
+                                                <option value="بنك">بنك 🏦</option>
                                                 <option value="مركز تسوق">مركز تسوق (مول) 🏢</option>
                                                 <option value="مجمع تجاري">مجمع تجاري 🏘️</option>
                                                 <option value="Restaurant">مطعم</option>

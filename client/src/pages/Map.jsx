@@ -1176,10 +1176,14 @@ const MapComponent = () => {
                     {!currentCommunity && [...followedShopsMap, ...managedShopsMap.filter(m => !followedShopsMap.some(f => f.id === m.id))].filter(shop => {
                         if (shop.latitude == null || shop.longitude == null || isNaN(parseFloat(shop.latitude))) return false;
 
-                        // Educational Institutions & Shopping Centers: visible from mid zoom (13) to reveal town area
-                        const isLandmark = ['University', 'مؤسسة تعليمية', 'مركز تسوق', 'مجمع تجاري', 'Mall'].includes(shop.category);
+                        // Educational Institutions, Shopping Centers, & Banks: visible from mid zoom (13) to reveal town area
+                        const isLandmark = ['University', 'مؤسسة تعليمية', 'مركز تسوق', 'مجمع تجاري', 'Mall', 'بنك'].includes(shop.category);
                         if (isLandmark) {
                             return viewState.zoom >= 13 && viewState.zoom < 16.5;
+                        }
+                        // ATMs and bank branches visible slightly earlier or with normal shops
+                        if (['صراف آلي', 'فرع بنك'].includes(shop.category)) {
+                            return viewState.zoom >= 16;
                         }
                         // Normal Shop: visible only when zoomed in close (e.g >= 17)
                         return viewState.zoom >= 17;
@@ -1196,33 +1200,42 @@ const MapComponent = () => {
                             }}
                         >
                             <div style={{
-                                width: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '60px' : '50px',
-                                height: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '60px' : '50px',
+                                width: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall' || shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '60px' : '50px',
+                                height: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall' || shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '60px' : '50px',
                                 borderRadius: '50%',
-                                backgroundColor: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '#fbab15' : 'white',
+                                backgroundColor: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '#e11d48' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '#fbab15' : 'white'),
                                 backgroundImage: `url(${getImageUrl(shop.profile_picture) || getImageUrl(shop.image_url) || '/default-shop.png'})`,
                                 backgroundSize: 'cover',
                                 backgroundPosition: 'center',
-                                border: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '4px solid #fbab15' : '3px solid white',
+                                border: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '4px solid #e11d48' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '4px solid #fbab15' : '3px solid white'),
                                 boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
                                 position: 'relative',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center'
                             }}>
-                                {/* Mall Marker */}
+                                {/* Bank Marker Theme Badge Overlay - Red Theme */}
+                                {(shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') && (
+                                    <div style={{
+                                        position: 'absolute', top: '-10px', right: '-10px', width: '28px', height: '28px',
+                                        backgroundColor: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        border: '3px solid #e11d48', zIndex: 2, boxShadow: '0 2px 5px rgba(0,0,0,0.2)', fontSize: '14px'
+                                    }}>
+                                        {shop.category === 'صراف آلي' ? '🏧' : '🏦'}
+                                    </div>
+                                )}
                                 {/* Simple Name Badge */}
                                 <div style={{
                                     position: 'absolute',
                                     bottom: '-20px',
                                     left: '50%',
                                     transform: 'translateX(-50%)',
-                                    backgroundColor: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '#fbab15' : 'white',
+                                    backgroundColor: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '#e11d48' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '#fbab15' : 'white'),
                                     padding: '2px 10px',
                                     borderRadius: '12px',
                                     fontSize: '11px',
                                     fontWeight: 'bold',
-                                    color: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? 'white' : 'black',
+                                    color: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي' || shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? 'white' : 'black',
                                     border: '1px solid white',
                                     whiteSpace: 'nowrap',
                                     boxShadow: '0 2px 4px rgba(0,0,0,0.2)',

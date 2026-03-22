@@ -74,6 +74,24 @@ const getFollowedShops = async (req, res) => {
         const userId = parseInt(req.user.id || req.user.userId);
 
         const result = await pool.query(`
+            WITH FollowedShops AS (
+                SELECT s.id
+                FROM shops s
+                JOIN shop_followers sf ON s.id = sf.shop_id
+                WHERE sf.user_id = $1::int
+            ),
+            BankChildren AS (
+                SELECT child.id
+                FROM shops child
+                JOIN shops parent ON child.parent_shop_id = parent.id
+                WHERE parent.id IN (SELECT id FROM FollowedShops) 
+                  AND parent.category = 'بنك'
+            ),
+            AllRelevantShopIds AS (
+                SELECT id FROM FollowedShops
+                UNION
+                SELECT id FROM BankChildren
+            )
             SELECT s.*,
             (
                 SELECT json_agg(json_build_object(
@@ -91,10 +109,9 @@ const getFollowedShops = async (req, res) => {
                 JOIN users u ON sd.user_id = u.id
                 WHERE sd.shop_id = s.id AND sd.is_active = TRUE AND u.last_latitude IS NOT NULL
             ) as active_drivers,
-            TRUE as is_followed
+            (s.id IN (SELECT id FROM FollowedShops)) as is_followed
             FROM shops s
-            JOIN shop_followers sf ON s.id = sf.shop_id
-            WHERE sf.user_id = $1::int
+            WHERE s.id IN (SELECT id FROM AllRelevantShopIds)
             ORDER BY s.name ASC
         `, [userId]);
 

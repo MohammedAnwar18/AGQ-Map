@@ -1011,9 +1011,188 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                         </div>
                     )}
 
+                    {/* --- Bank View --- */}
+                    {activeTab === 'products' && shopData.category === 'بنك' && (
+                        <div style={{ animation: 'fadeIn 0.5s' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25, flexWrap: 'wrap', gap: 15 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
+                                    <div style={{ background: 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)', color: 'white', width: 50, height: 50, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>
+                                        🏦
+                                    </div>
+                                    <div>
+                                        <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#e11d48' }}>شبكة {shopData.name}</h2>
+                                        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>استكشف الفروع والصرافات الآلية التابعة للبنك</p>
+                                    </div>
+                                </div>
+                                {canEditShop && (
+                                    <button 
+                                        onClick={() => setShowAddInternalShop(!showAddInternalShop)}
+                                        style={{ background: '#e11d48', color: 'white', border: 'none', padding: '10px 20px', borderRadius: 10, fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+                                    >
+                                        {showAddInternalShop ? 'إلغاء' : '+ إضافة فرع/صراف'}
+                                    </button>
+                                )}
+                            </div>
+
+                            {showAddInternalShop && (
+                                <div style={{ background: 'var(--bg-primary)', padding: 20, borderRadius: 16, marginBottom: 25, border: '2px solid #e11d48', boxShadow: '0 8px 30px rgba(0,0,0,0.1)' }}>
+                                    <h3 style={{ marginTop: 0, marginBottom: 20, color: '#e11d48' }}>تسجيل فرع أو صراف آلي جديد</h3>
+                                    <form onSubmit={async (e) => {
+                                        e.preventDefault();
+                                        try {
+                                            const lat = parseFloat(newInternalShopData.lat || shopData.latitude);
+                                            const lon = parseFloat(newInternalShopData.lon || shopData.longitude);
+                                            
+                                            if (isNaN(lat) || isNaN(lon)) {
+                                                alert('الرجاء إدخال إحداثيات صحيحة أو تركها لتأخذ إحداثيات الفرع الرئيسي');
+                                                return;
+                                            }
+                                            
+                                            // Ensure we are using the generic system logic for hierarchical shops
+                                            await shopService.create({
+                                                name: newInternalShopData.name,
+                                                category: newInternalShopData.category, // 'فرع بنك' or 'صراف آلي'
+                                                parent_shop_id: shopData.id,
+                                                latitude: lat,
+                                                longitude: lon
+                                            });
+                                            alert('تم الإضافة بنجاح');
+                                            setShowAddInternalShop(false);
+                                            loadShopData(); // Reload to get new banks
+                                            setNewInternalShopData({ name: '', category: 'فرع بنك', floor: '', lat: '', lon: '' });
+                                        } catch (error) {
+                                            console.error("Failed to add bank child", error);
+                                            alert("حدث خطأ أثناء الإضافة");
+                                        }
+                                    }} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
+                                        <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                                            <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>الاسم (مثال: فرع رام الله، صراف الإرسال)</label>
+                                            <input 
+                                                className="input" 
+                                                value={newInternalShopData.name} 
+                                                onChange={e => setNewInternalShopData({ ...newInternalShopData, name: e.target.value })} 
+                                                required 
+                                                style={{ width: '100%', padding: '12px' }}
+                                            />
+                                        </div>
+                                        <div className="form-group">
+                                            <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>النوع</label>
+                                            <select 
+                                                className="input" 
+                                                value={newInternalShopData.category} 
+                                                onChange={e => setNewInternalShopData({ ...newInternalShopData, category: e.target.value })} 
+                                                required
+                                                style={{ width: '100%', padding: '12px' }}
+                                            >
+                                                <option value="فرع بنك">فرع بنك</option>
+                                                <option value="صراف آلي">صراف آلي</option>
+                                            </select>
+                                        </div>
+                                        <div className="form-group">
+                                            <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>خط العرض (Latitude) - اختياري</label>
+                                            <input 
+                                                className="input" 
+                                                type="number" step="any"
+                                                placeholder={shopData.latitude}
+                                                value={newInternalShopData.lat || ''} 
+                                                onChange={e => setNewInternalShopData({ ...newInternalShopData, lat: e.target.value })} 
+                                                style={{ width: '100%', padding: '12px' }}
+                                            />
+                                        </div>
+                                        <div className="form-group">
+                                            <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>خط الطول (Longitude) - اختياري</label>
+                                            <input 
+                                                className="input" 
+                                                type="number" step="any"
+                                                placeholder={shopData.longitude}
+                                                value={newInternalShopData.lon || ''} 
+                                                onChange={e => setNewInternalShopData({ ...newInternalShopData, lon: e.target.value })} 
+                                                style={{ width: '100%', padding: '12px' }}
+                                            />
+                                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '5px' }}>اتركه فارغاً لاعتماد موقع البنك الحالي</p>
+                                        </div>
+                                        <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
+                                            <button type="submit" className="btn-small is-primary" style={{ padding: '12px 30px', fontSize: '1rem', background: '#e11d48', border: 'none' }}>تأكيد الإضافة</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            )}
+
+                            {internalShops.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '60px', background: 'var(--bg-primary)', borderRadius: 16, color: '#e11d48' }}>
+                                    <h3>لا توجد فروع أو صرافات مسجلة حالياً</h3>
+                                    <p style={{ color: 'var(--text-muted)' }}>يمكنك البدء بإنشاء شبكة فروع البنك لعرضها على الخريطة</p>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                                    {/* Group by Category (ATM/Branch) */}
+                                    {['فرع بنك', 'صراف آلي'].map(category => {
+                                        const items = internalShops.filter(s => s.category === category);
+                                        if (items.length === 0) return null;
+                                        return (
+                                            <div key={category}>
+                                                <h3 style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '2px solid #e11d48', marginBottom: 15, fontSize: '1.2rem', color: '#e11d48' }}>
+                                                    {category === 'صراف آلي' ? '🏧 ' : '🏦 '} {category === 'صراف آلي' ? 'الصرافات الآلية' : 'الفروع'}
+                                                </h3>
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 15 }}>
+                                                    {items.map(s => (
+                                                        <div 
+                                                            key={s.id} 
+                                                            onClick={async () => {
+                                                                try {
+                                                                    const data = await shopService.getProfile(s.id);
+                                                                    setShopData(data.shop);
+                                                                    setInternalShops(data.internal_shops || []);
+                                                                    setProducts(data.products || []);
+                                                                    setPosts(data.posts || []);
+                                                                    setIsFollowing(data.shop.is_followed);
+                                                                    setActiveTab('products');
+                                                                    const container = document.querySelector('.modal-container');
+                                                                    if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
+                                                                } catch (error) {
+                                                                    console.error("Failed to load internal profile", error);
+                                                                }
+                                                            }}
+                                                            style={{ 
+                                                                background: 'var(--bg-primary)', padding: 15, borderRadius: 12, border: '1px solid var(--border-color)', 
+                                                                display: 'flex', gap: 15, cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                                                            }}
+                                                            onMouseOver={e => {
+                                                                e.currentTarget.style.transform = 'translateY(-3px)';
+                                                                e.currentTarget.style.borderColor = '#e11d48';
+                                                            }}
+                                                            onMouseOut={e => {
+                                                                e.currentTarget.style.transform = 'translateY(0)';
+                                                                e.currentTarget.style.borderColor = 'var(--border-color)';
+                                                            }}
+                                                        >
+                                                            <div style={{ position: 'relative' }}>
+                                                                <div style={{ width: 60, height: 60, borderRadius: 10, background: 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '1.5rem', boxShadow: '0 2px 4px rgba(225,29,72,0.3)' }}>
+                                                                    {category === 'صراف آلي' ? '🏧' : '🏦'}
+                                                                </div>
+                                                            </div>
+                                                            <div style={{ flex: 1 }}>
+                                                                <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: 2 }}>{s.name}</div>
+                                                                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{s.category}</div>
+                                                            </div>
+                                                            <div style={{ display: 'flex', alignItems: 'center', color: '#e11d48' }}>
+                                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* --- Regular Products Tab --- */}
                     {activeTab === 'products' && 
                         shopData.category !== 'مكتب تاكسي' && 
+                        shopData.category !== 'بنك' &&
                         !(shopData.category === 'مركز تسوق' || shopData.category === 'مجمع تجاري' || shopData.category === 'Mall') && (
                         <div>
                             {canEditShop && (
