@@ -24,9 +24,6 @@ import FacilityProfileModal from '../components/FacilityProfileModal';
 import { postService, friendService, authService, notificationService, communityService, shopService, getImageUrl } from '../services/api';
 import './Map.css';
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
-const MAPBOX_STREETS_STYLE = `https://api.mapbox.com/styles/v1/mapbox/streets-v12?access_token=${MAPBOX_TOKEN}`;
-
 // Helper: Smart Smoothing (Low-Impact Chaikin)
 // Rounds off sharp corners without deviating from the street path
 const smartSmoothPolyline = (coords, ratio = 0.15, iterations = 2) => {
@@ -98,6 +95,12 @@ const haversineDistance = (coords1, coords2) => {
 
 const MapComponent = () => {
     const { user, logout } = useAuth();
+
+    // Mapbox Setup
+    const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
+    const MAPBOX_STREETS_STYLE = useMemo(() => {
+        return `https://api.mapbox.com/styles/v1/mapbox/streets-v12?access_token=${MAPBOX_TOKEN}`;
+    }, [MAPBOX_TOKEN]);
 
 
 
@@ -234,8 +237,8 @@ const MapComponent = () => {
     const [visibleFriendName, setVisibleFriendName] = useState(null); // Track which friend's name is shown
     // --- Dynamic Map Style ---
     const mapStyle = useMemo(() => {
-        // If we have a route, show Mapbox Streets for clarity
-        if (routePath) {
+        // If we have a route AND a valid token, show Mapbox Streets for clarity
+        if (routePath && MAPBOX_TOKEN) {
             return MAPBOX_STREETS_STYLE;
         }
 
