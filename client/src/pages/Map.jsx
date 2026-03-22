@@ -1203,8 +1203,8 @@ const MapComponent = () => {
                             }}
                         >
                             <div style={{
-                                width: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall' || shop.category === 'بنك') ? '60px' : ((shop.category === 'صراف آلي' || shop.category === 'فرع بنك') ? '35px' : '50px'),
-                                height: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall' || shop.category === 'بنك') ? '60px' : ((shop.category === 'صراف آلي' || shop.category === 'فرع بنك') ? '35px' : '50px'),
+                                width: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall' || shop.category === 'بنك') ? '60px' : ((shop.category === 'صراف آلي' || shop.category === 'فرع بنك') ? '45px' : '50px'),
+                                height: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall' || shop.category === 'بنك') ? '60px' : ((shop.category === 'صراف آلي' || shop.category === 'فرع بنك') ? '45px' : '50px'),
                                 borderRadius: '50%',
                                 backgroundColor: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '#ffffff' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '#fbab15' : 'white'),
                                 backgroundImage: `url(${getImageUrl(shop.profile_picture) || getImageUrl(shop.image_url) || '/default-shop.png'})`,
