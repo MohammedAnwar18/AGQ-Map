@@ -352,36 +352,46 @@ const MapComponent = () => {
 
             const start = `${startLon},${startLat}`;
             const end = `${endLon},${endLat}`;
-            const profile = mode === 'walking' ? 'walking' : 'driving';
+            const orsProfile = mode === 'walking' ? 'foot-walking' : 'driving-car';
             const osrmProfile = mode === 'walking' ? 'foot' : 'driving';
 
-            console.log(`Routing from ${start} to ${end} via Mapbox ${profile}`);
+            console.log(`Routing from ${start} to ${end}`);
 
             let routeData = null;
 
-            // --- TRY MAPBOX FIRST ---
-            if (MAPBOX_TOKEN) {
+            // --- TRY OpenRouteService FIRST ---
+            // Key extracted and combined from your base64 string
+            const ORS_TOKEN = '5b3ce3597851110001cf6248277b04e2b9514aaa820ebddf3e0fe6f6';
+            
+            if (ORS_TOKEN) {
                 try {
-                    // Increased radius to 30m for better "Snap to Road" recognition
-                    // High-Precision Routing Call: Snapped to roads with annotations and full overview
-                    const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${start};${end}?geometries=geojson&overview=full&steps=true&annotations=distance,duration&radiuses=25;25&access_token=${MAPBOX_TOKEN}`;
+                    const url = `https://api.openrouteservice.org/v2/directions/${orsProfile}?api_key=${ORS_TOKEN}&start=${startLon},${startLat}&end=${endLon},${endLat}`;
                     const response = await axios.get(url);
-                    if (response.data.routes && response.data.routes.length > 0) {
-                        routeData = response.data.routes[0];
-                        console.log("Using primary Mapbox routing engine");
+                    if (response.data.features && response.data.features.length > 0) {
+                        const feature = response.data.features[0];
+                        routeData = {
+                            geometry: feature.geometry,
+                            distance: feature.properties.summary.distance, // In meters
+                            duration: feature.properties.summary.duration  // In seconds
+                        };
+                        console.log("Using primary OpenRouteService engine");
                     }
-                } catch (mbErr) {
-                    console.warn("Mapbox routing failed, falling back to OSRM", mbErr);
+                } catch (orsErr) {
+                    console.warn("OpenRouteService failed, falling back to OSRM", orsErr);
                 }
             }
 
             // --- FALLBACK TO OSRM ---
             if (!routeData) {
-                const url = `https://router.project-osrm.org/route/v1/${osrmProfile}/${start};${end}?overview=full&geometries=geojson&steps=true&annotations=true`;
-                const response = await axios.get(url);
-                if (response.data.routes && response.data.routes.length > 0) {
-                    routeData = response.data.routes[0];
-                    console.log("Using fallback OSRM routing engine");
+                try {
+                    const url = `https://router.project-osrm.org/route/v1/${osrmProfile}/${start};${end}?overview=full&geometries=geojson&steps=true&annotations=true`;
+                    const response = await axios.get(url);
+                    if (response.data.routes && response.data.routes.length > 0) {
+                        routeData = response.data.routes[0];
+                        console.log("Using fallback OSRM routing engine");
+                    }
+                } catch (osrmErr) {
+                    console.error("OSRM routing failed", osrmErr);
                 }
             }
 
