@@ -48,6 +48,8 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
     const [hoursInput, setHoursInput] = useState(university.opening_hours || '');
     const [isEditingAbout, setIsEditingAbout] = useState(false);
     const [aboutInput, setAboutInput] = useState(university.bio || '');
+    const [isEditingName, setIsEditingName] = useState(false);
+    const [nameInput, setNameInput] = useState(university.name || '');
 
     // Local University State (for bio, cover, etc. not in initial search)
     const [uniData, setUniData] = useState(university);
@@ -183,6 +185,19 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
             alert('تم تحديث معلومات "عن الجامعة" بنجاح!');
         } catch (error) {
             alert('فشل تحديث المعلومات');
+        }
+    };
+
+    const handleUpdateName = async () => {
+        if (!nameInput.trim()) return;
+        try {
+            await shopService.updateProfile(university.id, { name: nameInput });
+            setUniData(prev => ({ ...prev, name: nameInput }));
+            setIsEditingName(false);
+            if (onFollowChange) onFollowChange(); // Refresh maps with new name
+            alert('تم تحديث اسم المؤسسة بنجاح!');
+        } catch (error) {
+            alert('فشل تحديث الاسم');
         }
     };
 
@@ -328,7 +343,33 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                             )}
                         </div>
                         <div className="uni-title-section">
-                            <h2 className="uni-name">{uniData.name}</h2>
+                            {isEditingName ? (
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    <input 
+                                        type="text" 
+                                        value={nameInput} 
+                                        onChange={e => setNameInput(e.target.value)}
+                                        className="input"
+                                        style={{ height: '35px', padding: '5px 10px', fontSize: '1.2rem', fontWeight: 'bold' }}
+                                        autoFocus
+                                    />
+                                    <button className="btn-small is-accept" onClick={handleUpdateName}>حفظ</button>
+                                    <button className="btn-small" onClick={() => setIsEditingName(false)}>✕</button>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <h2 className="uni-name">{uniData.name}</h2>
+                                    {isAdminOrOwner && (
+                                        <button 
+                                            onClick={() => { setIsEditingName(true); setNameInput(uniData.name); }} 
+                                            style={{ background: 'none', border: 'none', color: '#fbab15', cursor: 'pointer', fontSize: '1rem', padding: 0 }}
+                                            title="تعديل الاسم"
+                                        >
+                                            ✏️
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                             <p className="uni-category">مؤسسة تعليمية</p>
                             <div className="uni-followers-count" style={{ fontSize: '0.85rem', color: '#ccc', marginTop: '4px' }}>
                                 {uniData.followers_count || 0} متابع

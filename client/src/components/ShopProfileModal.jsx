@@ -82,7 +82,9 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
     const [postImages, setPostImages] = useState([]);
     const [newProduct, setNewProduct] = useState({ name: '', price: '', description: '', image: null });
 
-    // Category Editing
+    // Info Editing
+    const [editingName, setEditingName] = useState(false);
+    const [nameInput, setNameInput] = useState('');
     const [editingCategory, setEditingCategory] = useState(false);
     const [categoryInput, setCategoryInput] = useState('');
 
@@ -308,6 +310,19 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
 
     // State for editing product
     const [editingProduct, setEditingProduct] = useState(null);
+
+    const handleUpdateName = async () => {
+        if (!nameInput.trim()) return;
+        try {
+            await shopService.updateProfile(shopData.id, { name: nameInput });
+            setShopData(prev => ({ ...prev, name: nameInput }));
+            setEditingName(false);
+            if (onFollowChange) onFollowChange(); // Refresh map
+            alert('تم تحديث اسم المؤسسة بنجاح!');
+        } catch (error) {
+            alert('فشل تحديث الاسم');
+        }
+    };
 
     const handleCreatePost = async (e) => {
         e.preventDefault();
@@ -584,7 +599,36 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                         <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
-                                <h1 style={{ margin: 0, fontSize: '1.8rem' }}>{shopData.name}</h1>
+                                {editingName ? (
+                                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                        <input 
+                                            type="text" 
+                                            value={nameInput} 
+                                            onChange={e => setNameInput(e.target.value)}
+                                            style={{
+                                                fontSize: '1.8rem', fontWeight: 'bold', background: 'var(--bg-secondary)',
+                                                border: '1px solid var(--primary)', color: 'var(--text-primary)',
+                                                padding: '2px 10px', borderRadius: 8, width: 250
+                                            }}
+                                            autoFocus
+                                        />
+                                        <button onClick={handleUpdateName} style={{ background: '#10b981', color: 'white', border: 'none', padding: '5px 10px', borderRadius: 5, cursor: 'pointer' }}>حفظ</button>
+                                        <button onClick={() => setEditingName(false)} style={{ background: '#6b7280', color: 'white', border: 'none', padding: '5px 10px', borderRadius: 5, cursor: 'pointer' }}>✕</button>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        <h1 style={{ margin: 0, fontSize: '1.8rem' }}>{shopData.name}</h1>
+                                        {canEditShop && (
+                                            <button 
+                                                onClick={() => { setEditingName(true); setNameInput(shopData.name); }} 
+                                                style={{ background: 'none', border: 'none', color: '#fbab15', cursor: 'pointer', fontSize: '1.2rem', padding: 0 }}
+                                                title="تعديل الاسم"
+                                            >
+                                                ✏️
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
                                 {status && (
                                     <span style={{
                                         background: status.isOpen ? '#dcfce7' : '#fee2e2',

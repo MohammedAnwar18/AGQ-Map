@@ -1039,8 +1039,8 @@ const MapComponent = () => {
                             }}
                         >
                             <div style={{
-                                width: '60px',
-                                height: '60px',
+                                width: '50px',
+                                height: '50px',
                                 borderRadius: '50%',
                                 backgroundColor: '#fbab15',
                                 backgroundImage: `url(${getImageUrl(shop.profile_picture) || getImageUrl(shop.image_url) || '/default-shop.png'})`,
@@ -1053,7 +1053,7 @@ const MapComponent = () => {
                                 {/* Simple Name Badge */}
                                 <div style={{
                                     position: 'absolute',
-                                    bottom: '-22px',
+                                    bottom: '-20px',
                                     left: '50%',
                                     transform: 'translateX(-50%)',
                                     backgroundColor: 'white',
@@ -1067,24 +1067,6 @@ const MapComponent = () => {
                                     boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                                 }}>
                                     {shop.name}
-                                </div>
-                                {/* Category Emoji Badge */}
-                                <div style={{
-                                    position: 'absolute',
-                                    top: '-4px',
-                                    right: '-4px',
-                                    background: 'white',
-                                    borderRadius: '50%',
-                                    width: '22px',
-                                    height: '22px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: '13px',
-                                    boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                                    border: '1px solid #ddd'
-                                }}>
-                                    {shop.category === 'مكتب تاكسي' ? '🚕' : '🏪'}
                                 </div>
                             </div>
                         </Marker>,
