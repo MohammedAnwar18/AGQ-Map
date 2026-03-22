@@ -1209,17 +1209,7 @@ const MapComponent = () => {
                                 alignItems: 'center',
                                 justifyContent: 'center'
                             }}>
-                                {(shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') && (
-                                    <div style={{ 
-                                        position: 'absolute', top: '-12px', right: '-12px', 
-                                        background: 'white', color: '#fbab15', width: '32px', height: '32px', 
-                                        borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        boxShadow: '0 2px 6px rgba(0,0,0,0.3)', border: '2px solid #fbab15',
-                                        fontSize: '18px', zIndex: 10
-                                    }}>
-                                        🏢
-                                    </div>
-                                )}
+                                {/* Mall Marker */}
                                 {/* Simple Name Badge */}
                                 <div style={{
                                     position: 'absolute',

@@ -928,16 +928,16 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                             }}
                         >
                             {/* Make tab label dynamic */}
-                            {(() => {
+                             {(() => {
                                 if (tab === 'products') {
-                                    if (shopData.category === 'مكتب تاكسي') return 'الخدمات 🚕';
-                                    if (shopData.category === 'مركز تسوق' || shopData.category === 'مجمع تجاري' || shopData.category === 'Mall') return 'الدليل 🏢';
-                                    return 'المنتجات 🛍️';
+                                    if (shopData.category === 'مكتب تاكسي') return 'الخدمات';
+                                    if (shopData.category === 'مركز تسوق' || shopData.category === 'مجمع تجاري' || shopData.category === 'Mall') return 'الدليل';
+                                    return 'المنتجات';
                                 }
-                                if (tab === 'timeline') return 'أخبار ✨';
-                                if (tab === 'drivers') return 'السائقين ⚙️';
-                                if (tab === 'requests') return 'الطلبات 📋';
-                                return 'حول ℹ️';
+                                if (tab === 'timeline') return 'أخبار';
+                                if (tab === 'drivers') return 'السائقين';
+                                if (tab === 'requests') return 'الطلبات';
+                                return 'حول';
                             })()}
                         </button>
                     ))}
@@ -1559,14 +1559,14 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                                 required
                                                 style={{ width: '100%', padding: '12px' }}
                                             >
-                                                <option value="">اختر التصنيف...</option>
-                                                <option value="ملابس">ملابس 👕</option>
-                                                <option value="أحذية">أحذية 👟</option>
-                                                <option value="إلكترونيات">إلكترونيات 📱</option>
-                                                <option value="مطعم">مطعم 🍔</option>
-                                                <option value="كافيه">كافيه ☕</option>
-                                                <option value="سوبر ماركت">سوبر ماركت 🛒</option>
-                                                <option value="عطور">عطور 🧴</option>
+                                                 <option value="">اختر التصنيف...</option>
+                                                <option value="ملابس">ملابس</option>
+                                                <option value="أحذية">أحذية</option>
+                                                <option value="إلكترونيات">إلكترونيات</option>
+                                                <option value="مطعم">مطعم</option>
+                                                <option value="كافيه">كافيه</option>
+                                                <option value="سوبر ماركت">سوبر ماركت</option>
+                                                <option value="عطور">عطور</option>
                                                 <option value="أخرى">أخرى</option>
                                             </select>
                                         </div>
@@ -1597,7 +1597,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
 
                             {internalShops.length === 0 ? (
                                 <div style={{ textAlign: 'center', padding: '60px', background: 'var(--bg-primary)', borderRadius: 16, color: 'var(--text-muted)' }}>
-                                    <div style={{ fontSize: '4rem', marginBottom: 20 }}>🏢</div>
                                     <h3>لا توجد محلات مسجلة حالياً</h3>
                                     <p>المجمع لا يزال جديداً، ترقبوا الافتتاحات قريباً!</p>
                                 </div>
