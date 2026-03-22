@@ -51,8 +51,8 @@ io.on('connection', (socket) => {
     // Real-time Messaging
     socket.on('send-message', async (data) => {
         const { receiverId, content, imageUrl, senderId: explicitSenderId } = data;
-        // In a real app, verify senderId from token/session
-        // For simplicity here, we assume client provides needed data
+        const senderId = data.senderId || socket.userId;
+        console.log(`💬 Message from ${senderId} to ${receiverId}`);
         
         try {
             const pool = require('./config/database');
@@ -60,19 +60,20 @@ io.on('connection', (socket) => {
                 `INSERT INTO messages (sender_id, receiver_id, content, image_url, created_at)
                  VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
                  RETURNING *`,
-                [data.senderId || socket.userId, receiverId, content, imageUrl || null]
+                [senderId, receiverId, content, imageUrl || null]
             );
             
             const newMessage = result.rows[0];
+            console.log('✅ Message saved with ID:', newMessage.id);
             
             // Emit to receiver
             io.to(`user_${receiverId}`).emit('receive-message', newMessage);
-            // Emit confirmation to sender (for multi-device sync or status)
-            // socket.emit('message-sent', newMessage);
+            // Emit to sender for confirmation
+            socket.emit('receive-message', newMessage);
             
             // Create notification
             const { createNotification } = require('./controllers/notificationController');
-            await createNotification(receiverId, socket.userId || data.senderId, 'message', null);
+            await createNotification(receiverId, senderId, 'message', null);
             
         } catch (error) {
             console.error('Socket send-message error:', error);
@@ -81,6 +82,7 @@ io.on('connection', (socket) => {
 
     socket.on('get-messages', async ({ friendId, userId: explicitUserId }) => {
         const userId = socket.userId || explicitUserId;
+        console.log(`📥 Loading messages for user ${userId} with friend ${friendId}`);
         try {
             const pool = require('./config/database');
             const result = await pool.query(
@@ -91,6 +93,8 @@ io.on('connection', (socket) => {
                 [userId, friendId]
             );
             
+            console.log(`📍 Found ${result.rows.length} messages`);
+
             // Mark as read
             await pool.query(
                 `UPDATE messages SET is_read = true 

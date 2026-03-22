@@ -90,7 +90,7 @@ const ChatModal = ({ onClose }) => {
         setMessages([]);
 
         if (socket) {
-            socket.emit('get-messages', { friendId: friend.id });
+            socket.emit('get-messages', { friendId: friend.id, userId: user.id });
             socket.on('messages-loaded', (loadedMessages) => {
                 setMessages(loadedMessages);
                 socket.off('messages-loaded');
@@ -134,7 +134,8 @@ const ChatModal = ({ onClose }) => {
 
         socket.emit('send-message', {
             receiverId: selectedFriend.id,
-            content: newMessage.trim()
+            content: newMessage.trim(),
+            senderId: user.id
         });
 
         const tempMessage = {
@@ -385,7 +386,8 @@ const ChatModal = ({ onClose }) => {
                                             socket.emit('send-message', {
                                                 receiverId: selectedFriend.id,
                                                 content: '', // Optional caption could be added here
-                                                imageUrl: response.imageUrl
+                                                imageUrl: response.imageUrl,
+                                                senderId: user.id
                                             });
 
                                             // Optimistic update
