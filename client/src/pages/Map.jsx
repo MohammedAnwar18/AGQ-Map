@@ -1199,21 +1199,12 @@ const MapComponent = () => {
                             style={{ cursor: 'pointer', zIndex: 50 }}
                             onClick={e => {
                                 e.originalEvent.stopPropagation();
-                                if (shop.category === 'صراف آلي' || shop.category === 'فرع بنك') {
-                                    mapRef.current?.flyTo({
-                                        center: [parseFloat(shop.longitude), parseFloat(shop.latitude)],
-                                        zoom: 18.5,
-                                        pitch: 45,
-                                        duration: 1500
-                                    });
-                                } else {
-                                    handleOpenShopProfile(shop);
-                                }
+                                handleOpenShopProfile(shop);
                             }}
                         >
                             <div style={{
-                                width: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall' || shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '60px' : '50px',
-                                height: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall' || shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '60px' : '50px',
+                                width: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall' || shop.category === 'بنك') ? '60px' : ((shop.category === 'صراف آلي' || shop.category === 'فرع بنك') ? '35px' : '50px'),
+                                height: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall' || shop.category === 'بنك') ? '60px' : ((shop.category === 'صراف آلي' || shop.category === 'فرع بنك') ? '35px' : '50px'),
                                 borderRadius: '50%',
                                 backgroundColor: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '#ffffff' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '#fbab15' : 'white'),
                                 backgroundImage: `url(${getImageUrl(shop.profile_picture) || getImageUrl(shop.image_url) || '/default-shop.png'})`,
@@ -1490,17 +1481,6 @@ const MapComponent = () => {
                     currentUser={user}
                     onClose={() => setShowShopProfile(false)}
                     onFollowChange={handleShopFollowed}
-                    onLocateShop={(s) => {
-                        setShowShopProfile(false);
-                        if (s.latitude && s.longitude && mapRef.current) {
-                            mapRef.current.flyTo({
-                                center: [parseFloat(s.longitude), parseFloat(s.latitude)],
-                                zoom: 18.5,
-                                pitch: 45,
-                                duration: 1500
-                            });
-                        }
-                    }}
                 />
             )}
             {showUniversityProfile && selectedUniversityProfile && (

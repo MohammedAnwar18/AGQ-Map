@@ -73,11 +73,11 @@ const MallIcon = () => (
     </svg>
 );
 
-const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, onLocateShop }) => {
+const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
     const [shopData, setShopData] = useState(shop);
     const [posts, setPosts] = useState([]);
     const [products, setProducts] = useState([]);
-    const [activeTab, setActiveTab] = useState('products');
+    const [activeTab, setActiveTab] = useState((shop.category === 'صراف آلي' || shop.category === 'فرع بنك') ? 'about' : 'products');
     const [loading, setLoading] = useState(true);
     const [isFollowing, setIsFollowing] = useState(false);
     const [internalShops, setInternalShops] = useState([]); // Shops inside this mall
@@ -905,7 +905,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, onLocate
                     padding: '0 30px'
                 }}>
                     {[
-                        'products',
+                        ...((shopData.category === 'صراف آلي' || shopData.category === 'فرع بنك') ? [] : ['products']),
                         'timeline',
                         ...(shopData.category === 'مكتب تاكسي' && canEditShop ? ['requests', 'drivers'] : []),
                         'about'
@@ -1139,10 +1139,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, onLocate
                                                         <div 
                                                             key={s.id} 
                                                             onClick={async () => {
-                                                                if (onLocateShop && (s.category === 'صراف آلي' || s.category === 'فرع بنك')) {
-                                                                    onLocateShop(s);
-                                                                    return;
-                                                                }
                                                                 try {
                                                                     const data = await shopService.getProfile(s.id);
                                                                     setShopData(data.shop);
@@ -1150,7 +1146,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, onLocate
                                                                     setProducts(data.products || []);
                                                                     setPosts(data.posts || []);
                                                                     setIsFollowing(data.shop.is_followed);
-                                                                    setActiveTab('products');
+                                                                    setActiveTab((data.shop.category === 'صراف آلي' || data.shop.category === 'فرع بنك') ? 'about' : 'products');
                                                                     const container = document.querySelector('.modal-container');
                                                                     if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
                                                                 } catch (error) {
