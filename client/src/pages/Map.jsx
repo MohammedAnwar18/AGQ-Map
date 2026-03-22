@@ -1057,18 +1057,19 @@ const MapComponent = () => {
                                 {/* Simple Name Badge */}
                                 <div style={{
                                     position: 'absolute',
-                                    bottom: '-20px',
+                                    bottom: '-18px',
                                     left: '50%',
                                     transform: 'translateX(-50%)',
                                     backgroundColor: 'white',
-                                    padding: '2px 8px',
-                                    borderRadius: '12px',
-                                    fontSize: '11px',
+                                    padding: '1px 6px',
+                                    borderRadius: '10px',
+                                    fontSize: '10px',
                                     fontWeight: 'bold',
                                     color: 'black',
                                     border: '1px solid #fbab15',
                                     whiteSpace: 'nowrap',
-                                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                                    zIndex: 1
                                 }}>
                                     {shop.name}
                                 </div>
