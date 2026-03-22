@@ -14,6 +14,7 @@ const Login = () => {
     const [isOtpStep, setIsOtpStep] = useState(false);
     const [otpCode, setOtpCode] = useState('');
     const [showCalendar, setShowCalendar] = useState(false);
+    const [termsAccepted, setTermsAccepted] = useState(false);
 
     // Forgot Password State
     const [isForgotPassword, setIsForgotPassword] = useState(false);
@@ -96,6 +97,13 @@ const Login = () => {
                     }
                 }
             } else {
+                // التحقق من الموافقة على الشروط
+                if (!termsAccepted) {
+                    setError('يجب الموافقة على شروط الخدمة وسياسة الخصوصية للمتابعة');
+                    setLoading(false);
+                    return;
+                }
+
                 response = await authService.register({
                     username: formData.username,
                     email: formData.email,
@@ -364,6 +372,22 @@ const Login = () => {
                                                 required
                                             />
                                         </div>
+
+                                        {!isLogin && !isOtpStep && (
+                                            <div className="form-group terms-group" style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginTop: '15px', padding: '0 5px' }}>
+                                                <input 
+                                                    type="checkbox" 
+                                                    id="terms" 
+                                                    checked={termsAccepted}
+                                                    onChange={(e) => setTermsAccepted(e.target.checked)}
+                                                    required 
+                                                    style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: '#fbab15', marginTop: '3px' }}
+                                                />
+                                                <label htmlFor="terms" style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.9rem', cursor: 'pointer', lineHeight: '1.4' }}>
+                                                    أوافق على <Link to="/terms" style={{ color: '#fbab15', fontWeight: 'bold', textDecoration: 'none' }}>شروط الخدمة</Link> و <Link to="/privacy" style={{ color: '#fbab15', fontWeight: 'bold', textDecoration: 'none' }}>سياسة الخصوصية</Link> لنظام بالنوفا.
+                                                </label>
+                                            </div>
+                                        )}
                                     </>
                                 )}
 
@@ -499,9 +523,9 @@ const Login = () => {
                 gap: '10px'
             }}>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '5px' }}>
-                    <Link to="/terms" style={{ color: 'rgba(255, 255, 255, 0.4)', textDecoration: 'none', fontWeight: '500', fontSize: '0.9rem' }}>شروط الخدمة</Link>
+                    <Link to="/terms" style={{ color: 'rgba(255, 255, 255, 0.7)', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem' }}>شروط الخدمة</Link>
                     <span style={{ opacity: 0.2 }}>|</span>
-                    <Link to="/privacy" style={{ color: 'rgba(255, 255, 255, 0.4)', textDecoration: 'none', fontWeight: '500', fontSize: '0.9rem' }}>سياسة الخصوصية</Link>
+                    <Link to="/privacy" style={{ color: 'rgba(255, 255, 255, 0.7)', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem' }}>سياسة الخصوصية</Link>
                 </div>
                 <p style={{ margin: 0, padding: 0, opacity: 0.8 }}>
                     &copy; {new Date().getFullYear()} PalNovaa. جميع الحقوق محفوظة.
