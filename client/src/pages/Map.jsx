@@ -108,13 +108,14 @@ const MapComponent = () => {
         const p3 = 'mEiOiJjbWlsaWh1anAxM2kzM2d';
         const p4 = 'yNHR5eTU4am9hIn0.';
         const p5 = 'arsZikWNpuoceyWdnM30VA';
-        return p1 + p2 + p3 + p4 + p5;
+        return (p1 + p2 + p3 + p4 + p5).trim();
     }, []);
 
     const MAPBOX_STREETS_STYLE = useMemo(() => {
-        // Use official Mapbox Navigation style for the "Neat" professional look
-        return `mapbox://styles/mohammed-1331/cmbseyy16010101qwf9d5a8m3`;
-    }, []);
+        if (!MAPBOX_TOKEN) return null;
+        // Direct HTTPS URL is more reliable for style transitions in react-map-gl-maplibre
+        return `https://api.mapbox.com/styles/v1/mohammed-1331/cmbseyy16010101qwf9d5a8m3?access_token=${MAPBOX_TOKEN}`;
+    }, [MAPBOX_TOKEN]);
 
     // Transform Request to handle mapbox:// URLs in MapLibre with full API versioning support
     const transformRequest = (url, resourceType) => {
@@ -384,6 +385,9 @@ const MapComponent = () => {
 
                 if (!startLoc) {
                     setDestination(endLoc);
+                    // Ensure we are viewing the MapLibre map (not Geomolg) before routing
+                    if (activeMapType === 'geomolg') setActiveMapType('satellite');
+
                     if (mapRef.current) {
                         // Smoothly transition to a Navigation Perspective
                         mapRef.current.flyTo({
