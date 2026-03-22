@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { shopService, getImageUrl } from '../services/api';
+import ImageCropperModal from './ImageCropperModal';
 import './UniversityProfileModal.css';
 
 const TrashIcon = () => (
@@ -63,6 +64,7 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
     const [localProfilePic, setLocalProfilePic] = useState(university.profile_picture);
     const [localCoverPic, setLocalCoverPic] = useState(university.cover_picture || university.cover_image); // accommodate both
     const [isUploadingImage, setIsUploadingImage] = useState(false);
+    const [cropState, setCropState] = useState({ isOpen: false, file: null, type: null, aspect: 1 });
 
     const predefinedCategories = [
         { name: 'الكليات', defaultIcon: '🏛️' },
@@ -256,8 +258,7 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                          currentUser?.userId === uniData.owner_id || 
                          currentUser?.id === uniData.owner_id;
 
-    const handleImageUpload = async (e, type) => {
-        const file = e.target.files[0];
+    const handleImageUpload = async (file, type) => {
         if (!file) return;
 
         const formData = new FormData();
@@ -328,7 +329,12 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                     {isAdminOrOwner && (
                         <label className="upload-btn" style={{ position: 'absolute', top: '20px', right: '60px', background: 'rgba(0,0,0,0.6)', color: 'white', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', zIndex: 10, fontSize: '0.85rem' }}>
                             📷 تغيير الغلاف
-                            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleImageUpload(e, 'cover_picture')} disabled={isUploadingImage} />
+                            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
+                                if (e.target.files[0]) {
+                                    setCropState({ isOpen: true, file: e.target.files[0], type: 'cover_picture', aspect: 3 });
+                                }
+                                e.target.value = null;
+                            }} disabled={isUploadingImage} />
                         </label>
                     )}
                     <button className="uni-close-btn" onClick={onClose}>✕</button>
@@ -345,7 +351,12 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                             {isAdminOrOwner && (
                                 <label style={{ position: 'absolute', bottom: 0, right: 0, background: '#3b82f6', color: 'white', width: '30px', height: '30px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.3)', border: '2px solid white' }}>
                                     +
-                                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleImageUpload(e, 'profile_picture')} disabled={isUploadingImage} />
+                                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
+                                        if (e.target.files[0]) {
+                                            setCropState({ isOpen: true, file: e.target.files[0], type: 'profile_picture', aspect: 1 });
+                                        }
+                                        e.target.value = null;
+                                    }} disabled={isUploadingImage} />
                                 </label>
                             )}
                         </div>
@@ -758,6 +769,17 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                 </div>
 
             </div>
+            {cropState.isOpen && (
+                <ImageCropperModal
+                    imageFile={cropState.file}
+                    aspect={cropState.aspect}
+                    onCancel={() => setCropState({ isOpen: false, file: null, type: null, aspect: 1 })}
+                    onCropDone={(croppedFile) => {
+                        handleImageUpload(croppedFile, cropState.type);
+                        setCropState({ isOpen: false, file: null, type: null, aspect: 1 });
+                    }}
+                />
+            )}
         </div>
     );
 };

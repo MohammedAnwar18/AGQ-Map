@@ -3,6 +3,7 @@ import { shopService, postService, commentService, getImageUrl } from '../servic
 import { cartService } from '../services/cartService';
 import { optimizeImage } from '../utils/imageOptimizer';
 import CartModal from './CartModal';
+import ImageCropperModal from './ImageCropperModal';
 import './Modal.css';
 
 // --- Assets / Icons ---
@@ -93,6 +94,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
     // Inputs for Images
     const coverInputRef = useRef(null);
     const profileInputRef = useRef(null);
+    const [cropState, setCropState] = useState({ isOpen: false, file: null, type: null, aspect: 1 });
 
     // Create State
     const [showCreatePost, setShowCreatePost] = useState(false);
@@ -612,7 +614,12 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                             <button onClick={() => coverInputRef.current.click()} style={{ background: 'rgba(0,0,0,0.5)', border: 'none', color: 'white', padding: '8px 12px', borderRadius: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <CameraIcon /> تغيير الغلاف
                             </button>
-                            <input type="file" ref={coverInputRef} accept="image/*" hidden onChange={e => handleImageUpload('cover_picture', e.target.files[0])} />
+                            <input type="file" ref={coverInputRef} accept="image/*" hidden onChange={e => {
+                                if (e.target.files[0]) {
+                                    setCropState({ isOpen: true, file: e.target.files[0], type: 'cover_picture', aspect: 3 });
+                                }
+                                e.target.value = null;
+                            }} />
                         </div>
                     )}
 
@@ -637,7 +644,12 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                     <CameraIcon />
                                 </button>
                             )}
-                            <input type="file" ref={profileInputRef} accept="image/*" hidden onChange={e => handleImageUpload('profile_picture', e.target.files[0])} />
+                            <input type="file" ref={profileInputRef} accept="image/*" hidden onChange={e => {
+                                if (e.target.files[0]) {
+                                    setCropState({ isOpen: true, file: e.target.files[0], type: 'profile_picture', aspect: 1 });
+                                }
+                                e.target.value = null;
+                            }} />
                         </div>
                     </div>
                 </div>
@@ -2336,6 +2348,18 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                     transform: translateY(-1px);
                 }
             `}</style>
+            
+            {cropState.isOpen && (
+                <ImageCropperModal
+                    imageFile={cropState.file}
+                    aspect={cropState.aspect}
+                    onCancel={() => setCropState({ isOpen: false, file: null, type: null, aspect: 1 })}
+                    onCropDone={(croppedFile) => {
+                        handleImageUpload(cropState.type, croppedFile);
+                        setCropState({ isOpen: false, file: null, type: null, aspect: 1 });
+                    }}
+                />
+            )}
             </div >
         </div >
     );
