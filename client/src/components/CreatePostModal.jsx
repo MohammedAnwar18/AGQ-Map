@@ -161,7 +161,7 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
         <div className="modal-overlay" onClick={handleClose}>
             <div className="modal-container" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h2>📸 منشور جديد</h2>
+                    <h2>منشور جديد</h2>
                     <button className="btn-close" onClick={handleClose}>✕</button>
                 </div>
 
@@ -236,7 +236,7 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
                     {imagePreviews.length === 0 && (
                         <div className="image-actions">
                             <label className="btn btn-secondary" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                📷 فتح الكاميرا
+                                فتح الكاميرا
                                 <input
                                     type="file"
                                     accept="image/*,video/*"
@@ -247,7 +247,7 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
                             </label>
 
                             <label className="btn btn-secondary" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                🖼️ اختيار ملفات
+                                اختيار ملفات
                                 <input
                                     type="file"
                                     accept="image/*,video/*"
@@ -294,7 +294,7 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
                                 جاري النشر...
                             </>
                         ) : (
-                            '✨ نشر'
+                            'نشر'
                         )}
                     </button>
                 </form>

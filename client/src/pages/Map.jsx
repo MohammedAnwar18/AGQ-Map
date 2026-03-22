@@ -225,6 +225,7 @@ const MapComponent = () => {
     const [destination, setDestination] = useState(null);
     const [friendsMap, setFriendsMap] = useState([]);
     const [followedShopsMap, setFollowedShopsMap] = useState([]);
+    const [visibleFriendName, setVisibleFriendName] = useState(null); // Track which friend's name is shown
     // --- Dynamic Map Style ---
     const mapStyle = useMemo(() => {
         return {
@@ -833,7 +834,7 @@ const MapComponent = () => {
                                 <div className="menu-icon-wrapper">
                                     <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
                                 </div>
-                                <span>مجتمعاتي</span>
+                                <span>المجتمعات</span>
                             </div>
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
@@ -842,7 +843,7 @@ const MapComponent = () => {
                                 <div className="menu-icon-wrapper">
                                     <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 0 1-8 0" /></svg>
                                 </div>
-                                <span>محلاتي</span>
+                                <span>المحلات</span>
                             </div>
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
@@ -986,22 +987,40 @@ const MapComponent = () => {
 
 
 
-                    {/* Friends Markers (Hide in Community Mode) */}
+                    {/* Friends Markers (Hide in Community Mode) - Green Pulse Design */}
                     {!currentCommunity && friendsMap.map(friend => (
                         <Marker
                             key={`friend-${friend.id}`}
                             longitude={parseFloat(friend.last_longitude)}
                             latitude={parseFloat(friend.last_latitude)}
-                            anchor="bottom"
+                            anchor="center"
+                            onClick={(e) => {
+                                e.originalEvent.stopPropagation();
+                                setVisibleFriendName(friend.id);
+                                setTimeout(() => setVisibleFriendName(null), 3000); // Hide after 3s
+                            }}
                         >
-                            <div style={{
-                                backgroundImage: `url(${getImageUrl(friend.profile_picture) || '/default-avatar.png'})`,
-                                width: '45px', height: '45px',
-                                backgroundSize: 'cover', backgroundPosition: 'center',
-                                borderRadius: '50%', border: '2px solid #22c55e',
-                                boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
-                                cursor: 'pointer'
-                            }}></div>
+                            <div className="friend-location-marker" style={{ position: 'relative', cursor: 'pointer' }}>
+                                {visibleFriendName === friend.id && (
+                                    <div style={{
+                                        position: 'absolute', top: '-45px', left: '50%', transform: 'translateX(-50%)',
+                                        background: 'rgba(34, 197, 94, 0.9)', color: 'white', padding: '4px 12px',
+                                        borderRadius: '20px', fontSize: '13px', fontWeight: 'bold', whiteSpace: 'nowrap',
+                                        boxShadow: '0 4px 12px rgba(0,0,0,0.2)', border: '1.5px solid white', zIndex: 3000,
+                                        animation: 'fadeInUp 0.3s ease'
+                                    }}>
+                                        {friend.username || friend.full_name}
+                                    </div>
+                                )}
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="70" height="70">
+                                    <circle cx="40" cy="40" r="10" fill="#22c55e" opacity="0.6">
+                                        <animate attributeName="r" from="10" to="35" dur="1.8s" repeatCount="indefinite" />
+                                        <animate attributeName="opacity" from="0.6" to="0" dur="1.8s" repeatCount="indefinite" />
+                                    </circle>
+                                    <circle cx="40" cy="40" r="9" fill="#ffffff" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))' }} />
+                                    <circle cx="40" cy="40" r="6" fill="#22c55e" />
+                                </svg>
+                            </div>
                         </Marker>
                     ))}
 
