@@ -24,6 +24,9 @@ import FacilityProfileModal from '../components/FacilityProfileModal';
 import { postService, friendService, authService, notificationService, communityService, shopService, getImageUrl } from '../services/api';
 import './Map.css';
 
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
+const MAPBOX_STREETS_STYLE = `https://api.mapbox.com/styles/v1/mapbox/streets-v12?access_token=${MAPBOX_TOKEN}`;
+
 // Helper: Smart Smoothing (Low-Impact Chaikin)
 // Rounds off sharp corners without deviating from the street path
 const smartSmoothPolyline = (coords, ratio = 0.15, iterations = 2) => {
@@ -231,6 +234,12 @@ const MapComponent = () => {
     const [visibleFriendName, setVisibleFriendName] = useState(null); // Track which friend's name is shown
     // --- Dynamic Map Style ---
     const mapStyle = useMemo(() => {
+        // If we have a route, show Mapbox Streets for clarity
+        if (routePath) {
+            return MAPBOX_STREETS_STYLE;
+        }
+
+        // Default: Google Satellite
         return {
             version: 8,
             sources: {
@@ -251,7 +260,7 @@ const MapComponent = () => {
                 }
             ]
         };
-    }, []);
+    }, [routePath]);
 
     // Routing
     // Updated to accept explicit start/end for recalculations
@@ -279,18 +288,15 @@ const MapComponent = () => {
 
             const start = `${startLon},${startLat}`;
             const end = `${endLon},${endLat}`;
-            const profile = mode === 'walking' ? 'foot' : 'driving';
+            const profile = mode === 'walking' ? 'walking' : 'driving';
 
-            console.log(`Routing from ${start} to ${end} via ${profile}`);
+            console.log(`Routing from ${start} to ${end} via Mapbox ${profile}`);
 
-            const url = `https://router.project-osrm.org/route/v1/${profile}/${start};${end}?overview=full&geometries=geojson&steps=true&annotations=true`;
-
+            const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${start};${end}?geometries=geojson&overview=full&steps=true&access_token=${MAPBOX_TOKEN}`;
             const response = await axios.get(url);
 
             if (response.data.routes && response.data.routes.length > 0) {
                 const allRoutes = response.data.routes;
-
-                // Filter routes logic...
                 const hebrewRegex = /[\u0590-\u05FF]/;
                 const militaryRegex = /military/i;
 
