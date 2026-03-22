@@ -275,6 +275,17 @@ const MapComponent = () => {
     const [friendsMap, setFriendsMap] = useState([]);
     const [followedShopsMap, setFollowedShopsMap] = useState([]);
     const [visibleFriendName, setVisibleFriendName] = useState(null); // Track which friend's name is shown
+    const [firstLabelLayerId, setFirstLabelLayerId] = useState(null); // For "built-in" route placement beneath labels
+
+    // Detect first label layer for professional "integrated" route rendering
+    const onMapLoad = (e) => {
+        const layers = e.target.getStyle().layers;
+        if (layers) {
+            // Find first symbol layer which is typically a label
+            const labelLayer = layers.find(l => l.type === 'symbol' && (l.id.includes('label') || l.id.includes('text') || l.id.includes('place')));
+            if (labelLayer) setFirstLabelLayerId(labelLayer.id);
+        }
+    };
     // --- Dynamic Map Style ---
     const mapStyle = useMemo(() => {
         // Preference 1: Automatically switch to Custom Mapbox Style during routing for a "Navigation" feel
@@ -1009,6 +1020,7 @@ const MapComponent = () => {
                     onMove={evt => setViewState(evt.viewState)}
                     mapStyle={mapStyle}
                     transformRequest={transformRequest}
+                    onLoad={onMapLoad}
                     style={{ width: '100%', height: '100%' }}
                     maxPitch={85}
                     attributionControl={false}
@@ -1028,39 +1040,36 @@ const MapComponent = () => {
                                     "line-blur": 3
                                 }}
                             />
-                            {/* Layer 1: Professional Navigation Casing */}
-                            <Layer
-                                id="route-layer-casing"
-                                type="line"
-                                layout={{ "line-join": "round", "line-cap": "round" }}
-                                paint={{
-                                    "line-color": "#2c72b8", 
-                                    "line-width": 10,
-                                    "line-opacity": 0.3
-                                }}
-                            />
-                            {/* Layer 2: Main Navigation Path - Precise Blue */}
+                            {/* Professional Integrated Navigation Path - Positioned 'beforeId' for "Built-in" feel */}
                             <Layer
                                 id="route-layer-main"
                                 type="line"
+                                beforeId={firstLabelLayerId} // This puts the route UNDER street names
                                 layout={{ "line-join": "round", "line-cap": "round" }}
                                 paint={{
                                     "line-color": "#4EA3F3", 
-                                    "line-width": 6,
-                                    "line-opacity": 1
+                                    "line-width": [
+                                        'interpolate', ['exponential', 1.5], ['zoom'],
+                                        12, 3,
+                                        18, 12
+                                    ],
+                                    "line-opacity": 0.85
                                 }}
                             />
-                            {/* Layer 3: Subtle Directional Pulse */}
+                            {/* Casing for subtle depth */}
                             <Layer
-                                id="route-layer-pulse"
+                                id="route-layer-casing"
                                 type="line"
+                                beforeId="route-layer-main" // Under the main line
                                 layout={{ "line-join": "round", "line-cap": "round" }}
                                 paint={{
-                                    "line-color": "#ffffff",
-                                    "line-width": 2,
-                                    "line-dasharray": [2, 4],
-                                    "line-dashoffset": lineDashOffset,
-                                    "line-opacity": 0.5
+                                    "line-color": "#2c72b8", 
+                                    "line-width": [
+                                        'interpolate', ['exponential', 1.5], ['zoom'],
+                                        12, 5,
+                                        18, 16
+                                    ],
+                                    "line-opacity": 0.2
                                 }}
                             />
                         </Source>
