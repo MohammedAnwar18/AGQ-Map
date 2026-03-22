@@ -511,18 +511,16 @@ const Login = () => {
 
             <div style={{
                 textAlign: 'center',
-                color: 'rgba(255, 255, 255, 0.35)',
+                color: 'rgba(255, 255, 255, 0.6)',
                 fontSize: '0.9rem',
                 fontFamily: 'Tajawal, sans-serif',
                 zIndex: 10,
-                letterSpacing: '0.5px',
-                marginTop: '1.5rem',
-                paddingBottom: '2.5rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '10px'
+                marginTop: 'auto',
+                paddingBottom: '20px',
+                width: '100%',
+                flexShrink: 0
             }}>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '5px' }}>
+                <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'center', gap: '15px' }}>
                     <Link to="/terms" style={{ color: 'rgba(255, 255, 255, 0.7)', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem' }}>شروط الخدمة</Link>
                     <span style={{ opacity: 0.2 }}>|</span>
                     <Link to="/privacy" style={{ color: 'rgba(255, 255, 255, 0.7)', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem' }}>سياسة الخصوصية</Link>
