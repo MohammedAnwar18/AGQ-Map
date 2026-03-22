@@ -747,7 +747,7 @@ const MapComponent = () => {
                         style={{ padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex' }}
                     >
                         <img
-                            src={getImageUrl(user.profile_picture) || '/default-avatar.png'}
+                            src={getImageUrl(user?.profile_picture) || '/default-avatar.png'}
                             alt="Profile"
                             style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid #fbab15', boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }}
                         />
