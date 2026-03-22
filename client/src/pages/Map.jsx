@@ -289,28 +289,38 @@ const MapComponent = () => {
             const start = `${startLon},${startLat}`;
             const end = `${endLon},${endLat}`;
             const profile = mode === 'walking' ? 'walking' : 'driving';
+            const osrmProfile = mode === 'walking' ? 'foot' : 'driving';
 
             console.log(`Routing from ${start} to ${end} via Mapbox ${profile}`);
 
-            const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${start};${end}?geometries=geojson&overview=full&steps=true&access_token=${MAPBOX_TOKEN}`;
-            const response = await axios.get(url);
+            let routeData = null;
+            
+            // --- TRY MAPBOX FIRST ---
+            if (MAPBOX_TOKEN) {
+                try {
+                    const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${start};${end}?geometries=geojson&overview=full&steps=true&access_token=${MAPBOX_TOKEN}`;
+                    const response = await axios.get(url);
+                    if (response.data.routes && response.data.routes.length > 0) {
+                        routeData = response.data.routes[0];
+                        console.log("Using primary Mapbox routing engine");
+                    }
+                } catch (mbErr) {
+                    console.warn("Mapbox routing failed, falling back to OSRM", mbErr);
+                }
+            }
 
-            if (response.data.routes && response.data.routes.length > 0) {
-                const allRoutes = response.data.routes;
-                const hebrewRegex = /[\u0590-\u05FF]/;
-                const militaryRegex = /military/i;
+            // --- FALLBACK TO OSRM ---
+            if (!routeData) {
+                const url = `https://router.project-osrm.org/route/v1/${osrmProfile}/${start};${end}?overview=full&geometries=geojson&steps=true&annotations=true`;
+                const response = await axios.get(url);
+                if (response.data.routes && response.data.routes.length > 0) {
+                    routeData = response.data.routes[0];
+                    console.log("Using fallback OSRM routing engine");
+                }
+            }
 
-                const safeRoutes = allRoutes.filter(r => {
-                    return r.legs.every(leg =>
-                        leg.steps.every(step => {
-                            const name = step.name || "";
-                            return !hebrewRegex.test(name) && !militaryRegex.test(name);
-                        })
-                    );
-                });
-
-                let route = safeRoutes.length > 0 ? safeRoutes[0] : allRoutes[0];
-                const coordinates = route.geometry.coordinates;
+            if (routeData) {
+                const coordinates = routeData.geometry.coordinates;
 
                 setRoutePath({
                     type: 'Feature',
@@ -331,8 +341,8 @@ const MapComponent = () => {
                 }
 
                 setRouteStats({
-                    distance: (route.distance / 1000).toFixed(1) + ' كم',
-                    duration: Math.round(route.duration / 60) + ' دقيقة'
+                    distance: (routeData.distance / 1000).toFixed(1) + ' كم',
+                    duration: Math.round(routeData.duration / 60) + ' دقيقة'
                 });
             } else {
                 alert("لم يتم العثور على مسار متاح لهذه الوجهة.");
