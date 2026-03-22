@@ -749,7 +749,7 @@ const MapComponent = () => {
                         <img
                             src={getImageUrl(user?.profile_picture) || '/default-avatar.png'}
                             alt="Profile"
-                            style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid #fbab15', boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }}
+                            style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #fbab15', boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }}
                         />
                     </button>
                     <div className="app-logo">
@@ -1046,7 +1046,7 @@ const MapComponent = () => {
                                 backgroundImage: `url(${getImageUrl(shop.profile_picture) || getImageUrl(shop.image_url) || '/default-shop.png'})`,
                                 backgroundSize: 'cover',
                                 backgroundPosition: 'center',
-                                border: '1.5px solid white',
+                                border: '3px solid white',
                                 boxShadow: '0 4px 10px rgba(0,0,0,0.4)',
                                 position: 'relative'
                             }}>
