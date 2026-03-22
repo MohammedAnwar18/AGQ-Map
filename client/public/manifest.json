@@ -1,6 +1,6 @@
 {
     "short_name": "PalNovaa",
-    "name": "PalNovaa",
+    "name": "PalNovaa (بالنوفا) | خريطتك الاجتماعية الذكية",
     "icons": [
         {
             "src": "/logo.png",
@@ -17,10 +17,10 @@
     ],
     "start_url": ".",
     "display": "standalone",
-    "theme_color": "#1e293b",
-    "background_color": "#0f172a",
+    "theme_color": "#fbab15",
+    "background_color": "#ffffff",
     "orientation": "portrait",
-    "description": "Spatial social network for Palestinian cities. Connect, share, and explore.",
+    "description": "PalNovaa (بالنوفا) | شبكة اجتماعية مكانية ذكية تتيح لك اكتشاف الأماكن القريبة، مشاركة لحظاتك على الخريطة، والتواصل مع الأصدقاء بسهولة وأمان. منصة تجمع بين الاستكشاف الجغرافي والتواصل الاجتماعي.",
     "permissions": [
         "geolocation",
         "camera",
