@@ -250,20 +250,18 @@ const MapComponent = () => {
     const [visibleFriendName, setVisibleFriendName] = useState(null); // Track which friend's name is shown
     // --- Dynamic Map Style ---
     const mapStyle = useMemo(() => {
-        // If we have a route AND a valid token, show Mapbox Streets for clarity
-        if (routePath && MAPBOX_TOKEN) {
-            return MAPBOX_STREETS_STYLE;
-        }
+        // Toggle Map Type: Roadmap (m) during routing, Satellite (s) otherwise
+        const mapType = routePath ? 'm' : 's';
+        const attribution = mapType === 'm' ? 'Google Roads' : 'Google Satellite';
 
-        // Default: Google Satellite
         return {
             version: 8,
             sources: {
                 'raster-tiles': {
                     type: 'raster',
-                    tiles: ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'],
+                    tiles: [`https://mt1.google.com/vt/lyrs=${mapType}&x={x}&y={y}&z={z}`],
                     tileSize: 256,
-                    attribution: 'Google Maps'
+                    attribution: attribution
                 }
             },
             layers: [
