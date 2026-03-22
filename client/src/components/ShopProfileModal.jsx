@@ -557,7 +557,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                         <div style={{ position: 'relative' }}>
                             <div style={{
                                 width: 120, height: 120, borderRadius: '50%',
-                                border: '4px solid var(--bg-primary)',
+                                border: '2px solid var(--bg-primary)',
                                 background: profileUrl ? `url(${profileUrl}) center/cover` : '#fbab15',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 fontSize: '3rem', color: 'white', boxShadow: '0 4px 10px rgba(0,0,0,0.2)'

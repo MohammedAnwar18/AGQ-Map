@@ -100,6 +100,8 @@
     flex: 1;
     overflow-y: auto;
     padding: 20px;
+    padding-bottom: 100px; /* Space for mobile nav */
+    overscroll-behavior: contain;
 }
 
 /* News Card */
@@ -152,15 +154,12 @@
 }
 
 .news-info p {
-    font-size: 13px;
-    color: #555;
-    line-height: 1.5;
+    font-size: 13.5px;
+    color: #444;
+    line-height: 1.6;
     margin-bottom: 12px;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    display: block;
+    overflow: visible;
 }
 
 .news-time {
