@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Map from './pages/Map';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminUserDetails from './pages/AdminUserDetails';
+import LegalPages from './pages/LegalPages';
 
 import OfflinePage from './components/OfflinePage';
 import './index.css';
@@ -132,14 +133,11 @@ function App() {
                             </AdminRoute>
                         }
                     />
-                    <Route
-                        path="/admin/users/:userId"
-                        element={
-                            <AdminRoute>
-                                <AdminUserDetails />
-                            </AdminRoute>
-                        }
-                    />
+                    <Route path="/admin/users/:userId" element={<AdminRoute><AdminUserDetails /></AdminRoute>} />
+                    
+                    {/* Legal Routes */}
+                    <Route path="/terms" element={<LegalPages type="terms" />} />
+                    <Route path="/privacy" element={<LegalPages type="privacy" />} />
 
                     <Route path="/" element={<Navigate to="/map" />} />
                     <Route path="*" element={<OfflinePage />} />

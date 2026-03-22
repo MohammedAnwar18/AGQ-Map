@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/api';
 import CustomCalendar from '../components/CustomCalendar';
@@ -488,15 +488,23 @@ const Login = () => {
             <div style={{
                 textAlign: 'center',
                 color: 'rgba(255, 255, 255, 0.9)',
-                fontSize: '0.95rem',
+                fontSize: '0.9rem',
                 fontFamily: 'Tajawal, sans-serif',
                 zIndex: 10,
                 textShadow: '0 2px 4px rgba(0,0,0,0.6)',
                 letterSpacing: '0.5px',
-                marginTop: '2rem',
-                paddingBottom: '2rem'
+                marginTop: '1.5rem',
+                paddingBottom: '2.5rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px'
             }}>
-                <p style={{ margin: 0, padding: 0, fontWeight: '600' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '5px' }}>
+                    <Link to="/terms" style={{ color: '#fbab15', textDecoration: 'none', fontWeight: 'bold' }}>شروط الخدمة</Link>
+                    <span style={{ opacity: 0.5 }}>|</span>
+                    <Link to="/privacy" style={{ color: '#fbab15', textDecoration: 'none', fontWeight: 'bold' }}>سياسة الخصوصية</Link>
+                </div>
+                <p style={{ margin: 0, padding: 0, opacity: 0.8 }}>
                     &copy; {new Date().getFullYear()} PalNovaa. جميع الحقوق محفوظة.
                 </p>
             </div>
