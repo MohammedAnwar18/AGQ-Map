@@ -1288,7 +1288,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                                 </label>
                                                 <input className="input" type="text" value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} required style={{ width: '100%' }} placeholder={shopData.category === 'مكتب تاكسي' ? 'مثال: توصيلة للمطار' : ''} />
                                             </div>
-                                            {(shopData.category === 'سوبر ماركت' || shopData.category === 'سوبرماركت') && (
+                                            {(['سوبر ماركت', 'سوبرماركت', 'Supermarket', 'supermarket'].includes(shopData.category)) && (
                                                 <div style={{ flex: 1 }}>
                                                     <label style={{ display: 'block', marginBottom: 5 }}>القسم</label>
                                                     <select 
@@ -1398,32 +1398,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                             )}
 
                             {/* Supermarket Categories Bar */}
-                            {(shopData.category === 'سوبر ماركت' || shopData.category === 'سوبرماركت') && (
-                                <div style={{ 
-                                    display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 15, marginBottom: 15,
-                                    scrollbarWidth: 'none', msOverflowStyle: 'none'
-                                }}>
-                                    {SUPERMARKET_CATEGORIES.map(cat => (
-                                        <button
-                                            key={cat}
-                                            onClick={() => setSelectedProductCategory(cat)}
-                                            style={{
-                                                whiteSpace: 'nowrap', padding: '8px 20px', borderRadius: 25,
-                                                border: 'none', cursor: 'pointer', fontWeight: 'bold',
-                                                background: selectedProductCategory === cat ? 'var(--primary)' : 'var(--bg-secondary)',
-                                                color: selectedProductCategory === cat ? 'white' : 'var(--text-primary)',
-                                                transition: 'all 0.2s',
-                                                boxShadow: selectedProductCategory === cat ? '0 4px 10px rgba(251, 171, 21, 0.3)' : 'none'
-                                            }}
-                                        >
-                                            {cat}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* Supermarket Categories Bar */}
-                            {shopData.category === 'سوبر ماركت' && (
+                            {(['سوبر ماركت', 'سوبرماركت', 'Supermarket', 'supermarket'].includes(shopData.category)) && (
                                 <div style={{ 
                                     display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 15, marginBottom: 15,
                                     scrollbarWidth: 'none', msOverflowStyle: 'none'
@@ -1497,7 +1472,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                         const isOnSale = p.old_price && parseFloat(p.old_price) > parseFloat(p.price);
 
                                         if (showSalesOnly && !isOnSale) return false;
-                                        if ((shopData.category === 'سوبر ماركت' || shopData.category === 'سوبرماركت') && !matchesCategory) return false;
+                                        if (['سوبر ماركت', 'سوبرماركت', 'Supermarket', 'supermarket'].includes(shopData.category) && !matchesCategory) return false;
                                         return matchesSearch;
                                     })
                                     .length === 0 ? <p style={{ color: 'var(--text-muted)', gridColumn: '1/-1', textAlign: 'center', padding: '20px' }}>
@@ -1516,7 +1491,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                             const isOnSale = p.old_price && parseFloat(p.old_price) > parseFloat(p.price);
                                             
                                             if (showSalesOnly && !isOnSale) return false;
-                                            if ((shopData.category === 'سوبر ماركت' || shopData.category === 'سوبرماركت') && !matchesCategory) return false;
+                                            if (['سوبر ماركت', 'سوبرماركت', 'Supermarket', 'supermarket'].includes(shopData.category) && !matchesCategory) return false;
                                             return matchesSearch;
                                         })
                                         .map(product => {
