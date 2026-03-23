@@ -596,7 +596,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
         if (!match) return null; // No data for today
 
         const timeRange = match[1];
-        if (timeRange.includes('مغلق')) return { isOpen: false, text: 'مغلق الآن' };
+        if (timeRange.includes('مغلق')) return { isOpen: false, text: 'مغلق' };
 
         // Parse times "09:00 - 17:00"
         // Parse times "09:00 - 17:00" or "9:00 صباحاً - 5:00 مساءً"
@@ -618,9 +618,9 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
         const endMinutes = endH * 60 + parseInt(m2);
 
         if (currentMinutes >= startMinutes && currentMinutes <= endMinutes) {
-            return { isOpen: true, text: 'مفتوح الآن' };
+            return { isOpen: true, text: 'مفتوح' };
         } else {
-            return { isOpen: false, text: 'مغلق الآن' };
+            return { isOpen: false, text: 'مغلق' };
         }
     };
 
@@ -1648,16 +1648,16 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                             <button
                                 onClick={() => setShowCart(true)}
                                 style={{
-                                    position: 'fixed', bottom: 30, left: 30, zIndex: 2100,
+                                    position: 'fixed', bottom: 30, left: 20, zIndex: 2100,
                                     background: 'var(--bg-primary)', color: 'var(--text-primary)',
                                     border: '2px solid var(--primary)', borderRadius: '50px',
-                                    padding: '12px 24px', fontSize: '1.1rem', fontWeight: 'bold',
-                                    display: 'flex', alignItems: 'center', gap: 10,
+                                    padding: '10px 18px', fontSize: '1rem', fontWeight: 'bold',
+                                    display: 'flex', alignItems: 'center', gap: 8,
                                     boxShadow: '0 4px 15px rgba(0,0,0,0.2)', cursor: 'pointer'
                                 }}
                             >
-                                🛒 {shopData.category === 'مكتب تاكسي' ? 'حجوزاتي' : 'السلة'}
-                                {cartCount > 0 && <span style={{ background: 'red', color: 'white', borderRadius: '50%', padding: '2px 8px', fontSize: '0.9rem' }}>{cartCount}</span>}
+                                {shopData.category === 'مكتب تاكسي' ? 'حجوزاتي' : 'السلة'} 🛒
+                                {cartCount > 0 && <span style={{ background: 'red', color: 'white', borderRadius: '50%', padding: '1px 7px', fontSize: '0.85rem' }}>{cartCount}</span>}
                             </button>
                         </div>
                     )}
