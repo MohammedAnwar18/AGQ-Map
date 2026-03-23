@@ -1405,14 +1405,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                     paddingTop: '5px'
                                 }}>
                                     {SUPERMARKET_CATEGORIES.map(cat => {
-                                        const icons = {
-                                            "الكل": "📦", "العروض": "🔥", "الخبز": "🥖", "المعلبات": "🥫", 
-                                            "التوابل": "🧂", "الخضروات والفواكه": "🍎", "البيض والالبان والاجبان": "🥛", 
-                                            "مستلزمات المنزل": "🏠", "المنظفات": "🧼", "المفرزات": "❄️", 
-                                            "الصحة والجمال": "💄", "مواد غذائية": "🍛", "اكل صحي": "🥗", 
-                                            "الصوصات": "🏺", "مستلزمات الشواء": "🍖", "الحلويات": "🍬", 
-                                            "المشروبات": "🥤", "التسالي": "🥨"
-                                        };
                                         const isActive = selectedProductCategory === cat;
                                         return (
                                             <button
@@ -1427,7 +1419,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                                     color: isActive ? 'white' : 'var(--text-primary)',
                                                     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                                     boxShadow: isActive ? '0 8px 20px rgba(251, 171, 21, 0.35)' : '0 2px 5px rgba(0,0,0,0.05)',
-                                                    display: 'flex', alignItems: 'center', gap: 8,
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                     fontSize: '0.95rem',
                                                     flexShrink: 0
                                                 }}
@@ -1444,7 +1436,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                                     }
                                                 }}
                                             >
-                                                <span style={{ fontSize: '1.1rem' }}>{icons[cat] || '🏷️'}</span>
                                                 {cat}
                                             </button>
                                         );
