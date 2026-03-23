@@ -432,10 +432,14 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
             const formData = new FormData();
             formData.append('content', newPostContent);
 
-            // Loop through images and optimize each one
+            // Loop through files and optimize if image
             for (let i = 0; i < postImages.length; i++) {
-                const optimizedFile = await optimizeImage(postImages[i], { maxWidth: 1200 });
-                formData.append('images', optimizedFile);
+                if (postImages[i].type.startsWith('image/')) {
+                    const optimizedFile = await optimizeImage(postImages[i], { maxWidth: 1200 });
+                    formData.append('images', optimizedFile);
+                } else {
+                    formData.append('images', postImages[i]); // Keep video as is
+                }
             }
 
             const post = await shopService.createPost(shopData.id, formData);
@@ -2023,8 +2027,12 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                     {postImages.length > 0 && (
                                         <div style={{ display: 'flex', gap: 10, marginBottom: 15, overflowX: 'auto', paddingBottom: 5 }}>
                                             {Array.from(postImages).map((file, idx) => (
-                                                <div key={idx} style={{ position: 'relative', width: 80, height: 80, borderRadius: 10, overflow: 'hidden' }}>
-                                                    <img src={URL.createObjectURL(file)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                <div key={idx} style={{ position: 'relative', width: 80, height: 80, borderRadius: 10, overflow: 'hidden', background: '#000' }}>
+                                                    {file.type.startsWith('video/') ? (
+                                                        <video src={URL.createObjectURL(file)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                    ) : (
+                                                        <img src={URL.createObjectURL(file)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                    )}
                                                     <button
                                                         onClick={() => {
                                                             const newFiles = Array.from(postImages);
@@ -2052,7 +2060,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                                 id="post-images-input"
                                                 type="file"
                                                 multiple
-                                                accept="image/*"
+                                                accept="image/*,video/*"
                                                 onChange={e => setPostImages([...postImages, ...Array.from(e.target.files)])}
                                                 hidden
                                             />
@@ -2132,7 +2140,15 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                     </div>
                                     <div style={{ marginBottom: 10 }}>{post.content}</div>
                                     {post.image_url && (
-                                        <img src={getImageUrl(post.image_url)} style={{ width: '100%', maxHeight: 400, objectFit: 'cover', borderRadius: 8 }} />
+                                        post.media_type === 'video' ? (
+                                            <video 
+                                                src={getImageUrl(post.image_url)} 
+                                                controls 
+                                                style={{ width: '100%', maxHeight: 400, borderRadius: 8, background: '#000' }}
+                                            />
+                                        ) : (
+                                            <img src={getImageUrl(post.image_url)} style={{ width: '100%', maxHeight: 400, objectFit: 'cover', borderRadius: 8 }} />
+                                        )
                                     )}
                                     <div style={{ display: 'flex', gap: '20px', marginTop: '15px', paddingTop: '15px', borderTop: '1px solid var(--borderColor)' }}>
                                         <button
