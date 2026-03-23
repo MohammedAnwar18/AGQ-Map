@@ -19,8 +19,37 @@ const ProfileModal = ({ userId, onClose }) => {
         date_of_birth: '',
         marital_status: '',
         workplace: '',
-        education: ''
+        education: '',
+        institution: ''
     });
+
+    const PALESTINIAN_UNIVERSITIES = [
+        "جامعة النجاح الوطنية", "جامعة بيرزيت", "جامعة القدس", "جامعة الخليل",
+        "جامعة بيت لحم", "جامعة بوليتكنك فلسطين", "الجامعة العربية الأمريكية",
+        "جامعة القدس المفتوحة", "جامعة فلسطين التقنية - خضوري", "جامعة الاستقلال",
+        "جامعة فلسطين الأهلية", "جامعة دار الكلمة للفنون والثقافة",
+        "جامعة الزيتونة للعلوم والتكنولوجيا", "جامعة نابلس للتعليم المهني والتقني",
+        "الجامعة الإسلامية بغزة", "جامعة الأزهر بغزة", "جامعة الأقصى",
+        "جامعة غزة", "جامعة فلسطين", "جامعة الإسراء", "جامعة الأمة",
+        "كلية فلسطين التقنية دير البلح", "الكلية الجامعية للعلوم التطبيقية",
+        "كلية العودة الجامعية", "أكاديمية الإدارة والسياسة",
+        "الكلية الجامعية للعلوم والتكنولوجيا", "كلية دار الدعوة والعلوم الإنسانية",
+        "كلية فلسطين التقنية رام الله للبنات", "كلية ابن سينا للعلوم الصحية",
+        "كلية الدعوة الإسلامية قلقيلية", "الكلية الجامعية للعلوم التربوية",
+        "كلية فلسطين للتمريض خان يونس", "كلية بيت لحم للكتاب المقدس",
+        "الالكلية العصرية الجامعية", "كلية المقاصد الجامعية",
+        "المعهد الإكليريكي لبطريركية اللاتين", "كلية تنمية القدرات",
+        "كلية العلوم الإسلامية - الظاهرية", "كلية الأمة الجامعية",
+        "الكلية الذكية الجامعية للتعليم الحديث", "الكلية العربية للعلوم التطبيقية",
+        "الكلية الدولية الجامعية للعلوم والصحة", "كلية المجتمع الإبراهيمية",
+        "كلية صحة المجتمع", "كلية إنعاش الأسرة", "كلية الخليل للتمريض",
+        "كلية هشام حجاوي التكنولوجية", "كلية مجتمع النجاح الوطنية",
+        "كلية الحاجة عندليب العمد", "كلية الدراسات المتوسطة الأزهر",
+        "كلية مجتمع الأقصى للدراسات المتوسطة", "كلية مجتمع غزة للدراسات السياحية",
+        "كلية مجتمع غزة-الوكالة", "كلية العلوم التربوية - الطيرة",
+        "كلية تدريب خانيونس", "كلية مجتمع طاليتا قومي",
+        "كلية التمريض - مستشفى الكاريتاس", "كلية يبوس - جنين"
+    ];
 
     const getHijriDate = (date) => {
         if (!date) return '';
@@ -55,7 +84,8 @@ const ProfileModal = ({ userId, onClose }) => {
                 date_of_birth: data.user.date_of_birth ? data.user.date_of_birth.split('T')[0] : '',
                 marital_status: data.user.marital_status || '',
                 workplace: data.user.workplace || '',
-                education: data.user.education || ''
+                education: data.user.education || '',
+                institution: data.user.institution || ''
             });
         } catch (error) {
             console.error('Failed to load profile:', error);
@@ -75,6 +105,7 @@ const ProfileModal = ({ userId, onClose }) => {
             updateData.append('marital_status', formData.marital_status);
             updateData.append('workplace', formData.workplace);
             updateData.append('education', formData.education);
+            updateData.append('institution', formData.institution);
 
             if (formData.profile_picture instanceof File) {
                 updateData.append('profile_picture', formData.profile_picture);
@@ -93,7 +124,8 @@ const ProfileModal = ({ userId, onClose }) => {
                     date_of_birth: response.user.date_of_birth ? response.user.date_of_birth.split('T')[0] : '',
                     marital_status: response.user.marital_status || '',
                     workplace: response.user.workplace || '',
-                    education: response.user.education || ''
+                    education: response.user.education || '',
+                    institution: response.user.institution || ''
                 });
             }
 
@@ -347,6 +379,21 @@ const ProfileModal = ({ userId, onClose }) => {
                                             <option value="graduate">خريج</option>
                                             <option value="not_studying">لا يدرس</option>
                                         </select>
+
+                                        {(formData.education === 'student' || formData.education === 'graduate') && (
+                                            <select
+                                                value={formData.institution}
+                                                onChange={(e) => setFormData({ ...formData, institution: e.target.value })}
+                                                className="input"
+                                                style={{ animation: 'slideDown 0.3s ease' }}
+                                            >
+                                                <option value="">اختر اسم الجامعة / الكلية</option>
+                                                {PALESTINIAN_UNIVERSITIES.map((name, idx) => (
+                                                    <option key={idx} value={name}>{name}</option>
+                                                ))}
+                                                <option value="other">أخرى</option>
+                                            </select>
+                                        )}
                                     </div>
                                 ) : (
                                     <>
@@ -442,8 +489,8 @@ const ProfileModal = ({ userId, onClose }) => {
                                                     <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
                                                     <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
                                                 </svg>
-                                                {profile.education === 'student' ? 'طالب جامعة' :
-                                                    profile.education === 'graduate' ? 'خريج' :
+                                                {profile.education === 'student' ? (profile.institution ? `يدرس في ${profile.institution}` : 'طالب جامعة') :
+                                                    profile.education === 'graduate' ? (profile.institution ? `خريج من ${profile.institution}` : 'خريج') :
                                                         profile.education === 'not_studying' ? 'لا يدرس' : profile.education}
                                             </div>
                                         )}
