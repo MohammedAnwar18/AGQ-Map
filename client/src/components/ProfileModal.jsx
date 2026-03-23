@@ -318,6 +318,9 @@ const ProfileModal = ({ userId, onClose }) => {
                                             <option value="married">
                                                 {formData.gender === 'male' ? 'متزوج' : formData.gender === 'female' ? 'متزوجة' : 'متزوج / متزوجة'}
                                             </option>
+                                            <option value="engaged">
+                                                {formData.gender === 'male' ? 'خاطب' : formData.gender === 'female' ? 'مخطوبة' : 'خاطب / مخطوبة'}
+                                            </option>
                                             <option value="divorced">
                                                 {formData.gender === 'male' ? 'مطلق' : formData.gender === 'female' ? 'مطلقة' : 'مطلق / مطلقة'}
                                             </option>
@@ -397,8 +400,9 @@ const ProfileModal = ({ userId, onClose }) => {
                                                 </svg>
                                                 {profile.marital_status === 'single' ? (profile.gender === 'male' ? 'أعزب' : profile.gender === 'female' ? 'عزباء' : 'أعزب/عزباء') :
                                                     profile.marital_status === 'married' ? (profile.gender === 'male' ? 'متزوج' : profile.gender === 'female' ? 'متزوجة' : 'متزوج/متزوجة') :
-                                                        profile.marital_status === 'divorced' ? (profile.gender === 'male' ? 'مطلق' : profile.gender === 'female' ? 'مطلقة' : 'مطلق/مطلقة') :
-                                                            profile.marital_status === 'widowed' ? (profile.gender === 'male' ? 'أرمل' : profile.gender === 'female' ? 'أرملة' : 'أرمل/أرملة') : profile.marital_status}
+                                                        profile.marital_status === 'engaged' ? (profile.gender === 'male' ? 'خاطب' : profile.gender === 'female' ? 'مخطوبة' : 'خاطب/مخطوبة') :
+                                                            profile.marital_status === 'divorced' ? (profile.gender === 'male' ? 'مطلق' : profile.gender === 'female' ? 'مطلقة' : 'مطلق/مطلقة') :
+                                                                profile.marital_status === 'widowed' ? (profile.gender === 'male' ? 'أرمل' : profile.gender === 'female' ? 'أرملة' : 'أرمل/أرملة') : profile.marital_status}
                                             </div>
                                         )}
                                         {profile.workplace && (
