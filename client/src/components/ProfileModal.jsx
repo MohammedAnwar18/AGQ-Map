@@ -16,8 +16,24 @@ const ProfileModal = ({ userId, onClose }) => {
         full_name: '',
         bio: '',
         gender: '',
-        date_of_birth: ''
+        date_of_birth: '',
+        marital_status: '',
+        workplace: '',
+        education: ''
     });
+
+    const getHijriDate = (date) => {
+        if (!date) return '';
+        try {
+            return new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura-nu-latn', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            }).format(new Date(date));
+        } catch (e) {
+            return '';
+        }
+    };
 
     const [showCropper, setShowCropper] = useState(false);
     const [tempImageSrc, setTempImageSrc] = useState(null);
@@ -36,7 +52,10 @@ const ProfileModal = ({ userId, onClose }) => {
                 full_name: data.user.full_name || '',
                 bio: data.user.bio || '',
                 gender: data.user.gender || '',
-                date_of_birth: data.user.date_of_birth ? data.user.date_of_birth.split('T')[0] : ''
+                date_of_birth: data.user.date_of_birth ? data.user.date_of_birth.split('T')[0] : '',
+                marital_status: data.user.marital_status || '',
+                workplace: data.user.workplace || '',
+                education: data.user.education || ''
             });
         } catch (error) {
             console.error('Failed to load profile:', error);
@@ -53,6 +72,9 @@ const ProfileModal = ({ userId, onClose }) => {
             updateData.append('bio', formData.bio);
             updateData.append('gender', formData.gender);
             updateData.append('date_of_birth', formData.date_of_birth);
+            updateData.append('marital_status', formData.marital_status);
+            updateData.append('workplace', formData.workplace);
+            updateData.append('education', formData.education);
 
             if (formData.profile_picture instanceof File) {
                 updateData.append('profile_picture', formData.profile_picture);
@@ -68,7 +90,10 @@ const ProfileModal = ({ userId, onClose }) => {
                     full_name: response.user.full_name || '',
                     bio: response.user.bio || '',
                     gender: response.user.gender || '',
-                    date_of_birth: response.user.date_of_birth ? response.user.date_of_birth.split('T')[0] : ''
+                    date_of_birth: response.user.date_of_birth ? response.user.date_of_birth.split('T')[0] : '',
+                    marital_status: response.user.marital_status || '',
+                    workplace: response.user.workplace || '',
+                    education: response.user.education || ''
                 });
             }
 
@@ -280,6 +305,37 @@ const ProfileModal = ({ userId, onClose }) => {
                                                 </div>
                                             )}
                                         </div>
+
+                                        <select
+                                            value={formData.marital_status}
+                                            onChange={(e) => setFormData({ ...formData, marital_status: e.target.value })}
+                                            className="input"
+                                        >
+                                            <option value="">الحالة الاجتماعية</option>
+                                            <option value="single">أعزب / عزباء</option>
+                                            <option value="married">متزوج / متزوجة</option>
+                                            <option value="divorced">مطلق / مطلقة</option>
+                                            <option value="widowed">أرمل / أرملة</option>
+                                        </select>
+
+                                        <input
+                                            type="text"
+                                            value={formData.workplace}
+                                            onChange={(e) => setFormData({ ...formData, workplace: e.target.value })}
+                                            className="input"
+                                            placeholder="مكان العمل"
+                                        />
+
+                                        <select
+                                            value={formData.education}
+                                            onChange={(e) => setFormData({ ...formData, education: e.target.value })}
+                                            className="input"
+                                        >
+                                            <option value="">الحالة التعليمية</option>
+                                            <option value="student">طالب جامعة</option>
+                                            <option value="graduate">خريج</option>
+                                            <option value="not_studying">لا يدرس</option>
+                                        </select>
                                     </div>
                                 ) : (
                                     <>
@@ -301,9 +357,86 @@ const ProfileModal = ({ userId, onClose }) => {
                                     </>
                                 )}
 
-                                <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+                                <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '1rem' }}>
                                     @{profile.username}
                                 </p>
+
+                                {/* Extra info row (Marital Status, Workplace, Education) */}
+                                {!editing && (profile.marital_status || profile.workplace || profile.education) && (
+                                    <div style={{
+                                        display: 'flex',
+                                        flexWrap: 'wrap',
+                                        justifyContent: 'center',
+                                        gap: '10px',
+                                        marginBottom: '1rem',
+                                        animation: 'fadeIn 0.5s ease'
+                                    }}>
+                                        {profile.marital_status && (
+                                            <div style={{
+                                                background: 'rgba(245, 158, 11, 0.1)',
+                                                color: '#f59e0b',
+                                                padding: '4px 12px',
+                                                borderRadius: '20px',
+                                                fontSize: '0.85rem',
+                                                fontWeight: '600',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '5px',
+                                                border: '1px solid rgba(245, 158, 11, 0.2)'
+                                            }}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.77-8.77 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                                                </svg>
+                                                {profile.marital_status === 'single' ? 'أعزب/عزباء' :
+                                                    profile.marital_status === 'married' ? 'متزوج/متزوجة' :
+                                                        profile.marital_status === 'divorced' ? 'مطلق/مطلقة' :
+                                                            profile.marital_status === 'widowed' ? 'أرمل/أرملة' : profile.marital_status}
+                                            </div>
+                                        )}
+                                        {profile.workplace && (
+                                            <div style={{
+                                                background: 'rgba(59, 130, 246, 0.1)',
+                                                color: '#3b82f6',
+                                                padding: '4px 12px',
+                                                borderRadius: '20px',
+                                                fontSize: '0.85rem',
+                                                fontWeight: '600',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '5px',
+                                                border: '1px solid rgba(59, 130, 246, 0.2)'
+                                            }}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                                                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                                                </svg>
+                                                {profile.workplace}
+                                            </div>
+                                        )}
+                                        {profile.education && (
+                                            <div style={{
+                                                background: 'rgba(139, 92, 246, 0.1)',
+                                                color: '#8b5cf6',
+                                                padding: '4px 12px',
+                                                borderRadius: '20px',
+                                                fontSize: '0.85rem',
+                                                fontWeight: '600',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '5px',
+                                                border: '1px solid rgba(139, 92, 246, 0.2)'
+                                            }}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                                                    <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+                                                </svg>
+                                                {profile.education === 'student' ? 'طالب جامعة' :
+                                                    profile.education === 'graduate' ? 'خريج' :
+                                                        profile.education === 'not_studying' ? 'لا يدرس' : profile.education}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             {editing ? (
@@ -364,8 +497,9 @@ const ProfileModal = ({ userId, onClose }) => {
                                 </div>
                             </div>
 
-                            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                                انضم {new Date(profile.created_at).toLocaleDateString('ar-SA')}
+                             <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <div>انضم في {new Date(profile.created_at).toLocaleDateString('en-GB')}</div>
+                                <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>الهجري: {getHijriDate(profile.created_at)}</div>
                             </div>
 
                             {isOwnProfile && (

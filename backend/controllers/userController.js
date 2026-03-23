@@ -58,6 +58,7 @@ const getUserProfile = async (req, res) => {
         const result = await pool.query(
             `SELECT 
         u.id, u.username, u.full_name, u.bio, u.profile_picture, u.created_at, u.date_of_birth, u.gender,
+        u.marital_status, u.workplace, u.education,
         CASE 
           WHEN f.id IS NOT NULL THEN true 
           ELSE false 
@@ -116,7 +117,7 @@ const getUserProfile = async (req, res) => {
 const updateProfile = async (req, res) => {
     try {
         const userId = req.user.id || req.user.userId;
-        const { full_name, bio, gender, date_of_birth } = req.body;
+        const { full_name, bio, gender, date_of_birth, marital_status, workplace, education } = req.body;
         const { uploadToSupabase, deleteFileFromCloud } = require('../utils/storage');
 
         // Fetch old profile picture to delete later if needed
@@ -149,6 +150,18 @@ const updateProfile = async (req, res) => {
             params.push(dobValue);
             query += ` date_of_birth = $${paramCount++},`;
         }
+        if (marital_status !== undefined && marital_status !== 'undefined' && marital_status !== 'null') {
+            params.push(marital_status === '' ? null : marital_status);
+            query += ` marital_status = $${paramCount++},`;
+        }
+        if (workplace !== undefined && workplace !== 'undefined' && workplace !== 'null') {
+            params.push(workplace === '' ? null : workplace);
+            query += ` workplace = $${paramCount++},`;
+        }
+        if (education !== undefined && education !== 'undefined' && education !== 'null') {
+            params.push(education === '' ? null : education);
+            query += ` education = $${paramCount++},`;
+        }
         if (profile_picture) {
             params.push(profile_picture);
             query += ` profile_picture = $${paramCount++},`;
@@ -161,7 +174,7 @@ const updateProfile = async (req, res) => {
         // إزالة الفاصلة الأخيرة
         query = query.slice(0, -1);
         params.push(userId);
-        query += ` WHERE id = $${paramCount} RETURNING id, username, email, full_name, bio, profile_picture, gender, date_of_birth`;
+        query += ` WHERE id = $${paramCount} RETURNING id, username, email, full_name, bio, profile_picture, gender, date_of_birth, marital_status, workplace, education`;
 
         const result = await pool.query(query, params);
 
