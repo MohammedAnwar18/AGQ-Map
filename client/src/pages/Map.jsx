@@ -289,9 +289,9 @@ const MapComponent = () => {
     };
     // --- Dynamic Map Style ---
     const mapStyle = useMemo(() => {
-        // Preference 1: Use CartoDB Voyager (a beautiful detailed street style) during navigation!
+        // Preference 1: Use CartoDB Positron (a very clean street style) during navigation!
         if (routePath) {
-            return "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json";
+            return "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
         }
 
         // Preference 2: Geomolg Layer (Handled by Overlay in return, so we use a base here or nothing)
@@ -1300,23 +1300,25 @@ const MapComponent = () => {
                         )
                     )}
 
-                    {/* Palestinian Cities Labels (Satellite Only) - Hide when zoomed in to show shops */}
-                    {activeMapType === 'satellite' && viewState.zoom <= 13.5 && PALESTINIAN_CITIES.map((city, index) => (
+                    {/* Palestinian Cities Labels (Satellite or Navigation Mode) */}
+                    {(activeMapType === 'satellite' || routePath) && (viewState.zoom <= 13.5 || (routePath && viewState.zoom <= 15)) && PALESTINIAN_CITIES.map((city, index) => (
                         <Marker key={`city-${index}`} longitude={city.lon} latitude={city.lat} anchor="bottom">
                             <div style={{
-                                color: 'white',
-                                textShadow: '0 2px 4px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.5)',
-                                fontWeight: '600',
+                                color: (routePath && activeMapType !== 'satellite') ? '#1e293b' : 'white',
+                                textShadow: (routePath && activeMapType !== 'satellite') ? '0 1px 2px rgba(255,255,255,0.8)' : '0 2px 4px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.5)',
+                                fontWeight: '700',
                                 fontSize: '13px',
                                 textAlign: 'center',
                                 whiteSpace: 'nowrap',
                                 pointerEvents: 'none',
                                 fontFamily: "'Tajawal', 'Segoe UI', sans-serif",
-                                transform: 'translateY(-5px)', // Slight lift
-                                background: 'rgba(0, 0, 0, 0.2)', // Subtle backing
-                                padding: '2px 6px',
-                                borderRadius: '4px',
-                                backdropFilter: 'blur(2px)'
+                                transform: 'translateY(-5px)', 
+                                background: (routePath && activeMapType !== 'satellite') ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.2)',
+                                padding: '3px 10px',
+                                borderRadius: '20px',
+                                backdropFilter: 'blur(3px)',
+                                border: (routePath && activeMapType !== 'satellite') ? '1px solid #e2e8f0' : 'none',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                             }}>
                                 {city.name}
                             </div>
