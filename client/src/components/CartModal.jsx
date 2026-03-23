@@ -122,7 +122,7 @@ const CartModal = ({ onClose }) => {
                                         </div>
                                         
                                         <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                                            🏬 {item.shop_name || 'متجر'}
+                                            {item.shop_name || 'متجر'}
                                         </div>
 
                                         {item.note && (
@@ -135,9 +135,9 @@ const CartModal = ({ onClose }) => {
                                             <div style={{ color: '#f59e0b', fontWeight: '800', fontSize: '1rem' }}>{item.price} <small>ILS</small></div>
                                             
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f1f5f9', borderRadius: '50px', padding: '2px 4px' }}>
-                                                <button onClick={() => handleQuantity(item.id, -1)} style={{ width: 26, height: 26, border: 'none', background: 'white', borderRadius: '50%', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', fontWeight: 'bold' }}>-</button>
-                                                <span style={{ fontSize: '0.9rem', fontWeight: '800', minWidth: '15px', textAlign: 'center' }}>{item.quantity}</span>
-                                                <button onClick={() => handleQuantity(item.id, 1)} style={{ width: 26, height: 26, border: 'none', background: 'white', borderRadius: '50%', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', fontWeight: 'bold' }}>+</button>
+                                                <button onClick={() => handleQuantity(item.id, -1)} style={{ width: 26, height: 26, border: 'none', background: 'white', borderRadius: '50%', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', fontWeight: 'bold', color: '#1e293b' }}>-</button>
+                                                <span style={{ fontSize: '0.9rem', fontWeight: '800', minWidth: '15px', textAlign: 'center', color: '#1e293b' }}>{item.quantity}</span>
+                                                <button onClick={() => handleQuantity(item.id, 1)} style={{ width: 26, height: 26, border: 'none', background: 'white', borderRadius: '50%', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', fontWeight: 'bold', color: '#1e293b' }}>+</button>
                                             </div>
                                         </div>
                                     </div>
@@ -193,7 +193,7 @@ const CartModal = ({ onClose }) => {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', borderBottom: '4px solid #fbab15', paddingBottom: '20px' }}>
                             <div>
                                 <h1 style={{ margin: 0, color: '#0f172a', fontSize: '32px', fontWeight: '900' }}>PalNovaa</h1>
-                                <p style={{ margin: '5px 0', color: '#64748b', fontSize: '16px' }}>نظام الملاحة الذكي - فلسطين</p>
+                                <p style={{ margin: '5px 0', color: '#64748b', fontSize: '16px' }}>الشبكة الاجتماعية المكانية - فلسطين</p>
                             </div>
                             <div style={{ textAlign: 'left' }}>
                                 <h2 style={{ margin: 0, color: '#fbab15', fontSize: '24px' }}>قائمة طلبات</h2>
@@ -256,8 +256,7 @@ const CartModal = ({ onClose }) => {
 
                         {/* Footer */}
                         <div style={{ marginTop: '60px', textAlign: 'center', borderTop: '1px dashed #cbd5e1', paddingTop: '30px' }}>
-                            <p style={{ color: '#94a3b8', fontSize: '14px' }}>شكراً لاستخدامكم تطبيق PalNovaa لتسهيل تسوقكم في فلسطين.</p>
-                            <p style={{ color: '#cbd5e1', fontSize: '10px', marginTop: '10px' }}>هذا الملف تم إنتاجه تلقائياً ولا يعتبر فاتورة قانونية للبيع.</p>
+                            <p style={{ color: '#94a3b8', fontSize: '12px' }}>شكراً لتسوقكم عبر PalNovaa. هذا الملف تم إنتاجه تلقائياً ولا يعتبر فاتورة قانونية للبيع.</p>
                         </div>
                     </div>
                 </div>
