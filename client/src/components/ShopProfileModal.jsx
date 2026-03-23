@@ -135,7 +135,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
 
     // Search State
     const [productSearchQuery, setProductSearchQuery] = useState('');
-    const [showSalesOnly, setShowSalesOnly] = useState(false);
 
     // Cart
     const [showCart, setShowCart] = useState(false);
@@ -1453,7 +1452,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                         onChange={e => setProductSearchQuery(e.target.value)}
                                         style={{ 
                                             width: '100%', 
-                                            padding: '12px 15px 12px 45px', 
+                                            padding: '12px 45px 12px 15px', 
                                             borderRadius: '12px',
                                             fontSize: '1rem',
                                             fontFamily: "'Tajawal', sans-serif"
@@ -1463,25 +1462,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                         <SearchIcon />
                                     </div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                    <label style={{
-                                        display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none',
-                                        padding: '6px 12px', background: showSalesOnly ? 'rgba(239, 68, 68, 0.1)' : 'var(--bg-tertiary)',
-                                        borderRadius: '20px', border: showSalesOnly ? '1px solid #ef4444' : '1px solid transparent',
-                                        transition: 'all 0.2s'
-                                    }}>
-                                        <input
-                                            type="checkbox"
-                                            checked={showSalesOnly}
-                                            onChange={e => setShowSalesOnly(e.target.checked)}
-                                            style={{ display: 'none' }} // Custom style instead of default checkbox
-                                        />
-                                        <span style={{ fontSize: '1.1rem' }}></span>
-                                        <span style={{ fontWeight: showSalesOnly ? 'bold' : 'normal', color: showSalesOnly ? '#ef4444' : 'var(--text-secondary)' }}>
-                                            {shopData.category === 'مكتب تاكسي' ? 'عروض خاصة' : 'منتجات عليها خصم'}
-                                        </span>
-                                    </label>
-                                </div>
+
                             </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 20 }}>
@@ -1498,7 +1479,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                         // Sale check: has old_price AND old_price > price
                                         const isOnSale = p.old_price && parseFloat(p.old_price) > parseFloat(p.price);
 
-                                        if (showSalesOnly && !isOnSale) return false;
                                         if (['سوبر ماركت', 'سوبرماركت', 'Supermarket', 'supermarket'].includes(shopData.category) && !matchesCategory) return false;
                                         return matchesSearch;
                                     })
@@ -1517,7 +1497,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
 
                                             const isOnSale = p.old_price && parseFloat(p.old_price) > parseFloat(p.price);
                                             
-                                            if (showSalesOnly && !isOnSale) return false;
                                             if (['سوبر ماركت', 'سوبرماركت', 'Supermarket', 'supermarket'].includes(shopData.category) && !matchesCategory) return false;
                                             return matchesSearch;
                                         })
