@@ -1400,39 +1400,75 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                             {/* Supermarket Categories Bar */}
                             {(['سوبر ماركت', 'سوبرماركت', 'Supermarket', 'supermarket'].includes(shopData.category)) && (
                                 <div style={{ 
-                                    display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 15, marginBottom: 15,
-                                    scrollbarWidth: 'none', msOverflowStyle: 'none'
+                                    display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 15, marginBottom: 20,
+                                    scrollbarWidth: 'none', msOverflowStyle: 'none',
+                                    paddingTop: '5px'
                                 }}>
-                                    {SUPERMARKET_CATEGORIES.map(cat => (
-                                        <button
-                                            key={cat}
-                                            onClick={() => setSelectedProductCategory(cat)}
-                                            style={{
-                                                whiteSpace: 'nowrap', padding: '8px 20px', borderRadius: 25,
-                                                border: 'none', cursor: 'pointer', fontWeight: 'bold',
-                                                background: selectedProductCategory === cat ? 'var(--primary)' : 'var(--bg-secondary)',
-                                                color: selectedProductCategory === cat ? 'white' : 'var(--text-primary)',
-                                                transition: 'all 0.2s',
-                                                boxShadow: selectedProductCategory === cat ? '0 4px 10px rgba(251, 171, 21, 0.3)' : 'none'
-                                            }}
-                                        >
-                                            {cat}
-                                        </button>
-                                    ))}
+                                    {SUPERMARKET_CATEGORIES.map(cat => {
+                                        const icons = {
+                                            "الكل": "📦", "العروض": "🔥", "الخبز": "🥖", "المعلبات": "🥫", 
+                                            "التوابل": "🧂", "الخضروات والفواكه": "🍎", "البيض والالبان والاجبان": "🥛", 
+                                            "مستلزمات المنزل": "🏠", "المنظفات": "🧼", "المفرزات": "❄️", 
+                                            "الصحة والجمال": "💄", "مواد غذائية": "🍛", "اكل صحي": "🥗", 
+                                            "الصوصات": "🏺", "مستلزمات الشواء": "🍖", "الحلويات": "🍬", 
+                                            "المشروبات": "🥤", "التسالي": "🥨"
+                                        };
+                                        const isActive = selectedProductCategory === cat;
+                                        return (
+                                            <button
+                                                key={cat}
+                                                onClick={() => setSelectedProductCategory(cat)}
+                                                style={{
+                                                    whiteSpace: 'nowrap', padding: '10px 22px', borderRadius: 30,
+                                                    border: isActive ? '2px solid var(--primary)' : '1px solid var(--border-color)', 
+                                                    cursor: 'pointer', fontWeight: 'bold', 
+                                                    fontFamily: "'Tajawal', sans-serif",
+                                                    background: isActive ? 'var(--primary)' : 'var(--bg-secondary)',
+                                                    color: isActive ? 'white' : 'var(--text-primary)',
+                                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                    boxShadow: isActive ? '0 8px 20px rgba(251, 171, 21, 0.35)' : '0 2px 5px rgba(0,0,0,0.05)',
+                                                    display: 'flex', alignItems: 'center', gap: 8,
+                                                    fontSize: '0.95rem',
+                                                    flexShrink: 0
+                                                }}
+                                                onMouseOver={e => {
+                                                    if (!isActive) {
+                                                        e.currentTarget.style.borderColor = 'var(--primary)';
+                                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                                    }
+                                                }}
+                                                onMouseOut={e => {
+                                                    if (!isActive) {
+                                                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                                                        e.currentTarget.style.transform = 'translateY(0)';
+                                                    }
+                                                }}
+                                            >
+                                                <span style={{ fontSize: '1.1rem' }}>{icons[cat] || '🏷️'}</span>
+                                                {cat}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             )}
 
-                            <div style={{ marginBottom: 20 }}>
-                                <div style={{ position: 'relative', marginBottom: 10 }}>
+                            <div style={{ marginBottom: 25 }}>
+                                <div style={{ position: 'relative', marginBottom: 15 }}>
                                     <input
                                         className="input"
                                         type="text"
                                         placeholder={shopData.category === 'مكتب تاكسي' ? 'بحث في الوجهات/الخدمات...' : 'بحث في المنتجات...'}
                                         value={productSearchQuery}
                                         onChange={e => setProductSearchQuery(e.target.value)}
-                                        style={{ width: '100%', paddingRight: '40px' }}
+                                        style={{ 
+                                            width: '100%', 
+                                            padding: '12px 15px 12px 45px', 
+                                            borderRadius: '12px',
+                                            fontSize: '1rem',
+                                            fontFamily: "'Tajawal', sans-serif"
+                                        }}
                                     />
-                                    <div style={{ position: 'absolute', top: '50%', right: '12px', transform: 'translateY(-50%)', color: 'var(--text-muted)', display: 'flex' }}>
+                                    <div style={{ position: 'absolute', top: '50%', right: '15px', transform: 'translateY(-50%)', color: 'var(--text-muted)', display: 'flex' }}>
                                         <SearchIcon />
                                     </div>
                                 </div>
