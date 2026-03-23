@@ -4,6 +4,7 @@ import { cartService } from '../services/cartService';
 import { optimizeImage } from '../utils/imageOptimizer';
 import CartModal from './CartModal';
 import ImageCropperModal from './ImageCropperModal';
+import PostDetailModal from './PostDetailModal';
 import './Modal.css';
 
 // --- Assets / Icons ---
@@ -139,6 +140,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
     // Cart
     const [showCart, setShowCart] = useState(false);
     const [cartCount, setCartCount] = useState(cartService.getItemCount());
+    const [selectedPost, setSelectedPost] = useState(null); // Track post to view in detail
 
     // Inputs for Images
     const coverInputRef = useRef(null);
@@ -569,12 +571,13 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
     };
 
     const handleComment = async (postId, content) => {
-        if (!content.trim()) return;
+        if (!content || !content.trim()) return;
         try {
             await commentService.addComment(postId, content);
             setPosts(posts.map(p => p.id === postId ? { ...p, comments_count: (parseInt(p.comments_count) || 0) + 1 } : p));
         } catch (e) {
             console.error(e);
+            alert('فشل إضافة التعليق. يرجى المحاولة لاحقاً.');
         }
     };
 
@@ -2138,17 +2141,19 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                             </button>
                                         )}
                                     </div>
-                                    <div style={{ marginBottom: 10 }}>{post.content}</div>
+                                    <div style={{ marginBottom: 10, cursor: 'pointer' }} onClick={() => setSelectedPost(post)}>{post.content}</div>
                                     {post.image_url && (
-                                        post.media_type === 'video' ? (
-                                            <video 
-                                                src={getImageUrl(post.image_url)} 
-                                                controls 
-                                                style={{ width: '100%', maxHeight: 400, borderRadius: 8, background: '#000' }}
-                                            />
-                                        ) : (
-                                            <img src={getImageUrl(post.image_url)} style={{ width: '100%', maxHeight: 400, objectFit: 'cover', borderRadius: 8 }} />
-                                        )
+                                        <div onClick={() => setSelectedPost(post)} style={{ cursor: 'pointer' }}>
+                                            {post.media_type === 'video' ? (
+                                                <video 
+                                                    src={getImageUrl(post.image_url)} 
+                                                    controls 
+                                                    style={{ width: '100%', maxHeight: 400, borderRadius: 8, background: '#000' }}
+                                                />
+                                            ) : (
+                                                <img src={getImageUrl(post.image_url)} style={{ width: '100%', maxHeight: 400, objectFit: 'cover', borderRadius: 8 }} />
+                                            )}
+                                        </div>
                                     )}
                                     <div style={{ display: 'flex', gap: '20px', marginTop: '15px', paddingTop: '15px', borderTop: '1px solid var(--borderColor)' }}>
                                         <button
@@ -2171,6 +2176,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
 
                                         <button
                                             className="interaction-btn"
+                                            onClick={() => setSelectedPost(post)}
                                             style={{
                                                 background: 'none', border: 'none', cursor: 'pointer',
                                                 display: 'flex', alignItems: 'center', gap: '8px',
@@ -2186,20 +2192,29 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                             <span>{post.comments_count}</span>
                                         </button>
                                     </div>
-                                    <div style={{ marginTop: 10 }}>
+                                    <form 
+                                        style={{ marginTop: 10, display: 'flex', gap: '8px' }}
+                                        onSubmit={async e => {
+                                            e.preventDefault();
+                                            const input = e.target.elements.commentInput;
+                                            const val = input.value;
+                                            if (!val.trim()) return;
+                                            input.value = '';
+                                            await handleComment(post.id, val);
+                                        }}
+                                    >
                                         <input
+                                            name="commentInput"
                                             type="text"
                                             placeholder="أضف تعليقاً..."
                                             className="input"
-                                            onKeyDown={e => {
-                                                if (e.key === 'Enter') {
-                                                    handleComment(post.id, e.target.value);
-                                                    e.target.value = '';
-                                                }
-                                            }}
-                                            style={{ width: '100%', fontSize: '0.9rem' }}
+                                            autoComplete="off"
+                                            style={{ flex: 1, fontSize: '0.9rem', padding: '8px 12px' }}
                                         />
-                                    </div>
+                                        <button type="submit" style={{ background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '8px', padding: '0 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <SendIcon />
+                                        </button>
+                                    </form>
                                 </div>
                             ))}
                         </div>
