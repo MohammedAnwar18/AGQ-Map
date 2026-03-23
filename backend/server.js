@@ -124,7 +124,10 @@ io.on('connection', (socket) => {
 // Attach socket logic manually or inject into req
 app.set('io', io);
 
-// 4. مسار الصحة الأساسي
+// 4. تفعيل الثقة في البروكسي (مهم لبرنامج تحديد الاستهلاك على Vercel/Heroku)
+app.set('trust proxy', 1);
+
+// 5. مسار الصحة الأساسي
 app.get('/health', async (req, res) => {
     try {
         const pool = require('./config/database');
@@ -136,7 +139,7 @@ app.get('/health', async (req, res) => {
     }
 });
 
-// 5. تحميل المسارات
+// 6. تحميل المسارات
 app.use('/auth', require('./routes/auth'));
 app.use('/users', require('./routes/users'));
 app.use('/friends', require('./routes/friends'));
@@ -162,8 +165,9 @@ app.use('/api/news', require('./routes/news'));
 app.use('/api/communities', require('./routes/communities'));
 app.use('/api/ai', require('./routes/ai'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/comments', require('./routes/comments'));
 
-// 6. التشغيل المحلي (فقط للمبرمج)
+// 7. التشغيل المحلي (فقط للمبرمج)
 if (!process.env.VERCEL) {
     const PORT = process.env.PORT || 5000;
     server.listen(PORT, () => console.log(`🚀 API & Sockets at http://localhost:${PORT}`));
