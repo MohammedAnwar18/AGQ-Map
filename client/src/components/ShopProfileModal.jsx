@@ -2186,7 +2186,49 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                             }}
                                         >
                                             {shopData.enable_proximity_notifications ? 'مفعل' : 'تعطيل'}
-                                            {shopData.enable_proximity_notifications ? '✓' : '✗'}
+                                        </button>
+                                    </div>
+
+                                    {/* Shop Visibility Toggle */}
+                                    <div style={{ background: 'var(--bg-primary)', padding: 20, borderRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border-color)', marginTop: 20 }}>
+                                        <div>
+                                            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <span>👁️</span> عرض المحل على الخريطة
+                                            </h3>
+                                            <p style={{ margin: '8px 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)', maxWidth: '400px', lineHeight: 1.4 }}>
+                                                عند تعطيل هذه الميزة، سيتم إخفاء محلك عن الخريطة ولن يتمكن أي مستخدم من رويته.
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={async () => {
+                                                const newIsHidden = !shopData.is_hidden;
+                                                try {
+                                                    await shopService.updateProfile(shopData.id, { is_hidden: newIsHidden });
+                                                    setShopData(prev => ({ ...prev, is_hidden: newIsHidden }));
+                                                    alert(`تم ${newIsHidden ? 'إخفاء' : 'إظهار'} المحل بنجاح.`);
+                                                    if (onFollowChange) onFollowChange(); // Trigger map refresh
+                                                } catch (err) {
+                                                    console.error(err);
+                                                    alert('فشلت العملية، يرجى المحاولة لاحقاً.');
+                                                }
+                                            }}
+                                            style={{
+                                                padding: '10px 20px',
+                                                borderRadius: '30px',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                fontWeight: 'bold',
+                                                background: !shopData.is_hidden ? '#22c55e' : 'var(--bg-tertiary)',
+                                                color: !shopData.is_hidden ? 'white' : 'var(--text-muted)',
+                                                transition: 'all 0.3s',
+                                                boxShadow: !shopData.is_hidden ? '0 4px 12px rgba(34, 197, 94, 0.3)' : 'none',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 8
+                                            }}
+                                        >
+                                            {!shopData.is_hidden ? 'مرئي للجميع' : 'مخفي'}
+                                            {!shopData.is_hidden ? '✓' : '✗'}
                                         </button>
                                     </div>
 

@@ -12,7 +12,7 @@ const searchShops = async (req, res) => {
             SELECT s.id, s.name, s.category, s.profile_picture, s.latitude, s.longitude,
                    EXISTS(SELECT 1 FROM shop_followers WHERE shop_id = s.id AND user_id = $2::int) as is_followed
             FROM shops s
-            WHERE s.name ILIKE $1 
+            WHERE s.name ILIKE $1 AND s.is_hidden = FALSE
             LIMIT 10
         `, [`%${query}%`, parseInt(userId)]);
 
@@ -78,7 +78,7 @@ const getFollowedShops = async (req, res) => {
                 SELECT s.id
                 FROM shops s
                 JOIN shop_followers sf ON s.id = sf.shop_id
-                WHERE sf.user_id = $1::int
+                WHERE sf.user_id = $1::int AND s.is_hidden = FALSE
             ),
             BankChildren AS (
                 SELECT child.id
@@ -86,6 +86,7 @@ const getFollowedShops = async (req, res) => {
                 JOIN shops parent ON child.parent_shop_id = parent.id
                 WHERE parent.id IN (SELECT id FROM FollowedShops) 
                   AND parent.category = 'بنك'
+                  AND child.is_hidden = FALSE
             ),
             AllRelevantShopIds AS (
                 SELECT id FROM FollowedShops
@@ -208,6 +209,13 @@ const getShopProfile = async (req, res) => {
         const shop = shopResult.rows[0];
         const isOwner = shop.owner_id === currentUserId;
 
+        const userRes = await pool.query('SELECT role FROM users WHERE id = $1', [parseInt(currentUserId)]);
+        const userRole = userRes.rows[0]?.role;
+
+        if (shop.is_hidden && !isOwner && userRole !== 'admin') {
+            return res.status(404).json({ error: 'Shop not found or is hidden' });
+        }
+
         // 2. Get Shop Posts
         const postsResult = await pool.query(`
             SELECT p.*,
@@ -301,6 +309,10 @@ const updateShopProfile = async (req, res) => {
         if (req.body.enable_proximity_notifications !== undefined) {
             queryParts.push(`enable_proximity_notifications = $${index++}`);
             values.push(req.body.enable_proximity_notifications);
+        }
+        if (req.body.is_hidden !== undefined) {
+            queryParts.push(`is_hidden = $${index++}`);
+            values.push(req.body.is_hidden);
         }
 
         // Handle Coordinates
