@@ -289,20 +289,41 @@ const MapComponent = () => {
     };
     // --- Dynamic Map Style ---
     const mapStyle = useMemo(() => {
-        // Preference 1: Professional Navigation Night Style (More Details, Night Mode)
-        // This style shows detailed buildings, traffic layers, and granular streets!
+        // Preference 1: Use CartoDB Positron (a very clean street style) during navigation!
         if (routePath) {
-            return MAPBOX_TOKEN ? "mapbox://styles/mapbox/navigation-night-v1" : "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
+            return "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
         }
 
-        // Preference 2: Satellite Streets for general exploration
-        if (activeMapType === 'satellite') {
-            return 'mapbox://styles/mapbox/satellite-streets-v11';
+        // Preference 2: Geomolg Layer (Handled by Overlay in return, so we use a base here or nothing)
+        if (activeMapType === 'geomolg') {
+            // We can return a very simple base or satellite while Geomolg overlay loads
+            // Same as satellite for now
         }
 
-        // Preference 3: Custom Custom Mapbox Style or Fallback
-        return MAPBOX_STREETS_STYLE || "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json";
-    }, [routePath, activeMapType, MAPBOX_STREETS_STYLE, MAPBOX_TOKEN]);
+        // Default & Fallback: Google Tiles (Satellite for general view)
+        const attribution = 'Google Satellite';
+
+        return {
+            version: 8,
+            sources: {
+                'raster-tiles': {
+                    type: 'raster',
+                    tiles: [`https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}`],
+                    tileSize: 256,
+                    attribution: attribution
+                }
+            },
+            layers: [
+                {
+                    id: 'simple-tiles',
+                    type: 'raster',
+                    source: 'raster-tiles',
+                    minzoom: 0,
+                    maxzoom: 22
+                }
+            ]
+        };
+    }, [routePath, activeMapType]);
 
     // Routing
     // Updated to accept explicit start/end for recalculations
