@@ -562,9 +562,12 @@
     margin-top: 0;
     padding-top: 0;
     height: 100%;
+    max-height: 100%; /* Important for modal */
+    flex: 1;
 }
 
 .post-modal-comments-area .comments-list {
     flex: 1;
+    max-height: calc(100% - 60px); /* Leave room for form */
 }
 

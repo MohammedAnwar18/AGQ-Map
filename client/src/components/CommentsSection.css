@@ -4,8 +4,10 @@
     padding-top: 15px;
     display: flex;
     flex-direction: column;
-    height: 300px;
-    /* Fixed height for scrollable area */
+    height: 100%;
+    min-height: 250px;
+    max-height: 500px;
+    overflow: hidden;
 }
 
 .comments-title {
@@ -16,10 +18,13 @@
 
 .comments-list {
     flex: 1;
-    overflow-y: auto;
+    overflow-y: auto !important;
     padding-right: 5px;
-    /* Space for scrollbar */
     margin-bottom: 10px;
+    -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
 }
 
 /* Custom Scrollbar */
@@ -28,8 +33,12 @@
 }
 
 .comments-list::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
+    background: rgba(251, 171, 21, 0.3); /* Match site accent color */
+    border-radius: 10px;
+}
+
+.comments-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(251, 171, 21, 0.5);
 }
 
 .comment-item {
