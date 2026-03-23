@@ -485,7 +485,7 @@ const createShopPost = async (req, res) => {
 const addProduct = async (req, res) => {
     try {
         const shopId = req.params.id;
-        const { name, price, description, old_price } = req.body;
+        const { name, price, description, old_price, category } = req.body;
         const userId = req.user.userId;
         const userRole = req.user.role;
         const { uploadToSupabase } = require('../utils/storage');
@@ -495,16 +495,21 @@ const addProduct = async (req, res) => {
         if (!shopCheck.rows.length) return res.status(404).json({ error: 'Shop not found' });
         if (userRole !== 'admin' && shopCheck.rows[0].owner_id !== userId) return res.status(403).json({ error: 'Unauthorized' });
 
+        let image_urls = [];
         let image_url = null;
-        if (req.file) {
-            image_url = await uploadToSupabase(req.file.buffer, req.file.originalname, req.file.mimetype);
+        if (req.files && req.files.length > 0) {
+            const uploadPromises = req.files.map(file =>
+                uploadToSupabase(file.buffer, file.originalname, file.mimetype)
+            );
+            image_urls = await Promise.all(uploadPromises);
+            image_url = image_urls[0];
         }
 
         const result = await pool.query(`
-            INSERT INTO shop_products (shop_id, name, price, description, image_url, old_price)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO shop_products (shop_id, name, price, description, image_url, image_urls, old_price, category)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING *
-        `, [shopId, name, price, description, image_url, old_price || null]);
+        `, [shopId, name, price, description, image_url, image_urls, old_price || null, category || null]);
 
         res.json(result.rows[0]);
     } catch (e) {
@@ -521,7 +526,7 @@ const addProduct = async (req, res) => {
 const updateProduct = async (req, res) => {
     try {
         const { id, productId } = req.params; // id is shopId
-        const { name, price, description, old_price } = req.body;
+        const { name, price, description, old_price, category } = req.body;
         const userId = req.user.userId;
         const userRole = req.user.role;
         const { uploadToSupabase } = require('../utils/storage');
@@ -539,11 +544,19 @@ const updateProduct = async (req, res) => {
         if (price !== undefined) { queryParts.push(`price = $${index++}`); values.push(price); }
         if (description !== undefined) { queryParts.push(`description = $${index++}`); values.push(description); }
         if (old_price !== undefined) { queryParts.push(`old_price = $${index++}`); values.push(old_price || null); }
+        if (category !== undefined) { queryParts.push(`category = $${index++}`); values.push(category || null); }
 
-        if (req.file) {
-            const url = await uploadToSupabase(req.file.buffer, req.file.originalname, req.file.mimetype);
+        if (req.files && req.files.length > 0) {
+            const uploadPromises = req.files.map(file =>
+                uploadToSupabase(file.buffer, file.originalname, file.mimetype)
+            );
+            const urls = await Promise.all(uploadPromises);
+            
             queryParts.push(`image_url = $${index++}`);
-            values.push(url);
+            values.push(urls[0]);
+            
+            queryParts.push(`image_urls = $${index++}`);
+            values.push(urls);
         }
 
         if (queryParts.length === 0) return res.json({ message: 'No changes provided' });

@@ -74,6 +74,56 @@ const MallIcon = () => (
     </svg>
 );
 
+const ProductImageSlider = ({ images, getImageUrl }) => {
+    const [currentIndex, setCurrentIndex] = useState(0);
+
+    const handlePrev = (e) => {
+        e.stopPropagation();
+        setCurrentIndex(prev => (prev === 0 ? images.length - 1 : prev - 1));
+    };
+
+    const handleNext = (e) => {
+        e.stopPropagation();
+        setCurrentIndex(prev => (prev === images.length - 1 ? 0 : prev + 1));
+    };
+
+    if (!images || images.length === 0) return null;
+
+    return (
+        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+            <img 
+                src={getImageUrl(images[currentIndex])} 
+                alt="Product" 
+                style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '10px' }} 
+            />
+            {images.length > 1 && (
+                <>
+                    <button 
+                        onClick={handlePrev} 
+                        style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.7)', border: 'none', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.2)', zIndex: 10 }}
+                    >‹</button>
+                    <button 
+                        onClick={handleNext} 
+                        style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.7)', border: 'none', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.2)', zIndex: 10 }}
+                    >›</button>
+                    <div style={{ position: 'absolute', bottom: 10, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 5, zIndex: 10 }}>
+                        {images.map((_, idx) => (
+                            <div key={idx} style={{ width: 6, height: 6, borderRadius: '50%', background: idx === currentIndex ? 'var(--primary)' : 'rgba(0,0,0,0.2)' }} />
+                        ))}
+                    </div>
+                </>
+            )}
+        </div>
+    );
+};
+
+const SUPERMARKET_CATEGORIES = [
+    "الكل", "العروض", "الخبز", "المعلبات", "التوابل", "الخضروات والفواكه", 
+    "البيض والالبان والاجبان", "مستلزمات المنزل", "المنظفات", "المفرزات", 
+    "الصحة والجمال", "مواد غذائية", "اكل صحي", "الصوصات", 
+    "مستلزمات الشواء", "الحلويات", "المشروبات", "التسالي"
+];
+
 const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
     const [shopData, setShopData] = useState(shop);
     const [posts, setPosts] = useState([]);
@@ -103,7 +153,9 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
     // Forms
     const [newPostContent, setNewPostContent] = useState('');
     const [postImages, setPostImages] = useState([]);
-    const [newProduct, setNewProduct] = useState({ name: '', price: '', description: '', image: null });
+    const [newProduct, setNewProduct] = useState({ name: '', price: '', description: '', image: null, category: '' });
+    const [productImages, setProductImages] = useState([]);
+    const [selectedProductCategory, setSelectedProductCategory] = useState('الكل');
 
     // Info Editing
     const [editingName, setEditingName] = useState(false);
@@ -423,32 +475,32 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
             formData.append('price', newProduct.price);
             formData.append('description', newProduct.description);
             formData.append('old_price', newProduct.old_price || '');
-            if (newProduct.image) formData.append('image', newProduct.image);
+            formData.append('category', newProduct.category || '');
+
+            // Handle multiple images
+            if (productImages && productImages.length > 0) {
+                for (let i = 0; i < productImages.length; i++) {
+                    const optimizedFile = await optimizeImage(productImages[i], { maxWidth: 800 });
+                    formData.append('images', optimizedFile);
+                }
+            } else if (newProduct.image) { // Fallback for single image upload
+                const optimizedFile = await optimizeImage(newProduct.image, { maxWidth: 800 });
+                formData.append('images', optimizedFile);
+            }
 
             let savedProduct;
             if (editingProduct) {
-                // Optimize product image if provided
-                if (newProduct.image) {
-                    const optimizedFile = await optimizeImage(newProduct.image, { maxWidth: 800 });
-                    formData.append('image', optimizedFile);
-                }
-
                 savedProduct = await shopService.updateProduct(shopData.id, editingProduct.id, formData);
                 setProducts(products.map(p => p.id === editingProduct.id ? savedProduct : p));
                 alert('تم تعديل المنتج');
             } else {
-                // Optimize product image
-                if (newProduct.image) {
-                    const optimizedFile = await optimizeImage(newProduct.image, { maxWidth: 800 });
-                    formData.append('image', optimizedFile);
-                }
-
                 savedProduct = await shopService.addProduct(shopData.id, formData);
                 setProducts([savedProduct, ...products]);
                 alert('تم إضافة المنتج');
             }
 
-            setNewProduct({ name: '', price: '', old_price: '', description: '', image: null });
+            setNewProduct({ name: '', price: '', old_price: '', description: '', image: null, category: '' });
+            setProductImages([]);
             setEditingProduct(null);
             setShowAddProduct(false);
         } catch (e) {
@@ -465,8 +517,10 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
             price: prod.price,
             old_price: prod.old_price || '',
             description: prod.description || '',
-            image: null // User has to re-upload if they want to change it
+            category: prod.category || '',
+            image: null
         });
+        setProductImages([]);
         setShowAddProduct(true);
     };
 
@@ -700,8 +754,9 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                     <span style={{
                                         background: status.isOpen ? '#dcfce7' : '#fee2e2',
                                         color: status.isOpen ? '#166534' : '#991b1b',
-                                        padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold',
-                                        border: `1px solid ${status.isOpen ? '#bbf7d0' : '#fecaca'}`
+                                        padding: '2px 8px', borderRadius: '15px', fontSize: '0.65rem', fontWeight: 'bold',
+                                        border: `1px solid ${status.isOpen ? '#bbf7d0' : '#fecaca'}`,
+                                        display: 'inline-flex', alignItems: 'center'
                                     }}>
                                         {status.text}
                                     </span>
@@ -720,7 +775,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                         <option value="مكتب تاكسي">مكتب تاكسي 🚕</option>
                                         <option value="مطعم">مطعم 🍔</option>
                                         <option value="ملابس">ملابس 👕</option>
-                                        <option value="سوبرماركت">سوبرماركت 🛒</option>
+                                        <option value="سوبر ماركت">سوبر ماركت 🛒</option>
                                         <option value="إلكترونيات">إلكترونيات 📱</option>
                                         <option value="أخرى">أخرى (كتابة يدوية)</option>
                                     </select>
@@ -1210,7 +1265,8 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                             {canEditShop && (
                                 <button className="btn-small is-primary" style={{ marginBottom: 20 }} onClick={() => {
                                     setEditingProduct(null);
-                                    setNewProduct({ name: '', price: '', old_price: '', description: '', image: null });
+                                    setNewProduct({ name: '', price: '', old_price: '', description: '', image: null, category: '' });
+                                    setProductImages([]);
                                     setShowAddProduct(true);
                                 }}>
                                     + إضافة منتج
@@ -1232,6 +1288,22 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                                 </label>
                                                 <input className="input" type="text" value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} required style={{ width: '100%' }} placeholder={shopData.category === 'مكتب تاكسي' ? 'مثال: توصيلة للمطار' : ''} />
                                             </div>
+                                            {(shopData.category === 'سوبر ماركت' || shopData.category === 'سوبرماركت') && (
+                                                <div style={{ flex: 1 }}>
+                                                    <label style={{ display: 'block', marginBottom: 5 }}>القسم</label>
+                                                    <select 
+                                                        className="input" 
+                                                        value={newProduct.category} 
+                                                        onChange={e => setNewProduct({ ...newProduct, category: e.target.value })}
+                                                        style={{ width: '100%', padding: '8px' }}
+                                                    >
+                                                        <option value="">اختر القسم...</option>
+                                                        {SUPERMARKET_CATEGORIES.filter(c => c !== 'الكل').map(c => (
+                                                            <option key={c} value={c}>{c}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            )}
                                         </div>
                                         <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
                                             <div style={{ width: '100px' }}>
@@ -1267,34 +1339,43 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                                     transition: 'all 0.2s',
                                                     minHeight: '120px',
                                                     display: 'flex',
+                                                    flexDirection: 'column',
                                                     alignItems: 'center',
                                                     justifyContent: 'center'
                                                 }}
                                                 onMouseOver={e => e.currentTarget.style.borderColor = 'var(--primary)'}
                                                 onMouseOut={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
                                             >
-                                                {newProduct.image ? (
-                                                    <div style={{ position: 'relative', height: '100%', width: '100%', display: 'flex', justifyContent: 'center' }}>
-                                                        <img src={URL.createObjectURL(newProduct.image)} style={{ maxHeight: 150, maxWidth: '100%', objectFit: 'contain', borderRadius: 8 }} />
-                                                        <div style={{ position: 'absolute', top: -10, right: -10 }}>
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => { e.stopPropagation(); setNewProduct({ ...newProduct, image: null }); }}
-                                                                style={{
-                                                                    background: '#ef4444', color: 'white',
-                                                                    border: 'none', borderRadius: '50%',
-                                                                    width: 24, height: 24, cursor: 'pointer',
-                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                    boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
-                                                                }}
-                                                            >✕</button>
-                                                        </div>
+                                                {productImages.length > 0 ? (
+                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
+                                                        {productImages.map((img, idx) => (
+                                                            <div key={idx} style={{ position: 'relative' }}>
+                                                                <img src={URL.createObjectURL(img)} style={{ height: 60, width: 60, objectFit: 'cover', borderRadius: 8 }} />
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        const updated = [...productImages];
+                                                                        updated.splice(idx, 1);
+                                                                        setProductImages(updated);
+                                                                    }}
+                                                                    style={{
+                                                                        position: 'absolute', top: -5, right: -5,
+                                                                        background: '#ef4444', color: 'white',
+                                                                        border: 'none', borderRadius: '50%',
+                                                                        width: 18, height: 18, cursor: 'pointer',
+                                                                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px'
+                                                                    }}
+                                                                >✕</button>
+                                                            </div>
+                                                        ))}
+                                                        <div style={{ width: 60, height: 60, border: '2px dashed var(--border-color)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>+</div>
                                                     </div>
                                                 ) : (
                                                     <div style={{ color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                                         {shopData.category === 'مكتب تاكسي' ? <TaxiIcon /> : <PhotoIcon />}
                                                         <span style={{ marginTop: 8, fontSize: '0.9rem' }}>
-                                                            {editingProduct ? 'تغيير الصورة (اختياري)' : (shopData.category === 'مكتب تاكسي' ? 'اضغط لإضافة صورة للسيارة/الوجهة' : 'اضغط لإضافة صورة المنتج')}
+                                                            {editingProduct ? 'إضافة/تغيير الصور (يمكنك اختيار عدة صور)' : (shopData.category === 'مكتب تاكسي' ? 'اضغط لإضافة صورة للسيارة/الوجهة' : 'اضغط لإضافة صور المنتج (يمكنك اختيار عدة صور)')}
                                                         </span>
                                                     </div>
                                                 )}
@@ -1302,14 +1383,67 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                             <input
                                                 id="product-image-input"
                                                 type="file"
-                                                onChange={e => setNewProduct({ ...newProduct, image: e.target.files[0] })}
+                                                multiple
+                                                onChange={e => setProductImages([...productImages, ...Array.from(e.target.files)])}
                                                 accept="image/*"
                                                 hidden
                                             />
                                         </div>
-                                        <button type="button" className="btn-small" onClick={() => setShowAddProduct(false)} style={{ marginLeft: 10 }}>إلغاء</button>
-                                        <button type="submit" className="btn-small is-primary">حفظ</button>
+                                        <div style={{ display: 'flex', gap: 10 }}>
+                                            <button type="button" className="btn-small" onClick={() => setShowAddProduct(false)} style={{ flex: 1 }}>إلغاء</button>
+                                            <button type="submit" className="btn-small is-primary" style={{ flex: 2 }}>حفظ</button>
+                                        </div>
                                     </form>
+                                </div>
+                            )}
+
+                            {/* Supermarket Categories Bar */}
+                            {(shopData.category === 'سوبر ماركت' || shopData.category === 'سوبرماركت') && (
+                                <div style={{ 
+                                    display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 15, marginBottom: 15,
+                                    scrollbarWidth: 'none', msOverflowStyle: 'none'
+                                }}>
+                                    {SUPERMARKET_CATEGORIES.map(cat => (
+                                        <button
+                                            key={cat}
+                                            onClick={() => setSelectedProductCategory(cat)}
+                                            style={{
+                                                whiteSpace: 'nowrap', padding: '8px 20px', borderRadius: 25,
+                                                border: 'none', cursor: 'pointer', fontWeight: 'bold',
+                                                background: selectedProductCategory === cat ? 'var(--primary)' : 'var(--bg-secondary)',
+                                                color: selectedProductCategory === cat ? 'white' : 'var(--text-primary)',
+                                                transition: 'all 0.2s',
+                                                boxShadow: selectedProductCategory === cat ? '0 4px 10px rgba(251, 171, 21, 0.3)' : 'none'
+                                            }}
+                                        >
+                                            {cat}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Supermarket Categories Bar */}
+                            {shopData.category === 'سوبر ماركت' && (
+                                <div style={{ 
+                                    display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 15, marginBottom: 15,
+                                    scrollbarWidth: 'none', msOverflowStyle: 'none'
+                                }}>
+                                    {SUPERMARKET_CATEGORIES.map(cat => (
+                                        <button
+                                            key={cat}
+                                            onClick={() => setSelectedProductCategory(cat)}
+                                            style={{
+                                                whiteSpace: 'nowrap', padding: '8px 20px', borderRadius: 25,
+                                                border: 'none', cursor: 'pointer', fontWeight: 'bold',
+                                                background: selectedProductCategory === cat ? 'var(--primary)' : 'var(--bg-secondary)',
+                                                color: selectedProductCategory === cat ? 'white' : 'var(--text-primary)',
+                                                transition: 'all 0.2s',
+                                                boxShadow: selectedProductCategory === cat ? '0 4px 10px rgba(251, 171, 21, 0.3)' : 'none'
+                                            }}
+                                        >
+                                            {cat}
+                                        </button>
+                                    ))}
                                 </div>
                             )}
 
@@ -1351,13 +1485,19 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 20 }}>
                                 {products
                                     .filter(p => {
-                                        const matchesSearch = p.name.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
+                                        const matchesSearch = (p.name || '').toLowerCase().includes(productSearchQuery.toLowerCase()) ||
                                             (p.description && p.description.toLowerCase().includes(productSearchQuery.toLowerCase()));
+
+                                        // Category filter for supermarket
+                                        const matchesCategory = selectedProductCategory === 'الكل' || 
+                                                              (selectedProductCategory === 'العروض' && p.old_price && parseFloat(p.old_price) > parseFloat(p.price)) ||
+                                                              (p.category === selectedProductCategory);
 
                                         // Sale check: has old_price AND old_price > price
                                         const isOnSale = p.old_price && parseFloat(p.old_price) > parseFloat(p.price);
 
                                         if (showSalesOnly && !isOnSale) return false;
+                                        if ((shopData.category === 'سوبر ماركت' || shopData.category === 'سوبرماركت') && !matchesCategory) return false;
                                         return matchesSearch;
                                     })
                                     .length === 0 ? <p style={{ color: 'var(--text-muted)', gridColumn: '1/-1', textAlign: 'center', padding: '20px' }}>
@@ -1365,10 +1505,18 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                 </p> :
                                     products
                                         .filter(p => {
-                                            const matchesSearch = p.name.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
+                                            const matchesSearch = (p.name || '').toLowerCase().includes(productSearchQuery.toLowerCase()) ||
                                                 (p.description && p.description.toLowerCase().includes(productSearchQuery.toLowerCase()));
+                                            
+                                            // Category filter for supermarket
+                                            const matchesCategory = selectedProductCategory === 'الكل' || 
+                                                                  (selectedProductCategory === 'العروض' && p.old_price && parseFloat(p.old_price) > parseFloat(p.price)) ||
+                                                                  (p.category === selectedProductCategory);
+
                                             const isOnSale = p.old_price && parseFloat(p.old_price) > parseFloat(p.price);
+                                            
                                             if (showSalesOnly && !isOnSale) return false;
+                                            if ((shopData.category === 'سوبر ماركت' || shopData.category === 'سوبرماركت') && !matchesCategory) return false;
                                             return matchesSearch;
                                         })
                                         .map(product => {
@@ -1454,16 +1602,21 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                             return (
                                                 <div key={product.id} style={{ background: 'var(--bg-primary)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', transition: 'transform 0.2s' }}>
                                                     <div style={{ aspectRatio: '1/1', background: '#f3f4f6', position: 'relative', borderBottom: '1px solid var(--bg-tertiary)' }}>
-                                                        {product.image_url ? (
+                                                        {/* Instagram-like Image Carousel */}
+                                                        {product.image_urls && product.image_urls.length > 0 ? (
+                                                            <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                                                                <ProductImageSlider images={product.image_urls} getImageUrl={getImageUrl} />
+                                                            </div>
+                                                        ) : product.image_url ? (
                                                             <img
                                                                 src={getImageUrl(product.image_url)}
                                                                 alt={product.name}
                                                                 style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '10px' }}
                                                             />
                                                         ) : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#aaa' }}>No Image</div>}
-
+                                                        
                                                         {canEditShop && (
-                                                            <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 5 }}>
+                                                            <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 5, zIndex: 10 }}>
                                                                 <button onClick={() => openEditProduct(product)} style={{ background: 'rgba(255, 255, 255, 0.9)', color: '#333', border: 'none', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>✏️</button>
                                                                 <button onClick={() => handleDeleteProduct(product.id)} style={{ background: 'rgba(239, 68, 68, 0.9)', color: 'white', border: 'none', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>×</button>
                                                             </div>
@@ -1471,7 +1624,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
 
                                                         {/* Sale Badge */}
                                                         {product.old_price && parseFloat(product.old_price) > parseFloat(product.price) && (
-                                                            <div style={{ position: 'absolute', top: 10, left: 10, background: '#ef4444', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+                                                            <div style={{ position: 'absolute', top: 10, left: 10, background: '#ef4444', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)', zIndex: 5 }}>
                                                                 عرض خاص
                                                             </div>
                                                         )}

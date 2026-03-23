@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Map from './pages/Map';
+import StreetMap from './pages/StreetMap';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminUserDetails from './pages/AdminUserDetails';
 import LegalPages from './pages/LegalPages';
@@ -122,6 +123,14 @@ function App() {
                         element={
                             <ProtectedRoute>
                                 <Map />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/streets"
+                        element={
+                            <ProtectedRoute>
+                                <StreetMap />
                             </ProtectedRoute>
                         }
                     />

@@ -27,8 +27,8 @@ router.post('/:id/posts', upload.array('images', 5), shopController.createShopPo
 router.delete('/:id/posts/:postId', shopController.deleteShopPost);
 
 // Shop Products
-router.post('/:id/products', upload.single('image'), shopController.addProduct);
-router.put('/:id/products/:productId', upload.single('image'), shopController.updateProduct);
+router.post('/:id/products', upload.array('images', 5), shopController.addProduct);
+router.put('/:id/products/:productId', upload.array('images', 5), shopController.updateProduct);
 router.delete('/:id/products/:productId', shopController.deleteProduct);
 
 // Ownership Delegation & Management
