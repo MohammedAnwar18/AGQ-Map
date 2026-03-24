@@ -2634,6 +2634,29 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                             
                                             const { latitude: lat, longitude: lon } = userLocation;
                                             
+                                            // Check if user is actually inside the mall geofence (with small buffer)
+                                            const isInside = lat <= bounds.top + 0.0001 && lat >= bounds.bottom - 0.0001 &&
+                                                           lon >= bounds.left - 0.0001 && lon <= bounds.right + 0.0001;
+
+                                            if (!isInside) {
+                                                return (
+                                                    <foreignObject x="350" y="450" width="300" height="40">
+                                                        <div style={{ 
+                                                            background: 'rgba(239, 68, 68, 0.9)', 
+                                                            color: 'white', 
+                                                            fontSize: '11px', 
+                                                            padding: '4px 10px', 
+                                                            borderRadius: '20px',
+                                                            textAlign: 'center',
+                                                            fontWeight: 'bold',
+                                                            boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
+                                                        }}>
+                                                            📍 أنت حالياً خارج منطقة المول
+                                                        </div>
+                                                    </foreignObject>
+                                                );
+                                            }
+                                            
                                             // Latitude Projection (Y-axis: top coordinate is SVG Y=50, bottom is SVG Y=450)
                                             const posY = 50 + ((bounds.top - lat) / (bounds.top - bounds.bottom)) * 400;
                                             // Longitude Projection (X-axis: left coordinate is SVG X=50, right is SVG X=950)
@@ -2646,11 +2669,12 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                             return (
                                                 <g style={{ transition: 'all 1s ease-in-out' }}>
                                                     {/* Accuracy Shadow / Pulse */}
-                                                    <circle cx={constrainedX} cy={constrainedY} r="30" fill="rgba(59, 130, 246, 0.15)">
-                                                        <animate attributeName="r" values="25;45;25" dur="3s" repeatCount="indefinite" />
+                                                    <circle cx={constrainedX} cy={constrainedY} r="35" fill="rgba(59, 130, 246, 0.2)">
+                                                        <animate attributeName="r" values="30;50;30" dur="3s" repeatCount="indefinite" />
+                                                        <animate attributeName="opacity" values="0.6;0.1;0.6" dur="3s" repeatCount="indefinite" />
                                                     </circle>
                                                     {/* Directional Beacon */}
-                                                    <circle cx={constrainedX} cy={constrainedY} r="10" fill="#3b82f6" stroke="white" strokeWidth="3" />
+                                                    <circle cx={constrainedX} cy={constrainedY} r="12" fill="#3b82f6" stroke="white" strokeWidth="3" />
                                                     {/* User Tag */}
                                                     <foreignObject x={constrainedX - 25} y={constrainedY - 60} width="50" height="50">
                                                         <div style={{ padding: '2px', background: 'white', borderRadius: '50%', boxShadow: '0 4px 10px rgba(0,0,0,0.2)', border: '2px solid #3b82f6' }}>
