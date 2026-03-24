@@ -2544,144 +2544,149 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                     </div>
                                 </div>
                                 
-                                {/* The Interactive Map Container */}
+                                {/* The Interactive Vector Map (SVG) Container */}
                                 <div style={{ 
                                     position: 'relative', 
                                     width: '100%', 
-                                    minHeight: '400px', // Prevent squashing
-                                    borderRadius: '12px', 
+                                    minHeight: '450px',
+                                    borderRadius: '16px', 
                                     overflow: 'hidden', 
-                                    background: '#f8fafc',
+                                    background: '#f1f5f9',
                                     border: '1px solid var(--border-color)',
+                                    boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.05)',
                                     display: 'flex',
-                                    flexDirection: 'column',
                                     alignItems: 'center',
                                     justifyContent: 'center'
                                 }}>
-                                    {/* The Floor Plan Image */}
-                                    <img 
-                                        src={getImageUrl("/uploads/icon-mall-ground.png")} 
-                                        alt="Floor Plan" 
-                                        style={{ 
-                                            width: '100%', 
-                                            height: 'auto', 
-                                            display: 'block',
-                                            maxWidth: '1200px'
-                                        }} 
-                                        onLoad={(e) => {
-                                            // Ensure container expands
-                                            e.target.parentElement.style.minHeight = 'auto';
-                                        }}
-                                        onError={(e) => {
-                                            console.error("Mall map failed to load");
-                                            e.target.src = 'https://via.placeholder.com/800x400?text=Floor+Plan+Not+Available';
-                                        }}
-                                    />
-                                    
-                                    {/* User GPS Location Projection (Blue Dot) */}
-                                    {(() => {
-                                        if (!userLocation) return null;
+                                    {/* Mall Interior Vector Map (SVG) */}
+                                    <svg viewBox="0 0 1000 500" style={{ width: '95%', height: 'auto', maxHeight: '100%' }}>
+                                        {/* Mall Main Boundary */}
+                                        <path 
+                                            d="M50,150 Q100,50 400,30 Q700,20 950,80 L960,350 Q850,420 700,430 L400,460 L150,470 Q50,450 40,250 Z" 
+                                            fill="#ffffff" 
+                                            stroke="#CBD5E1" 
+                                            strokeWidth="3"
+                                        />
                                         
-                                        // Icon Mall Buidling Boundary (Roughly)
-                                        const bounds = {
-                                            top: 31.92165,
-                                            bottom: 31.92075,
-                                            left: 35.20577,
-                                            right: 35.20703
-                                        };
-                                        
-                                        const { latitude: lat, longitude: lon } = userLocation;
-                                        
-                                        // Check if user is inside or near the mall area
-                                        // If outside, we might show a message or hide the dot
-                                        const padding = 0.001; // Allow some margin
-                                        if (lat < bounds.bottom - padding || lat > bounds.top + padding ||
-                                            lon < bounds.left - padding || lon > bounds.right + padding) {
-                                            return null;
-                                        }
+                                        {/* Interior Shops / Zones */}
+                                        {/* Hyper Market - Left Section */}
+                                        <path 
+                                            d="M60,160 Q100,70 350,150 L350,440 L160,450 Q70,430 60,250 Z" 
+                                            fill="#E2E8F0" 
+                                            stroke="#94A3B8" 
+                                            strokeWidth="1"
+                                            cursor="pointer"
+                                            onMouseOver={e=>e.target.style.fill='#CBD5E1'}
+                                            onMouseOut={e=>e.target.style.fill='#E2E8F0'}
+                                            onClick={() => alert('قسم الهايبر ماركت - الطابق الأرضي')}
+                                        />
+                                        <text x="180" y="320" fontSize="14" fontWeight="bold" fill="#64748B" pointerEvents="none">Hyper Market</text>
 
-                                        // Calculate percentage position
-                                        // Latitude: top is 0%, bottom is 100%
-                                        const posY = ((bounds.top - lat) / (bounds.top - bounds.bottom)) * 100;
-                                        // Longitude: left is 0%, right is 100%
-                                        const posX = ((lon - bounds.left) / (bounds.right - bounds.left)) * 100;
-                                        
-                                        // Constrain to image boundaries
-                                        const constrainedX = Math.min(Math.max(posX, 0), 100);
-                                        const constrainedY = Math.min(Math.max(posY, 0), 100);
+                                        {/* Segafredo - Center Kiosk */}
+                                        <rect 
+                                            x="420" y="240" width="100" height="60" rx="10" 
+                                            fill="#FEE2E2" stroke="#F87171" strokeWidth="1"
+                                            cursor="pointer"
+                                            onMouseOver={e=>e.target.style.fill='#FECACA'}
+                                            onMouseOut={e=>e.target.style.fill='#FEE2E2'}
+                                            onClick={() => alert('مقهى Segafredo')}
+                                        />
+                                        <text x="440" y="275" fontSize="12" fontWeight="bold" fill="#991B1B" pointerEvents="none">Segafredo</text>
 
-                                        return (
-                                            <div style={{
-                                                position: 'absolute',
-                                                left: `${constrainedX}%`,
-                                                top: `${constrainedY}%`,
-                                                width: '24px',
-                                                height: '24px',
-                                                background: '#3b82f6',
-                                                border: '3px solid white',
-                                                borderRadius: '50%',
-                                                transform: 'translate(-50%, -50%)',
-                                                boxShadow: '0 0 15px rgba(59, 130, 246, 0.6)',
-                                                zIndex: 1000,
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                animation: 'pulse 2s infinite'
-                                            }}>
-                                                <img 
-                                                    src={getImageUrl(currentUser.profile_picture) || '/default-user.png'} 
-                                                    style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
-                                                />
-                                            </div>
-                                        );
-                                    })()}
+                                        {/* Piazza Italia - Top Right */}
+                                        <path 
+                                            d="M650,45 Q750,40 930,95 L930,170 L650,185 Z" 
+                                            fill="#F0FDFA" stroke="#2DD4BF" strokeWidth="1"
+                                            cursor="pointer"
+                                            onMouseOver={e=>e.target.style.fill='#CCFBF1'}
+                                            onMouseOut={e=>e.target.style.fill='#F0FDFA'}
+                                            onClick={() => alert('Piazza Italia')}
+                                        />
+                                        <text x="730" y="120" fontSize="14" fontWeight="bold" fill="#0F766E" pointerEvents="none">Piazza Italia</text>
 
-                                    {/* Hotspots / Interior Shops Overlay */}
-                                    {[
-                                        { name: "Hyper Market", x: 25, y: 70, id: "hyper-market" },
-                                        { name: "Segafredo", x: 47, y: 55, id: "segafredo" },
-                                        { name: "Piazza Italia", x: 75, y: 30, id: "piazza-italia" },
-                                        { name: "Italian Furniture", x: 85, y: 60, id: "italian-furniture" }
-                                    ].map(spot => (
-                                        <button
-                                            key={spot.id}
-                                            onClick={() => {
-                                                // Check if internal_shops has a match
-                                                const match = internalShops.find(s => s.name.toLowerCase().includes(spot.name.toLowerCase()));
-                                                if (match) {
-                                                    // We can't easily open another modal chain nicely, 
-                                                    // but we can alert the user or redirect
-                                                    alert(`متجر داخلي: ${spot.name}\nيمكنك العثور عليه في الطابق الأرضي.`);
-                                                } else {
-                                                    alert(`متجر داخلي: ${spot.name}`);
-                                                }
-                                            }}
-                                            style={{
-                                                position: 'absolute',
-                                                left: `${spot.x}%`,
-                                                top: `${spot.y}%`,
-                                                background: 'rgba(251, 171, 21, 0.15)',
-                                                border: '2px solid rgba(251, 171, 21, 0.5)',
-                                                borderRadius: '8px',
-                                                padding: '4px 8px',
-                                                fontSize: '0.75rem',
-                                                fontWeight: 'bold',
-                                                color: '#7c2d12',
-                                                transform: 'translate(-50%, -50%)',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s',
-                                                boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
-                                            }}
-                                            onMouseOver={e => { e.currentTarget.style.background = 'rgba(251, 171, 21, 0.4)'; e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1.1)'; }}
-                                            onMouseOut={e => { e.currentTarget.style.background = 'rgba(251, 171, 21, 0.15)'; e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1)'; }}
-                                        >
-                                            {spot.name}
-                                        </button>
-                                    ))}
+                                        {/* Italian Furniture - Bottom Right */}
+                                        <rect 
+                                            x="740" y="195" width="200" height="150" rx="10" 
+                                            fill="#F8FAFC" stroke="#94A3B8" strokeWidth="1"
+                                            cursor="pointer"
+                                            onMouseOver={e=>e.target.style.fill='#F1F5F9'}
+                                            onMouseOut={e=>e.target.style.fill='#F8FAFC'}
+                                            onClick={() => alert('Italian Furniture')}
+                                        />
+                                        <text x="780" y="280" fontSize="14" fontWeight="bold" fill="#475569" pointerEvents="none">Italian Furniture</text>
+
+                                        {/* Other Small Shops Corridor (Simplified) */}
+                                        <rect x="400" y="60" width="80" height="70" rx="5" fill="#f8fafc" stroke="#cbd5e1" />
+                                        <rect x="490" y="55" width="70" height="75" rx="5" fill="#f8fafc" stroke="#cbd5e1" />
+                                        <rect x="570" y="50" width="70" height="85" rx="5" fill="#f8fafc" stroke="#cbd5e1" />
+
+                                        {/* User GPS Location Projection (Interactive Dot) */}
+                                        {(() => {
+                                            if (!userLocation) return null;
+                                            
+                                            // Mapping real-world coordinates to SVG pixels (0 to 1000 x 0 to 500)
+                                            const bounds = {
+                                                top: 31.92165,
+                                                bottom: 31.92075,
+                                                left: 35.20577,
+                                                right: 35.20703
+                                            };
+                                            
+                                            const { latitude: lat, longitude: lon } = userLocation;
+                                            
+                                            // Latitude Projection (Y-axis: top coordinate is SVG Y=50, bottom is SVG Y=450)
+                                            const posY = 50 + ((bounds.top - lat) / (bounds.top - bounds.bottom)) * 400;
+                                            // Longitude Projection (X-axis: left coordinate is SVG X=50, right is SVG X=950)
+                                            const posX = 50 + ((lon - bounds.left) / (bounds.right - bounds.left)) * 900;
+                                            
+                                            // Constrain inside mall SVG bounds roughly
+                                            const constrainedX = Math.min(Math.max(posX, 30), 970);
+                                            const constrainedY = Math.min(Math.max(posY, 30), 470);
+
+                                            return (
+                                                <g style={{ transition: 'all 1s ease-in-out' }}>
+                                                    {/* Accuracy Shadow / Pulse */}
+                                                    <circle cx={constrainedX} cy={constrainedY} r="30" fill="rgba(59, 130, 246, 0.15)">
+                                                        <animate attributeName="r" values="25;45;25" dur="3s" repeatCount="indefinite" />
+                                                    </circle>
+                                                    {/* Directional Beacon */}
+                                                    <circle cx={constrainedX} cy={constrainedY} r="10" fill="#3b82f6" stroke="white" strokeWidth="3" />
+                                                    {/* User Tag */}
+                                                    <foreignObject x={constrainedX - 25} y={constrainedY - 60} width="50" height="50">
+                                                        <div style={{ padding: '2px', background: 'white', borderRadius: '50%', boxShadow: '0 4px 10px rgba(0,0,0,0.2)', border: '2px solid #3b82f6' }}>
+                                                            <img 
+                                                                src={getImageUrl(currentUser.profile_picture) || '/default-user.png'} 
+                                                                style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
+                                                            />
+                                                        </div>
+                                                    </foreignObject>
+                                                </g>
+                                            );
+                                        })()}
+                                    </svg>
                                 </div>
-                                <div style={{ marginTop: '15px', padding: '10px', background: 'rgba(251, 171, 21, 0.05)', borderRadius: '8px', border: '1px dashed #fbab15' }}>
-                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#92400e', textAlign: 'center' }}>
-                                        💡 اضغط على أسماء المحلات لمعرفة تفاصيل الموقع الداخلي.
+                                
+                                <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+                                    <div style={{ padding: '15px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', textAlign: 'center' }}>
+                                        <div style={{ fontSize: '1.2rem', marginBottom: '5px' }}>📍</div>
+                                        <div style={{ fontSize: '0.8rem', color: '#64748B' }}>الموقع الحالي</div>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>الطابق الأرضي</div>
+                                    </div>
+                                    <div style={{ padding: '15px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', textAlign: 'center' }}>
+                                        <div style={{ fontSize: '1.2rem', marginBottom: '5px' }}>🏗️</div>
+                                        <div style={{ fontSize: '0.8rem', color: '#64748B' }}>نظام الخريطة</div>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>فكتور تفاؤلي</div>
+                                    </div>
+                                    <div style={{ padding: '15px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', textAlign: 'center' }}>
+                                        <div style={{ fontSize: '1.2rem', marginBottom: '5px' }}>📱</div>
+                                        <div style={{ fontSize: '0.8rem', color: '#64748B' }}>دقة الـ GPS</div>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>عالية (Indoor)</div>
+                                    </div>
+                                </div>
+                                
+                                <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '16px', border: '1px dashed #3b82f6' }}>
+                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#1e40af', textAlign: 'center' }}>
+                                        ⭐ الموقع بالـ GPS يعمل بشكل مباشر؛ جرب المشي داخل آيكون مول وستشاهد صورتك تتحرك فوق مخطط الطابق.
                                     </p>
                                 </div>
                             </div>
