@@ -2666,21 +2666,20 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                     </svg>
                                 </div>
                                 
-                                <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
-                                    <div style={{ padding: '15px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', textAlign: 'center' }}>
-                                        <div style={{ fontSize: '1.2rem', marginBottom: '5px' }}>📍</div>
-                                        <div style={{ fontSize: '0.8rem', color: '#64748B' }}>الموقع الحالي</div>
-                                        <div style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>الطابق الأرضي</div>
-                                    </div>
-                                    <div style={{ padding: '15px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', textAlign: 'center' }}>
-                                        <div style={{ fontSize: '1.2rem', marginBottom: '5px' }}>🏗️</div>
-                                        <div style={{ fontSize: '0.8rem', color: '#64748B' }}>نظام الخريطة</div>
-                                        <div style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>فكتور تفاؤلي</div>
-                                    </div>
-                                    <div style={{ padding: '15px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', textAlign: 'center' }}>
-                                        <div style={{ fontSize: '1.2rem', marginBottom: '5px' }}>📱</div>
-                                        <div style={{ fontSize: '0.8rem', color: '#64748B' }}>دقة الـ GPS</div>
-                                        <div style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>عالية (Indoor)</div>
+                                <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
+                                    <div style={{ 
+                                        padding: '12px 25px', 
+                                        background: 'white', 
+                                        border: '1px solid #e2e8f0', 
+                                        borderRadius: '20px', 
+                                        textAlign: 'center',
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                                        display: 'flex',
+                                        gap: '10px',
+                                        alignItems: 'center'
+                                    }}>
+                                        <div style={{ fontSize: '0.85rem', color: '#64748B' }}>الموقع الحالي:</div>
+                                        <div style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#1e293b' }}>الطابق الأرضي</div>
                                     </div>
                                 </div>
                                 
