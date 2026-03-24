@@ -2548,17 +2548,34 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                 <div style={{ 
                                     position: 'relative', 
                                     width: '100%', 
+                                    minHeight: '400px', // Prevent squashing
                                     borderRadius: '12px', 
                                     overflow: 'hidden', 
                                     background: '#f8fafc',
                                     border: '1px solid var(--border-color)',
-                                    lineHeight: 0
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
                                 }}>
                                     {/* The Floor Plan Image */}
                                     <img 
-                                        src={getImageUrl("/api/uploads/icon-mall-ground.png")} 
+                                        src={getImageUrl("/uploads/icon-mall-ground.png")} 
                                         alt="Floor Plan" 
-                                        style={{ width: '100%', height: 'auto', display: 'block' }} 
+                                        style={{ 
+                                            width: '100%', 
+                                            height: 'auto', 
+                                            display: 'block',
+                                            maxWidth: '1200px'
+                                        }} 
+                                        onLoad={(e) => {
+                                            // Ensure container expands
+                                            e.target.parentElement.style.minHeight = 'auto';
+                                        }}
+                                        onError={(e) => {
+                                            console.error("Mall map failed to load");
+                                            e.target.src = 'https://via.placeholder.com/800x400?text=Floor+Plan+Not+Available';
+                                        }}
                                     />
                                     
                                     {/* User GPS Location Projection (Blue Dot) */}
