@@ -2624,12 +2624,12 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                         {(() => {
                                             if (!userLocation) return null;
                                             
-                                            // Mapping real-world coordinates to SVG pixels (0 to 1000 x 0 to 500)
+                                            // Precise Icon Mall Building Boundary (from user GeoJSON)
                                             const bounds = {
-                                                top: 31.92165,
-                                                bottom: 31.92075,
-                                                left: 35.20577,
-                                                right: 35.20703
+                                                top: 31.9365316,
+                                                bottom: 31.9353839,
+                                                left: 35.1924474,
+                                                right: 35.1930848
                                             };
                                             
                                             const { latitude: lat, longitude: lon } = userLocation;
