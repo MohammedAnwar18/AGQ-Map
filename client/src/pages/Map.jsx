@@ -111,9 +111,9 @@ const MapComponent = () => {
         return (a + b + c + d + e).trim();
     }, []);
 
+
     const MAPBOX_STREETS_STYLE = useMemo(() => {
         if (!MAPBOX_TOKEN) return null;
-        // Direct HTTPS URL is more reliable for style transitions in react-map-gl-maplibre
         return `https://api.mapbox.com/styles/v1/mohammed-1331/cmbseyy16010101qwf9d5a8m3?access_token=${MAPBOX_TOKEN}`;
     }, [MAPBOX_TOKEN]);
 
@@ -1106,37 +1106,6 @@ const MapComponent = () => {
                         </Source>
                     )}
 
-                    {/* User Location Accuracy Circle - Visual Feedback for Precision */}
-                    {userLocation && userLocation.accuracy && (
-                        <Source 
-                            id="user-accuracy" 
-                            type="geojson" 
-                            data={{
-                                type: 'Feature',
-                                geometry: {
-                                    type: 'Point',
-                                    coordinates: [userLocation.longitude, userLocation.latitude]
-                                }
-                            }}
-                        >
-                            <Layer
-                                id="user-accuracy-layer"
-                                type="circle"
-                                paint={{
-                                    "circle-radius": [
-                                        'interpolate', ['exponential', 2], ['zoom'],
-                                        15, (userLocation.accuracy / 0.5), // Roughly calculated for zoom levels
-                                        20, (userLocation.accuracy / 0.05)
-                                    ],
-                                    "circle-color": "#fbab15",
-                                    "circle-opacity": 0.15,
-                                    "circle-stroke-width": 1,
-                                    "circle-stroke-color": "#fbab15",
-                                    "circle-stroke-opacity": 0.4
-                                }}
-                            />
-                        </Source>
-                    )}
 
                     {/* User Location Marker */}
                     {userLocation && (
