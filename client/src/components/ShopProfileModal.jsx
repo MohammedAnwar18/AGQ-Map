@@ -630,13 +630,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
 
     if (!shopData) return null;
 
-    const getImageUrl = (url) => {
-        if (!url) return null;
-        if (url.startsWith('http')) return url;
-        // Strip /api if present in VITE_API_URL, as /uploads is at root
-        const baseUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : '';
-        return `${baseUrl}${url}`;
-    };
 
     const coverUrl = shopData.cover_picture
         ? getImageUrl(shopData.cover_picture)
