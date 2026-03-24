@@ -1302,6 +1302,26 @@ const MapComponent = () => {
                     ])}
 
 
+                    {/* Icon Mall - Entrance/Marker to trigger indoor map */}
+                    {!currentCommunity && (
+                        <Marker
+                            longitude={35.2064}
+                            latitude={31.9212}
+                            anchor="center"
+                            onClick={() => {
+                                mapRef.current?.flyTo({ center: [35.2064, 31.9212], zoom: 18.5, pitch: 45 });
+                            }}
+                        >
+                            <div style={{
+                                width: '50px', height: '50px', background: '#fbab15', borderRadius: '50%',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                border: '3px solid white', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', cursor: 'pointer'
+                            }}>
+                                <span style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>M</span>
+                            </div>
+                        </Marker>
+                    )}
+
                     {/* Search Results */}
                     {aiResults.map((place, index) => (
                         <Marker key={`ai-${index}`} longitude={parseFloat(place.lon)} latitude={parseFloat(place.lat)} color="red">
