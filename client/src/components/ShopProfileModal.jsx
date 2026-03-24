@@ -974,9 +974,8 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                     {[
                         ...((shopData.category === 'صراف آلي' || shopData.category === 'فرع بنك') ? [] : ['products']),
                         'timeline',
-                        ...(shopData.category === 'مكتب تاكسي' && canEditShop ? ['requests', 'drivers'] : []),
-                        'about',
-                        ...((shopData.category === 'مركز تسوق' || shopData.category === 'مجمع تجاري' || shopData.name.includes('Icon') || shopData.name.includes('آيكون')) ? ['mall_map'] : [])
+                        ...((shopData.category === 'مكتب تاكسي' && canEditShop) ? ['requests', 'drivers'] : []),
+                        'about'
                     ].map(tab => (
                         <button
                             key={tab}
@@ -2533,111 +2532,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                         </div>
                     )}
 
-                    {/* --- Mall Interior Map Tab --- */}
-                    {activeTab === 'mall_map' && (
-                        <div style={{ animation: 'fadeIn 0.5s', position: 'relative' }}>
-                            <div style={{ background: 'var(--bg-primary)', padding: '20px', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                                    <h3 style={{ margin: 0 }}>مخطط الطابق الأرضي</h3>
-                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                        <div style={{ width: '12px', height: '12px', background: '#3b82f6', borderRadius: '50%', boxShadow: '0 0 10px #3b82f6' }}></div>
-                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>موقعك الحالي</span>
-                                    </div>
-                                </div>
-                                
-                                <div style={{ 
-                                    position: 'relative', 
-                                    width: '100%', 
-                                    minHeight: '450px',
-                                    borderRadius: '16px', 
-                                    overflow: 'hidden', 
-                                    background: '#f1f5f9',
-                                    border: '1px solid var(--border-color)',
-                                    boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.05)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                }}>
-                                    <svg viewBox="0 0 1000 500" style={{ width: '95%', height: 'auto', maxHeight: '100%' }}>
-                                        <>
-                                            <path d="M50,150 Q100,50 400,30 Q700,20 950,80 L960,350 Q850,420 700,430 L400,460 L150,470 Q50,450 40,250 Z" fill="#ffffff" stroke="#CBD5E1" strokeWidth="3" />
-                                            <path d="M60,160 Q100,70 350,150 L350,440 L160,450 Q70,430 60,250 Z" fill="#E2E8F0" stroke="#94A3B8" />
-                                            <text x="180" y="320" fontSize="14" fontWeight="bold" fill="#64748B">Hyper Market</text>
-                                            <rect x="420" y="240" width="100" height="60" rx="10" fill="#FEE2E2" stroke="#F87171" />
-                                            <text x="440" y="275" fontSize="12" fontWeight="bold" fill="#991B1B">Segafredo</text>
-                                            <path d="M650,45 Q750,40 930,95 L930,170 L650,185 Z" fill="#F0FDFA" stroke="#2DD4BF" />
-                                            <text x="730" y="120" fontSize="14" fontWeight="bold" fill="#0F766E">Piazza Italia</text>
-                                            <rect x="740" y="195" width="200" height="150" rx="10" fill="#F8FAFC" stroke="#94A3B8" />
-                                            <text x="780" y="280" fontSize="14" fontWeight="bold" fill="#475569">Italian Furniture</text>
-                                            <rect x="400" y="60" width="80" height="70" rx="5" fill="#f8fafc" stroke="#cbd5e1" />
-                                            <rect x="490" y="55" width="70" height="75" rx="5" fill="#f8fafc" stroke="#cbd5e1" />
-                                            <rect x="570" y="50" width="70" height="85" rx="5" fill="#f8fafc" stroke="#cbd5e1" />
-                                        </>
-
-                                        {(() => {
-                                            if (!userLocation) return null;
-                                            const bounds = {
-                                                top: 31.9365316, bottom: 31.9353839, left: 35.1924474, right: 35.1930848
-                                            };
-                                            const { latitude: uLat, longitude: uLon } = userLocation;
-                                            const isInside = uLat <= bounds.top + 0.0001 && uLat >= bounds.bottom - 0.0001 &&
-                                                           uLon >= bounds.left - 0.0001 && uLon <= bounds.right + 0.0001;
-
-                                            if (!isInside) {
-                                                return (
-                                                    <foreignObject x="350" y="450" width="300" height="40">
-                                                        <div style={{ background: 'rgba(239, 68, 68, 0.9)', color: 'white', fontSize: '11px', padding: '4px 10px', borderRadius: '20px', textAlign: 'center', fontWeight: 'bold' }}>
-                                                            📍 أنت خارج منطقة المول
-                                                        </div>
-                                                    </foreignObject>
-                                                );
-                                            }
-                                            
-                                            const pY = 50 + ((bounds.top - uLat) / (bounds.top - bounds.bottom)) * 400;
-                                            const pX = 50 + ((uLon - bounds.left) / (bounds.right - bounds.left)) * 900;
-                                            const cX = Math.min(Math.max(pX, 30), 970);
-                                            const cY = Math.min(Math.max(pY, 30), 470);
-
-                                            return (
-                                                <g>
-                                                    {targetRoom && (
-                                                        <path d={`M${cX},${cY} L${targetRoom.x},${cY} L${targetRoom.x},${targetRoom.y}`} fill="none" stroke="#3b82f6" strokeWidth="4" strokeDasharray="10,5" opacity="0.6">
-                                                            <animate attributeName="stroke-dashoffset" from="100" to="0" dur="2s" repeatCount="indefinite" />
-                                                        </path>
-                                                    )}
-                                                    <g style={{ transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
-                                                        <circle cx={cX} cy={cY} r="35" fill="rgba(59, 130, 246, 0.2)">
-                                                            <animate attributeName="r" values="30;50;30" dur="2s" repeatCount="indefinite" />
-                                                        </circle>
-                                                        <circle cx={cX} cy={cY} r="12" fill="#3b82f6" stroke="white" strokeWidth="3" />
-                                                        <foreignObject x={cX - 25} y={cY - 60} width="50" height="50">
-                                                            <div style={{ padding: '2px', background: 'white', borderRadius: '50%', border: '2px solid #3b82f6' }}>
-                                                                <img src={getImageUrl(currentUser.profile_picture) || '/default-user.png'} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-                                                            </div>
-                                                        </foreignObject>
-                                                    </g>
-                                                </g>
-                                            );
-                                        })()}
-                                    </svg>
-                                </div>
-                                
-                                <div style={{ marginTop: '20px', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px' }}>
-                                    <div style={{ padding: '10px 20px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '20px', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                        <div style={{ fontSize: '0.85rem', color: '#64748B' }}>الموقع الحالي:</div>
-                                        <div style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>الطابق الأرضي</div>
-                                    </div>
-                                    {targetRoom && (
-                                        <div style={{ padding: '10px 20px', background: '#3b82f6', color: 'white', borderRadius: '20px', display: 'flex', gap: '8px', alignItems: 'center', animation: 'fadeIn 0.3s' }}>
-                                            <div style={{ fontSize: '0.85rem' }}>المسار إلى:</div>
-                                            <div style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>{targetRoom.name}</div>
-                                            <button onClick={() => setTargetRoom(null)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '0 5px', fontWeight: 'bold' }}>✕</button>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
                 </div>
 
                 <style>{`
