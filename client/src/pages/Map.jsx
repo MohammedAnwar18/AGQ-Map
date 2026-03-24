@@ -256,7 +256,7 @@ const MapComponent = () => {
         name: "Icon Mall",
         id: "icon-mall",
         center: [35.2064, 31.9212],
-        imageUrl: "/api/uploads/icon-mall-ground.png",
+        imageUrl: getImageUrl("/api/uploads/icon-mall-ground.png"),
         coordinates: [
             [35.20577, 31.92165], // top-left
             [35.20703, 31.92165], // top-right
