@@ -652,7 +652,7 @@ const MapComponent = () => {
             const geoOptions = {
                 enableHighAccuracy: true,
                 timeout: 30000,
-                maximumAge: 0 // Always get fresh GPS data
+                maximumAge: 0 // Fetch absolute fresh GPS data to minimize shift
             };
 
             const startWatching = () => {
@@ -1106,10 +1106,46 @@ const MapComponent = () => {
                         </Source>
                     )}
 
+                    {/* User Location Accuracy Circle - Visual Feedback for Precision */}
+                    {userLocation && userLocation.accuracy && (
+                        <Source 
+                            id="user-accuracy" 
+                            type="geojson" 
+                            data={{
+                                type: 'Feature',
+                                geometry: {
+                                    type: 'Point',
+                                    coordinates: [userLocation.longitude, userLocation.latitude]
+                                }
+                            }}
+                        >
+                            <Layer
+                                id="user-accuracy-layer"
+                                type="circle"
+                                paint={{
+                                    "circle-radius": [
+                                        'interpolate', ['exponential', 2], ['zoom'],
+                                        15, (userLocation.accuracy / 0.5), // Roughly calculated for zoom levels
+                                        20, (userLocation.accuracy / 0.05)
+                                    ],
+                                    "circle-color": "#fbab15",
+                                    "circle-opacity": 0.15,
+                                    "circle-stroke-width": 1,
+                                    "circle-stroke-color": "#fbab15",
+                                    "circle-stroke-opacity": 0.4
+                                }}
+                            />
+                        </Source>
+                    )}
+
                     {/* User Location Marker */}
                     {userLocation && (
                         <Marker longitude={userLocation.longitude} latitude={userLocation.latitude} anchor="center">
-                            <div className="custom-location-marker" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
+                            <div 
+                                className="custom-location-marker" 
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}
+                                title={`الدقة: ${Math.round(userLocation.accuracy || 0)} متر`}
+                            >
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
                                     <circle cx="40" cy="40" r="10" fill="#fbab15" opacity="0.6"><animate attributeName="r" from="10" to="38" dur="2s" repeatCount="indefinite" /><animate attributeName="opacity" from="0.6" to="0" dur="2s" repeatCount="indefinite" /></circle>
                                     <circle cx="40" cy="40" r="10" fill="#ffffff" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.3))' }} />
@@ -1280,8 +1316,8 @@ const MapComponent = () => {
 
                     {/* Home Test Marker - Visible for Testing */}
                     <Marker
-                        longitude={35.11944}
-                        latitude={31.83681}
+                        longitude={35.119441}
+                        latitude={31.836808}
                         anchor="center"
                         onClick={(e) => {
                             e.originalEvent.stopPropagation();
@@ -1289,8 +1325,8 @@ const MapComponent = () => {
                                 id: "home-test", 
                                 name: "تجربة منزلي 🏠", 
                                 category: "مجمع تجاري",
-                                latitude: 31.83681,
-                                longitude: 35.11944
+                                latitude: 31.836808,
+                                longitude: 35.119441
                             });
                         }}
                     >

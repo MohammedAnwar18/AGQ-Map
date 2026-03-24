@@ -2614,10 +2614,15 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                 );
                                             }
                                             
-                                            const pY = 50 + ((bounds.top - uLat) / (bounds.top - bounds.bottom)) * 400;
-                                            const pX = 50 + ((uLon - bounds.left) / (bounds.right - bounds.left)) * 900;
-                                            const cX = Math.min(Math.max(pX, 30), 970);
-                                            const cY = Math.min(Math.max(pY, 30), 470);
+                                            const pY = isHome 
+                                                ? 50 + ((bounds.top - uLat) / (bounds.top - bounds.bottom)) * 400 
+                                                : 50 + ((bounds.top - uLat) / (bounds.top - bounds.bottom)) * 400;
+                                            const pX = isHome
+                                                ? 100 + ((uLon - bounds.left) / (bounds.right - bounds.left)) * 800
+                                                : 50 + ((uLon - bounds.left) / (bounds.right - bounds.left)) * 900;
+                                            
+                                            const cX = Math.min(Math.max(pX, isHome ? 100 : 30), isHome ? 900 : 970);
+                                            const cY = Math.min(Math.max(pY, isHome ? 50 : 30), isHome ? 450 : 470);
 
                                             return (
                                                 <g>
