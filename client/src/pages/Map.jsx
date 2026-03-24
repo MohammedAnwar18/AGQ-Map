@@ -247,30 +247,6 @@ const MapComponent = () => {
     const [showFacilityProfile, setShowFacilityProfile] = useState(false);
     const [selectedFacilityId, setSelectedFacilityId] = useState(null);
 
-    // Indoor Mode State
-    const [showIndoorMap, setShowIndoorMap] = useState(false);
-    const [currentIndoorMall, setCurrentIndoorMall] = useState(null);
-
-    // Icon Mall Metadata (Ground Floor)
-    const ICON_MALL_DATA = {
-        name: "Icon Mall",
-        id: "icon-mall",
-        center: [35.2064, 31.9212],
-        imageUrl: getImageUrl("/api/uploads/icon-mall-ground.png"),
-        coordinates: [
-            [35.20577, 31.92165], // top-left
-            [35.20703, 31.92165], // top-right
-            [35.20703, 31.92075], // bottom-right
-            [35.20577, 31.92075]  // bottom-left
-        ],
-        hotspots: [
-            { name: "Hyper Market", x: 25, y: 70, width: 35, height: 25, shopId: "hyper-market" },
-            { name: "Segafredo", x: 47, y: 55, width: 10, height: 15, shopId: "segafredo" },
-            { name: "Piazza Italia", x: 75, y: 30, width: 20, height: 20, shopId: "piazza-italia" },
-            { name: "Italian Furniture", x: 85, y: 60, width: 13, height: 35, shopId: "italian-furniture" }
-        ]
-    };
-
     const handleOpenShopProfile = async (shop) => {
         if (shop.category === 'University' || shop.category === 'مؤسسة تعليمية') {
             setSelectedUniversityProfile(shop);
@@ -1302,33 +1278,6 @@ const MapComponent = () => {
                     ])}
 
 
-                    {/* Icon Mall - Entrance/Marker to trigger indoor map */}
-                    {!currentCommunity && (
-                        <Marker
-                            longitude={35.2064}
-                            latitude={31.9212}
-                            anchor="center"
-                            onClick={() => {
-                                mapRef.current?.flyTo({ center: [35.2064, 31.9212], zoom: 18.5, pitch: 45 });
-                            }}
-                        >
-                            <div style={{
-                                width: '50px', height: '50px', background: '#fbab15', borderRadius: '50%',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                border: '3px solid white', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', cursor: 'pointer'
-                            }}>
-                                <span style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>M</span>
-                            </div>
-                        </Marker>
-                    )}
-
-                    {/* Search Results */}
-                    {aiResults.map((place, index) => (
-                        <Marker key={`ai-${index}`} longitude={parseFloat(place.lon)} latitude={parseFloat(place.lat)} color="red">
-                            {/* Default Red Pin */}
-                        </Marker>
-                    ))}
-
                     {/* Selected Profiles (e.g., from Search before following) */}
                     {(showShopProfile && selectedShopProfile && selectedShopProfile.latitude) && (
                         viewState.zoom >= 17 && (
@@ -1404,61 +1353,6 @@ const MapComponent = () => {
                             </div>
                         </Marker>
                     ))}
-
-                    {/* Indoor Mall Overlay */}
-                    {viewState.zoom >= 17.5 && (
-                        <Source
-                            id="icon-mall-floor"
-                            type="image"
-                            url={ICON_MALL_DATA.imageUrl}
-                            coordinates={ICON_MALL_DATA.coordinates}
-                        >
-                            <Layer
-                                id="icon-mall-layer"
-                                type="raster"
-                                paint={{ 'raster-opacity': 0.95 }}
-                            />
-                        </Source>
-                    )}
-
-                    {/* Indoor Hotspots (Alternative Markers for Interaction) */}
-                    {viewState.zoom >= 18.5 && ICON_MALL_DATA.hotspots.map((spot, idx) => {
-                        // Rough coordinate estimation from image percentages
-                        const lon = ICON_MALL_DATA.coordinates[0][0] + (spot.x / 100) * (ICON_MALL_DATA.coordinates[1][0] - ICON_MALL_DATA.coordinates[0][0]);
-                        const lat = ICON_MALL_DATA.coordinates[0][1] + (spot.y / 100) * (ICON_MALL_DATA.coordinates[3][1] - ICON_MALL_DATA.coordinates[0][1]);
-                        
-                        return (
-                            <Marker
-                                key={`spot-${idx}`}
-                                longitude={lon}
-                                latitude={lat}
-                                onClick={(e) => {
-                                    e.originalEvent.stopPropagation();
-                                    handleOpenShopProfile({ name: spot.name, category: "Shop", id: spot.shopId });
-                                }}
-                            >
-                                <div style={{
-                                    width: `${spot.width * 2}px`,
-                                    height: `${spot.height * 2}px`,
-                                    background: 'rgba(251, 171, 21, 0.15)',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontWeight: 'bold',
-                                    fontSize: '10px',
-                                    color: 'transparent',
-                                    transition: 'all 0.3s'
-                                }}
-                                onMouseOver={e => { e.currentTarget.style.background = 'rgba(251, 171, 21, 0.4)'; e.currentTarget.style.color = '#000'; }}
-                                onMouseOut={e => { e.currentTarget.style.background = 'rgba(251, 171, 21, 0.15)'; e.currentTarget.style.color = 'transparent'; }}
-                                >
-                                    {spot.name}
-                                </div>
-                            </Marker>
-                        );
-                    })}
 
                 </Map>
             </div>
@@ -1582,6 +1476,7 @@ const MapComponent = () => {
                     currentUser={user}
                     onClose={() => setShowShopProfile(false)}
                     onFollowChange={handleShopFollowed}
+                    userLocation={userLocation}
                 />
             )}
             {showUniversityProfile && selectedUniversityProfile && (

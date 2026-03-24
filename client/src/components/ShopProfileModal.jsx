@@ -125,7 +125,7 @@ const SUPERMARKET_CATEGORIES = [
     "مستلزمات الشواء", "الحلويات", "المشروبات", "التسالي"
 ];
 
-const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
+const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLocation }) => {
     const [shopData, setShopData] = useState(shop);
     const [posts, setPosts] = useState([]);
     const [products, setProducts] = useState([]);
@@ -981,7 +981,8 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                         ...((shopData.category === 'صراف آلي' || shopData.category === 'فرع بنك') ? [] : ['products']),
                         'timeline',
                         ...(shopData.category === 'مكتب تاكسي' && canEditShop ? ['requests', 'drivers'] : []),
-                        'about'
+                        'about',
+                        ...((shopData.category === 'مركز تسوق' || shopData.category === 'مجمع تجاري' || shopData.name.includes('Icon') || shopData.name.includes('آيكون')) ? ['mall_map'] : [])
                     ].map(tab => (
                         <button
                             key={tab}
@@ -1010,6 +1011,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                 if (tab === 'timeline') return 'أخبار';
                                 if (tab === 'drivers') return 'السائقين';
                                 if (tab === 'requests') return 'الطلبات';
+                                if (tab === 'mall_map') return 'خريطة المول 🗺️';
                                 return 'حول';
                             })()}
                         </button>
@@ -2534,6 +2536,145 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange }) => {
                                     </div>
                                 </div>
                             )}
+                        </div>
+                    )}
+
+                    {/* --- Mall Interior Map Tab --- */}
+                    {activeTab === 'mall_map' && (
+                        <div style={{ animation: 'fadeIn 0.5s', position: 'relative' }}>
+                            <div style={{ background: 'var(--bg-primary)', padding: '20px', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                    <h3 style={{ margin: 0 }}>مخطط الطابق الأرضي</h3>
+                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                        <div style={{ width: '12px', height: '12px', background: '#3b82f6', borderRadius: '50%', boxShadow: '0 0 10px #3b82f6' }}></div>
+                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>موقعك الحالي</span>
+                                    </div>
+                                </div>
+                                
+                                {/* The Interactive Map Container */}
+                                <div style={{ 
+                                    position: 'relative', 
+                                    width: '100%', 
+                                    borderRadius: '12px', 
+                                    overflow: 'hidden', 
+                                    background: '#f8fafc',
+                                    border: '1px solid var(--border-color)',
+                                    lineHeight: 0
+                                }}>
+                                    {/* The Floor Plan Image */}
+                                    <img 
+                                        src={getImageUrl("/api/uploads/icon-mall-ground.png")} 
+                                        alt="Floor Plan" 
+                                        style={{ width: '100%', height: 'auto', display: 'block' }} 
+                                    />
+                                    
+                                    {/* User GPS Location Projection (Blue Dot) */}
+                                    {(() => {
+                                        if (!userLocation) return null;
+                                        
+                                        // Icon Mall Buidling Boundary (Roughly)
+                                        const bounds = {
+                                            top: 31.92165,
+                                            bottom: 31.92075,
+                                            left: 35.20577,
+                                            right: 35.20703
+                                        };
+                                        
+                                        const { latitude: lat, longitude: lon } = userLocation;
+                                        
+                                        // Check if user is inside or near the mall area
+                                        // If outside, we might show a message or hide the dot
+                                        const padding = 0.001; // Allow some margin
+                                        if (lat < bounds.bottom - padding || lat > bounds.top + padding ||
+                                            lon < bounds.left - padding || lon > bounds.right + padding) {
+                                            return null;
+                                        }
+
+                                        // Calculate percentage position
+                                        // Latitude: top is 0%, bottom is 100%
+                                        const posY = ((bounds.top - lat) / (bounds.top - bounds.bottom)) * 100;
+                                        // Longitude: left is 0%, right is 100%
+                                        const posX = ((lon - bounds.left) / (bounds.right - bounds.left)) * 100;
+                                        
+                                        // Constrain to image boundaries
+                                        const constrainedX = Math.min(Math.max(posX, 0), 100);
+                                        const constrainedY = Math.min(Math.max(posY, 0), 100);
+
+                                        return (
+                                            <div style={{
+                                                position: 'absolute',
+                                                left: `${constrainedX}%`,
+                                                top: `${constrainedY}%`,
+                                                width: '24px',
+                                                height: '24px',
+                                                background: '#3b82f6',
+                                                border: '3px solid white',
+                                                borderRadius: '50%',
+                                                transform: 'translate(-50%, -50%)',
+                                                boxShadow: '0 0 15px rgba(59, 130, 246, 0.6)',
+                                                zIndex: 1000,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                animation: 'pulse 2s infinite'
+                                            }}>
+                                                <img 
+                                                    src={getImageUrl(currentUser.profile_picture) || '/default-user.png'} 
+                                                    style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
+                                                />
+                                            </div>
+                                        );
+                                    })()}
+
+                                    {/* Hotspots / Interior Shops Overlay */}
+                                    {[
+                                        { name: "Hyper Market", x: 25, y: 70, id: "hyper-market" },
+                                        { name: "Segafredo", x: 47, y: 55, id: "segafredo" },
+                                        { name: "Piazza Italia", x: 75, y: 30, id: "piazza-italia" },
+                                        { name: "Italian Furniture", x: 85, y: 60, id: "italian-furniture" }
+                                    ].map(spot => (
+                                        <button
+                                            key={spot.id}
+                                            onClick={() => {
+                                                // Check if internal_shops has a match
+                                                const match = internalShops.find(s => s.name.toLowerCase().includes(spot.name.toLowerCase()));
+                                                if (match) {
+                                                    // We can't easily open another modal chain nicely, 
+                                                    // but we can alert the user or redirect
+                                                    alert(`متجر داخلي: ${spot.name}\nيمكنك العثور عليه في الطابق الأرضي.`);
+                                                } else {
+                                                    alert(`متجر داخلي: ${spot.name}`);
+                                                }
+                                            }}
+                                            style={{
+                                                position: 'absolute',
+                                                left: `${spot.x}%`,
+                                                top: `${spot.y}%`,
+                                                background: 'rgba(251, 171, 21, 0.15)',
+                                                border: '2px solid rgba(251, 171, 21, 0.5)',
+                                                borderRadius: '8px',
+                                                padding: '4px 8px',
+                                                fontSize: '0.75rem',
+                                                fontWeight: 'bold',
+                                                color: '#7c2d12',
+                                                transform: 'translate(-50%, -50%)',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s',
+                                                boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                                            }}
+                                            onMouseOver={e => { e.currentTarget.style.background = 'rgba(251, 171, 21, 0.4)'; e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1.1)'; }}
+                                            onMouseOut={e => { e.currentTarget.style.background = 'rgba(251, 171, 21, 0.15)'; e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1)'; }}
+                                        >
+                                            {spot.name}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div style={{ marginTop: '15px', padding: '10px', background: 'rgba(251, 171, 21, 0.05)', borderRadius: '8px', border: '1px dashed #fbab15' }}>
+                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#92400e', textAlign: 'center' }}>
+                                        💡 اضغط على أسماء المحلات لمعرفة تفاصيل الموقع الداخلي.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
