@@ -1314,31 +1314,6 @@ const MapComponent = () => {
                     ])}
 
 
-                    {/* Home Test Marker - Visible for Testing */}
-                    <Marker
-                        longitude={35.119441}
-                        latitude={31.836808}
-                        anchor="center"
-                        onClick={(e) => {
-                            e.originalEvent.stopPropagation();
-                            handleOpenShopProfile({ 
-                                id: "home-test", 
-                                name: "تجربة منزلي 🏠", 
-                                category: "مجمع تجاري",
-                                latitude: 31.836808,
-                                longitude: 35.119441
-                            });
-                        }}
-                    >
-                        <div style={{
-                            width: '40px', height: '40px', background: '#3b82f6', borderRadius: '50%',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            border: '3px solid white', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', cursor: 'pointer'
-                        }}>
-                             <span style={{ fontSize: '20px' }}>🏠</span>
-                        </div>
-                    </Marker>
-
                     {/* Selected Profiles (e.g., from Search before following) */}
                     {(showShopProfile && selectedShopProfile && selectedShopProfile.latitude) && (
                         viewState.zoom >= 17 && (
