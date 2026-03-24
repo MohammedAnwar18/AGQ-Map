@@ -277,6 +277,7 @@ const MapComponent = () => {
     const [followedShopsMap, setFollowedShopsMap] = useState([]);
     const [visibleFriendName, setVisibleFriendName] = useState(null); // Track which friend's name is shown
     const [firstLabelLayerId, setFirstLabelLayerId] = useState(null); // For "built-in" route placement beneath labels
+    const [searchResults, setSearchResults] = useState([]); // Added to prevent ReferenceError after revert
 
     // Detect first label layer for professional "integrated" route rendering
     const onMapLoad = (e) => {
@@ -1533,6 +1534,7 @@ const MapComponent = () => {
                     onClose={() => setShowAIChat(false)}
                     onSearchResults={(results) => {
                         setAiResults(results);
+                        setSearchResults(results); // Update both to be safe
                         setRoutePath(null); setRouteStats(null); setDestination(null);
                         if (results.length > 0) {
                             mapRef.current?.flyTo({ center: [parseFloat(results[0].lon), parseFloat(results[0].lat)], zoom: 18.5, pitch: 45 });
