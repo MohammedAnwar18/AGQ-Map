@@ -2558,85 +2558,67 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                     alignItems: 'center',
                                     justifyContent: 'center'
                                 }}>
-                                    {/* Mall Interior Vector Map (SVG) */}
+                                    {/* Mall/Home Interior Vector Map (SVG) */}
                                     <svg viewBox="0 0 1000 500" style={{ width: '95%', height: 'auto', maxHeight: '100%' }}>
-                                        {/* Mall Main Boundary */}
-                                        <path 
-                                            d="M50,150 Q100,50 400,30 Q700,20 950,80 L960,350 Q850,420 700,430 L400,460 L150,470 Q50,450 40,250 Z" 
-                                            fill="#ffffff" 
-                                            stroke="#CBD5E1" 
-                                            strokeWidth="3"
-                                        />
-                                        
-                                        {/* Interior Shops / Zones */}
-                                        {/* Hyper Market - Left Section */}
-                                        <path 
-                                            d="M60,160 Q100,70 350,150 L350,440 L160,450 Q70,430 60,250 Z" 
-                                            fill="#E2E8F0" 
-                                            stroke="#94A3B8" 
-                                            strokeWidth="1"
-                                            cursor="pointer"
-                                            onMouseOver={e=>e.target.style.fill='#CBD5E1'}
-                                            onMouseOut={e=>e.target.style.fill='#E2E8F0'}
-                                            onClick={() => alert('قسم الهايبر ماركت - الطابق الأرضي')}
-                                        />
-                                        <text x="180" y="320" fontSize="14" fontWeight="bold" fill="#64748B" pointerEvents="none">Hyper Market</text>
-
-                                        {/* Segafredo - Center Kiosk */}
-                                        <rect 
-                                            x="420" y="240" width="100" height="60" rx="10" 
-                                            fill="#FEE2E2" stroke="#F87171" strokeWidth="1"
-                                            cursor="pointer"
-                                            onMouseOver={e=>e.target.style.fill='#FECACA'}
-                                            onMouseOut={e=>e.target.style.fill='#FEE2E2'}
-                                            onClick={() => alert('مقهى Segafredo')}
-                                        />
-                                        <text x="440" y="275" fontSize="12" fontWeight="bold" fill="#991B1B" pointerEvents="none">Segafredo</text>
-
-                                        {/* Piazza Italia - Top Right */}
-                                        <path 
-                                            d="M650,45 Q750,40 930,95 L930,170 L650,185 Z" 
-                                            fill="#F0FDFA" stroke="#2DD4BF" strokeWidth="1"
-                                            cursor="pointer"
-                                            onMouseOver={e=>e.target.style.fill='#CCFBF1'}
-                                            onMouseOut={e=>e.target.style.fill='#F0FDFA'}
-                                            onClick={() => alert('Piazza Italia')}
-                                        />
-                                        <text x="730" y="120" fontSize="14" fontWeight="bold" fill="#0F766E" pointerEvents="none">Piazza Italia</text>
-
-                                        {/* Italian Furniture - Bottom Right */}
-                                        <rect 
-                                            x="740" y="195" width="200" height="150" rx="10" 
-                                            fill="#F8FAFC" stroke="#94A3B8" strokeWidth="1"
-                                            cursor="pointer"
-                                            onMouseOver={e=>e.target.style.fill='#F1F5F9'}
-                                            onMouseOut={e=>e.target.style.fill='#F8FAFC'}
-                                            onClick={() => alert('Italian Furniture')}
-                                        />
-                                        <text x="780" y="280" fontSize="14" fontWeight="bold" fill="#475569" pointerEvents="none">Italian Furniture</text>
-
-                                        {/* Other Small Shops Corridor (Simplified) */}
-                                        <rect x="400" y="60" width="80" height="70" rx="5" fill="#f8fafc" stroke="#cbd5e1" />
-                                        <rect x="490" y="55" width="70" height="75" rx="5" fill="#f8fafc" stroke="#cbd5e1" />
-                                        <rect x="570" y="50" width="70" height="85" rx="5" fill="#f8fafc" stroke="#cbd5e1" />
+                                        {shopData.id === 'home-test' ? (
+                                            <>
+                                                {/* Home Test Layout (Simplified) */}
+                                                <rect x="100" y="50" width="800" height="400" rx="30" fill="#ffffff" stroke="#3b82f6" strokeWidth="5" />
+                                                <rect x="100" y="50" width="300" height="200" fill="#eff6ff" stroke="#3b82f6" strokeWidth="2" />
+                                                <text x="150" y="150" fontSize="24" fontWeight="bold" fill="#1d4ed8">غرفة 1</text>
+                                                <rect x="400" y="50" width="500" height="150" fill="#f0fdf4" stroke="#22c55e" strokeWidth="2" />
+                                                <text x="600" y="130" fontSize="24" fontWeight="bold" fill="#15803d">الصالة</text>
+                                                <rect x="400" y="200" width="300" height="250" fill="#fff7ed" stroke="#f97316" strokeWidth="2" />
+                                                <text x="500" y="330" fontSize="24" fontWeight="bold" fill="#9a3412">المطبخ</text>
+                                                <rect x="700" y="200" width="200" height="250" fill="#f5f3ff" stroke="#8b5cf6" strokeWidth="2" />
+                                                <text x="750" y="330" fontSize="24" fontWeight="bold" fill="#6d28d9">غرفة 2</text>
+                                            </>
+                                        ) : (
+                                            <>
+                                                {/* Mall Main Boundary */}
+                                                <path 
+                                                    d="M50,150 Q100,50 400,30 Q700,20 950,80 L960,350 Q850,420 700,430 L400,460 L150,470 Q50,450 40,250 Z" 
+                                                    fill="#ffffff" 
+                                                    stroke="#CBD5E1" 
+                                                    strokeWidth="3"
+                                                />
+                                                <path d="M60,160 Q100,70 350,150 L350,440 L160,450 Q70,430 60,250 Z" fill="#E2E8F0" stroke="#94A3B8" />
+                                                <text x="180" y="320" fontSize="14" fontWeight="bold" fill="#64748B">Hyper Market</text>
+                                                <rect x="420" y="240" width="100" height="60" rx="10" fill="#FEE2E2" stroke="#F87171" />
+                                                <text x="440" y="275" fontSize="12" fontWeight="bold" fill="#991B1B">Segafredo</text>
+                                                <path d="M650,45 Q750,40 930,95 L930,170 L650,185 Z" fill="#F0FDFA" stroke="#2DD4BF" />
+                                                <text x="730" y="120" fontSize="14" fontWeight="bold" fill="#0F766E">Piazza Italia</text>
+                                                <rect x="740" y="195" width="200" height="150" rx="10" fill="#F8FAFC" stroke="#94A3B8" />
+                                                <text x="780" y="280" fontSize="14" fontWeight="bold" fill="#475569">Italian Furniture</text>
+                                                <rect x="400" y="60" width="80" height="70" rx="5" fill="#f8fafc" stroke="#cbd5e1" />
+                                                <rect x="490" y="55" width="70" height="75" rx="5" fill="#f8fafc" stroke="#cbd5e1" />
+                                                <rect x="570" y="50" width="70" height="85" rx="5" fill="#f8fafc" stroke="#cbd5e1" />
+                                            </>
+                                        )}
 
                                         {/* User GPS Location Projection (Interactive Dot) */}
                                         {(() => {
                                             if (!userLocation) return null;
                                             
-                                            // Precise Icon Mall Building Boundary (from user GeoJSON)
-                                            const bounds = {
+                                            // Handle different location bounds based on shop
+                                            const isHome = shopData.id === 'home-test';
+                                            const bounds = isHome ? {
+                                                top: 31.8368612,
+                                                bottom: 31.8367565,
+                                                left: 35.1193781,
+                                                right: 35.1195055
+                                            } : {
                                                 top: 31.9365316,
                                                 bottom: 31.9353839,
                                                 left: 35.1924474,
                                                 right: 35.1930848
                                             };
                                             
-                                            const { latitude: lat, longitude: lon } = userLocation;
+                                            const { latitude: userLat, longitude: userLon } = userLocation;
                                             
-                                            // Check if user is actually inside the mall geofence (with small buffer)
-                                            const isInside = lat <= bounds.top + 0.0001 && lat >= bounds.bottom - 0.0001 &&
-                                                           lon >= bounds.left - 0.0001 && lon <= bounds.right + 0.0001;
+                                            // Check if user is actually inside the current area's geofence
+                                            const isInside = userLat <= bounds.top + 0.0001 && userLat >= bounds.bottom - 0.0001 &&
+                                                           userLon >= bounds.left - 0.0001 && userLon <= bounds.right + 0.0001;
 
                                             if (!isInside) {
                                                 return (
@@ -2651,18 +2633,18 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                             fontWeight: 'bold',
                                                             boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
                                                         }}>
-                                                            📍 أنت حالياً خارج منطقة المول
+                                                            📍 أنت حالياً خارج منطقة {isHome ? 'المنزل' : 'المول'}
                                                         </div>
                                                     </foreignObject>
                                                 );
                                             }
                                             
                                             // Latitude Projection (Y-axis: top coordinate is SVG Y=50, bottom is SVG Y=450)
-                                            const posY = 50 + ((bounds.top - lat) / (bounds.top - bounds.bottom)) * 400;
+                                            const posY = 50 + ((bounds.top - userLat) / (bounds.top - bounds.bottom)) * 400;
                                             // Longitude Projection (X-axis: left coordinate is SVG X=50, right is SVG X=950)
-                                            const posX = 50 + ((lon - bounds.left) / (bounds.right - bounds.left)) * 900;
+                                            const posX = 50 + ((userLon - bounds.left) / (bounds.right - bounds.left)) * 900;
                                             
-                                            // Constrain inside mall SVG bounds roughly
+                                            // Constrain inside SVG bounds roughly
                                             const constrainedX = Math.min(Math.max(posX, 30), 970);
                                             const constrainedY = Math.min(Math.max(posY, 30), 470);
 
