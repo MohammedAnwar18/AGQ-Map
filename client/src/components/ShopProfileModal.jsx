@@ -141,6 +141,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     const [showCart, setShowCart] = useState(false);
     const [cartCount, setCartCount] = useState(cartService.getItemCount());
     const [selectedPost, setSelectedPost] = useState(null); // Track post to view in detail
+    const [targetRoom, setTargetRoom] = useState(null); // Indoor navigation target room (x, y, name)
 
     // Inputs for Images
     const coverInputRef = useRef(null);
@@ -2544,7 +2545,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                     </div>
                                 </div>
                                 
-                                {/* The Interactive Vector Map (SVG) Container */}
                                 <div style={{ 
                                     position: 'relative', 
                                     width: '100%', 
@@ -2558,30 +2558,26 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                     alignItems: 'center',
                                     justifyContent: 'center'
                                 }}>
-                                    {/* Mall/Home Interior Vector Map (SVG) */}
                                     <svg viewBox="0 0 1000 500" style={{ width: '95%', height: 'auto', maxHeight: '100%' }}>
                                         {shopData.id === 'home-test' ? (
                                             <>
-                                                {/* Home Test Layout (Simplified) */}
                                                 <rect x="100" y="50" width="800" height="400" rx="30" fill="#ffffff" stroke="#3b82f6" strokeWidth="5" />
-                                                <rect x="100" y="50" width="300" height="200" fill="#eff6ff" stroke="#3b82f6" strokeWidth="2" />
-                                                <text x="150" y="150" fontSize="24" fontWeight="bold" fill="#1d4ed8">غرفة 1</text>
-                                                <rect x="400" y="50" width="500" height="150" fill="#f0fdf4" stroke="#22c55e" strokeWidth="2" />
-                                                <text x="600" y="130" fontSize="24" fontWeight="bold" fill="#15803d">الصالة</text>
-                                                <rect x="400" y="200" width="300" height="250" fill="#fff7ed" stroke="#f97316" strokeWidth="2" />
-                                                <text x="500" y="330" fontSize="24" fontWeight="bold" fill="#9a3412">المطبخ</text>
-                                                <rect x="700" y="200" width="200" height="250" fill="#f5f3ff" stroke="#8b5cf6" strokeWidth="2" />
-                                                <text x="750" y="330" fontSize="24" fontWeight="bold" fill="#6d28d9">غرفة 2</text>
+                                                
+                                                <rect x="100" y="50" width="300" height="200" fill="#eff6ff" stroke="#3b82f6" strokeWidth="2" cursor="pointer" onClick={() => setTargetRoom({x: 250, y: 150, name: 'غرفة 1'})} />
+                                                <text x="150" y="150" fontSize="24" fontWeight="bold" fill="#1d4ed8" pointerEvents="none">غرفة 1</text>
+                                                
+                                                <rect x="400" y="50" width="500" height="150" fill="#f0fdf4" stroke="#22c55e" strokeWidth="2" cursor="pointer" onClick={() => setTargetRoom({x: 650, y: 125, name: 'الصالة'})} />
+                                                <text x="600" y="130" fontSize="24" fontWeight="bold" fill="#15803d" pointerEvents="none">الصالة</text>
+                                                
+                                                <rect x="400" y="200" width="300" height="250" fill="#fff7ed" stroke="#f97316" strokeWidth="2" cursor="pointer" onClick={() => setTargetRoom({x: 550, y: 325, name: 'المطبخ'})} />
+                                                <text x="500" y="330" fontSize="24" fontWeight="bold" fill="#9a3412" pointerEvents="none">المطبخ</text>
+                                                
+                                                <rect x="700" y="200" width="200" height="250" fill="#f5f3ff" stroke="#8b5cf6" strokeWidth="2" cursor="pointer" onClick={() => setTargetRoom({x: 800, y: 325, name: 'غرفة 2'})} />
+                                                <text x="750" y="330" fontSize="24" fontWeight="bold" fill="#6d28d9" pointerEvents="none">غرفة 2</text>
                                             </>
                                         ) : (
                                             <>
-                                                {/* Mall Main Boundary */}
-                                                <path 
-                                                    d="M50,150 Q100,50 400,30 Q700,20 950,80 L960,350 Q850,420 700,430 L400,460 L150,470 Q50,450 40,250 Z" 
-                                                    fill="#ffffff" 
-                                                    stroke="#CBD5E1" 
-                                                    strokeWidth="3"
-                                                />
+                                                <path d="M50,150 Q100,50 400,30 Q700,20 950,80 L960,350 Q850,420 700,430 L400,460 L150,470 Q50,450 40,250 Z" fill="#ffffff" stroke="#CBD5E1" strokeWidth="3" />
                                                 <path d="M60,160 Q100,70 350,150 L350,440 L160,450 Q70,430 60,250 Z" fill="#E2E8F0" stroke="#94A3B8" />
                                                 <text x="180" y="320" fontSize="14" fontWeight="bold" fill="#64748B">Hyper Market</text>
                                                 <rect x="420" y="240" width="100" height="60" rx="10" fill="#FEE2E2" stroke="#F87171" />
@@ -2596,103 +2592,69 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                             </>
                                         )}
 
-                                        {/* User GPS Location Projection (Interactive Dot) */}
                                         {(() => {
                                             if (!userLocation) return null;
-                                            
-                                            // Handle different location bounds based on shop
                                             const isHome = shopData.id === 'home-test';
                                             const bounds = isHome ? {
-                                                top: 31.8368612,
-                                                bottom: 31.8367565,
-                                                left: 35.1193781,
-                                                right: 35.1195055
+                                                top: 31.8368612, bottom: 31.8367565, left: 35.1193781, right: 35.1195055
                                             } : {
-                                                top: 31.9365316,
-                                                bottom: 31.9353839,
-                                                left: 35.1924474,
-                                                right: 35.1930848
+                                                top: 31.9365316, bottom: 31.9353839, left: 35.1924474, right: 35.1930848
                                             };
-                                            
-                                            const { latitude: userLat, longitude: userLon } = userLocation;
-                                            
-                                            // Check if user is actually inside the current area's geofence
-                                            const isInside = userLat <= bounds.top + 0.0001 && userLat >= bounds.bottom - 0.0001 &&
-                                                           userLon >= bounds.left - 0.0001 && userLon <= bounds.right + 0.0001;
+                                            const { latitude: uLat, longitude: uLon } = userLocation;
+                                            const isInside = uLat <= bounds.top + 0.0001 && uLat >= bounds.bottom - 0.0001 &&
+                                                           uLon >= bounds.left - 0.0001 && uLon <= bounds.right + 0.0001;
 
                                             if (!isInside) {
                                                 return (
                                                     <foreignObject x="350" y="450" width="300" height="40">
-                                                        <div style={{ 
-                                                            background: 'rgba(239, 68, 68, 0.9)', 
-                                                            color: 'white', 
-                                                            fontSize: '11px', 
-                                                            padding: '4px 10px', 
-                                                            borderRadius: '20px',
-                                                            textAlign: 'center',
-                                                            fontWeight: 'bold',
-                                                            boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
-                                                        }}>
-                                                            📍 أنت حالياً خارج منطقة {isHome ? 'المنزل' : 'المول'}
+                                                        <div style={{ background: 'rgba(239, 68, 68, 0.9)', color: 'white', fontSize: '11px', padding: '4px 10px', borderRadius: '20px', textAlign: 'center', fontWeight: 'bold' }}>
+                                                            📍 أنت خارج منطقة {isHome ? 'المنزل' : 'المول'}
                                                         </div>
                                                     </foreignObject>
                                                 );
                                             }
                                             
-                                            // Latitude Projection (Y-axis: top coordinate is SVG Y=50, bottom is SVG Y=450)
-                                            const posY = 50 + ((bounds.top - userLat) / (bounds.top - bounds.bottom)) * 400;
-                                            // Longitude Projection (X-axis: left coordinate is SVG X=50, right is SVG X=950)
-                                            const posX = 50 + ((userLon - bounds.left) / (bounds.right - bounds.left)) * 900;
-                                            
-                                            // Constrain inside SVG bounds roughly
-                                            const constrainedX = Math.min(Math.max(posX, 30), 970);
-                                            const constrainedY = Math.min(Math.max(posY, 30), 470);
+                                            const pY = 50 + ((bounds.top - uLat) / (bounds.top - bounds.bottom)) * 400;
+                                            const pX = 50 + ((uLon - bounds.left) / (bounds.right - bounds.left)) * 900;
+                                            const cX = Math.min(Math.max(pX, 30), 970);
+                                            const cY = Math.min(Math.max(pY, 30), 470);
 
                                             return (
-                                                <g style={{ transition: 'all 1s ease-in-out' }}>
-                                                    {/* Accuracy Shadow / Pulse */}
-                                                    <circle cx={constrainedX} cy={constrainedY} r="35" fill="rgba(59, 130, 246, 0.2)">
-                                                        <animate attributeName="r" values="30;50;30" dur="3s" repeatCount="indefinite" />
-                                                        <animate attributeName="opacity" values="0.6;0.1;0.6" dur="3s" repeatCount="indefinite" />
-                                                    </circle>
-                                                    {/* Directional Beacon */}
-                                                    <circle cx={constrainedX} cy={constrainedY} r="12" fill="#3b82f6" stroke="white" strokeWidth="3" />
-                                                    {/* User Tag */}
-                                                    <foreignObject x={constrainedX - 25} y={constrainedY - 60} width="50" height="50">
-                                                        <div style={{ padding: '2px', background: 'white', borderRadius: '50%', boxShadow: '0 4px 10px rgba(0,0,0,0.2)', border: '2px solid #3b82f6' }}>
-                                                            <img 
-                                                                src={getImageUrl(currentUser.profile_picture) || '/default-user.png'} 
-                                                                style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
-                                                            />
-                                                        </div>
-                                                    </foreignObject>
+                                                <g>
+                                                    {targetRoom && (
+                                                        <path d={`M${cX},${cY} L${targetRoom.x},${cY} L${targetRoom.x},${targetRoom.y}`} fill="none" stroke="#3b82f6" strokeWidth="4" strokeDasharray="10,5" opacity="0.6">
+                                                            <animate attributeName="stroke-dashoffset" from="100" to="0" dur="2s" repeatCount="indefinite" />
+                                                        </path>
+                                                    )}
+                                                    <g style={{ transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+                                                        <circle cx={cX} cy={cY} r="35" fill="rgba(59, 130, 246, 0.2)">
+                                                            <animate attributeName="r" values="30;50;30" dur="2s" repeatCount="indefinite" />
+                                                        </circle>
+                                                        <circle cx={cX} cy={cY} r="12" fill="#3b82f6" stroke="white" strokeWidth="3" />
+                                                        <foreignObject x={cX - 25} y={cY - 60} width="50" height="50">
+                                                            <div style={{ padding: '2px', background: 'white', borderRadius: '50%', border: '2px solid #3b82f6' }}>
+                                                                <img src={getImageUrl(currentUser.profile_picture) || '/default-user.png'} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                                                            </div>
+                                                        </foreignObject>
+                                                    </g>
                                                 </g>
                                             );
                                         })()}
                                     </svg>
                                 </div>
                                 
-                                <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
-                                    <div style={{ 
-                                        padding: '12px 25px', 
-                                        background: 'white', 
-                                        border: '1px solid #e2e8f0', 
-                                        borderRadius: '20px', 
-                                        textAlign: 'center',
-                                        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                                        display: 'flex',
-                                        gap: '10px',
-                                        alignItems: 'center'
-                                    }}>
+                                <div style={{ marginTop: '20px', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px' }}>
+                                    <div style={{ padding: '10px 20px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '20px', display: 'flex', gap: '8px', alignItems: 'center' }}>
                                         <div style={{ fontSize: '0.85rem', color: '#64748B' }}>الموقع الحالي:</div>
-                                        <div style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#1e293b' }}>الطابق الأرضي</div>
+                                        <div style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>الطابق الأرضي</div>
                                     </div>
-                                </div>
-                                
-                                <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '16px', border: '1px dashed #3b82f6' }}>
-                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#1e40af', textAlign: 'center' }}>
-                                        ⭐ الموقع بالـ GPS يعمل بشكل مباشر؛ جرب المشي داخل آيكون مول وستشاهد صورتك تتحرك فوق مخطط الطابق.
-                                    </p>
+                                    {targetRoom && (
+                                        <div style={{ padding: '10px 20px', background: '#3b82f6', color: 'white', borderRadius: '20px', display: 'flex', gap: '8px', alignItems: 'center', animation: 'fadeIn 0.3s' }}>
+                                            <div style={{ fontSize: '0.85rem' }}>المسار إلى:</div>
+                                            <div style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>{targetRoom.name}</div>
+                                            <button onClick={() => setTargetRoom(null)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '0 5px', fontWeight: 'bold' }}>✕</button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -2716,7 +2678,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                     transform: translateY(-1px);
                 }
             `}</style>
-            
+            {/* Image Cropper Modal for Profile/Cover updates */}
             {cropState.isOpen && (
                 <ImageCropperModal
                     imageFile={cropState.file}
