@@ -117,6 +117,10 @@ const MapComponent = () => {
         return `https://api.mapbox.com/styles/v1/mohammed-1331/cmbseyy16010101qwf9d5a8m3?access_token=${MAPBOX_TOKEN}`;
     }, [MAPBOX_TOKEN]);
 
+    // MapTiler Configuration
+    const MAPTILER_KEY = 'N6uNP3sTu25OIBUyi9G1';
+    const MAPTILER_STYLE_URL = `https://api.maptiler.com/maps/019b8b76-e5e2-7f02-b5d1-74fd0cf725bb/style.json?key=${MAPTILER_KEY}`;
+
     // Transform Request to handle mapbox:// URLs in MapLibre with full API versioning support
     const transformRequest = (url, resourceType) => {
         if (url.startsWith('mapbox://') && MAPBOX_TOKEN) {
@@ -290,15 +294,30 @@ const MapComponent = () => {
     };
     // --- Dynamic Map Style ---
     const mapStyle = useMemo(() => {
-        // Preference 1: Use CartoDB Positron (a very clean street style) during navigation!
+        // Preference 1: Use MapTiler (requested for high street precision) during navigation!
         if (routePath) {
-            return "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
+            return MAPTILER_STYLE_URL;
         }
 
-        // Preference 2: Geomolg Layer (Handled by Overlay in return, so we use a base here or nothing)
+        // Preference 2: MapTiler Street Style (Requested for high street precision)
+        if (activeMapType === 'streets') {
+            return MAPTILER_STYLE_URL;
+        }
+
+        // Preference 3: Geomolg Layer (Handled by Overlay in return, so we use a base here or nothing)
         if (activeMapType === 'geomolg') {
             // We can return a very simple base or satellite while Geomolg overlay loads
-            // Same as satellite for now
+            return {
+                version: 8,
+                sources: {
+                    'raster-tiles': {
+                        type: 'raster',
+                        tiles: [`https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}`],
+                        tileSize: 256
+                    }
+                },
+                layers: [{ id: 'simple-tiles', type: 'raster', source: 'raster-tiles' }]
+            };
         }
 
         // Default & Fallback: Google Tiles (Satellite for general view)
@@ -359,10 +378,30 @@ const MapComponent = () => {
 
             let routeData = null;
 
-            // --- TRY OpenRouteService FIRST ---
+            // --- TRY MAPTILER FIRST (High Precision on Streets) ---
+            if (MAPTILER_KEY) {
+                try {
+                    const profile = mode === 'walking' ? 'walking' : 'driving';
+                    const url = `https://api.maptiler.com/navigation/routing/v2/${profile}/${startLon},${startLat};${endLon},${endLat}.json?key=${MAPTILER_KEY}&overview=full&geometries=geojson`;
+                    const response = await axios.get(url);
+                    if (response.data.routes && response.data.routes.length > 0) {
+                        const route = response.data.routes[0];
+                        routeData = {
+                            geometry: route.geometry,
+                            distance: route.distance, // MapTiler returns meters
+                            duration: route.duration  // MapTiler returns seconds
+                        };
+                        console.log("Using MapTiler High-Precision routing engine");
+                    }
+                } catch (maptilerErr) {
+                    console.warn("MapTiler routing failed, falling back to ORS", maptilerErr);
+                }
+            }
+
+            // --- TRY OpenRouteService SECOND ---
             const ORS_TOKEN = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjI3N2IwNGUyYjk1MTRhYWE4MjBlYmRkZjNlMGZlNmY2IiwiaCI6Im11cm11cjY0In0=';
             
-            if (ORS_TOKEN) {
+            if (!routeData && ORS_TOKEN) {
                 try {
                     const url = `https://api.openrouteservice.org/v2/directions/${orsProfile}?api_key=${ORS_TOKEN}&start=${startLon},${startLat}&end=${endLon},${endLat}`;
                     const response = await axios.get(url);
@@ -373,7 +412,7 @@ const MapComponent = () => {
                             distance: feature.properties.summary.distance, // In meters
                             duration: feature.properties.summary.duration  // In seconds
                         };
-                        console.log("Using primary OpenRouteService engine");
+                        console.log("Using secondary OpenRouteService engine");
                     }
                 } catch (orsErr) {
                     console.warn("OpenRouteService failed, falling back to OSRM", orsErr);
@@ -920,14 +959,37 @@ const MapComponent = () => {
                     </button>
 
                     <button
+                        className={`top-nav-icon ${activeMapType === 'streets' ? 'active' : ''}`}
+                        onClick={() => setActiveMapType('streets')}
+                        title="خريطة الشوارع (MapTiler)"
+                    >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
+                            <path d="M3 6l6 3 6-3 6 3v15l-6-3-6 3-6-3V6z" />
+                            <line x1="9" y1="9" x2="9" y2="24" />
+                            <line x1="15" y1="0" x2="15" y2="15" />
+                        </svg>
+                    </button>
+
+                    <button
                         className={`top-nav-icon ${activeMapType === 'geomolg' ? 'active' : ''}`}
-                        onClick={() => setActiveMapType(prev => prev === 'satellite' ? 'geomolg' : 'satellite')}
-                        title="تبديل القمر الصناعي / الخريطة الرسمية"
+                        onClick={() => setActiveMapType(prev => prev === 'geomolg' ? 'satellite' : 'geomolg')}
+                        title="الخريطة الرسمية (Geomolg)"
                     >
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
                             <polygon points="12 2 2 7 12 12 22 7 12 2" />
                             <polyline points="2 17 12 22 22 17" />
                             <polyline points="2 12 12 17 22 12" />
+                        </svg>
+                    </button>
+
+                    <button
+                        className={`top-nav-icon ${activeMapType === 'satellite' ? 'active' : ''}`}
+                        onClick={() => setActiveMapType('satellite')}
+                        title="قمر صناعي (Google)"
+                    >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
+                            <circle cx="12" cy="12" r="10" />
+                            <circle cx="12" cy="12" r="3" />
                         </svg>
                     </button>
 
