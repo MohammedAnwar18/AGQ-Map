@@ -959,37 +959,14 @@ const MapComponent = () => {
                     </button>
 
                     <button
-                        className={`top-nav-icon ${activeMapType === 'streets' ? 'active' : ''}`}
-                        onClick={() => setActiveMapType('streets')}
-                        title="خريطة الشوارع (MapTiler)"
-                    >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
-                            <path d="M3 6l6 3 6-3 6 3v15l-6-3-6 3-6-3V6z" />
-                            <line x1="9" y1="9" x2="9" y2="24" />
-                            <line x1="15" y1="0" x2="15" y2="15" />
-                        </svg>
-                    </button>
-
-                    <button
                         className={`top-nav-icon ${activeMapType === 'geomolg' ? 'active' : ''}`}
-                        onClick={() => setActiveMapType(prev => prev === 'geomolg' ? 'satellite' : 'geomolg')}
-                        title="الخريطة الرسمية (Geomolg)"
+                        onClick={() => setActiveMapType(prev => prev === 'satellite' ? 'geomolg' : 'satellite')}
+                        title="تبديل القمر الصناعي / الخريطة الرسمية"
                     >
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
                             <polygon points="12 2 2 7 12 12 22 7 12 2" />
                             <polyline points="2 17 12 22 22 17" />
                             <polyline points="2 12 12 17 22 12" />
-                        </svg>
-                    </button>
-
-                    <button
-                        className={`top-nav-icon ${activeMapType === 'satellite' ? 'active' : ''}`}
-                        onClick={() => setActiveMapType('satellite')}
-                        title="قمر صناعي (Google)"
-                    >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
-                            <circle cx="12" cy="12" r="10" />
-                            <circle cx="12" cy="12" r="3" />
                         </svg>
                     </button>
 
