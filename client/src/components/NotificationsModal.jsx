@@ -179,16 +179,16 @@ const NotificationsModal = ({ onClose, onNotificationClick }) => {
                                 </div>
                                 <h3 className="detail-name">{selectedRequest.sender_name}</h3>
                                 <div className="detail-info">
-                                    <span className="info-badge">العمر: {calculateAge(selectedRequest.date_of_birth) || 'غير محدد'}</span>
-                                    <span className="info-badge">الجنس: {translateGender(selectedRequest.gender)}</span>
+                                    <span className="info-badge">🎂 العمر: {calculateAge(selectedRequest.date_of_birth) || 'غير محدد'}</span>
+                                    <span className="info-badge">👤 الجنس: {translateGender(selectedRequest.gender)}</span>
                                     {selectedRequest.marital_status && (
-                                        <span className="info-badge" style={{ borderColor: '#fbab15', color: '#fbab15' }}>💍 {selectedRequest.marital_status}</span>
+                                        <span className="info-badge" style={{ background: 'rgba(251, 171, 21, 0.1)', color: '#fbab15', borderColor: 'rgba(251, 171, 21, 0.3)', fontWeight: 'bold' }}>💍 {selectedRequest.marital_status}</span>
                                     )}
                                     {selectedRequest.workplace && (
-                                        <span className="info-badge">💼 {selectedRequest.workplace}</span>
+                                        <span className="info-badge" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', borderColor: 'rgba(59, 130, 246, 0.3)', fontWeight: 'bold' }}>💼 {selectedRequest.workplace}</span>
                                     )}
                                     {(selectedRequest.education || selectedRequest.institution) && (
-                                        <span className="info-badge">🎓 {selectedRequest.education || ''} {selectedRequest.institution ? `(${selectedRequest.institution})` : ''}</span>
+                                        <span className="info-badge" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.3)', fontWeight: 'bold' }}>🎓 {selectedRequest.education || ''} {selectedRequest.institution ? `(${selectedRequest.institution})` : ''}</span>
                                     )}
                                 </div>
                             </div>

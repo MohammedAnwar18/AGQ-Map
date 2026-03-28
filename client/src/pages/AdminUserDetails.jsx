@@ -154,35 +154,38 @@ const AdminUserDetails = () => {
                                 <p>{posts.length}</p>
                             </div>
                             {user.bio && (
-                                <div>
-                                    <strong style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Bio</strong>
-                                    <p>{user.bio}</p>
+                                <div style={{ background: 'var(--bg-secondary)', padding: '15px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                                    <strong style={{ color: 'var(--text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '5px' }}>Bio</strong>
+                                    <p style={{ margin: 0, fontSize: '0.95rem' }}>{user.bio}</p>
                                 </div>
                             )}
-                            {user.marital_status && (
-                                <div>
-                                    <strong style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>الحالة الاجتماعية</strong>
-                                    <p>{user.marital_status}</p>
-                                </div>
-                            )}
-                            {user.education && (
-                                <div>
-                                    <strong style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>المستوى التعليمي</strong>
-                                    <p>{user.education}</p>
-                                </div>
-                            )}
-                            {user.institution && (
-                                <div>
-                                    <strong style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>المؤسسة / المدرسة / الجامعة</strong>
-                                    <p>{user.institution}</p>
-                                </div>
-                            )}
-                            {user.workplace && (
-                                <div>
-                                    <strong style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>مكان العمل</strong>
-                                    <p>{user.workplace}</p>
-                                </div>
-                            )}
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '15px' }}>
+                                {user.marital_status && (
+                                    <div style={{ background: 'rgba(251, 171, 21, 0.1)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(251, 171, 21, 0.2)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        <span style={{ fontSize: '0.75rem', color: '#fbab15', fontWeight: 'bold' }}>💍 الحالة الاجتماعية</span>
+                                        <span style={{ fontSize: '0.95rem', fontWeight: '600' }}>{user.marital_status}</span>
+                                    </div>
+                                )}
+                                {user.workplace && (
+                                    <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.2)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        <span style={{ fontSize: '0.75rem', color: '#3b82f6', fontWeight: 'bold' }}>💼 مكان العمل</span>
+                                        <span style={{ fontSize: '0.95rem', fontWeight: '600' }}>{user.workplace}</span>
+                                    </div>
+                                )}
+                                {user.education && (
+                                    <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.2)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 'bold' }}>🎓 المستوى التعليمي</span>
+                                        <span style={{ fontSize: '0.95rem', fontWeight: '600' }}>{user.education}</span>
+                                    </div>
+                                )}
+                                {user.institution && (
+                                    <div style={{ gridColumn: '1 / -1', background: 'rgba(139, 92, 246, 0.1)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(139, 92, 246, 0.2)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        <span style={{ fontSize: '0.75rem', color: '#8b5cf6', fontWeight: 'bold' }}>🏫 المؤسسة / الجامعة</span>
+                                        <span style={{ fontSize: '0.95rem', fontWeight: '600' }}>{user.institution}</span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 

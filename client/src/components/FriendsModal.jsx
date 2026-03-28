@@ -462,19 +462,31 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                 {formatTime(request.created_at)}
                                             </div>
                                             {/* Additional User Info */}
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px 12px', marginTop: 5 }}>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: 8 }}>
                                                 {request.marital_status && (
-                                                    <div style={{ fontSize: '0.75rem', color: '#fbab15', fontWeight: '700' }}>
+                                                    <div style={{ 
+                                                        fontSize: '0.7rem', color: '#fbab15', background: 'rgba(251, 171, 21, 0.1)', 
+                                                        padding: '4px 10px', borderRadius: '20px', border: '1px solid rgba(251, 171, 21, 0.2)',
+                                                        fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px'
+                                                    }}>
                                                         💍 {request.marital_status}
                                                     </div>
                                                 )}
                                                 {request.workplace && (
-                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                                    <div style={{ 
+                                                        fontSize: '0.7rem', color: '#3b82f6', background: 'rgba(59, 130, 246, 0.1)', 
+                                                        padding: '4px 10px', borderRadius: '20px', border: '1px solid rgba(59, 130, 246, 0.2)',
+                                                        fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px'
+                                                    }}>
                                                         💼 {request.workplace}
                                                     </div>
                                                 )}
                                                 {(request.education || request.institution) && (
-                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                                    <div style={{ 
+                                                        fontSize: '0.7rem', color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', 
+                                                        padding: '4px 10px', borderRadius: '20px', border: '1px solid rgba(16, 185, 129, 0.2)',
+                                                        fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px'
+                                                    }}>
                                                         🎓 {request.education || ''} {request.institution ? `(${request.institution})` : ''}
                                                     </div>
                                                 )}
