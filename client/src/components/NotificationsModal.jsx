@@ -173,14 +173,66 @@ const NotificationsModal = ({ onClose, onNotificationClick }) => {
                 <div className="notifications-content">
                     {selectedRequest ? (
                         <div className="friend-request-detail">
-                            <div className="detail-header">
-                                <div className="detail-image">
-                                    <img src={getImageUrl(selectedRequest.sender_picture) || '/default-avatar.png'} alt={selectedRequest.sender_name} />
+                            <div className="detail-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                                    {/* Gender (Right Side) */}
+                                    {selectedRequest.gender && (
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', width: '50px' }}>
+                                            <div style={{
+                                                width: '40px', height: '40px', borderRadius: '50%',
+                                                background: selectedRequest.gender === 'male' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(236, 72, 153, 0.1)',
+                                                color: selectedRequest.gender === 'male' ? '#3b82f6' : '#ec4899',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                boxShadow: '0 4px 10px rgba(0,0,0,0.05)',
+                                                border: `1px solid ${selectedRequest.gender === 'male' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(236, 72, 153, 0.2)'}`
+                                            }}>
+                                                {selectedRequest.gender === 'male' ? (
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M16 3h5v5"></path>
+                                                        <path d="M21 3l-6.75 6.75"></path>
+                                                        <circle cx="10" cy="14" r="6"></circle>
+                                                    </svg>
+                                                ) : (
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M12 15v7"></path>
+                                                        <path d="M9 19h6"></path>
+                                                        <circle cx="12" cy="9" r="6"></circle>
+                                                    </svg>
+                                                )}
+                                            </div>
+                                            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#e2e8f0' }}>
+                                                {selectedRequest.gender === 'male' ? 'ذكر' : 'أنثى'}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    <div className="detail-image" style={{ margin: 0 }}>
+                                        <img src={getImageUrl(selectedRequest.sender_picture) || '/default-avatar.png'} alt={selectedRequest.sender_name} />
+                                    </div>
+
+                                    {/* Age (Left Side) */}
+                                    {selectedRequest.date_of_birth && (
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', width: '50px' }}>
+                                            <div style={{
+                                                width: '40px', height: '40px', borderRadius: '50%',
+                                                background: 'rgba(16, 185, 129, 0.1)', color: '#10b981',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                boxShadow: '0 4px 10px rgba(0,0,0,0.05)',
+                                                border: '1px solid rgba(16, 185, 129, 0.2)'
+                                            }}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <circle cx="12" cy="12" r="10"></circle>
+                                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                                </svg>
+                                            </div>
+                                            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#e2e8f0' }}>
+                                                {calculateAge(selectedRequest.date_of_birth)} سنة
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                                 <h3 className="detail-name">{selectedRequest.sender_name}</h3>
                                 <div className="detail-info">
-                                    <span className="info-badge">🎂 العمر: {calculateAge(selectedRequest.date_of_birth) || 'غير محدد'}</span>
-                                    <span className="info-badge">👤 الجنس: {translateGender(selectedRequest.gender)}</span>
                                     {selectedRequest.marital_status && (
                                         <span className="info-badge" style={{ 
                                             background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', 

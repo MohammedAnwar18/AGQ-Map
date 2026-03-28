@@ -113,24 +113,79 @@ const AdminUserDetails = () => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem' }}>
                 {/* User Info Card */}
                 <div className="admin-content-card">
-                    <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                        <img
-                            src={user.profile_picture || '/default-avatar.png'}
-                            alt={user.username}
-                            style={{
-                                width: '120px',
-                                height: '120px',
-                                borderRadius: '50%',
-                                objectFit: 'cover',
-                                border: '4px solid var(--primary)',
-                                marginBottom: '1rem'
-                            }}
-                        />
+                    <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2rem', marginBottom: '1.5rem' }}>
+                            {/* Gender (Right Side) */}
+                            {user.gender && (
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', width: '60px' }}>
+                                    <div style={{
+                                        width: '45px', height: '45px', borderRadius: '50%',
+                                        background: user.gender === 'male' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(236, 72, 153, 0.1)',
+                                        color: user.gender === 'male' ? '#3b82f6' : '#ec4899',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        boxShadow: '0 4px 10px rgba(0,0,0,0.05)',
+                                        border: `1px solid ${user.gender === 'male' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(236, 72, 153, 0.2)'}`
+                                    }}>
+                                        {user.gender === 'male' ? (
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M16 3h5v5"></path>
+                                                <path d="M21 3l-6.75 6.75"></path>
+                                                <circle cx="10" cy="14" r="6"></circle>
+                                            </svg>
+                                        ) : (
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M12 15v7"></path>
+                                                <path d="M9 19h6"></path>
+                                                <circle cx="12" cy="9" r="6"></circle>
+                                            </svg>
+                                        )}
+                                    </div>
+                                    <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                                        {user.gender === 'male' ? 'ذكر' : 'أنثى'}
+                                    </span>
+                                </div>
+                            )}
+
+                            <img
+                                src={getImageUrl(user.profile_picture) || '/default-avatar.png'}
+                                alt={user.username}
+                                style={{
+                                    width: '120px',
+                                    height: '120px',
+                                    borderRadius: '50%',
+                                    objectFit: 'cover',
+                                    border: '4px solid var(--primary)',
+                                    boxShadow: '0 8px 25px rgba(0,0,0,0.2)'
+                                }}
+                            />
+
+                            {/* Age (Left Side) */}
+                            {user.date_of_birth && (
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', width: '60px' }}>
+                                    <div style={{
+                                        width: '45px', height: '45px', borderRadius: '50%',
+                                        background: 'rgba(16, 185, 129, 0.1)', color: '#10b981',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        boxShadow: '0 4px 10px rgba(0,0,0,0.05)',
+                                        border: '1px solid rgba(16, 185, 129, 0.2)'
+                                    }}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <polyline points="12 6 12 12 16 14"></polyline>
+                                        </svg>
+                                    </div>
+                                    <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                                        {calculateAge(user.date_of_birth)} سنة
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+
                         <h2 style={{ marginBottom: '0.5rem' }}>{user.full_name || user.username}</h2>
                         <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>@{user.username}</p>
                         <span className={`status-badge ${user.is_active ? 'active' : 'inactive'}`}>
                             <span className="status-dot"></span>
-                            {user.is_active ? 'Active' : 'Suspended'}
+                            {user.is_active ? 'نشط' : 'معطل'}
                         </span>
                     </div>
 
