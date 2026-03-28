@@ -162,26 +162,57 @@ const AdminUserDetails = () => {
 
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '15px' }}>
                                 {user.marital_status && (
-                                    <div style={{ background: 'rgba(251, 171, 21, 0.1)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(251, 171, 21, 0.2)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                        <span style={{ fontSize: '0.75rem', color: '#fbab15', fontWeight: 'bold' }}>💍 الحالة الاجتماعية</span>
-                                        <span style={{ fontSize: '0.95rem', fontWeight: '600' }}>{user.marital_status}</span>
+                                    <div style={{ background: 'rgba(245, 158, 11, 0.1)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(245, 158, 11, 0.2)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#f59e0b', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.77-8.77 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                                            </svg>
+                                            الحالة الاجتماعية
+                                        </div>
+                                        <span style={{ fontSize: '0.95rem', fontWeight: '600' }}>
+                                            {user.marital_status === 'single' ? (user.gender === 'male' ? 'أعزب' : user.gender === 'female' ? 'عزباء' : 'أعزب/عزباء') :
+                                            user.marital_status === 'married' ? (user.gender === 'male' ? 'متزوج' : user.gender === 'female' ? 'متزوجة' : 'متزوج/متزوجة') :
+                                            user.marital_status === 'engaged' ? (user.gender === 'male' ? 'خاطب' : user.gender === 'female' ? 'مخطوبة' : 'خاطب/مخطوبة') :
+                                            user.marital_status === 'divorced' ? (user.gender === 'male' ? 'مطلق' : user.gender === 'female' ? 'مطلقة' : 'مطلق/مطلقة') :
+                                            user.marital_status === 'widowed' ? (user.gender === 'male' ? 'أرمل' : user.gender === 'female' ? 'أرملة' : 'أرمل/أرملة') : user.marital_status}
+                                        </span>
                                     </div>
                                 )}
                                 {user.workplace && (
                                     <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.2)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                        <span style={{ fontSize: '0.75rem', color: '#3b82f6', fontWeight: 'bold' }}>💼 مكان العمل</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#3b82f6', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                                                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                                            </svg>
+                                            مكان العمل
+                                        </div>
                                         <span style={{ fontSize: '0.95rem', fontWeight: '600' }}>{user.workplace}</span>
                                     </div>
                                 )}
                                 {user.education && (
-                                    <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.2)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                        <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 'bold' }}>🎓 المستوى التعليمي</span>
-                                        <span style={{ fontSize: '0.95rem', fontWeight: '600' }}>{user.education}</span>
+                                    <div style={{ background: 'rgba(139, 92, 246, 0.1)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(139, 92, 246, 0.2)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#8b5cf6', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                                                <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+                                            </svg>
+                                            المرحلة التعليمية
+                                        </div>
+                                        <span style={{ fontSize: '0.95rem', fontWeight: '600' }}>
+                                            {user.education === 'student' ? 'طالب جامعة' : user.education === 'graduate' ? 'خريج' : user.education === 'not_studying' ? 'لا يدرس' : user.education}
+                                        </span>
                                     </div>
                                 )}
                                 {user.institution && (
                                     <div style={{ gridColumn: '1 / -1', background: 'rgba(139, 92, 246, 0.1)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(139, 92, 246, 0.2)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                        <span style={{ fontSize: '0.75rem', color: '#8b5cf6', fontWeight: 'bold' }}>🏫 المؤسسة / الجامعة</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#8b5cf6', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                                                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                                            </svg>
+                                            المؤسسة التعليمية
+                                        </div>
                                         <span style={{ fontSize: '0.95rem', fontWeight: '600' }}>{user.institution}</span>
                                     </div>
                                 )}

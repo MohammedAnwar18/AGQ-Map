@@ -462,32 +462,52 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                 {formatTime(request.created_at)}
                                             </div>
                                             {/* Additional User Info */}
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: 8 }}>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: 10 }}>
                                                 {request.marital_status && (
                                                     <div style={{ 
-                                                        fontSize: '0.7rem', color: '#fbab15', background: 'rgba(251, 171, 21, 0.1)', 
-                                                        padding: '4px 10px', borderRadius: '20px', border: '1px solid rgba(251, 171, 21, 0.2)',
-                                                        fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px'
+                                                        background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b',
+                                                        padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem',
+                                                        fontWeight: '600', display: 'flex', alignItems: 'center', gap: '5px',
+                                                        border: '1px solid rgba(245, 158, 11, 0.2)'
                                                     }}>
-                                                        💍 {request.marital_status}
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.77-8.77 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                                                        </svg>
+                                                        {request.marital_status === 'single' ? (request.gender === 'male' ? 'أعزب' : request.gender === 'female' ? 'عزباء' : 'أعزب/عزباء') :
+                                                            request.marital_status === 'married' ? (request.gender === 'male' ? 'متزوج' : request.gender === 'female' ? 'متزوجة' : 'متزوج/متزوجة') :
+                                                                request.marital_status === 'engaged' ? (request.gender === 'male' ? 'خاطب' : request.gender === 'female' ? 'مخطوبة' : 'خاطب/مخطوبة') :
+                                                                    request.marital_status === 'divorced' ? (request.gender === 'male' ? 'مطلق' : request.gender === 'female' ? 'مطلقة' : 'مطلق/مطلقة') :
+                                                                        request.marital_status === 'widowed' ? (request.gender === 'male' ? 'أرمل' : request.gender === 'female' ? 'أرملة' : 'أرمل/أرملة') : request.marital_status}
                                                     </div>
                                                 )}
                                                 {request.workplace && (
                                                     <div style={{ 
-                                                        fontSize: '0.7rem', color: '#3b82f6', background: 'rgba(59, 130, 246, 0.1)', 
-                                                        padding: '4px 10px', borderRadius: '20px', border: '1px solid rgba(59, 130, 246, 0.2)',
-                                                        fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px'
+                                                        background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6',
+                                                        padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem',
+                                                        fontWeight: '600', display: 'flex', alignItems: 'center', gap: '5px',
+                                                        border: '1px solid rgba(59, 130, 246, 0.2)'
                                                     }}>
-                                                        💼 {request.workplace}
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                                                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                                                        </svg>
+                                                        {request.workplace}
                                                     </div>
                                                 )}
-                                                {(request.education || request.institution) && (
+                                                {request.education && (
                                                     <div style={{ 
-                                                        fontSize: '0.7rem', color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', 
-                                                        padding: '4px 10px', borderRadius: '20px', border: '1px solid rgba(16, 185, 129, 0.2)',
-                                                        fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px'
+                                                        background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6',
+                                                        padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem',
+                                                        fontWeight: '600', display: 'flex', alignItems: 'center', gap: '5px',
+                                                        border: '1px solid rgba(139, 92, 246, 0.2)'
                                                     }}>
-                                                        🎓 {request.education || ''} {request.institution ? `(${request.institution})` : ''}
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                            <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                                                            <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+                                                        </svg>
+                                                        {request.education === 'student' ? (request.institution ? `يدرس في ${request.institution}` : 'طالب جامعة') :
+                                                            request.education === 'graduate' ? (request.institution ? `خريج من ${request.institution}` : 'خريج') :
+                                                                request.education === 'not_studying' ? 'لا يدرس' : request.education}
                                                     </div>
                                                 )}
                                             </div>
