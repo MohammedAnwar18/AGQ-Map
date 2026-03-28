@@ -1764,6 +1764,24 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 3 }}>
                                                                 📍 {req.pickup_address}
                                                             </div>
+                                                            {/* Additional User Info */}
+                                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px 15px', marginTop: 8 }}>
+                                                                {req.marital_status && (
+                                                                    <div style={{ fontSize: '0.75rem', color: '#fbab15', fontWeight: '600' }}>
+                                                                        💍 {req.marital_status}
+                                                                    </div>
+                                                                )}
+                                                                {req.workplace && (
+                                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'var(--bg-secondary)', padding: '2px 8px', borderRadius: '4px' }}>
+                                                                        💼 {req.workplace}
+                                                                    </div>
+                                                                )}
+                                                                {(req.education || req.institution) && (
+                                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'var(--bg-secondary)', padding: '2px 8px', borderRadius: '4px' }}>
+                                                                        🎓 {req.education || ''} {req.institution ? `(${req.institution})` : ''}
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                     <div style={{

@@ -833,6 +833,7 @@ const getShopRequests = async (req, res) => {
 
         const result = await pool.query(`
             SELECT tr.*, u.username, u.full_name, u.profile_picture, u.phone_number,
+                   u.marital_status, u.workplace, u.education, u.institution,
                    ST_X(tr.pickup_location::geometry) as longitude,
                    ST_Y(tr.pickup_location::geometry) as latitude
             FROM taxi_requests tr

@@ -159,6 +159,30 @@ const AdminUserDetails = () => {
                                     <p>{user.bio}</p>
                                 </div>
                             )}
+                            {user.marital_status && (
+                                <div>
+                                    <strong style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>الحالة الاجتماعية</strong>
+                                    <p>{user.marital_status}</p>
+                                </div>
+                            )}
+                            {user.education && (
+                                <div>
+                                    <strong style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>المستوى التعليمي</strong>
+                                    <p>{user.education}</p>
+                                </div>
+                            )}
+                            {user.institution && (
+                                <div>
+                                    <strong style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>المؤسسة / المدرسة / الجامعة</strong>
+                                    <p>{user.institution}</p>
+                                </div>
+                            )}
+                            {user.workplace && (
+                                <div>
+                                    <strong style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>مكان العمل</strong>
+                                    <p>{user.workplace}</p>
+                                </div>
+                            )}
                         </div>
                     </div>
 

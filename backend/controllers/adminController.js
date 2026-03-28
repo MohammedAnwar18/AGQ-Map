@@ -103,7 +103,8 @@ const getUserDetails = async (req, res) => {
         const userResult = await pool.query(
             `SELECT 
                 id, username, email, full_name, bio, profile_picture, date_of_birth,
-                created_at, last_seen, is_online, is_active, role
+                created_at, last_seen, is_online, is_active, role,
+                marital_status, workplace, education, institution
              FROM users WHERE id = $1`,
             [userId]
         );
