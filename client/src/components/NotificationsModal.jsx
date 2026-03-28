@@ -181,6 +181,15 @@ const NotificationsModal = ({ onClose, onNotificationClick }) => {
                                 <div className="detail-info">
                                     <span className="info-badge">العمر: {calculateAge(selectedRequest.date_of_birth) || 'غير محدد'}</span>
                                     <span className="info-badge">الجنس: {translateGender(selectedRequest.gender)}</span>
+                                    {selectedRequest.marital_status && (
+                                        <span className="info-badge" style={{ borderColor: '#fbab15', color: '#fbab15' }}>💍 {selectedRequest.marital_status}</span>
+                                    )}
+                                    {selectedRequest.workplace && (
+                                        <span className="info-badge">💼 {selectedRequest.workplace}</span>
+                                    )}
+                                    {(selectedRequest.education || selectedRequest.institution) && (
+                                        <span className="info-badge">🎓 {selectedRequest.education || ''} {selectedRequest.institution ? `(${selectedRequest.institution})` : ''}</span>
+                                    )}
                                 </div>
                             </div>
 

@@ -286,7 +286,8 @@ const getPendingRequests = async (req, res) => {
         const result = await pool.query(
             `SELECT 
         fr.id, fr.sender_id, fr.created_at,
-        u.username, u.full_name, u.profile_picture
+        u.username, u.full_name, u.profile_picture,
+        u.marital_status, u.workplace, u.education, u.institution
        FROM friend_requests fr
        JOIN users u ON fr.sender_id = u.id
        WHERE fr.receiver_id = $1 AND fr.status = 'pending'

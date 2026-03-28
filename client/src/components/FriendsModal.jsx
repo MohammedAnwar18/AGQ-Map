@@ -461,6 +461,24 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                             <div className="chat-last-message">
                                                 {formatTime(request.created_at)}
                                             </div>
+                                            {/* Additional User Info */}
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px 12px', marginTop: 5 }}>
+                                                {request.marital_status && (
+                                                    <div style={{ fontSize: '0.75rem', color: '#fbab15', fontWeight: '700' }}>
+                                                        💍 {request.marital_status}
+                                                    </div>
+                                                )}
+                                                {request.workplace && (
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                                        💼 {request.workplace}
+                                                    </div>
+                                                )}
+                                                {(request.education || request.institution) && (
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                                        🎓 {request.education || ''} {request.institution ? `(${request.institution})` : ''}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="user-item-actions">
                                             <button
