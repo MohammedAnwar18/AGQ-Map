@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { sendPushNotification } = require('../utils/pushHelper');
 
 // Get user notifications
 const getNotifications = async (req, res) => {
@@ -112,9 +113,57 @@ const createNotification = async (userId, senderId, type, message) => {
             'INSERT INTO notifications (user_id, sender_id, type, message) VALUES ($1, $2, $3, $4)',
             [userId, senderId, type, message]
         );
+
+        // Fetch user push subscriptions
+        const subResult = await pool.query(
+            'SELECT id, subscription FROM push_subscriptions WHERE user_id = $1',
+            [userId]
+        );
+
+        if (subResult.rows.length > 0) {
+            // Fetch sender info for better notification
+            const senderResult = await pool.query(
+                'SELECT username FROM users WHERE id = $1',
+                [senderId]
+            );
+            const senderName = senderResult.rows[0]?.username || 'مستخدم';
+
+            let title = 'تنبيه جديد';
+            let body = message || `لديك تنبيه جديد من ${senderName}`;
+
+            if (type === 'friend_request') {
+                title = 'طلب صداقة جديد 👥';
+                body = `أرسل لك ${senderName} طلب صداقة`;
+            } else if (type === 'friend_accepted') {
+                title = 'تم قبول طلب الصداقة ✅';
+                body = `وافق ${senderName} على طلب صداقتك`;
+            } else if (type === 'message') {
+                title = 'رسالة جديدة 💬';
+                body = `${senderName}: ${message || 'أرسل لك رسالة'}`;
+            }
+
+            const payload = {
+                title,
+                body,
+                icon: '/logo.png', // Need to ensure this exists or use a default
+                data: {
+                    url: '/notifications',
+                    type
+                }
+            };
+
+            // Send to all registered devices for this user
+            subResult.rows.forEach(async (row) => {
+                const sendResult = await sendPushNotification(row.subscription, payload);
+                if (sendResult.expired) {
+                    // Subscription is no longer valid, delete it
+                    await pool.query('DELETE FROM push_subscriptions WHERE id = $1', [row.id]);
+                }
+            });
+        }
     } catch (error) {
-        // إنشاء الإشعار اختياري - لا نوقف العملية إذا فشل (مثلاً الجدول غير موجود)
-        console.warn('⚠️ Notification creation failed (optional):', error.message);
+        // إنشاء الإشعار اختياري - لا نوقف العملية إذا فشل
+        console.warn('⚠️ Notification creation/push failed (optional):', error.message);
     }
 };
 

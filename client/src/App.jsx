@@ -9,6 +9,7 @@ import AdminUserDetails from './pages/AdminUserDetails';
 import LegalPages from './pages/LegalPages';
 
 import OfflinePage from './components/OfflinePage';
+import PushNotificationManager from './components/PushNotificationManager';
 import './index.css';
 
 const ProtectedRoute = ({ children }) => {
@@ -108,6 +109,7 @@ function App() {
 
     return (
         <AuthProvider>
+            <PushNotificationManager />
             <BrowserRouter>
                 <Routes>
                     <Route

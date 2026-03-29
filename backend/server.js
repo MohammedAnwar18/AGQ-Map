@@ -168,6 +168,7 @@ app.use('/api/communities', require('./routes/communities'));
 app.use('/api/ai', require('./routes/ai'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/comments', require('./routes/comments'));
+app.use('/api/push', require('./routes/push'));
 
 // 7. التشغيل المحلي (فقط للمبرمج)
 if (!process.env.VERCEL) {
