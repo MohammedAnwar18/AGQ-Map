@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" sizes="32x32" href="/logo.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="/logo.png" />
-  
+
   <!-- Preload Critical Assets -->
   <link rel="preload" href="/logo.png" as="image" />
   <link rel="preload" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@700&display=swap" as="style" />
@@ -13,7 +13,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/logo.png" />
   <meta name="viewport"
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="description" content="PalNovaa (بالنوفا) | شبكة اجتماعية مكانية ذكية تتيح لك اكتشاف الأماكن القريبة، مشاركة لحظاتك على الخريطة، والتواصل مع الأصدقاء بسهولة وأمان." />
+  <meta name="description"
+    content="PalNovaa (بالنوفا) | شبكة اجتماعية مكانية ذكية تتيح لك اكتشاف الأماكن القريبة، مشاركة لحظاتك على الخريطة، والتواصل مع الأصدقاء بسهولة وأمان." />
   <meta name="theme-color" content="#0f172a" />
 
   <!-- Mobile App Meta Tags -->
@@ -132,8 +133,13 @@
       animation: dot-bounce 1.4s infinite ease-in-out both;
     }
 
-    .dot:nth-child(1) { animation-delay: -0.32s; }
-    .dot:nth-child(2) { animation-delay: -0.16s; }
+    .dot:nth-child(1) {
+      animation-delay: -0.32s;
+    }
+
+    .dot:nth-child(2) {
+      animation-delay: -0.16s;
+    }
 
     .splash-footer {
       position: absolute;
@@ -148,28 +154,62 @@
 
     /* Keyframes */
     @keyframes ambient-pulse {
-      0% { transform: translate(-10%, -10%) scale(1); }
-      100% { transform: translate(10%, 10%) scale(1.2); }
+      0% {
+        transform: translate(-10%, -10%) scale(1);
+      }
+
+      100% {
+        transform: translate(10%, 10%) scale(1.2);
+      }
     }
 
     @keyframes logo-entrance {
-      0% { transform: scale(0.5) translateY(20px); opacity: 0; }
-      100% { transform: scale(1) translateY(0); opacity: 1; }
+      0% {
+        transform: scale(0.5) translateY(20px);
+        opacity: 0;
+      }
+
+      100% {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+      }
     }
 
     @keyframes ring-rotate {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
+      from {
+        transform: rotate(0deg);
+      }
+
+      to {
+        transform: rotate(360deg);
+      }
     }
 
     @keyframes text-reveal {
-      from { transform: translateY(15px); opacity: 0; filter: blur(10px); }
-      to { transform: translateY(0); opacity: 1; filter: blur(0); }
+      from {
+        transform: translateY(15px);
+        opacity: 0;
+        filter: blur(10px);
+      }
+
+      to {
+        transform: translateY(0);
+        opacity: 1;
+        filter: blur(0);
+      }
     }
 
     @keyframes dot-bounce {
-      0%, 80%, 100% { transform: scale(0); }
-      40% { transform: scale(1.0); }
+
+      0%,
+      80%,
+      100% {
+        transform: scale(0);
+      }
+
+      40% {
+        transform: scale(1.0);
+      }
     }
 
     body.splash-active {
@@ -187,7 +227,7 @@
         <div class="logo-ring"></div>
         <img src="/logo.png" alt="PalNovaa" class="splash-logo" />
       </div>
-      
+
       <div class="splash-text-container">
         <h1 class="splash-title">PalNovaa</h1>
         <div class="splash-tagline">اكتشف عالمك الاجتماعي الجديد</div>
@@ -200,7 +240,7 @@
       </div>
     </div>
 
-    <div class="splash-footer">Powered by AGQ Map</div>
+    <div class="splash-footer">Built by Palnovaa | Discover what’s around you</div>
   </div>
 
   <div id="root"></div>
