@@ -111,7 +111,7 @@ function App() {
         };
 
         // Delay slightly for perceived performance (mimics native app initialization)
-        const timer = setTimeout(hideSplash, 1200);
+        const timer = setTimeout(hideSplash, 1800);
 
         return () => {
             window.removeEventListener('online', handleOnline);
