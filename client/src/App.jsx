@@ -97,9 +97,26 @@ function App() {
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
 
+        // Native-like Splash Screen Removal
+        const hideSplash = () => {
+            const splash = document.getElementById('splash-screen');
+            if (splash) {
+                splash.classList.add('fade-out');
+                document.body.classList.remove('splash-active');
+                // Remove from DOM after transition
+                setTimeout(() => {
+                    splash.style.display = 'none';
+                }, 600);
+            }
+        };
+
+        // Delay slightly for perceived performance (mimics native app initialization)
+        const timer = setTimeout(hideSplash, 1200);
+
         return () => {
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
+            clearTimeout(timer);
         };
     }, []);
 

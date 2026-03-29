@@ -1,29 +1,55 @@
 {
     "short_name": "PalNovaa",
     "name": "PalNovaa (بالنوفا) | خريطتك الاجتماعية الذكية",
+    "description": "PalNovaa (بالنوفا) | شبكة اجتماعية مكانية ذكية تتيح لك اكتشاف الأماكن القريبة، مشاركة لحظاتك على الخريطة، والتواصل مع الأصدقاء بسهولة وأمان.",
     "icons": [
         {
             "src": "/logo.png",
             "type": "image/png",
             "sizes": "192x192",
-            "purpose": "any maskable"
+            "purpose": "any"
+        },
+        {
+            "src": "/logo.png",
+            "type": "image/png",
+            "sizes": "192x192",
+            "purpose": "maskable"
         },
         {
             "src": "/logo.png",
             "type": "image/png",
             "sizes": "512x512",
-            "purpose": "any maskable"
+            "purpose": "any"
+        },
+        {
+            "src": "/logo.png",
+            "type": "image/png",
+            "sizes": "512x512",
+            "purpose": "maskable"
         }
     ],
-    "start_url": ".",
+    "start_url": "/?source=pwa",
     "display": "standalone",
+    "display_override": [
+        "window-controls-overlay",
+        "standalone",
+        "minimal-ui"
+    ],
     "theme_color": "#fbab15",
     "background_color": "#ffffff",
     "orientation": "portrait",
-    "description": "PalNovaa (بالنوفا) | شبكة اجتماعية مكانية ذكية تتيح لك اكتشاف الأماكن القريبة، مشاركة لحظاتك على الخريطة، والتواصل مع الأصدقاء بسهولة وأمان. منصة تجمع بين الاستكشاف الجغرافي والتواصل الاجتماعي.",
-    "permissions": [
-        "geolocation",
-        "camera",
-        "photos"
+    "categories": [
+        "social",
+        "maps",
+        "navigation"
+    ],
+    "screenshots": [
+        {
+            "src": "/logo.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "PalNovaa Home Screen"
+        }
     ]
 }
