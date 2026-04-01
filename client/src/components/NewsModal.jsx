@@ -9,12 +9,32 @@ import maplibregl from 'maplibre-gl';
 
 // Helper to get color by Navy
 const getNavyColor = (navy) => {
-    if (navy.includes('US')) return '#005b96';
-    if (navy.includes('Iran')) return '#008000';
-    if (navy.includes('Israel')) return '#0038b8';
-    if (navy.includes('Royal')) return '#800020';
-    if (navy.includes('Saudi')) return '#006400';
-    return '#888';
+    if (navy.includes('US')) return '#007fff';      // Bright Blue
+    if (navy.includes('Iran')) return '#00ff00';    // Neon Green
+    if (navy.includes('Israel')) return '#00d2ff';  // Cyan
+    if (navy.includes('Royal')) return '#ff3333';   // Bright Red
+    if (navy.includes('Saudi')) return '#32cd32';   // Lime Green
+    return '#aaaaaa';
+};
+
+const getTranslation = (word) => {
+    const map = {
+        'Aircraft Carrier': 'حاملة طائرات',
+        'Destroyer': 'مدمرة حربية',
+        'Cruiser': 'طراد صواريخ',
+        'Submarine': 'غواصة نووية/هجومية',
+        'Frigate': 'فرقاطة',
+        'Corvette': 'سفينة حربية (كورفيت)',
+        'Active': 'نشطة / في الخدمة',
+        'Deployed': 'منتشرة حالياً',
+        'Patrol': 'دورية بحرية',
+        'US Navy': 'البحرية الأمريكية',
+        'Iran Navy': 'القوة البحرية الإيرانية',
+        'Israeli Navy': 'البحرية الإسرائيلية',
+        'Royal Navy': 'البحرية الملكية (بريطانيا)',
+        'Saudi Navy': 'البحرية السعودية',
+    };
+    return map[word] || word;
 };
 
 const NewsModal = ({ onClose, location }) => {
@@ -70,7 +90,7 @@ const NewsModal = ({ onClose, location }) => {
 
     useEffect(() => {
         fetchLiveData();
-        const intervalId = setInterval(fetchLiveData, 15000);
+        const intervalId = setInterval(fetchLiveData, 8000); // 8 seconds for smoother real-time feel
         return () => clearInterval(intervalId);
     }, [fetchLiveData]);
 
@@ -121,21 +141,26 @@ const NewsModal = ({ onClose, location }) => {
                                     key={`ship-${idx}`} 
                                     longitude={ship.lon} 
                                     latitude={ship.lat}
+                                    style={{ transition: 'all 0.5s ease-out' }}
                                     onClick={(e) => {
                                         e.originalEvent.stopPropagation();
                                         setSelectedFeature({ type: 'ship', data: ship });
                                     }}
                                 >
                                     <div 
-                                        className="combat-vessel" 
-                                        style={{ 
-                                            color: getNavyColor(ship.navy),
-                                            fontSize: ship.type === 'Submarine' ? '18px' : '22px',
-                                            textShadow: '0 0 5px rgba(255,255,255,0.5)'
-                                        }}
+                                        className="combat-vessel-icon radar-ping" 
+                                        style={{ color: getNavyColor(ship.navy) }}
                                         title={ship.name}
                                     >
-                                        {ship.type === 'Submarine' ? '▼' : '⛴'}
+                                        {ship.type === 'Submarine' ? (
+                                            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M12 2.5L3 20.5h18L12 2.5z" /> {/* Triangle representing Sub */}
+                                            </svg>
+                                        ) : (
+                                            <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M2.5 16s1-1 3.5-1 3.5 1 3.5 1 1-1 3.5-1 3.5 1 3.5 1 2.5-3 2.5-3V8H2.5v8z" /> {/* Ship hull */}
+                                            </svg>
+                                        )}
                                     </div>
                                 </Marker>
                             ))}
@@ -146,10 +171,11 @@ const NewsModal = ({ onClose, location }) => {
                                     key={flight.icao24 || idx} 
                                     longitude={flight.lon} 
                                     latitude={flight.lat}
+                                    style={{ transition: 'all 0.8s linear' }}
                                     onClick={(e) => {
                                         e.originalEvent.stopPropagation();
                                         setSelectedFeature({ type: 'flight', data: flight });
-                                        // Generate fake trail for visual effect based on heading
+                                        // Draw smoother missile/flight arc path
                                         setFlightTrail({
                                             type: 'FeatureCollection',
                                             features: [{
@@ -157,7 +183,7 @@ const NewsModal = ({ onClose, location }) => {
                                                 geometry: {
                                                     type: 'LineString',
                                                     coordinates: [
-                                                        [flight.lon - (Math.sin(flight.heading * Math.PI / 180) * 0.5), flight.lat - (Math.cos(flight.heading * Math.PI / 180) * 0.5)],
+                                                        [flight.lon - (Math.sin(flight.heading * Math.PI / 180) * 1.5), flight.lat - (Math.cos(flight.heading * Math.PI / 180) * 1.5)],
                                                         [flight.lon, flight.lat]
                                                     ]
                                                 }
@@ -166,13 +192,15 @@ const NewsModal = ({ onClose, location }) => {
                                     }}
                                 >
                                     <div 
-                                        className="military-flight" 
+                                        className="military-flight-icon" 
                                         style={{ 
                                             transform: `rotate(${flight.heading || 0}deg)`,
                                             color: flight.type.includes('Fighter') ? '#ff3b30' : '#fbab15'
                                         }}
                                     >
-                                        ✈
+                                        <svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
+                                        </svg>
                                     </div>
                                 </Marker>
                             ))}
@@ -184,9 +212,10 @@ const NewsModal = ({ onClose, location }) => {
                                         id="flight-trail-layer"
                                         type="line"
                                         paint={{
-                                            'line-color': '#fbab15',
-                                            'line-width': 2,
-                                            'line-dasharray': [2, 2]
+                                            'line-color': '#00ffcc',
+                                            'line-width': 3,
+                                            'line-dasharray': [1, 1],
+                                            'line-opacity': 0.8
                                         }}
                                     />
                                 </Source>
@@ -200,22 +229,29 @@ const NewsModal = ({ onClose, location }) => {
                                     anchor="bottom"
                                     onClose={() => setSelectedFeature(null)}
                                     closeOnClick={false}
+                                    className="military-popup"
                                 >
-                                    <div className="feature-popup">
+                                    <div className="feature-popup" dir="rtl">
                                         {selectedFeature.type === 'flight' && (
                                             <>
-                                                <h4>{selectedFeature.data.type || 'طائرة'}</h4>
-                                                <p>Callsign: <strong>{selectedFeature.data.callsign}</strong></p>
-                                                <p>Alt: {selectedFeature.data.altitude} ft</p>
-                                                <p>Speed: {selectedFeature.data.speed} kts</p>
+                                                <h4 className="popup-title header-flight">✈️ طائرة عسكرية</h4>
+                                                <div className="popup-details">
+                                                    <p><span>رمز النداء:</span> <strong style={{color:'#00d2ff'}}>{selectedFeature.data.callsign}</strong></p>
+                                                    <p><span>الارتفاع:</span> {selectedFeature.data.altitude} قدم</p>
+                                                    <p><span>السرعة:</span> {selectedFeature.data.speed} عقدة</p>
+                                                </div>
                                             </>
                                         )}
                                         {selectedFeature.type === 'ship' && (
                                             <>
-                                                <h4 style={{ color: getNavyColor(selectedFeature.data.navy) }}>{selectedFeature.data.name}</h4>
-                                                <p>Navy: <strong>{selectedFeature.data.navy}</strong></p>
-                                                <p>Class: {selectedFeature.data.class}</p>
-                                                <p>Status: {selectedFeature.data.status}</p>
+                                                <h4 className="popup-title header-navy" style={{ color: getNavyColor(selectedFeature.data.navy) }}>
+                                                    {selectedFeature.data.type === 'Submarine' ? '▼' : '⛴'} {selectedFeature.data.name}
+                                                </h4>
+                                                <div className="popup-details">
+                                                    <p><span>الجهة/البحرية:</span> <strong>{getTranslation(selectedFeature.data.navy)}</strong></p>
+                                                    <p><span>النوع والتصنيف:</span> {getTranslation(selectedFeature.data.class)}</p>
+                                                    <p><span>الحالة العملياتية:</span> {getTranslation(selectedFeature.data.status)}</p>
+                                                </div>
                                             </>
                                         )}
                                     </div>
@@ -232,36 +268,48 @@ const NewsModal = ({ onClose, location }) => {
                         )}
 
                         <div className="live-feed-panel">
-                            <h3 className="sidebar-title">موجز الأحداث (IRONSIGHT Feed)</h3>
+                            <div className="sidebar-title-container">
+                                <div className="pulse-indicator"></div>
+                                <h3 className="sidebar-title">قائمة الأخبار والصراعات</h3>
+                            </div>
                             
                             {loading ? (
-                                <div className="live-feed-loading">جاري تحديث الرادار...</div>
+                                <div className="live-feed-loading">جاري المزامنة مع الرادار...</div>
                             ) : (
                                 <div className="live-feed-list">
+
+                                    {/* BREAKING ALERTS FIRST */}
                                     {alerts.map((alert, i) => (
-                                        <div key={`alert-${i}`} className="feed-card alert-card">
-                                            <span className="feed-time">{new Date(alert.time).toLocaleTimeString()}</span>
-                                            <h4 className="feed-threat">{alert.threat} 🚨</h4>
-                                            <p className="feed-locations">{alert.locations?.join('، ')}</p>
+                                        <div key={`alert-${i}`} className="feed-card alert-card breaking-card">
+                                            <div className="card-header">
+                                                <span className="breaking-badge">عاجل 🔴</span>
+                                                <span className="feed-time">{new Date(alert.time).toLocaleTimeString()}</span>
+                                            </div>
+                                            <h4 className="feed-threat">{alert.threat}</h4>
+                                            <p className="feed-locations">📍 الموقع: {alert.locations?.join('، ')}</p>
                                         </div>
                                     ))}
 
+                                    <div className="section-divider">التحركات العسكرية المباشرة</div>
+
+                                    {/* NAVY SHIPS */}
                                     {ships.map((ship, i) => (
-                                        <div key={`shipf-${i}`} className="feed-card ship-card" style={{ borderLeftColor: getNavyColor(ship.navy) }}>
-                                            <span className="feed-icon">{ship.type === 'Submarine' ? '▼' : '⛴'}</span>
+                                        <div key={`shipf-${i}`} className="feed-card ship-card highlight-hover" style={{ borderRightColor: getNavyColor(ship.navy) }}>
+                                            <span className="feed-icon" style={{color: getNavyColor(ship.navy)}}>{ship.type === 'Submarine' ? '▼' : '⛴'}</span>
                                             <div className="feed-info">
-                                                <h4>{ship.name} ({ship.navy})</h4>
-                                                <p>متواجدة في: {ship.region}</p>
+                                                <h4>{ship.name} ({getTranslation(ship.navy)})</h4>
+                                                <p>تتمركز حالياً في: {getTranslation(ship.region)}</p>
                                             </div>
                                         </div>
                                     ))}
 
+                                    {/* FLIGHTS */}
                                     {flights.slice(0, 15).map((flight, i) => (
-                                        <div key={`flight-${i}`} className="feed-card flight-card">
-                                            <span className="feed-icon" style={{ transform: 'rotate(-45deg)', display: 'inline-block' }}>✈️</span>
+                                        <div key={`flight-${i}`} className="feed-card flight-card highlight-hover">
+                                            <span className="feed-icon rotation-trans" style={{ transform: `rotate(${flight.heading - 45}deg)` }}>✈️</span>
                                             <div className="feed-info">
-                                                <h4>{flight.callsign || 'غير مصرح'}</h4>
-                                                <p>{flight.type}</p>
+                                                <h4>رقم النداء: {flight.callsign || 'نقطة مجهولة'}</h4>
+                                                <p>الارتفاع: {flight.altitude} قدم</p>
                                             </div>
                                         </div>
                                     ))}

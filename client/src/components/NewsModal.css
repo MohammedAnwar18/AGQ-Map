@@ -96,34 +96,118 @@
     background: #000;
 }
 
-.military-flight {
-    font-size: 24px;
+.military-flight-icon, .combat-vessel-icon {
     cursor: pointer;
-    transition: transform 0.2s, color 0.2s;
-    filter: drop-shadow(0px 0px 4px rgba(0,0,0,0.8));
-    display: inline-block;
+    filter: drop-shadow(0px 0px 6px rgba(0,0,0,0.9));
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease;
+}
+.military-flight-icon:hover { transform: scale(1.3) !important; }
+.combat-vessel-icon:hover { transform: scale(1.3); }
+
+/* Radar pulsing effect for ships */
+.radar-ping {
+    position: relative;
+}
+.radar-ping::after {
+    content: '';
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    background-color: inherit;
+    border-radius: 50%;
+    opacity: 0.6;
+    z-index: -1;
+    animation: radarPulse 2s infinite ease-out;
+}
+@keyframes radarPulse {
+    0% { transform: scale(0.5); opacity: 0.8; }
+    100% { transform: scale(2.5); opacity: 0; }
 }
 
-.combat-vessel {
-    cursor: pointer;
-    transition: transform 0.2s;
-    filter: drop-shadow(0px 0px 5px rgba(0,0,0,0.9));
-}
-
+/* Polished Popups */
 .feature-popup {
-    color: black;
-    padding: 5px;
-    font-family: 'Cairo', sans-serif;
-    min-width: 150px;
+    background: rgba(15, 20, 25, 0.95);
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 10px 15px;
+    min-width: 220px;
+    color: #e0e0e0;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    font-family: 'Tajawal', sans-serif;
 }
-.feature-popup h4 {
-    margin: 0 0 5px 0;
+.popup-title {
+    margin: 0 0 8px 0;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #444;
+    font-size: 16px;
+}
+.popup-details p {
+    margin: 5px 0;
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+}
+.popup-details span { color: #888; }
+
+/* Sidebar List Styling */
+.sidebar-title-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+.pulse-indicator {
+    width: 10px;
+    height: 10px;
+    background: #ff3b30;
+    border-radius: 50%;
+    animation: radarPulse 1.5s infinite;
+}
+
+.breaking-card {
+    background: linear-gradient(145deg, rgba(255,59,48,0.15) 0%, rgba(30,30,30,1) 100%);
+    border: 1px solid rgba(255,59,48,0.4);
+    border-right: 4px solid #ff3b30; /* Arabic RTL */
+    border-left: none;
+}
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+.breaking-badge {
+    background: #ff3b30;
+    color: white;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
     font-weight: bold;
-    color: #cc0000;
 }
-.feature-popup p {
-    margin: 2px 0;
-    font-size: 12px;
+
+.section-divider {
+    color: #888;
+    font-size: 13px;
+    margin: 20px 0 10px;
+    text-align: center;
+    border-bottom: 1px solid #333;
+    line-height: 0.1em;
+}
+.section-divider::after {
+    content: "التحركات العسكرية المباشرة";
+    background: #1e1e1e;
+    padding: 0 10px;
+}
+
+.highlight-hover:hover {
+    background: #333;
+    transform: translateX(5px);
+    cursor: pointer;
+}
+.rotation-trans {
+    transition: transform 0.8s linear;
 }
 
 /* Sidebar Styles */
