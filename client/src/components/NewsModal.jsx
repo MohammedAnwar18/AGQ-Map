@@ -42,7 +42,7 @@ const NewsModal = ({ onClose, location }) => {
 
     const fetchLiveData = useCallback(async () => {
         try {
-            const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+            const baseUrl = import.meta.env.VITE_API_URL || '/api';
             const [alertsRes, flightsRes, shipsRes] = await Promise.allSettled([
                 fetch(`${baseUrl}/radar/alerts`),
                 fetch(`${baseUrl}/radar/flights`),
