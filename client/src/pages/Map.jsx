@@ -283,7 +283,39 @@ const MapComponent = () => {
     const [firstLabelLayerId, setFirstLabelLayerId] = useState(null); // For "built-in" route placement beneath labels
     const [searchResults, setSearchResults] = useState([]); // Added to prevent ReferenceError after revert
 
-    // Detect first label layer for professional "integrated" route rendering
+    // --- EFFECT: Pro-Grade Label Management ---
+    // Automatically cleans the map of all text/labels when a route is active
+    // ensuring a premium, focused navigation experience as requested.
+    useEffect(() => {
+        const map = mapRef.current?.getMap();
+        if (!map) return;
+
+        const toggleLabels = () => {
+            const style = map.getStyle();
+            if (!style || !style.layers) return;
+
+            style.layers.forEach(layer => {
+                // If it's a symbol layer (labels/icons), toggle visibility based on routePath
+                if (layer.type === 'symbol') {
+                    try {
+                        map.setLayoutProperty(layer.id, 'visibility', routePath ? 'none' : 'visible');
+                    } catch (e) {
+                        // Some layers might be transient or locked
+                    }
+                }
+            });
+        };
+
+        // Run on style change or route change
+        map.on('styledata', toggleLabels);
+        toggleLabels();
+
+        return () => {
+            map.off('styledata', toggleLabels);
+        };
+    }, [routePath]);
+
+    // Detect first label layer for professional "integrated" route placement beneath labels
     const onMapLoad = (e) => {
         const layers = e.target.getStyle().layers;
         if (layers) {
@@ -1272,25 +1304,27 @@ const MapComponent = () => {
                             }}>
 
                                 {/* Mall Marker */}
-                                {/* Simple Name Badge */}
-                                <div style={{
-                                    position: 'absolute',
-                                    bottom: '-20px',
-                                    left: '50%',
-                                    transform: 'translateX(-50%)',
-                                    backgroundColor: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '#ffffff' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '#fbab15' : 'white'),
-                                    padding: '2px 10px',
-                                    borderRadius: '12px',
-                                    fontSize: '11px',
-                                    fontWeight: 'bold',
-                                    color: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '#1e293b' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? 'white' : 'black'),
-                                    border: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '1px solid #e2e8f0' : '1px solid white',
-                                    whiteSpace: 'nowrap',
-                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                                    zIndex: 1
-                                }}>
-                                    {shop.name}
-                                </div>
+                                {/* Simple Name Badge (Hide on Route) */}
+                                {!routePath && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        bottom: '-20px',
+                                        left: '50%',
+                                        transform: 'translateX(-50%)',
+                                        backgroundColor: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '#ffffff' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '#fbab15' : 'white'),
+                                        padding: '2px 10px',
+                                        borderRadius: '12px',
+                                        fontSize: '11px',
+                                        fontWeight: 'bold',
+                                        color: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '#1e293b' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? 'white' : 'black'),
+                                        border: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '1px solid #e2e8f0' : '1px solid white',
+                                        whiteSpace: 'nowrap',
+                                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                        zIndex: 1
+                                    }}>
+                                        {shop.name}
+                                    </div>
+                                )}
                             </div>
                         </Marker>,
 
@@ -1338,8 +1372,8 @@ const MapComponent = () => {
                         )
                     )}
 
-                    {/* Palestinian Cities Labels (Satellite or Navigation Mode) */}
-                    {(activeMapType === 'satellite' || routePath) && (viewState.zoom <= 13.5 || (routePath && viewState.zoom <= 15)) && PALESTINIAN_CITIES.map((city, index) => (
+                    {/* Palestinian Cities Labels (Hide when route is active to keep map clean as requested) */}
+                    {activeMapType === 'satellite' && !routePath && viewState.zoom <= 13.5 && PALESTINIAN_CITIES.map((city, index) => (
                         <Marker key={`city-${index}`} longitude={city.lon} latitude={city.lat} anchor="bottom">
                             <div style={{
                                 color: (routePath && activeMapType !== 'satellite') ? '#1e293b' : 'white',
@@ -1386,14 +1420,16 @@ const MapComponent = () => {
                                 }}>
                                     {fac.icon || '🏛️'}
                                 </div>
-                                <div style={{
-                                    background: 'rgba(255,255,255,0.95)', color: 'black', fontSize: '11px',
-                                    fontWeight: 'bold', padding: '2px 8px', borderRadius: '10px',
-                                    marginTop: '4px', border: '1px solid #3b82f6', whiteSpace: 'nowrap',
-                                    boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
-                                }}>
-                                    {fac.name}
-                                </div>
+                                {!routePath && (
+                                    <div style={{
+                                        background: 'rgba(255,255,255,0.95)', color: 'black', fontSize: '11px',
+                                        fontWeight: 'bold', padding: '2px 8px', borderRadius: '10px',
+                                        marginTop: '4px', border: '1px solid #3b82f6', whiteSpace: 'nowrap',
+                                        boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+                                    }}>
+                                        {fac.name}
+                                    </div>
+                                )}
                             </div>
                         </Marker>
                     ))}
