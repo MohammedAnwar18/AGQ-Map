@@ -1,12 +1,21 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import Map, { Marker, Popup, NavigationControl, FullscreenControl } from 'react-map-gl/maplibre';
+import Map, { Marker, Popup, NavigationControl, FullscreenControl, Source, Layer } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { newsService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import './NewsModal.css';
 
-// We use the same maplibre instance
 import maplibregl from 'maplibre-gl';
+
+// Helper to get color by Navy
+const getNavyColor = (navy) => {
+    if (navy.includes('US')) return '#005b96';
+    if (navy.includes('Iran')) return '#008000';
+    if (navy.includes('Israel')) return '#0038b8';
+    if (navy.includes('Royal')) return '#800020';
+    if (navy.includes('Saudi')) return '#006400';
+    return '#888';
+};
 
 const NewsModal = ({ onClose, location }) => {
     const { user } = useAuth();
@@ -15,33 +24,29 @@ const NewsModal = ({ onClose, location }) => {
     const [loading, setLoading] = useState(true);
     const [showAddForm, setShowAddForm] = useState(false);
     const [viewState, setViewState] = useState({
-        longitude: location?.longitude || 35.0,
-        latitude: location?.latitude || 31.5,
-        zoom: 7,
-        pitch: 45
+        longitude: 35.2,
+        latitude: 31.9,
+        zoom: 5.5, // Zoomed out to see sea deployments
+        pitch: 40
     });
 
-    // Form states
-    const [title, setTitle] = useState('');
-    const [description, setDescription] = useState('');
-    const [imageFile, setImageFile] = useState(null);
-    const [submitting, setSubmitting] = useState(false);
-    
-    // External APIs data states
+    const [selectedFeature, setSelectedFeature] = useState(null);
+    const [flightTrail, setFlightTrail] = useState(null);
+
+    // Data states
     const [alerts, setAlerts] = useState([]);
     const [flights, setFlights] = useState([]);
     const [ships, setShips] = useState([]);
-    const [selectedFeature, setSelectedFeature] = useState(null);
 
     const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
 
-    // Fetch live data from Local Backend API
     const fetchLiveData = useCallback(async () => {
         try {
             const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-            const [alertsRes, flightsRes] = await Promise.allSettled([
+            const [alertsRes, flightsRes, shipsRes] = await Promise.allSettled([
                 fetch(`${baseUrl}/radar/alerts`),
-                fetch(`${baseUrl}/radar/flights`)
+                fetch(`${baseUrl}/radar/flights`),
+                fetch(`${baseUrl}/radar/ships`)
             ]);
 
             if (alertsRes.status === 'fulfilled' && alertsRes.value.ok) {
@@ -52,6 +57,10 @@ const NewsModal = ({ onClose, location }) => {
                 const data = await flightsRes.value.json();
                 setFlights(data.flights || []);
             }
+            if (shipsRes.status === 'fulfilled' && shipsRes.value.ok) {
+                const data = await shipsRes.value.json();
+                setShips(data.ships || []);
+            }
         } catch (err) {
             console.error("Live feed error:", err);
         } finally {
@@ -61,58 +70,40 @@ const NewsModal = ({ onClose, location }) => {
 
     useEffect(() => {
         fetchLiveData();
-        // Set an interval to refresh the live map every 10 seconds
-        const intervalId = setInterval(fetchLiveData, 10000);
+        const intervalId = setInterval(fetchLiveData, 15000);
         return () => clearInterval(intervalId);
     }, [fetchLiveData]);
 
-    const handleAddNews = async (e) => {
-        e.preventDefault();
-        if (!title || !description) return;
-        try {
-            setSubmitting(true);
-            const formData = new FormData();
-            formData.append('title', title);
-            formData.append('description', description);
-            formData.append('latitude', viewState.latitude);
-            formData.append('longitude', viewState.longitude);
-            if (imageFile) formData.append('image', imageFile);
-
-            await newsService.createNews(formData);
-
-            setTitle('');
-            setDescription('');
-            setImageFile(null);
-            setShowAddForm(false);
-            alert("تم إضافة الخبر بنجاح!");
-        } catch (err) {
-            console.error("Failed to add news", err);
-            alert("حدث خطأ أثناء إضافة الخبر");
-        } finally {
-            setSubmitting(false);
-        }
-    };
+    // Draw lines for missile arcs based on standard source vectors
+    const missileArcs = useMemo(() => {
+        const features = [];
+        alerts.forEach((alert, i) => {
+            // Fake coordinate generator for alerts if real ones absent based on city match
+            // In a real scenario, this comes from geocoding.
+            // Let's just generate a red pulse center for demo if we had coordinates
+        });
+        return {
+            type: 'FeatureCollection',
+            features
+        };
+    }, [alerts]);
 
     return (
         <div className="news-modal-overlay">
             <div className="news-panel glass fade-in-up">
                 
-                {/* Header Section */}
                 <div className="news-header">
                     <div className="location-badge">
                         <span className="live-dot"></span>
-                        LIVE MAP
+                        LIVE IRONSIGHT RADAR
                     </div>
-                    <h2>رادار الأخبار العاجلة</h2>
+                    <h2>رادار العمليات والأخبار المباشر</h2>
                     <button onClick={onClose} className="close-btn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
                     </button>
                 </div>
 
-                {/* Main Content Area - Split Map & Sidebar */}
                 <div className="news-dashboard-content">
-                    
-                    {/* Map Area */}
                     <div className="news-map-container">
                         <Map
                             {...viewState}
@@ -124,15 +115,32 @@ const NewsModal = ({ onClose, location }) => {
                             <FullscreenControl position="top-right" />
                             <NavigationControl position="top-right" />
 
-                            {/* Render Alerts */}
-                            {alerts.map((alert, idx) => (
-                                // Tzeva Adom doesn't always have exact coordinates, 
-                                // so you might need a lookup table in the future. 
-                                // Let's try displaying flights which have lat/lon clearly.
-                                null
+                            {/* Render Ships & Subs */}
+                            {ships.map((ship, idx) => (
+                                <Marker 
+                                    key={`ship-${idx}`} 
+                                    longitude={ship.lon} 
+                                    latitude={ship.lat}
+                                    onClick={(e) => {
+                                        e.originalEvent.stopPropagation();
+                                        setSelectedFeature({ type: 'ship', data: ship });
+                                    }}
+                                >
+                                    <div 
+                                        className="combat-vessel" 
+                                        style={{ 
+                                            color: getNavyColor(ship.navy),
+                                            fontSize: ship.type === 'Submarine' ? '18px' : '22px',
+                                            textShadow: '0 0 5px rgba(255,255,255,0.5)'
+                                        }}
+                                        title={ship.name}
+                                    >
+                                        {ship.type === 'Submarine' ? '▼' : '⛴'}
+                                    </div>
+                                </Marker>
                             ))}
 
-                            {/* Render Flights */}
+                            {/* Render Flights with Orientation */}
                             {flights.filter(f => f.lat && f.lon).map((flight, idx) => (
                                 <Marker 
                                     key={flight.icao24 || idx} 
@@ -141,16 +149,51 @@ const NewsModal = ({ onClose, location }) => {
                                     onClick={(e) => {
                                         e.originalEvent.stopPropagation();
                                         setSelectedFeature({ type: 'flight', data: flight });
+                                        // Generate fake trail for visual effect based on heading
+                                        setFlightTrail({
+                                            type: 'FeatureCollection',
+                                            features: [{
+                                                type: 'Feature',
+                                                geometry: {
+                                                    type: 'LineString',
+                                                    coordinates: [
+                                                        [flight.lon - (Math.sin(flight.heading * Math.PI / 180) * 0.5), flight.lat - (Math.cos(flight.heading * Math.PI / 180) * 0.5)],
+                                                        [flight.lon, flight.lat]
+                                                    ]
+                                                }
+                                            }]
+                                        });
                                     }}
                                 >
-                                    <div className="flight-marker" style={{ transform: `rotate(${flight.heading || 0}deg)` }}>
-                                        ✈️
+                                    <div 
+                                        className="military-flight" 
+                                        style={{ 
+                                            transform: `rotate(${flight.heading || 0}deg)`,
+                                            color: flight.type.includes('Fighter') ? '#ff3b30' : '#fbab15'
+                                        }}
+                                    >
+                                        ✈
                                     </div>
                                 </Marker>
                             ))}
 
-                            {/* Popup for Selected Feature */}
-                            {selectedFeature && selectedFeature.type === 'flight' && (
+                            {/* Optional Flight Trail Layer */}
+                            {flightTrail && (
+                                <Source id="flight-trail-source" type="geojson" data={flightTrail}>
+                                    <Layer 
+                                        id="flight-trail-layer"
+                                        type="line"
+                                        paint={{
+                                            'line-color': '#fbab15',
+                                            'line-width': 2,
+                                            'line-dasharray': [2, 2]
+                                        }}
+                                    />
+                                </Source>
+                            )}
+
+                            {/* Selection Popups */}
+                            {selectedFeature && (
                                 <Popup
                                     longitude={selectedFeature.data.lon}
                                     latitude={selectedFeature.data.lat}
@@ -159,103 +202,72 @@ const NewsModal = ({ onClose, location }) => {
                                     closeOnClick={false}
                                 >
                                     <div className="feature-popup">
-                                        <h4>{selectedFeature.data.type || 'طائرة'}</h4>
-                                        <p>Callsign: {selectedFeature.data.callsign}</p>
-                                        <p>Alt: {selectedFeature.data.altitude} ft</p>
-                                        <p>Speed: {selectedFeature.data.speed} kts</p>
+                                        {selectedFeature.type === 'flight' && (
+                                            <>
+                                                <h4>{selectedFeature.data.type || 'طائرة'}</h4>
+                                                <p>Callsign: <strong>{selectedFeature.data.callsign}</strong></p>
+                                                <p>Alt: {selectedFeature.data.altitude} ft</p>
+                                                <p>Speed: {selectedFeature.data.speed} kts</p>
+                                            </>
+                                        )}
+                                        {selectedFeature.type === 'ship' && (
+                                            <>
+                                                <h4 style={{ color: getNavyColor(selectedFeature.data.navy) }}>{selectedFeature.data.name}</h4>
+                                                <p>Navy: <strong>{selectedFeature.data.navy}</strong></p>
+                                                <p>Class: {selectedFeature.data.class}</p>
+                                                <p>Status: {selectedFeature.data.status}</p>
+                                            </>
+                                        )}
                                     </div>
                                 </Popup>
                             )}
                         </Map>
                     </div>
 
-                    {/* Sidebar / Admin Area */}
                     <div className="news-sidebar">
                         {isAdmin && (
                             <div className="admin-actions">
-                                <button
-                                    className={`action-toggle-btn ${showAddForm ? 'active' : ''}`}
-                                    onClick={() => setShowAddForm(!showAddForm)}
-                                >
-                                    {showAddForm ? 'إلغاء الإضافة ✖' : 'إضافة خبر جديد ➕'}
-                                </button>
+                                <button className="action-toggle-btn">إضافة تقرير استخباراتي ➕</button>
                             </div>
                         )}
 
-                        {showAddForm ? (
-                            <div className="news-form-container">
-                                <h3 className="sidebar-title">أضف خبراً في الموقع الحالي</h3>
-                                <form onSubmit={handleAddNews} className="add-news-form">
-                                    <div className="form-group">
-                                        <label>العنوان:</label>
-                                        <input
-                                            type="text"
-                                            value={title}
-                                            onChange={e => setTitle(e.target.value)}
-                                            required
-                                            placeholder="عنوان الخبر..."
-                                        />
-                                    </div>
-                                    <div className="form-group">
-                                        <label>التفاصيل:</label>
-                                        <textarea
-                                            value={description}
-                                            onChange={e => setDescription(e.target.value)}
-                                            required
-                                            rows="4"
-                                            placeholder="تفاصيل الخبر الهامة..."
-                                        ></textarea>
-                                    </div>
-                                    <div className="form-group">
-                                        <label>صورة (اختياري):</label>
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={e => setImageFile(e.target.files[0])}
-                                        />
-                                    </div>
-                                    <button
-                                        type="submit"
-                                        disabled={submitting}
-                                        className="submit-news-btn"
-                                    >
-                                        {submitting ? 'جاري الإضافة...' : 'نشر الخبر في الخريطة'}
-                                    </button>
-                                </form>
-                            </div>
-                        ) : (
-                            <div className="live-feed-panel">
-                                <h3 className="sidebar-title">الأحداث المباشرة</h3>
-                                
-                                {loading ? (
-                                    <div className="live-feed-loading">جاري تحديث الرادار...</div>
-                                ) : (
-                                    <div className="live-feed-list">
-                                        {alerts.map((alert, i) => (
-                                            <div key={i} className="feed-card alert-card">
-                                                <span className="feed-time">{new Date(alert.time).toLocaleTimeString()}</span>
-                                                <h4 className="feed-threat">{alert.threat}</h4>
-                                                <p className="feed-locations">{alert.locations?.join('، ')}</p>
-                                            </div>
-                                        ))}
+                        <div className="live-feed-panel">
+                            <h3 className="sidebar-title">موجز الأحداث (IRONSIGHT Feed)</h3>
+                            
+                            {loading ? (
+                                <div className="live-feed-loading">جاري تحديث الرادار...</div>
+                            ) : (
+                                <div className="live-feed-list">
+                                    {alerts.map((alert, i) => (
+                                        <div key={`alert-${i}`} className="feed-card alert-card">
+                                            <span className="feed-time">{new Date(alert.time).toLocaleTimeString()}</span>
+                                            <h4 className="feed-threat">{alert.threat} 🚨</h4>
+                                            <p className="feed-locations">{alert.locations?.join('، ')}</p>
+                                        </div>
+                                    ))}
 
-                                        {flights.slice(0, 10).map((flight, i) => (
-                                            <div key={i} className="feed-card flight-card">
-                                                <span className="feed-icon">✈️</span>
-                                                <div className="feed-info">
-                                                    <h4>{flight.callsign || 'مجهول'}</h4>
-                                                    <p>{flight.type}</p>
-                                                </div>
+                                    {ships.map((ship, i) => (
+                                        <div key={`shipf-${i}`} className="feed-card ship-card" style={{ borderLeftColor: getNavyColor(ship.navy) }}>
+                                            <span className="feed-icon">{ship.type === 'Submarine' ? '▼' : '⛴'}</span>
+                                            <div className="feed-info">
+                                                <h4>{ship.name} ({ship.navy})</h4>
+                                                <p>متواجدة في: {ship.region}</p>
                                             </div>
-                                        ))}
+                                        </div>
+                                    ))}
 
-                                        {alerts.length === 0 && flights.length === 0 && (
-                                            <p className="empty-state">لا يوجد أحداث عاجلة حالية.</p>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                                    {flights.slice(0, 15).map((flight, i) => (
+                                        <div key={`flight-${i}`} className="feed-card flight-card">
+                                            <span className="feed-icon" style={{ transform: 'rotate(-45deg)', display: 'inline-block' }}>✈️</span>
+                                            <div className="feed-info">
+                                                <h4>{flight.callsign || 'غير مصرح'}</h4>
+                                                <p>{flight.type}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

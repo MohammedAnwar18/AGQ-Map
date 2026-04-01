@@ -96,11 +96,18 @@
     background: #000;
 }
 
-.flight-marker {
-    font-size: 20px;
+.military-flight {
+    font-size: 24px;
+    cursor: pointer;
+    transition: transform 0.2s, color 0.2s;
+    filter: drop-shadow(0px 0px 4px rgba(0,0,0,0.8));
+    display: inline-block;
+}
+
+.combat-vessel {
     cursor: pointer;
     transition: transform 0.2s;
-    filter: drop-shadow(0px 0px 3px rgba(0,0,0,0.8));
+    filter: drop-shadow(0px 0px 5px rgba(0,0,0,0.9));
 }
 
 .feature-popup {
@@ -216,14 +223,18 @@
     display: flex;
     flex-direction: column;
     border-left: 4px solid #555;
+    transition: transform 0.2s;
+}
+
+.feed-card:hover {
+    transform: translateX(-5px);
 }
 
 .alert-card {
     border-left-color: #ff3b30;
 }
 
-.flight-card {
-    border-left-color: #007bff;
+.ship-card, .flight-card {
     flex-direction: row;
     align-items: center;
     gap: 12px;
