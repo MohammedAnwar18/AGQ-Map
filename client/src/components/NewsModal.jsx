@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import Map, { Marker, Popup, NavigationControl, FullscreenControl } from 'react-map-gl';
+import Map, { Marker, Popup, NavigationControl, FullscreenControl } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { newsService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
