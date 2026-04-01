@@ -57,18 +57,23 @@ const NewsModal = ({ onClose, location }) => {
     const [alerts, setAlerts] = useState([]);
     const [flights, setFlights] = useState([]);
     const [ships, setShips] = useState([]);
-    const [intel, setIntel] = useState({ conflicts: [], strikes: [], markets: {} });
+    const [intel, setIntel] = useState({ conflicts: [], strikes: [] });
+    const [markets, setMarkets] = useState(null);
+    const [telegram, setTelegram] = useState([]);
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
 
     const fetchLiveData = useCallback(async () => {
         try {
             const baseUrl = import.meta.env.VITE_API_URL || '/api';
-            const [alertsRes, flightsRes, shipsRes, intelRes] = await Promise.allSettled([
+            const [alertsRes, flightsRes, shipsRes, intelRes, marketsRes, telegramRes] = await Promise.allSettled([
                 fetch(`${baseUrl}/radar/alerts`),
                 fetch(`${baseUrl}/radar/flights`),
                 fetch(`${baseUrl}/radar/ships`),
-                fetch(`${baseUrl}/radar/intel`)
+                fetch(`${baseUrl}/radar/intel`),
+                fetch(`${baseUrl}/radar/markets`),
+                fetch(`${baseUrl}/radar/telegram`)
             ]);
 
             if (alertsRes.status === 'fulfilled' && alertsRes.value.ok) {
@@ -85,7 +90,15 @@ const NewsModal = ({ onClose, location }) => {
             }
             if (intelRes.status === 'fulfilled' && intelRes.value.ok) {
                 const data = await intelRes.value.json();
-                setIntel(data || { conflicts: [], strikes: [], markets: {} });
+                setIntel(data || { conflicts: [], strikes: [] });
+            }
+            if (marketsRes.status === 'fulfilled' && marketsRes.value.ok) {
+                const data = await marketsRes.value.json();
+                setMarkets(data);
+            }
+            if (telegramRes.status === 'fulfilled' && telegramRes.value.ok) {
+                const data = await telegramRes.value.json();
+                setTelegram(data.posts || []);
             }
         } catch (err) {
             console.error("Live feed error:", err);
@@ -113,6 +126,12 @@ const NewsModal = ({ onClose, location }) => {
             features
         };
     }, [alerts]);
+
+    const handleManualRefresh = async () => {
+        setIsRefreshing(true);
+        await fetchLiveData();
+        setTimeout(() => setIsRefreshing(false), 800); // Visual delay for spinner
+    };
 
     return (
         <div className="news-modal-overlay">
@@ -285,6 +304,14 @@ const NewsModal = ({ onClose, location }) => {
                         )}
 
                         <div className="live-feed-panel">
+                            <button 
+                                className={`refresh-action-btn ${isRefreshing ? 'spinning' : ''}`}
+                                onClick={handleManualRefresh}
+                            >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /></svg>
+                                تحديث آخر التطورات والأخبار
+                            </button>
+
                             <div className="sidebar-title-container">
                                 <div className="pulse-indicator"></div>
                                 <h3 className="sidebar-title">قائمة الأخبار والصراعات</h3>
@@ -309,12 +336,23 @@ const NewsModal = ({ onClose, location }) => {
 
                                     <div className="section-divider">الوضع الميداني والأسواق</div>
 
-                                    {intel.markets && intel.markets.usdILS && (
+                                    {markets && (
                                         <div className="feed-card market-card">
-                                            <div className="market-row">💵 الدولار/شيكل: <strong>{intel.markets.usdILS}</strong></div>
-                                            <div className="market-row">🥇 الذهب/أونصة: <strong>${intel.markets.goldOunce}</strong></div>
+                                            <div className="market-row" style={{color:'#f8d02e'}}>🥇 ذهب: <strong>${markets.goldOunce}</strong></div>
+                                            <div className="market-row" style={{color:'#66bdf5'}}>🛢️ نفط الخام: <strong>${markets.crudeOil}</strong></div>
                                         </div>
                                     )}
+
+                                    {/* TELEGRAM BREAKING NEWS */}
+                                    {telegram.map((post, i) => (
+                                        <div key={`tg-${i}`} className="feed-card telegram-card">
+                                            <div className="telegram-header">
+                                                <span className="telegram-source">{post.channel}</span>
+                                                <span className="feed-time">{new Date(post.date).toLocaleTimeString()}</span>
+                                            </div>
+                                            <p>{post.text}</p>
+                                        </div>
+                                    ))}
 
                                     {intel.strikes?.map((strike, i) => (
                                         <div key={`strike-${i}`} className="feed-card strike-card">
