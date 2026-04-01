@@ -71,4 +71,23 @@ router.get('/ships', (req, res) => {
     res.json({ ships: knownDeployments });
 });
 
+// OSINT General Intel (Conflicts, Strikes, Markets)
+router.get('/intel', (req, res) => {
+    res.json({
+        conflicts: [
+            { city: "جنوب لبنان", status: "اشتباكات مستمرة", intensity: "عالي", lat: 33.25, lon: 35.35 },
+            { city: "قطاع غزة", status: "حرب نشطة", intensity: "حرج", lat: 31.41, lon: 34.34 },
+            { city: "البحر الأحمر", status: "عمليات بحرية", intensity: "عالي", lat: 14.5, lon: 41.0 },
+            { city: "الحديدة (اليمن)", status: "غارات محتملة", intensity: "متوسط", lat: 14.79, lon: 42.95 }
+        ],
+        strikes: [
+            { id: 1, target: "موقع عسكري", details: "قصف مدفعي كثيف", time: new Date(Date.now() - 1000 * 60 * 30).toISOString(), lat: 33.15, lon: 35.25 }
+        ],
+        markets: {
+            usdILS: 3.78,
+            goldOunce: 2354
+        }
+    });
+});
+
 module.exports = router;

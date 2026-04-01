@@ -57,16 +57,18 @@ const NewsModal = ({ onClose, location }) => {
     const [alerts, setAlerts] = useState([]);
     const [flights, setFlights] = useState([]);
     const [ships, setShips] = useState([]);
+    const [intel, setIntel] = useState({ conflicts: [], strikes: [], markets: {} });
 
     const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
 
     const fetchLiveData = useCallback(async () => {
         try {
             const baseUrl = import.meta.env.VITE_API_URL || '/api';
-            const [alertsRes, flightsRes, shipsRes] = await Promise.allSettled([
+            const [alertsRes, flightsRes, shipsRes, intelRes] = await Promise.allSettled([
                 fetch(`${baseUrl}/radar/alerts`),
                 fetch(`${baseUrl}/radar/flights`),
-                fetch(`${baseUrl}/radar/ships`)
+                fetch(`${baseUrl}/radar/ships`),
+                fetch(`${baseUrl}/radar/intel`)
             ]);
 
             if (alertsRes.status === 'fulfilled' && alertsRes.value.ok) {
@@ -80,6 +82,10 @@ const NewsModal = ({ onClose, location }) => {
             if (shipsRes.status === 'fulfilled' && shipsRes.value.ok) {
                 const data = await shipsRes.value.json();
                 setShips(data.ships || []);
+            }
+            if (intelRes.status === 'fulfilled' && intelRes.value.ok) {
+                const data = await intelRes.value.json();
+                setIntel(data || { conflicts: [], strikes: [], markets: {} });
             }
         } catch (err) {
             console.error("Live feed error:", err);
@@ -135,13 +141,24 @@ const NewsModal = ({ onClose, location }) => {
                             <FullscreenControl position="top-right" />
                             <NavigationControl position="top-right" />
 
+                            {/* Render Conflicts / Hot Zones */}
+                            {intel.conflicts?.map((zone, idx) => (
+                                <Marker 
+                                    key={`zone-${idx}`} 
+                                    longitude={zone.lon} 
+                                    latitude={zone.lat}
+                                >
+                                    <div className="conflict-zone radar-ping"></div>
+                                    <div className="conflict-label">{zone.city}</div>
+                                </Marker>
+                            ))}
+
                             {/* Render Ships & Subs */}
                             {ships.map((ship, idx) => (
                                 <Marker 
                                     key={`ship-${idx}`} 
                                     longitude={ship.lon} 
                                     latitude={ship.lat}
-                                    style={{ transition: 'all 0.5s ease-out' }}
                                     onClick={(e) => {
                                         e.originalEvent.stopPropagation();
                                         setSelectedFeature({ type: 'ship', data: ship });
@@ -171,7 +188,6 @@ const NewsModal = ({ onClose, location }) => {
                                     key={flight.icao24 || idx} 
                                     longitude={flight.lon} 
                                     latitude={flight.lat}
-                                    style={{ transition: 'all 0.8s linear' }}
                                     onClick={(e) => {
                                         e.originalEvent.stopPropagation();
                                         setSelectedFeature({ type: 'flight', data: flight });
@@ -195,6 +211,7 @@ const NewsModal = ({ onClose, location }) => {
                                         className="military-flight-icon" 
                                         style={{ 
                                             transform: `rotate(${flight.heading || 0}deg)`,
+                                            transition: 'transform 0.5s ease-out',
                                             color: flight.type.includes('Fighter') ? '#ff3b30' : '#fbab15'
                                         }}
                                     >
@@ -282,11 +299,38 @@ const NewsModal = ({ onClose, location }) => {
                                     {alerts.map((alert, i) => (
                                         <div key={`alert-${i}`} className="feed-card alert-card breaking-card">
                                             <div className="card-header">
-                                                <span className="breaking-badge">عاجل 🔴</span>
+                                                <span className="breaking-badge">صفارات إنذار 🚨</span>
                                                 <span className="feed-time">{new Date(alert.time).toLocaleTimeString()}</span>
                                             </div>
                                             <h4 className="feed-threat">{alert.threat}</h4>
                                             <p className="feed-locations">📍 الموقع: {alert.locations?.join('، ')}</p>
+                                        </div>
+                                    ))}
+
+                                    <div className="section-divider">الوضع الميداني والأسواق</div>
+
+                                    {intel.markets && intel.markets.usdILS && (
+                                        <div className="feed-card market-card">
+                                            <div className="market-row">💵 الدولار/شيكل: <strong>{intel.markets.usdILS}</strong></div>
+                                            <div className="market-row">🥇 الذهب/أونصة: <strong>${intel.markets.goldOunce}</strong></div>
+                                        </div>
+                                    )}
+
+                                    {intel.strikes?.map((strike, i) => (
+                                        <div key={`strike-${i}`} className="feed-card strike-card">
+                                            <span className="breaking-badge" style={{background: '#ff6b00'}}>ضربة صاروخية 🔥</span>
+                                            <h4>{strike.target}</h4>
+                                            <p>{strike.details}</p>
+                                        </div>
+                                    ))}
+
+                                    {intel.conflicts?.map((zone, i) => (
+                                        <div key={`conflict-${i}`} className="feed-card conflict-card highlight-hover">
+                                            <span className="feed-icon">⚔️</span>
+                                            <div className="feed-info">
+                                                <h4>{zone.city}</h4>
+                                                <p>الحالة: {zone.status} | الحدّة: {zone.intensity}</p>
+                                            </div>
                                         </div>
                                     ))}
 
