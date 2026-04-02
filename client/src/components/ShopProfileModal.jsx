@@ -1013,7 +1013,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                 if (tab === 'drivers') return 'السائقين';
                                 if (tab === 'requests') return 'الطلبات';
                                 if (tab === 'mall_map') return 'خريطة المول 🗺️';
-                                if (tab === 'simulate') return 'محاكي الأعمال ✨';
+                                if (tab === 'simulate') return 'محاكي الأعمال';
                                 return 'حول';
                             })()}
                         </button>
@@ -1027,7 +1027,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                     {activeTab === 'simulate' && (
                         <div style={{ animation: 'fadeIn 0.5s', maxWidth: '600px', margin: '0 auto' }}>
                             <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                                <div style={{ fontSize: '3rem', marginBottom: '10px' }}>🔮</div>
+
                                 <h2 style={{ margin: 0, color: '#fbab15' }}>محاكي الأعمال الذكي (MiroFish)</h2>
                                 <p style={{ color: 'var(--text-secondary)' }}>توقع أثر قراراتك التجارية قبل تنفيذها باستخدام الذكاء الاصطناعي</p>
                             </div>
