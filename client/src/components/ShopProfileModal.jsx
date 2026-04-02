@@ -1086,7 +1086,9 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                     }
                                                 });
                                                 
-                                                const realisticAgentsCount = Math.min(300, Math.max(50, (parseInt(shopData?.followers_count) || 10) * 5 + Math.floor(Math.random() * 20)));
+                                                let baseFollowers = parseInt(shopData?.followers_count, 10);
+                                                if (isNaN(baseFollowers) || baseFollowers < 1) baseFollowers = 10;
+                                                const realisticAgentsCount = Math.min(300, Math.max(50, baseFollowers * 5 + Math.floor(Math.random() * 20)));
                                                 
                                                 const dynamicLogs = [];
                                                 for(let i = 0; i < realisticAgentsCount; i++) {
@@ -1103,10 +1105,10 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                             }, 2500);
                                         }}>
                                         {isSimulating ? (
-                                            <>
-                                                <span className="spinner-small" style={{ borderColor: 'white', borderTopColor: 'transparent' }}></span>
-                                                {`جاري محاكاة الخوارزمية لـ ${Math.min(300, Math.max(50, (parseInt(shopData?.followers_count) || 10) * 5 + Math.floor(Math.random() * 20)))} عميل محلي...`}
-                                            </>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                                                <span className="spinner-small" style={{ borderColor: 'white', borderTopColor: 'transparent', width: '16px', height: '16px' }}></span>
+                                                <span suppressHydrationWarning>جاري محاكاة الخوارزمية لعملاء المنطقة...</span>
+                                            </div>
                                         ) : 'تشغيل المحاكاة 🚀'}
                                     </button>
                                 </div>
