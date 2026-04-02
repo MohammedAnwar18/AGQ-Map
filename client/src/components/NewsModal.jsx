@@ -355,15 +355,32 @@ const NewsModal = ({ onClose, location }) => {
                                             </>
                                         )}
                                         {selectedFeature.type === 'incident' && (
-                                            <>
-                                                <h4 className="popup-title header-incident" style={{ color: '#ff3b30', paddingRight: '20px' }}>
-                                                    📍 {selectedFeature.data.type}
+                                            <div className="premium-incident-popup">
+                                                <h4 className="popup-title header-incident">
+                                                   <span className="pulse-icon">🔴</span> خبر عاجل مباشر
                                                 </h4>
-                                                <div className="popup-details">
-                                                    <p><span>الموقع:</span> <strong>{selectedFeature.data.city}</strong></p>
-                                                    <p><span>الحدث العاجل:</span> {selectedFeature.data.text}</p>
+                                                <div className="incident-meta-details">
+                                                    <div className="meta-row">
+                                                        <span className="meta-label">📅 التاريخ:</span> 
+                                                        <strong className="meta-value">{new Intl.DateTimeFormat('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).format(new Date(selectedFeature.data.time || Date.now()))}</strong>
+                                                    </div>
+                                                    <div className="meta-row">
+                                                        <span className="meta-label">⏰ الوقت:</span> 
+                                                        <strong className="meta-value">{new Intl.DateTimeFormat('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true }).format(new Date(selectedFeature.data.time || Date.now()))}</strong>
+                                                    </div>
+                                                    <div className="meta-row">
+                                                        <span className="meta-label">📍 الموقع:</span> 
+                                                        <strong className="meta-value loc-highlight">{selectedFeature.data.city}</strong>
+                                                    </div>
+                                                    <div className="meta-row">
+                                                        <span className="meta-label">⚠️ الحدث:</span> 
+                                                        <strong className="meta-value">{selectedFeature.data.type}</strong>
+                                                    </div>
                                                 </div>
-                                            </>
+                                                <div className="incident-description">
+                                                    {selectedFeature.data.text}
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
                                 </Popup>
