@@ -148,7 +148,7 @@ const NewsModal = ({ onClose, location }) => {
             <div className="news-panel glass fade-in-up">
                 
                 <div className="news-header">
-                    <h2>رادار العمليات والأخبار المباشر</h2>
+                    <h2>خريطة الاخبار المباشرة</h2>
                     <button onClick={onClose} className="close-btn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
                     </button>
@@ -211,13 +211,21 @@ const NewsModal = ({ onClose, location }) => {
                                         <div 
                                             className="naval-marker" 
                                             style={{ 
-                                                fontSize: isSub ? '10px' : '13px', 
+                                                fontSize: isSub ? '18px' : '15px', 
                                                 color: color, 
-                                                lineHeight: 1 
+                                                filter: `drop-shadow(0 0 3px ${color})`,
+                                                lineHeight: 1,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
                                             }}
                                             title={ship.name}
                                         >
-                                            {isSub ? '▼' : '⛴'}
+                                            {isSub ? '▼' : (
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                                    <path d="M2.2 16c1 .4 2.5.4 3.5 0 1.2-.5 2.5-.5 3.6 0 1 .4 2.6.4 3.6 0 1.1-.5 2.3-.5 3.5 0 1 .4 2.5.4 3.5 0 1.2-.5 2.5-.5 3.6 0v2c-1.1.5-2.6.5-3.6 0-1-.4-2.5-.4-3.5 0-1.2.5-2.5.5-3.6 0-1-.4-2.6-.4-3.6 0-1.1.5-2.3.5-3.5 0-1-.4-2.5-.4-3.5 0-1.2.5-2.5.5-3.6 0v-2c1.1.5 2.5.5 3.6 0zM12 4L4 14h16L12 4z" />
+                                                </svg>
+                                            )}
                                         </div>
                                     </Marker>
                                 );
@@ -336,8 +344,7 @@ const NewsModal = ({ onClose, location }) => {
                             </button>
 
                             <div className="sidebar-title-container">
-                                <div className="status-dot"></div>
-                                <h3 className="sidebar-title">قائمة الأخبار والصراعات</h3>
+                                <h3 className="sidebar-title" style={{marginLeft: 0}}>قائمة الأخبار والصراعات</h3>
                             </div>
                             
                             {loading ? (

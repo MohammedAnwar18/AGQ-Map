@@ -412,12 +412,12 @@
     right: 0;
     height: 100%;
     width: 100%;
-    max-width: 450px;
+    max-width: 100%;
     background: rgba(17, 20, 24, 0.98);
     backdrop-filter: blur(10px);
     display: flex;
     flex-direction: column;
-    padding: 20px;
+    padding: 30px;
     overflow-y: auto;
     border-left: 1px solid #333;
     box-shadow: -10px 0 30px rgba(0,0,0,0.8);
@@ -435,7 +435,7 @@
 /* Mobile Adjustments for sliding layer */
 @media (max-width: 768px) {
     .news-sidebar {
-        max-width: 100%;
+        padding: 20px;
     }
 }
 
