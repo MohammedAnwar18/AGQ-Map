@@ -279,11 +279,41 @@
 
 @media (max-width: 768px) {
     .login-container {
-        padding: 1.5rem 1rem;
+        padding: 1rem 0.5rem;
     }
 
     .login-card {
-        padding: 2rem 1.5rem;
+        padding: 1.5rem 1rem;
+        width: 100%;
+        max-width: 100%;
+        margin: 0 auto;
+    }
+
+    .card-header {
+        margin-bottom: 1.5rem;
+    }
+
+    .card-header h2 {
+        font-size: 1.25rem;
+        white-space: nowrap;
+    }
+
+    .subtitle {
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+
+    .card-footer p {
+        font-size: 0.85rem;
+        flex-wrap: nowrap;
+        white-space: nowrap;
+        justify-content: center;
+        gap: 6px;
+    }
+
+    .toggle-btn {
+        font-size: 0.85rem;
+        white-space: nowrap;
     }
 
     .logo-text {
@@ -292,6 +322,8 @@
 
     .tagline {
         font-size: 0.95rem;
+        text-align: center;
+        padding: 0 10px;
     }
 
     .features {
