@@ -7,6 +7,15 @@ import './NewsModal.css';
 
 import maplibregl from 'maplibre-gl';
 
+// Fix disconnected Arabic text on MapLibre tiles
+if (maplibregl.getRTLTextPluginStatus && maplibregl.getRTLTextPluginStatus() === 'unavailable') {
+    maplibregl.setRTLTextPlugin(
+        'https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.2.3/mapbox-gl-rtl-text.min.js',
+        null,
+        true // Lazy load the plugin
+    );
+}
+
 // Helper to get color by Navy
 const getNavyColor = (navy) => {
     if (navy.includes('US')) return '#007fff';      // Bright Blue
