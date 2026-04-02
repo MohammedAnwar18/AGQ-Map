@@ -1,24 +1,27 @@
 .legal-container {
-    min-height: 100vh;
+    height: 100vh;
+    height: 100dvh;
     width: 100%;
-    display: flex;
-    justify-content: center;
+    display: block;
     padding: 2rem 1rem;
     position: relative;
-    overflow-y: visible;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
     background: #020617; /* Slate-950 */
     font-family: 'Tajawal', sans-serif;
     color: white;
 }
 
 .legal-background {
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
+    width: 100vw;
+    height: 100vh;
     overflow: hidden;
     z-index: 0;
+    pointer-events: none;
 }
 
 .gradient-orb {
@@ -41,7 +44,7 @@
     max-width: 900px;
     width: 100%;
     padding: 3rem;
-    margin: 2rem 0;
+    margin: 0 auto 4rem auto;
     position: relative;
     z-index: 10;
     border-radius: 24px;
@@ -141,8 +144,9 @@
 @media (max-width: 768px) {
     .legal-content {
         padding: 1.25rem;
-        border-radius: 0;
-        margin: 0;
+        border-radius: 20px;
+        margin: 1rem auto 3rem auto;
+        gap: 1.5rem;
     }
     
     .legal-header h1 {
@@ -151,7 +155,7 @@
     
     .legal-section p {
         font-size: 1rem;
-        line-height: 1.65;
+        line-height: 1.8;
         text-align: right;
         word-spacing: normal;
         letter-spacing: normal;
