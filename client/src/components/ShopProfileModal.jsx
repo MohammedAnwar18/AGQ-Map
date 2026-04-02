@@ -177,6 +177,11 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     // Driver's Own Requests
     const [myDriverRequests, setMyDriverRequests] = useState([]);
 
+    // Simulator Mock State
+    const [simResult, setSimResult] = useState(null);
+    const [isSimulating, setIsSimulating] = useState(false);
+    const [simPrompt, setSimPrompt] = useState('');
+
     // PERMISSIONS:
     // 1. System Admin: Can assign owners, remove owners, and edit everything.
     const isSystemAdmin = currentUser?.role === 'admin';
@@ -1024,25 +1029,85 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                 <h2 style={{ margin: 0, color: '#fbab15' }}>محاكي الأعمال الذكي (MiroFish)</h2>
                                 <p style={{ color: 'var(--text-secondary)' }}>توقع أثر قراراتك التجارية قبل تنفيذها باستخدام الذكاء الاصطناعي</p>
                             </div>
-                            <div style={{ background: 'var(--bg-primary)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
-                                <label style={{ display: 'block', marginBottom: '10px', fontWeight: 'bold' }}>اطرح سيناريو أو فرضية لتوقع نتيجتها:</label>
-                                <textarea 
-                                    className="input" 
-                                    placeholder="مثال: ماذا لو قمت بعمل خصم 20% يوم الثلاثاء القادم، هل سيزيد المبيعات والربح؟"
-                                    style={{ width: '100%', minHeight: '120px', resize: 'vertical', marginBottom: '15px' }}
-                                />
-                                <button className="btn btn-primary" style={{ width: '100%', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', border: 'none', padding: '12px', fontSize: '1.1rem', fontWeight: 'bold', color: 'white', cursor: 'pointer', borderRadius: '8px' }} onClick={() => {
-                                    const btn = document.activeElement;
-                                    const originalText = btn.innerHTML;
-                                    btn.innerHTML = '<span class="spinner-small" style="display:inline-block; margin-left: 10px; border-color:white; border-top-color:transparent;"></span> جاري خلق 10,000 عميل افتراضي في الخلفية...';
-                                    setTimeout(() => {
-                                        alert('هذه واجهة تجريبية (Mockup)! سيتم ربطها بخادم محرك MiroFish الفعلي لتعرض لك التحليل هنا.');
-                                        btn.innerHTML = originalText;
-                                    }, 2000);
-                                }}>
-                                    تشغيل المحاكاة 🚀
-                                </button>
-                            </div>
+                            
+                            {!simResult ? (
+                                <div style={{ background: 'var(--bg-primary)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
+                                    <label style={{ display: 'block', marginBottom: '10px', fontWeight: 'bold' }}>اطرح سيناريو أو فرضية لتوقع نتيجتها:</label>
+                                    <textarea 
+                                        className="input" 
+                                        value={simPrompt}
+                                        onChange={(e) => setSimPrompt(e.target.value)}
+                                        placeholder="مثال: ماذا لو قمت بعمل خصم 20% يوم الثلاثاء القادم، هل سيزيد المبيعات والربح؟"
+                                        style={{ width: '100%', minHeight: '120px', resize: 'vertical', marginBottom: '15px' }}
+                                    />
+                                    <button 
+                                        className="btn btn-primary" 
+                                        disabled={isSimulating || !simPrompt.trim()}
+                                        style={{ width: '100%', background: isSimulating ? '#6b7280' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)', border: 'none', padding: '12px', fontSize: '1.1rem', fontWeight: 'bold', color: 'white', cursor: isSimulating ? 'not-allowed' : 'pointer', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px' }} 
+                                        onClick={() => {
+                                            setIsSimulating(true);
+                                            setTimeout(() => {
+                                                setIsSimulating(false);
+                                                setSimResult({
+                                                    confidence: 85,
+                                                    customersExpected: '+35%',
+                                                    revenueExpected: '-5%',
+                                                    advice: 'ننصح بتطبيق الخصم على صنف واحد (مثل المشروبات) لزيادة عدد الزوار دون ضرب هامش الربح الكلي للمحل.',
+                                                    agentLogs: [
+                                                        "العميل الوهمي #405: سأزور المكان بسبب توفر الخصم وأُحضر عائلتي.",
+                                                        "العميل الوهمي #8892: سأشتري فقط الصنف المخفض وأغادر.",
+                                                        "العميل الوهمي #112: الخصم يجذبني وسأقوم بترشيحه لأصدقائي على PalNovaa."
+                                                    ]
+                                                });
+                                            }, 2500);
+                                        }}>
+                                        {isSimulating ? (
+                                            <>
+                                                <span className="spinner-small" style={{ borderColor: 'white', borderTopColor: 'transparent' }}></span>
+                                                جاري محاكاة خوارزمية MiroFish...
+                                            </>
+                                        ) : 'تشغيل المحاكاة 🚀'}
+                                    </button>
+                                </div>
+                            ) : (
+                                <div style={{ background: 'var(--bg-primary)', padding: '25px', borderRadius: '12px', border: '1px solid var(--primary)', boxShadow: '0 8px 25px rgba(251, 171, 21, 0.15)', animation: 'fadeIn 0.4s ease-out' }}>
+                                    <h3 style={{ margin: '0 0 20px', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>📊 نتيجة المحاكاة التقريبية</h3>
+                                    
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+                                        <div style={{ background: '#dcfce7', padding: '15px', borderRadius: '8px', textAlign: 'center' }}>
+                                            <div style={{ fontSize: '0.9rem', color: '#166534', marginBottom: '5px', fontWeight: 'bold' }}>عدد الزوار المتوقع</div>
+                                            <div style={{ fontSize: '1.8rem', color: '#15803d', fontWeight: '900', direction: 'ltr' }}>{simResult.customersExpected}</div>
+                                        </div>
+                                        <div style={{ background: '#fee2e2', padding: '15px', borderRadius: '8px', textAlign: 'center' }}>
+                                            <div style={{ fontSize: '0.9rem', color: '#991b1b', marginBottom: '5px', fontWeight: 'bold' }}>إجمالي الربح المتوقع</div>
+                                            <div style={{ fontSize: '1.8rem', color: '#b91c1c', fontWeight: '900', direction: 'ltr' }}>{simResult.revenueExpected}</div>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ background: 'var(--bg-secondary)', padding: '15px', borderRadius: '8px', marginBottom: '20px', borderRight: '4px solid #3b82f6' }}>
+                                        <h4 style={{ margin: '0 0 8px', color: '#3b82f6' }}>💡 ذكاء MiroFish (دقة {simResult.confidence}%):</h4>
+                                        <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.6' }}>{simResult.advice}</p>
+                                    </div>
+
+                                    <div style={{ marginBottom: '20px' }}>
+                                        <h4 style={{ margin: '0 0 10px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>🧠 مقتطفات من عقول العملاء المبرمجين (Agents):</h4>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                            {simResult.agentLogs.map((log, idx) => (
+                                                <div key={idx} style={{ background: 'var(--bg-tertiary)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.85rem', color: 'var(--text-primary)' }}>💬 {log}</div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <button 
+                                        onClick={() => { setSimResult(null); setSimPrompt(''); }}
+                                        style={{ width: '100%', background: 'transparent', border: '1px solid var(--text-muted)', padding: '10px', borderRadius: '8px', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.2s', outline: 'none' }}
+                                        onMouseOver={(e) => { e.currentTarget.style.background = 'var(--bg-tertiary)'; e.currentTarget.style.borderColor = 'var(--primary)'; }}
+                                        onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'var(--text-muted)'; }}
+                                    >
+                                        إجراء محاكاة جديدة 🔄
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
 
