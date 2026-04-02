@@ -70,7 +70,7 @@ const NewsModal = ({ onClose, location }) => {
     const [markets, setMarkets] = useState(null);
     const [telegram, setTelegram] = useState([]);
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const [isDrawerExpanded, setIsDrawerExpanded] = useState(false);
+    const [showNewsPanel, setShowNewsPanel] = useState(false);
 
     const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
 
@@ -209,10 +209,9 @@ const NewsModal = ({ onClose, location }) => {
                                         }}
                                     >
                                         <div 
-                                            className="naval-marker radar-sweep highlight-pulse" 
+                                            className="naval-marker" 
                                             style={{ 
                                                 fontSize: isSub ? '10px' : '13px', 
-                                                filter: `drop-shadow(0 0 4px ${color})`, 
                                                 color: color, 
                                                 lineHeight: 1 
                                             }}
@@ -243,10 +242,8 @@ const NewsModal = ({ onClose, location }) => {
                                             style={{ 
                                                 fontSize: '14px', 
                                                 transform: `rotate(${flight.heading || 0}deg)`,
-                                                filter: `drop-shadow(0 0 4px ${color})`,
                                                 color: color,
                                                 lineHeight: 1,
-                                                transition: 'transform 2s ease-out'
                                             }}
                                         >
                                             ✈
@@ -257,20 +254,18 @@ const NewsModal = ({ onClose, location }) => {
 
                             {/* Optional Flight Trail Layer */}
                             {flightTrail && (
-                                <Source id="flight-trail-source" type="geojson" data={flightTrail}>
+                                <Source type="geojson" data={flightTrail}>
                                     <Layer 
-                                        id="flight-trail-layer"
-                                        type="line"
+                                        id="flight-path" 
+                                        type="line" 
                                         paint={{
-                                            'line-color': '#00ffcc',
-                                            'line-width': 3,
-                                            'line-dasharray': [1, 1],
-                                            'line-opacity': 0.8
-                                        }}
+                                            'line-color': '#00d2ff',
+                                            'line-width': 2,
+                                            'line-dasharray': [2, 4]
+                                        }} 
                                     />
                                 </Source>
                             )}
-
                             {/* Selection Popups */}
                             {selectedFeature && (
                                 <Popup
@@ -310,12 +305,20 @@ const NewsModal = ({ onClose, location }) => {
                                 </Popup>
                             )}
                         </Map>
+                        
+                        {/* Map Overlay Button to Open News Page */}
+                        {!showNewsPanel && (
+                            <button className="toggle-news-btn" onClick={() => setShowNewsPanel(true)}>
+                                📰 تصفح قائمة الأخبار والصراعات
+                            </button>
+                        )}
                     </div>
 
-                    <div className={`news-sidebar ${isDrawerExpanded ? 'expanded' : ''}`}>
+                    <div className={`news-sidebar ${showNewsPanel ? 'open' : ''}`}>
                         
-                        {/* Mobile Handle for sliding drawer */}
-                        <div className="drawer-handle" onClick={() => setIsDrawerExpanded(!isDrawerExpanded)}></div>
+                        <button className="close-layer-btn" onClick={() => setShowNewsPanel(false)}>
+                            ← الغاء وعودة للخريطة
+                        </button>
 
                         {isAdmin && (
                             <div className="admin-actions">
