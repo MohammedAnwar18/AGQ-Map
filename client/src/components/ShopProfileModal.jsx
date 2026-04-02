@@ -975,6 +975,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                         ...((shopData.category === 'صراف آلي' || shopData.category === 'فرع بنك') ? [] : ['products']),
                         'timeline',
                         ...((shopData.category === 'مكتب تاكسي' && canEditShop) ? ['requests', 'drivers'] : []),
+                        ...(canEditShop ? ['simulate'] : []),
                         'about'
                     ].map(tab => (
                         <button
@@ -1005,6 +1006,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                 if (tab === 'drivers') return 'السائقين';
                                 if (tab === 'requests') return 'الطلبات';
                                 if (tab === 'mall_map') return 'خريطة المول 🗺️';
+                                if (tab === 'simulate') return 'محاكي الأعمال ✨';
                                 return 'حول';
                             })()}
                         </button>
@@ -1013,6 +1015,36 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
 
                 {/* Content Area */}
                 <div style={{ padding: '30px', minHeight: '300px', background: 'var(--bg-secondary)' }}>
+
+                    {/* --- Simulator Tab --- */}
+                    {activeTab === 'simulate' && (
+                        <div style={{ animation: 'fadeIn 0.5s', maxWidth: '600px', margin: '0 auto' }}>
+                            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                                <div style={{ fontSize: '3rem', marginBottom: '10px' }}>🔮</div>
+                                <h2 style={{ margin: 0, color: '#fbab15' }}>محاكي الأعمال الذكي (MiroFish)</h2>
+                                <p style={{ color: 'var(--text-secondary)' }}>توقع أثر قراراتك التجارية قبل تنفيذها باستخدام الذكاء الاصطناعي</p>
+                            </div>
+                            <div style={{ background: 'var(--bg-primary)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
+                                <label style={{ display: 'block', marginBottom: '10px', fontWeight: 'bold' }}>اطرح سيناريو أو فرضية لتوقع نتيجتها:</label>
+                                <textarea 
+                                    className="input" 
+                                    placeholder="مثال: ماذا لو قمت بعمل خصم 20% يوم الثلاثاء القادم، هل سيزيد المبيعات والربح؟"
+                                    style={{ width: '100%', minHeight: '120px', resize: 'vertical', marginBottom: '15px' }}
+                                />
+                                <button className="btn btn-primary" style={{ width: '100%', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', border: 'none', padding: '12px', fontSize: '1.1rem', fontWeight: 'bold', color: 'white', cursor: 'pointer', borderRadius: '8px' }} onClick={() => {
+                                    const btn = document.activeElement;
+                                    const originalText = btn.innerHTML;
+                                    btn.innerHTML = '<span class="spinner-small" style="display:inline-block; margin-left: 10px; border-color:white; border-top-color:transparent;"></span> جاري خلق 10,000 عميل افتراضي في الخلفية...';
+                                    setTimeout(() => {
+                                        alert('هذه واجهة تجريبية (Mockup)! سيتم ربطها بخادم محرك MiroFish الفعلي لتعرض لك التحليل هنا.');
+                                        btn.innerHTML = originalText;
+                                    }, 2000);
+                                }}>
+                                    تشغيل المحاكاة 🚀
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
                     {/* --- Products Tab --- */}
                     {/* --- Taxi Services Tab (Uber Style) --- */}
