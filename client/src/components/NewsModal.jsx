@@ -407,7 +407,7 @@ const NewsModal = ({ onClose, location }) => {
                                         <div key={`alert-${i}`} className="feed-card alert-card breaking-card alert-flash">
                                             <div className="card-header">
                                                 <span className="breaking-badge">صفارات إنذار 🚨</span>
-                                                <span className="feed-time">{new Date(alert.time).toLocaleTimeString()}</span>
+                                                <span className="feed-time">{new Intl.DateTimeFormat('ar-EG', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true }).format(new Date(alert.time))}</span>
                                             </div>
                                             <h4 className="feed-threat">{alert.threat}</h4>
                                             <p className="feed-locations">📍 الموقع: {alert.locations?.join('، ')}</p>
@@ -428,7 +428,7 @@ const NewsModal = ({ onClose, location }) => {
                                         <div key={`tg-${i}`} className="feed-card telegram-card">
                                             <div className="telegram-header">
                                                 <span className="telegram-source">{post.channel}</span>
-                                                <span className="feed-time">{new Date(post.date).toLocaleTimeString()}</span>
+                                                <span className="feed-time" style={{ fontSize: '0.85rem' }}>{new Intl.DateTimeFormat('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }).format(new Date(post.date))}</span>
                                             </div>
                                             <p>{post.text}</p>
                                         </div>
