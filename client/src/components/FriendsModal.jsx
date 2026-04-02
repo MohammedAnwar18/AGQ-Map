@@ -263,7 +263,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
             <div className="modal-container" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <h2>{isShopsMode ? 'المحلات' : 'الأصدقاء'}</h2>
+                        <h2>{isShopsMode ? 'المحلات والمؤسسات' : 'الأصدقاء'}</h2>
                         {isShopsMode && !isCreatingShop && !showCreateOptions && !isCreatingUniversity && currentUser?.role === 'admin' && (
                             <button
                                 className="btn-small btn-add-friend"
@@ -307,7 +307,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                             onClick={() => setActiveTab('shops')}
                             style={activeTab === 'shops' ? { color: '#fbab15', borderBottomColor: '#fbab15' } : {}}
                         >
-                            المحلات
+                            المحلات والمؤسسات
                         </button>
                     </div>
                 )}
@@ -389,9 +389,9 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                             key={shop.id}
                                             className="user-item"
                                             onClick={() => onShopClick && onShopClick(shop)}
-                                            style={{ cursor: 'pointer' }}
+                                            style={{ cursor: 'pointer', flexWrap: 'nowrap' }}
                                         >
-                                            <div className="chat-avatar" style={{ overflow: 'visible' }}>
+                                            <div className="chat-avatar" style={{ overflow: 'visible', flexShrink: 0 }}>
                                                 <div style={{
                                                     width: '50px',
                                                     height: '50px',
@@ -414,8 +414,8 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                     )}
                                                 </div>
                                             </div>
-                                            <div className="chat-info">
-                                                <div className="chat-name" style={{ fontSize: '1rem' }}>{shop.name}</div>
+                                            <div className="chat-info" style={{ flex: 1, minWidth: 0, padding: '0 10px' }}>
+                                                <div className="chat-name" style={{ fontSize: '1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{shop.name}</div>
                                                 <div className="chat-last-message" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                     <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fbab15', display: 'inline-block' }}></span>
                                                     {shop.category}
@@ -764,7 +764,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                             </svg>
                                             <input
                                                 type="text"
-                                                placeholder="ابحث عن محل (مطعم، مقهى...)"
+                                                placeholder="ابحث عن ( مطعم , مركز تسوق , مؤسسة ..... )"
                                                 value={shopSearchQuery}
                                                 onChange={(e) => setShopSearchQuery(e.target.value)}
                                                 style={{
@@ -865,9 +865,9 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                     key={shop.id}
                                                     className="user-item"
                                                     onClick={() => onShopClick && onShopClick(shop)}
-                                                    style={{ cursor: 'pointer' }}
+                                                    style={{ cursor: 'pointer', flexWrap: 'nowrap' }}
                                                 >
-                                                    <div className="chat-avatar" style={{ overflow: 'visible' }}>
+                                                    <div className="chat-avatar" style={{ overflow: 'visible', flexShrink: 0 }}>
                                                         <div style={{
                                                             width: '50px',
                                                             height: '50px',
@@ -890,8 +890,8 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                             )}
                                                         </div>
                                                     </div>
-                                                    <div className="chat-info">
-                                                        <div className="chat-name" style={{ fontSize: '1rem' }}>{shop.name}</div>
+                                                    <div className="chat-info" style={{ flex: 1, minWidth: 0, padding: '0 10px' }}>
+                                                        <div className="chat-name" style={{ fontSize: '1rem', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{shop.name}</div>
                                                         <div className="chat-last-message" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fbab15', display: 'inline-block' }}></span>
                                                             {shop.category}
