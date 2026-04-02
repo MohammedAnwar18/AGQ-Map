@@ -212,9 +212,10 @@ const NewsModal = ({ onClose, location }) => {
                                 </Marker>
                             ))}
 
-                            {/* Render Ships & Subs */}
+                            {/* Render Ships, Subs, Commercial */}
                             {ships.map((ship, idx) => {
-                                const color = getNavyColor(ship.navy) || '#888888';
+                                const isCommercial = ship.navy === 'Commercial';
+                                const color = isCommercial ? '#4fc3f7' : (getNavyColor(ship.navy) || '#888888');
                                 const isSub = ship.type.toLowerCase().includes('submarine');
                                 
                                 return (
@@ -230,7 +231,7 @@ const NewsModal = ({ onClose, location }) => {
                                         <div 
                                             className="naval-marker" 
                                             style={{ 
-                                                fontSize: isSub ? '18px' : '15px', 
+                                                fontSize: isCommercial ? '20px' : (isSub ? '18px' : '15px'), 
                                                 color: color, 
                                                 filter: `drop-shadow(0 0 3px ${color})`,
                                                 lineHeight: 1,
@@ -240,11 +241,11 @@ const NewsModal = ({ onClose, location }) => {
                                             }}
                                             title={ship.name}
                                         >
-                                            {isSub ? '▼' : (
+                                            {isCommercial ? '🚢' : (isSub ? '▼' : (
                                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                                                     <path d="M2.2 16c1 .4 2.5.4 3.5 0 1.2-.5 2.5-.5 3.6 0 1 .4 2.6.4 3.6 0 1.1-.5 2.3-.5 3.5 0 1 .4 2.5.4 3.5 0 1.2-.5 2.5-.5 3.6 0v2c-1.1.5-2.6.5-3.6 0-1-.4-2.5-.4-3.5 0-1.2.5-2.5.5-3.6 0-1-.4-2.6-.4-3.6 0-1.1.5-2.3.5-3.5 0-1-.4-2.5-.4-3.5 0-1.2.5-2.5.5-3.6 0v-2c1.1.5 2.5.5 3.6 0zM12 4L4 14h16L12 4z" />
                                                 </svg>
-                                            )}
+                                            ))}
                                         </div>
                                     </Marker>
                                 );
@@ -252,7 +253,8 @@ const NewsModal = ({ onClose, location }) => {
 
                             {/* Render Flights with Orientation */}
                             {flights.filter(f => f.lat && f.lon).map((flight, idx) => {
-                                const color = flight.type.includes('Fighter') ? '#ff3b30' : '#fbab15';
+                                const isCiv = flight.type === 'طائرة مدنية' || !flight.type.includes('Fighter');
+                                const color = isCiv ? '#ffffff' : (flight.type.includes('Fighter') ? '#ff3b30' : '#fbab15');
                                 
                                 return (
                                     <Marker 
@@ -308,9 +310,12 @@ const NewsModal = ({ onClose, location }) => {
                                         
                                         {selectedFeature.type === 'flight' && (
                                             <>
-                                                <h4 className="popup-title header-flight">✈️ طائرة عسكرية</h4>
+                                                <h4 className="popup-title header-flight" style={{color: selectedFeature.data.type === 'طائرة مدنية' || !selectedFeature.data.type.includes('Fighter') ? '#ffffff' : '#00d2ff'}}>
+                                                    {selectedFeature.data.type === 'طائرة مدنية' ? '✈️ طائرة مدنية' : '✈️ طائرة عسكرية'}
+                                                </h4>
                                                 <div className="popup-details">
-                                                    <p><span>رمز النداء:</span> <strong style={{color:'#00d2ff'}}>{selectedFeature.data.callsign}</strong></p>
+                                                    <p><span>رمز النداء:</span> <strong>{selectedFeature.data.callsign}</strong></p>
+                                                    <p><span>النوع:</span> {selectedFeature.data.type}</p>
                                                     <p><span>الارتفاع:</span> {selectedFeature.data.altitude} قدم</p>
                                                     <p><span>السرعة:</span> {selectedFeature.data.speed} عقدة</p>
                                                 </div>
@@ -318,11 +323,11 @@ const NewsModal = ({ onClose, location }) => {
                                         )}
                                         {selectedFeature.type === 'ship' && (
                                             <>
-                                                <h4 className="popup-title header-navy" style={{ color: getNavyColor(selectedFeature.data.navy), paddingRight: '20px' }}>
-                                                    {selectedFeature.data.type === 'Submarine' ? '▼' : '⛴'} {selectedFeature.data.name}
+                                                <h4 className="popup-title header-navy" style={{ color: selectedFeature.data.navy === 'Commercial' ? '#4fc3f7' : getNavyColor(selectedFeature.data.navy), paddingRight: '20px' }}>
+                                                    {selectedFeature.data.navy === 'Commercial' ? '🚢' : (selectedFeature.data.type === 'Submarine' ? '▼' : '⛴')} {selectedFeature.data.name}
                                                 </h4>
                                                 <div className="popup-details">
-                                                    <p><span>الجهة/البحرية:</span> <strong>{getTranslation(selectedFeature.data.navy)}</strong></p>
+                                                    <p><span>الجهة/التبعية:</span> <strong>{getTranslation(selectedFeature.data.navy)}</strong></p>
                                                     <p><span>النوع والتصنيف:</span> {getTranslation(selectedFeature.data.class)}</p>
                                                     <p><span>الحالة العملياتية:</span> {getTranslation(selectedFeature.data.status)}</p>
                                                 </div>

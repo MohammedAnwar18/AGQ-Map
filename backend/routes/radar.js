@@ -26,21 +26,33 @@ router.get('/alerts', async (req, res) => {
     }
 });
 
-// Proxy for Military Flights (ADSB.lol)
+// Proxy for Flights (ADSB.lol) - Military and Regional Civilian
 router.get('/flights', async (req, res) => {
     try {
-        const response = await fetch('https://api.adsb.lol/v2/mil', {
-            headers: { 'Accept': 'application/json' },
-            signal: AbortSignal.timeout(8000)
-        });
+        const [milRes, civRes] = await Promise.allSettled([
+            fetch('https://api.adsb.lol/v2/mil', { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(6000) }),
+            fetch('https://api.adsb.lol/v2/point/31.5/35.0/250', { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(6000) })
+        ]);
         
-        if (!response.ok) return res.json({ flights: [] });
-        const data = await response.json();
+        let allAircraft = [];
+        
+        if (milRes.status === 'fulfilled' && milRes.value.ok) {
+            const data = await milRes.value.json();
+            allAircraft = allAircraft.concat(data.ac || []);
+        }
+        
+        if (civRes.status === 'fulfilled' && civRes.value.ok) {
+            const data = await civRes.value.json();
+            allAircraft = allAircraft.concat(data.ac || []);
+        }
 
-        const flights = (data.ac || []).map(a => ({
+        // Deduplicate by ICAO
+        const uniqueAircraft = Array.from(new Map(allAircraft.map(a => [a.hex, a])).values());
+
+        const flights = uniqueAircraft.map(a => ({
             icao24: a.hex,
             callsign: (a.flight || '').trim() || 'مجهول',
-            type: a.t || 'طائرة عسكرية',
+            type: a.t || a.desc || 'طائرة مدنية',
             heading: a.track || 0,
             lat: a.lat,
             lon: a.lon,
@@ -55,18 +67,19 @@ router.get('/flights', async (req, res) => {
     }
 });
 
-// OSINT Naval Ships & Submarines
+// OSINT Naval Ships & Submarines & Civilian Vessels
 router.get('/ships', (req, res) => {
     const knownDeployments = [
         { name: 'USS Bataan', hull: 'LHD-5', type: 'Ship', class: 'Wasp-class', navy: 'US Navy', lat: 26.1, lon: 50.5, status: 'Deployed', region: 'Persian Gulf' },
-        { name: 'USS Mason', hull: 'DDG-87', type: 'Ship', class: 'Arleigh Burke', navy: 'US Navy', lat: 14.5, lon: 42.8, status: 'Active', region: 'Red Sea' },
         { name: 'USS Florida', hull: 'SSGN-728', type: 'Submarine', class: 'Ohio-class', navy: 'US Navy', lat: 26.5, lon: 56.2, status: 'Deployed', region: 'Strait of Hormuz' },
         { name: 'HMS Diamond', hull: 'D34', type: 'Ship', class: 'Type 45', navy: 'Royal Navy', lat: 14.2, lon: 42.5, status: 'Active', region: 'Red Sea' },
         { name: 'INS Magen', hull: 'Sa\'ar 6', type: 'Ship', class: 'Sa\'ar 6', navy: 'Israeli Navy', lat: 32.8, lon: 34.5, status: 'Patrol', region: 'Eastern Med' },
-        { name: 'INS Dolphin', hull: 'Submarine', type: 'Submarine', class: 'Dolphin', navy: 'Israeli Navy', lat: 31.5, lon: 33.8, status: 'Patrol', region: 'Eastern Med' },
-        { name: 'IRIS Makran', hull: 'Base', type: 'Ship', class: 'Makran', navy: 'Iran Navy', lat: 25.4, lon: 57.5, status: 'Active', region: 'Strait of Hormuz' },
         { name: 'IRIS Sahand', hull: 'F-74', type: 'Ship', class: 'Moudge', navy: 'Iran Navy', lat: 27.1, lon: 56.3, status: 'Active', region: 'Persian Gulf' },
-        { name: 'HMS Al Riyadh', hull: 'F-3000S', type: 'Ship', class: 'Al Riyadh', navy: 'Saudi Navy', lat: 20.5, lon: 39.8, status: 'Patrol', region: 'Red Sea' }
+        { name: 'HMS Al Riyadh', hull: 'F-3000S', type: 'Ship', class: 'Al Riyadh', navy: 'Saudi Navy', lat: 20.5, lon: 39.8, status: 'Patrol', region: 'Red Sea' },
+        // Civilian Commercial Vessels
+        { name: 'Ever Given', hull: 'IMO 9811000', type: 'Container Ship', class: 'Civ', navy: 'Commercial', lat: 30.5, lon: 32.3, status: 'Transit', region: 'Suez Canal' },
+        { name: 'Dubai Horizon', hull: 'IMO 9735231', type: 'Oil Tanker', class: 'Civ', navy: 'Commercial', lat: 26.2, lon: 54.5, status: 'Transit', region: 'Persian Gulf' },
+        { name: 'MSC Isabella', hull: 'IMO 9836822', type: 'Container Ship', class: 'Civ', navy: 'Commercial', lat: 31.8, lon: 34.0, status: 'Docked', region: 'Ashdod Port' }
     ];
     res.json({ ships: knownDeployments });
 });
@@ -121,10 +134,10 @@ router.get('/intel', async (req, res) => {
 router.get('/telegram', async (req, res) => {
     try {
         const tgramData = [
-            { channel: 'مراسل الضفة (عاجل)', text: "عاجل: جنين الآن قوات الاحتلال تقتحم مدينة طولكرم وسط اندلاع مواجهات مسلحة كثيفة قرب مخيم نور شمس.", date: new Date().toISOString() },
-            { channel: 'نابلس الحدث', text: "تحديث: قوات صهيونية خاصة تتسلل إلى البلدة القديمة بنابلس وتطوق أحد المنازل، ودعوات للنفير العام وكسر الحصار.", date: new Date(Date.now() - 150000).toISOString() },
-            { channel: 'ميدان الخليل', text: "متابعة: إغلاق مفاجئ للمداخل الشمالية لمدينة الخليل ونصب حواجز تفتيش وتدقيق عسكري في بطاقات هويات المواطنين.", date: new Date(Date.now() - 400000).toISOString() },
-            { channel: 'جنين لحظة بلحظة', text: "تحليق مكثف لطائرات الاستطلاع (الزنانة) على علو منخفض جداً في سماء محافظة جنين كتمهيد لعملية عسكرية مرتقبة.", date: new Date(Date.now() - 700000).toISOString() }
+            { channel: 'الأرصاد الجوية وفلسطين', text: "منخفض جوي عميق يضرب منطقة بلاد الشام وفلسطين مع تحذيرات من تشكل السيول في الأغوار والمناطق المنخفضة.", date: new Date().toISOString() },
+            { channel: 'مراسل الضفة (عاجل)', text: "تحديث أمني: قوات الاحتلال تقتحم مدينة طولكرم وسط اندلاع مواجهات واشتباكات.", date: new Date(Date.now() - 150000).toISOString() },
+            { channel: 'تلفزيون فلسطين الإخباري', text: "افتتاح مستشفى جراحي جديد في رام الله بتمويل من صندوق الاستثمار الفلسطيني لتحسين القطاع الصحي والخدمات في المحافظة.", date: new Date(Date.now() - 400000).toISOString() },
+            { channel: 'الدفاع المدني الفلسطيني', text: "أطقم الإطفاء تنجح في إخماد حريق كبير اندلع في أحراش جبلية قرب مدينة نابلس دون وقوع إصابات بشرية ولا خسائر.", date: new Date(Date.now() - 700000).toISOString() }
         ];
         res.json({ posts: tgramData });
     } catch (e) {
