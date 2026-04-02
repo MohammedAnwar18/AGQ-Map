@@ -1051,40 +1051,68 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                             setTimeout(() => {
                                                 setIsSimulating(false);
                                                 
-                                                // Dynamic News Logic Mix-in
-                                                const newsContexts = [
-                                                    "نظراً للتوترات الأمنية الأخيرة بالمنطقة، يلاحظ قلق بعض العملاء من الخروج لساعات متأخرة، لذا العرض النهاري أفضل.",
-                                                    "الأوضاع الاقتصادية الحالية تجعل المستهلك يفضل العروض والتخفيضات المباشرة على السلع بدلاً من الكماليات.",
-                                                    "بناءً على أحداث الخريطة: حركة نشطة في الشارع المحيط بالمحل، الخصم سيكون مغرياً جداً اليوم لجذب المارة.",
-                                                    "تأثيرات الطقس وتوقعات الأزمات قد تقلل من قدوم سكان المناطق البعيدة، التركيز سيكون على جيران المنطقة."
-                                                ];
-                                                const randomNews = newsContexts[Math.floor(Math.random() * newsContexts.length)];
+                                                // Dynamic News and Local Contexts Integration
+                                                const hasIncursion = Math.random() > 0.6; // 40% chance of military presence simulation
+                                                let currentNews = "";
+                                                let currentAdvice = "";
                                                 
-                                                const jobs = ["طالب جامعي 🎓", "موظف حكومي 💼", "صانع محتوى 📱", "ربة منزل 👩‍🍳", "مدير مبيعات 📊", "مهندس 🏗️", "صاحب عمل حر 💻", "طبيب 🩺"];
-                                                const budgets = ["متوسطة 💵", "محدودة جداً 🪙", "مرتفعة 💰", "حذرة 💳"];
-                                                const thoughts = [
-                                                    "العرض ممتاز لكن أفضل حفظ أموالي للطوارئ في ظل الأخبار الحالية.",
-                                                    "كنت أبحث عن سبب للخروج لكسر الروتين، هذا العرض جاء في وقته تماماً!",
-                                                    "لن أذهب، الأوضاع في الشوارع المجاورة غير مستقرة كما يظهر في رادار الأخبار.",
-                                                    "صنف مخفض؟ سأشتري هذا الصنف فقط وأمضي بسرعة.",
-                                                    "الجو العام كئيب، سأستغل العرض للترويح عن عائلتي الليلة.",
-                                                    "هذا الخصم لا يناسب ميزانيتي حالياً، سأنتظر عروضاً أقوى.",
-                                                    "المواصلات صعبة اليوم، أرجو أن يقدموا خدمة توصيل مجانية بدلاً من الخصم."
-                                                ];
-                                                const personas = [
-                                                    "شخص اجتماعي ومبذر نسبياً", "إنسان حذر اقتصادياً ويراقب الأخبار باستمرار", "يبحث عن الهدوء والابتعاد عن التجمعات", "يتأثر بالأحداث الأمنية وتغلب عليه العاطفة", "رب أسرة عملي يهمه التوفير", "شاب يحب تجربة كل جديد ويتجاهل السلبيات"
-                                                ];
+                                                if (hasIncursion) {
+                                                    currentNews = "يوجد نشاط مكثف لجيش الاحتلال في المنطقة وتسكير لبعض الطرقات، مما يضعف الحركة.";
+                                                    currentAdvice = "الوضع الأمني متوتر، إطلاق العرض الآن سيؤدي لخسارة لأن الشوارع فارغة والناس تلزم بيوتها لتجنب الخطر، ننصح بتأجيله حتى هدوء الأوضاع.";
+                                                } else {
+                                                    const normalNews = [
+                                                        "حالة استقرار نسبي في المنطقة، حركة السير طبيعية والناس يخرجون بحرية.",
+                                                        "الأوضاع الاقتصادية الحالية تجعل المستهلك يبحث عن التخفيضات المباشرة لتقليل المصاريف.",
+                                                        "الطقس مستقر والحركة في السوق المحيطة نشطة، وقت ممتاز للترويج."
+                                                    ];
+                                                    currentNews = normalNews[Math.floor(Math.random() * normalNews.length)];
+                                                    currentAdvice = "الأوضاع تسمح بالترويج، ننصح بتطبيق العرض لجذب الزوار وتنشيط المبيعات اليوم.";
+                                                }
+                                                
+                                                // Grabbing real products from shopData to make AI aware of business type
+                                                const shopProducts = (shopData?.data?.products || shopData?.products) || [];
+                                                const getRandomProduct = () => shopProducts.length > 0 
+                                                    ? shopProducts[Math.floor(Math.random() * shopProducts.length)].name 
+                                                    : 'أحد منتجاتكم';
 
-                                                const generateAgent = () => ({
-                                                    id: "#" + (Math.floor(Math.random() * 9000) + 1000),
-                                                    message: thoughts[Math.floor(Math.random() * thoughts.length)],
-                                                    details: {
-                                                        age: Math.floor(Math.random() * 40) + 18,
-                                                        job: jobs[Math.floor(Math.random() * jobs.length)],
-                                                        budget: budgets[Math.floor(Math.random() * budgets.length)],
-                                                        persona: personas[Math.floor(Math.random() * personas.length)]
+                                                const jobs = ["طالب جامعي", "موظف حكومي", "صانع محتوى", "ربة منزل", "مدير مبيعات", "مهندس", "صاحب عمل حر", "طبيب"];
+                                                const budgets = ["متوسطة", "محدودة جداً", "مرتفعة", "حذرة"];
+                                                
+                                                const generateAgent = () => {
+                                                    const prod = getRandomProduct();
+                                                    
+                                                    let agentThoughts = [];
+                                                    if (hasIncursion) {
+                                                        agentThoughts = [
+                                                            `حياتي أهم من التخفيضات، لن أغادر المنزل بسبب تواجد الجيش.`,
+                                                            `كنت أرغب حقاً بتجربة ${prod} لكن الوضع خطير بالخارج.`,
+                                                            `الأوضاع في الشوارع المجاورة غير مستقرة، سألغي فكرة الخروج نهائياً.`
+                                                        ];
+                                                    } else {
+                                                        agentThoughts = [
+                                                            `العرض ممتاز، قمت بتوفير ميزانيتي خصيصاً لتجربة ${prod}.`,
+                                                            `كنت أبحث عن سبب للخروج، هذا العرض على ${prod} جاء في وقته!`,
+                                                            `سمعت الكثير عن ${prod} الخاصة بكم، العرض شجعني على القدوم.`,
+                                                            `صنف مخفض؟ سأشتري ${prod} فقط وأمضي بسرعة لتوفير المال.`,
+                                                            `لا يناسب ميزانيتي حالياً، سأنتظر عروضاً أقوى.`
+                                                        ];
                                                     }
-                                                });
+
+                                                    const personas = [
+                                                        "اجتماعي ومبذر نسبياً", "حذر اقتصادياً ويراقب الأخبار", "يبحث عن الملاذ الهادئ", "يتأثر بالأحداث الأمنية ويفضل البقاء بالمنزل", "عملي يهمه التوفير", "يحب تجربة الأشياء الجديدة"
+                                                    ];
+
+                                                    return {
+                                                        id: "#" + (Math.floor(Math.random() * 9000) + 1000),
+                                                        message: agentThoughts[Math.floor(Math.random() * agentThoughts.length)],
+                                                        details: {
+                                                            age: Math.floor(Math.random() * 40) + 18,
+                                                            job: jobs[Math.floor(Math.random() * jobs.length)],
+                                                            budget: budgets[Math.floor(Math.random() * budgets.length)],
+                                                            persona: personas[Math.floor(Math.random() * personas.length)]
+                                                        }
+                                                    };
+                                                };
                                                 
                                                 let baseFollowers = parseInt(shopData?.followers_count, 10);
                                                 if (isNaN(baseFollowers) || baseFollowers < 1) baseFollowers = 10;
@@ -1096,10 +1124,10 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                 }
 
                                                 setSimResult({
-                                                    confidence: Math.floor(Math.random() * 15) + 80, // 80 to 94%
-                                                    customersExpected: '+' + (Math.floor(Math.random() * 30) + 12) + '%',
-                                                    revenueExpected: (Math.random() > 0.4 ? '+' : '-') + (Math.floor(Math.random() * 18)) + '%',
-                                                    advice: `ننصح بالتركيز على الترويج المحدود. (تحديث الرادار الإخباري: ${randomNews})`,
+                                                    confidence: hasIncursion ? Math.floor(Math.random() * 5) + 90 : Math.floor(Math.random() * 15) + 80,
+                                                    customersExpected: hasIncursion ? '-' + (Math.floor(Math.random() * 40) + 30) + '%' : '+' + (Math.floor(Math.random() * 30) + 12) + '%',
+                                                    revenueExpected: hasIncursion ? '-' + (Math.floor(Math.random() * 50) + 20) + '%' : (Math.random() > 0.4 ? '+' : '-') + (Math.floor(Math.random() * 18)) + '%',
+                                                    advice: currentAdvice + ` (السياق الإخباري: ${currentNews})`,
                                                     agentLogs: dynamicLogs
                                                 });
                                             }, 2500);
@@ -1109,12 +1137,12 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                 <span className="spinner-small" style={{ borderColor: 'white', borderTopColor: 'transparent', width: '16px', height: '16px' }}></span>
                                                 <span suppressHydrationWarning>جاري محاكاة الخوارزمية لعملاء المنطقة...</span>
                                             </div>
-                                        ) : 'تشغيل المحاكاة 🚀'}
+                                        ) : 'تشغيل المحاكاة'}
                                     </button>
                                 </div>
                             ) : (
                                 <div style={{ background: 'var(--bg-primary)', padding: '25px', borderRadius: '12px', border: '1px solid var(--primary)', boxShadow: '0 8px 25px rgba(251, 171, 21, 0.15)', animation: 'fadeIn 0.4s ease-out' }}>
-                                    <h3 style={{ margin: '0 0 20px', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>📊 نتيجة المحاكاة التقريبية</h3>
+                                    <h3 style={{ margin: '0 0 20px', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>نتيجة المحاكاة التقريبية</h3>
 
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
                                         <div style={{ background: '#dcfce7', padding: '15px', borderRadius: '8px', textAlign: 'center' }}>
@@ -1128,12 +1156,12 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                     </div>
 
                                     <div style={{ background: 'var(--bg-secondary)', padding: '15px', borderRadius: '8px', marginBottom: '20px', borderRight: '4px solid #3b82f6' }}>
-                                        <h4 style={{ margin: '0 0 8px', color: '#3b82f6' }}>💡 ذكاء MiroFish (دقة {simResult.confidence}%):</h4>
+                                        <h4 style={{ margin: '0 0 8px', color: '#3b82f6' }}>ذكاء MiroFish (دقة {simResult.confidence}%):</h4>
                                         <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.6' }}>{simResult.advice}</p>
                                     </div>
 
                                     <div style={{ marginBottom: '20px' }}>
-                                        <h4 style={{ margin: '0 0 10px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>🧠 تفاصيل عقول العملاء المبرمجين ({simResult.agentLogs.length} عميل - اضغط للدردشة):</h4>
+                                        <h4 style={{ margin: '0 0 10px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>تفاصيل عقول العملاء المبرمجين ({simResult.agentLogs.length} عميل):</h4>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px', overflowY: 'auto', paddingRight: '5px' }}>
                                             {simResult.agentLogs.map((log, idx) => (
                                                 <div key={idx} style={{ flexShrink: 0, background: 'var(--bg-tertiary)', borderRadius: '8px', overflow: 'hidden', border: expandedAgentIndex === idx ? '1px solid var(--primary)' : '1px solid transparent', transition: 'all 0.2s' }}>
@@ -1155,6 +1183,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                             <div style={{ marginTop: '10px', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
                                                                 {!agentChatStates[idx] ? (
                                                                     <button 
+                                                                        className="btn btn-secondary"
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
                                                                             setAgentChatStates(prev => ({...prev, [idx]: 'loading'}));
@@ -1162,20 +1191,20 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                                                 setAgentChatStates(prev => ({...prev, [idx]: 'replied'}));
                                                                             }, 2000);
                                                                         }}
-                                                                        style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                                                                        style={{ padding: '6px 12px', fontSize: '0.85rem' }}
                                                                     >
-                                                                        💬 الدخول في محادثة مباشرة مع العميل لمعرفة السبب
+                                                                        معرفة السبب المتوقع
                                                                     </button>
                                                                 ) : agentChatStates[idx] === 'loading' ? (
                                                                     <div style={{ padding: '10px', background: 'var(--bg-secondary)', borderRadius: '6px', fontStyle: 'italic', color: 'var(--text-muted)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                                        جاري استجواب العميل عبر خوارزمية السرب... <span className="spinner-small" style={{ borderColor: 'transparent', borderTopColor: '#3b82f6' }}></span>
+                                                                        جاري استجواب العميل عبر خوارزمية السرب... <span className="spinner-small" style={{ borderColor: 'transparent', borderTopColor: 'var(--primary)' }}></span>
                                                                     </div>
                                                                 ) : (
-                                                                    <div style={{ padding: '12px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px', borderLeft: '4px solid #3b82f6', color: '#1e3a8a', fontSize: '0.9rem', animation: 'fadeIn 0.3s' }}>
-                                                                        <strong style={{ display: 'block', marginBottom: '6px', color: '#3b82f6' }}>رد العميل {log.id}:</strong>
-                                                                        "{log.message.includes('العرض ممتاز') || log.message.includes('هذا العرض جاء') || log.message.includes('سأستغل') 
-                                                                            ? 'لأكون صريحاً، أنا أنتبه لميزانيتي باستمرار وعرضك كان ذكياً! وفر علي نقوداً كنت سأصرفها في مكان آخر، لذلك قررت القدوم.' 
-                                                                            : 'بصراحة، العرض جميل ولكن الأوضاع الحالية أو قدرتي الشرائية لا تسمح لي. كما أنني شعرت أن نص الإعلان ركز على السعر وتجاهل الجودة. ربما لو ركزت على القيمة سأقتنع أكثر.'}"
+                                                                    <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', borderLeft: '4px solid var(--primary)', color: 'var(--text-primary)', fontSize: '0.9rem', animation: 'fadeIn 0.3s' }}>
+                                                                        <strong style={{ display: 'block', marginBottom: '6px', color: 'var(--primary)' }}>رد العميل {log.id}:</strong>
+                                                                        "{log.message.includes('العرض ممتاز') || log.message.includes('جاء في وقته') || log.message.includes('شجعني') 
+                                                                            ? 'لأكون صريحاً، أنا أنتبه لميزانيتي باستمرار وعرضك على هذا المنتج تحديداً كان ذكياً! وفر علي نقوداً كنت سأصرفها في مكان آخر.' 
+                                                                            : 'الوضع بصراحة لا يشجع على الذهاب بأي شكل من الأشكال. ربما في ظروف أخرى أو لو وفرتم خدمة توصيل آمنة سأفكر في الأمر.'}"
                                                                     </div>
                                                                 )}
                                                             </div>
@@ -1187,12 +1216,11 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                     </div>
 
                                     <button
+                                        className="btn btn-secondary"
+                                        style={{ width: '100%', marginTop: '10px' }}
                                         onClick={() => { setSimResult(null); setSimPrompt(''); }}
-                                        style={{ width: '100%', background: 'transparent', border: '1px solid var(--text-muted)', padding: '10px', borderRadius: '8px', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.2s', outline: 'none' }}
-                                        onMouseOver={(e) => { e.currentTarget.style.background = 'var(--bg-tertiary)'; e.currentTarget.style.borderColor = 'var(--primary)'; }}
-                                        onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'var(--text-muted)'; }}
                                     >
-                                        إجراء محاكاة جديدة 🔄
+                                        إجراء محاكاة جديدة
                                     </button>
                                 </div>
                             )}
