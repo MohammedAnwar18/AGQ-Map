@@ -66,7 +66,7 @@ const NewsModal = ({ onClose, location }) => {
     const [alerts, setAlerts] = useState([]);
     const [flights, setFlights] = useState([]);
     const [ships, setShips] = useState([]);
-    const [intel, setIntel] = useState({ conflicts: [], strikes: [] });
+    const [intel, setIntel] = useState({ conflicts: [], strikes: [], incidents: [] });
     const [markets, setMarkets] = useState(null);
     const [telegram, setTelegram] = useState([]);
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -99,8 +99,12 @@ const NewsModal = ({ onClose, location }) => {
                 setShips(data.ships || []);
             }
             if (intelRes.status === 'fulfilled' && intelRes.value.ok) {
-                const data = await intelRes.value.json();
-                setIntel(data || { conflicts: [], strikes: [] });
+                const intelData = await intelRes.value.json();
+                setIntel({
+                    conflicts: intelData.conflicts || [],
+                    strikes: intelData.strikes || [],
+                    incidents: intelData.incidents || []
+                });
             }
             if (marketsRes.status === 'fulfilled' && marketsRes.value.ok) {
                 const data = await marketsRes.value.json();
@@ -192,6 +196,21 @@ const NewsModal = ({ onClose, location }) => {
                                     </Marker>
                                 );
                             })}
+
+                            {/* Render Incidents */}
+                            {intel.incidents?.map((inc, idx) => (
+                                <Marker 
+                                    key={`inc-${idx}`} 
+                                    longitude={inc.lon} 
+                                    latitude={inc.lat}
+                                    onClick={(e) => {
+                                        e.originalEvent.stopPropagation();
+                                        setSelectedFeature({ type: 'incident', data: inc });
+                                    }}
+                                >
+                                    <div className="incident-pin-marker" title={inc.text}>📍</div>
+                                </Marker>
+                            ))}
 
                             {/* Render Ships & Subs */}
                             {ships.map((ship, idx) => {
@@ -309,6 +328,17 @@ const NewsModal = ({ onClose, location }) => {
                                                 </div>
                                             </>
                                         )}
+                                        {selectedFeature.type === 'incident' && (
+                                            <>
+                                                <h4 className="popup-title header-incident" style={{ color: '#ff3b30', paddingRight: '20px' }}>
+                                                    📍 {selectedFeature.data.type}
+                                                </h4>
+                                                <div className="popup-details">
+                                                    <p><span>الموقع:</span> <strong>{selectedFeature.data.city}</strong></p>
+                                                    <p><span>الحدث العاجل:</span> {selectedFeature.data.text}</p>
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                 </Popup>
                             )}
@@ -327,12 +357,6 @@ const NewsModal = ({ onClose, location }) => {
                         <button className="close-layer-btn" onClick={() => setShowNewsPanel(false)}>
                             ← الغاء وعودة للخريطة
                         </button>
-
-                        {isAdmin && (
-                            <div className="admin-actions">
-                                <button className="action-toggle-btn">إضافة تقرير استخباراتي ➕</button>
-                            </div>
-                        )}
 
                         <div className="live-feed-panel">
                             <button 

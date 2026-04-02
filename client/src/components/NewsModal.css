@@ -353,7 +353,7 @@
 /* Toggle News Button on Map */
 .toggle-news-btn {
     position: absolute;
-    bottom: 30px;
+    bottom: 80px;
     left: 50%;
     transform: translateX(-50%);
     background: #ff3b30;
@@ -404,6 +404,19 @@
 }
 .news-map-container {
     height: 100%;
+}
+
+.incident-pin-marker {
+    font-size: 30px;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.8));
+    animation: marker-bounce 2s infinite ease-in-out;
+    cursor: pointer;
+    line-height: 1;
+}
+
+@keyframes marker-bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px) scale(1.1); }
 }
 
 .news-sidebar {
