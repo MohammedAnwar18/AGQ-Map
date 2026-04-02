@@ -172,7 +172,7 @@ const NewsModal = ({ onClose, location }) => {
                 <div className="news-header">
                     <h2>خريطة الاخبار المباشرة</h2>
                     <button onClick={() => window.location.href = '/'} className="close-btn" title="العودة للصفحة الرئيسية">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                             <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                     </button>
