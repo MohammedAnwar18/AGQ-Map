@@ -182,6 +182,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     const [isSimulating, setIsSimulating] = useState(false);
     const [simPrompt, setSimPrompt] = useState('');
     const [expandedAgentIndex, setExpandedAgentIndex] = useState(null);
+    const [agentChatStates, setAgentChatStates] = useState({});
 
     // PERMISSIONS:
     // 1. System Admin: Can assign owners, remove owners, and edit everything.
@@ -1085,9 +1086,10 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                     }
                                                 });
                                                 
-                                                const logsCount = Math.floor(Math.random() * 3) + 3; // 3 to 5 agents displayed
+                                                const realisticAgentsCount = Math.min(300, Math.max(50, (parseInt(shopData?.followers_count) || 10) * 5 + Math.floor(Math.random() * 20)));
+                                                
                                                 const dynamicLogs = [];
-                                                for(let i = 0; i < logsCount; i++) {
+                                                for(let i = 0; i < realisticAgentsCount; i++) {
                                                     dynamicLogs.push(generateAgent());
                                                 }
 
@@ -1129,8 +1131,8 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                     </div>
 
                                     <div style={{ marginBottom: '20px' }}>
-                                        <h4 style={{ margin: '0 0 10px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>🧠 مقتطفات من عقول العملاء المبرمجين (اضغط للتفاصيل):</h4>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <h4 style={{ margin: '0 0 10px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>🧠 تفاصيل عقول العملاء المبرمجين ({simResult.agentLogs.length} عميل - اضغط للدردشة):</h4>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px', overflowY: 'auto', paddingRight: '5px' }}>
                                             {simResult.agentLogs.map((log, idx) => (
                                                 <div key={idx} style={{ background: 'var(--bg-tertiary)', borderRadius: '8px', overflow: 'hidden', border: expandedAgentIndex === idx ? '1px solid var(--primary)' : '1px solid transparent', transition: 'all 0.2s' }}>
                                                     <div
@@ -1147,6 +1149,33 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                                 <div><span style={{ opacity: 0.7 }}>الوظيفة:</span> {log.details.job}</div>
                                                                 <div><span style={{ opacity: 0.7 }}>الميزانية:</span> {log.details.budget}</div>
                                                                 <div><span style={{ opacity: 0.7 }}>الشخصية:</span> {log.details.persona}</div>
+                                                            </div>
+                                                            <div style={{ marginTop: '10px', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
+                                                                {!agentChatStates[idx] ? (
+                                                                    <button 
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setAgentChatStates(prev => ({...prev, [idx]: 'loading'}));
+                                                                            setTimeout(() => {
+                                                                                setAgentChatStates(prev => ({...prev, [idx]: 'replied'}));
+                                                                            }, 2000);
+                                                                        }}
+                                                                        style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                                                                    >
+                                                                        💬 الدخول في محادثة مباشرة مع العميل لمعرفة السبب
+                                                                    </button>
+                                                                ) : agentChatStates[idx] === 'loading' ? (
+                                                                    <div style={{ padding: '10px', background: 'var(--bg-secondary)', borderRadius: '6px', fontStyle: 'italic', color: 'var(--text-muted)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                                        جاري استجواب العميل عبر خوارزمية السرب... <span className="spinner-small" style={{ borderColor: 'transparent', borderTopColor: '#3b82f6' }}></span>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div style={{ padding: '12px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px', borderLeft: '4px solid #3b82f6', color: '#1e3a8a', fontSize: '0.9rem', animation: 'fadeIn 0.3s' }}>
+                                                                        <strong style={{ display: 'block', marginBottom: '6px', color: '#3b82f6' }}>رد العميل {log.id}:</strong>
+                                                                        "{log.message.includes('العرض ممتاز') || log.message.includes('هذا العرض جاء') || log.message.includes('سأستغل') 
+                                                                            ? 'لأكون صريحاً، أنا أنتبه لميزانيتي باستمرار وعرضك كان ذكياً! وفر علي نقوداً كنت سأصرفها في مكان آخر، لذلك قررت القدوم.' 
+                                                                            : 'بصراحة، العرض جميل ولكن الأوضاع الحالية أو قدرتي الشرائية لا تسمح لي. كما أنني شعرت أن نص الإعلان ركز على السعر وتجاهل الجودة. ربما لو ركزت على القيمة سأقتنع أكثر.'}"
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     )}
