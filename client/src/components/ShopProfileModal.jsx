@@ -181,6 +181,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     const [simResult, setSimResult] = useState(null);
     const [isSimulating, setIsSimulating] = useState(false);
     const [simPrompt, setSimPrompt] = useState('');
+    const [expandedAgentIndex, setExpandedAgentIndex] = useState(null);
 
     // PERMISSIONS:
     // 1. System Admin: Can assign owners, remove owners, and edit everything.
@@ -1054,9 +1055,21 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                     revenueExpected: '-5%',
                                                     advice: 'ننصح بتطبيق الخصم على صنف واحد (مثل المشروبات) لزيادة عدد الزوار دون ضرب هامش الربح الكلي للمحل.',
                                                     agentLogs: [
-                                                        "العميل الوهمي #405: سأزور المكان بسبب توفر الخصم وأُحضر عائلتي.",
-                                                        "العميل الوهمي #8892: سأشتري فقط الصنف المخفض وأغادر.",
-                                                        "العميل الوهمي #112: الخصم يجذبني وسأقوم بترشيحه لأصدقائي على PalNovaa."
+                                                        { 
+                                                            id: "#405", 
+                                                            message: "سأزور المكان بسبب توفر الخصم وأُحضر عائلتي.", 
+                                                            details: { age: 34, job: "موظف حكومي", budget: "متوسطة", persona: "رب أسرة يحب توفير المال في الخروجات العائلية" } 
+                                                        },
+                                                        { 
+                                                            id: "#8892", 
+                                                            message: "سأشتري فقط الصنف المخفض وأغادر.", 
+                                                            details: { age: 21, job: "طالب جامعي", budget: "محدودة", persona: "يبحث دائماً عن العروض السريعة بين المحاضرات" } 
+                                                        },
+                                                        { 
+                                                            id: "#112", 
+                                                            message: "الخصم يجذبني وسأقوم بترشيحه لأصدقائي على PalNovaa.", 
+                                                            details: { age: 25, job: "صانع محتوى", budget: "مرتفعة", persona: "يحب استكشاف المقاهي ونشر الصور" } 
+                                                        }
                                                     ]
                                                 });
                                             }, 2500);
@@ -1090,10 +1103,28 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                     </div>
 
                                     <div style={{ marginBottom: '20px' }}>
-                                        <h4 style={{ margin: '0 0 10px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>🧠 مقتطفات من عقول العملاء المبرمجين (Agents):</h4>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        <h4 style={{ margin: '0 0 10px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>🧠 مقتطفات من عقول العملاء المبرمجين (اضغط للتفاصيل):</h4>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                             {simResult.agentLogs.map((log, idx) => (
-                                                <div key={idx} style={{ background: 'var(--bg-tertiary)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.85rem', color: 'var(--text-primary)' }}>💬 {log}</div>
+                                                <div key={idx} style={{ background: 'var(--bg-tertiary)', borderRadius: '8px', overflow: 'hidden', border: expandedAgentIndex === idx ? '1px solid var(--primary)' : '1px solid transparent', transition: 'all 0.2s' }}>
+                                                    <div 
+                                                        style={{ padding: '10px 12px', fontSize: '0.9rem', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                                                        onClick={() => setExpandedAgentIndex(expandedAgentIndex === idx ? null : idx)}
+                                                    >
+                                                        <span><span style={{ fontWeight: 'bold', color: '#fbab15' }}>العميل {log.id}:</span> {log.message}</span>
+                                                        <span style={{ opacity: 0.5 }}>{expandedAgentIndex === idx ? '▲' : '▼'}</span>
+                                                    </div>
+                                                    {expandedAgentIndex === idx && (
+                                                        <div style={{ background: 'var(--bg-primary)', padding: '12px', borderTop: '1px solid var(--border-color)', fontSize: '0.85rem' }}>
+                                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '8px' }}>
+                                                                <div><span style={{ opacity: 0.7 }}>العمر:</span> {log.details.age} سنة</div>
+                                                                <div><span style={{ opacity: 0.7 }}>الوظيفة:</span> {log.details.job}</div>
+                                                                <div><span style={{ opacity: 0.7 }}>الميزانية:</span> {log.details.budget}</div>
+                                                                <div><span style={{ opacity: 0.7 }}>الشخصية:</span> {log.details.persona}</div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             ))}
                                         </div>
                                     </div>
