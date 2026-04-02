@@ -96,36 +96,59 @@
     background: #000;
 }
 
-.military-flight-icon, .combat-vessel-icon {
+.mil-aircraft-marker, .naval-marker {
     cursor: pointer;
-    filter: drop-shadow(0px 0px 6px rgba(0,0,0,0.9));
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.3s ease;
+    font-family: Arial, sans-serif;
 }
-.military-flight-icon:hover { transform: scale(1.3) !important; }
-.combat-vessel-icon:hover { transform: scale(1.3); }
 
-/* Radar pulsing effect for ships */
-.radar-ping {
-    position: relative;
+/* Alert flash animation */
+@keyframes alert-flash {
+  0%, 100% { background-color: rgba(127, 29, 29, 0.3); box-shadow: inset 0 0 10px rgba(127, 29, 29, 0.5); }
+  50% { background-color: rgba(127, 29, 29, 0.6); box-shadow: inset 0 0 20px rgba(255, 59, 48, 0.8); }
 }
-.radar-ping::after {
-    content: '';
-    position: absolute;
-    width: 30px;
-    height: 30px;
-    background-color: inherit;
-    border-radius: 50%;
-    opacity: 0.6;
-    z-index: -1;
-    animation: radarPulse 2s infinite ease-out;
+
+.alert-flash {
+  animation: alert-flash 1.5s ease-in-out infinite;
 }
-@keyframes radarPulse {
-    0% { transform: scale(0.5); opacity: 0.8; }
-    100% { transform: scale(2.5); opacity: 0; }
+
+/* Map highlight pulse */
+@keyframes highlight-pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.5; }
+  100% { transform: scale(1); opacity: 1; }
 }
+
+.highlight-pulse {
+  animation: highlight-pulse 1.5s ease-in-out infinite;
+  display: inline-block;
+}
+
+/* Radar sweep animation */
+@keyframes radar-sweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.radar-sweep {
+  animation: radar-sweep 4s linear infinite;
+  display: inline-block;
+}
+
+/* Pulse Dot */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; box-shadow: 0 0 5px var(--green, #00ff88); }
+  50% { opacity: 0.3; box-shadow: 0 0 0px transparent; }
+}
+
+.sidebar-title-container .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green, #00ff88);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* Radar pulsing effect for ships isn't required anymore as radar-sweep replaced it */
 
 /* Polished Popups */
 .feature-popup {
@@ -179,13 +202,7 @@
     gap: 8px;
     margin-bottom: 15px;
 }
-.pulse-indicator {
-    width: 10px;
-    height: 10px;
-    background: #ff3b30;
-    border-radius: 50%;
-    animation: radarPulse 1.5s infinite;
-}
+
 
 .breaking-card {
     background: linear-gradient(145deg, rgba(255,59,48,0.15) 0%, rgba(30,30,30,1) 100%);
@@ -227,23 +244,21 @@
     cursor: pointer;
 }
 
-.conflict-zone {
-    width: 20px;
-    height: 20px;
-    background-color: rgba(255, 59, 48, 0.4);
-    border: 2px solid #ff3b30;
-    border-radius: 50%;
+.city-flash-marker {
+    animation: alert-flash 1.5s ease-in-out infinite;
 }
 
-.conflict-label {
-    background: rgba(0, 0, 0, 0.8);
+.city-label {
+    background: rgba(0, 0, 0, 0.85);
     color: white;
-    font-size: 10px;
-    padding: 2px 5px;
+    font-size: 11px;
+    padding: 3px 6px;
     border-radius: 4px;
-    margin-top: -30px;
+    margin-top: 5px;
+    margin-left: 10px;
     white-space: nowrap;
     border: 1px solid #ff3b30;
+    box-shadow: 0 0 5px rgba(255, 59, 48, 0.4);
 }
 
 .market-card {
@@ -346,31 +361,52 @@
     
     .news-map-container {
         flex: 1;
-        min-height: 45vh; /* Map stays on top half */
+        min-height: 40vh; /* Map view base */
     }
 
     .news-sidebar {
         width: 100%;
-        height: 55vh; /* Sidebar takes bottom half */
+        height: 60vh; /* Standard Drawer height */
         border-right: none;
         border-top: 1px solid #333;
-        border-radius: 20px 20px 0 0;
-        box-shadow: 0 -5px 25px rgba(0,0,0,0.6);
-        position: relative;
-        padding-top: 25px;
+        border-radius: 24px 24px 0 0;
+        box-shadow: 0 -5px 25px rgba(0,0,0,0.8);
+        position: absolute;
+        bottom: 0;
+        transition: height 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        padding-top: 30px;
+        z-index: 20;
+    }
+
+    /* Full Expanded Drawer */
+    .news-sidebar.expanded {
+        height: 90vh !important;
+        border-radius: 12px 12px 0 0;
     }
 
     /* Grabber handle effect */
-    .news-sidebar::before {
-        content: '';
+    .drawer-handle {
         position: absolute;
-        top: 10px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 40px;
-        height: 5px;
-        background: #444;
-        border-radius: 5px;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 30px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: grab;
+    }
+
+    .drawer-handle::after {
+        content: '';
+        width: 50px;
+        height: 6px;
+        background: #555;
+        border-radius: 6px;
+    }
+
+    .drawer-handle:active {
+        cursor: grabbing;
     }
 
     .news-panel {

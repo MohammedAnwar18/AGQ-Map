@@ -70,6 +70,7 @@ const NewsModal = ({ onClose, location }) => {
     const [markets, setMarkets] = useState(null);
     const [telegram, setTelegram] = useState([]);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isDrawerExpanded, setIsDrawerExpanded] = useState(false);
 
     const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
 
@@ -147,10 +148,6 @@ const NewsModal = ({ onClose, location }) => {
             <div className="news-panel glass fade-in-up">
                 
                 <div className="news-header">
-                    <div className="location-badge">
-                        <span className="live-dot"></span>
-                        LIVE IRONSIGHT RADAR
-                    </div>
                     <h2>رادار العمليات والأخبار المباشر</h2>
                     <button onClick={onClose} className="close-btn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
@@ -169,86 +166,94 @@ const NewsModal = ({ onClose, location }) => {
                             <FullscreenControl position="top-right" />
                             <NavigationControl position="top-right" />
 
-                            {/* Render Conflicts / Hot Zones */}
-                            {intel.conflicts?.map((zone, idx) => (
-                                <Marker 
-                                    key={`zone-${idx}`} 
-                                    longitude={zone.lon} 
-                                    latitude={zone.lat}
-                                >
-                                    <div className="conflict-zone radar-ping"></div>
-                                    <div className="conflict-label">{zone.city}</div>
-                                </Marker>
-                            ))}
+                            {/* Render Conflicts / Hot Zones (Cities/Red Circles) */}
+                            {intel.conflicts?.map((zone, idx) => {
+                                const size = window.innerWidth > 768 ? 16 : 12; // Radius approx mapping to div sizing
+                                const color = zone.city.includes('إيران') ? '#ff6666' : zone.city.includes('غزة') || zone.city.includes('لبنان') ? '#ff3366' : '#999999';
+                                
+                                return (
+                                    <Marker 
+                                        key={`zone-${idx}`} 
+                                        longitude={zone.lon} 
+                                        latitude={zone.lat}
+                                    >
+                                        <div 
+                                            className="city-flash-marker"
+                                            style={{
+                                                width: `${size}px`,
+                                                height: `${size}px`,
+                                                backgroundColor: color,
+                                                borderRadius: '50%',
+                                                opacity: 0.6,
+                                                border: `1px solid ${color}`
+                                            }}
+                                        ></div>
+                                        <div className="city-label">{zone.city}</div>
+                                    </Marker>
+                                );
+                            })}
 
                             {/* Render Ships & Subs */}
-                            {ships.map((ship, idx) => (
-                                <Marker 
-                                    key={`ship-${idx}`} 
-                                    longitude={ship.lon} 
-                                    latitude={ship.lat}
-                                    onClick={(e) => {
-                                        e.originalEvent.stopPropagation();
-                                        setSelectedFeature({ type: 'ship', data: ship });
-                                    }}
-                                >
-                                    <div 
-                                        className="combat-vessel-icon radar-ping" 
-                                        style={{ color: getNavyColor(ship.navy) }}
-                                        title={ship.name}
-                                    >
-                                        {ship.type === 'Submarine' ? (
-                                            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
-                                                <path d="M12 2.5L3 20.5h18L12 2.5z" /> {/* Triangle representing Sub */}
-                                            </svg>
-                                        ) : (
-                                            <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
-                                                <path d="M2.5 16s1-1 3.5-1 3.5 1 3.5 1 1-1 3.5-1 3.5 1 3.5 1 2.5-3 2.5-3V8H2.5v8z" /> {/* Ship hull */}
-                                            </svg>
-                                        )}
-                                    </div>
-                                </Marker>
-                            ))}
-
-                            {/* Render Flights with Orientation */}
-                            {flights.filter(f => f.lat && f.lon).map((flight, idx) => (
-                                <Marker 
-                                    key={flight.icao24 || idx} 
-                                    longitude={flight.lon} 
-                                    latitude={flight.lat}
-                                    onClick={(e) => {
-                                        e.originalEvent.stopPropagation();
-                                        setSelectedFeature({ type: 'flight', data: flight });
-                                        // Draw smoother missile/flight arc path
-                                        setFlightTrail({
-                                            type: 'FeatureCollection',
-                                            features: [{
-                                                type: 'Feature',
-                                                geometry: {
-                                                    type: 'LineString',
-                                                    coordinates: [
-                                                        [flight.lon - (Math.sin(flight.heading * Math.PI / 180) * 1.5), flight.lat - (Math.cos(flight.heading * Math.PI / 180) * 1.5)],
-                                                        [flight.lon, flight.lat]
-                                                    ]
-                                                }
-                                            }]
-                                        });
-                                    }}
-                                >
-                                    <div 
-                                        className="military-flight-icon" 
-                                        style={{ 
-                                            transform: `rotate(${flight.heading || 0}deg)`,
-                                            transition: 'transform 0.5s ease-out',
-                                            color: flight.type.includes('Fighter') ? '#ff3b30' : '#fbab15'
+                            {ships.map((ship, idx) => {
+                                const color = getNavyColor(ship.navy) || '#888888';
+                                const isSub = ship.type.toLowerCase().includes('submarine');
+                                
+                                return (
+                                    <Marker 
+                                        key={`ship-${idx}`} 
+                                        longitude={ship.lon} 
+                                        latitude={ship.lat}
+                                        onClick={(e) => {
+                                            e.originalEvent.stopPropagation();
+                                            setSelectedFeature({ type: 'ship', data: ship });
                                         }}
                                     >
-                                        <svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
-                                        </svg>
-                                    </div>
-                                </Marker>
-                            ))}
+                                        <div 
+                                            className="naval-marker radar-sweep highlight-pulse" 
+                                            style={{ 
+                                                fontSize: isSub ? '10px' : '13px', 
+                                                filter: `drop-shadow(0 0 4px ${color})`, 
+                                                color: color, 
+                                                lineHeight: 1 
+                                            }}
+                                            title={ship.name}
+                                        >
+                                            {isSub ? '▼' : '⛴'}
+                                        </div>
+                                    </Marker>
+                                );
+                            })}
+
+                            {/* Render Flights with Orientation */}
+                            {flights.filter(f => f.lat && f.lon).map((flight, idx) => {
+                                const color = flight.type.includes('Fighter') ? '#ff3b30' : '#fbab15';
+                                
+                                return (
+                                    <Marker 
+                                        key={flight.icao24 || idx} 
+                                        longitude={flight.lon} 
+                                        latitude={flight.lat}
+                                        onClick={(e) => {
+                                            e.originalEvent.stopPropagation();
+                                            setSelectedFeature({ type: 'flight', data: flight });
+                                        }}
+                                    >
+                                        <div 
+                                            className="mil-aircraft-marker" 
+                                            style={{ 
+                                                fontSize: '14px', 
+                                                transform: `rotate(${flight.heading || 0}deg)`,
+                                                filter: `drop-shadow(0 0 4px ${color})`,
+                                                color: color,
+                                                lineHeight: 1,
+                                                transition: 'transform 2s ease-out'
+                                            }}
+                                        >
+                                            ✈
+                                        </div>
+                                    </Marker>
+                                );
+                            })}
 
                             {/* Optional Flight Trail Layer */}
                             {flightTrail && (
@@ -307,7 +312,11 @@ const NewsModal = ({ onClose, location }) => {
                         </Map>
                     </div>
 
-                    <div className="news-sidebar">
+                    <div className={`news-sidebar ${isDrawerExpanded ? 'expanded' : ''}`}>
+                        
+                        {/* Mobile Handle for sliding drawer */}
+                        <div className="drawer-handle" onClick={() => setIsDrawerExpanded(!isDrawerExpanded)}></div>
+
                         {isAdmin && (
                             <div className="admin-actions">
                                 <button className="action-toggle-btn">إضافة تقرير استخباراتي ➕</button>
@@ -324,7 +333,7 @@ const NewsModal = ({ onClose, location }) => {
                             </button>
 
                             <div className="sidebar-title-container">
-                                <div className="pulse-indicator"></div>
+                                <div className="status-dot"></div>
                                 <h3 className="sidebar-title">قائمة الأخبار والصراعات</h3>
                             </div>
                             
@@ -335,7 +344,7 @@ const NewsModal = ({ onClose, location }) => {
 
                                     {/* BREAKING ALERTS FIRST */}
                                     {alerts.map((alert, i) => (
-                                        <div key={`alert-${i}`} className="feed-card alert-card breaking-card">
+                                        <div key={`alert-${i}`} className="feed-card alert-card breaking-card alert-flash">
                                             <div className="card-header">
                                                 <span className="breaking-badge">صفارات إنذار 🚨</span>
                                                 <span className="feed-time">{new Date(alert.time).toLocaleTimeString()}</span>
@@ -375,7 +384,7 @@ const NewsModal = ({ onClose, location }) => {
 
                                     {intel.conflicts?.map((zone, i) => (
                                         <div key={`conflict-${i}`} className="feed-card conflict-card highlight-hover">
-                                            <span className="feed-icon">⚔️</span>
+                                            <span className="feed-icon highlight-pulse">⚔️</span>
                                             <div className="feed-info">
                                                 <h4>{zone.city}</h4>
                                                 <p>الحالة: {zone.status} | الحدّة: {zone.intensity}</p>
