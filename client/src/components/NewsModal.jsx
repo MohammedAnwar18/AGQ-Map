@@ -162,7 +162,7 @@ const NewsModal = ({ onClose, location }) => {
                         <Map
                             {...viewState}
                             onMove={evt => setViewState(evt.viewState)}
-                            mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+                            mapStyle="https://api.maptiler.com/maps/dataviz-dark/style.json?key=N6uNP3sTu25OIBUyi9G1"
                             mapLib={maplibregl}
                             attributionControl={false}
                         >
@@ -277,6 +277,8 @@ const NewsModal = ({ onClose, location }) => {
                                     className="military-popup"
                                 >
                                     <div className="feature-popup" dir="rtl">
+                                        <button className="popup-close-btn" onClick={(e) => { e.stopPropagation(); setSelectedFeature(null); }}>×</button>
+                                        
                                         {selectedFeature.type === 'flight' && (
                                             <>
                                                 <h4 className="popup-title header-flight">✈️ طائرة عسكرية</h4>
@@ -289,7 +291,7 @@ const NewsModal = ({ onClose, location }) => {
                                         )}
                                         {selectedFeature.type === 'ship' && (
                                             <>
-                                                <h4 className="popup-title header-navy" style={{ color: getNavyColor(selectedFeature.data.navy) }}>
+                                                <h4 className="popup-title header-navy" style={{ color: getNavyColor(selectedFeature.data.navy), paddingRight: '20px' }}>
                                                     {selectedFeature.data.type === 'Submarine' ? '▼' : '⛴'} {selectedFeature.data.name}
                                                 </h4>
                                                 <div className="popup-details">
