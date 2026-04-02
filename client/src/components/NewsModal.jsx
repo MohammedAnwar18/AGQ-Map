@@ -317,7 +317,7 @@ const NewsModal = ({ onClose, location }) => {
                         {/* Map Overlay Button to Open News Page */}
                         {!showNewsPanel && (
                             <button className="toggle-news-btn" onClick={() => setShowNewsPanel(true)}>
-                                📰 تصفح قائمة الأخبار والصراعات
+                                تصفح قائمة الأخبار والصراعات
                             </button>
                         )}
                     </div>
@@ -394,7 +394,6 @@ const NewsModal = ({ onClose, location }) => {
 
                                     {intel.conflicts?.map((zone, i) => (
                                         <div key={`conflict-${i}`} className="feed-card conflict-card highlight-hover">
-                                            <span className="feed-icon highlight-pulse">⚔️</span>
                                             <div className="feed-info">
                                                 <h4>{zone.city}</h4>
                                                 <p>الحالة: {zone.status} | الحدّة: {zone.intensity}</p>
