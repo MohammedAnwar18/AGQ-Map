@@ -324,9 +324,12 @@ const NewsModal = ({ onClose, location }) => {
 
                     <div className={`news-sidebar ${showNewsPanel ? 'open' : ''}`}>
                         
-                        <button className="close-layer-btn" onClick={() => setShowNewsPanel(false)}>
-                            ← الغاء وعودة للخريطة
-                        </button>
+                        <div className="sidebar-header-controls">
+                            <h3 className="sidebar-title" style={{margin: 0}}>قائمة الأخبار والصراعات</h3>
+                            <button className="sidebar-close-btn" onClick={() => setShowNewsPanel(false)}>
+                                ✖
+                            </button>
+                        </div>
 
                         {isAdmin && (
                             <div className="admin-actions">
@@ -343,10 +346,7 @@ const NewsModal = ({ onClose, location }) => {
                                 تحديث آخر التطورات والأخبار
                             </button>
 
-                            <div className="sidebar-title-container">
-                                <h3 className="sidebar-title" style={{marginLeft: 0}}>قائمة الأخبار والصراعات</h3>
-                            </div>
-                            
+
                             {loading ? (
                                 <div className="live-feed-loading">جاري المزامنة مع الرادار...</div>
                             ) : (
