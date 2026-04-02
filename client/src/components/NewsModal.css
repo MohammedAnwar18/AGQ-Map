@@ -629,4 +629,33 @@
     }
 }
 
+.city-flash-marker {
+    position: relative;
+    cursor: pointer;
+    animation: alert-flash 1.5s infinite;
+}
+
+@keyframes alert-flash {
+    0%, 100% { opacity: 0.8; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.2); }
+}
+
+.city-label {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 20, 25, 0.85);
+    color: white;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 13px;
+    white-space: nowrap;
+    margin-top: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-family: 'Tajawal', inherit, sans-serif;
+    font-weight: bold;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+}
+
 

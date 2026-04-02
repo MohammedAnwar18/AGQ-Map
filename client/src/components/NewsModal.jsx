@@ -127,6 +127,24 @@ const NewsModal = ({ onClose, location }) => {
         return () => clearInterval(intervalId);
     }, [fetchLiveData]);
 
+    const handleMapLoad = useCallback((e) => {
+        const map = e.target;
+        const style = map.getStyle();
+        
+        if (style && style.layers) {
+            style.layers.forEach((layer) => {
+                if (layer.type === 'symbol' && layer.layout && layer.layout['text-field']) {
+                    map.setLayoutProperty(layer.id, 'text-field', [
+                        'coalesce',
+                        ['get', 'name:ar'],
+                        ['get', 'name:nonlatin'],
+                        ['get', 'name']
+                    ]);
+                }
+            });
+        }
+    }, []);
+
     // Draw lines for missile arcs based on standard source vectors
     const missileArcs = useMemo(() => {
         const features = [];
@@ -166,6 +184,7 @@ const NewsModal = ({ onClose, location }) => {
                             mapStyle="https://api.maptiler.com/maps/dataviz-dark/style.json?key=N6uNP3sTu25OIBUyi9G1"
                             mapLib={maplibregl}
                             attributionControl={false}
+                            onLoad={handleMapLoad}
                         >
                             <FullscreenControl position="top-right" />
                             <NavigationControl position="top-right" />
