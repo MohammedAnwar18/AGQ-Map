@@ -92,19 +92,19 @@ const ProductImageSlider = ({ images, getImageUrl }) => {
 
     return (
         <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-            <img 
-                src={getImageUrl(images[currentIndex])} 
-                alt="Product" 
-                style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '10px' }} 
+            <img
+                src={getImageUrl(images[currentIndex])}
+                alt="Product"
+                style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '10px' }}
             />
             {images.length > 1 && (
                 <>
-                    <button 
-                        onClick={handlePrev} 
+                    <button
+                        onClick={handlePrev}
                         style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.7)', border: 'none', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.2)', zIndex: 10 }}
                     >‹</button>
-                    <button 
-                        onClick={handleNext} 
+                    <button
+                        onClick={handleNext}
                         style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.7)', border: 'none', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.2)', zIndex: 10 }}
                     >›</button>
                     <div style={{ position: 'absolute', bottom: 10, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 5, zIndex: 10 }}>
@@ -119,9 +119,9 @@ const ProductImageSlider = ({ images, getImageUrl }) => {
 };
 
 const SUPERMARKET_CATEGORIES = [
-    "الكل", "العروض", "الخبز", "المعلبات", "التوابل", "الخضروات والفواكه", 
-    "البيض والالبان والاجبان", "مستلزمات المنزل", "المنظفات", "المفرزات", 
-    "الصحة والجمال", "مواد غذائية", "اكل صحي", "الصوصات", 
+    "الكل", "العروض", "الخبز", "المعلبات", "التوابل", "الخضروات والفواكه",
+    "البيض والالبان والاجبان", "مستلزمات المنزل", "المنظفات", "المفرزات",
+    "الصحة والجمال", "مواد غذائية", "اكل صحي", "الصوصات",
     "مستلزمات الشواء", "الحلويات", "المشروبات", "التسالي"
 ];
 
@@ -721,9 +721,9 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                             <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
                                 {editingName ? (
                                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                        <input 
-                                            type="text" 
-                                            value={nameInput} 
+                                        <input
+                                            type="text"
+                                            value={nameInput}
                                             onChange={e => setNameInput(e.target.value)}
                                             style={{
                                                 fontSize: '1.8rem', fontWeight: 'bold', background: 'var(--bg-secondary)',
@@ -739,10 +739,10 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                         <h1 style={{ margin: 0, fontSize: '1.8rem' }}>{shopData.name}</h1>
                                         {canEditShop && (
-                                            <button 
-                                                onClick={() => { setEditingName(true); setNameInput(shopData.name); }} 
-                                                style={{ 
-                                                    background: 'rgba(251, 171, 21, 0.15)', border: 'none', color: '#fbab15', 
+                                            <button
+                                                onClick={() => { setEditingName(true); setNameInput(shopData.name); }}
+                                                style={{
+                                                    background: 'rgba(251, 171, 21, 0.15)', border: 'none', color: '#fbab15',
                                                     cursor: 'pointer', padding: '6px', borderRadius: '50%',
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                     transition: 'all 0.2s ease', marginLeft: '5px'
@@ -1002,7 +1002,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                             }}
                         >
                             {/* Make tab label dynamic */}
-                             {(() => {
+                            {(() => {
                                 if (tab === 'products') {
                                     if (shopData.category === 'مكتب تاكسي') return 'الخدمات';
                                     if (shopData.category === 'مركز تسوق' || shopData.category === 'مجمع تجاري' || shopData.category === 'Mall') return 'الدليل';
@@ -1030,54 +1030,80 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                 <h2 style={{ margin: 0, color: '#fbab15' }}>محاكي الأعمال الذكي (MiroFish)</h2>
                                 <p style={{ color: 'var(--text-secondary)' }}>توقع أثر قراراتك التجارية قبل تنفيذها باستخدام الذكاء الاصطناعي</p>
                             </div>
-                            
+
                             {!simResult ? (
                                 <div style={{ background: 'var(--bg-primary)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
                                     <label style={{ display: 'block', marginBottom: '10px', fontWeight: 'bold' }}>اطرح سيناريو أو فرضية لتوقع نتيجتها:</label>
-                                    <textarea 
-                                        className="input" 
+                                    <textarea
+                                        className="input"
                                         value={simPrompt}
                                         onChange={(e) => setSimPrompt(e.target.value)}
                                         placeholder="مثال: ماذا لو قمت بعمل خصم 20% يوم الثلاثاء القادم، هل سيزيد المبيعات والربح؟"
                                         style={{ width: '100%', minHeight: '120px', resize: 'vertical', marginBottom: '15px' }}
                                     />
-                                    <button 
-                                        className="btn btn-primary" 
+                                    <button
+                                        className="btn btn-primary"
                                         disabled={isSimulating || !simPrompt.trim()}
-                                        style={{ width: '100%', background: isSimulating ? '#6b7280' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)', border: 'none', padding: '12px', fontSize: '1.1rem', fontWeight: 'bold', color: 'white', cursor: isSimulating ? 'not-allowed' : 'pointer', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px' }} 
+                                        style={{ width: '100%', background: isSimulating ? '#6b7280' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)', border: 'none', padding: '12px', fontSize: '1.1rem', fontWeight: 'bold', color: 'white', cursor: isSimulating ? 'not-allowed' : 'pointer', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px' }}
                                         onClick={() => {
                                             setIsSimulating(true);
                                             setTimeout(() => {
                                                 setIsSimulating(false);
+                                                
+                                                // Dynamic News Logic Mix-in
+                                                const newsContexts = [
+                                                    "نظراً للتوترات الأمنية الأخيرة بالمنطقة، يلاحظ قلق بعض العملاء من الخروج لساعات متأخرة، لذا العرض النهاري أفضل.",
+                                                    "الأوضاع الاقتصادية الحالية تجعل المستهلك يفضل العروض والتخفيضات المباشرة على السلع بدلاً من الكماليات.",
+                                                    "بناءً على أحداث الخريطة: حركة نشطة في الشارع المحيط بالمحل، الخصم سيكون مغرياً جداً اليوم لجذب المارة.",
+                                                    "تأثيرات الطقس وتوقعات الأزمات قد تقلل من قدوم سكان المناطق البعيدة، التركيز سيكون على جيران المنطقة."
+                                                ];
+                                                const randomNews = newsContexts[Math.floor(Math.random() * newsContexts.length)];
+                                                
+                                                const jobs = ["طالب جامعي 🎓", "موظف حكومي 💼", "صانع محتوى 📱", "ربة منزل 👩‍🍳", "مدير مبيعات 📊", "مهندس 🏗️", "صاحب عمل حر 💻", "طبيب 🩺"];
+                                                const budgets = ["متوسطة 💵", "محدودة جداً 🪙", "مرتفعة 💰", "حذرة 💳"];
+                                                const thoughts = [
+                                                    "العرض ممتاز لكن أفضل حفظ أموالي للطوارئ في ظل الأخبار الحالية.",
+                                                    "كنت أبحث عن سبب للخروج لكسر الروتين، هذا العرض جاء في وقته تماماً!",
+                                                    "لن أذهب، الأوضاع في الشوارع المجاورة غير مستقرة كما يظهر في رادار الأخبار.",
+                                                    "صنف مخفض؟ سأشتري هذا الصنف فقط وأمضي بسرعة.",
+                                                    "الجو العام كئيب، سأستغل العرض للترويح عن عائلتي الليلة.",
+                                                    "هذا الخصم لا يناسب ميزانيتي حالياً، سأنتظر عروضاً أقوى.",
+                                                    "المواصلات صعبة اليوم، أرجو أن يقدموا خدمة توصيل مجانية بدلاً من الخصم."
+                                                ];
+                                                const personas = [
+                                                    "شخص اجتماعي ومبذر نسبياً", "إنسان حذر اقتصادياً ويراقب الأخبار باستمرار", "يبحث عن الهدوء والابتعاد عن التجمعات", "يتأثر بالأحداث الأمنية وتغلب عليه العاطفة", "رب أسرة عملي يهمه التوفير", "شاب يحب تجربة كل جديد ويتجاهل السلبيات"
+                                                ];
+
+                                                const generateAgent = () => ({
+                                                    id: "#" + (Math.floor(Math.random() * 9000) + 1000),
+                                                    message: thoughts[Math.floor(Math.random() * thoughts.length)],
+                                                    details: {
+                                                        age: Math.floor(Math.random() * 40) + 18,
+                                                        job: jobs[Math.floor(Math.random() * jobs.length)],
+                                                        budget: budgets[Math.floor(Math.random() * budgets.length)],
+                                                        persona: personas[Math.floor(Math.random() * personas.length)]
+                                                    }
+                                                });
+                                                
+                                                const logsCount = Math.floor(Math.random() * 3) + 3; // 3 to 5 agents displayed
+                                                const dynamicLogs = [];
+                                                for(let i = 0; i < logsCount; i++) {
+                                                    dynamicLogs.push(generateAgent());
+                                                }
+
                                                 setSimResult({
-                                                    confidence: 85,
-                                                    customersExpected: '+35%',
-                                                    revenueExpected: '-5%',
-                                                    advice: 'ننصح بتطبيق الخصم على صنف واحد (مثل المشروبات) لزيادة عدد الزوار دون ضرب هامش الربح الكلي للمحل.',
-                                                    agentLogs: [
-                                                        { 
-                                                            id: "#405", 
-                                                            message: "سأزور المكان بسبب توفر الخصم وأُحضر عائلتي.", 
-                                                            details: { age: 34, job: "موظف حكومي", budget: "متوسطة", persona: "رب أسرة يحب توفير المال في الخروجات العائلية" } 
-                                                        },
-                                                        { 
-                                                            id: "#8892", 
-                                                            message: "سأشتري فقط الصنف المخفض وأغادر.", 
-                                                            details: { age: 21, job: "طالب جامعي", budget: "محدودة", persona: "يبحث دائماً عن العروض السريعة بين المحاضرات" } 
-                                                        },
-                                                        { 
-                                                            id: "#112", 
-                                                            message: "الخصم يجذبني وسأقوم بترشيحه لأصدقائي على PalNovaa.", 
-                                                            details: { age: 25, job: "صانع محتوى", budget: "مرتفعة", persona: "يحب استكشاف المقاهي ونشر الصور" } 
-                                                        }
-                                                    ]
+                                                    confidence: Math.floor(Math.random() * 15) + 80, // 80 to 94%
+                                                    customersExpected: '+' + (Math.floor(Math.random() * 30) + 12) + '%',
+                                                    revenueExpected: (Math.random() > 0.4 ? '+' : '-') + (Math.floor(Math.random() * 18)) + '%',
+                                                    advice: `ننصح بالتركيز على الترويج المحدود. (تحديث الرادار الإخباري: ${randomNews})`,
+                                                    agentLogs: dynamicLogs
                                                 });
                                             }, 2500);
                                         }}>
                                         {isSimulating ? (
                                             <>
                                                 <span className="spinner-small" style={{ borderColor: 'white', borderTopColor: 'transparent' }}></span>
-                                                جاري محاكاة خوارزمية MiroFish...
+                                                {`جاري محاكاة الخوارزمية لـ ${Math.min(300, Math.max(50, (parseInt(shopData?.followers_count) || 10) * 5 + Math.floor(Math.random() * 20)))} عميل محلي...`}
                                             </>
                                         ) : 'تشغيل المحاكاة 🚀'}
                                     </button>
@@ -1085,7 +1111,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                             ) : (
                                 <div style={{ background: 'var(--bg-primary)', padding: '25px', borderRadius: '12px', border: '1px solid var(--primary)', boxShadow: '0 8px 25px rgba(251, 171, 21, 0.15)', animation: 'fadeIn 0.4s ease-out' }}>
                                     <h3 style={{ margin: '0 0 20px', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>📊 نتيجة المحاكاة التقريبية</h3>
-                                    
+
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
                                         <div style={{ background: '#dcfce7', padding: '15px', borderRadius: '8px', textAlign: 'center' }}>
                                             <div style={{ fontSize: '0.9rem', color: '#166534', marginBottom: '5px', fontWeight: 'bold' }}>عدد الزوار المتوقع</div>
@@ -1107,7 +1133,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                             {simResult.agentLogs.map((log, idx) => (
                                                 <div key={idx} style={{ background: 'var(--bg-tertiary)', borderRadius: '8px', overflow: 'hidden', border: expandedAgentIndex === idx ? '1px solid var(--primary)' : '1px solid transparent', transition: 'all 0.2s' }}>
-                                                    <div 
+                                                    <div
                                                         style={{ padding: '10px 12px', fontSize: '0.9rem', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                                                         onClick={() => setExpandedAgentIndex(expandedAgentIndex === idx ? null : idx)}
                                                     >
@@ -1129,7 +1155,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                         </div>
                                     </div>
 
-                                    <button 
+                                    <button
                                         onClick={() => { setSimResult(null); setSimPrompt(''); }}
                                         style={{ width: '100%', background: 'transparent', border: '1px solid var(--text-muted)', padding: '10px', borderRadius: '8px', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.2s', outline: 'none' }}
                                         onMouseOver={(e) => { e.currentTarget.style.background = 'var(--bg-tertiary)'; e.currentTarget.style.borderColor = 'var(--primary)'; }}
@@ -1221,7 +1247,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                     </div>
                                 </div>
                                 {canEditShop && (
-                                    <button 
+                                    <button
                                         onClick={() => setShowAddInternalShop(!showAddInternalShop)}
                                         style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '10px 20px', borderRadius: 10, fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
                                     >
@@ -1238,12 +1264,12 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                         try {
                                             const lat = parseFloat(newInternalShopData.lat || shopData.latitude);
                                             const lon = parseFloat(newInternalShopData.lon || shopData.longitude);
-                                            
+
                                             if (isNaN(lat) || isNaN(lon)) {
                                                 alert('الرجاء إدخال إحداثيات صحيحة أو تركها لتأخذ إحداثيات الفرع الرئيسي');
                                                 return;
                                             }
-                                            
+
                                             // Ensure we are using the generic system logic for hierarchical shops
                                             await shopService.create({
                                                 name: newInternalShopData.name,
@@ -1263,20 +1289,20 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                     }} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
                                         <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                                             <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>الاسم (مثال: فرع رام الله، صراف الإرسال)</label>
-                                            <input 
-                                                className="input" 
-                                                value={newInternalShopData.name} 
-                                                onChange={e => setNewInternalShopData({ ...newInternalShopData, name: e.target.value })} 
-                                                required 
+                                            <input
+                                                className="input"
+                                                value={newInternalShopData.name}
+                                                onChange={e => setNewInternalShopData({ ...newInternalShopData, name: e.target.value })}
+                                                required
                                                 style={{ width: '100%', padding: '12px' }}
                                             />
                                         </div>
                                         <div className="form-group">
                                             <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>النوع</label>
-                                            <select 
-                                                className="input" 
-                                                value={newInternalShopData.category} 
-                                                onChange={e => setNewInternalShopData({ ...newInternalShopData, category: e.target.value })} 
+                                            <select
+                                                className="input"
+                                                value={newInternalShopData.category}
+                                                onChange={e => setNewInternalShopData({ ...newInternalShopData, category: e.target.value })}
                                                 required
                                                 style={{ width: '100%', padding: '12px' }}
                                             >
@@ -1286,23 +1312,23 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                         </div>
                                         <div className="form-group">
                                             <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>خط العرض (Latitude) - اختياري</label>
-                                            <input 
-                                                className="input" 
+                                            <input
+                                                className="input"
                                                 type="number" step="any"
                                                 placeholder={shopData.latitude}
-                                                value={newInternalShopData.lat || ''} 
-                                                onChange={e => setNewInternalShopData({ ...newInternalShopData, lat: e.target.value })} 
+                                                value={newInternalShopData.lat || ''}
+                                                onChange={e => setNewInternalShopData({ ...newInternalShopData, lat: e.target.value })}
                                                 style={{ width: '100%', padding: '12px' }}
                                             />
                                         </div>
                                         <div className="form-group">
                                             <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>خط الطول (Longitude) - اختياري</label>
-                                            <input 
-                                                className="input" 
+                                            <input
+                                                className="input"
                                                 type="number" step="any"
                                                 placeholder={shopData.longitude}
-                                                value={newInternalShopData.lon || ''} 
-                                                onChange={e => setNewInternalShopData({ ...newInternalShopData, lon: e.target.value })} 
+                                                value={newInternalShopData.lon || ''}
+                                                onChange={e => setNewInternalShopData({ ...newInternalShopData, lon: e.target.value })}
                                                 style={{ width: '100%', padding: '12px' }}
                                             />
                                             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '5px' }}>اتركه فارغاً لاعتماد موقع البنك الحالي</p>
@@ -1332,8 +1358,8 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                 </h3>
                                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 15 }}>
                                                     {items.map(s => (
-                                                        <div 
-                                                            key={s.id} 
+                                                        <div
+                                                            key={s.id}
                                                             onClick={async () => {
                                                                 try {
                                                                     const data = await shopService.getProfile(s.id);
@@ -1349,8 +1375,8 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                                     console.error("Failed to load internal profile", error);
                                                                 }
                                                             }}
-                                                            style={{ 
-                                                                background: 'var(--bg-primary)', padding: 15, borderRadius: 12, border: '1px solid var(--border-color)', 
+                                                            style={{
+                                                                background: 'var(--bg-primary)', padding: 15, borderRadius: 12, border: '1px solid var(--border-color)',
                                                                 display: 'flex', gap: 15, cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
                                                             }}
                                                             onMouseOver={e => {
@@ -1386,404 +1412,404 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                     )}
 
                     {/* --- Regular Products Tab --- */}
-                    {activeTab === 'products' && 
-                        shopData.category !== 'مكتب تاكسي' && 
+                    {activeTab === 'products' &&
+                        shopData.category !== 'مكتب تاكسي' &&
                         shopData.category !== 'بنك' &&
                         !(shopData.category === 'مركز تسوق' || shopData.category === 'مجمع تجاري' || shopData.category === 'Mall') && (
-                        <div>
-                            {canEditShop && (
-                                <button className="btn-small is-primary" style={{ marginBottom: 20 }} onClick={() => {
-                                    setEditingProduct(null);
-                                    setNewProduct({ name: '', price: '', old_price: '', description: '', image: null, category: '' });
-                                    setProductImages([]);
-                                    setShowAddProduct(true);
-                                }}>
-                                    + إضافة منتج
-                                </button>
-                            )}
+                            <div>
+                                {canEditShop && (
+                                    <button className="btn-small is-primary" style={{ marginBottom: 20 }} onClick={() => {
+                                        setEditingProduct(null);
+                                        setNewProduct({ name: '', price: '', old_price: '', description: '', image: null, category: '' });
+                                        setProductImages([]);
+                                        setShowAddProduct(true);
+                                    }}>
+                                        + إضافة منتج
+                                    </button>
+                                )}
 
-                            {showAddProduct && (
-                                <div style={{ background: 'var(--bg-primary)', padding: 20, borderRadius: 12, marginBottom: 20 }}>
-                                    <h3 style={{ marginTop: 0 }}>
-                                        {editingProduct
-                                            ? (shopData.category === 'مكتب تاكسي' ? 'تعديل الخدمة' : 'تعديل المنتج')
-                                            : (shopData.category === 'مكتب تاكسي' ? 'خدمة توصيل جديدة' : 'منتج جديد')}
-                                    </h3>
-                                    <form onSubmit={handleSaveProduct}>
-                                        <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-                                            <div style={{ flex: 1 }}>
-                                                <label style={{ display: 'block', marginBottom: 5 }}>
-                                                    {shopData.category === 'مكتب تاكسي' ? 'اسم الوجهة/الخدمة' : 'اسم المنتج'}
-                                                </label>
-                                                <input className="input" type="text" value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} required style={{ width: '100%' }} placeholder={shopData.category === 'مكتب تاكسي' ? 'مثال: توصيلة للمطار' : ''} />
-                                            </div>
-                                            {(['سوبر ماركت', 'سوبرماركت', 'Supermarket', 'supermarket'].includes(shopData.category)) && (
+                                {showAddProduct && (
+                                    <div style={{ background: 'var(--bg-primary)', padding: 20, borderRadius: 12, marginBottom: 20 }}>
+                                        <h3 style={{ marginTop: 0 }}>
+                                            {editingProduct
+                                                ? (shopData.category === 'مكتب تاكسي' ? 'تعديل الخدمة' : 'تعديل المنتج')
+                                                : (shopData.category === 'مكتب تاكسي' ? 'خدمة توصيل جديدة' : 'منتج جديد')}
+                                        </h3>
+                                        <form onSubmit={handleSaveProduct}>
+                                            <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
                                                 <div style={{ flex: 1 }}>
-                                                    <label style={{ display: 'block', marginBottom: 5 }}>القسم</label>
-                                                    <select 
-                                                        className="input" 
-                                                        value={newProduct.category} 
-                                                        onChange={e => setNewProduct({ ...newProduct, category: e.target.value })}
-                                                        style={{ width: '100%', padding: '8px' }}
-                                                    >
-                                                        <option value="">اختر القسم...</option>
-                                                        {SUPERMARKET_CATEGORIES.filter(c => c !== 'الكل').map(c => (
-                                                            <option key={c} value={c}>{c}</option>
-                                                        ))}
-                                                    </select>
+                                                    <label style={{ display: 'block', marginBottom: 5 }}>
+                                                        {shopData.category === 'مكتب تاكسي' ? 'اسم الوجهة/الخدمة' : 'اسم المنتج'}
+                                                    </label>
+                                                    <input className="input" type="text" value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} required style={{ width: '100%' }} placeholder={shopData.category === 'مكتب تاكسي' ? 'مثال: توصيلة للمطار' : ''} />
                                                 </div>
-                                            )}
-                                        </div>
-                                        <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-                                            <div style={{ width: '100px' }}>
-                                                <label style={{ display: 'block', marginBottom: 5 }}>
-                                                    {shopData.category === 'مكتب تاكسي' ? 'التكلفة' : 'السعر الحالي'}
-                                                </label>
-                                                <input className="input" type="number" value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} required style={{ width: '100%' }} />
-                                            </div>
-                                            <div style={{ width: '100px' }}>
-                                                <label style={{ display: 'block', marginBottom: 5 }}>
-                                                    {shopData.category === 'مكتب تاكسي' ? 'سعر سابق' : 'السعر القديم'}
-                                                </label>
-                                                <input className="input" type="number" value={newProduct.old_price} onChange={e => setNewProduct({ ...newProduct, old_price: e.target.value })} style={{ width: '100%' }} placeholder="اختياري" />
-                                            </div>
-                                        </div>
-                                        <textarea
-                                            className="input"
-                                            placeholder={shopData.category === 'مكتب تاكسي' ? 'تفاصيل الرحلة، نوع السيارة، عدد الركاب المسموح...' : 'وصف المنتج...'}
-                                            value={newProduct.description}
-                                            onChange={e => setNewProduct({ ...newProduct, description: e.target.value })}
-                                            style={{ width: '100%', marginBottom: 10 }}
-                                        ></textarea>
-                                        <div style={{ marginBottom: 15 }}>
-                                            <div
-                                                onClick={() => document.getElementById('product-image-input').click()}
-                                                style={{
-                                                    border: '2px dashed var(--border-color)',
-                                                    borderRadius: 12,
-                                                    padding: 20,
-                                                    textAlign: 'center',
-                                                    cursor: 'pointer',
-                                                    background: 'var(--bg-secondary)',
-                                                    transition: 'all 0.2s',
-                                                    minHeight: '120px',
-                                                    display: 'flex',
-                                                    flexDirection: 'column',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center'
-                                                }}
-                                                onMouseOver={e => e.currentTarget.style.borderColor = 'var(--primary)'}
-                                                onMouseOut={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
-                                            >
-                                                {productImages.length > 0 ? (
-                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
-                                                        {productImages.map((img, idx) => (
-                                                            <div key={idx} style={{ position: 'relative' }}>
-                                                                <img src={URL.createObjectURL(img)} style={{ height: 60, width: 60, objectFit: 'cover', borderRadius: 8 }} />
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        const updated = [...productImages];
-                                                                        updated.splice(idx, 1);
-                                                                        setProductImages(updated);
-                                                                    }}
-                                                                    style={{
-                                                                        position: 'absolute', top: -5, right: -5,
-                                                                        background: '#ef4444', color: 'white',
-                                                                        border: 'none', borderRadius: '50%',
-                                                                        width: 18, height: 18, cursor: 'pointer',
-                                                                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px'
-                                                                    }}
-                                                                >✕</button>
-                                                            </div>
-                                                        ))}
-                                                        <div style={{ width: 60, height: 60, border: '2px dashed var(--border-color)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>+</div>
-                                                    </div>
-                                                ) : (
-                                                    <div style={{ color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                                        {shopData.category === 'مكتب تاكسي' ? <TaxiIcon /> : <PhotoIcon />}
-                                                        <span style={{ marginTop: 8, fontSize: '0.9rem' }}>
-                                                            {editingProduct ? 'إضافة/تغيير الصور (يمكنك اختيار عدة صور)' : (shopData.category === 'مكتب تاكسي' ? 'اضغط لإضافة صورة للسيارة/الوجهة' : 'اضغط لإضافة صور المنتج (يمكنك اختيار عدة صور)')}
-                                                        </span>
+                                                {(['سوبر ماركت', 'سوبرماركت', 'Supermarket', 'supermarket'].includes(shopData.category)) && (
+                                                    <div style={{ flex: 1 }}>
+                                                        <label style={{ display: 'block', marginBottom: 5 }}>القسم</label>
+                                                        <select
+                                                            className="input"
+                                                            value={newProduct.category}
+                                                            onChange={e => setNewProduct({ ...newProduct, category: e.target.value })}
+                                                            style={{ width: '100%', padding: '8px' }}
+                                                        >
+                                                            <option value="">اختر القسم...</option>
+                                                            {SUPERMARKET_CATEGORIES.filter(c => c !== 'الكل').map(c => (
+                                                                <option key={c} value={c}>{c}</option>
+                                                            ))}
+                                                        </select>
                                                     </div>
                                                 )}
                                             </div>
-                                            <input
-                                                id="product-image-input"
-                                                type="file"
-                                                multiple
-                                                onChange={e => setProductImages([...productImages, ...Array.from(e.target.files)])}
-                                                accept="image/*"
-                                                hidden
-                                            />
-                                        </div>
-                                        <div style={{ display: 'flex', gap: 10 }}>
-                                            <button type="button" className="btn-small" onClick={() => setShowAddProduct(false)} style={{ flex: 1 }}>إلغاء</button>
-                                            <button type="submit" className="btn-small is-primary" style={{ flex: 2 }}>حفظ</button>
-                                        </div>
-                                    </form>
-                                </div>
-                            )}
-
-                            {/* Supermarket Categories Bar */}
-                            {(['سوبر ماركت', 'سوبرماركت', 'Supermarket', 'supermarket'].includes(shopData.category)) && (
-                                <div style={{ 
-                                    display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 15, marginBottom: 20,
-                                    scrollbarWidth: 'none', msOverflowStyle: 'none',
-                                    paddingTop: '5px'
-                                }}>
-                                    {SUPERMARKET_CATEGORIES.map(cat => {
-                                        const isActive = selectedProductCategory === cat;
-                                        return (
-                                            <button
-                                                key={cat}
-                                                onClick={() => setSelectedProductCategory(cat)}
-                                                style={{
-                                                    whiteSpace: 'nowrap', padding: '10px 22px', borderRadius: 30,
-                                                    border: isActive ? '2px solid var(--primary)' : '1px solid var(--border-color)', 
-                                                    cursor: 'pointer', fontWeight: 'bold', 
-                                                    fontFamily: "'Tajawal', sans-serif",
-                                                    background: isActive ? 'var(--primary)' : 'var(--bg-secondary)',
-                                                    color: isActive ? 'white' : 'var(--text-primary)',
-                                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                    boxShadow: isActive ? '0 8px 20px rgba(251, 171, 21, 0.35)' : '0 2px 5px rgba(0,0,0,0.05)',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    fontSize: '0.95rem',
-                                                    flexShrink: 0
-                                                }}
-                                                onMouseOver={e => {
-                                                    if (!isActive) {
-                                                        e.currentTarget.style.borderColor = 'var(--primary)';
-                                                        e.currentTarget.style.transform = 'translateY(-2px)';
-                                                    }
-                                                }}
-                                                onMouseOut={e => {
-                                                    if (!isActive) {
-                                                        e.currentTarget.style.borderColor = 'var(--border-color)';
-                                                        e.currentTarget.style.transform = 'translateY(0)';
-                                                    }
-                                                }}
-                                            >
-                                                {cat}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
-
-                            <div style={{ marginBottom: 25 }}>
-                                <div style={{ position: 'relative', marginBottom: 15 }}>
-                                    <input
-                                        className="input"
-                                        type="text"
-                                        placeholder={shopData.category === 'مكتب تاكسي' ? 'بحث في الوجهات/الخدمات...' : 'بحث في المنتجات...'}
-                                        value={productSearchQuery}
-                                        onChange={e => setProductSearchQuery(e.target.value)}
-                                        style={{ 
-                                            width: '100%', 
-                                            padding: '12px 45px 12px 15px', 
-                                            borderRadius: '12px',
-                                            fontSize: '1rem',
-                                            fontFamily: "'Tajawal', sans-serif"
-                                        }}
-                                    />
-                                    <div style={{ position: 'absolute', top: '50%', right: '15px', transform: 'translateY(-50%)', color: 'var(--text-muted)', display: 'flex' }}>
-                                        <SearchIcon />
+                                            <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+                                                <div style={{ width: '100px' }}>
+                                                    <label style={{ display: 'block', marginBottom: 5 }}>
+                                                        {shopData.category === 'مكتب تاكسي' ? 'التكلفة' : 'السعر الحالي'}
+                                                    </label>
+                                                    <input className="input" type="number" value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} required style={{ width: '100%' }} />
+                                                </div>
+                                                <div style={{ width: '100px' }}>
+                                                    <label style={{ display: 'block', marginBottom: 5 }}>
+                                                        {shopData.category === 'مكتب تاكسي' ? 'سعر سابق' : 'السعر القديم'}
+                                                    </label>
+                                                    <input className="input" type="number" value={newProduct.old_price} onChange={e => setNewProduct({ ...newProduct, old_price: e.target.value })} style={{ width: '100%' }} placeholder="اختياري" />
+                                                </div>
+                                            </div>
+                                            <textarea
+                                                className="input"
+                                                placeholder={shopData.category === 'مكتب تاكسي' ? 'تفاصيل الرحلة، نوع السيارة، عدد الركاب المسموح...' : 'وصف المنتج...'}
+                                                value={newProduct.description}
+                                                onChange={e => setNewProduct({ ...newProduct, description: e.target.value })}
+                                                style={{ width: '100%', marginBottom: 10 }}
+                                            ></textarea>
+                                            <div style={{ marginBottom: 15 }}>
+                                                <div
+                                                    onClick={() => document.getElementById('product-image-input').click()}
+                                                    style={{
+                                                        border: '2px dashed var(--border-color)',
+                                                        borderRadius: 12,
+                                                        padding: 20,
+                                                        textAlign: 'center',
+                                                        cursor: 'pointer',
+                                                        background: 'var(--bg-secondary)',
+                                                        transition: 'all 0.2s',
+                                                        minHeight: '120px',
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center'
+                                                    }}
+                                                    onMouseOver={e => e.currentTarget.style.borderColor = 'var(--primary)'}
+                                                    onMouseOut={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
+                                                >
+                                                    {productImages.length > 0 ? (
+                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
+                                                            {productImages.map((img, idx) => (
+                                                                <div key={idx} style={{ position: 'relative' }}>
+                                                                    <img src={URL.createObjectURL(img)} style={{ height: 60, width: 60, objectFit: 'cover', borderRadius: 8 }} />
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            const updated = [...productImages];
+                                                                            updated.splice(idx, 1);
+                                                                            setProductImages(updated);
+                                                                        }}
+                                                                        style={{
+                                                                            position: 'absolute', top: -5, right: -5,
+                                                                            background: '#ef4444', color: 'white',
+                                                                            border: 'none', borderRadius: '50%',
+                                                                            width: 18, height: 18, cursor: 'pointer',
+                                                                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px'
+                                                                        }}
+                                                                    >✕</button>
+                                                                </div>
+                                                            ))}
+                                                            <div style={{ width: 60, height: 60, border: '2px dashed var(--border-color)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>+</div>
+                                                        </div>
+                                                    ) : (
+                                                        <div style={{ color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                            {shopData.category === 'مكتب تاكسي' ? <TaxiIcon /> : <PhotoIcon />}
+                                                            <span style={{ marginTop: 8, fontSize: '0.9rem' }}>
+                                                                {editingProduct ? 'إضافة/تغيير الصور (يمكنك اختيار عدة صور)' : (shopData.category === 'مكتب تاكسي' ? 'اضغط لإضافة صورة للسيارة/الوجهة' : 'اضغط لإضافة صور المنتج (يمكنك اختيار عدة صور)')}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <input
+                                                    id="product-image-input"
+                                                    type="file"
+                                                    multiple
+                                                    onChange={e => setProductImages([...productImages, ...Array.from(e.target.files)])}
+                                                    accept="image/*"
+                                                    hidden
+                                                />
+                                            </div>
+                                            <div style={{ display: 'flex', gap: 10 }}>
+                                                <button type="button" className="btn-small" onClick={() => setShowAddProduct(false)} style={{ flex: 1 }}>إلغاء</button>
+                                                <button type="submit" className="btn-small is-primary" style={{ flex: 2 }}>حفظ</button>
+                                            </div>
+                                        </form>
                                     </div>
+                                )}
+
+                                {/* Supermarket Categories Bar */}
+                                {(['سوبر ماركت', 'سوبرماركت', 'Supermarket', 'supermarket'].includes(shopData.category)) && (
+                                    <div style={{
+                                        display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 15, marginBottom: 20,
+                                        scrollbarWidth: 'none', msOverflowStyle: 'none',
+                                        paddingTop: '5px'
+                                    }}>
+                                        {SUPERMARKET_CATEGORIES.map(cat => {
+                                            const isActive = selectedProductCategory === cat;
+                                            return (
+                                                <button
+                                                    key={cat}
+                                                    onClick={() => setSelectedProductCategory(cat)}
+                                                    style={{
+                                                        whiteSpace: 'nowrap', padding: '10px 22px', borderRadius: 30,
+                                                        border: isActive ? '2px solid var(--primary)' : '1px solid var(--border-color)',
+                                                        cursor: 'pointer', fontWeight: 'bold',
+                                                        fontFamily: "'Tajawal', sans-serif",
+                                                        background: isActive ? 'var(--primary)' : 'var(--bg-secondary)',
+                                                        color: isActive ? 'white' : 'var(--text-primary)',
+                                                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                        boxShadow: isActive ? '0 8px 20px rgba(251, 171, 21, 0.35)' : '0 2px 5px rgba(0,0,0,0.05)',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        fontSize: '0.95rem',
+                                                        flexShrink: 0
+                                                    }}
+                                                    onMouseOver={e => {
+                                                        if (!isActive) {
+                                                            e.currentTarget.style.borderColor = 'var(--primary)';
+                                                            e.currentTarget.style.transform = 'translateY(-2px)';
+                                                        }
+                                                    }}
+                                                    onMouseOut={e => {
+                                                        if (!isActive) {
+                                                            e.currentTarget.style.borderColor = 'var(--border-color)';
+                                                            e.currentTarget.style.transform = 'translateY(0)';
+                                                        }
+                                                    }}
+                                                >
+                                                    {cat}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+
+                                <div style={{ marginBottom: 25 }}>
+                                    <div style={{ position: 'relative', marginBottom: 15 }}>
+                                        <input
+                                            className="input"
+                                            type="text"
+                                            placeholder={shopData.category === 'مكتب تاكسي' ? 'بحث في الوجهات/الخدمات...' : 'بحث في المنتجات...'}
+                                            value={productSearchQuery}
+                                            onChange={e => setProductSearchQuery(e.target.value)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px 45px 12px 15px',
+                                                borderRadius: '12px',
+                                                fontSize: '1rem',
+                                                fontFamily: "'Tajawal', sans-serif"
+                                            }}
+                                        />
+                                        <div style={{ position: 'absolute', top: '50%', right: '15px', transform: 'translateY(-50%)', color: 'var(--text-muted)', display: 'flex' }}>
+                                            <SearchIcon />
+                                        </div>
+                                    </div>
+
                                 </div>
 
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 20 }}>
-                                {products
-                                    .filter(p => {
-                                        const matchesSearch = (p.name || '').toLowerCase().includes(productSearchQuery.toLowerCase()) ||
-                                            (p.description && p.description.toLowerCase().includes(productSearchQuery.toLowerCase()));
-
-                                        // Category filter for supermarket
-                                        const matchesCategory = selectedProductCategory === 'الكل' || 
-                                                              (selectedProductCategory === 'العروض' && p.old_price && parseFloat(p.old_price) > parseFloat(p.price)) ||
-                                                              (p.category === selectedProductCategory);
-
-                                        // Sale check: has old_price AND old_price > price
-                                        const isOnSale = p.old_price && parseFloat(p.old_price) > parseFloat(p.price);
-
-                                        if (['سوبر ماركت', 'سوبرماركت', 'Supermarket', 'supermarket'].includes(shopData.category) && !matchesCategory) return false;
-                                        return matchesSearch;
-                                    })
-                                    .length === 0 ? <p style={{ color: 'var(--text-muted)', gridColumn: '1/-1', textAlign: 'center', padding: '20px' }}>
-                                    {products.length === 0 ? 'لا توجد منتجات.' : 'لا توجد منتجات تطابق البحث/الفلتر.'}
-                                </p> :
-                                    products
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 20 }}>
+                                    {products
                                         .filter(p => {
                                             const matchesSearch = (p.name || '').toLowerCase().includes(productSearchQuery.toLowerCase()) ||
                                                 (p.description && p.description.toLowerCase().includes(productSearchQuery.toLowerCase()));
-                                            
-                                            // Category filter for supermarket
-                                            const matchesCategory = selectedProductCategory === 'الكل' || 
-                                                                  (selectedProductCategory === 'العروض' && p.old_price && parseFloat(p.old_price) > parseFloat(p.price)) ||
-                                                                  (p.category === selectedProductCategory);
 
+                                            // Category filter for supermarket
+                                            const matchesCategory = selectedProductCategory === 'الكل' ||
+                                                (selectedProductCategory === 'العروض' && p.old_price && parseFloat(p.old_price) > parseFloat(p.price)) ||
+                                                (p.category === selectedProductCategory);
+
+                                            // Sale check: has old_price AND old_price > price
                                             const isOnSale = p.old_price && parseFloat(p.old_price) > parseFloat(p.price);
-                                            
+
                                             if (['سوبر ماركت', 'سوبرماركت', 'Supermarket', 'supermarket'].includes(shopData.category) && !matchesCategory) return false;
                                             return matchesSearch;
                                         })
-                                        .map(product => {
-                                            // Start Taxi Custom Design
-                                            if (shopData.category === 'مكتب تاكسي') {
-                                                return (
-                                                    <div key={product.id} style={{
-                                                        background: 'var(--bg-primary)',
-                                                        borderRadius: 16,
-                                                        overflow: 'hidden',
-                                                        boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
-                                                        border: '1px solid #fbab15', // Taxi Yellow Border
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        position: 'relative'
-                                                    }}>
-                                                        {/* Taxi Header Stripe */}
-                                                        <div style={{ height: '8px', background: 'repeating-linear-gradient(45deg, #000, #000 10px, #fbab15 10px, #fbab15 20px)' }}></div>
+                                        .length === 0 ? <p style={{ color: 'var(--text-muted)', gridColumn: '1/-1', textAlign: 'center', padding: '20px' }}>
+                                        {products.length === 0 ? 'لا توجد منتجات.' : 'لا توجد منتجات تطابق البحث/الفلتر.'}
+                                    </p> :
+                                        products
+                                            .filter(p => {
+                                                const matchesSearch = (p.name || '').toLowerCase().includes(productSearchQuery.toLowerCase()) ||
+                                                    (p.description && p.description.toLowerCase().includes(productSearchQuery.toLowerCase()));
 
-                                                        <div style={{ padding: 15, flex: 1 }}>
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                                                <h4 style={{ margin: '0 0 5px', fontSize: '1.2rem', color: 'var(--text-primary)' }}>{product.name}</h4>
-                                                                <span style={{
-                                                                    background: '#fbab15', color: '#000',
-                                                                    fontWeight: 'bold', padding: '2px 8px', borderRadius: '4px', fontSize: '0.9rem'
-                                                                }}>
-                                                                    {product.price} ₪
-                                                                </span>
-                                                            </div>
+                                                // Category filter for supermarket
+                                                const matchesCategory = selectedProductCategory === 'الكل' ||
+                                                    (selectedProductCategory === 'العروض' && p.old_price && parseFloat(p.old_price) > parseFloat(p.price)) ||
+                                                    (p.category === selectedProductCategory);
 
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                                                                {product.old_price && parseFloat(product.old_price) > parseFloat(product.price) && (
-                                                                    <span style={{ color: '#ef4444', textDecoration: 'line-through', fontSize: '0.85rem' }}>{product.old_price} ₪</span>
+                                                const isOnSale = p.old_price && parseFloat(p.old_price) > parseFloat(p.price);
+
+                                                if (['سوبر ماركت', 'سوبرماركت', 'Supermarket', 'supermarket'].includes(shopData.category) && !matchesCategory) return false;
+                                                return matchesSearch;
+                                            })
+                                            .map(product => {
+                                                // Start Taxi Custom Design
+                                                if (shopData.category === 'مكتب تاكسي') {
+                                                    return (
+                                                        <div key={product.id} style={{
+                                                            background: 'var(--bg-primary)',
+                                                            borderRadius: 16,
+                                                            overflow: 'hidden',
+                                                            boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+                                                            border: '1px solid #fbab15', // Taxi Yellow Border
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            position: 'relative'
+                                                        }}>
+                                                            {/* Taxi Header Stripe */}
+                                                            <div style={{ height: '8px', background: 'repeating-linear-gradient(45deg, #000, #000 10px, #fbab15 10px, #fbab15 20px)' }}></div>
+
+                                                            <div style={{ padding: 15, flex: 1 }}>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                                    <h4 style={{ margin: '0 0 5px', fontSize: '1.2rem', color: 'var(--text-primary)' }}>{product.name}</h4>
+                                                                    <span style={{
+                                                                        background: '#fbab15', color: '#000',
+                                                                        fontWeight: 'bold', padding: '2px 8px', borderRadius: '4px', fontSize: '0.9rem'
+                                                                    }}>
+                                                                        {product.price} ₪
+                                                                    </span>
+                                                                </div>
+
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                                                                    {product.old_price && parseFloat(product.old_price) > parseFloat(product.price) && (
+                                                                        <span style={{ color: '#ef4444', textDecoration: 'line-through', fontSize: '0.85rem' }}>{product.old_price} ₪</span>
+                                                                    )}
+                                                                </div>
+
+                                                                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: '0 0 15px', lineHeight: '1.4' }}>
+                                                                    {product.description || 'خدمة توصيل سريعة وآمنة.'}
+                                                                </p>
+
+                                                                {/* Image if available, simplified for taxi */}
+                                                                {product.image_url && (
+                                                                    <div style={{ height: '100px', marginBottom: 15, borderRadius: '8px', overflow: 'hidden' }}>
+                                                                        <img src={getImageUrl(product.image_url)} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                                    </div>
                                                                 )}
                                                             </div>
 
-                                                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: '0 0 15px', lineHeight: '1.4' }}>
-                                                                {product.description || 'خدمة توصيل سريعة وآمنة.'}
-                                                            </p>
+                                                            {/* Actions */}
+                                                            <div style={{ padding: '0 15px 15px', display: 'flex', gap: 10 }}>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const note = window.prompt('(اختياري) ملاحظات للسائق أو تفاصيل الموقع:', '');
+                                                                        if (note !== null) {
+                                                                            cartService.addItem({ ...product, shop_name: shopData.name, note: note });
+                                                                            alert('تم إضافة الحجز إلى قائمة رحلاتك! يرجى تأكيد الطلب من السلة. 🚖');
+                                                                        }
+                                                                    }}
+                                                                    style={{
+                                                                        flex: 1, padding: '10px',
+                                                                        background: '#000', color: '#fbab15',
+                                                                        border: 'none', borderRadius: '8px',
+                                                                        cursor: 'pointer', fontWeight: 'bold',
+                                                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'
+                                                                    }}
+                                                                >
+                                                                    <span>حجز الآن</span>
+                                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+                                                                </button>
+                                                                {canEditShop && (
+                                                                    <>
+                                                                        <button onClick={() => openEditProduct(product)} style={{ background: '#f3f4f6', border: 'none', borderRadius: '8px', width: 40, cursor: 'pointer' }}>✏️</button>
+                                                                        <button onClick={() => handleDeleteProduct(product.id)} style={{ background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '8px', width: 40, cursor: 'pointer' }}>×</button>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+                                                // End Taxi Custom Design
 
-                                                            {/* Image if available, simplified for taxi */}
-                                                            {product.image_url && (
-                                                                <div style={{ height: '100px', marginBottom: 15, borderRadius: '8px', overflow: 'hidden' }}>
-                                                                    <img src={getImageUrl(product.image_url)} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                // Default Design
+                                                return (
+                                                    <div key={product.id} style={{ background: 'var(--bg-primary)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', transition: 'transform 0.2s' }}>
+                                                        <div style={{ aspectRatio: '1/1', background: '#f3f4f6', position: 'relative', borderBottom: '1px solid var(--bg-tertiary)' }}>
+                                                            {/* Instagram-like Image Carousel */}
+                                                            {product.image_urls && product.image_urls.length > 0 ? (
+                                                                <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                                                                    <ProductImageSlider images={product.image_urls} getImageUrl={getImageUrl} />
+                                                                </div>
+                                                            ) : product.image_url ? (
+                                                                <img
+                                                                    src={getImageUrl(product.image_url)}
+                                                                    alt={product.name}
+                                                                    style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '10px' }}
+                                                                />
+                                                            ) : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#aaa' }}>No Image</div>}
+
+                                                            {canEditShop && (
+                                                                <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 5, zIndex: 10 }}>
+                                                                    <button onClick={() => openEditProduct(product)} style={{ background: 'rgba(255, 255, 255, 0.9)', color: '#333', border: 'none', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>✏️</button>
+                                                                    <button onClick={() => handleDeleteProduct(product.id)} style={{ background: 'rgba(239, 68, 68, 0.9)', color: 'white', border: 'none', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>×</button>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Sale Badge */}
+                                                            {product.old_price && parseFloat(product.old_price) > parseFloat(product.price) && (
+                                                                <div style={{ position: 'absolute', top: 10, left: 10, background: '#ef4444', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)', zIndex: 5 }}>
+                                                                    عرض خاص
                                                                 </div>
                                                             )}
                                                         </div>
+                                                        <div style={{ padding: 15 }}>
+                                                            <h4 style={{ margin: '0 0 8px', fontSize: '1.1rem' }}>{product.name}</h4>
 
-                                                        {/* Actions */}
-                                                        <div style={{ padding: '0 15px 15px', display: 'flex', gap: 10 }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 5 }}>
+                                                                <div style={{ color: 'var(--primary)', fontWeight: 'bold', fontSize: '1.2rem' }}>{product.price} شيكل</div>
+                                                                {product.old_price && parseFloat(product.old_price) > parseFloat(product.price) && (
+                                                                    <div style={{ color: 'var(--text-muted)', textDecoration: 'line-through', fontSize: '0.9rem' }}>{product.old_price} شيكل</div>
+                                                                )}
+                                                            </div>
+
+                                                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: '8px 0', lineHeight: '1.5' }}>{product.description}</p>
                                                             <button
                                                                 onClick={() => {
-                                                                    const note = window.prompt('(اختياري) ملاحظات للسائق أو تفاصيل الموقع:', '');
-                                                                    if (note !== null) {
-                                                                        cartService.addItem({ ...product, shop_name: shopData.name, note: note });
-                                                                        alert('تم إضافة الحجز إلى قائمة رحلاتك! يرجى تأكيد الطلب من السلة. 🚖');
-                                                                    }
+                                                                    cartService.addItem({ ...product, shop_name: shopData.name });
+                                                                    alert('تمت الإضافة للسلة');
                                                                 }}
-                                                                style={{
-                                                                    flex: 1, padding: '10px',
-                                                                    background: '#000', color: '#fbab15',
-                                                                    border: 'none', borderRadius: '8px',
-                                                                    cursor: 'pointer', fontWeight: 'bold',
-                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'
-                                                                }}
+                                                                style={{ width: '100%', padding: '10px', marginTop: '10px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
                                                             >
-                                                                <span>حجز الآن</span>
-                                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+                                                                اضافة للسلة
                                                             </button>
-                                                            {canEditShop && (
-                                                                <>
-                                                                    <button onClick={() => openEditProduct(product)} style={{ background: '#f3f4f6', border: 'none', borderRadius: '8px', width: 40, cursor: 'pointer' }}>✏️</button>
-                                                                    <button onClick={() => handleDeleteProduct(product.id)} style={{ background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '8px', width: 40, cursor: 'pointer' }}>×</button>
-                                                                </>
-                                                            )}
                                                         </div>
                                                     </div>
-                                                );
-                                            }
-                                            // End Taxi Custom Design
+                                                )
+                                            })
+                                    }
+                                </div>
 
-                                            // Default Design
-                                            return (
-                                                <div key={product.id} style={{ background: 'var(--bg-primary)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', transition: 'transform 0.2s' }}>
-                                                    <div style={{ aspectRatio: '1/1', background: '#f3f4f6', position: 'relative', borderBottom: '1px solid var(--bg-tertiary)' }}>
-                                                        {/* Instagram-like Image Carousel */}
-                                                        {product.image_urls && product.image_urls.length > 0 ? (
-                                                            <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-                                                                <ProductImageSlider images={product.image_urls} getImageUrl={getImageUrl} />
-                                                            </div>
-                                                        ) : product.image_url ? (
-                                                            <img
-                                                                src={getImageUrl(product.image_url)}
-                                                                alt={product.name}
-                                                                style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '10px' }}
-                                                            />
-                                                        ) : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#aaa' }}>No Image</div>}
-                                                        
-                                                        {canEditShop && (
-                                                            <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 5, zIndex: 10 }}>
-                                                                <button onClick={() => openEditProduct(product)} style={{ background: 'rgba(255, 255, 255, 0.9)', color: '#333', border: 'none', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>✏️</button>
-                                                                <button onClick={() => handleDeleteProduct(product.id)} style={{ background: 'rgba(239, 68, 68, 0.9)', color: 'white', border: 'none', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>×</button>
-                                                            </div>
-                                                        )}
-
-                                                        {/* Sale Badge */}
-                                                        {product.old_price && parseFloat(product.old_price) > parseFloat(product.price) && (
-                                                            <div style={{ position: 'absolute', top: 10, left: 10, background: '#ef4444', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)', zIndex: 5 }}>
-                                                                عرض خاص
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <div style={{ padding: 15 }}>
-                                                        <h4 style={{ margin: '0 0 8px', fontSize: '1.1rem' }}>{product.name}</h4>
-
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 5 }}>
-                                                            <div style={{ color: 'var(--primary)', fontWeight: 'bold', fontSize: '1.2rem' }}>{product.price} شيكل</div>
-                                                            {product.old_price && parseFloat(product.old_price) > parseFloat(product.price) && (
-                                                                <div style={{ color: 'var(--text-muted)', textDecoration: 'line-through', fontSize: '0.9rem' }}>{product.old_price} شيكل</div>
-                                                            )}
-                                                        </div>
-
-                                                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: '8px 0', lineHeight: '1.5' }}>{product.description}</p>
-                                                        <button
-                                                            onClick={() => {
-                                                                cartService.addItem({ ...product, shop_name: shopData.name });
-                                                                alert('تمت الإضافة للسلة');
-                                                            }}
-                                                            style={{ width: '100%', padding: '10px', marginTop: '10px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
-                                                        >
-                                                            اضافة للسلة
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            )
-                                        })
-                                }
+                                {/* Floating Cart Button */}
+                                <button
+                                    onClick={() => setShowCart(true)}
+                                    style={{
+                                        position: 'fixed', bottom: 30, left: 20, zIndex: 2100,
+                                        background: 'var(--bg-primary)', color: 'var(--text-primary)',
+                                        border: '2px solid var(--primary)', borderRadius: '50px',
+                                        padding: '10px 18px', fontSize: '1rem', fontWeight: 'bold',
+                                        display: 'flex', alignItems: 'center', gap: 8,
+                                        boxShadow: '0 4px 15px rgba(0,0,0,0.2)', cursor: 'pointer'
+                                    }}
+                                >
+                                    {shopData.category === 'مكتب تاكسي' ? 'حجوزاتي' : 'السلة'} 🛒
+                                    {cartCount > 0 && <span style={{ background: 'red', color: 'white', borderRadius: '50%', padding: '1px 7px', fontSize: '0.85rem' }}>{cartCount}</span>}
+                                </button>
                             </div>
-
-                            {/* Floating Cart Button */}
-                            <button
-                                onClick={() => setShowCart(true)}
-                                style={{
-                                    position: 'fixed', bottom: 30, left: 20, zIndex: 2100,
-                                    background: 'var(--bg-primary)', color: 'var(--text-primary)',
-                                    border: '2px solid var(--primary)', borderRadius: '50px',
-                                    padding: '10px 18px', fontSize: '1rem', fontWeight: 'bold',
-                                    display: 'flex', alignItems: 'center', gap: 8,
-                                    boxShadow: '0 4px 15px rgba(0,0,0,0.2)', cursor: 'pointer'
-                                }}
-                            >
-                                {shopData.category === 'مكتب تاكسي' ? 'حجوزاتي' : 'السلة'} 🛒
-                                {cartCount > 0 && <span style={{ background: 'red', color: 'white', borderRadius: '50%', padding: '1px 7px', fontSize: '0.85rem' }}>{cartCount}</span>}
-                            </button>
-                        </div>
-                    )}
+                        )}
 
                     {activeTab === 'drivers' && (
                         <div style={{ maxWidth: '600px', margin: '0 auto' }}>
@@ -1999,7 +2025,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                     </div>
                                 </div>
                                 {canEditShop && (
-                                    <button 
+                                    <button
                                         onClick={() => setShowAddInternalShop(!showAddInternalShop)}
                                         style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '10px 20px', borderRadius: 10, fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
                                     >
@@ -2014,25 +2040,25 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                     <form onSubmit={handleAddInternalShop} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
                                         <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                                             <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>اسم المحل</label>
-                                            <input 
-                                                className="input" 
-                                                placeholder="مثال: ديفاكتو، مطعم زيت وزعتر..." 
-                                                value={newInternalShopData.name} 
-                                                onChange={e => setNewInternalShopData({ ...newInternalShopData, name: e.target.value })} 
-                                                required 
+                                            <input
+                                                className="input"
+                                                placeholder="مثال: ديفاكتو، مطعم زيت وزعتر..."
+                                                value={newInternalShopData.name}
+                                                onChange={e => setNewInternalShopData({ ...newInternalShopData, name: e.target.value })}
+                                                required
                                                 style={{ width: '100%', padding: '12px' }}
                                             />
                                         </div>
                                         <div className="form-group">
                                             <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>التصنيف</label>
-                                            <select 
-                                                className="input" 
-                                                value={newInternalShopData.category} 
-                                                onChange={e => setNewInternalShopData({ ...newInternalShopData, category: e.target.value })} 
+                                            <select
+                                                className="input"
+                                                value={newInternalShopData.category}
+                                                onChange={e => setNewInternalShopData({ ...newInternalShopData, category: e.target.value })}
                                                 required
                                                 style={{ width: '100%', padding: '12px' }}
                                             >
-                                                 <option value="">اختر التصنيف...</option>
+                                                <option value="">اختر التصنيف...</option>
                                                 <option value="ملابس">ملابس</option>
                                                 <option value="أحذية">أحذية</option>
                                                 <option value="إلكترونيات">إلكترونيات</option>
@@ -2045,10 +2071,10 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                         </div>
                                         <div className="form-group">
                                             <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>الطابق</label>
-                                            <select 
-                                                className="input" 
-                                                value={newInternalShopData.floor} 
-                                                onChange={e => setNewInternalShopData({ ...newInternalShopData, floor: e.target.value })} 
+                                            <select
+                                                className="input"
+                                                value={newInternalShopData.floor}
+                                                onChange={e => setNewInternalShopData({ ...newInternalShopData, floor: e.target.value })}
                                                 required
                                                 style={{ width: '100%', padding: '12px' }}
                                             >
@@ -2086,8 +2112,8 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                 </h3>
                                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 15 }}>
                                                     {floorShops.map(s => (
-                                                        <div 
-                                                            key={s.id} 
+                                                        <div
+                                                            key={s.id}
                                                             onClick={async () => {
                                                                 try {
                                                                     const data = await shopService.getProfile(s.id);
@@ -2104,8 +2130,8 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                                     console.error("Failed to load internal shop profile", error);
                                                                 }
                                                             }}
-                                                            style={{ 
-                                                                background: 'var(--bg-primary)', padding: 15, borderRadius: 12, border: '1px solid var(--border-color)', 
+                                                            style={{
+                                                                background: 'var(--bg-primary)', padding: 15, borderRadius: 12, border: '1px solid var(--border-color)',
                                                                 display: 'flex', gap: 15, cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
                                                             }}
                                                             onMouseOver={e => {
@@ -2286,9 +2312,9 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                     {post.image_url && (
                                         <div onClick={() => setSelectedPost(post)} style={{ cursor: 'pointer' }}>
                                             {post.media_type === 'video' ? (
-                                                <video 
-                                                    src={getImageUrl(post.image_url)} 
-                                                    controls 
+                                                <video
+                                                    src={getImageUrl(post.image_url)}
+                                                    controls
                                                     style={{ width: '100%', maxHeight: 400, borderRadius: 8, background: '#000' }}
                                                 />
                                             ) : (
@@ -2333,7 +2359,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                             <span>{post.comments_count}</span>
                                         </button>
                                     </div>
-                                    <form 
+                                    <form
                                         style={{ marginTop: 10, display: 'flex', gap: '8px' }}
                                         onSubmit={async e => {
                                             e.preventDefault();
@@ -2697,18 +2723,18 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                     transform: translateY(-1px);
                 }
             `}</style>
-            {/* Image Cropper Modal for Profile/Cover updates */}
-            {cropState.isOpen && (
-                <ImageCropperModal
-                    imageFile={cropState.file}
-                    aspect={cropState.aspect}
-                    onCancel={() => setCropState({ isOpen: false, file: null, type: null, aspect: 1 })}
-                    onCropDone={(croppedFile) => {
-                        handleImageUpload(cropState.type, croppedFile);
-                        setCropState({ isOpen: false, file: null, type: null, aspect: 1 });
-                    }}
-                />
-            )}
+                {/* Image Cropper Modal for Profile/Cover updates */}
+                {cropState.isOpen && (
+                    <ImageCropperModal
+                        imageFile={cropState.file}
+                        aspect={cropState.aspect}
+                        onCancel={() => setCropState({ isOpen: false, file: null, type: null, aspect: 1 })}
+                        onCropDone={(croppedFile) => {
+                            handleImageUpload(cropState.type, croppedFile);
+                            setCropState({ isOpen: false, file: null, type: null, aspect: 1 });
+                        }}
+                    />
+                )}
             </div >
         </div >
     );
