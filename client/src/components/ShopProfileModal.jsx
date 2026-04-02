@@ -1136,7 +1136,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                         <h4 style={{ margin: '0 0 10px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>🧠 تفاصيل عقول العملاء المبرمجين ({simResult.agentLogs.length} عميل - اضغط للدردشة):</h4>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px', overflowY: 'auto', paddingRight: '5px' }}>
                                             {simResult.agentLogs.map((log, idx) => (
-                                                <div key={idx} style={{ background: 'var(--bg-tertiary)', borderRadius: '8px', overflow: 'hidden', border: expandedAgentIndex === idx ? '1px solid var(--primary)' : '1px solid transparent', transition: 'all 0.2s' }}>
+                                                <div key={idx} style={{ flexShrink: 0, background: 'var(--bg-tertiary)', borderRadius: '8px', overflow: 'hidden', border: expandedAgentIndex === idx ? '1px solid var(--primary)' : '1px solid transparent', transition: 'all 0.2s' }}>
                                                     <div
                                                         style={{ padding: '10px 12px', fontSize: '0.9rem', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                                                         onClick={() => setExpandedAgentIndex(expandedAgentIndex === idx ? null : idx)}
