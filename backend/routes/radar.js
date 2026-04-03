@@ -39,14 +39,14 @@ router.get('/flights', async (req, res) => {
         const flights = allAircraft.map(a => ({
             icao24: a.hex,
             callsign: (a.flight || '').trim() || 'مدنية',
-            type: a.t || a.desc || 'طائرة تجارية',
+            type: 'طائرة تجارية',
             heading: a.track || 0,
             lat: a.lat,
             lon: a.lon,
             altitude: a.alt_baro === 'ground' ? 0 : (a.alt_baro || 0),
             speed: a.gs || 0,
             squawk: a.squawk || ''
-        })).filter(f => f.lat && f.lon && !f.type.toLowerCase().includes('military') && !f.type.toLowerCase().includes('fighter'));
+        })).filter(f => f.lat && f.lon);
 
         res.json({ flights });
     } catch (err) {

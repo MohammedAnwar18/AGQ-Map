@@ -329,8 +329,8 @@ const NewsModal = ({ onClose, location }) => {
                                         
                                         {selectedFeature.type === 'flight' && (
                                             <>
-                                                <h4 className="popup-title header-flight" style={{color: selectedFeature.data.type === 'طائرة مدنية' || !selectedFeature.data.type.includes('Fighter') ? '#ffffff' : '#00d2ff'}}>
-                                                    {selectedFeature.data.type === 'طائرة مدنية' ? '✈️ طائرة مدنية' : '✈️ طائرة عسكرية'}
+                                                <h4 className="popup-title header-flight" style={{color: '#ffffff'}}>
+                                                    ✈️ طائرة مدنية
                                                 </h4>
                                                 <div className="popup-details">
                                                     <p><span>رمز النداء:</span> <strong>{selectedFeature.data.callsign}</strong></p>
@@ -439,8 +439,8 @@ const NewsModal = ({ onClose, location }) => {
 
                                     {markets && (
                                         <div className="feed-card market-card">
-                                            <div className="market-row" style={{color:'#f8d02e'}}>🪙 ذهب: <strong>${markets.goldOunce}</strong></div>
-                                            <div className="market-row" style={{color:'#66bdf5'}}>🛢️ نفط الخام: <strong>${markets.crudeOil}</strong></div>
+                                            <div className="market-row" style={{color:'#f8d02e'}}>أونصة الذهب: <strong>${markets.goldOunce}</strong></div>
+                                            <div className="market-row" style={{color:'#66bdf5'}}>برميل النفط: <strong>${markets.crudeOil}</strong></div>
                                         </div>
                                     )}
 
