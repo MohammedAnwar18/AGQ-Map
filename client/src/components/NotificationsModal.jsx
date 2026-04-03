@@ -155,9 +155,9 @@ const NotificationsModal = ({ onClose, onNotificationClick }) => {
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 25px)', paddingBottom: '1.2rem' }}>
+                <div className="modal-header">
                     <h2>{selectedRequest ? 'طلب صداقة' : 'الإشعارات'}</h2>
-                    <button className="btn-close" onClick={selectedRequest ? () => setSelectedRequest(null) : onClose} style={{ marginTop: '5px' }}>
+                    <button className="btn-close" onClick={selectedRequest ? () => setSelectedRequest(null) : onClose}>
                         ✕
                     </button>
                 </div>

@@ -29,22 +29,23 @@
 /* Back Button */
 .post-modal-back-btn {
     position: absolute;
-    top: 20px;
-    right: 25px; /* Moved to Right */
+    top: calc(env(safe-area-inset-top) + 15px);
+    right: 20px;
     left: auto;
-    background: rgba(0, 0, 0, 0.4);
-    color: #fbab15; /* Site Accent Color */
-    border: 1px solid rgba(251, 171, 21, 0.3);
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.5);
+    color: #fbab15;
+    border: 1.5px solid rgba(251, 171, 21, 0.4);
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
     cursor: pointer;
     z-index: 1000;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(15px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
 .post-modal-back-btn:hover {
@@ -67,7 +68,7 @@
 }
 
 .post-modal-main-container {
-    flex: 2;
+    flex: 2.2;
     background: #000;
     position: relative;
     display: flex;
@@ -232,11 +233,12 @@
 /* NEW ACTION BAR PILL STYLES */
 .post-pill-action-bar-container {
     position: absolute;
-    bottom: 30px;
+    bottom: calc(env(safe-area-inset-bottom) + 20px);
     left: 50%;
     transform: translateX(-50%);
     z-index: 1000;
-    width: auto;
+    width: 90%;
+    max-width: 500px;
     pointer-events: none;
 }
 
@@ -432,21 +434,21 @@
 /* Floating User Info - Centered and Neater */
 .post-modal-user-floating {
     position: absolute;
-    top: 20px; /* Same level as back button */
+    top: calc(env(safe-area-inset-top) + 15px);
     left: 50%;
     transform: translateX(-50%);
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 6px 20px;
-    background: rgba(15, 15, 15, 0.7);
-    backdrop-filter: blur(15px);
-    -webkit-backdrop-filter: blur(15px);
+    padding: 6px 16px;
+    background: rgba(15, 15, 15, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border-radius: 40px;
-    border: 1.5px solid rgba(251, 171, 21, 0.5); /* Accent Color Border */
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 15px rgba(251, 171, 21, 0.2);
+    border: 1.5px solid rgba(251, 171, 21, 0.6);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
     z-index: 1000;
-    animation: fadeIn 0.5s ease;
+    animation: fadeIn 0.4s ease;
 }
 
 .post-modal-user-floating img {
