@@ -91,15 +91,8 @@ router.get('/markets', async (req, res) => {
 // General Intel (RESTORED Full OSINT with Conflicts/Strikes)
 router.get('/intel', async (req, res) => {
     res.json({
-        conflicts: [
-            { city: "جنوب لبنان", status: "اشتباكات وقصف متبادل", intensity: "عالي", lat: 33.25, lon: 35.35 },
-            { city: "قطاع غزة", status: "حرب شاملة", intensity: "حرج", lat: 31.41, lon: 34.34 },
-            { city: "البحر الأحمر", status: "استهداف سفن وتأمين شحن", intensity: "عالي", lat: 14.5, lon: 41.0 },
-            { city: "الحديدة (اليمن)", status: "غارات جوية محتملة", intensity: "متوسط", lat: 14.79, lon: 42.95 }
-        ],
-        strikes: [
-            { id: 1, target: "موقع إطلاق صواريخ (جنوب لبنان)", details: "غارة جوية دمرت منصات إطلاق بعد رصدها عبر الرادار.", time: new Date().toISOString(), lat: 33.15, lon: 35.25 }
-        ],
+        conflicts: [], // Removed per user request
+        strikes: [],   // Removed per user request
         incidents: [
             { type: "اشتباك مسلح", city: "جنين - الضفة", text: "اشتباكات مسلحة عنيفة بين مقاومين وقوات الاحتلال إثر عملية اقتحام واسعة للمخيم.", lat: 32.4611, lon: 35.2975, time: new Date(Date.now() - 100000).toISOString() },
             { type: "اقتحام", city: "نابلس - الضفة", text: "قوات الاحتلال تقتحم مدينة نابلس من عدة محاور وتتمركز في محيط البلدة القديمة.", lat: 32.2223, lon: 35.2621, time: new Date(Date.now() - 300000).toISOString() },

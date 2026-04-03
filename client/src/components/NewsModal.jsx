@@ -396,8 +396,13 @@ const NewsModal = ({ onClose, location }) => {
                     <div className={`news-sidebar ${showNewsPanel ? 'open' : ''}`}>
                         
                         <div className="sidebar-action-header">
-                            <button className="sidebar-btn back-btn" onClick={() => setShowNewsPanel(false)} title="إغلاق والعودة للخريطة">
-                                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                            <button 
+                                className="sidebar-btn back-btn" 
+                                onClick={() => setShowNewsPanel(false)} 
+                                title="إغلاق والعودة للخريطة"
+                                style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
+                            >
+                                <span style={{ fontSize: '20px', color: '#fff', fontWeight: 'bold' }}>→</span>
                             </button>
 
                             <h3 className="sidebar-title-minimal">قائمة الأخبار والصراعات</h3>
@@ -434,7 +439,7 @@ const NewsModal = ({ onClose, location }) => {
 
                                     {markets && (
                                         <div className="feed-card market-card">
-                                            <div className="market-row" style={{color:'#f8d02e'}}>🥇 ذهب: <strong>${markets.goldOunce}</strong></div>
+                                            <div className="market-row" style={{color:'#f8d02e'}}>🪙 ذهب: <strong>${markets.goldOunce}</strong></div>
                                             <div className="market-row" style={{color:'#66bdf5'}}>🛢️ نفط الخام: <strong>${markets.crudeOil}</strong></div>
                                         </div>
                                     )}
@@ -467,7 +472,7 @@ const NewsModal = ({ onClose, location }) => {
                                         </div>
                                     ))}
 
-                                    <div className="section-divider">التحركات العسكرية المباشرة</div>
+                                    {/* Removed Military Movements Divider per user request */}
 
                                     {/* NAVY SHIPS */}
                                     {ships.map((ship, i) => (
@@ -485,8 +490,8 @@ const NewsModal = ({ onClose, location }) => {
                                         <div key={`flight-${i}`} className="feed-card flight-card highlight-hover">
                                             <span className="feed-icon rotation-trans" style={{ transform: `rotate(${flight.heading - 45}deg)` }}>✈️</span>
                                             <div className="feed-info">
-                                                <h4>رقم النداء: {flight.callsign || 'نقطة مجهولة'}</h4>
-                                                <p>الارتفاع: {flight.altitude} قدم</p>
+                                                <h4>رقم النداء: {flight.callsign || 'مدنية'}</h4>
+                                                <p>طائرة تجارية | الارتفاع: {flight.altitude} قدم</p>
                                             </div>
                                         </div>
                                     ))}
