@@ -1,7 +1,6 @@
-import axios from 'axios';
+import api from '../services/api';
 
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || 'BLbvE17NyqUMAFUr15zE9pS4s_a0Mtsm8wYJ6cacnBuDQ6LcVRwcb7id7bGXyQR5ZzL-67KJJJj7KXAQ9Bjlfnk';
 
 /**
  * Convert VAPID public key from base64 to Uint8Array
@@ -60,14 +59,8 @@ export async function subscribeToPushNotifications() {
         }
 
         // Send subscription to backend
-        const token = localStorage.getItem('token');
-        if (token) {
-            await axios.post(`${API_URL}/push/subscribe`, 
-                { subscription },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-            console.log('✅ Subscribed to push notifications successfully');
-        }
+        await api.post('/push/subscribe', { subscription });
+        console.log('✅ Subscribed to push notifications successfully');
 
     } catch (error) {
         console.error('❌ Error subscribing to push notifications:', error);
@@ -86,13 +79,7 @@ export async function unsubscribeFromPushNotifications() {
         if (!subscription) return;
 
         // Notify backend
-        const token = localStorage.getItem('token');
-        if (token) {
-            await axios.post(`${API_URL}/push/unsubscribe`, 
-                { endpoint: subscription.endpoint },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-        }
+        await api.post('/push/unsubscribe', { endpoint: subscription.endpoint });
 
         // Unsubscribe locally
         await subscription.unsubscribe();
