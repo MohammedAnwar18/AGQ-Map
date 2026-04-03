@@ -144,6 +144,7 @@
     left: 0;
     right: 0;
     height: calc(75px + env(safe-area-inset-top));
+    box-sizing: border-box; /* Prevent padding from exploding the height */
     padding-top: env(safe-area-inset-top) !important;
     padding-left: 2rem;
     padding-right: 2rem;
