@@ -148,7 +148,8 @@ const AIChatModal = ({ onClose, onSearchResults, onRouteRequest, onClearMap, use
                     role: 'CHATBOT',
                     content: reply,
                     isOptions: true,
-                    destination: dest // Pass the full location object
+                    destination: dest,
+                    results: results && results.length > 0 ? results : null
                 }]);
             } else if (type === 'route') {
                 // Determine destination: either from searchResults (if query provided) or pendingDestination
@@ -278,26 +279,26 @@ const AIChatModal = ({ onClose, onSearchResults, onRouteRequest, onClearMap, use
                                         onClick={() => {
                                             if (onRouteRequest) {
                                                 onRouteRequest(msg.destination, 'driving');
-                                                setMessages(prev => [...prev, { id: Date.now(), role: 'USER', content: '🚗 سيارة' }]);
+                                                setMessages(prev => [...prev, { id: Date.now(), role: 'USER', content: '🚗' }]);
                                                 onClose(); // Close chat to show map
                                             }
                                         }}
-                                        style={{ flex: 1, padding: '8px', borderRadius: '12px', border: '1px solid #ddd', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
+                                        style={{ flex: 1, padding: '8px', borderRadius: '12px', border: '1px solid #ddd', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', fontSize: '1.5rem' }}
                                     >
-                                        <span>🚗</span> سيارة
+                                        🚗
                                     </button>
                                     <button
                                         className="btn-option"
                                         onClick={() => {
                                             if (onRouteRequest) {
                                                 onRouteRequest(msg.destination, 'walking');
-                                                setMessages(prev => [...prev, { id: Date.now(), role: 'USER', content: '🚶 مشي' }]);
+                                                setMessages(prev => [...prev, { id: Date.now(), role: 'USER', content: '🚶' }]);
                                                 onClose();
                                             }
                                         }}
-                                        style={{ flex: 1, padding: '8px', borderRadius: '12px', border: '1px solid #ddd', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
+                                        style={{ flex: 1, padding: '8px', borderRadius: '12px', border: '1px solid #ddd', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', fontSize: '1.5rem' }}
                                     >
-                                        <span>🚶</span> مشي
+                                        🚶
                                     </button>
                                 </div>
                             )}
