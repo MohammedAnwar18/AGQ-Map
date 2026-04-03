@@ -97,8 +97,17 @@ function App() {
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
 
-        // Slowed down to exactly 2.5 seconds as requested by user
-        const timer = setTimeout(hideSplash, 2500);
+        // Splash Screen Logic (Restored to original 1.8s)
+        const timer = setTimeout(() => {
+            const splash = document.getElementById('splash-screen');
+            if (splash) {
+                splash.classList.add('fade-out');
+                document.body.classList.remove('splash-active');
+                setTimeout(() => {
+                    splash.style.display = 'none';
+                }, 600);
+            }
+        }, 1800);
 
         return () => {
             window.removeEventListener('online', handleOnline);
@@ -106,19 +115,6 @@ function App() {
             clearTimeout(timer);
         };
     }, []);
-
-    // Also ensure cleanup happens after the CSS transition (0.8s) completes
-    const hideSplash = () => {
-        const splash = document.getElementById('splash-screen');
-        if (splash) {
-            splash.classList.add('fade-out');
-            document.body.classList.remove('splash-active');
-            // Remove from DOM after transition (0.8s = 800ms)
-            setTimeout(() => {
-                splash.style.display = 'none';
-            }, 800);
-        }
-    };
 
     if (!isOnline) {
         return <OfflinePage />;
@@ -162,11 +158,8 @@ function App() {
                         }
                     />
                     <Route path="/admin/users/:userId" element={<AdminRoute><AdminUserDetails /></AdminRoute>} />
-                    
-                    {/* Legal Routes */}
                     <Route path="/terms" element={<LegalPages type="terms" />} />
                     <Route path="/privacy" element={<LegalPages type="privacy" />} />
-
                     <Route path="/" element={<Navigate to="/map" />} />
                     <Route path="*" element={<OfflinePage />} />
                 </Routes>
