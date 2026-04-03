@@ -482,7 +482,9 @@
     box-shadow: -10px 0 50px rgba(0, 0, 0, 0.7);
     display: flex;
     flex-direction: column;
-    padding: 0; /* padding handled inside for header/footer */
+    padding: 0;
+    padding-top: env(safe-area-inset-top); /* Keep sidebar content below notch */
+    padding-bottom: env(safe-area-inset-bottom);
     overflow-y: auto;
     overflow-x: hidden;
 }

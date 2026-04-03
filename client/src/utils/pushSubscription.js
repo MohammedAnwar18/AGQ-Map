@@ -30,21 +30,21 @@ export async function subscribeToPushNotifications() {
     }
 
     try {
-        // Register Service Worker if not already registered
-        const registration = await navigator.serviceWorker.register('/sw.js', {
-            scope: '/'
-        });
-        console.log('Service Worker registered:', registration);
-
-        // Wait for service worker to be ready
-        await navigator.serviceWorker.ready;
-
-        // Request permission
+        // 1. Immediately request permission to satisfy Safari User Gesture constraint
         const permission = await Notification.requestPermission();
         if (permission !== 'granted') {
             console.warn('Notification permission denied');
             return;
         }
+
+        // 2. Register Service Worker if not already registered
+        const registration = await navigator.serviceWorker.register('/sw.js', {
+            scope: '/'
+        });
+        console.log('Service Worker registered:', registration);
+
+        // 3. Wait for service worker to be ready
+        await navigator.serviceWorker.ready;
 
         // Check if already subscribed
         let subscription = await registration.pushManager.getSubscription();
