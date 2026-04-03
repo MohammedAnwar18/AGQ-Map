@@ -23,7 +23,7 @@ const authenticateToken = (req, res, next) => {
  */
 router.post('/subscribe', authenticateToken, async (req, res) => {
     const { subscription } = req.body;
-    const userId = req.user.id;
+    const userId = req.user.userId || req.user.id;
 
     if (!subscription || !subscription.endpoint) {
         return res.status(400).json({ error: 'Invalid subscription object' });
@@ -56,7 +56,7 @@ router.post('/subscribe', authenticateToken, async (req, res) => {
  */
 router.post('/unsubscribe', authenticateToken, async (req, res) => {
     const { endpoint } = req.body;
-    const userId = req.user.id;
+    const userId = req.user.userId || req.user.id;
 
     if (!endpoint) {
         return res.status(400).json({ error: 'Endpoint required' });
