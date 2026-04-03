@@ -439,7 +439,7 @@
     display: flex;
     flex-direction: column;
     padding: 30px;
-    padding-top: calc(env(safe-area-inset-top) + 60px);
+    padding-top: calc(env(safe-area-inset-top) + 70px) !important;
     overflow-y: auto;
     border-left: 1px solid #333;
     z-index: 50;
@@ -463,6 +463,7 @@
     }
     .news-sidebar {
         padding: 20px;
+        padding-top: calc(env(safe-area-inset-top) + 65px) !important;
         border-radius: 0;
     }
     .news-map-container {
@@ -768,15 +769,15 @@
 }
 
 .sidebar-btn {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.1);
     color: #fff;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1.5px solid rgba(255, 255, 255, 0.15);
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     position: relative;
