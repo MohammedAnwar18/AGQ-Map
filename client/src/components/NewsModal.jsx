@@ -169,9 +169,9 @@ const NewsModal = ({ onClose, location }) => {
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                    <h2>خريطة الاخبار المباشرة</h2>
-                    <button className="btn-close" onClick={onClose} title="إغلاق">
+                <div className="modal-header" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 25px)', paddingBottom: '1.2rem', background: '#111' }}>
+                    <h2 style={{ fontSize: '1.2rem', color: '#fff' }}>خريطة الاخبار المباشرة</h2>
+                    <button className="btn-close" onClick={onClose} title="إغلاق" style={{ marginTop: '5px' }}>
                         ✕
                     </button>
                 </div>

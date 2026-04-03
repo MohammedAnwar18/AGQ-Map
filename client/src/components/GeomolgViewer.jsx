@@ -99,6 +99,15 @@ const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops, onShopCli
         };
     }, []);
 
+    // Effect to update view when userLocation changes for live tracking
+    useEffect(() => {
+        if (isMapReady && viewRef.current && userLocation) {
+            viewRef.current.goTo({
+                center: [parseFloat(userLocation.longitude), parseFloat(userLocation.latitude)]
+            });
+        }
+    }, [isMapReady, userLocation]);
+
     // Effect to render markers when map is ready or data changes
     useEffect(() => {
         if (!isMapReady || !graphicsLayerRef.current || !esriModules.current) return;
@@ -191,9 +200,9 @@ const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops, onShopCli
     return (
         <div className="modal-overlay" onClick={onClose} style={{ zIndex: 3000 }}>
             <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                    <h2>القمر الصناعي الرسمي</h2>
-                    <button className="btn-close" onClick={onClose}>✕</button>
+                <div className="modal-header" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 25px)', paddingBottom: '1.2rem' }}>
+                    <h2>الصورة الجوية</h2>
+                    <button className="btn-close" onClick={onClose} style={{ marginTop: '5px' }}>✕</button>
                 </div>
                 
                 <div className="modal-body" style={{ padding: 0, position: 'relative', height: '100%', overflow: 'hidden' }}>

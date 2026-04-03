@@ -63,9 +63,9 @@ const CommunitiesModal = ({ onClose, onJoinCommunity }) => {
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-container" onClick={e => e.stopPropagation()}>
-                <div className="modal-header">
+                <div className="modal-header" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 25px)', paddingBottom: '1.2rem' }}>
                     <h2>المجتمعات</h2>
-                    <button className="btn-close" onClick={onClose}>✕</button>
+                    <button className="btn-close" onClick={onClose} style={{ marginTop: '5px' }}>✕</button>
                 </div>
 
                 <div className="modal-body">

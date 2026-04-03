@@ -92,16 +92,7 @@ const NotificationsModal = ({ onClose, onNotificationClick }) => {
     };
 
     const getNotificationIcon = (type) => {
-        switch (type) {
-            case 'friend_request': return '👥';
-            case 'friend_accepted': return '✅';
-            case 'new_post': return '📸';
-            case 'post_comment': return '💬';
-            case 'comment': return '💬';
-            case 'like': return '❤️';
-            case 'shop_alert': return '📢';
-            default: return '🔔';
-        }
+        return '🔔'; // Simple bell icon for all as user requested no emojis or cluttered look
     };
 
     const getNotificationMessage = (notification) => {
@@ -164,9 +155,9 @@ const NotificationsModal = ({ onClose, onNotificationClick }) => {
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
+                <div className="modal-header" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 25px)', paddingBottom: '1.2rem' }}>
                     <h2>{selectedRequest ? 'طلب صداقة' : 'الإشعارات'}</h2>
-                    <button className="btn-close" onClick={selectedRequest ? () => setSelectedRequest(null) : onClose}>
+                    <button className="btn-close" onClick={selectedRequest ? () => setSelectedRequest(null) : onClose} style={{ marginTop: '5px' }}>
                         ✕
                     </button>
                 </div>

@@ -132,13 +132,13 @@ const createNotification = async (userId, senderId, type, message) => {
             let body = message || `لديك تنبيه جديد من ${senderName}`;
 
             if (type === 'friend_request') {
-                title = 'طلب صداقة جديد 👥';
+                title = 'طلب صداقة جديد';
                 body = `أرسل لك ${senderName} طلب صداقة`;
             } else if (type === 'friend_accepted') {
-                title = 'تم قبول طلب الصداقة ✅';
+                title = 'تم قبول طلب الصداقة';
                 body = `وافق ${senderName} على طلب صداقتك`;
             } else if (type === 'message') {
-                title = 'رسالة جديدة 💬';
+                title = 'رسالة جديدة';
                 body = `${senderName}: ${message || 'أرسل لك رسالة'}`;
             }
 
