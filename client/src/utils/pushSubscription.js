@@ -60,9 +60,9 @@ export async function subscribeToPushNotifications() {
 
         // Send subscription to backend
         await api.post('/push/subscribe', { subscription });
-        console.log('✅ Subscribed to push notifications successfully');
 
     } catch (error) {
+        alert('❌ عذراً، فشل تفعيل الإشعارات: ' + error.message);
         console.error('❌ Error subscribing to push notifications:', error);
     }
 }
@@ -83,9 +83,8 @@ export async function unsubscribeFromPushNotifications() {
 
         // Unsubscribe locally
         await subscription.unsubscribe();
-        console.log('✅ Unsubscribed from push notifications');
 
     } catch (error) {
-        console.error('❌ Error unsubscribing from push notifications:', error);
+        console.error('❌ Error unsubscribing:', error);
     }
 }

@@ -483,8 +483,8 @@
     display: flex;
     flex-direction: column;
     padding: 0;
-    padding-top: env(safe-area-inset-top); /* Keep sidebar content below notch */
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-top: calc(env(safe-area-inset-top) + 20px) !important; /* Force sidebar down away from notch */
+    padding-bottom: calc(env(safe-area-inset-bottom) + 15px) !important;
     overflow-y: auto;
     overflow-x: hidden;
 }

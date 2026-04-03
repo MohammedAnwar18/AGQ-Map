@@ -18,8 +18,9 @@
     height: 100dvh;
     max-width: 100vw;
     max-height: 100dvh;
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
+    box-sizing: border-box;
+    padding-top: calc(env(safe-area-inset-top) + 20px) !important;
+    padding-bottom: calc(env(safe-area-inset-bottom) + 15px) !important;
     overflow-y: auto;
     border: none;
     border-radius: 0;
