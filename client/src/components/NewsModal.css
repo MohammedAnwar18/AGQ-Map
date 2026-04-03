@@ -171,11 +171,13 @@
     border-radius: 12px;
     padding: 15px 18px;
     min-width: 240px;
+    max-width: 85vw; /* Prevent overflow on mobiles */
     color: #e0e0e0;
     box-shadow: 0 10px 25px rgba(0,0,0,0.8);
     font-family: 'Tajawal', sans-serif;
     position: relative;
     backdrop-filter: blur(5px);
+    word-break: break-word;
 }
 .popup-close-btn {
     position: absolute;
@@ -722,5 +724,33 @@
     font-size: 1rem;
     line-height: 1.6;
     color: #e0e0e0;
+}
+
+/* Mobile Responsiveness for Premium Popups */
+@media (max-width: 480px) {
+    .feature-popup {
+        min-width: 200px;
+        padding: 12px;
+    }
+    .premium-incident-popup .header-incident {
+        font-size: 1rem;
+        padding-bottom: 8px;
+    }
+    .meta-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+        margin-bottom: 4px;
+    }
+    .incident-meta-details {
+        padding: 10px;
+    }
+    .incident-description {
+        font-size: 0.9rem;
+        padding: 10px;
+    }
+    .meta-value {
+        font-size: 0.85rem;
+    }
 }
 
