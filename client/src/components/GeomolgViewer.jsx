@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { loadModules } from 'esri-loader';
+import './Modal.css';
 
 const WB_URL = "https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_WB_2024_15cm_tif_PG1923/MapServer";
 const GAZA_URL = "https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_GS_2024_m12_Satellite_tif_PG1923/MapServer";
@@ -188,77 +189,63 @@ const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops, onShopCli
     };
 
     return (
-        <div className="geomolg-viewer-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 3000, background: '#0f172a' }}>
-            <div ref={mapDiv} style={{ width: '100%', height: '100%' }} />
+        <div className="modal-overlay" onClick={onClose} style={{ zIndex: 3000 }}>
+            <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                    <h2>القمر الصناعي الرسمي</h2>
+                    <button className="btn-close" onClick={onClose}>✕</button>
+                </div>
+                
+                <div className="modal-body" style={{ padding: 0, position: 'relative', height: '100%', overflow: 'hidden' }}>
+                    <div ref={mapDiv} style={{ width: '100%', height: '100%' }} />
 
-            {/* Optimized Region Control for Mobile & Web */}
-            <div style={{
-                position: 'absolute', top: '20px', left: '50%', transform: 'translateX(-50%)',
-                background: 'rgba(15, 23, 42, 0.9)', padding: '4px',
-                borderRadius: '14px', border: '1px solid rgba(251, 171, 21, 0.4)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-                zIndex: 100, display: 'flex', gap: '2px',
-                backdropFilter: 'blur(20px)',
-                width: 'auto', maxWidth: 'calc(100% - 90px)' 
-            }}>
-                <button
-                    onClick={() => handleSwitchRegion('wb')}
-                    style={{
-                        padding: '10px 18px', borderRadius: '10px', border: 'none',
-                        background: currentRegion === 'wb' ? '#fbab15' : 'transparent',
-                        color: currentRegion === 'wb' ? '#0f172a' : 'rgba(255,255,255,0.7)',
-                        fontWeight: '800', fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.25s ease',
-                        whiteSpace: 'nowrap'
-                    }}
-                >
-                    الضفة الغربية
-                </button>
-                <button
-                    onClick={() => handleSwitchRegion('gaza')}
-                    style={{
-                        padding: '10px 18px', borderRadius: '10px', border: 'none',
-                        background: currentRegion === 'gaza' ? '#fbab15' : 'transparent',
-                        color: currentRegion === 'gaza' ? '#0f172a' : 'rgba(255,255,255,0.7)',
-                        fontWeight: '800', fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.25s ease',
-                        whiteSpace: 'nowrap'
-                    }}
-                >
-                    قطاع غزة
-                </button>
-            </div>
+                    {/* Optimized Region Control for Mobile & Web */}
+                    <div style={{
+                        position: 'absolute', top: '20px', left: '50%', transform: 'translateX(-50%)',
+                        background: 'rgba(15, 23, 42, 0.9)', padding: '4px',
+                        borderRadius: '14px', border: '1px solid rgba(251, 171, 21, 0.4)',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                        zIndex: 100, display: 'flex', gap: '2px',
+                        backdropFilter: 'blur(20px)',
+                        width: 'auto', maxWidth: 'calc(100% - 90px)' 
+                    }}>
+                        <button
+                            onClick={() => handleSwitchRegion('wb')}
+                            style={{
+                                padding: '10px 18px', borderRadius: '10px', border: 'none',
+                                background: currentRegion === 'wb' ? '#fbab15' : 'transparent',
+                                color: currentRegion === 'wb' ? '#0f172a' : 'rgba(255,255,255,0.7)',
+                                fontWeight: '800', fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.25s ease',
+                                whiteSpace: 'nowrap'
+                            }}
+                        >
+                            الضفة الغربية
+                        </button>
+                        <button
+                            onClick={() => handleSwitchRegion('gaza')}
+                            style={{
+                                padding: '10px 18px', borderRadius: '10px', border: 'none',
+                                background: currentRegion === 'gaza' ? '#fbab15' : 'transparent',
+                                color: currentRegion === 'gaza' ? '#0f172a' : 'rgba(255,255,255,0.7)',
+                                fontWeight: '800', fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.25s ease',
+                                whiteSpace: 'nowrap'
+                            }}
+                        >
+                            قطاع غزة
+                        </button>
+                    </div>
 
-            {/* Refined Close Button for better Mobile Reach */}
-            <button
-                onClick={onClose}
-                className="geomolg-close-btn"
-                style={{
-                    position: 'absolute', top: '20px', right: '15px',
-                    width: '42px', height: '42px', border: '1px solid rgba(251, 171, 21, 0.4)',
-                    background: 'rgba(15, 23, 42, 0.85)', borderRadius: '50%',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer', zIndex: 100, color: '#fbab15',
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-                    backdropFilter: 'blur(15px)',
-                    transition: 'all 0.3s ease'
-                }}
-                onMouseOver={(e) => { e.currentTarget.style.transform = 'scale(1.1) rotate(90deg)'; e.currentTarget.style.background = '#fbab15'; e.currentTarget.style.color = '#0f172a'; }}
-                onMouseOut={(e) => { e.currentTarget.style.transform = 'scale(1) rotate(0deg)'; e.currentTarget.style.background = 'rgba(15, 23, 42, 0.85)'; e.currentTarget.style.color = '#fbab15'; }}
-            >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" width="20" height="20">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
-
-            {/* Minimal Attribution */}
-            <div style={{
-                position: 'absolute', bottom: '20px', left: '15px',
-                background: 'rgba(15, 23, 42, 0.7)', padding: '6px 12px',
-                borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.1)',
-                zIndex: 100, fontSize: '0.75rem', fontWeight: '700', color: 'rgba(251, 171, 21, 0.8)',
-                backdropFilter: 'blur(10px)'
-            }}>
-                Geomolg Orthophoto 2024
+                    {/* Minimal Attribution */}
+                    <div style={{
+                        position: 'absolute', bottom: '20px', left: '15px',
+                        background: 'rgba(15, 23, 42, 0.7)', padding: '6px 12px',
+                        borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.1)',
+                        zIndex: 100, fontSize: '0.75rem', fontWeight: '700', color: 'rgba(251, 171, 21, 0.8)',
+                        backdropFilter: 'blur(10px)'
+                    }}>
+                        Geomolg Orthophoto 2024
+                    </div>
+                </div>
             </div>
         </div>
     );

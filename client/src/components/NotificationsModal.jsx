@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { notificationService, friendService, getImageUrl } from '../services/api';
+import './Modal.css';
 import './NotificationsModal.css';
 
 const NotificationsModal = ({ onClose, onNotificationClick }) => {
@@ -162,15 +163,15 @@ const NotificationsModal = ({ onClose, onNotificationClick }) => {
 
     return (
         <div className="modal-overlay" onClick={onClose}>
-            <div className="notifications-modal" onClick={(e) => e.stopPropagation()}>
-                <div className="notifications-header">
+            <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
                     <h2>{selectedRequest ? 'طلب صداقة' : 'الإشعارات'}</h2>
-                    <button className="close-btn" onClick={selectedRequest ? () => setSelectedRequest(null) : onClose}>
-                        {selectedRequest ? '✕' : '✕'}
+                    <button className="btn-close" onClick={selectedRequest ? () => setSelectedRequest(null) : onClose}>
+                        ✕
                     </button>
                 </div>
 
-                <div className="notifications-content">
+                <div className="modal-body notifications-content">
                     {selectedRequest ? (
                         <div className="friend-request-detail">
                             <div className="detail-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>

@@ -3,6 +3,7 @@ import Map, { Marker, Popup, NavigationControl, FullscreenControl, Source, Layer
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { newsService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import './Modal.css';
 import './NewsModal.css';
 
 import maplibregl from 'maplibre-gl';
@@ -166,19 +167,16 @@ const NewsModal = ({ onClose, location }) => {
     };
 
     return (
-        <div className="news-modal-overlay">
-            <div className="news-panel glass fade-in-up">
-                
-                <div className="news-header">
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
                     <h2>خريطة الاخبار المباشرة</h2>
-                    <button onClick={() => window.location.href = '/'} className="close-btn" title="العودة للصفحة الرئيسية">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
+                    <button className="btn-close" onClick={onClose} title="إغلاق">
+                        ✕
                     </button>
                 </div>
 
-                <div className="news-dashboard-content">
+                <div className="modal-body news-dashboard-content" style={{ padding: 0, height: '100%', position: 'relative' }}>
                     <div className="news-map-container">
                         <Map
                             {...viewState}
