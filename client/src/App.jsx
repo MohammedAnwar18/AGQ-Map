@@ -97,21 +97,8 @@ function App() {
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
 
-        // Native-like Splash Screen Removal
-        const hideSplash = () => {
-            const splash = document.getElementById('splash-screen');
-            if (splash) {
-                splash.classList.add('fade-out');
-                document.body.classList.remove('splash-active');
-                // Remove from DOM after transition
-                setTimeout(() => {
-                    splash.style.display = 'none';
-                }, 600);
-            }
-        };
-
-        // Delay slightly for perceived performance (mimics native app initialization)
-        const timer = setTimeout(hideSplash, 1800);
+        // Slowed down to exactly 2.5 seconds as requested by user
+        const timer = setTimeout(hideSplash, 2500);
 
         return () => {
             window.removeEventListener('online', handleOnline);
@@ -119,6 +106,19 @@ function App() {
             clearTimeout(timer);
         };
     }, []);
+
+    // Also ensure cleanup happens after the CSS transition (0.8s) completes
+    const hideSplash = () => {
+        const splash = document.getElementById('splash-screen');
+        if (splash) {
+            splash.classList.add('fade-out');
+            document.body.classList.remove('splash-active');
+            // Remove from DOM after transition (0.8s = 800ms)
+            setTimeout(() => {
+                splash.style.display = 'none';
+            }, 800);
+        }
+    };
 
     if (!isOnline) {
         return <OfflinePage />;
