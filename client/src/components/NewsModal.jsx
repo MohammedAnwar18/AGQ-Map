@@ -395,22 +395,23 @@ const NewsModal = ({ onClose, location }) => {
 
                     <div className={`news-sidebar ${showNewsPanel ? 'open' : ''}`}>
                         
-                        <button className="close-layer-btn" onClick={() => setShowNewsPanel(false)}>
-                            ← الغاء وعودة للخريطة
-                        </button>
-
-                        <div className="live-feed-panel">
-                            <button 
-                                className={`refresh-action-btn ${isRefreshing ? 'spinning' : ''}`}
-                                onClick={handleManualRefresh}
-                            >
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /></svg>
-                                تحديث آخر التطورات والأخبار
+                        <div className="sidebar-action-header">
+                            <button className="sidebar-btn back-btn" onClick={() => setShowNewsPanel(false)} title="إغلاق والعودة للخريطة">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
                             </button>
 
-                            <div className="sidebar-title-container">
-                                <h3 className="sidebar-title" style={{marginLeft: 0}}>قائمة الأخبار والصراعات</h3>
-                            </div>
+                            <h3 className="sidebar-title-minimal">قائمة الأخبار والصراعات</h3>
+
+                            <button 
+                                className={`sidebar-btn refresh-btn ${isRefreshing ? 'spinning' : ''}`}
+                                onClick={handleManualRefresh}
+                                title="تحديث البيانات"
+                            >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /></svg>
+                            </button>
+                        </div>
+
+                        <div className="live-feed-panel">
                             
                             {loading ? (
                                 <div className="live-feed-loading">جاري المزامنة مع الرادار...</div>
