@@ -341,6 +341,9 @@ const MapComponent = () => {
             // We can return a very simple base or satellite while Geomolg overlay loads
             return {
                 version: 8,
+                name: "Geomolg Base",
+                sprite: "https://demotiles.maplibre.org/styles/osm-bright-gl-style/sprite",
+                glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
                 sources: {
                     'raster-tiles': {
                         type: 'raster',
@@ -357,6 +360,9 @@ const MapComponent = () => {
 
         return {
             version: 8,
+            name: "Satellite",
+            sprite: "https://demotiles.maplibre.org/styles/osm-bright-gl-style/sprite",
+            glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
             sources: {
                 'raster-tiles': {
                     type: 'raster',

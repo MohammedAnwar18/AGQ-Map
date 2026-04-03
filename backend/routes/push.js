@@ -30,12 +30,15 @@ router.post('/subscribe', authenticateToken, async (req, res) => {
     }
 
     try {
-        // Upsert the subscription for this user
-        // Using UNIQUE(user_id, subscription) to avoid duplicate rows for same user and device
+        // Delete any existing exact endpoint for this user to avoid duplicates
         await pool.query(
-            `INSERT INTO push_subscriptions (user_id, subscription)
-             VALUES ($1, $2)
-             ON CONFLICT (user_id, subscription) DO NOTHING`,
+            `DELETE FROM push_subscriptions WHERE user_id = $1 AND subscription->>'endpoint' = $2`,
+            [userId, subscription.endpoint]
+        );
+
+        // Insert the new subscription safely
+        await pool.query(
+            `INSERT INTO push_subscriptions (user_id, subscription) VALUES ($1, $2)`,
             [userId, subscription]
         );
 
