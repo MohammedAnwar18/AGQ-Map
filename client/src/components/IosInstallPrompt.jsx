@@ -71,31 +71,41 @@ const IosInstallPrompt = () => {
                 تثبيت التطبيق
             </div>
             <p style={{ margin: 0, fontSize: '0.9rem', color: '#cbd5e1', lineHeight: '1.6' }}>
-                للحصول على تجربة أسرع ككل التطبيقات، أضف PalNovaa إلى شاشتك الرئيسية:
+                للحصول على تجربة أسرع، أضف PalNovaa إلى شاشتك الرئيسية بخطوات سريعة:
             </p>
             
-            <div style={{ 
-                background: 'rgba(0,0,0,0.3)', padding: '12px 15px', borderRadius: '12px',
-                display: 'flex', alignItems: 'center', gap: '8px', width: '100%', justifyContent: 'center',
-                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
-            }}>
-                <span style={{ fontSize: '0.9rem' }}>1. اضغط</span>
-                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#0a84ff', margin: '0 2px' }}>
-                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line>
-                </svg>
-                <span style={{ fontSize: '0.9rem' }}>في متصفح سفاري</span>
-            </div>
-            
             <div style={{
-                background: 'rgba(0,0,0,0.3)', padding: '12px 15px', borderRadius: '12px',
-                display: 'flex', alignItems: 'center', gap: '8px', width: '100%', justifyContent: 'center',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+                background: 'rgba(0,0,0,0.3)', padding: '15px 10px', borderRadius: '14px',
                 boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
             }}>
-                <span style={{ fontSize: '0.9rem' }}>2. اختر</span>
-                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#ffffff', margin: '0 2px' }}>
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line>
-                </svg>
-                <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>Add to Home Screen</span>
+                {/* Step 1: Share */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', flex: 1 }}>
+                    <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#0a84ff' }}>
+                        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line>
+                    </svg>
+                    <span style={{ fontSize: '0.75rem', color: '#e2e8f0', fontWeight: 'bold' }}>مشاركة</span>
+                </div>
+
+                <div style={{ color: '#475569', fontSize: '1.2rem', fontWeight: 'bold' }}>❯</div>
+
+                {/* Step 2: Scroll Down */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', flex: 1 }}>
+                    <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#fbab15' }}>
+                        <line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline>
+                    </svg>
+                    <span style={{ fontSize: '0.75rem', color: '#e2e8f0', fontWeight: 'bold' }}>انزل للأسفل</span>
+                </div>
+
+                <div style={{ color: '#475569', fontSize: '1.2rem', fontWeight: 'bold' }}>❯</div>
+
+                {/* Step 3: Add to Home */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', flex: 1 }}>
+                    <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#ffffff' }}>
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line>
+                    </svg>
+                    <span style={{ fontSize: '0.75rem', color: '#e2e8f0', fontWeight: 'bold' }}>إضافة(+)</span>
+                </div>
             </div>
 
             {/* Down-pointing arrow */}
