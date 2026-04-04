@@ -1681,29 +1681,45 @@ const MapComponent = () => {
                         boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
                         animation: 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
                     }}>
-                        <div style={{ fontSize: '4rem', marginBottom: '20px' }}>📍</div>
+                        <div style={{ marginBottom: '20px' }}>
+                            <svg viewBox="0 0 24 24" width="60" height="60" fill="none" stroke="#fbab15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                        </div>
                         <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '15px' }}>تفعيل تحديد الموقع</h2>
 
-                        {gpsErrorType === 'denied' ? (
-                            <>
-                                <p style={{ fontSize: '0.95rem', color: '#94a3b8', lineHeight: '1.6', marginBottom: '20px' }}>
-                                    يبدو أنك رفضت إذن الوصول للموقع. الموقع ضروري لعرض المحلات من حولك والتنقل على الخريطة.
-                                </p>
+                        <p style={{ fontSize: '0.95rem', color: '#94a3b8', lineHeight: '1.6', marginBottom: '20px' }}>
+                            يرجى تحديد نظام التشغيل الخاص بجهازك لعرض خطوات تفعيل الموقع (GPS) بكل سهولة:
+                        </p>
 
-                                <div style={{ textAlign: 'right', background: '#1e293b', padding: '15px', borderRadius: '16px', marginBottom: '20px' }}>
-                                    <p style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '0.9rem' }}>💡 كيفية التفعيل:</p>
-                                    <ul style={{ padding: '0 15px', margin: 0, fontSize: '0.85rem', color: '#cbd5e1', listStyleType: 'disc' }}>
-                                        <li style={{ marginBottom: '8px' }}>اضغط على أيقونة الإعدادات (أو القفل 🔒) بجانب رابط الموقع في شريط العنوان.</li>
-                                        <li style={{ marginBottom: '8px' }}>تأكد من تفعيل "الموقع" (Location) ليكون "سماح" (Allow).</li>
-                                        <li>ثم قم بتحديث الصفحة.</li>
-                                    </ul>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+                            <button
+                                onClick={() => window.location.href = '/support?os=android'}
+                                style={{
+                                    background: '#1e293b', border: '1px solid #334155', color: 'white',
+                                    borderRadius: '16px', padding: '20px 10px', cursor: 'pointer',
+                                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                <div style={{ height: '40px', display: 'flex', alignItems: 'center' }}>
+                                    <svg viewBox="0 0 24 24" width="35" height="35" fill="currentColor" style={{ color: '#3ddc84' }}><path d="M17.6,9.48l1.84-3.18c0.16-0.31,0.04-0.69-0.26-0.85c-0.29-0.15-0.65-0.06-0.83,0.22l-1.88,3.24 c-2.86-1.21-6.08-1.21-8.94,0L5.65,5.67C5.46,5.4,5.1,5.31,4.82,5.46C4.52,5.62,4.4,6,4.56,6.3l1.84,3.18 C2.69,11.56,0,16.2,0,21.5h24C24,16.2,21.31,11.56,17.6,9.48z M6.42,17.43c-0.65,0-1.18-0.53-1.18-1.18 c0-0.65,0.53-1.18,1.18-1.18s1.18,0.53,1.18,1.18C7.59,16.9,7.06,17.43,6.42,17.43z M17.58,17.43c-0.65,0-1.18-0.53-1.18-1.18 c0-0.65,0.53-1.18,1.18-1.18s1.18,0.53,1.18,1.18C18.76,16.9,18.23,17.43,17.58,17.43z" /></svg>
                                 </div>
-                            </>
-                        ) : (
-                            <p style={{ fontSize: '0.95rem', color: '#94a3b8', lineHeight: '1.6', marginBottom: '20px' }}>
-                                يرجى السماح بالوصول للموقع ليتمكن التطبيق من عرض الأماكن من حولك وتقديم خدمة دقيقة.
-                            </p>
-                        )}
+                                <span style={{ fontWeight: 'bold' }}>أندرويد (Android)</span>
+                            </button>
+                            <button
+                                onClick={() => window.location.href = '/support?os=ios'}
+                                style={{
+                                    background: '#1e293b', border: '1px solid #334155', color: 'white',
+                                    borderRadius: '16px', padding: '20px 10px', cursor: 'pointer',
+                                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                <div style={{ height: '40px', display: 'flex', alignItems: 'center' }}>
+                                    <svg viewBox="0 0 24 24" width="35" height="35" fill="currentColor"><path d="M16.96,18.06c-0.78,1.14-1.61,2.27-2.85,2.3c-1.21,0.03-1.62-0.71-2.99-0.71c-1.37,0-1.81,0.68-2.95,0.71 c-1.2,0-1.95-1.04-2.73-2.18c-1.61-2.32-2.84-6.55-1.19-9.42c0.82-1.42,2.26-2.33,3.84-2.36c1.17-0.03,2.27,0.78,2.99,0.78 c0.72,0,2.05-1,3.46-0.85c1.47,0.06,2.8,0.71,3.54,1.82c-3.08,1.86-2.58,6.23,0.5,7.41C18.17,16.48,17.6,17.33,16.96,18.06z M14.61,4.64c0.63-0.76,1.06-1.83,0.94-2.89c-0.93,0.04-2.04,0.62-2.69,1.41C12.3,3.85,11.8,4.96,11.96,5.99 C12.98,6.07,14.03,5.43,14.61,4.64z" /></svg>
+                                </div>
+                                <span style={{ fontWeight: 'bold' }}>آيفون (iOS)</span>
+                            </button>
+                        </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             <button
