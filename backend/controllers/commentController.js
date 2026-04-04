@@ -91,4 +91,32 @@ const addComment = async (req, res) => {
     }
 };
 
-module.exports = { getComments, addComment };
+/**
+ * حذف تعليق
+ */
+const deleteComment = async (req, res) => {
+    try {
+        const { commentId } = req.params;
+        const userId = req.user.userId;
+
+        // Check if comment exists and belongs to user
+        const commentResult = await pool.query('SELECT user_id FROM comments WHERE id = $1', [commentId]);
+        
+        if (commentResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Comment not found' });
+        }
+
+        if (commentResult.rows[0].user_id !== userId) {
+            return res.status(403).json({ error: 'Not authorized to delete this comment' });
+        }
+
+        await pool.query('DELETE FROM comments WHERE id = $1', [commentId]);
+
+        res.json({ message: 'Comment deleted successfully' });
+    } catch (error) {
+        console.error('Delete comment error:', error);
+        res.status(500).json({ error: 'Server error deleting comment' });
+    }
+};
+
+module.exports = { getComments, addComment, deleteComment };

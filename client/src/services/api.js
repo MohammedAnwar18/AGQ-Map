@@ -216,6 +216,11 @@ export const commentService = {
     addComment: async (postId, content, parentId = null) => {
         const response = await api.post(`/comments/${postId}`, { content, parentId });
         return response.data;
+    },
+
+    deleteComment: async (commentId) => {
+        const response = await api.delete(`/comments/${commentId}`);
+        return response.data;
     }
 };
 

@@ -9,4 +9,7 @@ router.get('/:postId', authenticateToken, getComments);
 // إضافة تعليق
 router.post('/:postId', authenticateToken, addComment);
 
+// حذف تعليق
+router.delete('/:commentId', authenticateToken, deleteComment);
+
 module.exports = router;

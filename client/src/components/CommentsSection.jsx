@@ -46,6 +46,17 @@ const CommentsSection = ({ postId, onCommentAdded, onReply, hideInput = false })
         }
     };
 
+    const handleDeleteComment = async (commentId) => {
+        if (!window.confirm('هل أنت متأكد من حذف هذا التعليق؟')) return;
+        try {
+            await commentService.deleteComment(commentId);
+            setComments(comments.filter(c => c.id !== commentId));
+        } catch (error) {
+            console.error('Failed to delete comment:', error);
+            alert('فشل حذف التعليق');
+        }
+    };
+
     const handleSubmit = async (e) => {
         if (e) e.preventDefault();
         if (!newComment.trim()) return;
@@ -102,12 +113,23 @@ const CommentsSection = ({ postId, onCommentAdded, onReply, hideInput = false })
                                         <span className="comment-time">{new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                     </div>
                                     <p className="comment-text">{comment.content}</p>
-                                    <button
-                                        className="comment-reply-btn"
-                                        onClick={() => handleReplyClick(comment.id, comment.username)}
-                                    >
-                                        رد
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                        <button
+                                            className="comment-reply-btn"
+                                            onClick={() => handleReplyClick(comment.id, comment.username)}
+                                        >
+                                            رد
+                                        </button>
+                                        {comment.user_id === user?.id && (
+                                            <button
+                                                className="comment-delete-btn"
+                                                onClick={() => handleDeleteComment(comment.id)}
+                                                style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.8rem', cursor: 'pointer', padding: 0 }}
+                                            >
+                                                حذف
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
@@ -125,6 +147,15 @@ const CommentsSection = ({ postId, onCommentAdded, onReply, hideInput = false })
                                                 <span className="comment-time">{new Date(reply.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                             </div>
                                             <p className="comment-text">{reply.content}</p>
+                                            {reply.user_id === user?.id && (
+                                                <button
+                                                    className="comment-delete-btn"
+                                                    onClick={() => handleDeleteComment(reply.id)}
+                                                    style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.8rem', cursor: 'pointer', padding: 0, marginTop: '4px' }}
+                                                >
+                                                    حذف
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 ))}

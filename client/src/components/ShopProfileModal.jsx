@@ -649,26 +649,29 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-container"
                 style={{
-                    padding: 0,
                     overflowY: 'auto',
                     background: 'var(--bg-primary)',
                     color: 'var(--text-primary)',
-                    display: 'block'
+                    display: 'flex',
+                    flexDirection: 'column'
                 }}
                 onClick={e => e.stopPropagation()}>
 
-                {/* Header / Hero */}
-                <div style={{
-                    height: '250px',
-                    background: shopData.cover_picture ? `url(${coverUrl}) center/cover` : coverUrl,
-                    position: 'relative'
-                }}>
-                    <button onClick={onClose} style={{
-                        position: 'absolute', top: 20, left: 20,
-                        background: 'rgba(0,0,0,0.5)', border: 'none', color: 'white',
-                        width: 36, height: 36, borderRadius: '50%', cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}>✕</button>
+                {/* Standard Modal Header */}
+                <div className="modal-header">
+                    <h2>{shopData?.name || 'الملف الشخصي'}</h2>
+                    <button className="btn-close" onClick={onClose}>✕</button>
+                </div>
+
+                {/* Body wrapper to match standard formatting and flex flow */}
+                <div style={{ flex: 1, padding: 0, display: 'block', overflowY: 'auto' }}>
+                    {/* Header / Hero */}
+                    <div style={{
+                        height: '250px',
+                        background: shopData.cover_picture ? `url(${coverUrl}) center/cover` : coverUrl,
+                        position: 'relative'
+                    }}>
+
 
                     {canEditShop && (
                         <div style={{ position: 'absolute', right: 20, top: 20 }}>
@@ -2794,6 +2797,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                         }}
                     />
                 )}
+                </div>
             </div >
         </div >
     );
