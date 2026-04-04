@@ -95,7 +95,7 @@ const buildOtpEmailHtml = (otpCode) => `
 const sendOtpEmail = async (to, otpCode) => {
     try {
         const { data, error } = await resend.emails.send({
-            from: 'PalNovaa <onboarding@resend.dev>',
+            from: 'PalNovaa <noreply@palnovaa.com>',
             to: [to],
             subject: '🔐 PalNovaa — رمز التحقق الخاص بك',
             html: buildOtpEmailHtml(otpCode),
