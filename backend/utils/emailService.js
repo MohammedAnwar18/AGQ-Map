@@ -1,68 +1,121 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-/**
- * إعداد مرسل البريد الإلكتروني (Nodemailer)
- */
-const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.EMAIL_PORT) || 587,
-    secure: process.env.EMAIL_SECURE === 'true',
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, '') : ''
-    },
-    tls: {
-        rejectUnauthorized: false
-    }
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-/**
- * إرسال رمز التحقق OTP
- */
+// ===== قالب الإيميل الاحترافي لـ PalNovaa =====
+const buildOtpEmailHtml = (otpCode) => `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+</head>
+<body style="margin:0;padding:0;background-color:#0f172a;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#0f172a;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#1e293b;border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+
+          <!-- HEADER -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);padding:40px 30px;text-align:center;border-bottom:3px solid #fbab15;">
+              <img
+                src="https://pub-6e55680fed9e448b82ffe80f9d92b020.r2.dev/logo.png"
+                alt="PalNovaa"
+                width="80"
+                height="80"
+                style="border-radius:16px;margin-bottom:16px;display:block;margin-left:auto;margin-right:auto;"
+                onerror="this.style.display='none'"
+              />
+              <h1 style="margin:0;color:#fbab15;font-size:32px;letter-spacing:2px;font-weight:800;">PalNovaa</h1>
+              <p style="margin:6px 0 0;color:#94a3b8;font-size:14px;">الشبكة الاجتماعية المكانية الذكية</p>
+            </td>
+          </tr>
+
+          <!-- BODY -->
+          <tr>
+            <td style="padding:40px 40px 30px;text-align:right;">
+              <h2 style="color:#f8fafc;font-size:22px;margin:0 0 16px;">رمز التحقق الخاص بك</h2>
+              <p style="color:#94a3b8;font-size:15px;line-height:1.8;margin:0 0 30px;">
+                مرحباً 👋<br/>
+                لقد طلبت رمز التحقق لتفعيل أو استعادة حساب PalNovaa الخاص بك.<br/>
+                استخدم الرمز التالي لإتمام العملية:
+              </p>
+
+              <!-- OTP BOX -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:30px;">
+                <tr>
+                  <td align="center">
+                    <div style="background:linear-gradient(135deg,#0f172a,#1a2540);border:2px solid #fbab15;border-radius:16px;padding:30px 20px;display:inline-block;">
+                      <p style="margin:0 0 8px;color:#94a3b8;font-size:13px;letter-spacing:1px;">رمز التحقق</p>
+                      <p style="margin:0;font-size:48px;font-weight:900;color:#fbab15;letter-spacing:18px;font-family:'Courier New',monospace;">${otpCode}</p>
+                    </div>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- COUNTDOWN WARNING -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+                <tr>
+                  <td style="background:rgba(251,171,21,0.1);border:1px solid rgba(251,171,21,0.3);border-radius:10px;padding:14px 18px;">
+                    <p style="margin:0;color:#fcd34d;font-size:13px;">
+                      ⏱ هذا الرمز صالح لمدة <strong>5 دقائق فقط</strong>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="color:#64748b;font-size:13px;line-height:1.7;">
+                إذا لم تطلب هذا الرمز، يرجى تجاهل هذه الرسالة. لن يتم إجراء أي تغيير على حسابك.
+              </p>
+            </td>
+          </tr>
+
+          <!-- FOOTER -->
+          <tr>
+            <td style="background:#0f172a;padding:24px 40px;text-align:center;border-top:1px solid #334155;">
+              <p style="margin:0 0 6px;color:#64748b;font-size:12px;">
+                &copy; ${new Date().getFullYear()} PalNovaa — جميع الحقوق محفوظة
+              </p>
+              <p style="margin:0;color:#475569;font-size:11px;">
+                هذا البريد تم إرساله تلقائياً، يرجى عدم الرد عليه.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`;
+
+// ===== إرسال رمز التحقق OTP =====
 const sendOtpEmail = async (to, otpCode) => {
     try {
-        const fromName = "PalNovaa Security";
-        const fromEmail = process.env.EMAIL_USER;
+        const { data, error } = await resend.emails.send({
+            from: 'PalNovaa <onboarding@resend.dev>',
+            to: [to],
+            subject: '🔐 PalNovaa — رمز التحقق الخاص بك',
+            html: buildOtpEmailHtml(otpCode),
+        });
 
-        const emailHtml = `
-            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; direction: rtl; text-align: right; background-color: #f9f9f9;">
-                <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-top: 5px solid #fbab15;">
-                    <div style="padding: 30px; text-align: center; background-color: #0f172a;">
-                        <h1 style="color: #fbab15; margin: 0; font-size: 28px;">PalNovaa</h1>
-                    </div>
-                    <div style="padding: 40px;">
-                        <h2 style="color: #1e293b; margin-top: 0;">تأكيد حسابك</h2>
-                        <p style="font-size: 16px; line-height: 1.6; color: #475569;">مرحباً، شكراً لانضمامك إلى مجتمعنا. يرجى استخدام الرمز التالي لتفعيل حسابك:</p>
-                        
-                        <div style="background-color: #f1f5f9; padding: 25px; text-align: center; border-radius: 12px; margin: 30px 0;">
-                            <span style="font-size: 36px; font-weight: bold; color: #0f172a; letter-spacing: 12px; font-family: 'Courier New', Courier, monospace; display: block;">${otpCode}</span>
-                        </div>
-                        
-                        <p style="font-size: 14px; color: #94a3b8;">هذا الرمز صالح لمدة 5 دقائق فقط. إذا لم تطلب هذا الرمز، يرجى تجاهل هذا البريد.</p>
-                    </div>
-                    <div style="padding: 20px; text-align: center; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-                        <p style="margin: 0; font-size: 12px; color: #64748b;">&copy; ${new Date().getFullYear()} PalNovaa. جميع الحقوق محفوظة.</p>
-                    </div>
-                </div>
-            </div>
-        `;
+        if (error) {
+            console.error('❌ Resend API error:', error);
+            console.log('📋 OTP Fallback:', otpCode);
+            return false;
+        }
 
-        const mailOptions = {
-            from: `"${fromName}" <${fromEmail}>`,
-            to,
-            subject: 'PalNovaa - رمز التحقق الخاص بك',
-            html: emailHtml
-        };
-
-        const info = await transporter.sendMail(mailOptions);
-        console.log('📨 Email sent successfully via Nodemailer:', info.messageId);
+        console.log('✅ Email sent via Resend:', data?.id);
         return true;
 
-    } catch (error) {
-        console.error('❌ Error sending email via Nodemailer:', error.message);
-        console.log('🔑 OTP Code (Fallback Log):', otpCode);
+    } catch (err) {
+        console.error('❌ Unexpected error sending email:', err.message);
+        console.log('📋 OTP Fallback:', otpCode);
         return false;
     }
 };
 
 module.exports = { sendOtpEmail };
+
