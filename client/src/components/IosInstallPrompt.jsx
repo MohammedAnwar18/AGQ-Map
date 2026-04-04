@@ -16,7 +16,7 @@ const IosInstallPrompt = () => {
         // Debug: Remove comment below to trigger forcefully on non-iOS environments
         // if (!isInStandaloneMode()) {
         if (isIos() && !isInStandaloneMode()) {
-            const hasDismissed = localStorage.getItem('ios_install_dismissed');
+            const hasDismissed = sessionStorage.getItem('ios_install_dismissed');
             if (!hasDismissed) {
                 // Show prompt shortly after loading
                 const timer = setTimeout(() => {
@@ -29,8 +29,8 @@ const IosInstallPrompt = () => {
 
     const handleDismiss = () => {
         setShowPrompt(false);
-        // Save choice locally to prevent annoying the user
-        localStorage.setItem('ios_install_dismissed', 'true');
+        // Save choice to session storage only, so it appears again on next login/reload
+        sessionStorage.setItem('ios_install_dismissed', 'true');
     };
 
     if (!showPrompt) return null;
@@ -94,7 +94,7 @@ const IosInstallPrompt = () => {
                     <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#fbab15' }}>
                         <line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline>
                     </svg>
-                    <span style={{ fontSize: '0.75rem', color: '#e2e8f0', fontWeight: 'bold' }}>انزل للأسفل</span>
+                    <span style={{ fontSize: '0.75rem', color: '#e2e8f0', fontWeight: 'bold' }}>عرض المزيد</span>
                 </div>
 
                 <div style={{ color: '#475569', fontSize: '1.2rem', fontWeight: 'bold' }}>❯</div>
@@ -104,7 +104,7 @@ const IosInstallPrompt = () => {
                     <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#ffffff' }}>
                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line>
                     </svg>
-                    <span style={{ fontSize: '0.75rem', color: '#e2e8f0', fontWeight: 'bold' }}>إضافة(+)</span>
+                    <span style={{ fontSize: '0.75rem', color: '#e2e8f0', fontWeight: 'bold' }}>إضافة</span>
                 </div>
             </div>
 
