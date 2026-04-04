@@ -19,6 +19,7 @@ const Login = () => {
     // Forgot Password State
     const [isForgotPassword, setIsForgotPassword] = useState(false);
     const [resetStep, setResetStep] = useState(1); // 1: Email, 2: OTP & New Password
+    const [successMessage, setSuccessMessage] = useState('');
 
     const [formData, setFormData] = useState({
         username: '',
@@ -65,8 +66,7 @@ const Login = () => {
                     setIsLogin(true);
                     setOtpCode('');
                     setFormData(prev => ({ ...prev, password: '' }));
-                    setError('تم تغيير كلمة المرور بنجاح، يرجى تسجيل الدخول');
-                    // يمكنك استخدام حالة نجاح بدلاً من الخطأ لعرض الرسالة باللون الأخضر
+                    setSuccessMessage('تم تغيير كلمة المرور بنجاح، يرجى تسجيل الدخول');
                 }
             } else if (isLogin) {
                 if (isOtpStep) {
@@ -212,13 +212,20 @@ const Login = () => {
                             {isForgotPassword ? 'استعادة كلمة المرور' :
                                 (!isLogin ? 'إنشاء حساب جديد' : 'تسجيل الدخول')}
                         </h2>
-                        <p className="subtitle">
-                            {isForgotPassword ? 'أدخل بريدك الإلكتروني لاستلام رمز التحقق' :
-                                (!isLogin ? 'انضم إلى المجتمع' : 'مرحباً بعودتك!')}
-                        </p>
+                        {!isForgotPassword && (
+                            <p className="subtitle">
+                                {!isLogin ? 'انضم إلى المجتمع' : 'مرحباً بعودتك!'}
+                            </p>
+                        )}
                     </div>
 
                     <form onSubmit={handleSubmit} className="login-form">
+                        {successMessage && (
+                            <div style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid #10b981', borderRadius: '10px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', color: '#10b981', fontSize: '0.9rem', marginBottom: '10px' }}>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                {successMessage}
+                            </div>
+                        )}
                         {error && (
                             <div className="error-message">
                                 <span className="error-icon">⚠️</span>
