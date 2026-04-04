@@ -658,9 +658,11 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                 onClick={e => e.stopPropagation()}>
 
                 {/* Standard Modal Header */}
-                <div className="modal-header">
-                    <h2>{shopData?.name || 'الملف الشخصي'}</h2>
-                    <button className="btn-close" onClick={onClose}>✕</button>
+                <div className="modal-header" style={{ position: 'sticky', top: 0, zIndex: 1000, background: 'var(--bg-secondary)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <button className="btn-close" onClick={onClose} style={{ fontSize: '1.2rem' }}>✕</button>
+                        <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 'bold' }}>{shopData?.name || 'الملف الشخصي'}</h2>
+                    </div>
                 </div>
 
                 {/* Body wrapper to match standard formatting and flex flow */}
