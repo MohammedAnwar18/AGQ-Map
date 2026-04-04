@@ -20,12 +20,11 @@ const buildOtpEmailHtml = (otpCode) => `
           <tr>
             <td style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);padding:40px 30px;text-align:center;border-bottom:3px solid #fbab15;">
               <img
-                src="https://pub-6e55680fed9e448b82ffe80f9d92b020.r2.dev/logo.png"
+                src="https://palnovaa.com/logo.png"
                 alt="PalNovaa"
                 width="80"
                 height="80"
-                style="border-radius:16px;margin-bottom:16px;display:block;margin-left:auto;margin-right:auto;"
-                onerror="this.style.display='none'"
+                style="border-radius:16px;margin-bottom:16px;display:block;margin-left:auto;margin-right:auto;border:2px solid #fbab15;"
               />
               <h1 style="margin:0;color:#fbab15;font-size:32px;letter-spacing:2px;font-weight:800;">PalNovaa</h1>
               <p style="margin:6px 0 0;color:#94a3b8;font-size:14px;">الشبكة الاجتماعية المكانية الذكية</p>
@@ -97,7 +96,7 @@ const sendOtpEmail = async (to, otpCode) => {
         const { data, error } = await resend.emails.send({
             from: 'PalNovaa <noreply@palnovaa.com>',
             to: [to],
-            subject: '🔐 PalNovaa — رمز التحقق الخاص بك',
+            subject: 'PalNovaa - رمز التحقق الخاص بك',
             html: buildOtpEmailHtml(otpCode),
         });
 
