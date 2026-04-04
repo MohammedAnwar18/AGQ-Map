@@ -11,6 +11,7 @@ import Support from './pages/Support';
 
 import OfflinePage from './components/OfflinePage';
 import PushNotificationManager from './components/PushNotificationManager';
+import IosInstallPrompt from './components/IosInstallPrompt';
 import './index.css';
 
 const ProtectedRoute = ({ children }) => {
@@ -124,6 +125,7 @@ function App() {
     return (
         <AuthProvider>
             <PushNotificationManager />
+            <IosInstallPrompt />
             <BrowserRouter>
                 <Routes>
                     <Route

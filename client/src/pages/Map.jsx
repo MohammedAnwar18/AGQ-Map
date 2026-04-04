@@ -1694,6 +1694,7 @@ const MapComponent = () => {
                             <button
                                 onClick={() => window.location.href = '/support?os=android'}
                                 style={{
+                                    fontFamily: 'inherit',
                                     background: '#1e293b', border: '1px solid #334155', color: 'white',
                                     borderRadius: '16px', padding: '20px 10px', cursor: 'pointer',
                                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
@@ -1708,6 +1709,7 @@ const MapComponent = () => {
                             <button
                                 onClick={() => window.location.href = '/support?os=ios'}
                                 style={{
+                                    fontFamily: 'inherit',
                                     background: '#1e293b', border: '1px solid #334155', color: 'white',
                                     borderRadius: '16px', padding: '20px 10px', cursor: 'pointer',
                                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
@@ -1725,6 +1727,7 @@ const MapComponent = () => {
                             <button
                                 onClick={() => window.location.reload()}
                                 style={{
+                                    fontFamily: 'inherit',
                                     background: '#fbab15', color: 'black', fontWeight: 'bold',
                                     padding: '12px', borderRadius: '12px', border: 'none', cursor: 'pointer'
                                 }}

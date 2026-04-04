@@ -25,6 +25,7 @@ const Support = () => {
                 <button 
                     onClick={() => navigate('/map')}
                     style={{
+                        fontFamily: 'inherit',
                         position: 'absolute', top: '10px', left: '0',
                         background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white',
                         padding: '8px 15px', borderRadius: '20px', cursor: 'pointer',
@@ -69,6 +70,7 @@ const Support = () => {
                     <button 
                         onClick={() => window.location.href = '/map'}
                         style={{
+                            fontFamily: 'inherit',
                             background: '#fbab15', color: 'black', border: 'none',
                             padding: '15px 30px', borderRadius: '30px', fontSize: '1.2rem',
                             fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 15px rgba(251, 171, 21, 0.4)'
