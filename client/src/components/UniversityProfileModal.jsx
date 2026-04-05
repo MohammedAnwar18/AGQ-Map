@@ -59,6 +59,7 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
     const [aboutInput, setAboutInput] = useState(university.bio || '');
     const [isEditingName, setIsEditingName] = useState(false);
     const [nameInput, setNameInput] = useState(university.name || '');
+    const [showContactInfo, setShowContactInfo] = useState(false);
 
     // Local University State (for bio, cover, etc. not in initial search)
     const [uniData, setUniData] = useState(university);
@@ -480,43 +481,73 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                                 </div>
                             </div>
 
-                            <div className="uni-about-card" style={{ marginTop: '15px' }}>
-                                <h3 style={{ marginBottom: '15px', color: '#fbab15' }}>للتواصل مع الجامعة</h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                    {[
-                                        { label: 'دائرة المالية', email: 'students.accounts@birzeit.edu' },
-                                        { label: 'دائرة التسجيل', email: 'reg_office@birzeit.edu' },
-                                        { label: 'وحدة المساعدات المالية', email: 'info.sfau@birzeit.edu' },
-                                        { label: 'دائرة تكنولوجيا المعلومات', email: 'Helpdesk@birzeit.edu' },
-                                        { label: 'دعم التعليم الإلكتروني', email: 'ITC@birzeit.edu' }
-                                    ].map((item, idx) => (
-                                        <div key={idx} style={{ 
-                                            display: 'flex', 
-                                            justifyContent: 'space-between', 
-                                            alignItems: 'center',
-                                            padding: '10px 0',
-                                            borderBottom: idx === 4 ? 'none' : '1px solid rgba(255,255,255,0.05)'
-                                        }}>
-                                            <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{item.label}</span>
-                                            <a href={`mailto:${item.email}`} style={{ 
-                                                fontSize: '0.85rem', 
-                                                color: '#3b82f6', 
-                                                textDecoration: 'none',
-                                                fontWeight: '500'
-                                            }}>{item.email}</a>
-                                        </div>
-                                    ))}
-                                    <div style={{ 
-                                        marginTop: '10px', 
-                                        padding: '12px', 
-                                        background: 'rgba(59, 130, 246, 0.1)', 
-                                        borderRadius: '10px',
-                                        textAlign: 'center'
-                                    }}>
-                                        <div style={{ fontSize: '0.8rem', color: '#3b82f6', marginBottom: '4px' }}>الرقم المجاني للاتصال</div>
-                                        <a href="tel:1800298200" style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'white', textDecoration: 'none' }}>1800298200</a>
-                                    </div>
+                            <div className="uni-about-card" style={{ marginTop: '15px', padding: '0' }}>
+                                <div 
+                                    onClick={() => setShowContactInfo(!showContactInfo)}
+                                    style={{ 
+                                        display: 'flex', 
+                                        justifyContent: 'space-between', 
+                                        alignItems: 'center', 
+                                        padding: '15px 20px',
+                                        cursor: 'pointer',
+                                        transition: 'background 0.2s'
+                                    }}
+                                    onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+                                    onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                                >
+                                    <h3 style={{ margin: 0, color: '#fbab15', fontSize: '1.05rem', fontWeight: '800' }}>للتواصل مع الجامعة</h3>
+                                    <svg 
+                                        width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbab15" strokeWidth="2.5" 
+                                        style={{ transform: showContactInfo ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}
+                                    >
+                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                    </svg>
                                 </div>
+
+                                {showContactInfo && (
+                                    <div style={{ 
+                                        padding: '0 20px 20px', 
+                                        display: 'flex', 
+                                        flexDirection: 'column', 
+                                        gap: '12px',
+                                        animation: 'slideDown 0.3s ease-out'
+                                    }}>
+                                        {[
+                                            { label: 'دائرة المالية', email: 'students.accounts@birzeit.edu' },
+                                            { label: 'دائرة التسجيل', email: 'reg_office@birzeit.edu' },
+                                            { label: 'وحدة المساعدات المالية', email: 'info.sfau@birzeit.edu' },
+                                            { label: 'دائرة تكنولوجيا المعلومات', email: 'Helpdesk@birzeit.edu' },
+                                            { label: 'دعم التعليم الإلكتروني', email: 'ITC@birzeit.edu' }
+                                        ].map((item, idx) => (
+                                            <div key={idx} style={{ 
+                                                display: 'flex', 
+                                                justifyContent: 'space-between', 
+                                                alignItems: 'center',
+                                                padding: '10px 0',
+                                                borderBottom: idx === 4 ? 'none' : '1px solid rgba(255,255,255,0.05)'
+                                            }}>
+                                                <span style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>{item.label}</span>
+                                                <a href={`mailto:${item.email}`} style={{ 
+                                                    fontSize: '0.8rem', 
+                                                    color: '#3b82f6', 
+                                                    textDecoration: 'none',
+                                                    fontWeight: '600'
+                                                }}>{item.email}</a>
+                                            </div>
+                                        ))}
+                                        <div style={{ 
+                                            marginTop: '8px', 
+                                            padding: '12px', 
+                                            background: 'rgba(59, 130, 246, 0.12)', 
+                                            borderRadius: '12px',
+                                            textAlign: 'center',
+                                            border: '1px solid rgba(59, 130, 246, 0.2)'
+                                        }}>
+                                            <div style={{ fontSize: '0.75rem', color: '#60a5fa', marginBottom: '4px', fontWeight: 'bold' }}> الرقم المجاني للاتصال</div>
+                                            <a href="tel:1800298200" style={{ fontSize: '1.2rem', fontWeight: '900', color: 'white', textDecoration: 'none', letterSpacing: '1px' }}>1800298200</a>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             
