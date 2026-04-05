@@ -62,8 +62,6 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
         }
     };
 
-
-
     // --- Friends Functions ---
     const handleAcceptRequest = async (requestId) => {
         try {
@@ -78,7 +76,6 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
             });
         } catch (error) {
             console.error('Failed to accept request:', error);
-            // Optionally, we could revert the optimistic update here
             loadData(); // Revert if failed
         }
     };
@@ -180,11 +177,9 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                 longitude: parseFloat(newShopData.lon)
             });
 
-            // Auto follow the new shop or just show success
             alert("تم إنشاء المحل بنجاح!");
             setIsCreatingShop(false);
             setNewShopData({ name: '', category: 'General', lat: '', lon: '' });
-            // Refresh logic if needed or auto-follow
             await handleFollowShop(createdShop);
         } catch (error) {
             console.error("Create shop failed", error);
@@ -246,7 +241,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
     };
 
     const isFollowingShop = (shopId) => {
-        return followedShops.some(s => s.id == shopId); // Loose equality to handle string/number mix
+        return followedShops.some(s => s.id == shopId);
     };
 
     const formatTime = (timestamp) => {
@@ -310,807 +305,383 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                             onClick={() => setActiveTab('shops')}
                             style={activeTab === 'shops' ? { color: '#fbab15', borderBottomColor: '#fbab15' } : {}}
                         >
-                            المحلات والمؤسسات
+                            المحلات التي أتابعها ({followedShops.length})
                         </button>
                     </div>
                 )}
 
-                <div className="modal-body" style={{ padding: 0, overflowY: isCreatingShop ? 'visible' : 'auto' }}>
+                <div className="modal-content">
                     {loading ? (
-                        <div style={{ padding: '2rem', textAlign: 'center' }}>
+                        <div className="loading-state">
                             <div className="spinner"></div>
+                            <p>جاري التحميل...</p>
                         </div>
-                    ) : activeTab === 'friends' ? (
-                        <>
-                            {friends.length === 0 ? (
-                                <div className="empty-state">
-                                    <p>ليس لديك أصدقاء بعد</p>
-                                    <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>
-                                        استخدم البحث لإيجاد أصدقاء جدد
-                                    </p>
-                                </div>
-                            ) : (
-                                <div className="user-list">
-                                    {friends.map(friend => (
-                                        <div key={friend.id} className="user-item" style={{ cursor: 'pointer' }}
-                                            onClick={() => setSelectedFriendId(friend.id)}
-                                        >
-                                            <div className="chat-avatar">
-                                                {friend.profile_picture ? (
-                                                    <img src={getImageUrl(friend.profile_picture)} alt={friend.username} />
-                                                ) : (
-                                                    <div className="avatar-placeholder">
-                                                        {friend.username.charAt(0).toUpperCase()}
-                                                    </div>
-                                                )}
-                                                {friend.is_online && <div className="online-indicator" />}
-                                            </div>
-                                            <div className="chat-info">
-                                                <div className="chat-name">
-                                                    {friend.full_name || friend.username}
-                                                </div>
-                                                <div className="chat-last-message">
-                                                    @{friend.username}
-                                                </div>
-                                            </div>
-                                            <div className="user-item-actions" style={{ justifyContent: 'flex-end', flexShrink: 0 }}>
-                                                <button
-                                                    className={`btn-small ${friend.am_i_sharing ? 'btn-location-active' : 'btn-location'}`}
-                                                    onClick={() => handleToggleLocation(friend.id)}
-                                                    style={{ fontFamily: 'inherit', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
-                                                >
-                                                    {friend.am_i_sharing ? 'إيقاف 📍' : 'مشاركة 📍'}
-                                                </button>
-                                                <button
-                                                    className="btn-small btn-reject"
-                                                    onClick={() => handleRemoveFriend(friend.id)}
-                                                    style={{ fontFamily: 'inherit', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
-                                                >
-                                                    إلغاء الصداقة
-                                                </button>
-                                            </div>
+                    ) : (
+                        <div className="friends-container">
+                            {activeTab === 'friends' && (
+                                <>
+                                    {friends.length === 0 ? (
+                                        <div className="empty-state">
+                                            <p>ليس لديك أصدقاء حالياً</p>
                                         </div>
-                                    ))}
+                                    ) : (
+                                        <div className="user-list">
+                                            {friends.map(friend => (
+                                                <div key={friend.id} className="user-item" style={{ cursor: 'pointer', padding: '12px 15px' }}
+                                                    onClick={() => setSelectedFriendId(friend.id)}
+                                                >
+                                                    <div className="chat-avatar">
+                                                        {friend.profile_picture ? (
+                                                            <img src={getImageUrl(friend.profile_picture)} alt={friend.username} />
+                                                        ) : (
+                                                            <div className="avatar-placeholder">
+                                                                {friend.username.charAt(0).toUpperCase()}
+                                                            </div>
+                                                        )}
+                                                        {friend.is_online && <div className="online-indicator" />}
+                                                    </div>
+                                                    <div className="chat-info" style={{ flex: 1, minWidth: 0 }}>
+                                                        <div className="chat-name" style={{ fontWeight: '700', fontSize: '0.95rem' }}>
+                                                            {friend.full_name || friend.username}
+                                                        </div>
+                                                        <div className="chat-last-message" style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                                                            @{friend.username}
+                                                        </div>
+                                                        
+                                                        {/* Action Buttons Below Name */}
+                                                        <div 
+                                                            style={{ display: 'flex', gap: '8px', marginTop: '10px' }}
+                                                            onClick={e => e.stopPropagation()}
+                                                        >
+                                                            <button
+                                                                className={`btn-small ${friend.am_i_sharing ? 'btn-location-active' : 'btn-location'}`}
+                                                                onClick={() => handleToggleLocation(friend.id)}
+                                                                style={{ 
+                                                                    fontFamily: 'inherit', 
+                                                                    padding: '4px 10px', 
+                                                                    fontSize: '0.75rem', 
+                                                                    borderRadius: '8px',
+                                                                    height: '28px',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '4px'
+                                                                }}
+                                                            >
+                                                                {friend.am_i_sharing ? 'إيقاف 📍' : 'مشاركة 📍'}
+                                                            </button>
+                                                            <button
+                                                                className="btn-small btn-reject"
+                                                                onClick={() => handleRemoveFriend(friend.id)}
+                                                                style={{ 
+                                                                    fontFamily: 'inherit', 
+                                                                    padding: '4px 10px', 
+                                                                    fontSize: '0.75rem', 
+                                                                    borderRadius: '8px',
+                                                                    height: '28px',
+                                                                    background: 'rgba(239, 68, 68, 0.1)',
+                                                                    color: '#ef4444',
+                                                                    border: 'none'
+                                                                }}
+                                                            >
+                                                                إلغاء الصداقة
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Quick access to followed shops in friends tab */}
+                                    {followedShops.length > 0 && (
+                                        <div className="user-list" style={{ marginTop: '20px', borderTop: '1px solid var(--bg-tertiary)' }}>
+                                            <h3 style={{ padding: '15px 15px 5px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>محلات ومؤسسات أتابعها</h3>
+                                            {followedShops.slice(0, 3).map(shop => (
+                                                <div key={shop.id} className="user-item" onClick={() => onShopClick && onShopClick(shop)} style={{ cursor: 'pointer' }}>
+                                                    <div className="chat-avatar" style={{ borderRadius: '8px', background: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 21h18v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z" /><path d="M6 6h12v7H6z" /></svg>
+                                                    </div>
+                                                    <div className="chat-info">
+                                                        <div className="chat-name">{shop.name}</div>
+                                                        <div className="chat-last-message">{shop.category}</div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {followedShops.length > 3 && (
+                                                <button 
+                                                    className="btn-small" 
+                                                    onClick={() => setActiveTab('shops')}
+                                                    style={{ width: 'calc(100% - 30px)', margin: '10px 15px', background: 'transparent', border: '1px solid var(--bg-tertiary)' }}
+                                                >
+                                                    عرض الكل ({followedShops.length})
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+                                </>
+                            )}
+
+                            {activeTab === 'requests' && (
+                                <div className="user-list">
+                                    {requests.length === 0 ? (
+                                        <div className="empty-state">
+                                            <p>لا يوجد طلبات صداقة معلقة</p>
+                                        </div>
+                                    ) : (
+                                        requests.map(request => (
+                                            <div key={request.id} className="user-item">
+                                                <div className="chat-avatar">
+                                                    {request.from_user.profile_picture ? (
+                                                        <img src={getImageUrl(request.from_user.profile_picture)} alt={request.from_user.username} />
+                                                    ) : (
+                                                        <div className="avatar-placeholder">
+                                                            {request.from_user.username.charAt(0).toUpperCase()}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="chat-info">
+                                                    <div className="chat-name">
+                                                        {request.from_user.full_name || request.from_user.username}
+                                                    </div>
+                                                    <div className="chat-last-message">
+                                                        أرسل لك طلب صداقة • {formatTime(request.created_at)}
+                                                    </div>
+                                                </div>
+                                                <div className="user-item-actions">
+                                                    <button
+                                                        className="btn-small btn-accept"
+                                                        onClick={() => handleAcceptRequest(request.id)}
+                                                    >
+                                                        قبول
+                                                    </button>
+                                                    <button
+                                                        className="btn-small btn-reject"
+                                                        onClick={() => handleRejectRequest(request.id)}
+                                                    >
+                                                        رفض
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
                                 </div>
                             )}
 
-                            {/* Always show Followed Shops in the Friends tab */}
-                            <div className="user-list" style={{ marginTop: '10px' }}>
-                                <h4 style={{
-                                    padding: '15px 15px 5px',
-                                    margin: 0,
-                                    fontSize: '0.9rem',
-                                    color: 'var(--text-secondary)',
-                                    fontWeight: '700',
-                                    borderTop: '1px solid var(--bg-tertiary)'
-                                }}>المحلات التي أتابعها</h4>
-                                {followedShops.filter(s => s.is_followed).length === 0 ? (
-                                    <div className="empty-state" style={{ padding: '20px' }}>
-                                        <p style={{ color: 'var(--text-secondary)' }}>لا تتابع أي محل حالياً</p>
-                                    </div>
-                                ) : (
-                                    followedShops.filter(s => s.is_followed).map(shop => (
-                                        <div
-                                            key={shop.id}
-                                            className="user-item"
-                                            onClick={() => onShopClick && onShopClick(shop)}
-                                            style={{ cursor: 'pointer', flexWrap: 'nowrap' }}
-                                        >
-                                            <div className="chat-avatar" style={{ overflow: 'visible', flexShrink: 0 }}>
-                                                <div style={{
-                                                    width: '50px',
-                                                    height: '50px',
-                                                    borderRadius: '14px',
-                                                    background: 'linear-gradient(135deg, #fbab15, #f59e0b)',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    color: 'white',
-                                                    boxShadow: '0 4px 6px rgba(251, 171, 21, 0.2)'
-                                                }}>
-                                                    {!shop.profile_picture ? (
-                                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                            <path d="M3 21h18v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z"></path>
-                                                            <path d="M6 6h12v7H6z"></path>
-                                                            <path d="M6 18h12"></path>
-                                                        </svg>
-                                                    ) : (
-                                                        <img src={getImageUrl(shop.profile_picture)} style={{ width: '100%', height: '100%', borderRadius: '14px', objectFit: 'cover' }} />
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="chat-info" style={{ flex: 1, minWidth: 0, padding: '0 10px' }}>
-                                                <div className="chat-name" style={{ fontSize: '1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{shop.name}</div>
-                                                <div className="chat-last-message" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fbab15', display: 'inline-block' }}></span>
-                                                    {shop.category}
-                                                </div>
-                                            </div>
-                                            <div className="user-item-actions">
-                                                <button
-                                                    className="btn-small btn-reject"
-                                                    onClick={(e) => { e.stopPropagation(); handleUnfollowShop(shop.id); }}
-                                                    style={{ border: '1px solid var(--error)', color: 'var(--error)', fontFamily: 'inherit' }}
+                            {(activeTab === 'shops' || isShopsMode) && (
+                                <div className="shops-container">
+                                    {showCreateOptions ? (
+                                        <div style={{ padding: '30px 20px', textAlign: 'center' }}>
+                                            <h3 style={{ marginBottom: '20px' }}>ماذا تريد أن تنشئ؟</h3>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                                <button 
+                                                    className="btn-accept" 
+                                                    style={{ padding: '15px', borderRadius: '12px', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+                                                    onClick={() => { setShowCreateOptions(false); setIsCreatingShop(true); }}
                                                 >
-                                                    إلغاء المتابعة
+                                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 21h18v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z"></path><path d="M6 6h12v7H6z"></path></svg>
+                                                    إنشاء محل أو مجمع تجاري
+                                                </button>
+                                                <button 
+                                                    className="btn-accept" 
+                                                    style={{ padding: '15px', borderRadius: '12px', fontSize: '1rem', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+                                                    onClick={() => { setShowCreateOptions(false); setIsCreatingUniversity(true); }}
+                                                >
+                                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
+                                                    إنشاء جامعة أو مؤسسة تعليمية
+                                                </button>
+                                                <button 
+                                                    className="btn-small" 
+                                                    style={{ marginTop: '10px', background: 'transparent', color: 'var(--text-secondary)' }}
+                                                    onClick={() => setShowCreateOptions(false)}
+                                                >
+                                                    إلغاء
                                                 </button>
                                             </div>
                                         </div>
-                                    ))
-                                )}
-                            </div>
-                        </>
-                    ) : activeTab === 'requests' ? (
-                        // ... Requests List UI (Same as before) ...
-                        requests.length === 0 ? (
-                            <div className="empty-state">
-                                <p>لا توجد طلبات صداقة</p>
-                            </div>
-                        ) : (
-                            <div className="user-list">
-                                {requests.map(request => (
-                                    <div key={request.id} className="user-item">
-                                        <div className="chat-avatar">
-                                            {request.profile_picture ? (
-                                                <img src={getImageUrl(request.profile_picture)} alt={request.username} />
-                                            ) : (
-                                                <div className="avatar-placeholder">
-                                                    {request.username.charAt(0).toUpperCase()}
+                                    ) : isCreatingUniversity ? (
+                                        <div style={{ padding: '20px' }}>
+                                            <h3 style={{ marginBottom: '15px' }}>إضافة جامعة / مؤسسة تعليمية</h3>
+                                            <form onSubmit={handleCreateUniversity} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                                <div>
+                                                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>اسم الجامعة / المؤسسة</label>
+                                                    <input
+                                                        type="text"
+                                                        value={newUniversityData.name}
+                                                        onChange={e => setNewUniversityData({ ...newUniversityData, name: e.target.value })}
+                                                        placeholder="مثلاً: جامعة بيرزيت"
+                                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '1rem' }}
+                                                        required
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>الموقع الجغرافي</label>
+                                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                                        <input
+                                                            type="number" step="any" placeholder="خط العرض"
+                                                            value={newUniversityData.lat}
+                                                            onChange={e => setNewUniversityData({ ...newUniversityData, lat: e.target.value })}
+                                                            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                                                        />
+                                                        <input
+                                                            type="number" step="any" placeholder="خط الطول"
+                                                            value={newUniversityData.lon}
+                                                            onChange={e => setNewUniversityData({ ...newUniversityData, lon: e.target.value })}
+                                                            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                                                        />
+                                                    </div>
+                                                    <button 
+                                                        type="button" className="btn-small" 
+                                                        onClick={() => getCurrentLocation(true)}
+                                                        style={{ marginTop: '10px', width: '100%', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none' }}
+                                                    >
+                                                        📍 استخدام موقع الجامعة الحالي
+                                                    </button>
+                                                </div>
+                                                <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
+                                                    <button type="button" onClick={() => { setIsCreatingUniversity(false); setShowCreateOptions(true); }} className="btn-small" style={{ flex: 1, background: 'transparent', border: '1px solid var(--text-muted)' }}>الخلف</button>
+                                                    <button type="submit" disabled={isSubmittingShop} className="btn-small btn-accept" style={{ flex: 2 }}>{isSubmittingShop ? 'جاري الحفظ...' : 'إنشاء المؤسسة'}</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    ) : isCreatingShop ? (
+                                        <div style={{ padding: '20px' }}>
+                                            <h3 style={{ marginBottom: '15px' }}>تسجيل محل جديد</h3>
+                                            <form onSubmit={handleCreateShop} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                                <div>
+                                                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>اسم المحل</label>
+                                                    <input
+                                                        type="text"
+                                                        value={newShopData.name}
+                                                        onChange={e => setNewShopData({ ...newShopData, name: e.target.value })}
+                                                        placeholder="مثلاً: مطعم القدس"
+                                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '1rem' }}
+                                                        required
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>التصنيف</label>
+                                                    <select
+                                                        value={newShopData.category}
+                                                        onChange={e => setNewShopData({ ...newShopData, category: e.target.value })}
+                                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                                                    >
+                                                        <option value="General">عام</option>
+                                                        <option value="بنك">بنك 🏦</option>
+                                                        <option value="مركز تسوق">مركز تسوق (مول) 🏢</option>
+                                                        <option value="مجمع تجاري">مجمع تجاري 🏘️</option>
+                                                        <option value="Restaurant">مطعم</option>
+                                                        <option value="Cafe">مقهى</option>
+                                                        <option value="Clothing">ملابس</option>
+                                                        <option value="Electronics">إلكترونيات</option>
+                                                        <option value="Supermarket">سوبرماركت</option>
+                                                        <option value="مكتب تاكسي">مكتب تاكسي 🚕</option>
+                                                        <option value="Service">خدمات</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>الموقع الجغرافي</label>
+                                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                                        <input
+                                                            type="number" step="any" placeholder="خط العرض"
+                                                            value={newShopData.lat}
+                                                            onChange={e => setNewShopData({ ...newShopData, lat: e.target.value })}
+                                                            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                                                        />
+                                                        <input
+                                                            type="number" step="any" placeholder="خط الطول"
+                                                            value={newShopData.lon}
+                                                            onChange={e => setNewShopData({ ...newShopData, lon: e.target.value })}
+                                                            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                                                        />
+                                                    </div>
+                                                    <button 
+                                                        type="button" className="btn-small" 
+                                                        onClick={() => getCurrentLocation(false)}
+                                                        style={{ marginTop: '10px', width: '100%', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none' }}
+                                                    >
+                                                        📍 استخدام موقعي الحالي
+                                                    </button>
+                                                </div>
+                                                <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
+                                                    <button type="button" onClick={() => { setIsCreatingShop(false); setShowCreateOptions(true); }} className="btn-small" style={{ flex: 1, background: 'transparent', border: '1px solid var(--text-muted)' }}>الخلف</button>
+                                                    <button type="submit" disabled={isSubmittingShop} className="btn-small btn-accept" style={{ flex: 2 }}>{isSubmittingShop ? 'جاري الحفظ...' : 'إنشاء المحل'}</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <form onSubmit={handleShopSearch} style={{ padding: '15px', position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 10, borderBottom: '1px solid var(--bg-tertiary)' }}>
+                                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: 'var(--bg-tertiary)', borderRadius: '12px', padding: '5px 15px' }}>
+                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)' }}>
+                                                        <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                                    </svg>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="ابحث عن ( مطعم , مركز تسوق , مؤسسة ..... )"
+                                                        value={shopSearchQuery}
+                                                        onChange={(e) => setShopSearchQuery(e.target.value)}
+                                                        style={{ flex: 1, padding: '10px', background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-primary)', fontSize: '0.95rem', fontFamily: 'inherit' }}
+                                                        autoFocus
+                                                    />
+                                                    {isSearchingShop && <div className="spinner-small"></div>}
+                                                </div>
+                                            </form>
+
+                                            {shopSearchResults.length > 0 && (
+                                                <div className="user-list">
+                                                    <h4 style={{ padding: '10px 15px', fontSize: '0.9rem', color: 'var(--primary)' }}>نتائج البحث</h4>
+                                                    {shopSearchResults.map(shop => (
+                                                        <div key={shop.id} className="user-item" onClick={() => onShopClick && onShopClick(shop)}>
+                                                            <div className="chat-avatar" style={{ background: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 21h18v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z" /></svg>
+                                                            </div>
+                                                            <div className="chat-info">
+                                                                <div className="chat-name">{shop.name}</div>
+                                                                <div className="chat-last-message">{shop.category}</div>
+                                                            </div>
+                                                            <div className="user-item-actions">
+                                                                {isFollowingShop(shop.id) ? (
+                                                                    <span style={{ color: 'var(--success)', fontSize: '0.85rem' }}>متابع ✓</span>
+                                                                ) : (
+                                                                    <button className="btn-small btn-accept" onClick={(e) => { e.stopPropagation(); handleFollowShop(shop); }}>متابعة</button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             )}
-                                        </div>
-                                        <div className="chat-info">
-                                            <div className="chat-name">
-                                                {request.full_name || request.username}
-                                            </div>
-                                            <div className="chat-last-message">
-                                                {formatTime(request.created_at)}
-                                            </div>
-                                            {/* Additional User Info */}
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: 10 }}>
-                                                {request.marital_status && (
-                                                    <div style={{ 
-                                                        background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b',
-                                                        padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem',
-                                                        fontWeight: '600', display: 'flex', alignItems: 'center', gap: '5px',
-                                                        border: '1px solid rgba(245, 158, 11, 0.2)'
-                                                    }}>
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.77-8.77 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                                                        </svg>
-                                                        {request.marital_status === 'single' ? (request.gender === 'male' ? 'أعزب' : request.gender === 'female' ? 'عزباء' : 'أعزب/عزباء') :
-                                                            request.marital_status === 'married' ? (request.gender === 'male' ? 'متزوج' : request.gender === 'female' ? 'متزوجة' : 'متزوج/متزوجة') :
-                                                                request.marital_status === 'engaged' ? (request.gender === 'male' ? 'خاطب' : request.gender === 'female' ? 'مخطوبة' : 'خاطب/مخطوبة') :
-                                                                    request.marital_status === 'divorced' ? (request.gender === 'male' ? 'مطلق' : request.gender === 'female' ? 'مطلقة' : 'مطلق/مطلقة') :
-                                                                        request.marital_status === 'widowed' ? (request.gender === 'male' ? 'أرمل' : request.gender === 'female' ? 'أرملة' : 'أرمل/أرملة') : request.marital_status}
+
+                                            <div className="user-list">
+                                                <h4 style={{ padding: '10px 15px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>المحلات التي أتابعها</h4>
+                                                {followedShops.length === 0 ? (
+                                                    <div className="empty-state">
+                                                        <p>لا تتابع أي محل حالياً</p>
                                                     </div>
-                                                )}
-                                                {request.workplace && (
-                                                    <div style={{ 
-                                                        background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6',
-                                                        padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem',
-                                                        fontWeight: '600', display: 'flex', alignItems: 'center', gap: '5px',
-                                                        border: '1px solid rgba(59, 130, 246, 0.2)'
-                                                    }}>
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-                                                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-                                                        </svg>
-                                                        {request.workplace}
-                                                    </div>
-                                                )}
-                                                {request.education && (
-                                                    <div style={{ 
-                                                        background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6',
-                                                        padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem',
-                                                        fontWeight: '600', display: 'flex', alignItems: 'center', gap: '5px',
-                                                        border: '1px solid rgba(139, 92, 246, 0.2)'
-                                                    }}>
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                            <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
-                                                            <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
-                                                        </svg>
-                                                        {request.education === 'student' ? (request.institution ? `يدرس في ${request.institution}` : 'طالب جامعة') :
-                                                            request.education === 'graduate' ? (request.institution ? `خريج من ${request.institution}` : 'خريج') :
-                                                                request.education === 'not_studying' ? 'لا يدرس' : request.education}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="user-item-actions" style={{ flexShrink: 0 }}>
-                                            <button
-                                                className="btn-small btn-accept"
-                                                onClick={() => handleAcceptRequest(request.id)}
-                                            >
-                                                قبول
-                                            </button>
-                                            <button
-                                                className="btn-small btn-reject"
-                                                onClick={() => handleRejectRequest(request.id)}
-                                            >
-                                                رفض
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )
-                    ) : (
-                        // --- SHOPS TAB ---
-                        <div className="shops-container">
-                            {showCreateOptions ? (
-                                <div style={{ padding: '30px 20px', textAlign: 'center' }}>
-                                    <h3 style={{ marginBottom: '20px', color: 'var(--primary)', fontSize: '1.2rem' }}>ماذا تريد أن تضيف؟</h3>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                                        <div 
-                                            onClick={() => { setShowCreateOptions(false); setIsCreatingShop(true); }}
-                                            style={{ background: 'var(--bg-primary)', padding: '20px', borderRadius: '16px', border: '1px solid var(--bg-tertiary)', cursor: 'pointer', transition: '0.2s', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}
-                                            onMouseOver={e => e.currentTarget.style.transform = 'translateY(-3px)'}
-                                            onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
-                                        >
-                                            <div style={{ fontSize: '3rem', marginBottom: '10px' }}>🏪</div>
-                                            <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-primary)' }}>محل / شركة</h4>
-                                            <p style={{ margin: '5px 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>مطعم، تكسي، ملابس...</p>
-                                        </div>
-                                        <div 
-                                            onClick={() => { setShowCreateOptions(false); setIsCreatingUniversity(true); }}
-                                            style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', padding: '20px', borderRadius: '16px', cursor: 'pointer', transition: '0.2s', boxShadow: '0 4px 10px rgba(59,130,246,0.3)', color: 'white' }}
-                                            onMouseOver={e => e.currentTarget.style.transform = 'translateY(-3px)'}
-                                            onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
-                                        >
-                                            <div style={{ fontSize: '3rem', marginBottom: '10px' }}>🎓</div>
-                                            <h4 style={{ margin: 0, fontSize: '1rem', color: 'white' }}>مؤسسة / جامعة</h4>
-                                            <p style={{ margin: '5px 0 0 0', fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)' }}>مرافق، كليات، ذكية...</p>
-                                        </div>
-
-                                        <div 
-                                            onClick={() => { 
-                                                setShowCreateOptions(false); 
-                                                setIsCreatingShop(true); 
-                                                setNewShopData(prev => ({ ...prev, category: 'مركز تسوق' }));
-                                            }}
-                                            style={{ 
-                                                gridColumn: '1 / -1',
-                                                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
-                                                padding: '20px', borderRadius: '16px', cursor: 'pointer', transition: '0.2s', 
-                                                boxShadow: '0 4px 10px rgba(16,185,129,0.3)', color: 'white',
-                                                display: 'flex', alignItems: 'center', gap: '20px', textAlign: 'right'
-                                            }}
-                                            onMouseOver={e => e.currentTarget.style.transform = 'translateY(-3px)'}
-                                            onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
-                                        >
-                                            <div style={{ fontSize: '3.5rem' }}>🏢</div>
-                                            <div>
-                                                <h4 style={{ margin: 0, fontSize: '1.2rem', color: 'white' }}>مركز تسوق / مجمع تجاري</h4>
-                                                <p style={{ margin: '5px 0 0 0', fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)' }}>مول، مجمع تجاري، مركز تسوق ضخم...</p>
-                                            </div>
-                                        </div>
-
-                                        <div 
-                                            onClick={() => { 
-                                                setShowCreateOptions(false); 
-                                                setIsCreatingShop(true); 
-                                                setNewShopData(prev => ({ ...prev, category: 'بنك' }));
-                                            }}
-                                            style={{ 
-                                                gridColumn: '1 / -1',
-                                                background: 'white', 
-                                                border: '1px solid var(--border-color)',
-                                                padding: '20px', borderRadius: '16px', cursor: 'pointer', transition: '0.2s', 
-                                                boxShadow: '0 4px 10px rgba(0,0,0,0.05)', color: 'var(--text-primary)',
-                                                display: 'flex', alignItems: 'center', gap: '20px', textAlign: 'right'
-                                            }}
-                                            onMouseOver={e => e.currentTarget.style.transform = 'translateY(-3px)'}
-                                            onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
-                                        >
-                                            <div style={{ fontSize: '3.5rem' }}>🏦</div>
-                                            <div>
-                                                <h4 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>بنك / إدارة صرافات</h4>
-                                                <p style={{ margin: '5px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>إنشاء علامة تجارية لبنك وفروعه وصرافاته المنتشرة...</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <button onClick={() => setShowCreateOptions(false)} style={{ marginTop: '30px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.9rem' }}>
-                                        إلغاء
-                                    </button>
-                                </div>
-                            ) : isCreatingUniversity ? (
-                                <div style={{ padding: '20px' }}>
-                                    <h3 style={{ marginBottom: '15px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span>🎓</span> تسجيل مؤسسة/جامعة تفاعلية
-                                    </h3>
-                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
-                                        ستتمكن لاحقاً من إضافة مرافق داخلية مثل الكليات والمكاتب والعيادات لهذه المؤسسة لتكون خريطة تفاعلية للمستخدمين.
-                                    </p>
-                                    <form onSubmit={handleCreateUniversity} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                        <div>
-                                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>اسم الجامعة / المؤسسة</label>
-                                            <input
-                                                type="text" className="input" value={newUniversityData.name}
-                                                onChange={e => setNewUniversityData({ ...newUniversityData, name: e.target.value })}
-                                                placeholder="مثلاً: جامعة النجاح الوطنية"
-                                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '1rem' }}
-                                                required
-                                            />
-                                        </div>
-                                        <div>
-                                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>موقع المبنى الرئيسي</label>
-                                            <div style={{ display: 'flex', gap: '10px' }}>
-                                                <input type="number" step="any" placeholder="خط العرض" value={newUniversityData.lat} onChange={e => setNewUniversityData({ ...newUniversityData, lat: e.target.value })} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} required />
-                                                <input type="number" step="any" placeholder="خط الطول" value={newUniversityData.lon} onChange={e => setNewUniversityData({ ...newUniversityData, lon: e.target.value })} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} required />
-                                            </div>
-                                            <button type="button" className="btn-small" onClick={() => getCurrentLocation(true)} style={{ marginTop: '10px', width: '100%', background: '#10b981', color: 'white', border: 'none' }}>
-                                                📍 استخدام موقعي الحالي لإحداثيات المركز
-                                            </button>
-                                        </div>
-
-                                        <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-                                            <button type="button" onClick={() => { setIsCreatingUniversity(false); setShowCreateOptions(true); }} className="btn-small" style={{ flex: 1, background: 'transparent', border: '1px solid var(--text-muted)' }}>
-                                                رجوع
-                                            </button>
-                                            <button type="submit" disabled={isSubmittingShop} className="btn-small" style={{ flex: 2, background: '#10b981', color: 'white', border: 'none', fontWeight: 'bold' }}>
-                                                {isSubmittingShop ? 'جاري الحفظ...' : 'إنشاء الجامعة وبدء الخريطة'}
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            ) : isCreatingShop ? (
-                                <div style={{ padding: '20px' }}>
-                                    <h3 style={{ marginBottom: '15px' }}>تسجيل محل جديد</h3>
-                                    <form onSubmit={handleCreateShop} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                        <div>
-                                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>اسم المحل</label>
-                                            <input
-                                                type="text"
-                                                className="input"
-                                                value={newShopData.name}
-                                                onChange={e => setNewShopData({ ...newShopData, name: e.target.value })}
-                                                placeholder="مثلاً: مطعم القدس"
-                                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '1rem' }}
-                                                required
-                                            />
-                                        </div>
-                                        <div>
-                                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>التصنيف</label>
-                                            <select
-                                                className="input"
-                                                value={newShopData.category}
-                                                onChange={e => setNewShopData({ ...newShopData, category: e.target.value })}
-                                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-                                            >
-                                                <option value="General">عام</option>
-                                                <option value="بنك">بنك 🏦</option>
-                                                <option value="مركز تسوق">مركز تسوق (مول) 🏢</option>
-                                                <option value="مجمع تجاري">مجمع تجاري 🏘️</option>
-                                                <option value="Restaurant">مطعم</option>
-                                                <option value="Cafe">مقهى</option>
-                                                <option value="Clothing">ملابس</option>
-                                                <option value="Electronics">إلكترونيات</option>
-                                                <option value="Supermarket">سوبرماركت</option>
-                                                <option value="مكتب تاكسي">مكتب تاكسي 🚕</option>
-                                                <option value="Service">خدمات</option>
-                                            </select>
-                                        </div>
-
-                                        <div>
-                                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>الموقع</label>
-                                            <div style={{ display: 'flex', gap: '10px' }}>
-                                                <input
-                                                    type="number"
-                                                    step="any"
-                                                    placeholder="خط العرض"
-                                                    value={newShopData.lat}
-                                                    onChange={e => setNewShopData({ ...newShopData, lat: e.target.value })}
-                                                    style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-                                                />
-                                                <input
-                                                    type="number"
-                                                    step="any"
-                                                    placeholder="خط الطول"
-                                                    value={newShopData.lon}
-                                                    onChange={e => setNewShopData({ ...newShopData, lon: e.target.value })}
-                                                    style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-                                                />
-                                            </div>
-                                            <button
-                                                type="button"
-                                                className="btn-small is-primary"
-                                                onClick={() => getCurrentLocation(false)}
-                                                style={{ marginTop: '10px', width: '100%', background: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}
-                                            >
-                                                📍 استخدام موقعي الحالي
-                                            </button>
-                                        </div>
-
-                                        <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-                                            <button
-                                                type="button"
-                                                onClick={() => { setIsCreatingShop(false); setShowCreateOptions(true); }}
-                                                className="btn-small"
-                                                style={{ flex: 1, background: 'transparent', border: '1px solid var(--text-muted)' }}
-                                            >
-                                                الخلف
-                                            </button>
-                                            <button
-                                                type="submit"
-                                                disabled={isSubmittingShop}
-                                                className="btn-small btn-accept"
-                                                style={{ flex: 2 }}
-                                            >
-                                                {isSubmittingShop ? 'جاري الحفظ...' : 'إنشاء المحل'}
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            ) : (
-                                <>
-                                    {/* Search Bar - Redesigned */}
-                                    <form onSubmit={handleShopSearch} style={{
-                                        padding: '15px',
-                                        position: 'sticky',
-                                        top: 0,
-                                        background: 'var(--bg-secondary)',
-                                        zIndex: 10,
-                                        borderBottom: '1px solid var(--bg-tertiary)'
-                                    }}>
-                                        <div style={{
-                                            position: 'relative',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            background: 'var(--bg-tertiary)',
-                                            borderRadius: '12px',
-                                            padding: '5px 15px',
-                                            border: '1px solid transparent',
-                                            transition: 'all 0.2s'
-                                        }} className="search-focus-wrapper">
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)' }}>
-                                                <circle cx="11" cy="11" r="8"></circle>
-                                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                                            </svg>
-                                            <input
-                                                type="text"
-                                                placeholder="ابحث عن ( مطعم , مركز تسوق , مؤسسة ..... )"
-                                                value={shopSearchQuery}
-                                                onChange={(e) => setShopSearchQuery(e.target.value)}
-                                                style={{
-                                                    flex: 1,
-                                                    padding: '10px',
-                                                    background: 'transparent',
-                                                    border: 'none',
-                                                    outline: 'none',
-                                                    color: 'var(--text-primary)',
-                                                    fontSize: '0.95rem',
-                                                    fontFamily: 'inherit'
-                                                }}
-                                                autoFocus
-                                            />
-                                            {isSearchingShop && <div className="spinner-small" style={{ borderColor: 'var(--primary)', borderTopColor: 'transparent' }}></div>}
-                                        </div>
-                                    </form>
-
-                                    {/* Search Results */}
-                                    {shopSearchResults.length > 0 && (
-                                        <div className="user-list" style={{ borderBottom: '1px solid var(--bg-tertiary)', marginBottom: '10px' }}>
-                                            <h4 style={{ padding: '15px 15px 5px', margin: 0, fontSize: '0.9rem', color: 'var(--primary)', fontWeight: '700' }}>نتائج البحث</h4>
-                                            {shopSearchResults.map(shop => (
-                                                <div
-                                                    key={shop.id}
-                                                    className="user-item"
-                                                    onClick={() => onShopClick && onShopClick(shop)}
-                                                    style={{ cursor: 'pointer' }}
-                                                >
-                                                    <div className="chat-avatar" style={{ overflow: 'visible' }}>
-                                                        <div style={{
-                                                            width: '50px',
-                                                            height: '50px',
-                                                            borderRadius: '14px',
-                                                            background: 'linear-gradient(135deg, #fbab15, #f59e0b)',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            color: 'white',
-                                                            boxShadow: '0 4px 6px rgba(251, 171, 21, 0.2)'
-                                                        }}>
-                                                            {!shop.profile_picture ? (
-                                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                                    <path d="M3 21h18v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z"></path>
-                                                                    <path d="M6 6h12v7H6z"></path>
-                                                                    <path d="M6 18h12"></path>
-                                                                </svg>
-                                                            ) : (
-                                                                <img src={getImageUrl(shop.profile_picture)} style={{ width: '100%', height: '100%', borderRadius: '14px', objectFit: 'cover' }} />
-                                                            )}
+                                                ) : (
+                                                    followedShops.map(shop => (
+                                                        <div key={shop.id} className="user-item" onClick={() => onShopClick && onShopClick(shop)}>
+                                                            <div className="chat-avatar" style={{ background: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 21h18v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z" /></svg>
+                                                            </div>
+                                                            <div className="chat-info">
+                                                                <div className="chat-name">{shop.name}</div>
+                                                                <div className="chat-last-message">{shop.category}</div>
+                                                            </div>
+                                                            <div className="user-item-actions">
+                                                                <button
+                                                                    className="btn-small btn-reject"
+                                                                    onClick={(e) => { e.stopPropagation(); handleUnfollowShop(shop.id); }}
+                                                                >
+                                                                    إلغاء المتابعة
+                                                                </button>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    <div className="chat-info">
-                                                        <div className="chat-name" style={{ fontSize: '1rem' }}>{shop.name}</div>
-                                                        <div className="chat-last-message" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fbab15', display: 'inline-block' }}></span>
-                                                            {shop.category}
-                                                        </div>
-                                                    </div>
-                                                    <div className="user-item-actions">
-                                                        {isFollowingShop(shop.id) && (
-                                                            <span style={{ color: 'var(--success)', fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                                                متابع
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </>
                                     )}
-
-                                    {/* Followed List */}
-                                    <div className="user-list">
-                                        <h4 style={{
-                                            padding: '15px 15px 5px',
-                                            margin: 0,
-                                            fontSize: '0.9rem',
-                                            color: 'var(--text-secondary)',
-                                            fontWeight: '700',
-                                            borderTop: shopSearchResults.length > 0 ? 'none' : '1px solid transparent' // Conditional border logic if needed
-                                        }}>المحلات التي أتابعها</h4>
-                                        {followedShops.length === 0 ? (
-                                            <div className="empty-state" style={{ padding: '40px 20px' }}>
-                                                <div style={{
-                                                    width: '60px', height: '60px', margin: '0 auto 15px',
-                                                    background: 'var(--bg-tertiary)', borderRadius: '50%',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    color: 'var(--text-muted)'
-                                                }}>
-                                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z"></path><path d="M6 6h12v7H6z"></path></svg>
-                                                </div>
-                                                <p style={{ color: 'var(--text-secondary)' }}>لا تتابع أي محل حالياً</p>
-                                            </div>
-                                        ) : (
-                                            followedShops.map(shop => (
-                                                <div
-                                                    key={shop.id}
-                                                    className="user-item"
-                                                    onClick={() => onShopClick && onShopClick(shop)}
-                                                    style={{ cursor: 'pointer', flexWrap: 'nowrap' }}
-                                                >
-                                                    <div className="chat-avatar" style={{ overflow: 'visible', flexShrink: 0 }}>
-                                                        <div style={{
-                                                            width: '50px',
-                                                            height: '50px',
-                                                            borderRadius: '14px',
-                                                            background: 'linear-gradient(135deg, #fbab15, #f59e0b)',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            color: 'white',
-                                                            boxShadow: '0 4px 6px rgba(251, 171, 21, 0.2)'
-                                                        }}>
-                                                            {!shop.profile_picture ? (
-                                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                                    <path d="M3 21h18v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z"></path>
-                                                                    <path d="M6 6h12v7H6z"></path>
-                                                                    <path d="M6 18h12"></path>
-                                                                </svg>
-                                                            ) : (
-                                                                <img src={getImageUrl(shop.profile_picture)} style={{ width: '100%', height: '100%', borderRadius: '14px', objectFit: 'cover' }} />
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <div className="chat-info" style={{ flex: 1, minWidth: 0, padding: '0 10px' }}>
-                                                        <div className="chat-name" style={{ fontSize: '1rem', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{shop.name}</div>
-                                                        <div className="chat-last-message" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fbab15', display: 'inline-block' }}></span>
-                                                            {shop.category}
-                                                        </div>
-                                                    </div>
-                                                    <div className="user-item-actions">
-                                                        <button
-                                                            className="btn-small btn-reject"
-                                                            onClick={(e) => { e.stopPropagation(); handleUnfollowShop(shop.id); }}
-                                                            style={{ border: '1px solid var(--error)', color: 'var(--error)', fontFamily: 'inherit' }}
-                                                        >
-                                                            إلغاء المتابعة
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ))
-                                        )}
-                                            </button>
-                                        </div>
-
-                                        <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-                                            <button
-                                                type="button"
-                                                onClick={() => { setIsCreatingShop(false); setShowCreateOptions(true); }}
-                                                className="btn-small"
-                                                style={{ flex: 1, background: 'transparent', border: '1px solid var(--text-muted)' }}
-                                            >
-                                                الخلف
-                                            </button>
-                                            <button
-                                                type="submit"
-                                                disabled={isSubmittingShop}
-                                                className="btn-small btn-accept"
-                                                style={{ flex: 2 }}
-                                            >
-                                                {isSubmittingShop ? 'جاري الحفظ...' : 'إنشاء المحل'}
-                                            </button>
-                                        </div>
-                                    </form>
                                 </div>
-                            ) : (
-                                <>
-                                    {/* Search Bar - Redesigned */}
-                                    <form onSubmit={handleShopSearch} style={{
-                                        padding: '15px',
-                                        position: 'sticky',
-                                        top: 0,
-                                        background: 'var(--bg-secondary)',
-                                        zIndex: 10,
-                                        borderBottom: '1px solid var(--bg-tertiary)'
-                                    }}>
-                                        <div style={{
-                                            position: 'relative',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            background: 'var(--bg-tertiary)',
-                                            borderRadius: '12px',
-                                            padding: '5px 15px',
-                                            border: '1px solid transparent',
-                                            transition: 'all 0.2s'
-                                        }} className="search-focus-wrapper">
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)' }}>
-                                                <circle cx="11" cy="11" r="8"></circle>
-                                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                                            </svg>
-                                            <input
-                                                type="text"
-                                                placeholder="ابحث عن ( مطعم , مركز تسوق , مؤسسة ..... )"
-                                                value={shopSearchQuery}
-                                                onChange={(e) => setShopSearchQuery(e.target.value)}
-                                                style={{
-                                                    flex: 1,
-                                                    padding: '10px',
-                                                    background: 'transparent',
-                                                    border: 'none',
-                                                    outline: 'none',
-                                                    color: 'var(--text-primary)',
-                                                    fontSize: '0.95rem',
-                                                    fontFamily: 'inherit'
-                                                }}
-                                                autoFocus
-                                            />
-                                            {isSearchingShop && <div className="spinner-small" style={{ borderColor: 'var(--primary)', borderTopColor: 'transparent' }}></div>}
-                                        </div>
-                                    </form>
-
-                                    {/* Search Results */}
-                                    {shopSearchResults.length > 0 && (
-                                        <div className="user-list" style={{ borderBottom: '1px solid var(--bg-tertiary)', marginBottom: '10px' }}>
-                                            <h4 style={{ padding: '15px 15px 5px', margin: 0, fontSize: '0.9rem', color: 'var(--primary)', fontWeight: '700' }}>نتائج البحث</h4>
-                                            {shopSearchResults.map(shop => (
-                                                <div
-                                                    key={shop.id}
-                                                    className="user-item"
-                                                    onClick={() => onShopClick && onShopClick(shop)}
-                                                    style={{ cursor: 'pointer' }}
-                                                >
-                                                    <div className="chat-avatar" style={{ overflow: 'visible' }}>
-                                                        <div style={{
-                                                            width: '50px',
-                                                            height: '50px',
-                                                            borderRadius: '14px',
-                                                            background: 'linear-gradient(135deg, #fbab15, #f59e0b)',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            color: 'white',
-                                                            boxShadow: '0 4px 6px rgba(251, 171, 21, 0.2)'
-                                                        }}>
-                                                            {!shop.profile_picture ? (
-                                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                                    <path d="M3 21h18v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z"></path>
-                                                                    <path d="M6 6h12v7H6z"></path>
-                                                                    <path d="M6 18h12"></path>
-                                                                </svg>
-                                                            ) : (
-                                                                <img src={getImageUrl(shop.profile_picture)} style={{ width: '100%', height: '100%', borderRadius: '14px', objectFit: 'cover' }} />
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <div className="chat-info">
-                                                        <div className="chat-name" style={{ fontSize: '1rem' }}>{shop.name}</div>
-                                                        <div className="chat-last-message" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fbab15', display: 'inline-block' }}></span>
-                                                            {shop.category}
-                                                        </div>
-                                                    </div>
-                                                    <div className="user-item-actions">
-                                                        {isFollowingShop(shop.id) && (
-                                                            <span style={{ color: 'var(--success)', fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                                                متابع
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    {/* Followed List */}
-                                    <div className="user-list">
-                                        <h4 style={{
-                                            padding: '15px 15px 5px',
-                                            margin: 0,
-                                            fontSize: '0.9rem',
-                                            color: 'var(--text-secondary)',
-                                            fontWeight: '700',
-                                            borderTop: shopSearchResults.length > 0 ? 'none' : '1px solid transparent' // Conditional border logic if needed
-                                        }}>المحلات التي أتابعها</h4>
-                                        {followedShops.length === 0 ? (
-                                            <div className="empty-state" style={{ padding: '40px 20px' }}>
-                                                <div style={{
-                                                    width: '60px', height: '60px', margin: '0 auto 15px',
-                                                    background: 'var(--bg-tertiary)', borderRadius: '50%',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    color: 'var(--text-muted)'
-                                                }}>
-                                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z"></path><path d="M6 6h12v7H6z"></path></svg>
-                                                </div>
-                                                <p style={{ color: 'var(--text-secondary)' }}>لا تتابع أي محل حالياً</p>
-                                            </div>
-                                        ) : (
-                                            followedShops.map(shop => (
-                                                <div
-                                                    key={shop.id}
-                                                    className="user-item"
-                                                    onClick={() => onShopClick && onShopClick(shop)}
-                                                    style={{ cursor: 'pointer', flexWrap: 'nowrap' }}
-                                                >
-                                                    <div className="chat-avatar" style={{ overflow: 'visible', flexShrink: 0 }}>
-                                                        <div style={{
-                                                            width: '50px',
-                                                            height: '50px',
-                                                            borderRadius: '14px',
-                                                            background: 'linear-gradient(135deg, #fbab15, #f59e0b)',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            color: 'white',
-                                                            boxShadow: '0 4px 6px rgba(251, 171, 21, 0.2)'
-                                                        }}>
-                                                            {!shop.profile_picture ? (
-                                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                                    <path d="M3 21h18v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z"></path>
-                                                                    <path d="M6 6h12v7H6z"></path>
-                                                                    <path d="M6 18h12"></path>
-                                                                </svg>
-                                                            ) : (
-                                                                <img src={getImageUrl(shop.profile_picture)} style={{ width: '100%', height: '100%', borderRadius: '14px', objectFit: 'cover' }} />
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <div className="chat-info" style={{ flex: 1, minWidth: 0, padding: '0 10px' }}>
-                                                        <div className="chat-name" style={{ fontSize: '1rem', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{shop.name}</div>
-                                                        <div className="chat-last-message" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fbab15', display: 'inline-block' }}></span>
-                                                            {shop.category}
-                                                        </div>
-                                                    </div>
-                                                    <div className="user-item-actions">
-                                                        <button
-                                                            className="btn-small btn-reject"
-                                                            onClick={(e) => { e.stopPropagation(); handleUnfollowShop(shop.id); }}
-                                                            style={{ border: '1px solid var(--error)', color: 'var(--error)', fontFamily: 'inherit' }}
-                                                        >
-                                                            إلغاء المتابعة
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ))
-                                        )}
-                                    </div>
-                                </>
                             )}
                         </div>
                     )}
