@@ -1558,9 +1558,18 @@ const MapComponent = () => {
                 onShopFollowed={handleShopFollowed}
                 onShopClick={(shop) => {
                     handleOpenShopProfile(shop);
-                    setShowFriends(false); // Close friends list to return to map on exit
-                    const isUni = shop.category === 'University';
-                    mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: isUni ? 17 : 18, pitch: 45 });
+                    const catRaw = String(shop.category || '').trim();
+                    const isMuni = catRaw.toLowerCase() === 'بلدية' || catRaw.toLowerCase() === 'municipality' || catRaw.includes('بلدية');
+                    
+                    if (isMuni) {
+                        setShowFriends(false);
+                        return;
+                    }
+
+                    setShowFriends(false); 
+                    const category = catRaw.toLowerCase();
+                    const isUni = category === 'university' || category === 'مؤسسة تعليمية' || category === 'جامعة' || category === 'university_facility';
+                    mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: isUni ? 17 : 18.5, pitch: 45 });
                 }} />}
             {showShops && <FriendsModal
                 onClose={() => setShowShops(false)}
@@ -1570,8 +1579,17 @@ const MapComponent = () => {
                 onShopFollowed={handleShopFollowed}
                 onShopClick={(shop) => {
                     handleOpenShopProfile(shop);
+                    // Decide whether to close list or stay
+                    const catRaw = String(shop.category || '').trim();
+                    const isMuni = catRaw.toLowerCase() === 'بلدية' || catRaw.toLowerCase() === 'municipality' || catRaw.includes('بلدية');
+                    
+                    if (isMuni) {
+                        setShowShops(false);
+                        return; // HandleOpen takes care of the modal
+                    }
+
                     setShowShops(false);
-                    const category = (shop.category || '').toLowerCase().trim();
+                    const category = catRaw.toLowerCase();
                     const isUni = category === 'university' || category === 'مؤسسة تعليمية' || category === 'جامعة';
                     mapRef.current?.flyTo({ 
                         center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], 
@@ -1623,12 +1641,17 @@ const MapComponent = () => {
                     const shopMock = {
                         id: data.shopId,
                         name: data.shopName,
+                        category: data.shopCategory || 'بلدية', // Fallback to muni if from muni system
                         latitude: data.location?.latitude,
                         longitude: data.location?.longitude
                     };
                     handleOpenShopProfile(shopMock);
-                    setShowNotifications(false); // Close notifications list to return to map on exit
-                    if (data.location?.latitude && data.location?.longitude) {
+                    setShowNotifications(false);
+                    
+                    const catRaw = String(shopMock.category || '').trim();
+                    const isMuni = catRaw.toLowerCase() === 'بلدية' || catRaw.toLowerCase() === 'municipality' || catRaw.includes('بلدية');
+                    
+                    if (!isMuni && data.location?.latitude && data.location?.longitude) {
                         mapRef.current?.flyTo({ center: [parseFloat(data.location.longitude), parseFloat(data.location.latitude)], zoom: 18.5, pitch: 45 });
                     }
                 }
@@ -1662,7 +1685,13 @@ const MapComponent = () => {
                     onShopClick={(shop) => {
                         handleOpenShopProfile(shop);
                         setShowManagedShops(false);
-                        mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: 18.5, pitch: 45 });
+                        
+                        const catRaw = String(shop.category || '').trim();
+                        const isMuni = catRaw.toLowerCase() === 'بلدية' || catRaw.toLowerCase() === 'municipality' || catRaw.includes('بلدية');
+                        
+                        if (!isMuni) {
+                            mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: 18.5, pitch: 45 });
+                        }
                     }}
                 />
             )}
