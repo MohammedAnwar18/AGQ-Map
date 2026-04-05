@@ -21,6 +21,7 @@ import ManagedShopsModal from '../components/ManagedShopsModal';
 import ShopProfileModal from '../components/ShopProfileModal';
 import UniversityProfileModal from '../components/UniversityProfileModal';
 import FacilityProfileModal from '../components/FacilityProfileModal';
+import MunicipalityProfileModal from '../components/MunicipalityProfileModal';
 import { postService, friendService, authService, notificationService, communityService, shopService, getImageUrl } from '../services/api';
 import './Map.css';
 
@@ -251,8 +252,15 @@ const MapComponent = () => {
     const [showFacilityProfile, setShowFacilityProfile] = useState(false);
     const [selectedFacilityId, setSelectedFacilityId] = useState(null);
 
+    // Municipality Profile State
+    const [showMunicipalityProfile, setShowMunicipalityProfile] = useState(false);
+    const [selectedMunicipalityProfile, setSelectedMunicipalityProfile] = useState(null);
+
     const handleOpenShopProfile = async (shop) => {
-        if (shop.category === 'University' || shop.category === 'مؤسسة تعليمية') {
+        if (shop.category === 'بلدية' || shop.category === 'Municipality') {
+            setSelectedMunicipalityProfile(shop);
+            setShowMunicipalityProfile(true);
+        } else if (shop.category === 'University' || shop.category === 'مؤسسة تعليمية') {
             setSelectedUniversityProfile(shop);
             setShowUniversityProfile(true);
             try {
@@ -1588,6 +1596,22 @@ const MapComponent = () => {
                                 duration: 1500
                             });
                         }
+                    }}
+                />
+            )}
+            {showMunicipalityProfile && selectedMunicipalityProfile && (
+                <MunicipalityProfileModal
+                    shop={selectedMunicipalityProfile}
+                    currentUser={user}
+                    onClose={() => setShowMunicipalityProfile(false)}
+                    onNavigate={({ lat, lng, name }) => {
+                        setShowMunicipalityProfile(false);
+                        mapRef.current?.flyTo({
+                            center: [parseFloat(lng), parseFloat(lat)],
+                            zoom: 18,
+                            pitch: 45,
+                            duration: 1800
+                        });
                     }}
                 />
             )}

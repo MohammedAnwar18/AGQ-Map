@@ -1190,5 +1190,118 @@ module.exports = {
     togglePostLike,
     addPostComment,
     getPostComments,
-    deleteShopPost
+    deleteShopPost,
+    getMunicipalityItems,
+    addMunicipalityItem,
+    deleteMunicipalityItem
 };
+
+// ====================================================================
+// --- MUNICIPALITY ITEMS (البلديات) ---
+// ====================================================================
+
+/**
+ * GET /shops/:id/municipality-items
+ * Get all items grouped by section for a municipality
+ */
+async function getMunicipalityItems(req, res) {
+    try {
+        const municipalityId = parseInt(req.params.id);
+
+        const result = await pool.query(`
+            SELECT id, name, section, latitude, longitude, image_url, description, is_active, created_at
+            FROM municipality_items
+            WHERE municipality_id = $1 AND is_active = TRUE
+            ORDER BY section ASC, created_at DESC
+        `, [municipalityId]);
+
+        // Group by section
+        const grouped = {};
+        const sectionOrder = ['live_streams', 'public_squares', 'public_parks', 'services', 'tourism', 'culture'];
+        sectionOrder.forEach(s => { grouped[s] = []; });
+
+        result.rows.forEach(item => {
+            if (!grouped[item.section]) grouped[item.section] = [];
+            grouped[item.section].push(item);
+        });
+
+        res.json({ items: result.rows, grouped });
+    } catch (error) {
+        console.error('getMunicipalityItems error:', error);
+        res.status(500).json({ error: 'Failed to get municipality items' });
+    }
+}
+
+/**
+ * POST /shops/:id/municipality-items
+ * Add a new item to a municipality section (Admin only)
+ */
+async function addMunicipalityItem(req, res) {
+    try {
+        const municipalityId = parseInt(req.params.id);
+        const userId = req.user.userId || req.user.id;
+        const userRole = req.user.role;
+
+        if (userRole !== 'admin') {
+            return res.status(403).json({ error: 'Admin only' });
+        }
+
+        const { name, section, latitude, longitude, description } = req.body;
+
+        if (!name || !section || !latitude || !longitude) {
+            return res.status(400).json({ error: 'name, section, latitude, longitude are required' });
+        }
+
+        const validSections = ['live_streams', 'public_squares', 'public_parks', 'services', 'tourism', 'culture'];
+        if (!validSections.includes(section)) {
+            return res.status(400).json({ error: `Invalid section. Must be one of: ${validSections.join(', ')}` });
+        }
+
+        let image_url = null;
+        if (req.file) {
+            const { uploadToSupabase } = require('../utils/storage');
+            image_url = await uploadToSupabase(req.file.buffer, req.file.originalname, req.file.mimetype);
+        }
+
+        const result = await pool.query(`
+            INSERT INTO municipality_items (municipality_id, name, section, latitude, longitude, image_url, description, created_by)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING *
+        `, [municipalityId, name, section, parseFloat(latitude), parseFloat(longitude), image_url, description || null, userId]);
+
+        res.json({ item: result.rows[0] });
+    } catch (error) {
+        console.error('addMunicipalityItem error:', error);
+        res.status(500).json({ error: 'Failed to add municipality item', details: error.message });
+    }
+}
+
+/**
+ * DELETE /shops/municipality-items/:itemId
+ * Delete a municipality item (Admin only)
+ */
+async function deleteMunicipalityItem(req, res) {
+    try {
+        const itemId = parseInt(req.params.itemId);
+        const userRole = req.user.role;
+
+        if (userRole !== 'admin') {
+            return res.status(403).json({ error: 'Admin only' });
+        }
+
+        const result = await pool.query(
+            'DELETE FROM municipality_items WHERE id = $1 RETURNING id',
+            [itemId]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'Item not found' });
+        }
+
+        res.json({ message: 'Item deleted successfully' });
+    } catch (error) {
+        console.error('deleteMunicipalityItem error:', error);
+        res.status(500).json({ error: 'Failed to delete item' });
+    }
+}
+

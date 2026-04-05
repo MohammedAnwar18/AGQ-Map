@@ -59,4 +59,10 @@ router.post('/posts/:postId/like', shopController.togglePostLike);
 router.get('/posts/:postId/comments', shopController.getPostComments);
 router.post('/posts/:postId/comments', shopController.addPostComment);
 
+// Municipality Items (البلديات)
+router.get('/:id/municipality-items', shopController.getMunicipalityItems);
+router.post('/:id/municipality-items', upload.single('image'), shopController.addMunicipalityItem);
+router.delete('/municipality-items/:itemId', shopController.deleteMunicipalityItem);
+
 module.exports = router;
+

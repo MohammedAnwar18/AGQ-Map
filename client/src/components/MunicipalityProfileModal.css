@@ -1,0 +1,739 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   MunicipalityProfileModal.css  –  بلدية ثيم احترافي
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Google Font (if not already loaded) ───────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
+
+/* ── Overlay ─────────────────────────────────────────────────────────── */
+.muni-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: flex-end;        /* Mobile: slide up from bottom */
+    justify-content: center;
+    animation: muniOverlayIn 0.25s ease;
+    font-family: 'Tajawal', 'Segoe UI', sans-serif;
+    direction: rtl;
+}
+
+@keyframes muniOverlayIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* ── Modal Shell ─────────────────────────────────────────────────────────*/
+.muni-modal {
+    background: var(--bg-secondary, #1a1a2e);
+    width: 100%;
+    max-width: 680px;
+    max-height: 96dvh;
+    border-radius: 24px 24px 0 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: muniSlideUp 0.35s cubic-bezier(0.34,1.56,0.64,1);
+    box-shadow: 0 -20px 60px rgba(0,0,0,0.5);
+}
+
+@keyframes muniSlideUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* Desktop: centered modal */
+@media (min-width: 640px) {
+    .muni-overlay { align-items: center; }
+    .muni-modal {
+        max-height: 90dvh;
+        border-radius: 24px;
+    }
+}
+
+/* ── Header ──────────────────────────────────────────────────────────── */
+.muni-header {
+    position: relative;
+    flex-shrink: 0;
+    padding-bottom: 0;
+}
+
+.muni-header-bg {
+    position: relative;
+    height: 130px;
+    overflow: hidden;
+}
+
+.muni-cover {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.muni-cover-default {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #1a3a5c 0%, #0d2137 50%, #162032 100%);
+    position: relative;
+    overflow: hidden;
+}
+.muni-cover-default::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: 
+        radial-gradient(circle at 20% 50%, rgba(59,130,246,0.15) 0%, transparent 60%),
+        radial-gradient(circle at 80% 20%, rgba(16,185,129,0.1) 0%, transparent 50%);
+}
+
+.muni-cover-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.6));
+}
+
+.muni-close-btn {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 10;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.muni-close-btn:hover { background: rgba(0,0,0,0.75); }
+
+/* ── Header Content ───────────────────────────────────────────────────── */
+.muni-header-content {
+    display: flex;
+    align-items: flex-end;
+    gap: 14px;
+    padding: 0 16px;
+    margin-top: -40px;
+    position: relative;
+    z-index: 5;
+}
+
+.muni-logo-wrap {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.muni-logo {
+    width: 80px;
+    height: 80px;
+    border-radius: 18px;
+    border: 3px solid var(--bg-secondary, #1a1a2e);
+    object-fit: cover;
+    display: block;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+.muni-logo-default {
+    width: 80px;
+    height: 80px;
+    border-radius: 18px;
+    border: 3px solid var(--bg-secondary, #1a1a2e);
+    background: linear-gradient(135deg, #1e3a5f, #0d2137);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+.muni-verified-badge {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #10b981, #059669);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--bg-secondary, #1a1a2e);
+    box-shadow: 0 2px 6px rgba(16,185,129,0.4);
+}
+
+.muni-title-wrap {
+    flex: 1;
+    min-width: 0;
+    padding-bottom: 8px;
+}
+
+.muni-name {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--text-primary, #f1f5f9);
+    margin: 0 0 4px;
+    line-height: 1.2;
+}
+
+.muni-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(16,185,129,0.15);
+    border: 1px solid rgba(16,185,129,0.3);
+    color: #10b981;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 20px;
+    margin-bottom: 6px;
+}
+
+.muni-bio {
+    font-size: 0.82rem;
+    color: var(--text-secondary, #94a3b8);
+    margin: 0;
+    line-height: 1.4;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-clamp: 2;
+}
+
+/* ── Stats ────────────────────────────────────────────────────────────── */
+.muni-stats {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin: 14px 16px;
+    background: var(--bg-tertiary, #252545);
+    border-radius: 14px;
+    padding: 12px 0;
+    border: 1px solid rgba(255,255,255,0.06);
+}
+
+.muni-stat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.muni-stat-value {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--text-primary, #f1f5f9);
+    line-height: 1;
+}
+
+.muni-stat-label {
+    font-size: 0.72rem;
+    color: var(--text-muted, #64748b);
+    font-weight: 500;
+}
+
+.muni-stat-divider {
+    width: 1px;
+    height: 32px;
+    background: rgba(255,255,255,0.08);
+}
+
+/* ── Body ─────────────────────────────────────────────────────────────── */
+.muni-body {
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 4px 12px 24px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+
+/* ── Loading ─────────────────────────────────────────────────────────── */
+.muni-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    gap: 12px;
+    color: var(--text-secondary, #94a3b8);
+    font-size: 0.9rem;
+}
+
+.muni-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid rgba(255,255,255,0.1);
+    border-top-color: #10b981;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Sections ─────────────────────────────────────────────────────────── */
+.muni-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.muni-section {
+    border-radius: 16px;
+    overflow: hidden;
+    background: var(--bg-tertiary, #252545);
+    border: 1px solid rgba(255,255,255,0.06);
+    transition: box-shadow 0.2s;
+}
+
+.muni-section:hover {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+
+/* Section Header */
+.muni-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    cursor: pointer;
+    border-right: 3px solid transparent;
+    transition: background 0.2s, border-color 0.2s;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.muni-section-header:active { background: rgba(255,255,255,0.03); }
+.muni-section-header.open { background: rgba(255,255,255,0.04); }
+
+.muni-section-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+.muni-section-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+
+.muni-section-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+
+.muni-section-desc {
+    font-size: 0.75rem;
+    color: var(--text-muted, #64748b);
+    line-height: 1.3;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    max-width: 220px;
+}
+
+.muni-section-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.muni-count-badge {
+    color: white;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    min-width: 24px;
+    text-align: center;
+}
+
+.muni-add-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.15s, opacity 0.15s;
+    flex-shrink: 0;
+}
+.muni-add-btn:hover { transform: scale(1.15); opacity: 0.9; }
+
+.muni-chevron {
+    color: var(--text-muted, #64748b);
+    display: flex;
+    align-items: center;
+    transition: transform 0.25s ease;
+}
+.muni-chevron.open { transform: rotate(180deg); }
+
+/* ── Section Content ─────────────────────────────────────────────────── */
+.muni-section-content {
+    padding: 4px 12px 12px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    animation: contentOpen 0.2s ease;
+}
+
+@keyframes contentOpen {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Empty State ─────────────────────────────────────────────────────── */
+.muni-empty-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    gap: 8px;
+    color: var(--text-muted, #64748b);
+    text-align: center;
+}
+
+.muni-empty-section p {
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.muni-add-first {
+    background: transparent;
+    border: 1px dashed;
+    border-radius: 10px;
+    padding: 6px 16px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: opacity 0.2s;
+    margin-top: 4px;
+}
+.muni-add-first:hover { opacity: 0.8; }
+
+/* ── Items Grid ──────────────────────────────────────────────────────── */
+.muni-items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+    margin-top: 8px;
+}
+
+@media (max-width: 400px) {
+    .muni-items-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* ── Item Card ───────────────────────────────────────────────────────── */
+.muni-item-card {
+    background: var(--bg-primary, #111128);
+    border-radius: 14px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.18s, box-shadow 0.18s;
+    border: 1px solid rgba(255,255,255,0.07);
+    position: relative;
+}
+
+.muni-item-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
+
+.muni-item-card:active { transform: scale(0.98); }
+
+.muni-item-image-wrap {
+    position: relative;
+    height: 100px;
+    overflow: hidden;
+}
+
+.muni-item-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.muni-item-image-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Navigation badge (bottom right) */
+.muni-item-nav-badge {
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+/* Delete button (top left) */
+.muni-item-delete {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(239,68,68,0.85);
+    border: none;
+    color: white;
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+.muni-item-card:hover .muni-item-delete { opacity: 1; }
+
+.muni-item-info {
+    padding: 8px 10px;
+}
+
+.muni-item-name {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-primary, #f1f5f9);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.muni-item-desc {
+    font-size: 0.7rem;
+    color: var(--text-muted, #64748b);
+    margin-top: 2px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/* ── Add Item Form ───────────────────────────────────────────────────── */
+.muni-add-form {
+    background: var(--bg-primary, #111128);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border: 1px solid rgba(255,255,255,0.08);
+    animation: contentOpen 0.2s ease;
+}
+
+.muni-add-form-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.muni-add-form-header h4 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary, #f1f5f9);
+}
+
+.muni-add-form-close {
+    background: none;
+    border: none;
+    color: var(--text-muted, #64748b);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    transition: color 0.15s;
+}
+.muni-add-form-close:hover { color: #ef4444; }
+
+/* Image upload area */
+.muni-form-image-upload {
+    width: 100%;
+    height: 110px;
+    border-radius: 12px;
+    border: 2px dashed rgba(255,255,255,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    overflow: hidden;
+    margin-bottom: 14px;
+    transition: border-color 0.2s;
+}
+.muni-form-image-upload:hover { border-color: rgba(255,255,255,0.3); }
+
+.muni-form-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.muni-form-image-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted, #64748b);
+    font-size: 0.8rem;
+}
+
+/* Form fields */
+.muni-form-group {
+    margin-bottom: 12px;
+}
+
+.muni-form-group label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary, #94a3b8);
+    margin-bottom: 6px;
+}
+
+.muni-form-group input,
+.muni-form-group select {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg-tertiary, #252545);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    color: var(--text-primary, #f1f5f9);
+    font-size: 0.88rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+
+.muni-form-group input:focus,
+.muni-form-group select:focus {
+    border-color: rgba(16,185,129,0.5);
+}
+
+.muni-form-coords {
+    display: flex;
+    gap: 8px;
+}
+
+.muni-form-coords input {
+    flex: 1;
+}
+
+.muni-loc-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    margin-top: 8px;
+    padding: 8px;
+    background: rgba(16,185,129,0.1);
+    border: 1px solid rgba(16,185,129,0.2);
+    border-radius: 10px;
+    color: #10b981;
+    font-size: 0.8rem;
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.muni-loc-btn:hover { background: rgba(16,185,129,0.18); }
+.muni-loc-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Form Actions */
+.muni-form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.muni-btn-cancel {
+    flex: 1;
+    padding: 10px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    color: var(--text-secondary, #94a3b8);
+    font-size: 0.88rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+.muni-btn-cancel:hover { border-color: rgba(255,255,255,0.25); }
+
+.muni-btn-submit {
+    flex: 2;
+    padding: 10px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.2s;
+}
+.muni-btn-submit:hover { opacity: 0.9; }
+.muni-btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── Spinner SM ──────────────────────────────────────────────────────── */
+.muni-spinner-sm {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+
+/* ── Touch / Mobile Improvements ────────────────────────────────────── */
+@media (hover: none) {
+    .muni-item-delete { opacity: 1; }
+    .muni-item-card:hover { transform: none; }
+}
+
+/* Handle safe area on notched phones */
+.muni-body {
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+}

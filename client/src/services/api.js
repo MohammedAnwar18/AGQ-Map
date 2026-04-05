@@ -492,4 +492,25 @@ export const shopService = {
     }
 };
 
+// Municipality Items Service (البلديات)
+export const municipalityService = {
+    getItems: async (municipalityId) => {
+        const response = await api.get(`/shops/${municipalityId}/municipality-items?t=${Date.now()}`);
+        return response.data;
+    },
+
+    addItem: async (municipalityId, formData) => {
+        const response = await api.post(`/shops/${municipalityId}/municipality-items`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    },
+
+    deleteItem: async (itemId) => {
+        const response = await api.delete(`/shops/municipality-items/${itemId}`);
+        return response.data;
+    }
+};
+
 export default api;
+

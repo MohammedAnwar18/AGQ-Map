@@ -8,7 +8,8 @@ const categoryEmoji = (category) => {
     const map = {
         'مركز تسوق': '🏢', 'Restaurant': '🍽️', 'Cafe': '☕', 'بنك': '🏦',
         'University': '🎓', 'Clothing': '👕', 'Electronics': '📱',
-        'Supermarket': '🛒', 'مكتب تاكسي': '🚕', 'مجمع تجاري': '🏘️', 'Service': '⚙️'
+        'Supermarket': '🛒', 'مكتب تاكسي': '🚕', 'مجمع تجاري': '🏘️', 'Service': '⚙️',
+        'بلدية': '🏩', 'Municipality': '🏩'
     };
     return map[category] || '🏪';
 };
@@ -593,6 +594,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                         style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                                                     >
                                                         <option value="General">عام</option>
+                                                        <option value="بلدية">بلدية 🏩</option>
                                                         <option value="بنك">بنك 🏦</option>
                                                         <option value="مركز تسوق">مركز تسوق (مول) 🏢</option>
                                                         <option value="مجمع تجاري">مجمع تجاري 🏘️</option>
