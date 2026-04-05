@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { municipalityService, getImageUrl } from '../services/api';
+import { municipalityService, shopService, getImageUrl } from '../services/api';
 import './MunicipalityProfileModal.css';
 
 // ─── Section Configuration ─────────────────────────────────────────────────
