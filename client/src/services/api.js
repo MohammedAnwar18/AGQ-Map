@@ -386,6 +386,13 @@ export const shopService = {
         return response.data;
     },
 
+    updateShopImages: async (shopId, formData) => {
+        const response = await api.put(`/shops/${shopId}/images`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    },
+
     createPost: async (id, formData) => {
         const response = await api.post(`/shops/${id}/posts`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }

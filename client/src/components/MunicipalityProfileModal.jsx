@@ -251,13 +251,57 @@ const AddItemForm = ({ municipalityId, sectionKey, sectionLabel, onSuccess, onCa
     );
 };
 
+// ─── Helper: Live Stream Player ───────────────────────────────────────────
+const LiveStreamPlayer = ({ url }) => {
+    const videoRef = useRef(null);
+
+    useEffect(() => {
+        let hls;
+        if (videoRef.current) {
+            const video = videoRef.current;
+            if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                // Native HLS support (Safari/iOS)
+                video.src = url;
+            } else {
+                // Fallback to HLS.js (load dynamically)
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
+                script.onload = () => {
+                    if (window.Hls.isSupported()) {
+                        hls = new window.Hls();
+                        hls.loadSource(url);
+                        hls.attachMedia(video);
+                    }
+                };
+                document.head.appendChild(script);
+            }
+        }
+        return () => {
+            if (hls) hls.destroy();
+        };
+    }, [url]);
+
+    return (
+        <div className="muni-live-player-wrap">
+            <video ref={videoRef} className="muni-live-video" controls autoPlay muted playsInline />
+            <div className="muni-live-badge">بث مباشر</div>
+        </div>
+    );
+};
+
 // ─── Main Modal ────────────────────────────────────────────────────────────
-const MunicipalityProfileModal = ({ shop, currentUser, onClose, onNavigate }) => {
+const MunicipalityProfileModal = ({ shop: initialShop, currentUser, onClose, onNavigate }) => {
+    const [shop, setShop] = useState(initialShop);
     const [items, setItems] = useState({});
     const [loading, setLoading] = useState(true);
     const [activeSection, setActiveSection] = useState(null);
-    const [addingTo, setAddingTo] = useState(null); // section key
+    const [addingTo, setAddingTo] = useState(null);
+    const [isUpdatingCover, setIsUpdatingCover] = useState(false);
+    const [isUpdatingLogo, setIsUpdatingLogo] = useState(false);
+    
     const isAdmin = currentUser?.role === 'admin';
+    const logoFileRef = useRef();
+    const coverFileRef = useRef();
 
     useEffect(() => {
         loadItems();
@@ -268,10 +312,41 @@ const MunicipalityProfileModal = ({ shop, currentUser, onClose, onNavigate }) =>
         try {
             const data = await municipalityService.getItems(shop.id);
             setItems(data.grouped || {});
+            
+            // Auto open live streams if they aren't open
+            if (activeSection === null) {
+                setActiveSection('live_streams');
+            }
         } catch (err) {
             console.error('Failed to load municipality items:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleUpdateImage = async (type, file) => {
+        if (!file) return;
+        if (type === 'logo') setIsUpdatingLogo(true);
+        else setIsUpdatingCover(true);
+
+        try {
+            const fd = new FormData();
+            if (type === 'logo') fd.append('profile_picture', file);
+            else fd.append('cover_picture', file);
+
+            const result = await shopService.updateShopImages(shop.id, fd);
+            if (result.shop) {
+                setShop(result.shop);
+            } else {
+                // If backend doesn't return full shop, just reload profile
+                const updated = await shopService.getShopProfile(shop.id);
+                setShop(updated);
+            }
+        } catch (err) {
+            alert('فشل تحديث الصورة');
+        } finally {
+            setIsUpdatingLogo(false);
+            setIsUpdatingCover(false);
         }
     };
 
@@ -307,6 +382,13 @@ const MunicipalityProfileModal = ({ shop, currentUser, onClose, onNavigate }) =>
                             <div className="muni-cover-default" />
                         )}
                         <div className="muni-cover-overlay" />
+                        
+                        {isAdmin && (
+                            <button className="muni-edit-cover" onClick={() => coverFileRef.current?.click()} disabled={isUpdatingCover}>
+                                {isUpdatingCover ? <span className="muni-spinner-sm" /> : 'تغيير الغلاف 📷'}
+                            </button>
+                        )}
+                        <input ref={coverFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleUpdateImage('cover', e.target.files[0])} />
                     </div>
 
                     <button className="muni-close-btn" onClick={onClose}>
@@ -316,12 +398,19 @@ const MunicipalityProfileModal = ({ shop, currentUser, onClose, onNavigate }) =>
                     </button>
 
                     <div className="muni-header-content">
-                        <div className="muni-logo-wrap">
+                        <div className="muni-logo-wrap rectangle">
                             {shop.profile_picture ? (
-                                <img src={getImageUrl(shop.profile_picture)} alt={shop.name} className="muni-logo" />
+                                <img src={getImageUrl(shop.profile_picture)} alt={shop.name} className="muni-logo rect" />
                             ) : (
-                                <div className="muni-logo-default">🏛️</div>
+                                <div className="muni-logo-default rect">🏛️</div>
                             )}
+                            {isAdmin && (
+                                <button className="muni-edit-logo" onClick={() => logoFileRef.current?.click()} disabled={isUpdatingLogo}>
+                                    {isUpdatingLogo ? <span className="muni-spinner-sm" /> : '✎'}
+                                </button>
+                            )}
+                            <input ref={logoFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleUpdateImage('logo', e.target.files[0])} />
+                            
                             <div className="muni-verified-badge" title="بلدية رسمية">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
                                     <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -330,7 +419,7 @@ const MunicipalityProfileModal = ({ shop, currentUser, onClose, onNavigate }) =>
                         </div>
                         <div className="muni-title-wrap">
                             <h1 className="muni-name">{shop.name}</h1>
-                            <div className="muni-badge">🏛️ بلدية رسمية</div>
+                            <div className="muni-sub-header">مركز الإدارة والتحكم الذكي</div>
                             {shop.bio && <p className="muni-bio">{shop.bio}</p>}
                         </div>
                     </div>
@@ -365,100 +454,115 @@ const MunicipalityProfileModal = ({ shop, currentUser, onClose, onNavigate }) =>
                         <div className="muni-sections">
                             {SECTIONS.map(section => {
                                 const sectionItems = items[section.key] || [];
-                                const isOpen = activeSection === section.key;
+                                const isLiveSection = section.key === 'live_streams';
+                                const isOpen = isLiveSection || activeSection === section.key;
 
                                 return (
-                                    <div key={section.key} className="muni-section">
-                                        {/* Section Header */}
-                                        <div
-                                            className={`muni-section-header ${isOpen ? 'open' : ''}`}
-                                            style={{ borderColor: section.borderColor }}
-                                            onClick={() => setActiveSection(isOpen ? null : section.key)}
-                                        >
-                                            <div className="muni-section-left">
-                                                <div className="muni-section-icon" style={{ background: section.bgColor, color: section.color }}>
-                                                    {section.icon}
-                                                </div>
-                                                <div className="muni-section-info">
-                                                    <div className="muni-section-title" style={{ color: section.color }}>
-                                                        {section.label}
+                                    <div key={section.key} className={`muni-section ${isLiveSection ? 'muni-section-live' : ''}`}>
+                                        {/* Section Header (Hidden for live streams) */}
+                                        {!isLiveSection && (
+                                            <div
+                                                className={`muni-section-header ${isOpen ? 'open' : ''}`}
+                                                style={{ borderColor: section.borderColor }}
+                                                onClick={() => setActiveSection(isOpen ? null : section.key)}
+                                            >
+                                                <div className="muni-section-left">
+                                                    <div className="muni-section-icon" style={{ background: section.bgColor, color: section.color }}>
+                                                        {section.icon}
                                                     </div>
-                                                    <div className="muni-section-desc">{section.description}</div>
+                                                    <div className="muni-section-info">
+                                                        <div className="muni-section-title" style={{ color: section.color }}>
+                                                            {section.label}
+                                                        </div>
+                                                        <div className="muni-section-desc">{section.description}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="muni-section-right">
+                                                    {sectionItems.length > 0 && (
+                                                        <span className="muni-count-badge" style={{ background: section.color }}>
+                                                            {sectionItems.length}
+                                                        </span>
+                                                    )}
+                                                    {isAdmin && (
+                                                        <button
+                                                            className="muni-add-btn"
+                                                            style={{ background: section.color }}
+                                                            onClick={e => {
+                                                                e.stopPropagation();
+                                                                setAddingTo(section.key);
+                                                                setActiveSection(section.key);
+                                                            }}
+                                                            title="إضافة عنصر"
+                                                        >
+                                                            +
+                                                        </button>
+                                                    )}
+                                                    <div className={`muni-chevron ${isOpen ? 'open' : ''}`}>
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                            <polyline points="6 9 12 15 18 9" />
+                                                        </svg>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div className="muni-section-right">
-                                                {sectionItems.length > 0 && (
-                                                    <span className="muni-count-badge" style={{ background: section.color }}>
-                                                        {sectionItems.length}
-                                                    </span>
-                                                )}
-                                                {isAdmin && (
-                                                    <button
-                                                        className="muni-add-btn"
-                                                        style={{ background: section.color }}
-                                                        onClick={e => {
-                                                            e.stopPropagation();
-                                                            setAddingTo(section.key);
-                                                            setActiveSection(section.key);
-                                                        }}
-                                                        title="إضافة عنصر"
-                                                    >
-                                                        +
-                                                    </button>
-                                                )}
-                                                <div className={`muni-chevron ${isOpen ? 'open' : ''}`}>
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                                        <polyline points="6 9 12 15 18 9" />
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                        </div>
+                                        )}
 
                                         {/* Section Content */}
                                         {isOpen && (
                                             <div className="muni-section-content">
-                                                {/* Add Form */}
-                                                {addingTo === section.key && (
-                                                    <AddItemForm
-                                                        municipalityId={shop.id}
-                                                        sectionKey={section.key}
-                                                        sectionLabel={section.label}
-                                                        onSuccess={() => {
-                                                            setAddingTo(null);
-                                                            loadItems();
-                                                        }}
-                                                        onCancel={() => setAddingTo(null)}
-                                                    />
-                                                )}
-
-                                                {/* Items Grid */}
-                                                {sectionItems.length === 0 && addingTo !== section.key ? (
-                                                    <div className="muni-empty-section">
-                                                        <span style={{ fontSize: '2.5rem', opacity: 0.4 }}>{section.icon}</span>
-                                                        <p>لا توجد عناصر في هذا القسم بعد</p>
-                                                        {isAdmin && (
-                                                            <button
-                                                                className="muni-add-first"
-                                                                style={{ color: section.color, borderColor: section.borderColor }}
-                                                                onClick={() => setAddingTo(section.key)}
-                                                            >
-                                                                + إضافة أول عنصر
-                                                            </button>
-                                                        )}
+                                                {isLiveSection ? (
+                                                    <div className="muni-live-container">
+                                                        <div className="muni-live-header">
+                                                            <div className="muni-live-dot" />
+                                                            <span>{section.label} - الميدان الرئيسي</span>
+                                                        </div>
+                                                        <LiveStreamPlayer url="https://htvint.mada.ps/RamallahMunicipality/index.m3u8" />
                                                     </div>
                                                 ) : (
-                                                    <div className="muni-items-grid">
-                                                        {sectionItems.map(item => (
-                                                            <ItemCard
-                                                                key={item.id}
-                                                                item={item}
-                                                                section={section}
-                                                                isAdmin={isAdmin}
-                                                                onNavigate={handleNavigate}
-                                                                onDelete={handleDelete}
+                                                    <>
+                                                        {/* Add Form */}
+                                                        {addingTo === section.key && (
+                                                            <AddItemForm
+                                                                municipalityId={shop.id}
+                                                                sectionKey={section.key}
+                                                                sectionLabel={section.label}
+                                                                onSuccess={() => {
+                                                                    setAddingTo(null);
+                                                                    loadItems();
+                                                                }}
+                                                                onCancel={() => setAddingTo(null)}
                                                             />
-                                                        ))}
-                                                    </div>
+                                                        )}
+
+                                                        {/* Items Grid */}
+                                                        {sectionItems.length === 0 && addingTo !== section.key ? (
+                                                            <div className="muni-empty-section">
+                                                                <span style={{ fontSize: '2.5rem', opacity: 0.4 }}>{section.icon}</span>
+                                                                <p>لا توجد عناصر في هذا القسم بعد</p>
+                                                                {isAdmin && (
+                                                                    <button
+                                                                        className="muni-add-first"
+                                                                        style={{ color: section.color, borderColor: section.borderColor }}
+                                                                        onClick={() => setAddingTo(section.key)}
+                                                                    >
+                                                                        + إضافة أول عنصر
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="muni-items-grid">
+                                                                {sectionItems.map(item => (
+                                                                    <ItemCard
+                                                                        key={item.id}
+                                                                        item={item}
+                                                                        section={section}
+                                                                        isAdmin={isAdmin}
+                                                                        onNavigate={handleNavigate}
+                                                                        onDelete={handleDelete}
+                                                                    />
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </>
                                                 )}
                                             </div>
                                         )}
@@ -472,5 +576,6 @@ const MunicipalityProfileModal = ({ shop, currentUser, onClose, onNavigate }) =>
         </div>
     );
 };
+
 
 export default MunicipalityProfileModal;
