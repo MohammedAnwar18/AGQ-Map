@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { shopService, getImageUrl } from '../services/api';
 import ImageCropperModal from './ImageCropperModal';
+import BirzeitCalendar from './BirzeitCalendar';
 import './UniversityProfileModal.css';
 
 const TrashIcon = () => (
@@ -414,13 +415,21 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                     <button className={`uni-tab ${activeTab === 'facilities' ? 'active' : ''}`} onClick={() => setActiveTab('facilities')}>
                         المرافق التفاعلية
                     </button>
+                    <button className={`uni-tab ${activeTab === 'calendar' ? 'active' : ''}`} onClick={() => setActiveTab('calendar')} style={{ color: activeTab === 'calendar' ? '#fbab15' : undefined, borderBottomColor: activeTab === 'calendar' ? '#fbab15' : undefined }}>
+                        📅 التقويم
+                    </button>
                     <button className={`uni-tab ${activeTab === 'news' ? 'active' : ''}`} onClick={() => setActiveTab('news')}>
-                        الأخبار والإعلانات
+                        الأخبار
                     </button>
                 </div>
 
                 {/* Content Area */}
                 <div className="uni-content-area">
+
+                    {/* Academic Calendar Tab */}
+                    {activeTab === 'calendar' && (
+                        <BirzeitCalendar />
+                    )}
                     {activeTab === 'overview' && (
                         <div className="uni-overview-tab">
                              <div className="uni-about-card">
