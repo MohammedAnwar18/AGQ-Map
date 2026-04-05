@@ -258,27 +258,32 @@ const MapComponent = () => {
 
     const handleOpenShopProfile = async (shop) => {
         if (!shop) return;
-        const category = (shop.category || '').toLowerCase().trim();
-        const isMuni = category === 'بلدية' || category === 'municipality';
-        const isUni = category === 'university' || category === 'مؤسسة تعليمية' || category === 'جامعة';
+        const catRaw = String(shop.category || '').trim();
+        const category = catRaw.toLowerCase();
+        
+        const isMuni = category === 'بلدية' || category === 'municipality' || catRaw.includes('بلدية');
+        const isUni = category === 'university' || category === 'مؤسسة تعليمية' || category === 'جامعة' || category === 'university_facility';
 
         if (isMuni) {
             setSelectedMunicipalityProfile(shop);
             setShowMunicipalityProfile(true);
-        } else if (isUni) {
+            return;
+        } 
+        
+        if (isUni) {
             setSelectedUniversityProfile(shop);
             setShowUniversityProfile(true);
             try {
                 const data = await shopService.getFacilities(shop.id);
                 setSelectedUniFacilities(data.list || []);
-            } catch (e) {
-                console.error("Failed to load facilities", e);
-            }
-        } else {
-            setSelectedShopProfile(shop);
-            setShowShopProfile(true);
-            setSelectedUniFacilities([]);
+            } catch (e) { console.error("Failed to load facilities", e); }
+            return;
         }
+
+        // Default: Shop Profile
+        setSelectedShopProfile(shop);
+        setShowShopProfile(true);
+        setSelectedUniFacilities([]);
     };
 
     // Data States
