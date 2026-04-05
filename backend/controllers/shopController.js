@@ -355,7 +355,7 @@ const updateShopImages = async (req, res) => {
         const shopId = req.params.id;
         const userId = req.user.id || req.user.userId;
         const userRole = req.user.role;
-        const { uploadToSupabase, deleteFileFromCloud } = require('../utils/storage');
+        const { uploadToCloud, deleteFileFromCloud } = require('../utils/storage');
 
         // Check Permissions & Get old images
         const shopCheck = await pool.query('SELECT owner_id, profile_picture, cover_picture FROM shops WHERE id = $1', [shopId]);
@@ -374,7 +374,7 @@ const updateShopImages = async (req, res) => {
         if (req.files) {
             if (req.files.profile_picture) {
                 const file = req.files.profile_picture[0];
-                const url = await uploadToSupabase(file.buffer, file.originalname, file.mimetype);
+                const url = await uploadToCloud(file.buffer, file.originalname, file.mimetype);
                 updateQueryPart.push(`profile_picture = $${index++}`);
                 params.push(url);
                 if (oldProfilePic) try { deleteFileFromCloud(oldProfilePic); } catch(e) {}
@@ -382,7 +382,7 @@ const updateShopImages = async (req, res) => {
 
             if (req.files.cover_picture) {
                 const file = req.files.cover_picture[0];
-                const url = await uploadToSupabase(file.buffer, file.originalname, file.mimetype);
+                const url = await uploadToCloud(file.buffer, file.originalname, file.mimetype);
                 updateQueryPart.push(`cover_picture = $${index++}`);
                 params.push(url);
                 if (oldCoverPic) try { deleteFileFromCloud(oldCoverPic); } catch(e) {}
@@ -406,8 +406,7 @@ const updateShopImages = async (req, res) => {
         console.error('Update shop images error:', e);
         res.status(500).json({
             error: 'Failed to update images',
-            details: e.message,
-            stack: e.stack.split('\n')[0] // Log just the first line of the stack
+            details: e.message
         });
     }
 };
@@ -417,9 +416,9 @@ const createShopPost = async (req, res) => {
     try {
         const shopId = req.params.id;
         const { content } = req.body;
-        const userId = req.user.userId;
+        const userId = req.user.id || req.user.userId;
         const userRole = req.user.role;
-        const { uploadToSupabase } = require('../utils/storage');
+        const { uploadToCloud } = require('../utils/storage');
 
         // Check Permissions
         const shopCheck = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [shopId]);
@@ -1255,8 +1254,8 @@ async function addMunicipalityItem(req, res) {
 
         let image_url = null;
         if (req.file) {
-            const { uploadToSupabase } = require('../utils/storage');
-            image_url = await uploadToSupabase(req.file.buffer, req.file.originalname, req.file.mimetype);
+            const { uploadToCloud } = require('../utils/storage');
+            image_url = await uploadToCloud(req.file.buffer, req.file.originalname, req.file.mimetype);
         }
 
         const result = await pool.query(`
