@@ -10,8 +10,7 @@
     position: fixed;
     inset: 0;
     z-index: 9999;
-    background: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(6px);
+    background: rgba(0, 0, 0, 0.82);
     display: flex;
     align-items: flex-end;
     justify-content: center;
@@ -30,8 +29,10 @@
     background: var(--bg-secondary, #1a1a2e);
     width: 100%;
     max-width: 680px;
-    max-height: 96dvh;
-    border-radius: 24px 24px 0 0;
+    height: auto;
+    min-height: 60vh;
+    max-height: 92vh;
+    border-radius: 28px 28px 0 0;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -40,13 +41,13 @@
 }
 
 @keyframes muniSlideUp {
-    from { transform: translateY(100%); opacity: 0; }
+    from { transform: translateY(50px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
 }
 
 @media (min-width: 640px) {
     .muni-overlay { align-items: center; }
-    .muni-modal { max-height: 90dvh; border-radius: 24px; }
+    .muni-modal { max-height: 85vh; min-height: auto; border-radius: 24px; }
 }
 
 /* ── Header ──────────────────────────────────────────────────────────── */
