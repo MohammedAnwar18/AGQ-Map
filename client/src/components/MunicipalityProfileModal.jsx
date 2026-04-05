@@ -326,24 +326,37 @@ const MunicipalityProfileModal = ({ shop: initialShop, currentUser, onClose, onN
 
     const handleUpdateImage = async (type, file) => {
         if (!file) return;
+        
+        // جلب الفئة للأدمن فقط
+        if (!isAdmin) {
+            alert('ليس لديك صلاحية لتغيير الصور');
+            return;
+        }
+
         if (type === 'logo') setIsUpdatingLogo(true);
         else setIsUpdatingCover(true);
 
         try {
+            console.log(`🔄 Starting ${type} update for shop ${shop.id}...`);
             const fd = new FormData();
             if (type === 'logo') fd.append('profile_picture', file);
             else fd.append('cover_picture', file);
 
             const result = await shopService.updateShopImages(shop.id, fd);
+            console.log('✅ Update successful:', result);
+
             if (result.shop) {
                 setShop(result.shop);
             } else {
-                // If backend doesn't return full shop, just reload profile
+                // تحديث البيانات من السيرفر للتأكد من المزامنة
                 const updated = await shopService.getShopProfile(shop.id);
-                setShop(updated);
+                if (updated && updated.shop) setShop(updated.shop);
             }
+            alert('تم تحديث الصورة بنجاح! 🎉');
         } catch (err) {
-            alert('فشل تحديث الصورة');
+            console.error('❌ Error updating image:', err);
+            const errMsg = err.response?.data?.error || err.response?.data?.details || err.message || 'خطأ غير معروف';
+            alert(`فشل تحديث الصورة: ${errMsg}`);
         } finally {
             setIsUpdatingLogo(false);
             setIsUpdatingCover(false);
