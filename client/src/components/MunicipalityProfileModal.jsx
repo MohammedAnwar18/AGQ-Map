@@ -256,34 +256,37 @@ const LiveStreamPlayer = ({ url }) => {
     const videoRef = useRef(null);
 
     useEffect(() => {
-        let hls;
-        if (videoRef.current) {
-            const video = videoRef.current;
-            if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                // Native HLS support (Safari/iOS)
-                video.src = url;
-            } else {
-                // Fallback to HLS.js (load dynamically)
-                const script = document.createElement('script');
-                script.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
-                script.onload = () => {
-                    if (window.Hls.isSupported()) {
-                        hls = new window.Hls();
+        if (!videoRef.current || !url) return;
+        const video = videoRef.current;
+
+        // دعم Apple Native HLS (iPhone/Mac)
+        if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = url;
+        } else {
+            // تحميل HLS.js للأندرويد والويندوز فقط عند الحاجة
+            import('https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.mjs')
+                .then(m => {
+                    if (m.default.isSupported()) {
+                        const hls = new m.default();
                         hls.loadSource(url);
                         hls.attachMedia(video);
                     }
-                };
-                document.head.appendChild(script);
-            }
+                })
+                .catch(err => console.error("HLS polyfill failed:", err));
         }
-        return () => {
-            if (hls) hls.destroy();
-        };
     }, [url]);
 
     return (
-        <div className="muni-live-player-wrap">
-            <video ref={videoRef} className="muni-live-video" controls autoPlay muted playsInline />
+        <div className="muni-live-player-wrap" style={{ minHeight: '150px', background: '#000' }}>
+            <video 
+                ref={videoRef} 
+                className="muni-live-video" 
+                controls 
+                autoPlay 
+                muted 
+                playsInline 
+                style={{ width: '100%', height: 'auto', display: 'block' }}
+            />
             <div className="muni-live-badge">بث مباشر</div>
         </div>
     );
