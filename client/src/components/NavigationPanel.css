@@ -3,7 +3,7 @@
     top: 110px; /* Below top bar */
     left: 50%;
     transform: translateX(-50%);
-    z-index: 1000;
+    z-index: 2500;
     width: auto;
     max-width: 90vw;
     direction: rtl;
@@ -111,7 +111,7 @@
 @media (max-width: 600px) {
     .navigation-panel-compact {
         top: auto;
-        bottom: 100px; /* Above bottom nav */
+        bottom: 80px;
     }
     
     .nav-dest-mini {

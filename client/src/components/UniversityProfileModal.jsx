@@ -333,7 +333,7 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                             📷 تغيير الغلاف
                             <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
                                 if (e.target.files[0]) {
-                                    setCropState({ isOpen: true, file: e.target.files[0], type: 'cover_picture', aspect: 3 });
+                                    setCropState({ isOpen: true, file: e.target.files[0], type: 'cover_picture', aspect: 2.1 });
                                 }
                                 e.target.value = null;
                             }} disabled={isUploadingImage} />
