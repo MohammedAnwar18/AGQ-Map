@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
 import { municipalityService, shopService, getImageUrl } from '../services/api';
+import ImageCropperModal from './ImageCropperModal';
 import './MunicipalityProfileModal.css';
 
 // ─── Section Configuration ─────────────────────────────────────────────────
@@ -298,6 +298,7 @@ const MunicipalityProfileModal = ({ shop: initialShop, currentUser, onClose, onN
     const [addingTo, setAddingTo] = useState(null);
     const [isUpdatingCover, setIsUpdatingCover] = useState(false);
     const [isUpdatingLogo, setIsUpdatingLogo] = useState(false);
+    const [cropping, setCropping] = useState(null); // { file, type }
     
     const isAdmin = currentUser?.role === 'admin';
     const logoFileRef = useRef();
@@ -324,39 +325,39 @@ const MunicipalityProfileModal = ({ shop: initialShop, currentUser, onClose, onN
         }
     };
 
-    const handleUpdateImage = async (type, file) => {
+    // المرحلة الأولى: اختيار الملف وفتحة في الـ Cropper
+    const handleUpdateImage = (type, file) => {
         if (!file) return;
+        if (!isAdmin) return alert('ليس لديك صلاحية لتغيير الصور');
         
-        // جلب الفئة للأدمن فقط
-        if (!isAdmin) {
-            alert('ليس لديك صلاحية لتغيير الصور');
-            return;
-        }
+        setCropping({ file, type });
+    };
+
+    // المرحلة الثانية: رفع الصورة بعد قصها
+    const uploadCroppedImage = async (croppedFile) => {
+        const { type } = cropping;
+        setCropping(null); // إغلاق المودال 
 
         if (type === 'logo') setIsUpdatingLogo(true);
         else setIsUpdatingCover(true);
 
         try {
-            console.log(`🔄 Starting ${type} update for shop ${shop.id}...`);
+            console.log(`🚀 Uploading cropped ${type}...`);
             const fd = new FormData();
-            if (type === 'logo') fd.append('profile_picture', file);
-            else fd.append('cover_picture', file);
+            if (type === 'logo') fd.append('profile_picture', croppedFile);
+            else fd.append('cover_picture', croppedFile);
 
             const result = await shopService.updateShopImages(shop.id, fd);
-            console.log('✅ Update successful:', result);
-
             if (result.shop) {
                 setShop(result.shop);
             } else {
-                // تحديث البيانات من السيرفر للتأكد من المزامنة
                 const updated = await shopService.getShopProfile(shop.id);
                 if (updated && updated.shop) setShop(updated.shop);
             }
-            alert('تم تحديث الصورة بنجاح! 🎉');
+            alert('تم التحديث بنجاح! ✨');
         } catch (err) {
-            console.error('❌ Error updating image:', err);
-            const errMsg = err.response?.data?.error || err.response?.data?.details || err.message || 'خطأ غير معروف';
-            alert(`فشل تحديث الصورة: ${errMsg}`);
+            console.error('❌ Upload Error:', err);
+            alert('فشل التحديث: ' + (err.response?.data?.error || err.message));
         } finally {
             setIsUpdatingLogo(false);
             setIsUpdatingCover(false);
@@ -586,6 +587,16 @@ const MunicipalityProfileModal = ({ shop: initialShop, currentUser, onClose, onN
                     )}
                 </div>
             </div>
+
+            {/* ── Cropping Modal ── */}
+            {cropping && (
+                <ImageCropperModal
+                    imageFile={cropping.file}
+                    aspect={cropping.type === 'logo' ? 2 / 1 : 16 / 9} // Logo is rectangular (2:1), Cover 16:9
+                    onCropDone={uploadCroppedImage}
+                    onCancel={() => setCropping(null)}
+                />
+            )}
         </div>
     );
 };
