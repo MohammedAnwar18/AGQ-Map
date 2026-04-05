@@ -255,8 +255,8 @@ const MunicipalityProfileModal = ({ shop: initialShop, currentUser, onClose, onN
     const [addingTo, setAddingTo] = useState(null);
     const [isUpdatingCover, setIsUpdatingCover] = useState(false);
     const [isUpdatingLogo, setIsUpdatingLogo] = useState(false);
-    const [cropping, setCropping] = useState(null); 
-    
+    const [cropping, setCropping] = useState(null);
+
     const isAdmin = currentUser?.role === 'admin';
     const logoFileRef = useRef();
     const coverFileRef = useRef();
@@ -324,13 +324,13 @@ const MunicipalityProfileModal = ({ shop: initialShop, currentUser, onClose, onN
     return (
         <div className="muni-overlay" onClick={onClose}>
             <div className="muni-modal" onClick={e => e.stopPropagation()}>
-                
+
                 {/* ── Header ── */}
                 <div className="muni-header">
                     <div className="muni-header-bg">
                         {shop?.cover_picture ? (
                             <img src={getImageUrl(shop.cover_picture)} alt="" className="muni-cover" />
-                        ) : ( <div className="muni-cover-default" /> )}
+                        ) : (<div className="muni-cover-default" />)}
                         <div className="muni-cover-overlay" />
                         {isAdmin && (
                             <button className="muni-edit-cover" onClick={() => coverFileRef.current?.click()} disabled={isUpdatingCover}>
@@ -346,14 +346,14 @@ const MunicipalityProfileModal = ({ shop: initialShop, currentUser, onClose, onN
                         <div className="muni-logo-wrap rectangle">
                             {shop?.profile_picture ? (
                                 <img src={getImageUrl(shop.profile_picture)} alt={shop.name} className="muni-logo rect" />
-                            ) : ( <div className="muni-logo-default rect">🏛️</div> )}
+                            ) : (<div className="muni-logo-default rect">🏛️</div>)}
                             {isAdmin && (
                                 <button className="muni-edit-logo" onClick={() => logoFileRef.current?.click()} disabled={isUpdatingLogo}>
                                     {isUpdatingLogo ? <span className="muni-spinner-sm" /> : '✎'}
                                 </button>
                             )}
                             <input ref={logoFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleUpdateImage('logo', e.target.files[0])} />
-                            
+
                             <div className="muni-verified-badge" title="بلدية رسمية">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
                                     <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
