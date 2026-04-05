@@ -79,7 +79,7 @@ const ItemCard = ({ item, section, isAdmin, onNavigate, onDelete }) => {
                         <span style={{ fontSize: '2rem' }}>{section.icon}</span>
                     </div>
                 )}
-                <div className="muni-item-nav-badge" style={{ background: section.color }}>
+                <div className="muni-item-nav-badge" style={{ background: section.color, zIndex: 100000 }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
                         <polygon points="3 11 22 2 13 21 11 13 3 11" />
                     </svg>
@@ -392,8 +392,12 @@ const MunicipalityProfileModal = ({ shop: initialShop, currentUser, onClose, onN
     const totalItems = Object.values(items).reduce((s, arr) => s + (arr?.length || 0), 0);
 
     return (
-        <div className="muni-overlay" onClick={onClose}>
+        <div className="muni-overlay" onClick={onClose} style={{ zIndex: 100000 }}>
             <div className="muni-modal" onClick={e => e.stopPropagation()}>
+                {/* Debugging Text to verify rendering on mobile */}
+                <div style={{ position: 'absolute', top: 0, left: 0, background: 'yellow', color: 'black', fontSize: '10px', zIndex: 999999, padding: '2px 5px' }}>
+                    DEBUG: MOUNTED - {shop?.name}
+                </div>
 
                 {/* ── Header ── */}
                 <div className="muni-header">
