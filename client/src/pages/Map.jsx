@@ -21,7 +21,6 @@ import ManagedShopsModal from '../components/ManagedShopsModal';
 import ShopProfileModal from '../components/ShopProfileModal';
 import UniversityProfileModal from '../components/UniversityProfileModal';
 import FacilityProfileModal from '../components/FacilityProfileModal';
-import MunicipalityProfileModal from '../components/MunicipalityProfileModal';
 import { postService, friendService, authService, notificationService, communityService, shopService, getImageUrl } from '../services/api';
 import './Map.css';
 
@@ -252,23 +251,11 @@ const MapComponent = () => {
     const [showFacilityProfile, setShowFacilityProfile] = useState(false);
     const [selectedFacilityId, setSelectedFacilityId] = useState(null);
 
-    // Municipality Profile State
-    const [showMunicipalityProfile, setShowMunicipalityProfile] = useState(false);
-    const [selectedMunicipalityProfile, setSelectedMunicipalityProfile] = useState(null);
-
     const handleOpenShopProfile = async (shop) => {
         if (!shop) return;
         const catRaw = String(shop.category || '').trim().toLowerCase();
         const nameRaw = String(shop.name || '').trim().toLowerCase();
         
-        console.log("Opening Profile for:", nameRaw, "Category:", catRaw);
-
-        const isMuni = catRaw.includes('بلدية') || 
-                       catRaw.includes('municipality') || 
-                       nameRaw.includes('بلدية') || 
-                       nameRaw.includes('municipality') ||
-                       nameRaw.includes('بلديه');
-
         const isUni = catRaw.includes('university') || 
                       catRaw.includes('مؤسسة تعليمية') || 
                       catRaw.includes('جامعة') || 
@@ -276,12 +263,6 @@ const MapComponent = () => {
                       nameRaw.includes('جامعة') ||
                       nameRaw.includes('university');
 
-        if (isMuni) {
-            setSelectedMunicipalityProfile(shop);
-            setShowMunicipalityProfile(true);
-            return;
-        } 
-        
         if (isUni) {
             setSelectedUniversityProfile(shop);
             setShowUniversityProfile(true);
@@ -1298,11 +1279,8 @@ const MapComponent = () => {
                         if (shop.latitude == null || shop.longitude == null || isNaN(parseFloat(shop.latitude))) return false;
 
                         // Educational Institutions & Municipalities: visible from mid zoom (13) to reveal town area
-                        if (shop.category === 'University' || shop.category === 'مؤسسة تعليمية' || shop.category === 'بلدية' || shop.category === 'Municipality') {
-                            if (shop.category === 'University' || shop.category === 'مؤسسة تعليمية') {
-                                return viewState.zoom >= 13 && viewState.zoom < 16.5;
-                            }
-                            return viewState.zoom >= 13; // Municipalities stay visible
+                        if (shop.category === 'University' || shop.category === 'مؤسسة تعليمية') {
+                            return viewState.zoom >= 13 && viewState.zoom < 16.5;
                         }
                         // Banks and Malls visible from zoomed out view (zoom 13+)
                         if (['بنك', 'مركز تسوق', 'مجمع تجاري', 'Mall'].includes(shop.category)) {
@@ -1327,14 +1305,14 @@ const MapComponent = () => {
                             }}
                         >
                             <div style={{
-                                width: (shop.category === 'بلدية' || shop.category === 'Municipality') ? '100px' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall' || shop.category === 'بنك') ? '60px' : ((shop.category === 'صراف آلي' || shop.category === 'فرع بنك') ? '45px' : '50px')),
-                                height: (shop.category === 'بلدية' || shop.category === 'Municipality') ? '50px' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall' || shop.category === 'بنك') ? '60px' : ((shop.category === 'صراف آلي' || shop.category === 'فرع بنك') ? '45px' : '50px')),
-                                borderRadius: (shop.category === 'بلدية' || shop.category === 'Municipality') ? '10px' : '50%',
+                                width: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall' || shop.category === 'بنك') ? '60px' : ((shop.category === 'صراف آلي' || shop.category === 'فرع بنك') ? '45px' : '50px'),
+                                height: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall' || shop.category === 'بنك') ? '60px' : ((shop.category === 'صراف آلي' || shop.category === 'فرع بنك') ? '45px' : '50px'),
+                                borderRadius: '50%',
                                 backgroundColor: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '#ffffff' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '#fbab15' : 'white'),
                                 backgroundImage: `url(${getImageUrl(shop.profile_picture) || getImageUrl(shop.image_url) || '/default-shop.png'})`,
                                 backgroundSize: 'cover',
                                 backgroundPosition: 'center',
-                                border: (shop.category === 'بلدية' || shop.category === 'Municipality') ? '3px solid #fbab15' : ((shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '4px solid #f1f5f9' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '4px solid #fbab15' : '3px solid white')),
+                                border: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '4px solid #f1f5f9' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '4px solid #fbab15' : '3px solid white'),
                                 boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
                                 position: 'relative',
                                 display: 'flex',
@@ -1348,12 +1326,12 @@ const MapComponent = () => {
                                         bottom: '-22px',
                                         left: '50%',
                                         transform: 'translateX(-50%)',
-                                        backgroundColor: (shop.category === 'بلدية' || shop.category === 'Municipality') ? '#1a1a2e' : ((shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '#ffffff' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '#fbab15' : 'white')),
+                                        backgroundColor: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '#ffffff' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '#fbab15' : 'white'),
                                         padding: '2px 10px',
                                         borderRadius: '12px',
                                         fontSize: '11px',
                                         fontWeight: 'bold',
-                                        color: (shop.category === 'بلدية' || shop.category === 'Municipality' || shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? 'white' : 'black',
+                                        color: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? 'white' : 'black',
                                         border: '1px solid rgba(255,255,255,0.1)',
                                         whiteSpace: 'nowrap',
                                         boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
@@ -1570,18 +1548,9 @@ const MapComponent = () => {
                 onShopFollowed={handleShopFollowed}
                 onShopClick={(shop) => {
                     handleOpenShopProfile(shop);
-                    const catRaw = String(shop.category || '').trim();
-                    const isMuni = catRaw.toLowerCase() === 'بلدية' || catRaw.toLowerCase() === 'municipality' || catRaw.includes('بلدية');
-                    
-                    if (isMuni) {
-                        setShowFriends(false);
-                        return;
-                    }
-
-                    setShowFriends(false); 
-                    const category = catRaw.toLowerCase();
-                    const isUni = category === 'university' || category === 'مؤسسة تعليمية' || category === 'جامعة' || category === 'university_facility';
-                    mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: isUni ? 17 : 18.5, pitch: 45 });
+                    setShowFriends(false); // Close friends list to return to map on exit
+                    const isUni = shop.category === 'University';
+                    mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: isUni ? 17 : 18, pitch: 45 });
                 }} />}
             {showShops && <FriendsModal
                 onClose={() => setShowShops(false)}
@@ -1591,17 +1560,8 @@ const MapComponent = () => {
                 onShopFollowed={handleShopFollowed}
                 onShopClick={(shop) => {
                     handleOpenShopProfile(shop);
-                    // Decide whether to close list or stay
-                    const catRaw = String(shop.category || '').trim();
-                    const isMuni = catRaw.toLowerCase() === 'بلدية' || catRaw.toLowerCase() === 'municipality' || catRaw.includes('بلدية');
-                    
-                    if (isMuni) {
-                        setShowShops(false);
-                        return; // HandleOpen takes care of the modal
-                    }
-
                     setShowShops(false);
-                    const category = catRaw.toLowerCase();
+                    const category = (shop.category || '').toLowerCase().trim();
                     const isUni = category === 'university' || category === 'مؤسسة تعليمية' || category === 'جامعة';
                     mapRef.current?.flyTo({ 
                         center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], 
@@ -1653,17 +1613,12 @@ const MapComponent = () => {
                     const shopMock = {
                         id: data.shopId,
                         name: data.shopName,
-                        category: data.shopCategory || 'بلدية', // Fallback to muni if from muni system
                         latitude: data.location?.latitude,
                         longitude: data.location?.longitude
                     };
                     handleOpenShopProfile(shopMock);
-                    setShowNotifications(false);
-                    
-                    const catRaw = String(shopMock.category || '').trim();
-                    const isMuni = catRaw.toLowerCase() === 'بلدية' || catRaw.toLowerCase() === 'municipality' || catRaw.includes('بلدية');
-                    
-                    if (!isMuni && data.location?.latitude && data.location?.longitude) {
+                    setShowNotifications(false); // Close notifications list to return to map on exit
+                    if (data.location?.latitude && data.location?.longitude) {
                         mapRef.current?.flyTo({ center: [parseFloat(data.location.longitude), parseFloat(data.location.latitude)], zoom: 18.5, pitch: 45 });
                     }
                 }
@@ -1730,23 +1685,6 @@ const MapComponent = () => {
                     facilityId={selectedFacilityId}
                     currentUser={user}
                     onClose={() => setShowFacilityProfile(false)}
-                />
-            )}
-
-            {showMunicipalityProfile && selectedMunicipalityProfile && (
-                <MunicipalityProfileModal
-                    shop={selectedMunicipalityProfile}
-                    currentUser={user}
-                    onClose={() => setShowMunicipalityProfile(false)}
-                    onNavigate={({ lat, lng, name }) => {
-                        setShowMunicipalityProfile(false);
-                        mapRef.current?.flyTo({
-                            center: [parseFloat(lng), parseFloat(lat)],
-                            zoom: 18,
-                            pitch: 45,
-                            duration: 1800
-                        });
-                    }}
                 />
             )}
 
