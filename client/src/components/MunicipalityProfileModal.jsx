@@ -187,9 +187,28 @@ const AddItemForm = ({ municipalityId, sectionKey, sectionLabel, onSuccess, onCa
                     <label>الاسم <span style={{ color: '#ef4444' }}>*</span></label>
                     <input type="text" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} required />
                 </div>
+                <div className="muni-form-row">
+                    <div className="muni-form-group">
+                        <label>خط العرض</label>
+                        <input type="text" value={form.latitude} onChange={e => setForm(p => ({ ...p, latitude: e.target.value }))} />
+                    </div>
+                    <div className="muni-form-group">
+                        <label>خط الطول</label>
+                        <input type="text" value={form.longitude} onChange={e => setForm(p => ({ ...p, longitude: e.target.value }))} />
+                    </div>
+                    <button type="button" className="muni-loc-btn" onClick={getLocation} disabled={gettingLoc}>
+                        {gettingLoc ? '...' : '📍'}
+                    </button>
+                </div>
+                <div className="muni-form-group">
+                    <label>الوصف (اختياري)</label>
+                    <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} rows="2" />
+                </div>
                 <div className="muni-form-actions">
-                    <button type="button" onClick={onCancel}>إلغاء</button>
-                    <button type="submit" disabled={submitting}>إضافة</button>
+                    <button type="button" onClick={onCancel} className="muni-cancel-btn">إلغاء</button>
+                    <button type="submit" disabled={submitting} className="muni-submit-btn">
+                        {submitting ? 'جاري الإضافة...' : 'إضافة المرفق'}
+                    </button>
                 </div>
             </form>
         </div>
@@ -206,6 +225,7 @@ const LiveStreamPlayer = ({ url }) => {
         if (video.canPlayType('application/vnd.apple.mpegurl')) {
             video.src = url;
         } else {
+            // Use native dynamic import for better stability
             import('https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.mjs')
                 .then(m => {
                     if (m.default.isSupported()) {
@@ -214,13 +234,13 @@ const LiveStreamPlayer = ({ url }) => {
                         hls.attachMedia(video);
                     }
                 })
-                .catch(err => console.error("HLS polyfill failed:", err));
+                .catch(err => console.error("HLS failed:", err));
         }
     }, [url]);
 
     return (
-        <div className="muni-live-player-wrap" style={{ minHeight: '180px', background: '#000' }}>
-            <video ref={videoRef} className="muni-live-video" controls autoPlay muted playsInline style={{ width: '100%', height: 'auto' }} />
+        <div className="muni-live-player-wrap">
+            <video ref={videoRef} className="muni-live-video" controls autoPlay muted playsInline />
             <div className="muni-live-badge">بث مباشر</div>
         </div>
     );
@@ -277,7 +297,7 @@ const MunicipalityProfileModal = ({ shop: initialShop, currentUser, onClose, onN
             else fd.append('cover_picture', croppedFile);
             const result = await shopService.updateShopImages(shop.id, fd);
             if (result.shop) setShop(result.shop);
-            alert('تم التحديث! ✨');
+            alert('تم التحديث بنجاح! ✨');
         } catch (err) {
             alert('فشل التحديث');
         } finally {
@@ -287,7 +307,7 @@ const MunicipalityProfileModal = ({ shop: initialShop, currentUser, onClose, onN
     };
 
     const handleDelete = async (itemId) => {
-        if (!confirm('حذف؟')) return;
+        if (!confirm('هل أنت متأكد من حذف هذا المرفق؟')) return;
         try {
             await municipalityService.deleteItem(itemId);
             loadItems();
@@ -302,14 +322,10 @@ const MunicipalityProfileModal = ({ shop: initialShop, currentUser, onClose, onN
     const totalItems = Object.values(items).reduce((s, arr) => s + (arr?.length || 0), 0);
 
     return (
-        <div className="muni-overlay" onClick={onClose} style={{ zIndex: 1000000 }}>
-            <div className="muni-modal" style={{ border: '3px solid red', minHeight: '60vh' }} onClick={e => e.stopPropagation()}>
+        <div className="muni-overlay" onClick={onClose}>
+            <div className="muni-modal" onClick={e => e.stopPropagation()}>
                 
-                {/* Debug Header */}
-                <div style={{ background: 'yellow', color: 'black', padding: '5px', fontSize: '12px', textAlign: 'center', fontWeight: 'bold' }}>
-                    DEBUG: {shop?.name || 'Loading'} | Items: {totalItems}
-                </div>
-
+                {/* ── Header ── */}
                 <div className="muni-header">
                     <div className="muni-header-bg">
                         {shop?.cover_picture ? (
@@ -317,7 +333,9 @@ const MunicipalityProfileModal = ({ shop: initialShop, currentUser, onClose, onN
                         ) : ( <div className="muni-cover-default" /> )}
                         <div className="muni-cover-overlay" />
                         {isAdmin && (
-                            <button className="muni-edit-cover" onClick={() => coverFileRef.current?.click()}>📷</button>
+                            <button className="muni-edit-cover" onClick={() => coverFileRef.current?.click()} disabled={isUpdatingCover}>
+                                {isUpdatingCover ? <span className="muni-spinner-sm" /> : 'تغيير الغلاف 📷'}
+                            </button>
                         )}
                         <input ref={coverFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleUpdateImage('cover', e.target.files[0])} />
                     </div>
@@ -330,39 +348,86 @@ const MunicipalityProfileModal = ({ shop: initialShop, currentUser, onClose, onN
                                 <img src={getImageUrl(shop.profile_picture)} alt={shop.name} className="muni-logo rect" />
                             ) : ( <div className="muni-logo-default rect">🏛️</div> )}
                             {isAdmin && (
-                                <button className="muni-edit-logo" onClick={() => logoFileRef.current?.click()}>✎</button>
+                                <button className="muni-edit-logo" onClick={() => logoFileRef.current?.click()} disabled={isUpdatingLogo}>
+                                    {isUpdatingLogo ? <span className="muni-spinner-sm" /> : '✎'}
+                                </button>
                             )}
                             <input ref={logoFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleUpdateImage('logo', e.target.files[0])} />
+                            
+                            <div className="muni-verified-badge" title="بلدية رسمية">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+                                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
                         </div>
                         <div className="muni-title-wrap">
                             <h1 className="muni-name">{shop?.name || 'البلدية'}</h1>
-                            <div className="muni-sub-header">مركز الإدارة والتحكم</div>
+                            <div className="muni-sub-header">مركز الإدارة والتحكم الذكي</div>
+                            {shop?.bio && <p className="muni-bio">{shop.bio}</p>}
+                        </div>
+                    </div>
+
+                    {/* Stats */}
+                    <div className="muni-stats">
+                        <div className="muni-stat">
+                            <span className="muni-stat-value">{totalItems}</span>
+                            <span className="muni-stat-label">مرفق</span>
+                        </div>
+                        <div className="muni-stat-divider" />
+                        <div className="muni-stat">
+                            <span className="muni-stat-value">{SECTIONS.length}</span>
+                            <span className="muni-stat-label">قسم</span>
+                        </div>
+                        <div className="muni-stat-divider" />
+                        <div className="muni-stat">
+                            <span className="muni-stat-value">{shop?.followers_count || 0}</span>
+                            <span className="muni-stat-label">متابع</span>
                         </div>
                     </div>
                 </div>
 
+                {/* ── Body ── */}
                 <div className="muni-body">
                     {loading ? (
-                        <div style={{ textAlign: 'center', padding: '20px' }}><div className="muni-spinner" /></div>
+                        <div style={{ textAlign: 'center', padding: '40px' }}><div className="muni-spinner" /></div>
                     ) : (
                         <div className="muni-sections">
                             {SECTIONS.map(section => {
                                 const sectionItems = items[section.key] || [];
-                                const isOpen = activeSection === section.key;
+                                const isLiveSection = section.key === 'live_streams';
+                                const isOpen = isLiveSection || activeSection === section.key;
+
                                 return (
-                                    <div key={section.key} className="muni-section">
-                                        <div className="muni-section-header" onClick={() => setActiveSection(isOpen ? null : section.key)}>
-                                            <span>{section.icon} {section.label}</span>
-                                            {isAdmin && <button onClick={e => { e.stopPropagation(); setAddingTo(section.key); }}>+</button>}
-                                        </div>
+                                    <div key={section.key} className={`muni-section ${isLiveSection ? 'muni-section-live' : ''}`}>
+                                        {!isLiveSection && (
+                                            <div className="muni-section-header" onClick={() => setActiveSection(isOpen ? null : section.key)}>
+                                                <div className="muni-section-left">
+                                                    <div className="muni-section-icon" style={{ background: section.bgColor, color: section.color }}>{section.icon}</div>
+                                                    <div className="muni-section-info">
+                                                        <div className="muni-section-title" style={{ color: section.color }}>{section.label}</div>
+                                                        <div className="muni-section-desc">{section.description}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="muni-section-right">
+                                                    {sectionItems.length > 0 && <span className="muni-count-badge" style={{ background: section.color }}>{sectionItems.length}</span>}
+                                                    {isAdmin && <button className="muni-add-btn" style={{ background: section.color }} onClick={e => { e.stopPropagation(); setAddingTo(section.key); setActiveSection(section.key); }}>+</button>}
+                                                </div>
+                                            </div>
+                                        )}
                                         {isOpen && (
                                             <div className="muni-section-content">
-                                                {section.key === 'live_streams' ? (
-                                                    <LiveStreamPlayer url="https://htvint.mada.ps/RamallahMunicipality/index.m3u8" />
-                                                ) : (
-                                                    <div className="muni-items-grid">
-                                                        {sectionItems.map(item => <ItemCard key={item.id} item={item} section={section} isAdmin={isAdmin} onNavigate={handleNavigate} onDelete={handleDelete} />)}
+                                                {isLiveSection ? (
+                                                    <div className="muni-live-container">
+                                                        <div className="muni-live-header"><span>بث حي ومباشر للمدينة</span></div>
+                                                        <LiveStreamPlayer url="https://htvint.mada.ps/RamallahMunicipality/index.m3u8" />
                                                     </div>
+                                                ) : (
+                                                    <>
+                                                        {addingTo === section.key && <AddItemForm municipalityId={shop.id} sectionKey={section.key} sectionLabel={section.label} onSuccess={() => { setAddingTo(null); loadItems(); }} onCancel={() => setAddingTo(null)} />}
+                                                        <div className="muni-items-grid">
+                                                            {sectionItems.map(item => <ItemCard key={item.id} item={item} section={section} isAdmin={isAdmin} onNavigate={handleNavigate} onDelete={handleDelete} />)}
+                                                        </div>
+                                                    </>
                                                 )}
                                             </div>
                                         )}

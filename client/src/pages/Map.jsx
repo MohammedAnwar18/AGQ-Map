@@ -1305,38 +1305,36 @@ const MapComponent = () => {
                             }}
                         >
                             <div style={{
-                                width: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall' || shop.category === 'بنك') ? '60px' : ((shop.category === 'صراف آلي' || shop.category === 'فرع بنك') ? '45px' : '50px'),
-                                height: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall' || shop.category === 'بنك') ? '60px' : ((shop.category === 'صراف آلي' || shop.category === 'فرع بنك') ? '45px' : '50px'),
-                                borderRadius: '50%',
+                                width: (shop.category === 'بلدية' || shop.category === 'Municipality') ? '100px' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall' || shop.category === 'بنك') ? '60px' : ((shop.category === 'صراف آلي' || shop.category === 'فرع بنك') ? '45px' : '50px')),
+                                height: (shop.category === 'بلدية' || shop.category === 'Municipality') ? '50px' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall' || shop.category === 'بنك') ? '60px' : ((shop.category === 'صراف آلي' || shop.category === 'فرع بنك') ? '45px' : '50px')),
+                                borderRadius: (shop.category === 'بلدية' || shop.category === 'Municipality') ? '10px' : '50%',
                                 backgroundColor: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '#ffffff' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '#fbab15' : 'white'),
                                 backgroundImage: `url(${getImageUrl(shop.profile_picture) || getImageUrl(shop.image_url) || '/default-shop.png'})`,
                                 backgroundSize: 'cover',
                                 backgroundPosition: 'center',
-                                border: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '4px solid #f1f5f9' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '4px solid #fbab15' : '3px solid white'),
-                                boxShadow: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '0 4px 15px rgba(0,0,0,0.15)' : '0 4px 12px rgba(0,0,0,0.5)',
+                                border: (shop.category === 'بلدية' || shop.category === 'Municipality') ? '3px solid #fbab15' : ((shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '4px solid #f1f5f9' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '4px solid #fbab15' : '3px solid white')),
+                                boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
                                 position: 'relative',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center'
                             }}>
-
-                                {/* Mall Marker */}
-                                {/* Simple Name Badge (Hide on Route) */}
+                                {/* Name Badge */}
                                 {!routePath && (
                                     <div style={{
                                         position: 'absolute',
-                                        bottom: '-20px',
+                                        bottom: '-22px',
                                         left: '50%',
                                         transform: 'translateX(-50%)',
-                                        backgroundColor: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '#ffffff' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '#fbab15' : 'white'),
+                                        backgroundColor: (shop.category === 'بلدية' || shop.category === 'Municipality') ? '#1a1a2e' : ((shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '#ffffff' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '#fbab15' : 'white')),
                                         padding: '2px 10px',
                                         borderRadius: '12px',
                                         fontSize: '11px',
                                         fontWeight: 'bold',
-                                        color: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '#1e293b' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? 'white' : 'black'),
-                                        border: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '1px solid #e2e8f0' : '1px solid white',
+                                        color: (shop.category === 'بلدية' || shop.category === 'Municipality' || shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? 'white' : 'black',
+                                        border: '1px solid rgba(255,255,255,0.1)',
                                         whiteSpace: 'nowrap',
-                                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
                                         zIndex: 1
                                     }}>
                                         {shop.name}
