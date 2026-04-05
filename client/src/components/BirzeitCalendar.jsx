@@ -97,13 +97,13 @@ const EVENTS = [
 ];
 
 const TYPE_CONFIG = {
-  holiday: { color: '#ef4444', bg: 'rgba(239,68,68,0.12)', icon: '🏖️', label: 'عطلة' },
-  exam:    { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', icon: '📝', label: 'امتحانات' },
-  start:   { color: '#10b981', bg: 'rgba(16,185,129,0.12)', icon: '🚀', label: 'بداية' },
-  end:     { color: '#6366f1', bg: 'rgba(99,102,241,0.12)', icon: '🏁', label: 'نهاية' },
-  deadline:{ color: '#fbab15', bg: 'rgba(251,171,21,0.12)', icon: '⏰', label: 'موعد نهائي' },
-  remote:  { color: '#3b82f6', bg: 'rgba(59,130,246,0.12)', icon: '💻', label: 'عن بعد' },
-  graduation:{ color: '#a855f7', bg: 'rgba(168,85,247,0.12)', icon: '🎓', label: 'تخرج' },
+  holiday: { color: '#ef4444', bg: 'rgba(239,68,68,0.12)', label: 'عطلة' },
+  exam:    { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', label: 'امتحانات' },
+  start:   { color: '#10b981', bg: 'rgba(16,185,129,0.12)', label: 'بداية' },
+  end:     { color: '#6366f1', bg: 'rgba(99,102,241,0.12)', label: 'نهاية' },
+  deadline:{ color: '#fbab15', bg: 'rgba(251,171,21,0.12)', label: 'موعد نهائي' },
+  remote:  { color: '#3b82f6', bg: 'rgba(59,130,246,0.12)', label: 'عن بعد' },
+  graduation:{ color: '#a855f7', bg: 'rgba(168,85,247,0.12)', label: 'تخرج' },
 };
 
 const SEMESTER_NAMES = {
@@ -177,9 +177,10 @@ export default function BirzeitCalendar() {
           <div style={{
             width: 52, height: 52, borderRadius: 14, flexShrink: 0,
             background: TYPE_CONFIG[nextEvent.type].bg,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.6rem'
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem',
+            color: TYPE_CONFIG[nextEvent.type].color, fontWeight: 'bold'
           }}>
-            {TYPE_CONFIG[nextEvent.type].icon}
+            {TYPE_CONFIG[nextEvent.type].label[0]}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: '0.7rem', color: TYPE_CONFIG[nextEvent.type].color, fontWeight: 700, marginBottom: 2 }}>
@@ -214,16 +215,16 @@ export default function BirzeitCalendar() {
       {/* Filter Chips */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 16, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
         {filterTypes.map(f => {
-          const cfg = f === 'all' ? { color: '#94a3b8', icon: '📋', label: 'الكل' } : TYPE_CONFIG[f];
+          const cfg = f === 'all' ? { color: '#94a3b8', label: 'الكل' } : TYPE_CONFIG[f];
           return (
             <button key={f} onClick={() => setFilter(f)} style={{
-              padding: '5px 12px', borderRadius: 20, border: `1px solid ${filter === f ? cfg.color : 'var(--bg-tertiary)'}`,
+              padding: '6px 14px', borderRadius: 20, border: `1px solid ${filter === f ? cfg.color : 'var(--bg-tertiary)'}`,
               background: filter === f ? cfg.bg : 'transparent', cursor: 'pointer',
               color: filter === f ? cfg.color : 'var(--text-muted)', fontFamily: 'inherit',
-              fontSize: '0.78rem', fontWeight: 600, whiteSpace: 'nowrap',
+              fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap',
               transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 4
             }}>
-              <span style={{ fontSize: '0.9rem' }}>{cfg.icon}</span> {cfg.label}
+              {cfg.label}
             </button>
           );
         })}
@@ -256,13 +257,15 @@ export default function BirzeitCalendar() {
                 width: 48, height: 48, borderRadius: 14, flexShrink: 0,
                 background: isPast ? 'var(--bg-tertiary)' : cfg.bg,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '1.3rem', position: 'relative', zIndex: 2,
+                fontSize: '1rem', position: 'relative', zIndex: 2,
+                color: isPast ? 'var(--text-muted)' : cfg.color,
+                fontWeight: 'bold',
                 border: isToday ? `2px solid ${cfg.color}` : '2px solid transparent',
                 boxShadow: isToday ? `0 0 14px ${cfg.color}55` : 'none',
                 opacity: isPast ? 0.5 : 1,
                 transition: 'all 0.2s'
               }}>
-                {isPast ? '✓' : cfg.icon}
+                {isPast ? '✓' : cfg.label[0]}
               </div>
 
               {/* Card */}

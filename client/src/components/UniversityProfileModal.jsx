@@ -416,7 +416,7 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                         المرافق التفاعلية
                     </button>
                     <button className={`uni-tab ${activeTab === 'calendar' ? 'active' : ''}`} onClick={() => setActiveTab('calendar')} style={{ color: activeTab === 'calendar' ? '#fbab15' : undefined, borderBottomColor: activeTab === 'calendar' ? '#fbab15' : undefined }}>
-                        📅 التقويم
+                        التقويم
                     </button>
                     <button className={`uni-tab ${activeTab === 'news' ? 'active' : ''}`} onClick={() => setActiveTab('news')}>
                         الأخبار
@@ -481,40 +481,42 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                             </div>
 
                             <div className="uni-about-card" style={{ marginTop: '15px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                    <h3>أوقات الدوام</h3>
-                                    {isAdminOrOwner && !isEditingHours && (
-                                        <button 
-                                            onClick={() => setIsEditingHours(true)}
-                                            style={{ 
-                                                background: 'rgba(251, 171, 21, 0.15)', border: 'none', color: '#fbab15', 
-                                                cursor: 'pointer', padding: '6px', borderRadius: '50%',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                transition: 'all 0.2s ease'
-                                            }}
-                                            onMouseOver={e => e.currentTarget.style.transform = 'scale(1.1)'}
-                                            onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
-                                        >
-                                            <EditIcon />
-                                        </button>
-                                    )}
-                                </div>
-                                {isEditingHours ? (
-                                    <div className="hours-edit-panel">
-                                        <textarea 
-                                            value={hoursInput} 
-                                            onChange={e => setHoursInput(e.target.value)} 
-                                            placeholder="مثلاً: يومياً من 8 صباحاً حتى 4 مساءً"
-                                            className="textarea"
-                                        />
-                                        <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                                            <button className="btn-small is-accept" onClick={handleUpdateHours}>حفظ</button>
-                                            <button className="btn-small" onClick={() => setIsEditingHours(false)}>إلغاء</button>
+                                <h3 style={{ marginBottom: '15px', color: '#fbab15' }}>للتواصل مع الجامعة</h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    {[
+                                        { label: 'دائرة المالية', email: 'students.accounts@birzeit.edu' },
+                                        { label: 'دائرة التسجيل', email: 'reg_office@birzeit.edu' },
+                                        { label: 'وحدة المساعدات المالية', email: 'info.sfau@birzeit.edu' },
+                                        { label: 'دائرة تكنولوجيا المعلومات', email: 'Helpdesk@birzeit.edu' },
+                                        { label: 'دعم التعليم الإلكتروني', email: 'ITC@birzeit.edu' }
+                                    ].map((item, idx) => (
+                                        <div key={idx} style={{ 
+                                            display: 'flex', 
+                                            justifyContent: 'space-between', 
+                                            alignItems: 'center',
+                                            padding: '10px 0',
+                                            borderBottom: idx === 4 ? 'none' : '1px solid rgba(255,255,255,0.05)'
+                                        }}>
+                                            <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{item.label}</span>
+                                            <a href={`mailto:${item.email}`} style={{ 
+                                                fontSize: '0.85rem', 
+                                                color: '#3b82f6', 
+                                                textDecoration: 'none',
+                                                fontWeight: '500'
+                                            }}>{item.email}</a>
                                         </div>
+                                    ))}
+                                    <div style={{ 
+                                        marginTop: '10px', 
+                                        padding: '12px', 
+                                        background: 'rgba(59, 130, 246, 0.1)', 
+                                        borderRadius: '10px',
+                                        textAlign: 'center'
+                                    }}>
+                                        <div style={{ fontSize: '0.8rem', color: '#3b82f6', marginBottom: '4px' }}>الرقم المجاني للاتصال</div>
+                                        <a href="tel:1800298200" style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'white', textDecoration: 'none' }}>1800298200</a>
                                     </div>
-                                ) : (
-                                    <p className="hours-display">{uniData.opening_hours || 'غير محدد بعد.'}</p>
-                                )}
+                                </div>
                             </div>
 
                             
