@@ -4,17 +4,28 @@ const pool = require('../config/database');
 const searchShops = async (req, res) => {
     try {
         const { query } = req.query;
-        const userId = req.user.id || req.user.userId;
+        const userId = req.user ? (req.user.id || req.user.userId) : null;
 
         if (!query) return res.json({ shops: [] });
 
-        const result = await pool.query(`
-            SELECT s.id, s.name, s.category, s.profile_picture, s.latitude, s.longitude,
-                   EXISTS(SELECT 1 FROM shop_followers WHERE shop_id = s.id AND user_id = $2::int) as is_followed
-            FROM shops s
-            WHERE s.name ILIKE $1 AND s.is_hidden = FALSE
-            LIMIT 10
-        `, [`%${query}%`, parseInt(userId)]);
+        let result;
+        if (userId) {
+            result = await pool.query(`
+                SELECT s.id, s.name, s.category, s.profile_picture, s.latitude, s.longitude,
+                       EXISTS(SELECT 1 FROM shop_followers WHERE shop_id = s.id AND user_id = $2::int) as is_followed
+                FROM shops s
+                WHERE s.name ILIKE $1 AND s.is_hidden = FALSE
+                LIMIT 10
+            `, [`%${query}%`, parseInt(userId)]);
+        } else {
+            result = await pool.query(`
+                SELECT s.id, s.name, s.category, s.profile_picture, s.latitude, s.longitude,
+                       FALSE as is_followed
+                FROM shops s
+                WHERE s.name ILIKE $1 AND s.is_hidden = FALSE
+                LIMIT 10
+            `, [`%${query}%`]);
+        }
 
         res.json({ shops: result.rows });
     } catch (error) {
@@ -189,43 +200,71 @@ const deleteShop = async (req, res) => {
 const getShopProfile = async (req, res) => {
     try {
         const shopId = parseInt(req.params.id);
-        const currentUserId = req.user.id || req.user.userId;
+        const currentUserId = req.user ? (req.user.id || req.user.userId) : null;
 
-        // 1. Get Shop Details
-        const shopResult = await pool.query(`
-            SELECT s.*, 
-                   u.username as owner_name, -- Fetch owner name
-                   (SELECT COUNT(*)::int FROM shop_followers WHERE shop_id = s.id) as followers_count,
-                   EXISTS(SELECT 1 FROM shop_followers WHERE shop_id = s.id AND user_id = $2::int) as is_followed
-            FROM shops s
-            LEFT JOIN users u ON s.owner_id = u.id -- Join with users
-            WHERE s.id = $1::int
-        `, [shopId, parseInt(currentUserId)]);
+        let shopResult;
+        if (currentUserId) {
+            shopResult = await pool.query(`
+                SELECT s.*, 
+                       u.username as owner_name,
+                       (SELECT COUNT(*)::int FROM shop_followers WHERE shop_id = s.id) as followers_count,
+                       EXISTS(SELECT 1 FROM shop_followers WHERE shop_id = s.id AND user_id = $2::int) as is_followed
+                FROM shops s
+                LEFT JOIN users u ON s.owner_id = u.id
+                WHERE s.id = $1::int
+            `, [shopId, parseInt(currentUserId)]);
+        } else {
+            shopResult = await pool.query(`
+                SELECT s.*, 
+                       u.username as owner_name,
+                       (SELECT COUNT(*)::int FROM shop_followers WHERE shop_id = s.id) as followers_count,
+                       FALSE as is_followed
+                FROM shops s
+                LEFT JOIN users u ON s.owner_id = u.id
+                WHERE s.id = $1::int
+            `, [shopId]);
+        }
 
         if (shopResult.rows.length === 0) {
             return res.status(404).json({ error: 'Shop not found' });
         }
 
         const shop = shopResult.rows[0];
-        const isOwner = shop.owner_id === currentUserId;
+        const isOwner = currentUserId && shop.owner_id === currentUserId;
 
-        const userRes = await pool.query('SELECT role FROM users WHERE id = $1', [parseInt(currentUserId)]);
-        const userRole = userRes.rows[0]?.role;
+        let userRole = null;
+        if (currentUserId) {
+            const userRes = await pool.query('SELECT role FROM users WHERE id = $1', [parseInt(currentUserId)]);
+            userRole = userRes.rows[0]?.role;
+        }
 
         if (shop.is_hidden && !isOwner && userRole !== 'admin') {
             return res.status(404).json({ error: 'Shop not found or is hidden' });
         }
 
         // 2. Get Shop Posts
-        const postsResult = await pool.query(`
-            SELECT p.*,
-                   (SELECT COUNT(*)::int FROM likes WHERE post_id = p.id) as likes_count,
-                   (SELECT COUNT(*)::int FROM comments WHERE post_id = p.id) as comments_count,
-                   EXISTS(SELECT 1 FROM likes WHERE post_id = p.id AND user_id = $2) as is_liked
-            FROM posts p
-            WHERE p.shop_id = $1
-            ORDER BY p.created_at DESC
-        `, [shopId, currentUserId]);
+        let postsResult;
+        if (currentUserId) {
+            postsResult = await pool.query(`
+                SELECT p.*,
+                       (SELECT COUNT(*)::int FROM likes WHERE post_id = p.id) as likes_count,
+                       (SELECT COUNT(*)::int FROM comments WHERE post_id = p.id) as comments_count,
+                       EXISTS(SELECT 1 FROM likes WHERE post_id = p.id AND user_id = $2) as is_liked
+                FROM posts p
+                WHERE p.shop_id = $1
+                ORDER BY p.created_at DESC
+            `, [shopId, currentUserId]);
+        } else {
+            postsResult = await pool.query(`
+                SELECT p.*,
+                       (SELECT COUNT(*)::int FROM likes WHERE post_id = p.id) as likes_count,
+                       (SELECT COUNT(*)::int FROM comments WHERE post_id = p.id) as comments_count,
+                       FALSE as is_liked
+                FROM posts p
+                WHERE p.shop_id = $1
+                ORDER BY p.created_at DESC
+            `, [shopId]);
+        }
 
         // 3. Get Shop Products
         const productsResult = await pool.query(`

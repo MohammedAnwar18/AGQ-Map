@@ -459,17 +459,17 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                         requests.map(request => (
                                             <div key={request.id} className="user-item">
                                                 <div className="chat-avatar">
-                                                    {request.from_user.profile_picture ? (
-                                                        <img src={getImageUrl(request.from_user.profile_picture)} alt={request.from_user.username} />
+                                                    {request.profile_picture ? (
+                                                        <img src={getImageUrl(request.profile_picture)} alt={request.username} />
                                                     ) : (
                                                         <div className="avatar-placeholder">
-                                                            {request.from_user.username.charAt(0).toUpperCase()}
+                                                            {(request.username || 'U').charAt(0).toUpperCase()}
                                                         </div>
                                                     )}
                                                 </div>
                                                 <div className="chat-info">
                                                     <div className="chat-name">
-                                                        {request.from_user.full_name || request.from_user.username}
+                                                        {request.full_name || request.username}
                                                     </div>
                                                     <div className="chat-last-message">
                                                         أرسل لك طلب صداقة • {formatTime(request.created_at)}

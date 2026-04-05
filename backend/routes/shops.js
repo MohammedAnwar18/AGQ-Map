@@ -1,68 +1,91 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, isAdmin } = require('../middleware/auth');
+const { authenticateToken, optionalAuth, isAdmin } = require('../middleware/auth');
 const shopController = require('../controllers/shopController');
-
-// All routes require auth
-router.use(authenticateToken);
-
-router.get('/search', shopController.searchShops);
-router.get('/following', shopController.getFollowedShops);
-router.post('/:id/follow', shopController.followShop);
-router.delete('/:id/follow', shopController.unfollowShop);
-
-// Temporary Admin Create Route
-router.post('/', shopController.createShop);
-
-// Use Memory Storage for Supabase
 const upload = require('../middleware/upload');
 
-// Shop Profile & Posts
-router.get('/:id', shopController.getShopProfile);
-router.put('/:id', shopController.updateShopProfile);
-router.delete('/:id', isAdmin, shopController.deleteShop);
-router.put('/:id/images', upload.fields([{ name: 'profile_picture', maxCount: 1 }, { name: 'cover_picture', maxCount: 1 }]), shopController.updateShopImages);
+// ============================================================
+// المسارات التي تتطلب مصادقة إلزامية (كتابة / حساسة)
+// ============================================================
 
-router.post('/:id/posts', upload.array('images', 5), shopController.createShopPost);
-router.delete('/:id/posts/:postId', shopController.deleteShopPost);
+// متابعة / إلغاء متابعة محل
+router.post('/:id/follow', authenticateToken, shopController.followShop);
+router.delete('/:id/follow', authenticateToken, shopController.unfollowShop);
 
-// Shop Products
-router.post('/:id/products', upload.array('images', 5), shopController.addProduct);
-router.put('/:id/products/:productId', upload.array('images', 5), shopController.updateProduct);
-router.delete('/:id/products/:productId', shopController.deleteProduct);
+// المحلات المتابَعة (خاصة بالمستخدم)
+router.get('/following', authenticateToken, shopController.getFollowedShops);
 
-// Ownership Delegation & Management
-router.post('/:id/assign-owner', shopController.assignShopOwner); // Admin only
-router.delete('/:id/owner', shopController.removeShopOwner); // Admin only
-router.get('/managed/mine', shopController.getManagedShops); // Get shops owned by me
-router.post('/:id/notify', shopController.sendNotificationToFollowers);
+// المحلات المُدارة (خاصة بالمستخدم)
+router.get('/managed/mine', authenticateToken, shopController.getManagedShops);
 
-// Drivers (Taxi)
-router.get('/:id/drivers', shopController.getShopDrivers);
-router.post('/:id/drivers', shopController.addShopDriver);
-router.delete('/:id/drivers/:driverId', shopController.removeShopDriver);
+// إنشاء محل جديد
+router.post('/', authenticateToken, shopController.createShop);
 
-// Taxi Requests
-router.post('/:id/request', shopController.requestTaxi);
-router.get('/:id/requests', shopController.getShopRequests);
-router.put('/requests/:requestId', shopController.updateRequestStatus);
+// تعديل / حذف المحل
+router.put('/:id', authenticateToken, shopController.updateShopProfile);
+router.delete('/:id', authenticateToken, isAdmin, shopController.deleteShop);
+router.put('/:id/images', authenticateToken, upload.fields([{ name: 'profile_picture', maxCount: 1 }, { name: 'cover_picture', maxCount: 1 }]), shopController.updateShopImages);
 
-// University Facilities
-router.get('/:id/facilities', shopController.getUniversityFacilities);
-router.post('/:id/facilities', shopController.addUniversityFacility);
-router.get('/facilities/:facilityId', shopController.getFacilityProfile);
-router.post('/facilities/:facilityId/posts', upload.array('images', 5), shopController.addFacilityPost);
-router.post('/facilities/:facilityId/specialties', shopController.addCollegeSpecialty);
+// المنشورات (إنشاء / حذف)
+router.post('/:id/posts', authenticateToken, upload.array('images', 5), shopController.createShopPost);
+router.delete('/:id/posts/:postId', authenticateToken, shopController.deleteShopPost);
 
-// Post Interactions
-router.post('/posts/:postId/like', shopController.togglePostLike);
-router.get('/posts/:postId/comments', shopController.getPostComments);
-router.post('/posts/:postId/comments', shopController.addPostComment);
+// المنتجات
+router.post('/:id/products', authenticateToken, upload.array('images', 5), shopController.addProduct);
+router.put('/:id/products/:productId', authenticateToken, upload.array('images', 5), shopController.updateProduct);
+router.delete('/:id/products/:productId', authenticateToken, shopController.deleteProduct);
 
-// Municipality Items (البلديات)
-router.get('/:id/municipality-items', shopController.getMunicipalityItems);
-router.post('/:id/municipality-items', upload.single('image'), shopController.addMunicipalityItem);
-router.delete('/municipality-items/:itemId', shopController.deleteMunicipalityItem);
+// إدارة الملكية
+router.post('/:id/assign-owner', authenticateToken, shopController.assignShopOwner);
+router.delete('/:id/owner', authenticateToken, shopController.removeShopOwner);
+router.post('/:id/notify', authenticateToken, shopController.sendNotificationToFollowers);
+
+// السائقون
+router.post('/:id/drivers', authenticateToken, shopController.addShopDriver);
+router.delete('/:id/drivers/:driverId', authenticateToken, shopController.removeShopDriver);
+
+// طلبات التاكسي (إنشاء / تحديث)
+router.post('/:id/request', authenticateToken, shopController.requestTaxi);
+router.put('/requests/:requestId', authenticateToken, shopController.updateRequestStatus);
+
+// التفاعلات (إعجاب / تعليق)
+router.post('/posts/:postId/like', authenticateToken, shopController.togglePostLike);
+router.post('/posts/:postId/comments', authenticateToken, shopController.addPostComment);
+
+// المرافق الجامعية (إضافة)
+router.post('/:id/facilities', authenticateToken, shopController.addUniversityFacility);
+router.post('/facilities/:facilityId/posts', authenticateToken, upload.array('images', 5), shopController.addFacilityPost);
+router.post('/facilities/:facilityId/specialties', authenticateToken, shopController.addCollegeSpecialty);
+
+// عناصر البلدية (إضافة / حذف)
+router.post('/:id/municipality-items', authenticateToken, upload.single('image'), shopController.addMunicipalityItem);
+router.delete('/municipality-items/:itemId', authenticateToken, shopController.deleteMunicipalityItem);
+
+// ============================================================
+// المسارات العامة (قراءة فقط - auth اختياري)
+// ============================================================
+
+// البحث عن محلات (عام)
+router.get('/search', optionalAuth, shopController.searchShops);
+
+// ملف المحل (عام)
+router.get('/:id', optionalAuth, shopController.getShopProfile);
+
+// السائقون (عرض - عام)
+router.get('/:id/drivers', optionalAuth, shopController.getShopDrivers);
+
+// طلبات التاكسي (عرض)
+router.get('/:id/requests', authenticateToken, shopController.getShopRequests);
+
+// المرافق الجامعية (عرض - عام)
+router.get('/:id/facilities', optionalAuth, shopController.getUniversityFacilities);
+router.get('/facilities/:facilityId', optionalAuth, shopController.getFacilityProfile);
+
+// التعليقات (عرض - عام)
+router.get('/posts/:postId/comments', optionalAuth, shopController.getPostComments);
+
+// عناصر البلدية (عرض - عام)
+router.get('/:id/municipality-items', optionalAuth, shopController.getMunicipalityItems);
 
 module.exports = router;
 

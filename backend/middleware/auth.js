@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 
 /**
- * Middleware للتحقق من JWT Token
+ * Middleware للتحقق من JWT Token (إلزامي)
  */
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -26,6 +26,31 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
+/**
+ * Middleware اختياري: يحلل الـ Token إذا وُجد لكن لا يرفض الطلب إن لم يكن موجوداً
+ */
+const optionalAuth = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        req.user = null;
+        return next();
+    }
+
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+        if (err) {
+            req.user = null;
+        } else {
+            req.user = {
+                ...decoded,
+                userId: decoded.userId || decoded.id
+            };
+        }
+        next();
+    });
+};
+
 const isAdmin = (req, res, next) => {
     if (req.user && req.user.role === 'admin') {
         next();
@@ -34,4 +59,4 @@ const isAdmin = (req, res, next) => {
     }
 };
 
-module.exports = { authenticateToken, isAdmin };
+module.exports = { authenticateToken, optionalAuth, isAdmin };

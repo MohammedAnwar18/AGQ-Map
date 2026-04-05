@@ -41,9 +41,14 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            // Token منتهي أو غير صالح
-            localStorage.removeItem('token');
-            window.location.href = '/login';
+            const requestUrl = error.config?.url || '';
+            // فقط أعد التوجيه للصفحة الرئيسية إذا كان الطلب لـ /auth/me
+            // أما المسارات الثانوية (shops, friends, posts...) فلا نريد إخراج المستخدم
+            const isAuthEndpoint = requestUrl.includes('/auth/me') || requestUrl.includes('/auth/login');
+            if (isAuthEndpoint) {
+                localStorage.removeItem('token');
+                window.location.href = '/login';
+            }
         }
         return Promise.reject(error);
     }
