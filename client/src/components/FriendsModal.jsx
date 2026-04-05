@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { friendService, shopService, getImageUrl } from '../services/api'; // Import shopService
+import { friendService, shopService, getImageUrl } from '../services/api';
+import ProfileModal from './ProfileModal';
 import './Modal.css';
 
 const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, currentUser, onShopClick, onShopFollowed, followedShops: propFollowedShops }) => {
@@ -7,6 +8,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
     const [friends, setFriends] = useState([]);
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [selectedFriendId, setSelectedFriendId] = useState(null);
 
     // Shops State
     const [followedShops, setFollowedShops] = useState(propFollowedShops || []);
@@ -259,6 +261,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
     };
 
     return (
+        <>
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-container" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
@@ -329,7 +332,9 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                             ) : (
                                 <div className="user-list">
                                     {friends.map(friend => (
-                                        <div key={friend.id} className="user-item">
+                                        <div key={friend.id} className="user-item" style={{ cursor: 'pointer' }}
+                                            onClick={() => setSelectedFriendId(friend.id)}
+                                        >
                                             <div className="chat-avatar">
                                                 {friend.profile_picture ? (
                                                     <img src={getImageUrl(friend.profile_picture)} alt={friend.username} />
@@ -909,6 +914,201 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                 </div>
                                             ))
                                         )}
+                                            </button>
+                                        </div>
+
+                                        <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => { setIsCreatingShop(false); setShowCreateOptions(true); }}
+                                                className="btn-small"
+                                                style={{ flex: 1, background: 'transparent', border: '1px solid var(--text-muted)' }}
+                                            >
+                                                الخلف
+                                            </button>
+                                            <button
+                                                type="submit"
+                                                disabled={isSubmittingShop}
+                                                className="btn-small btn-accept"
+                                                style={{ flex: 2 }}
+                                            >
+                                                {isSubmittingShop ? 'جاري الحفظ...' : 'إنشاء المحل'}
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Search Bar - Redesigned */}
+                                    <form onSubmit={handleShopSearch} style={{
+                                        padding: '15px',
+                                        position: 'sticky',
+                                        top: 0,
+                                        background: 'var(--bg-secondary)',
+                                        zIndex: 10,
+                                        borderBottom: '1px solid var(--bg-tertiary)'
+                                    }}>
+                                        <div style={{
+                                            position: 'relative',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            background: 'var(--bg-tertiary)',
+                                            borderRadius: '12px',
+                                            padding: '5px 15px',
+                                            border: '1px solid transparent',
+                                            transition: 'all 0.2s'
+                                        }} className="search-focus-wrapper">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)' }}>
+                                                <circle cx="11" cy="11" r="8"></circle>
+                                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                            </svg>
+                                            <input
+                                                type="text"
+                                                placeholder="ابحث عن ( مطعم , مركز تسوق , مؤسسة ..... )"
+                                                value={shopSearchQuery}
+                                                onChange={(e) => setShopSearchQuery(e.target.value)}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '10px',
+                                                    background: 'transparent',
+                                                    border: 'none',
+                                                    outline: 'none',
+                                                    color: 'var(--text-primary)',
+                                                    fontSize: '0.95rem',
+                                                    fontFamily: 'inherit'
+                                                }}
+                                                autoFocus
+                                            />
+                                            {isSearchingShop && <div className="spinner-small" style={{ borderColor: 'var(--primary)', borderTopColor: 'transparent' }}></div>}
+                                        </div>
+                                    </form>
+
+                                    {/* Search Results */}
+                                    {shopSearchResults.length > 0 && (
+                                        <div className="user-list" style={{ borderBottom: '1px solid var(--bg-tertiary)', marginBottom: '10px' }}>
+                                            <h4 style={{ padding: '15px 15px 5px', margin: 0, fontSize: '0.9rem', color: 'var(--primary)', fontWeight: '700' }}>نتائج البحث</h4>
+                                            {shopSearchResults.map(shop => (
+                                                <div
+                                                    key={shop.id}
+                                                    className="user-item"
+                                                    onClick={() => onShopClick && onShopClick(shop)}
+                                                    style={{ cursor: 'pointer' }}
+                                                >
+                                                    <div className="chat-avatar" style={{ overflow: 'visible' }}>
+                                                        <div style={{
+                                                            width: '50px',
+                                                            height: '50px',
+                                                            borderRadius: '14px',
+                                                            background: 'linear-gradient(135deg, #fbab15, #f59e0b)',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            color: 'white',
+                                                            boxShadow: '0 4px 6px rgba(251, 171, 21, 0.2)'
+                                                        }}>
+                                                            {!shop.profile_picture ? (
+                                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                    <path d="M3 21h18v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z"></path>
+                                                                    <path d="M6 6h12v7H6z"></path>
+                                                                    <path d="M6 18h12"></path>
+                                                                </svg>
+                                                            ) : (
+                                                                <img src={getImageUrl(shop.profile_picture)} style={{ width: '100%', height: '100%', borderRadius: '14px', objectFit: 'cover' }} />
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="chat-info">
+                                                        <div className="chat-name" style={{ fontSize: '1rem' }}>{shop.name}</div>
+                                                        <div className="chat-last-message" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fbab15', display: 'inline-block' }}></span>
+                                                            {shop.category}
+                                                        </div>
+                                                    </div>
+                                                    <div className="user-item-actions">
+                                                        {isFollowingShop(shop.id) && (
+                                                            <span style={{ color: 'var(--success)', fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                                متابع
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Followed List */}
+                                    <div className="user-list">
+                                        <h4 style={{
+                                            padding: '15px 15px 5px',
+                                            margin: 0,
+                                            fontSize: '0.9rem',
+                                            color: 'var(--text-secondary)',
+                                            fontWeight: '700',
+                                            borderTop: shopSearchResults.length > 0 ? 'none' : '1px solid transparent' // Conditional border logic if needed
+                                        }}>المحلات التي أتابعها</h4>
+                                        {followedShops.length === 0 ? (
+                                            <div className="empty-state" style={{ padding: '40px 20px' }}>
+                                                <div style={{
+                                                    width: '60px', height: '60px', margin: '0 auto 15px',
+                                                    background: 'var(--bg-tertiary)', borderRadius: '50%',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    color: 'var(--text-muted)'
+                                                }}>
+                                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z"></path><path d="M6 6h12v7H6z"></path></svg>
+                                                </div>
+                                                <p style={{ color: 'var(--text-secondary)' }}>لا تتابع أي محل حالياً</p>
+                                            </div>
+                                        ) : (
+                                            followedShops.map(shop => (
+                                                <div
+                                                    key={shop.id}
+                                                    className="user-item"
+                                                    onClick={() => onShopClick && onShopClick(shop)}
+                                                    style={{ cursor: 'pointer', flexWrap: 'nowrap' }}
+                                                >
+                                                    <div className="chat-avatar" style={{ overflow: 'visible', flexShrink: 0 }}>
+                                                        <div style={{
+                                                            width: '50px',
+                                                            height: '50px',
+                                                            borderRadius: '14px',
+                                                            background: 'linear-gradient(135deg, #fbab15, #f59e0b)',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            color: 'white',
+                                                            boxShadow: '0 4px 6px rgba(251, 171, 21, 0.2)'
+                                                        }}>
+                                                            {!shop.profile_picture ? (
+                                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                    <path d="M3 21h18v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z"></path>
+                                                                    <path d="M6 6h12v7H6z"></path>
+                                                                    <path d="M6 18h12"></path>
+                                                                </svg>
+                                                            ) : (
+                                                                <img src={getImageUrl(shop.profile_picture)} style={{ width: '100%', height: '100%', borderRadius: '14px', objectFit: 'cover' }} />
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="chat-info" style={{ flex: 1, minWidth: 0, padding: '0 10px' }}>
+                                                        <div className="chat-name" style={{ fontSize: '1rem', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{shop.name}</div>
+                                                        <div className="chat-last-message" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fbab15', display: 'inline-block' }}></span>
+                                                            {shop.category}
+                                                        </div>
+                                                    </div>
+                                                    <div className="user-item-actions">
+                                                        <button
+                                                            className="btn-small btn-reject"
+                                                            onClick={(e) => { e.stopPropagation(); handleUnfollowShop(shop.id); }}
+                                                            style={{ border: '1px solid var(--error)', color: 'var(--error)', fontFamily: 'inherit' }}
+                                                        >
+                                                            إلغاء المتابعة
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
                                     </div>
                                 </>
                             )}
@@ -917,6 +1117,13 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                 </div>
             </div>
         </div>
+        {selectedFriendId && (
+            <ProfileModal
+                userId={selectedFriendId}
+                onClose={() => setSelectedFriendId(null)}
+            />
+        )}
+        </>
     );
 };
 

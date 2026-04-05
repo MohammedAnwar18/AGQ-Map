@@ -6,12 +6,67 @@ import CustomCalendar from './CustomCalendar';
 import FriendButton from './FriendButton';
 import './Modal.css';
 
+// Admin verification badge - golden shield with checkmark
+const AdminBadge = () => (
+    <span title="مسؤول الموقع الرسمي" style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        width: '26px', height: '26px',
+        background: 'linear-gradient(135deg, #FFD700, #FFA500)',
+        borderRadius: '50%', flexShrink: 0,
+        boxShadow: '0 2px 8px rgba(255, 165, 0, 0.5)',
+        animation: 'pulse-badge 2.5s ease-in-out infinite'
+    }}>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="rgba(255,255,255,0.15)" />
+            <polyline points="9 12 11 14 15 10" />
+        </svg>
+    </span>
+);
+
+// Privacy toggle pill - for own profile settings
+const PrivacyToggle = ({ label, checked, onChange }) => (
+    <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '10px 0', borderBottom: '1px solid var(--bg-tertiary)'
+    }}>
+        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{label}</span>
+        <button
+            onClick={onChange}
+            style={{
+                width: '44px', height: '24px', borderRadius: '12px', border: 'none',
+                background: checked ? '#ef4444' : '#10b981',
+                cursor: 'pointer', position: 'relative', transition: 'background 0.3s ease',
+                flexShrink: 0
+            }}
+            title={checked ? 'مخفي عن الأصدقاء' : 'مرئي للأصدقاء'}
+        >
+            <span style={{
+                position: 'absolute', top: '2px',
+                left: checked ? '2px' : '22px',
+                width: '20px', height: '20px', borderRadius: '50%',
+                background: 'white', transition: 'left 0.3s ease',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
+            }} />
+        </button>
+    </div>
+);
+
 const ProfileModal = ({ userId, onClose }) => {
     const { user: currentUser } = useAuth();
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [showPrivacySettings, setShowPrivacySettings] = useState(false);
+    const [privacySettings, setPrivacySettings] = useState({
+        hide_username: false,
+        hide_age: false,
+        hide_gender: false,
+        hide_marital_status: false,
+        hide_workplace: false,
+        hide_education: false,
+        hide_bio: false,
+    });
     const [formData, setFormData] = useState({
         full_name: '',
         bio: '',
@@ -79,6 +134,15 @@ const ProfileModal = ({ userId, onClose }) => {
             if (showLoading) setLoading(true);
             const data = await userService.getUserProfile(userId);
             setProfile(data.user);
+
+            // Load privacy settings if own profile
+            if (data.user.privacy_settings) {
+                const ps = typeof data.user.privacy_settings === 'string'
+                    ? JSON.parse(data.user.privacy_settings)
+                    : data.user.privacy_settings;
+                setPrivacySettings(ps);
+            }
+
             setFormData({
                 full_name: data.user.full_name || '',
                 bio: data.user.bio || '',
@@ -108,15 +172,14 @@ const ProfileModal = ({ userId, onClose }) => {
             updateData.append('workplace', formData.workplace);
             updateData.append('education', formData.education);
             updateData.append('institution', formData.institution);
+            updateData.append('privacy_settings', JSON.stringify(privacySettings));
 
             if (formData.profile_picture instanceof File) {
                 updateData.append('profile_picture', formData.profile_picture);
             }
 
-            // 1. Send update to server
             const response = await userService.updateProfile(updateData);
 
-            // 2. Update local state immediately with the response from server
             if (response.user) {
                 setProfile(prev => ({ ...prev, ...response.user }));
                 setFormData({
@@ -131,10 +194,9 @@ const ProfileModal = ({ userId, onClose }) => {
                 });
             }
 
-            // 3. Fetch fresh data just to be 100% sure everything is synced
             await loadProfile(false);
-
             setEditing(false);
+            setShowPrivacySettings(false);
         } catch (error) {
             console.error('Failed to update profile:', error);
             alert('حدث خطأ أثناء حفظ التغييرات. يرجى المحاولة مرة أخرى.');
@@ -166,7 +228,14 @@ const ProfileModal = ({ userId, onClose }) => {
         setTempImageSrc(null);
     };
 
+    const togglePrivacy = (key) => {
+        setPrivacySettings(prev => ({ ...prev, [key]: !prev[key] }));
+    };
+
     const isOwnProfile = currentUser && currentUser.id === userId;
+    const isAdmin = profile?.role === 'admin';
+    // Admin: hide username from others, show only full_name
+    const showUsername = isOwnProfile || !isAdmin;
 
     return (
         <div className="modal-overlay" onClick={onClose}>
@@ -186,7 +255,7 @@ const ProfileModal = ({ userId, onClose }) => {
                             <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2rem', marginBottom: '1rem' }}>
 
-                                    {/* Gender (Right Side for Arabic RTL feel, or Left) - Let's put Right for "First" logic if assumed RTL flow visually */}
+                                    {/* Gender (Right Side) */}
                                     {!editing && profile.gender && (
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', width: '60px', animation: 'fadeIn 0.5s ease' }}>
                                             <div style={{
@@ -217,19 +286,22 @@ const ProfileModal = ({ userId, onClose }) => {
                                         </div>
                                     )}
 
+                                    {/* Profile Picture */}
                                     <div className="chat-avatar" style={{
                                         width: '110px',
                                         height: '110px',
-                                        border: '3px solid var(--primary)',
+                                        border: isAdmin ? '3px solid #FFD700' : '3px solid var(--primary)',
                                         position: 'relative',
                                         borderRadius: '50%',
-                                        boxShadow: '0 8px 16px rgba(0,0,0,0.2)'
+                                        boxShadow: isAdmin
+                                            ? '0 0 20px rgba(255, 215, 0, 0.4), 0 8px 16px rgba(0,0,0,0.2)'
+                                            : '0 8px 16px rgba(0,0,0,0.2)'
                                     }}>
                                         {profile.profile_picture ? (
-                                            <img src={profile.profile_picture} alt={profile.username} />
+                                            <img src={profile.profile_picture} alt={profile.username || profile.full_name} />
                                         ) : (
                                             <div className="avatar-placeholder" style={{ fontSize: '2.5rem' }}>
-                                                {profile.username.charAt(0).toUpperCase()}
+                                                {(profile.full_name || profile.username || '?').charAt(0).toUpperCase()}
                                             </div>
                                         )}
 
@@ -396,13 +468,62 @@ const ProfileModal = ({ userId, onClose }) => {
                                                 <option value="other">أخرى</option>
                                             </select>
                                         )}
+
+                                        {/* Privacy Settings Toggle Section */}
+                                        {isOwnProfile && (
+                                            <div style={{
+                                                marginTop: '10px',
+                                                background: 'var(--bg-tertiary)',
+                                                borderRadius: '12px',
+                                                overflow: 'hidden'
+                                            }}>
+                                                <button
+                                                    onClick={() => setShowPrivacySettings(!showPrivacySettings)}
+                                                    style={{
+                                                        width: '100%', padding: '12px 16px',
+                                                        background: 'none', border: 'none',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                        cursor: 'pointer', color: 'var(--text-primary)', fontFamily: 'inherit',
+                                                        fontSize: '0.9rem', fontWeight: '700'
+                                                    }}
+                                                >
+                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                                        </svg>
+                                                        إعدادات الخصوصية
+                                                    </span>
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                                                        style={{ transform: showPrivacySettings ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }}>
+                                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                                    </svg>
+                                                </button>
+                                                {showPrivacySettings && (
+                                                    <div style={{ padding: '0 16px 16px' }}>
+                                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
+                                                            🟢 مرئي للأصدقاء &nbsp;|&nbsp; 🔴 مخفي عن الأصدقاء
+                                                        </p>
+                                                        <PrivacyToggle label="اسم المستخدم (@username)" checked={privacySettings.hide_username} onChange={() => togglePrivacy('hide_username')} />
+                                                        <PrivacyToggle label="العمر / تاريخ الميلاد" checked={privacySettings.hide_age} onChange={() => togglePrivacy('hide_age')} />
+                                                        <PrivacyToggle label="الجنس" checked={privacySettings.hide_gender} onChange={() => togglePrivacy('hide_gender')} />
+                                                        <PrivacyToggle label="الحالة الاجتماعية" checked={privacySettings.hide_marital_status} onChange={() => togglePrivacy('hide_marital_status')} />
+                                                        <PrivacyToggle label="مكان العمل" checked={privacySettings.hide_workplace} onChange={() => togglePrivacy('hide_workplace')} />
+                                                        <PrivacyToggle label="الحالة التعليمية" checked={privacySettings.hide_education} onChange={() => togglePrivacy('hide_education')} />
+                                                        <PrivacyToggle label="السيرة الذاتية" checked={privacySettings.hide_bio} onChange={() => togglePrivacy('hide_bio')} />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 ) : (
                                     <>
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px' }}>
-                                            <h2 style={{ marginBottom: '0.5rem' }}>
+                                        {/* Name + Admin Badge */}
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '4px' }}>
+                                            <h2 style={{ marginBottom: 0 }}>
                                                 {profile.full_name || profile.username}
                                             </h2>
+                                            {isAdmin && <AdminBadge />}
                                             {!isOwnProfile && (
                                                 <FriendButton
                                                     userId={profile.id}
@@ -413,13 +534,23 @@ const ProfileModal = ({ userId, onClose }) => {
                                             )}
                                         </div>
 
-
+                                        {/* Username - hidden for admin from others, always visible for self */}
+                                        {showUsername && profile.username && (
+                                            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '1rem' }}>
+                                                @{profile.username}
+                                            </p>
+                                        )}
+                                        {/* Admin label shown instead of username to others */}
+                                        {isAdmin && !isOwnProfile && (
+                                            <p style={{
+                                                color: '#FFD700', fontSize: '0.85rem', fontWeight: '700',
+                                                marginBottom: '1rem', letterSpacing: '0.5px'
+                                            }}>
+                                                مسؤول الموقع الرسمي
+                                            </p>
+                                        )}
                                     </>
                                 )}
-
-                                <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '1rem' }}>
-                                    @{profile.username}
-                                </p>
 
                                 {/* Extra info row (Marital Status, Workplace, Education) */}
                                 {!editing && (profile.marital_status || profile.workplace || profile.education) && (
@@ -558,7 +689,7 @@ const ProfileModal = ({ userId, onClose }) => {
                                 </div>
                             </div>
 
-                             <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                 <div>انضم في {new Date(profile.created_at).toLocaleDateString('en-GB')}</div>
                                 <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>الهجري: {getHijriDate(profile.created_at)}</div>
                             </div>
@@ -592,7 +723,7 @@ const ProfileModal = ({ userId, onClose }) => {
                                             </button>
                                             <button
                                                 className="btn btn-secondary"
-                                                onClick={() => setEditing(false)}
+                                                onClick={() => { setEditing(false); setShowPrivacySettings(false); }}
                                                 disabled={isSaving}
                                                 style={{ flex: 1 }}
                                             >
@@ -628,19 +759,17 @@ const ProfileModal = ({ userId, onClose }) => {
                 </div>
             </div>
 
-            {
-                showCropper && tempImageSrc && (
-                    <ImageCropper
-                        imageSrc={tempImageSrc}
-                        onCropComplete={handleCropComplete}
-                        onCancel={() => {
-                            setShowCropper(false);
-                            setTempImageSrc(null);
-                        }}
-                    />
-                )
-            }
-        </div >
+            {showCropper && tempImageSrc && (
+                <ImageCropper
+                    imageSrc={tempImageSrc}
+                    onCropComplete={handleCropComplete}
+                    onCancel={() => {
+                        setShowCropper(false);
+                        setTempImageSrc(null);
+                    }}
+                />
+            )}
+        </div>
     );
 };
 
