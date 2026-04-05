@@ -332,27 +332,27 @@ const updateShopProfile = async (req, res) => {
             values.push(latVal); // For ST_MakePoint second arg
         }
 
-        if (queryParts.length === 0) {
             return res.json({ message: 'No changes provided' });
         }
 
         values.push(shopId);
-        const queryStr = `UPDATE shops SET ${queryParts.join(', ')} WHERE id = $${index}`;
+        const queryStr = `UPDATE shops SET ${queryParts.join(', ')} WHERE id = $${index++} RETURNING *`;
+        const result = await pool.query(queryStr, values);
 
-        await pool.query(queryStr, values);
-
-        res.json({ message: 'Shop updated successfully' });
-    } catch (error) {
-        console.error('Update shop error:', error);
-        res.status(500).json({ error: 'Failed', details: error.message });
+        res.json(result.rows[0]);
+    } catch (e) {
+        console.error('Update profile error:', e);
+        res.status(500).json({ error: 'Failed to update profile' });
     }
 };
 
-// --- 7.5 Update Shop Images (Profile/Cover) ---
+/**
+ * Update shop images (profile_picture, cover_picture)
+ */
 const updateShopImages = async (req, res) => {
     try {
         const shopId = req.params.id;
-        const userId = req.user.userId;
+        const userId = req.user.id || req.user.userId;
         const userRole = req.user.role;
         const { uploadToSupabase, deleteFileFromCloud } = require('../utils/storage');
 
@@ -370,22 +370,22 @@ const updateShopImages = async (req, res) => {
         let params = [];
         let index = 1;
 
-        if (req.files['profile_picture']) {
-            const file = req.files['profile_picture'][0];
-            const url = await uploadToSupabase(file.buffer, file.originalname, file.mimetype);
-            updateQueryPart.push(`profile_picture = $${index++}`);
-            params.push(url);
-            // Cleanup old pic
-            if (oldProfilePic) deleteFileFromCloud(oldProfilePic);
-        }
+        if (req.files) {
+            if (req.files.profile_picture) {
+                const file = req.files.profile_picture[0];
+                const url = await uploadToSupabase(file.buffer, file.originalname, file.mimetype);
+                updateQueryPart.push(`profile_picture = $${index++}`);
+                params.push(url);
+                if (oldProfilePic) try { deleteFileFromCloud(oldProfilePic); } catch(e) {}
+            }
 
-        if (req.files['cover_picture']) {
-            const file = req.files['cover_picture'][0];
-            const url = await uploadToSupabase(file.buffer, file.originalname, file.mimetype);
-            updateQueryPart.push(`cover_picture = $${index++}`);
-            params.push(url);
-            // Cleanup old pic
-            if (oldCoverPic) deleteFileFromCloud(oldCoverPic);
+            if (req.files.cover_picture) {
+                const file = req.files.cover_picture[0];
+                const url = await uploadToSupabase(file.buffer, file.originalname, file.mimetype);
+                updateQueryPart.push(`cover_picture = $${index++}`);
+                params.push(url);
+                if (oldCoverPic) try { deleteFileFromCloud(oldCoverPic); } catch(e) {}
+            }
         }
 
         if (updateQueryPart.length === 0) {
@@ -393,17 +393,12 @@ const updateShopImages = async (req, res) => {
         }
 
         params.push(shopId);
-        const query = `UPDATE shops SET ${updateQueryPart.join(', ')} WHERE id = $${index}`;
+        const query = `UPDATE shops SET ${updateQueryPart.join(', ')} WHERE id = $${index} RETURNING *`;
+        const updateRes = await pool.query(query, params);
 
-        await pool.query(query, params);
-
-        // Fetch updated images to return to frontend
-        const updatedRes = await pool.query('SELECT profile_picture, cover_picture FROM shops WHERE id = $1', [shopId]);
-
-        res.json({
+        res.json({ 
             message: 'Shop updated successfully',
-            profile_picture: updatedRes.rows[0].profile_picture,
-            cover_picture: updatedRes.rows[0].cover_picture
+            shop: updateRes.rows[0]
         });
 
     } catch (e) {
