@@ -1,9 +1,15 @@
 /**
  * Migration: Add privacy_settings column to users table
- * Run: node backend/migrations/add_privacy_settings.js
+ * Uses the DATABASE_URL from .env with SSL disabled for pooler connection
  */
 
-const pool = require('../config/database');
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+const { Pool } = require('pg');
+
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+});
 
 async function migrate() {
     try {
@@ -15,9 +21,11 @@ async function migrate() {
         `);
         
         console.log('✅ privacy_settings column added successfully!');
+        await pool.end();
         process.exit(0);
     } catch (error) {
-        console.error('❌ Migration failed:', error);
+        console.error('❌ Migration failed:', error.message);
+        await pool.end();
         process.exit(1);
     }
 }
