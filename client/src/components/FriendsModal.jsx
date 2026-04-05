@@ -3,6 +3,33 @@ import { friendService, shopService, getImageUrl } from '../services/api';
 import ProfileModal from './ProfileModal';
 import './Modal.css';
 
+// Helper: رندر أيقونة المحل بناءً على الفئة أو الصورة الحقيقية
+const categoryEmoji = (category) => {
+    const map = {
+        'مركز تسوق': '🏢', 'Restaurant': '🍽️', 'Cafe': '☕', 'بنك': '🏦',
+        'University': '🎓', 'Clothing': '👕', 'Electronics': '📱',
+        'Supermarket': '🛒', 'مكتب تاكسي': '🚕', 'مجمع تجاري': '🏘️', 'Service': '⚙️'
+    };
+    return map[category] || '🏪';
+};
+
+const ShopAvatar = ({ shop }) => {
+    const pic = shop?.profile_picture;
+    if (pic) {
+        return (
+            <img
+                src={getImageUrl(pic)}
+                alt={shop.name}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }}
+                onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+            />
+        );
+    }
+    return (
+        <span style={{ fontSize: '1.4rem' }}>{categoryEmoji(shop?.category)}</span>
+    );
+};
+
 const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, currentUser, onShopClick, onShopFollowed, followedShops: propFollowedShops }) => {
     const [activeTab, setActiveTab] = useState(isShopsMode ? 'shops' : initialTab);
     const [friends, setFriends] = useState([]);
@@ -631,17 +658,25 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                 <div className="user-list">
                                                     <h4 style={{ padding: '10px 15px', fontSize: '0.9rem', color: 'var(--primary)' }}>نتائج البحث</h4>
                                                     {shopSearchResults.map(shop => (
-                                                        <div key={shop.id} className="user-item" onClick={() => onShopClick && onShopClick(shop)}>
-                                                            <div className="chat-avatar" style={{ background: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 21h18v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z" /></svg>
+                                                        <div key={shop.id} className="user-item" onClick={() => onShopClick && onShopClick(shop)} style={{ cursor: 'pointer' }}>
+                                                            <div className="chat-avatar" style={{
+                                                                background: 'linear-gradient(135deg, #fbab15, #f59e0b)',
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                borderRadius: '12px', overflow: 'hidden', flexShrink: 0,
+                                                                width: '50px', height: '50px'
+                                                            }}>
+                                                                <ShopAvatar shop={shop} />
                                                             </div>
-                                                            <div className="chat-info">
-                                                                <div className="chat-name">{shop.name}</div>
-                                                                <div className="chat-last-message">{shop.category}</div>
+                                                            <div className="chat-info" style={{ flex: 1, minWidth: 0 }}>
+                                                                <div className="chat-name" style={{ fontWeight: '700' }}>{shop.name}</div>
+                                                                <div className="chat-last-message" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fbab15', display: 'inline-block' }}></span>
+                                                                    {shop.category}
+                                                                </div>
                                                             </div>
                                                             <div className="user-item-actions">
                                                                 {isFollowingShop(shop.id) ? (
-                                                                    <span style={{ color: 'var(--success)', fontSize: '0.85rem' }}>متابع ✓</span>
+                                                                    <span style={{ color: 'var(--success)', fontSize: '0.85rem', fontWeight: 'bold' }}>متابع ✓</span>
                                                                 ) : (
                                                                     <button className="btn-small btn-accept" onClick={(e) => { e.stopPropagation(); handleFollowShop(shop); }}>متابعة</button>
                                                                 )}
@@ -659,18 +694,27 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                     </div>
                                                 ) : (
                                                     followedShops.map(shop => (
-                                                        <div key={shop.id} className="user-item" onClick={() => onShopClick && onShopClick(shop)}>
-                                                            <div className="chat-avatar" style={{ background: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 21h18v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z" /></svg>
+                                                        <div key={shop.id} className="user-item" onClick={() => onShopClick && onShopClick(shop)} style={{ cursor: 'pointer' }}>
+                                                            <div className="chat-avatar" style={{
+                                                                background: 'linear-gradient(135deg, #fbab15, #f59e0b)',
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                borderRadius: '12px', overflow: 'hidden', flexShrink: 0,
+                                                                width: '50px', height: '50px'
+                                                            }}>
+                                                                <ShopAvatar shop={shop} />
                                                             </div>
-                                                            <div className="chat-info">
-                                                                <div className="chat-name">{shop.name}</div>
-                                                                <div className="chat-last-message">{shop.category}</div>
+                                                            <div className="chat-info" style={{ flex: 1, minWidth: 0 }}>
+                                                                <div className="chat-name" style={{ fontWeight: '700' }}>{shop.name}</div>
+                                                                <div className="chat-last-message" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fbab15', display: 'inline-block' }}></span>
+                                                                    {shop.category}
+                                                                </div>
                                                             </div>
                                                             <div className="user-item-actions">
                                                                 <button
                                                                     className="btn-small btn-reject"
                                                                     onClick={(e) => { e.stopPropagation(); handleUnfollowShop(shop.id); }}
+                                                                    style={{ border: '1px solid var(--error)', color: 'var(--error)' }}
                                                                 >
                                                                     إلغاء المتابعة
                                                                 </button>
