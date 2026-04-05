@@ -309,17 +309,25 @@ const MunicipalityProfileModal = ({ shop: initialShop, currentUser, onClose, onN
     }, [shop?.id]);
 
     const loadItems = async () => {
+        if (!shop?.id) return;
         setLoading(true);
         try {
+            // 1. طلب البروفايل الكامل للتأكد من وجود الغلاف والوصف وكل شيء
+            const profileData = await shopService.getProfile(shop.id);
+            if (profileData && profileData.shop) {
+                setShop(profileData.shop);
+            }
+
+            // 2. طلب المرافق التابعة للبلدية
             const data = await municipalityService.getItems(shop.id);
             setItems(data.grouped || {});
             
-            // Auto open live streams if they aren't open
+            // Auto open live streams then public parks if available
             if (activeSection === null) {
                 setActiveSection('live_streams');
             }
         } catch (err) {
-            console.error('Failed to load municipality items:', err);
+            console.error('Failed to load municipality data:', err);
         } finally {
             setLoading(false);
         }
@@ -351,7 +359,7 @@ const MunicipalityProfileModal = ({ shop: initialShop, currentUser, onClose, onN
             if (result.shop) {
                 setShop(result.shop);
             } else {
-                const updated = await shopService.getShopProfile(shop.id);
+                const updated = await shopService.getProfile(shop.id);
                 if (updated && updated.shop) setShop(updated.shop);
             }
             alert('تم التحديث بنجاح! ✨');

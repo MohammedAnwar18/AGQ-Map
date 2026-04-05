@@ -1275,9 +1275,12 @@ const MapComponent = () => {
                     {!currentCommunity && [...followedShopsMap, ...managedShopsMap.filter(m => !followedShopsMap.some(f => f.id === m.id))].filter(shop => {
                         if (shop.latitude == null || shop.longitude == null || isNaN(parseFloat(shop.latitude))) return false;
 
-                        // Educational Institutions (Universities, Colleges): visible from mid zoom (13) to reveal town area, hides when zoomed in close (e.g >= 16.5) to reveal buildings
-                        if (shop.category === 'University' || shop.category === 'مؤسسة تعليمية') {
-                            return viewState.zoom >= 13 && viewState.zoom < 16.5;
+                        // Educational Institutions & Municipalities: visible from mid zoom (13) to reveal town area
+                        if (shop.category === 'University' || shop.category === 'مؤسسة تعليمية' || shop.category === 'بلدية' || shop.category === 'Municipality') {
+                            if (shop.category === 'University' || shop.category === 'مؤسسة تعليمية') {
+                                return viewState.zoom >= 13 && viewState.zoom < 16.5;
+                            }
+                            return viewState.zoom >= 13; // Municipalities stay visible
                         }
                         // Banks and Malls visible from zoomed out view (zoom 13+)
                         if (['بنك', 'مركز تسوق', 'مجمع تجاري', 'Mall'].includes(shop.category)) {
