@@ -332,6 +332,7 @@ const updateShopProfile = async (req, res) => {
             values.push(latVal); // For ST_MakePoint second arg
         }
 
+        if (queryParts.length === 0) {
             return res.json({ message: 'No changes provided' });
         }
 
