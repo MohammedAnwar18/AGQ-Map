@@ -257,10 +257,15 @@ const MapComponent = () => {
     const [selectedMunicipalityProfile, setSelectedMunicipalityProfile] = useState(null);
 
     const handleOpenShopProfile = async (shop) => {
-        if (shop.category === 'بلدية' || shop.category === 'Municipality') {
+        if (!shop) return;
+        const category = (shop.category || '').toLowerCase().trim();
+        const isMuni = category === 'بلدية' || category === 'municipality';
+        const isUni = category === 'university' || category === 'مؤسسة تعليمية' || category === 'جامعة';
+
+        if (isMuni) {
             setSelectedMunicipalityProfile(shop);
             setShowMunicipalityProfile(true);
-        } else if (shop.category === 'University' || shop.category === 'مؤسسة تعليمية') {
+        } else if (isUni) {
             setSelectedUniversityProfile(shop);
             setShowUniversityProfile(true);
             try {
@@ -1560,9 +1565,15 @@ const MapComponent = () => {
                 onShopFollowed={handleShopFollowed}
                 onShopClick={(shop) => {
                     handleOpenShopProfile(shop);
-                    setShowShops(false); // Close shops list to return to map on exit
-                    const isUni = shop.category === 'University';
-                    mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: isUni ? 17 : 18.5, pitch: 45 });
+                    setShowShops(false);
+                    const category = (shop.category || '').toLowerCase().trim();
+                    const isUni = category === 'university' || category === 'مؤسسة تعليمية' || category === 'جامعة';
+                    mapRef.current?.flyTo({ 
+                        center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], 
+                        zoom: isUni ? 17 : 18.5, 
+                        pitch: 45,
+                        duration: 1500
+                    });
                 }}
             />}
             {showShopProfile && selectedShopProfile && (
@@ -1597,22 +1608,6 @@ const MapComponent = () => {
                                 duration: 1500
                             });
                         }
-                    }}
-                />
-            )}
-            {showMunicipalityProfile && selectedMunicipalityProfile && (
-                <MunicipalityProfileModal
-                    shop={selectedMunicipalityProfile}
-                    currentUser={user}
-                    onClose={() => setShowMunicipalityProfile(false)}
-                    onNavigate={({ lat, lng, name }) => {
-                        setShowMunicipalityProfile(false);
-                        mapRef.current?.flyTo({
-                            center: [parseFloat(lng), parseFloat(lat)],
-                            zoom: 18,
-                            pitch: 45,
-                            duration: 1800
-                        });
                     }}
                 />
             )}
@@ -1692,19 +1687,19 @@ const MapComponent = () => {
                 />
             )}
 
-            {showMunicipalityProfile && (
+            {showMunicipalityProfile && selectedMunicipalityProfile && (
                 <MunicipalityProfileModal
                     shop={selectedMunicipalityProfile}
                     currentUser={user}
                     onClose={() => setShowMunicipalityProfile(false)}
-                    onNavigate={(loc) => {
-                        setViewState(prev => ({
-                            ...prev,
-                            latitude: parseFloat(loc.lat),
-                            longitude: parseFloat(loc.lng),
-                            zoom: 17.5,
-                            transitionDuration: 1500
-                        }));
+                    onNavigate={({ lat, lng, name }) => {
+                        setShowMunicipalityProfile(false);
+                        mapRef.current?.flyTo({
+                            center: [parseFloat(lng), parseFloat(lat)],
+                            zoom: 18,
+                            pitch: 45,
+                            duration: 1800
+                        });
                     }}
                 />
             )}
