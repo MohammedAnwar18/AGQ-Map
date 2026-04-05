@@ -258,11 +258,21 @@ const MapComponent = () => {
 
     const handleOpenShopProfile = async (shop) => {
         if (!shop) return;
-        const catRaw = String(shop.category || '').trim();
-        const category = catRaw.toLowerCase();
+        const catRaw = String(shop.category || '').trim().toLowerCase();
+        const nameRaw = String(shop.name || '').trim().toLowerCase();
         
-        const isMuni = category === 'بلدية' || category === 'municipality' || catRaw.includes('بلدية');
-        const isUni = category === 'university' || category === 'مؤسسة تعليمية' || category === 'جامعة' || category === 'university_facility';
+        // Comprehensive check: category OR name contains 'Municipality' or 'بلدية'
+        const isMuni = catRaw.includes('بلدية') || 
+                       catRaw.includes('municipality') || 
+                       nameRaw.includes('بلدية') || 
+                       nameRaw.includes('municipality');
+
+        const isUni = catRaw.includes('university') || 
+                      catRaw.includes('مؤسسة تعليمية') || 
+                      catRaw.includes('جامعة') || 
+                      catRaw.includes('college') ||
+                      nameRaw.includes('جامعة') ||
+                      nameRaw.includes('university');
 
         if (isMuni) {
             setSelectedMunicipalityProfile(shop);
