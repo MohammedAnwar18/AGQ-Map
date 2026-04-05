@@ -425,7 +425,17 @@ const MunicipalityProfileModal = ({ shop: initialShop, currentUser, onClose, onN
                                                     <>
                                                         {addingTo === section.key && <AddItemForm municipalityId={shop.id} sectionKey={section.key} sectionLabel={section.label} onSuccess={() => { setAddingTo(null); loadItems(); }} onCancel={() => setAddingTo(null)} />}
                                                         <div className="muni-items-grid">
-                                                            {sectionItems.map(item => <ItemCard key={item.id} item={item} section={section} isAdmin={isAdmin} onNavigate={handleNavigate} onDelete={handleDelete} />)}
+                                                            {sectionItems.map(item => (
+                                                                <ItemCard 
+                                                                    key={item.id} 
+                                                                    item={item} 
+                                                                    section={section} 
+                                                                    isAdmin={isAdmin} 
+                                                                    onPreview={setSelectedItem}
+                                                                    onNavigate={handleNavigate} 
+                                                                    onDelete={handleDelete} 
+                                                                />
+                                                            ))}
                                                         </div>
                                                     </>
                                                 )}
