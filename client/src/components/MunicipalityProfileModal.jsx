@@ -398,7 +398,7 @@ const MunicipalityProfileModal = ({ shop: initialShop, currentUser, onClose, onN
                 {/* ── Header ── */}
                 <div className="muni-header">
                     <div className="muni-header-bg">
-                        {shop.cover_picture ? (
+                        {shop?.cover_picture ? (
                             <img src={getImageUrl(shop.cover_picture)} alt="" className="muni-cover" />
                         ) : (
                             <div className="muni-cover-default" />
@@ -421,7 +421,7 @@ const MunicipalityProfileModal = ({ shop: initialShop, currentUser, onClose, onN
 
                     <div className="muni-header-content">
                         <div className="muni-logo-wrap rectangle">
-                            {shop.profile_picture ? (
+                            {shop?.profile_picture ? (
                                 <img src={getImageUrl(shop.profile_picture)} alt={shop.name} className="muni-logo rect" />
                             ) : (
                                 <div className="muni-logo-default rect">🏛️</div>
@@ -440,9 +440,9 @@ const MunicipalityProfileModal = ({ shop: initialShop, currentUser, onClose, onN
                             </div>
                         </div>
                         <div className="muni-title-wrap">
-                            <h1 className="muni-name">{shop.name}</h1>
+                            <h1 className="muni-name">{shop?.name || 'بلدية'}</h1>
                             <div className="muni-sub-header">مركز الإدارة والتحكم الذكي</div>
-                            {shop.bio && <p className="muni-bio">{shop.bio}</p>}
+                            {shop?.bio && <p className="muni-bio">{shop.bio}</p>}
                         </div>
                     </div>
 
@@ -459,7 +459,7 @@ const MunicipalityProfileModal = ({ shop: initialShop, currentUser, onClose, onN
                         </div>
                         <div className="muni-stat-divider" />
                         <div className="muni-stat">
-                            <span className="muni-stat-value">{shop.followers_count || 0}</span>
+                            <span className="muni-stat-value">{shop?.followers_count || 0}</span>
                             <span className="muni-stat-label">متابع</span>
                         </div>
                     </div>
