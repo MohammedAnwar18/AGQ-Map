@@ -316,6 +316,33 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
         }
     };
 
+    const handleDeleteFacility = async (facilityId, facilityName) => {
+        if (!confirm(`هل أنت متأكد من حذف "${facilityName}" بشكل نهائي؟`)) return;
+        try {
+            await shopService.deleteFacility(facilityId);
+            alert('تم حذف المرفق بنجاح.');
+            loadFacilities();
+            // Reset category view if all deleted
+        } catch (e) {
+            alert(e.response?.data?.error || 'حدث خطأ أثناء الحذف');
+        }
+    };
+
+    const [editingFacilityId, setEditingFacilityId] = useState(null);
+    const [editingFacilityName, setEditingFacilityName] = useState('');
+
+    const handleRenameFacility = async (facilityId) => {
+        if (!editingFacilityName.trim()) return;
+        try {
+            await shopService.renameFacility(facilityId, editingFacilityName);
+            setEditingFacilityId(null);
+            setEditingFacilityName('');
+            loadFacilities();
+        } catch (e) {
+            alert(e.response?.data?.error || 'فشل تعديل الاسم');
+        }
+    };
+
     return (
         <div className="university-modal-overlay fade-in" onClick={onClose}>
             <div className="university-modal-container slide-up" onClick={e => e.stopPropagation()}>
@@ -665,15 +692,53 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                                     
                                     <div className="uni-items-list">
                                         {facilities[selectedFacilityCategory]?.map(item => (
-                                            <div key={item.id} className="uni-list-item" onClick={() => handleFeatureClick(item)}>
-                                                <div className="item-icon">{item.icon}</div>
-                                                <div className="item-details">
-                                                    <h4>{item.name}</h4>
-                                                    <p>انقر لعرض التفاصيل على الخريطة</p>
-                                                </div>
-                                                <div className="item-action">
-                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
-                                                </div>
+                                            <div key={item.id} className="uni-list-item">
+                                                {editingFacilityId === item.id ? (
+                                                    // Inline rename form
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 0' }}>
+                                                        <div className="item-icon">{item.icon}</div>
+                                                        <input
+                                                            type="text"
+                                                            value={editingFacilityName}
+                                                            onChange={e => setEditingFacilityName(e.target.value)}
+                                                            autoFocus
+                                                            style={{ flex: 1, padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--primary)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
+                                                        />
+                                                        <button onClick={() => handleRenameFacility(item.id)} style={{ background: '#10b981', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem' }}>حفظ</button>
+                                                        <button onClick={() => setEditingFacilityId(null)} style={{ background: 'transparent', color: 'var(--text-muted)', border: 'none', padding: '6px', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <div className="item-icon" onClick={() => handleFeatureClick(item)} style={{ cursor: 'pointer' }}>{item.icon}</div>
+                                                        <div className="item-details" onClick={() => handleFeatureClick(item)} style={{ cursor: 'pointer', flex: 1 }}>
+                                                            <h4>{item.name}</h4>
+                                                            <p>انقر لعرض التفاصيل على الخريطة</p>
+                                                        </div>
+                                                        {currentUser?.role === 'admin' && (
+                                                            <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                                                                <button
+                                                                    onClick={() => { setEditingFacilityId(item.id); setEditingFacilityName(item.name); }}
+                                                                    title="تعديل الاسم"
+                                                                    style={{ background: 'rgba(251,171,21,0.15)', border: 'none', color: '#fbab15', padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                                                                >
+                                                                    <EditIcon />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDeleteFacility(item.id, item.name)}
+                                                                    title="حذف المرفق"
+                                                                    style={{ background: 'rgba(239,68,68,0.1)', border: 'none', color: '#ef4444', padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                                                                >
+                                                                    <TrashIcon />
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                        {currentUser?.role !== 'admin' && (
+                                                            <div className="item-action" onClick={() => handleFeatureClick(item)} style={{ cursor: 'pointer' }}>
+                                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                )}
                                             </div>
                                         ))}
                                     </div>

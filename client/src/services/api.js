@@ -501,6 +501,16 @@ export const shopService = {
     deletePost: async (shopId, postId) => {
         const response = await api.delete(`/shops/${shopId}/posts/${postId}`);
         return response.data;
+    },
+
+    deleteFacility: async (facilityId) => {
+        const response = await api.delete(`/shops/facilities/${facilityId}`);
+        return response.data;
+    },
+
+    renameFacility: async (facilityId, name) => {
+        const response = await api.put(`/shops/facilities/${facilityId}`, { name });
+        return response.data;
     }
 };
 

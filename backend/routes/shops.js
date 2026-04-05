@@ -56,6 +56,9 @@ router.post('/posts/:postId/comments', authenticateToken, shopController.addPost
 router.post('/:id/facilities', authenticateToken, shopController.addUniversityFacility);
 router.post('/facilities/:facilityId/posts', authenticateToken, upload.array('images', 5), shopController.addFacilityPost);
 router.post('/facilities/:facilityId/specialties', authenticateToken, shopController.addCollegeSpecialty);
+// المرافق الجامعية (حذف وتعديل - للأدمن والمسؤول)
+router.delete('/facilities/:facilityId', authenticateToken, shopController.deleteUniversityFacility);
+router.put('/facilities/:facilityId', authenticateToken, shopController.renameUniversityFacility);
 
 // عناصر البلدية (إضافة / حذف)
 router.post('/:id/municipality-items', authenticateToken, upload.single('image'), shopController.addMunicipalityItem);

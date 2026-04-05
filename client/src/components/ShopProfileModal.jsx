@@ -194,6 +194,34 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     const canAssignOwner = isSystemAdmin; // STRICTLY System Admin Only
     const canEditShop = isSystemAdmin || isShopOwner; // Admin OR Owner
 
+    // Admin hidden sections control (stored in shopData.hidden_sections JSON field)
+    const [hiddenSections, setHiddenSections] = useState(() => {
+        try { return JSON.parse(shopData?.hidden_sections || '[]'); } catch { return []; }
+    });
+    const [showSectionControl, setShowSectionControl] = useState(false);
+
+    const ALL_SECTIONS = [
+        { key: 'products', label: 'المنتجات / الخدمات' },
+        { key: 'timeline', label: 'الأخبار والمنشورات' },
+        { key: 'about', label: 'حول المحل' },
+        { key: 'simulate', label: 'محاكي الأعمال' },
+    ];
+
+    const toggleSection = async (sectionKey) => {
+        const updated = hiddenSections.includes(sectionKey)
+            ? hiddenSections.filter(s => s !== sectionKey)
+            : [...hiddenSections, sectionKey];
+
+        setHiddenSections(updated);
+        try {
+            await shopService.updateProfile(shopData.id, { hidden_sections: JSON.stringify(updated) });
+        } catch (e) {
+            console.error('Failed to update hidden sections', e);
+        }
+    };
+
+    const isSectionVisible = (sectionKey) => !hiddenSections.includes(sectionKey);
+
     // Check if current user is a driver in this shop
     const isDriver = drivers.some(d => d.id === currentUser?.id);
 
@@ -981,7 +1009,9 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                 <div style={{
                     display: 'flex', gap: 30,
                     borderBottom: '1px solid var(--bg-tertiary)', marginTop: 25,
-                    padding: '0 30px'
+                    padding: '0 30px',
+                    alignItems: 'center',
+                    flexWrap: 'wrap'
                 }}>
                     {[
                         ...((shopData.category === 'صراف آلي' || shopData.category === 'فرع بنك') ? [] : ['products']),
@@ -989,7 +1019,10 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                         ...((shopData.category === 'مكتب تاكسي' && canEditShop) ? ['requests', 'drivers'] : []),
                         ...(canEditShop ? ['simulate'] : []),
                         'about'
-                    ].map(tab => (
+                    ]
+                    // Filter hidden tabs - admins always see everything, others don't see hidden
+                    .filter(tab => isSystemAdmin || isSectionVisible(tab))
+                    .map(tab => (
                         <button
                             key={tab}
                             onClick={() => {
@@ -1001,10 +1034,12 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                 border: 'none', background: 'none',
                                 padding: '15px 5px',
                                 fontSize: '1rem', fontWeight: activeTab === tab ? 'bold' : 'normal',
-                                color: activeTab === tab ? 'var(--primary)' : 'var(--text-muted)',
+                                color: activeTab === tab ? 'var(--primary)' : (hiddenSections.includes(tab) && isSystemAdmin ? '#9ca3af' : 'var(--text-muted)'),
                                 borderBottom: activeTab === tab ? '3px solid var(--primary)' : '3px solid transparent',
                                 cursor: 'pointer',
-                                fontFamily: 'inherit'
+                                fontFamily: 'inherit',
+                                opacity: hiddenSections.includes(tab) && isSystemAdmin ? 0.5 : 1,
+                                textDecoration: hiddenSections.includes(tab) && isSystemAdmin ? 'line-through' : 'none',
                             }}
                         >
                             {/* Make tab label dynamic */}
@@ -1023,7 +1058,59 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                             })()}
                         </button>
                     ))}
+
+                    {/* Admin Section Control Toggle */}
+                    {isSystemAdmin && (
+                        <button
+                            onClick={() => setShowSectionControl(!showSectionControl)}
+                            title="إدارة ظهور الأقسام"
+                            style={{
+                                marginRight: 'auto', marginLeft: 10,
+                                background: showSectionControl ? 'rgba(239,68,68,0.1)' : 'rgba(251,171,21,0.1)',
+                                border: `1px solid ${showSectionControl ? '#ef4444' : '#fbab15'}`,
+                                color: showSectionControl ? '#ef4444' : '#fbab15',
+                                borderRadius: '8px', padding: '5px 10px',
+                                cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit',
+                                display: 'flex', alignItems: 'center', gap: 5
+                            }}
+                        >
+                            {showSectionControl ? '✕ إغلاق' : '⚙️ إدارة الأقسام'}
+                        </button>
+                    )}
                 </div>
+
+                {/* Admin Section Visibility Control Panel */}
+                {isSystemAdmin && showSectionControl && (
+                    <div style={{
+                        margin: '0 30px 0',
+                        padding: '15px 20px',
+                        background: 'rgba(239, 68, 68, 0.05)',
+                        border: '1px dashed rgba(239,68,68,0.3)',
+                        borderRadius: '0 0 12px 12px',
+                        display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center'
+                    }}>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'inherit', marginLeft: 5 }}>
+                            🔒 إخفاء/إظهار للزوار وصاحب المحل:
+                        </span>
+                        {ALL_SECTIONS.map(sec => (
+                            <button
+                                key={sec.key}
+                                onClick={() => toggleSection(sec.key)}
+                                style={{
+                                    padding: '5px 12px', borderRadius: '20px', cursor: 'pointer',
+                                    fontFamily: 'inherit', fontSize: '0.82rem', fontWeight: 'bold',
+                                    border: '1.5px solid',
+                                    background: hiddenSections.includes(sec.key) ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)',
+                                    borderColor: hiddenSections.includes(sec.key) ? '#ef4444' : '#10b981',
+                                    color: hiddenSections.includes(sec.key) ? '#ef4444' : '#10b981',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                {hiddenSections.includes(sec.key) ? '🙈 ' : '👁 '}{sec.label}
+                            </button>
+                        ))}
+                    </div>
+                )}
 
                 {/* Content Area */}
                 <div style={{ padding: '30px', minHeight: '300px', background: 'var(--bg-secondary)' }}>

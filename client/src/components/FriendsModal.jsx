@@ -698,17 +698,30 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                     followedShops.map(shop => (
                                                         <div key={shop.id} className="user-item" onClick={() => onShopClick && onShopClick(shop)} style={{ cursor: 'pointer' }}>
                                                             <div className="chat-avatar" style={{
-                                                                background: 'linear-gradient(135deg, #fbab15, #f59e0b)',
+                                                                background: shop.profile_picture ? 'transparent' : 'linear-gradient(135deg, #fbab15, #f59e0b)',
                                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                                 borderRadius: '12px', overflow: 'hidden', flexShrink: 0,
                                                                 width: '50px', height: '50px'
                                                             }}>
-                                                                <ShopAvatar shop={shop} />
+                                                                {shop.profile_picture ? (
+                                                                    <img
+                                                                        src={getImageUrl(shop.profile_picture)}
+                                                                        alt={shop.name}
+                                                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                                        onError={e => {
+                                                                            e.target.style.display = 'none';
+                                                                            e.target.parentElement.innerHTML = `<span style="font-size:1.3rem;color:white">${shop.name?.charAt(0) || '🏪'}</span>`;
+                                                                        }}
+                                                                    />
+                                                                ) : (
+                                                                    <span style={{ fontSize: '1.3rem', color: 'white' }}>
+                                                                        {categoryEmoji(shop.category)}
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                             <div className="chat-info" style={{ flex: 1, minWidth: 0 }}>
                                                                 <div className="chat-name" style={{ fontWeight: '700' }}>{shop.name}</div>
                                                                 <div className="chat-last-message" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fbab15', display: 'inline-block' }}></span>
                                                                     {shop.category}
                                                                 </div>
                                                             </div>

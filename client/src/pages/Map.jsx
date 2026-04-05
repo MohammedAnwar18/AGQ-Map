@@ -1331,6 +1331,7 @@ const MapComponent = () => {
                                         borderRadius: '12px',
                                         fontSize: '11px',
                                         fontWeight: 'bold',
+                                        fontFamily: 'inherit',
                                         color: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? 'white' : 'black',
                                         border: '1px solid rgba(255,255,255,0.1)',
                                         whiteSpace: 'nowrap',

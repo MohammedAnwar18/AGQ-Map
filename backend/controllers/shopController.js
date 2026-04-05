@@ -353,6 +353,10 @@ const updateShopProfile = async (req, res) => {
             queryParts.push(`is_hidden = $${index++}`);
             values.push(req.body.is_hidden);
         }
+        if (req.body.hidden_sections !== undefined && userRole === 'admin') {
+            queryParts.push(`hidden_sections = $${index++}`);
+            values.push(req.body.hidden_sections);
+        }
 
         // Handle Coordinates
         let latVal = parseFloat(latitude);
@@ -1100,6 +1104,62 @@ const addCollegeSpecialty = async (req, res) => {
 };
 
 // --- 23. Post Interactions (Like/Comment) ---
+
+// --- 22-A. Delete University Facility (Admin Only) ---
+const deleteUniversityFacility = async (req, res) => {
+    try {
+        const { facilityId } = req.params;
+
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Unauthorized: Admin only' });
+        }
+
+        const checkRes = await pool.query('SELECT id FROM university_facilities WHERE id = $1', [facilityId]);
+        if (checkRes.rows.length === 0) return res.status(404).json({ error: 'Facility not found' });
+
+        await pool.query('DELETE FROM facility_posts WHERE facility_id = $1', [facilityId]);
+        await pool.query('DELETE FROM university_specialties WHERE facility_id = $1', [facilityId]);
+        await pool.query('DELETE FROM university_facilities WHERE id = $1', [facilityId]);
+
+        res.json({ message: 'Facility deleted successfully' });
+    } catch (error) {
+        console.error('Delete facility error:', error);
+        res.status(500).json({ error: 'Failed to delete facility' });
+    }
+};
+
+// --- 22-B. Rename University Facility (Admin or Owner) ---
+const renameUniversityFacility = async (req, res) => {
+    try {
+        const { facilityId } = req.params;
+        const { name } = req.body;
+        const userId = req.user.userId;
+
+        if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
+
+        const checkRes = await pool.query(`
+            SELECT f.id, s.owner_id FROM university_facilities f
+            JOIN shops s ON f.university_id = s.id
+            WHERE f.id = $1
+        `, [facilityId]);
+
+        if (checkRes.rows.length === 0) return res.status(404).json({ error: 'Facility not found' });
+        if (req.user.role !== 'admin' && checkRes.rows[0].owner_id !== userId) {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+
+        const result = await pool.query(
+            'UPDATE university_facilities SET name = $1 WHERE id = $2 RETURNING *',
+            [name.trim(), facilityId]
+        );
+
+        res.json({ message: 'Facility renamed', facility: result.rows[0] });
+    } catch (error) {
+        console.error('Rename facility error:', error);
+        res.status(500).json({ error: 'Failed to rename facility' });
+    }
+};
+
 const togglePostLike = async (req, res) => {
     try {
         const { postId } = req.params;
@@ -1221,6 +1281,8 @@ module.exports = {
     getFacilityProfile,
     addFacilityPost,
     addCollegeSpecialty,
+    deleteUniversityFacility,
+    renameUniversityFacility,
     togglePostLike,
     addPostComment,
     getPostComments,
