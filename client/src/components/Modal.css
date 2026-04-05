@@ -644,13 +644,14 @@
     }
 
     .user-item {
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
+        gap: 0.75rem;
     }
 
     .user-item-actions {
-        width: 100%;
+        width: auto;
         justify-content: flex-end;
-        margin-top: 0.5rem;
+        margin-top: 0;
     }
 }
 

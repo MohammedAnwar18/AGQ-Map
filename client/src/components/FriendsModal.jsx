@@ -348,7 +348,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                     @{friend.username}
                                                 </div>
                                             </div>
-                                            <div className="user-item-actions" style={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                            <div className="user-item-actions" style={{ justifyContent: 'flex-end', flexShrink: 0 }}>
                                                 <button
                                                     className={`btn-small ${friend.am_i_sharing ? 'btn-location-active' : 'btn-location'}`}
                                                     onClick={() => handleToggleLocation(friend.id)}
@@ -512,7 +512,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                 )}
                                             </div>
                                         </div>
-                                        <div className="user-item-actions">
+                                        <div className="user-item-actions" style={{ flexShrink: 0 }}>
                                             <button
                                                 className="btn-small btn-accept"
                                                 onClick={() => handleAcceptRequest(request.id)}

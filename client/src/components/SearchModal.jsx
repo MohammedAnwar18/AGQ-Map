@@ -141,7 +141,7 @@ const SearchModal = ({ onClose }) => {
                                             {user.bio && ` • ${user.bio}`}
                                         </div>
                                     </div>
-                                    <div className="user-item-actions">
+                                    <div className="user-item-actions" style={{ flexShrink: 0 }}>
                                         {getActionButton(user)}
                                     </div>
                                 </div>
