@@ -1692,6 +1692,23 @@ const MapComponent = () => {
                 />
             )}
 
+            {showMunicipalityProfile && (
+                <MunicipalityProfileModal
+                    shop={selectedMunicipalityProfile}
+                    currentUser={user}
+                    onClose={() => setShowMunicipalityProfile(false)}
+                    onNavigate={(loc) => {
+                        setViewState(prev => ({
+                            ...prev,
+                            latitude: parseFloat(loc.lat),
+                            longitude: parseFloat(loc.lng),
+                            zoom: 17.5,
+                            transitionDuration: 1500
+                        }));
+                    }}
+                />
+            )}
+
             {/* GPS Helper - Mobile & Desktop Support */}
             {showGPSGuide && (
                 <div style={{
