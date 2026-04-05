@@ -261,11 +261,13 @@ const MapComponent = () => {
         const catRaw = String(shop.category || '').trim().toLowerCase();
         const nameRaw = String(shop.name || '').trim().toLowerCase();
         
-        // Comprehensive check: category OR name contains 'Municipality' or 'بلدية'
+        console.log("Opening Profile for:", nameRaw, "Category:", catRaw);
+
         const isMuni = catRaw.includes('بلدية') || 
                        catRaw.includes('municipality') || 
                        nameRaw.includes('بلدية') || 
-                       nameRaw.includes('municipality');
+                       nameRaw.includes('municipality') ||
+                       nameRaw.includes('بلديه');
 
         const isUni = catRaw.includes('university') || 
                       catRaw.includes('مؤسسة تعليمية') || 
