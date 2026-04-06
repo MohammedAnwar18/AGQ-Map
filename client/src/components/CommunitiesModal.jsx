@@ -140,7 +140,7 @@ const CommunitiesModal = ({ onClose, onJoinCommunity }) => {
                                 }}>
                                     <div style={{ minWidth: 0, flex: 1 }}>
                                         <h3 style={{ margin: '0 0 5px 0', fontSize: '1.1rem', color: '#333', fontFamily: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{comm.name}</h3>
-                                        <p style={{ margin: 0, color: '#666', fontSize: '0.9rem', fontFamily: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{comm.description}</p>
+                                        <p style={{ margin: '3px 0 0 0', color: '#666', fontSize: '0.88rem', fontFamily: 'inherit', lineHeight: '1.5', wordBreak: 'break-word' }}>{comm.description}</p>
                                         <span style={{ fontSize: '0.8rem', color: '#888', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '5px', fontFamily: 'inherit' }}>
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                                             {comm.members_count} عضو

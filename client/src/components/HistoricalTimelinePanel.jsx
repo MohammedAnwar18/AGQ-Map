@@ -41,6 +41,8 @@ const HistoricalTimelinePanel = ({ community, currentUser, onLayerChange, opacit
         setSelectedMap(map);
         onLayerChange(map.tile_url, map.name, map.year);
         setShowAddForm(false);
+        // Fly to Palestine when selecting a historical map
+        if (onFlyTo) onFlyTo();
     };
 
     const handleClearLayer = () => {
