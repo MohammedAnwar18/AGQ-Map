@@ -242,6 +242,7 @@ const MapComponent = () => {
     // Historical Atlas Layer State
     const [historicalTileUrl, setHistoricalTileUrl] = useState(null);
     const [historicalLayerName, setHistoricalLayerName] = useState(null);
+    const [historicalOpacity, setHistoricalOpacity] = useState(0.85);
 
     // Detect atlas community (historical maps community)
     const isAtlasCommunity = currentCommunity && (
@@ -1208,7 +1209,7 @@ const MapComponent = () => {
                         </Source>
                     )}
 
-                    {/* Historical Map Tile Overlay - Atlas Community */}
+                    {/* Historical Map Tile Overlay - Atlas Community - renders LAST to stay on top */}
                     {isAtlasCommunity && historicalTileUrl && (
                         <Source
                             key={historicalTileUrl}
@@ -1216,16 +1217,17 @@ const MapComponent = () => {
                             type="raster"
                             tiles={[historicalTileUrl]}
                             tileSize={256}
+                            scheme="xyz"
                             minzoom={1}
-                            maxzoom={20}
+                            maxzoom={19}
                         >
                             <Layer
                                 id="historical-overlay-layer"
                                 type="raster"
                                 paint={{
-                                    'raster-opacity': 0.82,
-                                    'raster-opacity-transition': { duration: 600 },
-                                    'raster-fade-duration': 400
+                                    'raster-opacity': historicalOpacity,
+                                    'raster-opacity-transition': { duration: 400, delay: 0 },
+                                    'raster-resampling': 'linear'
                                 }}
                             />
                         </Source>
@@ -1573,13 +1575,11 @@ const MapComponent = () => {
                 <HistoricalTimelinePanel
                     community={currentCommunity}
                     currentUser={user}
+                    opacity={historicalOpacity}
+                    onOpacityChange={setHistoricalOpacity}
                     onLayerChange={(tileUrl, name, year) => {
                         setHistoricalTileUrl(tileUrl);
                         setHistoricalLayerName(name ? `${year} — ${name}` : null);
-                        // Switch to MapTiler streets for historical view (better base map)
-                        if (tileUrl && activeMapType === 'satellite') {
-                            setActiveMapType('streets');
-                        }
                     }}
                 />
             )}
