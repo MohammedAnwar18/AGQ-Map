@@ -238,13 +238,14 @@
 
 .hpanel-line {
     position: absolute;
-    top: 50%;
+    /* align the line vertically with the center of the nodes */
+    top: 19px; 
     left: 0;
     right: 0;
     height: 2px;
-    background: linear-gradient(90deg, transparent, rgba(251, 171, 21, 0.3) 10%, rgba(251, 171, 21, 0.3) 90%, transparent);
-    transform: translateY(-50%);
+    background: linear-gradient(90deg, transparent, rgba(251, 171, 21, 0.5) 5%, rgba(251, 171, 21, 0.5) 95%, transparent);
     pointer-events: none;
+    z-index: 0;
 }
 
 .hpanel-entry {
@@ -514,10 +515,89 @@
     flex-shrink: 0;
 }
 
+/* Card action buttons group (edit + delete) */
+.hpanel-card-actions {
+    position: absolute;
+    top: -6px;
+    left: -6px;
+    display: flex;
+    gap: 3px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.hpanel-entry:hover .hpanel-card-actions { opacity: 1; }
+
+.hpanel-edit-btn,
+.hpanel-delete-btn {
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    font-size: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    color: rgba(255, 255, 255, 0.7);
+    transition: all 0.2s;
+}
+
+.hpanel-edit-btn:hover {
+    background: rgba(99, 102, 241, 0.3);
+    border-color: rgba(99, 102, 241, 0.5);
+    color: #818cf8;
+}
+
+.hpanel-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #ef4444;
+}
+
+/* Inline edit wrapper */
+.hpanel-inline-edit {
+    background: rgba(10, 18, 35, 0.98);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 12px;
+    padding: 6px;
+    min-width: 260px;
+    animation: fadeInDown 0.2s ease;
+    z-index: 10;
+    position: relative;
+}
+
+/* Cancel button in form */
+.hpanel-cancel-btn {
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.8rem;
+    font-family: inherit;
+    padding: 8px 14px;
+    cursor: pointer;
+    flex: 1;
+    transition: background 0.2s;
+}
+
+.hpanel-cancel-btn:hover { background: rgba(255, 255, 255, 0.12); }
+
+/* Touch scrolling */
+.hpanel-timeline-wrap {
+    touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
+    cursor: grab;
+}
+
+.hpanel-timeline-wrap:active { cursor: grabbing; }
+
 /* Mobile */
 @media (max-width: 480px) {
     .historical-panel { max-height: 220px; }
-    .hpanel-card { min-width: 70px; max-width: 100px; }
+    .hpanel-card { min-width: 85px; max-width: 110px; }
     .hpanel-year { font-size: 0.85rem; }
-    .hpanel-entry { padding: 0 8px; }
+    .hpanel-entry { padding: 0 12px; }
 }

@@ -47,6 +47,35 @@ const addHistoricalMap = async (req, res) => {
     }
 };
 
+// PUT update a historical map layer (admin only)
+const updateHistoricalMap = async (req, res) => {
+    try {
+        const { mapId } = req.params;
+        const { name, year, tile_url, center_lat, center_lng, default_zoom } = req.body;
+
+        const result = await pool.query(
+            `UPDATE community_historical_maps
+             SET name = COALESCE($1, name),
+                 year = COALESCE($2, year),
+                 tile_url = COALESCE($3, tile_url),
+                 center_lat = $4,
+                 center_lng = $5,
+                 default_zoom = COALESCE($6, default_zoom)
+             WHERE id = $7
+             RETURNING *`,
+            [name, year, tile_url,
+             center_lat ? parseFloat(center_lat) : null,
+             center_lng ? parseFloat(center_lng) : null,
+             default_zoom ? parseInt(default_zoom) : null,
+             mapId]
+        );
+        res.json({ map: result.rows[0] });
+    } catch (error) {
+        console.error('Update historical map error:', error);
+        res.status(500).json({ error: 'Server error updating historical map' });
+    }
+};
+
 // DELETE a historical map layer (admin only)
 const deleteHistoricalMap = async (req, res) => {
     try {
@@ -59,4 +88,4 @@ const deleteHistoricalMap = async (req, res) => {
     }
 };
 
-module.exports = { getHistoricalMaps, addHistoricalMap, deleteHistoricalMap };
+module.exports = { getHistoricalMaps, addHistoricalMap, deleteHistoricalMap, updateHistoricalMap };

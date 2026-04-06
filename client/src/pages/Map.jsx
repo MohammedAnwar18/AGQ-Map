@@ -1134,16 +1134,20 @@ const MapComponent = () => {
                 {/* Community Header Overlay */}
                 {currentCommunity && (
                     <div style={{
-                        position: 'absolute', top: '120px', left: '50%', transform: 'translateX(-50%)',
-                        zIndex: 900, background: 'rgba(255,255,255,0.9)', padding: '10px 20px', borderRadius: '20px',
-                        boxShadow: '0 4px 15px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '10px',
-                        backdropFilter: 'blur(5px)'
+                        position: 'absolute', top: '75px', left: '50%', transform: 'translateX(-50%)',
+                        zIndex: 900, display: 'flex', alignItems: 'center', gap: '10px'
                     }}>
-                        <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#1a5f7a' }}>مجتمع: {currentCommunity.name}</span>
                         <button onClick={handleExitCommunity} style={{
-                            background: '#ff4757', color: 'white', border: 'none', borderRadius: '15px',
-                            padding: '5px 12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem'
-                        }}>خروج</button>
+                            background: '#ef4444', color: 'white', border: 'none', borderRadius: '20px',
+                            padding: '8px 16px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem',
+                            boxShadow: '0 4px 15px rgba(239, 68, 68, 0.4)',
+                            display: 'flex', alignItems: 'center', gap: '6px'
+                        }}>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <path d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                            </svg>
+                            الخروج من المجموعة
+                        </button>
                     </div>
                 )}
 

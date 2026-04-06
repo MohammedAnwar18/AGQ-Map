@@ -333,6 +333,11 @@ export const historicalMapService = {
         return response.data;
     },
 
+    update: async (communityId, mapId, data) => {
+        const response = await api.put(`/communities/${communityId}/historical-maps/${mapId}`, data);
+        return response.data;
+    },
+
     delete: async (communityId, mapId) => {
         const response = await api.delete(`/communities/${communityId}/historical-maps/${mapId}`);
         return response.data;
