@@ -1577,9 +1577,17 @@ const MapComponent = () => {
                     currentUser={user}
                     opacity={historicalOpacity}
                     onOpacityChange={setHistoricalOpacity}
+                    onFlyTo={() => {
+                        mapRef.current?.flyTo({
+                            center: [35.2, 31.9], // Palestine center
+                            zoom: 8,
+                            duration: 1800,
+                            essential: true
+                        });
+                    }}
                     onLayerChange={(tileUrl, name, year) => {
                         setHistoricalTileUrl(tileUrl);
-                        setHistoricalLayerName(name ? `${year} — ${name}` : null);
+                        setHistoricalLayerName(name ? `${year} \u2014 ${name}` : null);
                     }}
                 />
             )}

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { historicalMapService } from '../services/api';
 import './HistoricalTimelinePanel.css';
 
-const HistoricalTimelinePanel = ({ community, currentUser, onLayerChange, opacity = 0.85, onOpacityChange }) => {
+const HistoricalTimelinePanel = ({ community, currentUser, onLayerChange, opacity = 0.85, onOpacityChange, onFlyTo }) => {
     const [maps, setMaps] = useState([]);
     const [selectedMap, setSelectedMap] = useState(null);
     const [showAddForm, setShowAddForm] = useState(false);
@@ -92,7 +92,13 @@ const HistoricalTimelinePanel = ({ community, currentUser, onLayerChange, opacit
                 <div className="hpanel-title">
                     <span className="hpanel-icon">🗺️</span>
                     <div>
-                        <span className="hpanel-name">{community.name}</span>
+                        <span
+                            className={`hpanel-name ${onFlyTo ? 'hpanel-name-clickable' : ''}`}
+                            onClick={onFlyTo || undefined}
+                            title={onFlyTo ? 'اضغط للتوجه إلى فلسطين على الخريطة' : undefined}
+                        >
+                            {community.name}
+                        </span>
                         {selectedMap && (
                             <span className="hpanel-selected-label">
                                 {selectedMap.year} — {selectedMap.name}

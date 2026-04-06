@@ -55,6 +55,19 @@
     text-overflow: ellipsis;
 }
 
+.hpanel-name-clickable {
+    cursor: pointer;
+    transition: color 0.2s, text-shadow 0.2s;
+    text-decoration: underline dotted rgba(251, 171, 21, 0.4);
+    text-underline-offset: 3px;
+}
+
+.hpanel-name-clickable:hover {
+    color: #ffd166;
+    text-shadow: 0 0 12px rgba(251, 171, 21, 0.5);
+    text-decoration-color: #fbab15;
+}
+
 .hpanel-selected-label {
     display: block;
     font-size: 0.72rem;
