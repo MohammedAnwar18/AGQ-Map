@@ -140,7 +140,7 @@
 /* Top Bar Styling - Floating Glass HUD */
 .top-bar {
     position: fixed;
-    top: 15px; /* Floating gap */
+    top: max(15px, env(safe-area-inset-top, 0px));
     left: 50%;
     transform: translateX(-50%);
     width: 95%;
@@ -313,7 +313,7 @@
 /* Bottom Navigation Bar - Floating Glass Dock */
 .bottom-nav {
     position: fixed;
-    bottom: 20px; /* Floating gap */
+    bottom: max(20px, env(safe-area-inset-bottom, 0px));
     left: 50%;
     transform: translateX(-50%);
     width: 90%;
@@ -438,7 +438,8 @@
 /* Mobile Responsive Overrides */
 @media (max-width: 768px) {
     .top-bar {
-        height: calc(60px + env(safe-area-inset-top));
+        height: 65px;
+        top: max(12px, env(safe-area-inset-top, 0px));
         padding-left: 1rem;
         padding-right: 1rem;
     }
@@ -448,7 +449,8 @@
     }
 
     .bottom-nav {
-        height: calc(70px + env(safe-area-inset-bottom));
+        height: 70px;
+        bottom: max(15px, env(safe-area-inset-bottom, 0px));
     }
 
     .nav-item svg {
