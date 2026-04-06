@@ -1141,12 +1141,13 @@ const MapComponent = () => {
                             background: '#ef4444', color: 'white', border: 'none', borderRadius: '20px',
                             padding: '8px 16px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem',
                             boxShadow: '0 4px 15px rgba(239, 68, 68, 0.4)',
-                            display: 'flex', alignItems: 'center', gap: '6px'
+                            display: 'flex', alignItems: 'center', gap: '6px',
+                            fontFamily: 'inherit'
                         }}>
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5">
                                 <path d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                             </svg>
-                            الخروج من المجموعة
+                            مغادرة
                         </button>
                     </div>
                 )}

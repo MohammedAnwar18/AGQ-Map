@@ -259,8 +259,6 @@
     transition: transform 0.2s ease;
 }
 
-.hpanel-entry:hover { transform: translateY(-3px); }
-
 .hpanel-node {
     width: 18px;
     height: 18px;
@@ -518,10 +516,8 @@
 /* Card action buttons group (edit + delete) */
 .hpanel-card-actions {
     position: absolute;
-    top: -6px;
-    left: -6px;
-    display: flex;
-    gap: 3px;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
     opacity: 0;
     transition: opacity 0.2s;
 }
@@ -530,6 +526,8 @@
 
 .hpanel-edit-btn,
 .hpanel-delete-btn {
+    position: absolute;
+    top: -6px;
     background: rgba(15, 23, 42, 0.92);
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 50%;
@@ -543,7 +541,11 @@
     padding: 0;
     color: rgba(255, 255, 255, 0.7);
     transition: all 0.2s;
+    pointer-events: auto;
 }
+
+.hpanel-edit-btn { right: -6px; }
+.hpanel-delete-btn { left: -6px; }
 
 .hpanel-edit-btn:hover {
     background: rgba(99, 102, 241, 0.3);
