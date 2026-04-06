@@ -21,6 +21,7 @@ import ManagedShopsModal from '../components/ManagedShopsModal';
 import ShopProfileModal from '../components/ShopProfileModal';
 import UniversityProfileModal from '../components/UniversityProfileModal';
 import FacilityProfileModal from '../components/FacilityProfileModal';
+import HistoricalTimelinePanel from '../components/HistoricalTimelinePanel';
 import { postService, friendService, authService, notificationService, communityService, shopService, getImageUrl } from '../services/api';
 import './Map.css';
 
@@ -237,6 +238,17 @@ const MapComponent = () => {
 
     // Community Mode State
     const [currentCommunity, setCurrentCommunity] = useState(null);
+
+    // Historical Atlas Layer State
+    const [historicalTileUrl, setHistoricalTileUrl] = useState(null);
+    const [historicalLayerName, setHistoricalLayerName] = useState(null);
+
+    // Detect atlas community (historical maps community)
+    const isAtlasCommunity = currentCommunity && (
+        currentCommunity.name?.includes('أطلس') ||
+        currentCommunity.name?.toLowerCase().includes('atlas') ||
+        currentCommunity.name?.includes('تاريخي')
+    );
 
     // Shop Profile State
     const [showShopProfile, setShowShopProfile] = useState(false);
@@ -665,6 +677,8 @@ const MapComponent = () => {
     // Exit Community Mode
     const handleExitCommunity = () => {
         setCurrentCommunity(null);
+        setHistoricalTileUrl(null);
+        setHistoricalLayerName(null);
         // Reload normal posts
         postService.getPosts().then(data => {
             setPosts(data.posts || []);
@@ -1194,8 +1208,29 @@ const MapComponent = () => {
                         </Source>
                     )}
 
+                    {/* Historical Map Tile Overlay - Atlas Community */}
+                    {isAtlasCommunity && historicalTileUrl && (
+                        <Source
+                            key={historicalTileUrl}
+                            id="historical-overlay"
+                            type="raster"
+                            tiles={[historicalTileUrl]}
+                            tileSize={256}
+                            minzoom={1}
+                            maxzoom={20}
+                        >
+                            <Layer
+                                id="historical-overlay-layer"
+                                type="raster"
+                                paint={{
+                                    'raster-opacity': 0.82,
+                                    'raster-opacity-transition': { duration: 600 },
+                                    'raster-fade-duration': 400
+                                }}
+                            />
+                        </Source>
+                    )}
 
-                    {/* User Location Marker */}
                     {userLocation && (
                         <Marker longitude={userLocation.longitude} latitude={userLocation.latitude} anchor="center">
                             <div 
@@ -1532,6 +1567,22 @@ const MapComponent = () => {
                     setActiveMapType('satellite'); // REVERT TO SATELLITE
                 }}
             />
+
+            {/* Historical Timeline Panel - Atlas Communities Only */}
+            {isAtlasCommunity && (
+                <HistoricalTimelinePanel
+                    community={currentCommunity}
+                    currentUser={user}
+                    onLayerChange={(tileUrl, name, year) => {
+                        setHistoricalTileUrl(tileUrl);
+                        setHistoricalLayerName(name ? `${year} — ${name}` : null);
+                        // Switch to MapTiler streets for historical view (better base map)
+                        if (tileUrl && activeMapType === 'satellite') {
+                            setActiveMapType('streets');
+                        }
+                    }}
+                />
+            )}
 
             {/* Modals */}
             {showCreatePost && <CreatePostModal onClose={() => setShowCreatePost(false)} onPostCreated={handlePostCreated} currentLocation={userLocation} communityId={currentCommunity?.id} />}

@@ -321,6 +321,24 @@ export const communityService = {
     }
 };
 
+// Historical Map Services (for Atlas communities)
+export const historicalMapService = {
+    getAll: async (communityId) => {
+        const response = await api.get(`/communities/${communityId}/historical-maps`);
+        return response.data;
+    },
+
+    add: async (communityId, data) => {
+        const response = await api.post(`/communities/${communityId}/historical-maps`, data);
+        return response.data;
+    },
+
+    delete: async (communityId, mapId) => {
+        const response = await api.delete(`/communities/${communityId}/historical-maps/${mapId}`);
+        return response.data;
+    }
+};
+
 
 
 // Shop Services (Social)
