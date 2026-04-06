@@ -145,7 +145,7 @@ const HistoricalTimelinePanel = ({ community, currentUser, onLayerChange, opacit
         }
     };
 
-    const FormFields = ({ onSubmit, submitLabel }) => (
+    const renderFormFields = (onSubmit, submitLabel) => (
         <form className="hpanel-form" onSubmit={onSubmit} onClick={e => e.stopPropagation()}>
             <div className="hpanel-form-row">
                 <input type="text" placeholder="السنة (مثال: 1917)" value={form.year}
@@ -224,7 +224,7 @@ const HistoricalTimelinePanel = ({ community, currentUser, onLayerChange, opacit
 
             {/* Add Form - Admin Only */}
             {showAddForm && isAdmin && (
-                <FormFields onSubmit={handleAdd} submitLabel="✓ حفظ الطبقة" />
+                renderFormFields(handleAdd, "✓ حفظ الطبقة")
             )}
 
             {/* Timeline - scrollable via touch & wheel */}
@@ -256,10 +256,7 @@ const HistoricalTimelinePanel = ({ community, currentUser, onLayerChange, opacit
                                 {/* Inline Edit Form */}
                                 {editingId === map.id ? (
                                     <div className="hpanel-inline-edit">
-                                        <FormFields
-                                            onSubmit={(e) => handleUpdate(map.id, e)}
-                                            submitLabel="✓ تحديث"
-                                        />
+                                        {renderFormFields((e) => handleUpdate(map.id, e), "✓ تحديث")}
                                     </div>
                                 ) : (
                                     <div className="hpanel-card">
