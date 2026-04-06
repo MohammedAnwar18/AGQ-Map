@@ -1577,10 +1577,13 @@ const MapComponent = () => {
                     currentUser={user}
                     opacity={historicalOpacity}
                     onOpacityChange={setHistoricalOpacity}
-                    onFlyTo={() => {
+                    onFlyTo={(lat, lng, zoom) => {
+                        // If specific coords provided, fly there; otherwise fly to Palestine center
+                        const center = (lat && lng) ? [lng, lat] : [35.2, 31.9];
+                        const targetZoom = zoom || 8;
                         mapRef.current?.flyTo({
-                            center: [35.2, 31.9], // Palestine center
-                            zoom: 8,
+                            center,
+                            zoom: targetZoom,
                             duration: 1800,
                             essential: true
                         });

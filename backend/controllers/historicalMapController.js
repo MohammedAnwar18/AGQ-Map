@@ -18,8 +18,8 @@ const getHistoricalMaps = async (req, res) => {
 // POST add a new historical map layer (admin only)
 const addHistoricalMap = async (req, res) => {
     try {
-        const { id } = req.params; // community_id
-        const { name, year, tile_url } = req.body;
+        const { id } = req.params;
+        const { name, year, tile_url, center_lat, center_lng, default_zoom } = req.body;
 
         if (!name || !year || !tile_url) {
             return res.status(400).json({ error: 'name, year, and tile_url are required' });
@@ -33,9 +33,12 @@ const addHistoricalMap = async (req, res) => {
         const nextOrder = maxSort.rows[0].max_order + 1;
 
         const result = await pool.query(
-            `INSERT INTO community_historical_maps (community_id, name, year, tile_url, sort_order)
-             VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-            [id, name, year, tile_url, nextOrder]
+            `INSERT INTO community_historical_maps (community_id, name, year, tile_url, sort_order, center_lat, center_lng, default_zoom)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+            [id, name, year, tile_url, nextOrder,
+             center_lat ? parseFloat(center_lat) : null,
+             center_lng ? parseFloat(center_lng) : null,
+             default_zoom ? parseInt(default_zoom) : 8]
         );
         res.status(201).json({ map: result.rows[0] });
     } catch (error) {

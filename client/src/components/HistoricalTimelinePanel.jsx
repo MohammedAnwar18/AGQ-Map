@@ -7,7 +7,7 @@ const HistoricalTimelinePanel = ({ community, currentUser, onLayerChange, opacit
     const [selectedMap, setSelectedMap] = useState(null);
     const [showAddForm, setShowAddForm] = useState(false);
     const [loading, setLoading] = useState(true);
-    const [form, setForm] = useState({ name: '', year: '', tile_url: '' });
+    const [form, setForm] = useState({ name: '', year: '', tile_url: '', center_lat: '', center_lng: '', default_zoom: '' });
     const [saving, setSaving] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
     const scrollRef = useRef(null);
@@ -41,8 +41,8 @@ const HistoricalTimelinePanel = ({ community, currentUser, onLayerChange, opacit
         setSelectedMap(map);
         onLayerChange(map.tile_url, map.name, map.year);
         setShowAddForm(false);
-        // Fly to Palestine when selecting a historical map
-        if (onFlyTo) onFlyTo();
+        // Fly to the map's stored coordinates, or Palestine as fallback
+        if (onFlyTo) onFlyTo(map.center_lat, map.center_lng, map.default_zoom);
     };
 
     const handleClearLayer = () => {
@@ -57,7 +57,7 @@ const HistoricalTimelinePanel = ({ community, currentUser, onLayerChange, opacit
             setSaving(true);
             const data = await historicalMapService.add(community.id, form);
             setMaps(prev => [...prev, data.map]);
-            setForm({ name: '', year: '', tile_url: '' });
+            setForm({ name: '', year: '', tile_url: '', center_lat: '', center_lng: '', default_zoom: '' });
             setShowAddForm(false);
             // Auto-select the newly added map
             handleSelect(data.map);
@@ -157,6 +157,33 @@ const HistoricalTimelinePanel = ({ community, currentUser, onLayerChange, opacit
                         required
                         className="hpanel-input hpanel-input-url"
                     />
+                    <div className="hpanel-form-row">
+                        <input
+                            type="number"
+                            placeholder="خط العرض (مثال: 31.9)"
+                            value={form.center_lat}
+                            onChange={e => setForm(p => ({ ...p, center_lat: e.target.value }))}
+                            step="0.0001"
+                            className="hpanel-input"
+                        />
+                        <input
+                            type="number"
+                            placeholder="خط الطول (مثال: 35.2)"
+                            value={form.center_lng}
+                            onChange={e => setForm(p => ({ ...p, center_lng: e.target.value }))}
+                            step="0.0001"
+                            className="hpanel-input"
+                        />
+                        <input
+                            type="number"
+                            placeholder="Zoom (8)"
+                            value={form.default_zoom}
+                            onChange={e => setForm(p => ({ ...p, default_zoom: e.target.value }))}
+                            min="1"
+                            max="18"
+                            className="hpanel-input hpanel-input-sm"
+                        />
+                    </div>
                     <button type="submit" className="hpanel-save-btn" disabled={saving}>
                         {saving ? '⏳ جاري الحفظ...' : '✓ حفظ الطبقة'}
                     </button>
