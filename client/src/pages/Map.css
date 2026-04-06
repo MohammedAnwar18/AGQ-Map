@@ -137,31 +137,40 @@
     }
 }
 
-/* Top Bar Styling - Professional Header */
+/* Top Bar Styling - Floating Glass HUD */
 .top-bar {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: calc(75px + env(safe-area-inset-top));
-    box-sizing: border-box; /* Prevent padding from exploding the height */
-    padding-top: env(safe-area-inset-top) !important;
-    padding-left: 2rem;
-    padding-right: 2rem;
+    top: 15px; /* Floating gap */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 95%;
+    max-width: 1200px;
+    height: 65px;
+    box-sizing: border-box;
+    padding: 0 1.5rem;
     z-index: 2600;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(15, 23, 42, 0.8) !important;
-    backdrop-filter: blur(25px) saturate(180%);
-    -webkit-backdrop-filter: blur(25px) saturate(180%);
-    border-bottom: 1px solid rgba(251, 171, 21, 0.3) !important;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+    background: var(--glass-bg) !important;
+    backdrop-filter: blur(var(--blur-std)) saturate(180%);
+    -webkit-backdrop-filter: blur(var(--blur-std)) saturate(180%);
+    border: 1px solid var(--glass-border) !important;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--glass-shadow);
+}
+
+.top-bar::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(135deg, var(--glass-highlight) 0%, transparent 50%);
+    border-radius: inherit;
+    pointer-events: none;
 }
 
 .app-logo {
     display: none;
-    /* تجميد الشعار حالياً كما طلب المستخدم */
 }
 
 .logo-image-main {
@@ -301,24 +310,35 @@
     display: none !important;
 }
 
-/* Bottom Navigation Bar - Instagram Style */
+/* Bottom Navigation Bar - Floating Glass Dock */
 .bottom-nav {
     position: fixed;
-    bottom: 0px;
-    left: 0;
-    right: 0;
-    height: calc(75px + env(safe-area-inset-bottom));
-    background: rgba(15, 23, 42, 0.85);
-    backdrop-filter: blur(25px) saturate(200%);
-    -webkit-backdrop-filter: blur(25px) saturate(200%);
-    border-top: 1px solid rgba(251, 171, 21, 0.2);
+    bottom: 20px; /* Floating gap */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 500px; /* Dock style for larger screens */
+    height: 70px;
+    background: var(--glass-bg) !important;
+    backdrop-filter: blur(var(--blur-std)) saturate(200%);
+    -webkit-backdrop-filter: blur(var(--blur-std)) saturate(200%);
+    border: 1px solid var(--glass-border) !important;
+    border-radius: var(--radius-xl);
     display: flex;
     justify-content: space-around;
     align-items: center;
     padding: 0 10px;
-    padding-bottom: env(safe-area-inset-bottom) !important;
     z-index: 2200;
-    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4);
+    box-shadow: var(--glass-shadow);
+}
+
+.bottom-nav::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(135deg, var(--glass-highlight) 0%, transparent 50%);
+    border-radius: inherit;
+    pointer-events: none;
 }
 
 .nav-item {
@@ -470,38 +490,46 @@
 */
 .more-menu-dropdown {
     position: fixed;
-    top: 0;
-    right: 0;
+    top: 15px;
+    right: 15px;
+    bottom: 15px;
     width: 320px;
-    max-width: 85%; /* Never cover full screen on tablets/large phones */
-    height: 100dvh; /* dynamic viewport height */
-    background: #0f172a; /* Solid dark blue for clarity */
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-left: 2px solid rgba(251, 171, 21, 0.4);
+    max-width: 85%;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--blur-high)) saturate(180%);
+    -webkit-backdrop-filter: blur(var(--blur-high)) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
     z-index: 9999;
-    box-shadow: -10px 0 50px rgba(0, 0, 0, 0.7);
+    box-shadow: var(--glass-shadow);
     display: flex;
     flex-direction: column;
-    padding: 0;
-    padding-top: calc(env(safe-area-inset-top) + 20px) !important; /* Force sidebar down away from notch */
-    padding-bottom: calc(env(safe-area-inset-bottom) + 15px) !important;
+    padding: 20px 0;
     overflow-y: auto;
     overflow-x: hidden;
+}
+
+.more-menu-dropdown::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(135deg, var(--glass-highlight) 0%, transparent 50%);
+    border-radius: inherit;
+    pointer-events: none;
 }
 
 @media (max-width: 480px) {
     .more-menu-dropdown {
         width: 280px;
-        max-width: 80%; /* Ensure some of the map/overlay is still visible for context */
+        right: 10px;
+        left: auto;
     }
 }
 
-
 .menu-header {
-    padding: 15px 15px 30px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    margin-bottom: 20px;
+    padding: 15px 20px 25px;
+    border-bottom: 1px solid var(--glass-border);
+    margin-bottom: 15px;
 }
 
 .menu-header h3 {

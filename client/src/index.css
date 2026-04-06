@@ -29,6 +29,15 @@
   --error: #ef4444;
   --info: #3b82f6;
 
+  /* Cosmic Glass Theme Variables */
+  --glass-bg: rgba(15, 23, 42, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-highlight: rgba(255, 255, 255, 0.05);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+  --primary-glow: 0 0 20px rgba(251, 171, 21, 0.3);
+  --blur-std: 16px;
+  --blur-high: 28px;
+
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
@@ -205,11 +214,58 @@ body {
   box-shadow: var(--shadow-xl);
 }
 
+.modern-glass {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01));
+  backdrop-filter: blur(var(--blur-std)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--blur-std)) saturate(180%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  position: relative;
+  overflow: hidden;
+}
+
+.modern-glass::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+  pointer-events: none;
+}
+
 .glass {
   background: rgba(30, 41, 59, 0.8);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.bg-blob {
+  position: fixed;
+  width: 400px;
+  height: 400px;
+  border-radius: 50%;
+  filter: blur(80px);
+  z-index: -1;
+  opacity: 0.35;
+  pointer-events: none;
+  animation: float 20s infinite alternate;
+}
+
+.blob-primary {
+  top: -100px;
+  right: -100px;
+  background: var(--primary);
+}
+
+.blob-secondary {
+  bottom: -100px;
+  left: -100px;
+  background: var(--secondary);
+}
+
+@keyframes float {
+  from { transform: translate(0, 0); }
+  to { transform: translate(30px, 50px); }
 }
 
 .gradient-text {

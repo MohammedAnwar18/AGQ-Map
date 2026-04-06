@@ -124,6 +124,8 @@ function App() {
 
     return (
         <AuthProvider>
+            <div className="bg-blob blob-primary"></div>
+            <div className="bg-blob blob-secondary"></div>
             <PushNotificationManager />
             <IosInstallPrompt />
             <BrowserRouter>
