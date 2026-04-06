@@ -111,6 +111,8 @@
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
 }
 
 /* Info Cards for Profile */
