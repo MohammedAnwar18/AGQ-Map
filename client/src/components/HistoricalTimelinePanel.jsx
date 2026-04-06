@@ -92,11 +92,10 @@ const HistoricalTimelinePanel = ({ community, currentUser, onLayerChange, opacit
             {/* Header */}
             <div className="hpanel-header">
                 <div className="hpanel-title">
-                    <span className="hpanel-icon">🗺️</span>
                     <div>
                         <span
                             className={`hpanel-name ${onFlyTo ? 'hpanel-name-clickable' : ''}`}
-                            onClick={onFlyTo || undefined}
+                            onClick={onFlyTo ? () => onFlyTo() : undefined}
                             title={onFlyTo ? 'اضغط للتوجه إلى فلسطين على الخريطة' : undefined}
                         >
                             {community.name}
