@@ -891,8 +891,7 @@ const requestTaxi = async (req, res) => {
                 id: userId,
                 username: requester?.username,
                 full_name: requester?.full_name,
-                profile_picture: requester?.profile_picture,
-                phone_number: requester?.phone_number
+                profile_picture: requester?.profile_picture
             },
             pickup_address: address || 'موقع محدد',
             latitude,

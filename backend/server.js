@@ -216,6 +216,21 @@ app.use('/api/comments', require('./routes/comments'));
 app.use('/api/push', require('./routes/push'));
 app.use('/api/radar', require('./routes/radar')); // <-- NEW RADAR MOUNT
 
+// Auto-migration: ensure critical columns exist on every startup (Vercel-safe)
+(async () => {
+    try {
+        const pool = require('./config/database');
+        await pool.query(`
+            ALTER TABLE taxi_requests ADD COLUMN IF NOT EXISTS assigned_driver_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+            ALTER TABLE taxi_requests ADD COLUMN IF NOT EXISTS estimated_arrival INTEGER;
+            ALTER TABLE taxi_requests ADD COLUMN IF NOT EXISTS notes TEXT;
+        `);
+        console.log('✅ Auto-migration: taxi_requests columns verified');
+    } catch (err) {
+        console.error('⚠️ Auto-migration warning:', err.message);
+    }
+})();
+
 // 7. التشغيل المحلي (فقط للمبرمج)
 if (!process.env.VERCEL) {
     const PORT = process.env.PORT || 5000;
