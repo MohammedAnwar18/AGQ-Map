@@ -853,14 +853,11 @@ const requestTaxi = async (req, res) => {
         const userId = req.user.userId;
         const { latitude, longitude, address, driverId } = req.body;
 
-        // Check active request
-        const activeCheck = await pool.query(
-            "SELECT id FROM taxi_requests WHERE user_id = $1 AND status IN ('pending', 'accepted', 'arrived')",
+        // Auto-cancel any stuck old requests instead of blocking
+        await pool.query(
+            "UPDATE taxi_requests SET status = 'cancelled' WHERE user_id = $1 AND status IN ('pending', 'accepted', 'arrived')",
             [userId]
         );
-        if (activeCheck.rows.length > 0) {
-            return res.status(400).json({ error: 'لديك طلب حالي بالفعل' });
-        }
 
         // Get requester info for notification
         const requesterRes = await pool.query(
@@ -900,28 +897,30 @@ const requestTaxi = async (req, res) => {
             type: 'taxi_request'
         });
 
-        // Notify assigned driver (if specified), otherwise notify all active drivers
-        if (driverId) {
-            await pool.query(`
-                INSERT INTO notifications (user_id, sender_id, type, message)
-                VALUES ($1, $2, 'taxi_request', $3)
-            `, [driverId, userId, notifPayload]);
-        } else {
-            // Notify all active drivers of this shop
-            await pool.query(`
-                INSERT INTO notifications (user_id, sender_id, type, message)
-                SELECT sd.user_id, $1, 'taxi_request', $2
-                FROM shop_drivers sd
-                WHERE sd.shop_id = $3 AND sd.is_active = TRUE
-            `, [userId, notifPayload, id]);
-        }
+        // Send notifications (wrapped in try/catch so failures don't kill the request)
+        try {
+            if (driverId) {
+                await pool.query(`
+                    INSERT INTO notifications (user_id, sender_id, type, message)
+                    VALUES ($1, $2, 'taxi_request', $3)
+                `, [driverId, userId, notifPayload]);
+            } else {
+                await pool.query(`
+                    INSERT INTO notifications (user_id, sender_id, type, message)
+                    SELECT sd.user_id, $1, 'taxi_request', $2
+                    FROM shop_drivers sd
+                    WHERE sd.shop_id = $3 AND sd.is_active = TRUE
+                `, [userId, notifPayload, id]);
+            }
 
-        // Always notify shop owner
-        if (shop.owner_id) {
-            await pool.query(`
-                INSERT INTO notifications (user_id, sender_id, type, message)
-                VALUES ($1, $2, 'taxi_request', $3)
-            `, [shop.owner_id, userId, notifPayload]);
+            if (shop.owner_id) {
+                await pool.query(`
+                    INSERT INTO notifications (user_id, sender_id, type, message)
+                    VALUES ($1, $2, 'taxi_request', $3)
+                `, [shop.owner_id, userId, notifPayload]);
+            }
+        } catch (notifErr) {
+            console.error('Notification insert failed (non-fatal):', notifErr.message);
         }
 
         // Emit real-time via socket to all drivers
@@ -929,7 +928,6 @@ const requestTaxi = async (req, res) => {
             const app = require('../server');
             const io = app.get ? app.get('io') : null;
             if (io) {
-                // Fetch all active driver IDs for this shop
                 const driversRes = await pool.query(
                     'SELECT user_id FROM shop_drivers WHERE shop_id = $1 AND is_active = TRUE',
                     [id]
@@ -945,7 +943,7 @@ const requestTaxi = async (req, res) => {
 
         res.json(newRequest);
     } catch (e) {
-        console.error(e);
+        console.error('requestTaxi error:', e);
         res.status(500).json({ error: 'Failed to request taxi' });
     }
 };
