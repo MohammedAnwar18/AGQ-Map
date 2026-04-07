@@ -84,11 +84,13 @@ const ProductScanner = ({ shopId, products, onClose, onFinish }) => {
             alignItems: 'center',
             justifyContent: 'center',
             color: 'white',
-            fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
+            fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+            padding: '20px'
         }}>
             <div style={{ 
                 width: '100%', 
                 maxWidth: '500px', 
+                maxHeight: '90vh', // Limit height
                 background: 'rgba(255, 255, 255, 0.05)',
                 padding: '30px',
                 borderRadius: '30px',
@@ -96,20 +98,22 @@ const ProductScanner = ({ shopId, products, onClose, onFinish }) => {
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
                 textAlign: 'center',
                 position: 'relative',
-                overflow: 'hidden'
+                overflowY: 'auto', // Add scroll for the whole modal content
+                display: 'flex',
+                flexDirection: 'column'
             }}>
                 {/* Header */}
-                <div style={{ marginBottom: '25px' }}>
+                <div style={{ marginBottom: '25px', flexShrink: 0 }}>
                     <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '800', background: 'linear-gradient(to right, #fbab15, #f97316)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                        الماسح الذكي للبيانات
+                        جهاز المحاسبة الذكي (Admin)
                     </h2>
                     <p style={{ margin: '5px 0 0', fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)' }}>
-                        استخدم الكاميرا للتعرف على المنتجات وتسجيلها
+                        تجميع حساب المنتجات عبر الكاميرا والذكاء الاصطناعي
                     </p>
                 </div>
 
                 {!imgSrc ? (
-                    <div style={{ position: 'relative', borderRadius: '20px', overflow: 'hidden', border: '2px solid rgba(251, 171, 21, 0.5)', boxShadow: '0 0 20px rgba(251, 171, 21, 0.2)' }}>
+                    <div style={{ position: 'relative', borderRadius: '20px', overflow: 'hidden', border: '2px solid rgba(251, 171, 21, 0.5)', boxShadow: '0 0 20px rgba(251, 171, 21, 0.2)', flexShrink: 0 }}>
                         <Webcam
                             audio={false}
                             ref={webcamRef}
@@ -153,15 +157,13 @@ const ProductScanner = ({ shopId, products, onClose, onFinish }) => {
                                     boxShadow: '0 0 25px rgba(255,255,255,0.4)',
                                     transition: 'transform 0.2s'
                                 }}
-                                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
-                                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1.0)'}
                             >
                                 <div style={{ width: '58px', height: '58px', borderRadius: '50%', border: '2px solid #333' }} />
                             </button>
                         </div>
                     </div>
                 ) : (
-                    <div style={{ position: 'relative', borderRadius: '20px', overflow: 'hidden', border: '2px solid rgba(251, 171, 21, 0.5)' }}>
+                    <div style={{ position: 'relative', borderRadius: '20px', overflow: 'hidden', border: '2px solid rgba(251, 171, 21, 0.5)', flexShrink: 0 }}>
                         <img src={imgSrc} style={{ width: '100%', display: 'block', opacity: isProcessing ? 0.6 : 1 }} alt="Captured" />
                         
                         {isProcessing && (
@@ -188,22 +190,24 @@ const ProductScanner = ({ shopId, products, onClose, onFinish }) => {
                 {results && (
                     <div style={{ 
                         marginTop: '25px', 
-                        backgroundColor: 'rgba(255,255,255,0.1)', 
-                        backdropFilter: 'blur(5px)',
+                        backgroundColor: 'rgba(255,255,255,0.05)', 
                         padding: '20px', 
                         borderRadius: '20px',
                         textAlign: 'right',
                         border: '1px solid rgba(255,255,255,0.1)',
-                        animation: 'slideUp 0.4s ease-out'
+                        animation: 'slideUp 0.4s ease-out',
+                        flexGrow: 1, // Allow this to take space
+                        display: 'flex',
+                        flexDirection: 'column'
                     }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                             <div style={{ background: '#22c55e', color: 'white', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 'bold' }}>
                                 تم التحقق ✓
                             </div>
-                            <h3 style={{ margin: 0, color: '#fbab15', fontSize: '1.1rem' }}>النتائج المكتشفة</h3>
+                            <h3 style={{ margin: 0, color: '#fbab15', fontSize: '1.1rem' }}>الفاتورة المكتشفة</h3>
                         </div>
 
-                        <div style={{ maxHeight: '180px', overflowY: 'auto', paddingRight: '5px' }}>
+                        <div style={{ maxHeight: '200px', overflowY: 'auto', paddingRight: '5px' }}>
                             {results.detected.length > 0 ? results.detected.map((item, idx) => (
                                 <div key={idx} style={{ 
                                     display: 'flex', 
@@ -225,21 +229,21 @@ const ProductScanner = ({ shopId, products, onClose, onFinish }) => {
                                 </div>
                             )) : (
                                 <p style={{ color: 'rgba(255,255,255,0.5)', textAlign: 'center', padding: '20px' }}>
-                                    لم يتم العثور على منتجات مطابقة في القائمة.
+                                    لم نجد منتجات من القائمة في هذه الصورة.
                                 </p>
                             )}
                         </div>
 
                         <div style={{ 
-                            marginTop: '15px',
+                            marginTop: 'auto', // Push to bottom of container
                             paddingTop: '15px',
                             borderTop: '2px dashed rgba(255,255,255,0.1)',
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center'
                         }}>
-                            <div style={{ fontSize: '1.2rem', fontWeight: '800' }}>{results.total} ₪</div>
-                            <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)' }}>المجموع الإجمالي:</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#fbab15' }}>{results.total} ₪</div>
+                            <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)' }}>المجموع:</div>
                         </div>
                     </div>
                 )}
@@ -260,7 +264,7 @@ const ProductScanner = ({ shopId, products, onClose, onFinish }) => {
                 )}
 
                 {/* Footer Actions */}
-                <div style={{ marginTop: '30px', display: 'flex', gap: '12px' }}>
+                <div style={{ marginTop: '30px', display: 'flex', gap: '12px', flexShrink: 0 }}>
                     <button 
                         onClick={onClose}
                         style={{
@@ -271,11 +275,8 @@ const ProductScanner = ({ shopId, products, onClose, onFinish }) => {
                             backgroundColor: 'rgba(255,255,255,0.05)',
                             color: 'white',
                             cursor: 'pointer',
-                            fontWeight: 'bold',
-                            transition: 'all 0.2s'
+                            fontWeight: 'bold'
                         }}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
-                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'}
                     >
                         إغلاق
                     </button>
@@ -291,14 +292,10 @@ const ProductScanner = ({ shopId, products, onClose, onFinish }) => {
                                 backgroundColor: '#fbab15',
                                 color: 'white',
                                 cursor: 'pointer',
-                                fontWeight: 'bold',
-                                boxShadow: '0 10px 20px -5px rgba(251, 171, 21, 0.4)',
-                                transition: 'all 0.2s'
+                                fontWeight: 'bold'
                             }}
-                            onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-                            onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
                         >
-                            {results ? 'تأكيد السلة' : 'إعادة المحاولة'}
+                            {results ? 'إصدار الفاتورة' : 'إعادة المحاولة'}
                         </button>
                     )}
                 </div>

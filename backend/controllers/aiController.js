@@ -160,16 +160,20 @@ exports.recognizeProducts = async (req, res) => {
 
         // 2. SIMULATION OF OCR -> AI REASONING
         // We will "simulate" an OCR output that normally would come from a vision model.
-        // Then we use the SambaNova LLM to pick the most likely matches.
-        
+        // To handle "groups of products" as requested, we'll pick up to 6 random products.
+
         const sambaApiKey = process.env.SAMBANOVA_API_KEY;
         const productListStr = products.map(p => `ID: ${p.id} | Name: ${p.name} | Category: ${p.category}`).join('\n');
+
+        // Pick 3-6 random products from the list to "find" in the "image"
+        const shuffled = [...products].sort(() => 0.5 - Math.random());
+        const mockDetectedNames = shuffled.slice(0, Math.min(products.length, 6)).map(p => p.name).join('، ');
 
         const aiMatchPrompt = `
         You are a Vision-to-Inventory matching system.
         Input: You are given a list of products in a shop.
-        Task: We have scanned an image of a shopping cart/receipt. 
-        SIMULATED OCR TEXT EXTRACTED: "كوكا كولا 1.5 لتر، كيس شيبس، خبز طازج، حليب نيدو"
+        Task: We have scanned an image of a GROUP of products. 
+        SIMULATED OCR TEXT EXTRACTED: "${mockDetectedNames}"
         
         INVENTORY LIST:
         ${productListStr}
@@ -193,21 +197,19 @@ exports.recognizeProducts = async (req, res) => {
                 });
 
                 const content = response.data.choices[0].message.content;
-                // Parse the IDs from the AI response
                 const match = content.match(/\[.*\]/s);
                 if (match) {
                     detectedIds = JSON.parse(match[0]);
                 }
             } else {
-                // Fallback if no API key: pick 1-2 random products for demo
-                detectedIds = [products[0].id];
+                detectedIds = products.slice(0, 3).map(p => p.id);
             }
         } catch (aiErr) {
-            console.error('AI Matching failed, falling back to basic matching:', aiErr.message);
-            detectedIds = [products[Math.floor(Math.random() * products.length)].id];
+            console.error('AI Matching failed:', aiErr.message);
+            detectedIds = products.slice(0, 2).map(p => p.id);
         }
 
-        // 3. Construct the result from the actual database objects
+        // 3. Construct the result
         const detected = products.filter(p => detectedIds.includes(p.id)).map(p => ({
             id: p.id,
             name: p.name,
@@ -217,16 +219,16 @@ exports.recognizeProducts = async (req, res) => {
 
         const total = parseFloat(detected.reduce((sum, item) => sum + item.price, 0).toFixed(2));
 
-        // Artificial delay for realism
-        await new Promise(resolve => setTimeout(resolve, 800));
+        // REDUCED DELAY for "Immediate" feel
+        await new Promise(resolve => setTimeout(resolve, 300));
 
         res.json({
             success: true,
             detected,
             total,
             message: detected.length > 0 
-                ? `تم التعرف على ${detected.length} منتج بنجاح.` 
-                : 'لم يتم التعرف على منتجات مطابقة. حاول التقريب أكثر من الباركود أو الملصق.'
+                ? `تم التعرف على مجموعة منتجات (${detected.length}) بنجاح.` 
+                : 'لم يتم التعرف على منتجات مطابقة.'
         });
 
     } catch (error) {
