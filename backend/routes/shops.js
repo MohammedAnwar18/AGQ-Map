@@ -47,6 +47,10 @@ router.delete('/:id/drivers/:driverId', authenticateToken, shopController.remove
 // طلبات التاكسي (إنشاء / تحديث)
 router.post('/:id/request', authenticateToken, shopController.requestTaxi);
 router.put('/requests/:requestId', authenticateToken, shopController.updateRequestStatus);
+router.post('/request-nearest', authenticateToken, shopController.requestNearestTaxi);
+
+// طلبات السائق الشخصية
+router.get('/driver/my-requests', authenticateToken, shopController.getDriverRequests);
 
 // التفاعلات (إعجاب / تعليق)
 router.post('/posts/:postId/like', authenticateToken, shopController.togglePostLike);

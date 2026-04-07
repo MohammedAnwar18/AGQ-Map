@@ -5,6 +5,8 @@ import { optimizeImage } from '../utils/imageOptimizer';
 import CartModal from './CartModal';
 import ImageCropperModal from './ImageCropperModal';
 import PostDetailModal from './PostDetailModal';
+import TaxiDriverPanel from './TaxiDriverPanel';
+import TaxiRequestPanel from './TaxiRequestPanel';
 import './Modal.css';
 
 // --- Assets / Icons ---
@@ -866,142 +868,30 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                     </div>
                 </div>
 
-                {/* Driver Dashboard (Shows if current user is a driver in this shop) */}
-                {isDriver && shopData.category === 'مكتب تاكسي' && (
-                    <div style={{
-                        background: 'linear-gradient(135deg, #fbab15 0%, #f59e0b 100%)',
-                        margin: '20px 30px',
-                        padding: '20px',
-                        borderRadius: 16,
-                        color: 'white',
-                        boxShadow: '0 4px 15px rgba(251, 171, 21, 0.3)'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 15, marginBottom: 15 }}>
-                            <div style={{ fontSize: '2rem' }}>🚕</div>
-                            <div>
-                                <h3 style={{ margin: 0, fontSize: '1.3rem' }}>لوحة السائق</h3>
-                                <p style={{ margin: '5px 0 0', opacity: 0.9, fontSize: '0.9rem' }}>أنت سائق في هذا المكتب</p>
-                            </div>
-                        </div>
-
-                        {/* Driver Info */}
-                        {(() => {
-                            const myInfo = drivers.find(d => d.id === currentUser?.id);
-                            if (!myInfo) return null;
-                            return (
-                                <div style={{
-                                    background: 'rgba(255,255,255,0.15)',
-                                    backdropFilter: 'blur(10px)',
-                                    padding: 15,
-                                    borderRadius: 12,
-                                    marginBottom: 15
-                                }}>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, fontSize: '0.9rem' }}>
-                                        <div>
-                                            <div style={{ opacity: 0.8 }}>السيارة</div>
-                                            <div style={{ fontWeight: 'bold', fontSize: '1rem' }}>{myInfo.car_type || 'غير محدد'}</div>
-                                        </div>
-                                        <div>
-                                            <div style={{ opacity: 0.8 }}>اللوحة</div>
-                                            <div style={{ fontWeight: 'bold', fontSize: '1rem', fontFamily: 'monospace' }}>{myInfo.plate_number || '---'}</div>
-                                        </div>
-                                        <div>
-                                            <div style={{ opacity: 0.8 }}>الركاب</div>
-                                            <div style={{ fontWeight: 'bold', fontSize: '1rem' }}>{myInfo.passengers_capacity || 4} 👤</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })()}
-
-                        {/* Active Requests */}
-                        <div>
-                            <h4 style={{ margin: '0 0 10px', fontSize: '1.1rem' }}>
-                                الطلبات المُعينة لك ({myDriverRequests.length})
-                            </h4>
-                            {myDriverRequests.length === 0 ? (
-                                <div style={{
-                                    background: 'rgba(255,255,255,0.1)',
-                                    padding: 20,
-                                    borderRadius: 12,
-                                    textAlign: 'center',
-                                    opacity: 0.8
-                                }}>
-                                    لا توجد طلبات حالياً
-                                </div>
-                            ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                    {myDriverRequests.map(req => (
-                                        <div key={req.id} style={{
-                                            background: 'rgba(255,255,255,0.95)',
-                                            color: '#1f2937',
-                                            padding: 15,
-                                            borderRadius: 12,
-                                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                                        }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                                    <img src={getImageUrl(req.profile_picture) || '/default-user.png'} style={{
-                                                        width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', border: '2px solid #fbab15'
-                                                    }} />
-                                                    <div>
-                                                        <div style={{ fontWeight: 'bold' }}>{req.full_name || req.username}</div>
-                                                        <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>📞 {req.phone_number || 'غير متوفر'}</div>
-                                                    </div>
-                                                </div>
-                                                <div style={{
-                                                    background: req.status === 'accepted' ? '#dbeafe' : '#d1fae5',
-                                                    color: req.status === 'accepted' ? '#1e40af' : '#065f46',
-                                                    padding: '4px 10px',
-                                                    borderRadius: 20,
-                                                    fontSize: '0.8rem',
-                                                    fontWeight: 'bold'
-                                                }}>
-                                                    {req.status === 'accepted' ? '✅ مقبول' : '🚗 في الطريق'}
-                                                </div>
-                                            </div>
-                                            <div style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: 10 }}>
-                                                📍 {req.pickup_address}
-                                            </div>
-                                            {req.status === 'accepted' && (
-                                                <button
-                                                    onClick={() => handleUpdateRequestStatus(req.id, 'arrived')}
-                                                    style={{
-                                                        width: '100%',
-                                                        background: '#fbab15',
-                                                        color: 'white',
-                                                        border: 'none',
-                                                        padding: '10px',
-                                                        borderRadius: 8,
-                                                        fontWeight: 'bold',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                >
-                                                    ✅ تأكيد الوصول
-                                                </button>
-                                            )}
-                                            {req.status === 'arrived' && (
-                                                <button
-                                                    onClick={() => handleUpdateRequestStatus(req.id, 'completed')}
-                                                    style={{
-                                                        width: '100%',
-                                                        background: '#10b981',
-                                                        color: 'white',
-                                                        border: 'none',
-                                                        padding: '10px',
-                                                        borderRadius: 8,
-                                                        fontWeight: 'bold',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                >
-                                                    ✔️ إكمال الرحلة
-                                                </button>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                {/* Driver Dashboard - uses TaxiDriverPanel for drivers, TaxiRequestPanel for followers */}
+                {shopData.category === 'مكتب تاكسي' && (
+                    <div style={{ padding: '0 20px', marginTop: '16px' }}>
+                        {isDriver ? (
+                            /* 🚕 DRIVER VIEW: Full driver panel with requests */
+                            <TaxiDriverPanel
+                                shopId={shopData.id}
+                                shopName={shopData.name}
+                                currentUser={currentUser}
+                                socket={null /* socket passed from parent if available */}
+                            />
+                        ) : isFollowing && !canEditShop ? (
+                            /* 👥 FOLLOWER VIEW: Request taxi panel */
+                            <TaxiRequestPanel
+                                shop={shopData}
+                                currentUser={currentUser}
+                                activeDrivers={shopData.active_drivers || drivers.filter(d => d.latitude && d.longitude)}
+                                socket={null}
+                                onDriverSelect={(driver) => {
+                                    // Could open map to show driver location
+                                    console.log('Driver selected for route:', driver);
+                                }}
+                            />
+                        ) : null}
                     </div>
                 )}
 

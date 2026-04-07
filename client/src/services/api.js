@@ -479,6 +479,17 @@ export const shopService = {
         return response.data;
     },
 
+    getDriverRequests: async () => {
+        const response = await api.get(`/shops/driver/my-requests`);
+        return response.data;
+    },
+
+    requestNearestTaxi: async (data) => {
+        // data: { shopId, latitude, longitude, address }
+        const response = await api.post(`/shops/request-nearest`, data);
+        return response.data;
+    },
+
     getFacilities: async (shopId) => {
         const response = await api.get(`/shops/${shopId}/facilities?t=${Date.now()}`);
         return response.data;

@@ -118,6 +118,51 @@ io.on('connection', (socket) => {
         socket.to(`user_${receiverId}`).emit('user-stop-typing', { userId: socket.userId });
     });
 
+    // 🚕 TAXI: Driver broadcasts their location
+    socket.on('driver-location-update', async (data) => {
+        const { latitude, longitude, shopId } = data;
+        const driverId = socket.userId;
+        if (!driverId || !latitude || !longitude) return;
+
+        try {
+            const pool = require('./config/database');
+            // Update driver's location in users table
+            await pool.query(
+                'UPDATE users SET last_latitude = $1, last_longitude = $2 WHERE id = $3',
+                [latitude, longitude, driverId]
+            );
+
+            // Get shop followers to broadcast driver location
+            if (shopId) {
+                const followersRes = await pool.query(
+                    'SELECT user_id FROM shop_followers WHERE shop_id = $1',
+                    [shopId]
+                );
+                followersRes.rows.forEach(f => {
+                    io.to(`user_${f.user_id}`).emit('driver-location', {
+                        driverId,
+                        latitude,
+                        longitude,
+                        shopId
+                    });
+                });
+            }
+        } catch (e) {
+            console.error('Driver location update error:', e);
+        }
+    });
+
+    // 🚕 TAXI: Driver joins shop room to receive requests
+    socket.on('join-taxi-shop', (shopId) => {
+        socket.join(`taxi_shop_${shopId}`);
+        console.log(`Driver ${socket.userId} joined taxi room for shop ${shopId}`);
+    });
+
+    // 🚕 TAXI: Passenger tracking - subscribe to driver location
+    socket.on('track-driver', ({ driverId }) => {
+        socket.join(`track_${driverId}`);
+    });
+
     socket.on('disconnect', () => {
         console.log('User disconnected');
     });
