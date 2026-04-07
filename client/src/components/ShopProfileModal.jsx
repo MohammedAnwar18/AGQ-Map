@@ -5,7 +5,7 @@ import { optimizeImage } from '../utils/imageOptimizer';
 import CartModal from './CartModal';
 import ImageCropperModal from './ImageCropperModal';
 import PostDetailModal from './PostDetailModal';
-import ProductScanner from './ProductScanner';
+import PostDetailModal from './PostDetailModal';
 import './Modal.css';
 
 // --- Assets / Icons ---
@@ -145,7 +145,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     // Create State
     const [showCreatePost, setShowCreatePost] = useState(false);
     const [showAddProduct, setShowAddProduct] = useState(false);
-    const [showScanner, setShowScanner] = useState(false);
 
     // Forms
     const [newPostContent, setNewPostContent] = useState('');
@@ -1272,19 +1271,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                             setShowAddProduct(true);
                                         }}>
                                             + إضافة منتج
-                                        </button>
-                                        <button 
-                                            className="btn-small" 
-                                            style={{ 
-                                                background: 'linear-gradient(135deg, #fbab15 0%, #f97316 100%)', 
-                                                color: 'white',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '8px'
-                                            }} 
-                                            onClick={() => setShowScanner(true)}
-                                        >
-                                            <CameraIcon /> الماسح الذكي (Admin)
                                         </button>
                                     </div>
                                 )}
@@ -2597,29 +2583,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                     />
                 )}
 
-                {showScanner && (
-                    <ProductScanner 
-                        shopId={shopData.id} 
-                        products={products} 
-                        onClose={() => setShowScanner(false)} 
-                        onFinish={(results) => {
-                            setShowScanner(false);
-                            if (results && results.detected) {
-                                results.detected.forEach(item => {
-                                    cartService.addItem({
-                                        ...item,
-                                        shop_id: shopData.id,
-                                        shop_name: shopData.name
-                                    });
-                                });
-                                // Refresh cart count
-                                setCartCount(cartService.getItemCount());
-                                alert(`تم إضافة ${results.detected.length} منتجات إلى السلة بنجاح!`);
-                                setShowCart(true); // Open cart to show results
-                            }
-                        }}
-                    />
-                )}
+
                 </div>
             </div >
         </div >

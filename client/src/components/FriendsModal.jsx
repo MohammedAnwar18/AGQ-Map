@@ -407,8 +407,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                                     borderRadius: '8px',
                                                                     height: '28px',
                                                                     background: 'rgba(239, 68, 68, 0.1)',
-                                                                    color: '#ef4444',
-                                                                    border: 'none'
+                                                                    color: '#ef4444'
                                                                 }}
                                                             >
                                                                 إلغاء الصداقة
@@ -417,33 +416,6 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                     </div>
                                                 </div>
                                             ))}
-                                        </div>
-                                    )}
-
-                                    {/* Quick access to followed shops in friends tab */}
-                                    {followedShops.length > 0 && (
-                                        <div className="user-list" style={{ marginTop: '20px', borderTop: '1px solid var(--bg-tertiary)' }}>
-                                            <h3 style={{ padding: '15px 15px 5px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>محلات ومؤسسات أتابعها</h3>
-                                            {followedShops.slice(0, 3).map(shop => (
-                                                <div key={shop.id} className="user-item" onClick={() => onShopClick && onShopClick(shop)} style={{ cursor: 'pointer' }}>
-                                                    <div className="chat-avatar" style={{ borderRadius: '8px', background: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 21h18v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z" /><path d="M6 6h12v7H6z" /></svg>
-                                                    </div>
-                                                    <div className="chat-info">
-                                                        <div className="chat-name">{shop.name}</div>
-                                                        <div className="chat-last-message">{shop.category}</div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            {followedShops.length > 3 && (
-                                                <button 
-                                                    className="btn-small" 
-                                                    onClick={() => setActiveTab('shops')}
-                                                    style={{ width: 'calc(100% - 30px)', margin: '10px 15px', background: 'transparent', border: '1px solid var(--bg-tertiary)' }}
-                                                >
-                                                    عرض الكل ({followedShops.length})
-                                                </button>
-                                            )}
                                         </div>
                                     )}
                                 </>
