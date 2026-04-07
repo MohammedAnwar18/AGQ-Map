@@ -2602,9 +2602,21 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                         shopId={shopData.id} 
                         products={products} 
                         onClose={() => setShowScanner(false)} 
-                        onFinish={(total) => {
+                        onFinish={(results) => {
                             setShowScanner(false);
-                            // Optional: do something with the total
+                            if (results && results.detected) {
+                                results.detected.forEach(item => {
+                                    cartService.addItem({
+                                        ...item,
+                                        shop_id: shopData.id,
+                                        shop_name: shopData.name
+                                    });
+                                });
+                                // Refresh cart count
+                                setCartCount(cartService.getItemCount());
+                                alert(`تم إضافة ${results.detected.length} منتجات إلى السلة بنجاح!`);
+                                setShowCart(true); // Open cart to show results
+                            }
                         }}
                     />
                 )}

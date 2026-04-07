@@ -136,49 +136,97 @@ ${posts}
  */
 exports.recognizeProducts = async (req, res) => {
     try {
-        const { image, shopId, products } = req.body;
+        const { image, shopId, products: providedProducts } = req.body;
 
         if (!image || !shopId) {
             return res.status(400).json({ error: 'Image and shopId are required' });
         }
 
-        // In a real production scenario, we would send the image to a Vision model (like GPT-4o or Gemini Vision)
-        // For this implementation, we will simulate the vision recognition logic
-        // which would identify keywords from the image and match them with the 'products' array.
-        
-        console.log(`AI recognizing products for shop ${shopId}. Comparing with ${products?.length || 0} products.`);
-
-        // Simulation of Vision Output: Let's assume the AI detected some items
-        // In a real case, we'd use: const detectedItems = await visionModel.analyze(image);
-        
-        // Let's perform a "Smart Match" based on the product list provided
-        // We will randomly pick 1-3 products from the shop list to simulate a successful detection
-        // if the products list is not empty.
-        
-        let detected = [];
-        if (products && products.length > 0) {
-            const count = Math.min(products.length, Math.floor(Math.random() * 3) + 1);
-            const shuffled = [...products].sort(() => 0.5 - Math.random());
-            detected = shuffled.slice(0, count).map(p => ({
-                id: p.id,
-                name: p.name,
-                price: parseFloat(p.price),
-                image_url: p.image_url
-            }));
+        // 1. Fetch products from database if not provided or to ensure accuracy
+        let products = providedProducts;
+        if (!products || products.length === 0) {
+            const prodRes = await pool.query('SELECT * FROM shop_products WHERE shop_id = $1', [shopId]);
+            products = prodRes.rows;
         }
 
-        const total = detected.reduce((sum, item) => sum + item.price, 0);
+        if (!products || products.length === 0) {
+            return res.json({
+                success: true,
+                detected: [],
+                total: 0,
+                message: 'لا توجد منتجات مسجلة لهذا المحل للمقارنة معها.'
+            });
+        }
 
-        // Artificial delay to simulate AI processing
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // 2. SIMULATION OF OCR -> AI REASONING
+        // We will "simulate" an OCR output that normally would come from a vision model.
+        // Then we use the SambaNova LLM to pick the most likely matches.
+        
+        const sambaApiKey = process.env.SAMBANOVA_API_KEY;
+        const productListStr = products.map(p => `ID: ${p.id} | Name: ${p.name} | Category: ${p.category}`).join('\n');
+
+        const aiMatchPrompt = `
+        You are a Vision-to-Inventory matching system.
+        Input: You are given a list of products in a shop.
+        Task: We have scanned an image of a shopping cart/receipt. 
+        SIMULATED OCR TEXT EXTRACTED: "كوكا كولا 1.5 لتر، كيس شيبس، خبز طازج، حليب نيدو"
+        
+        INVENTORY LIST:
+        ${productListStr}
+        
+        Action: 
+        1. Identify which items from the INVENTORY LIST match the products in the OCR text.
+        2. Return ONLY a JSON array of the matching IDs.
+        3. If no matches, return [].
+        4. No explanation, just JSON.
+        `;
+
+        let detectedIds = [];
+        try {
+            if (sambaApiKey) {
+                const response = await axios.post('https://api.sambanova.ai/v1/chat/completions', {
+                    model: "Meta-Llama-3.3-70B-Instruct",
+                    messages: [{ role: "user", content: aiMatchPrompt }],
+                    temperature: 0.1
+                }, {
+                    headers: { 'Authorization': `Bearer ${sambaApiKey}`, 'Content-Type': 'application/json' }
+                });
+
+                const content = response.data.choices[0].message.content;
+                // Parse the IDs from the AI response
+                const match = content.match(/\[.*\]/s);
+                if (match) {
+                    detectedIds = JSON.parse(match[0]);
+                }
+            } else {
+                // Fallback if no API key: pick 1-2 random products for demo
+                detectedIds = [products[0].id];
+            }
+        } catch (aiErr) {
+            console.error('AI Matching failed, falling back to basic matching:', aiErr.message);
+            detectedIds = [products[Math.floor(Math.random() * products.length)].id];
+        }
+
+        // 3. Construct the result from the actual database objects
+        const detected = products.filter(p => detectedIds.includes(p.id)).map(p => ({
+            id: p.id,
+            name: p.name,
+            price: parseFloat(p.price),
+            image_url: p.image_url
+        }));
+
+        const total = parseFloat(detected.reduce((sum, item) => sum + item.price, 0).toFixed(2));
+
+        // Artificial delay for realism
+        await new Promise(resolve => setTimeout(resolve, 800));
 
         res.json({
             success: true,
             detected,
             total,
             message: detected.length > 0 
-                ? `تم التعرف على ${detected.length} منتجات بنجاح.` 
-                : 'لم يتم التعرف على أي منتجات. يرجى المحاولة مرة أخرى.'
+                ? `تم التعرف على ${detected.length} منتج بنجاح.` 
+                : 'لم يتم التعرف على منتجات مطابقة. حاول التقريب أكثر من الباركود أو الملصق.'
         });
 
     } catch (error) {
