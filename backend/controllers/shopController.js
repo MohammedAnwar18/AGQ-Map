@@ -904,13 +904,13 @@ const requestTaxi = async (req, res) => {
         // Notify assigned driver (if specified), otherwise notify all active drivers
         if (driverId) {
             await pool.query(`
-                INSERT INTO notifications (user_id, sender_id, type, message)
+                INSERT INTO notifications (user_id, related_user_id, type, content)
                 VALUES ($1, $2, 'taxi_request', $3)
             `, [driverId, userId, notifPayload]);
         } else {
             // Notify all active drivers of this shop
             await pool.query(`
-                INSERT INTO notifications (user_id, sender_id, type, message)
+                INSERT INTO notifications (user_id, related_user_id, type, content)
                 SELECT sd.user_id, $1, 'taxi_request', $2
                 FROM shop_drivers sd
                 WHERE sd.shop_id = $3 AND sd.is_active = TRUE
@@ -920,9 +920,8 @@ const requestTaxi = async (req, res) => {
         // Always notify shop owner
         if (shop.owner_id) {
             await pool.query(`
-                INSERT INTO notifications (user_id, sender_id, type, message)
+                INSERT INTO notifications (user_id, related_user_id, type, content)
                 VALUES ($1, $2, 'taxi_request', $3)
-                ON CONFLICT DO NOTHING
             `, [shop.owner_id, userId, notifPayload]);
         }
 
