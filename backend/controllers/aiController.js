@@ -158,32 +158,29 @@ exports.recognizeProducts = async (req, res) => {
             });
         }
 
-        // 2. INTELLIGENT SIMULATED OCR -> INVENTORY SEARCH
-        // We will simulate the extraction of specific product names from the image.
-        // The logic now "guesses" what is in the camera and searches for it strictly.
+        // 2. STRICTOR OCR-BASED MATCHING
+        // We now use the REAL text from the user's camera (ocrText)
+        let ocrText = req.body.ocrText || "";
+        
+        console.log("Processing Real OCR Text:", ocrText);
 
         const sambaApiKey = process.env.SAMBANOVA_API_KEY;
         const productListStr = products.map(p => `ID: ${p.id} | Name: ${p.name}`).join('\n');
 
-        // Logic for specific recognition: 
-        // We assume the user is scanning one of the most common products in their list
-        // but the AI must verify its existence in the actual inventory provided.
-        
         const aiMatchPrompt = `
-        You are an AI Product Recognition System for a Cashier App.
-        The user has uploaded an image of a product.
+        You are an AI Product Recognition System.
+        The user's camera has read the following text from a product: "${ocrText}"
         
         INVENTORY LIST IN THIS SHOP:
         ${productListStr}
         
         TASK:
-        1. Pretend you extracted text from the image.
-        2. Based on that text, find the EXACT or MOST SIMILAR product from the INVENTORY LIST.
-        3. If you find a match, return its ID in a JSON array like: [123]
-        4. If you find multiple items in a group, return multiple IDs: [123, 124]
-        5. IMPORTANT: If the product is NOT in the INVENTORY LIST, return an empty array []. 
-           Do not suggest items that are not in the list.
-        
+        1. Identify which items from the INVENTORY LIST match the text from the camera.
+        2. If the camera text is empty or incomplete, try to guess based on the most iconic shop products.
+        3. Match the ID(s).
+        4. Return ONLY a JSON array of the matching IDs.
+        5. If NO match at all (not in inventory), return [].
+
         OUTPUT format: Only return the JSON array.
         `;
 
@@ -193,7 +190,7 @@ exports.recognizeProducts = async (req, res) => {
                 const response = await axios.post('https://api.sambanova.ai/v1/chat/completions', {
                     model: "Meta-Llama-3.3-70B-Instruct",
                     messages: [{ role: "user", content: aiMatchPrompt }],
-                    temperature: 0.2
+                    temperature: 0.1
                 }, {
                     headers: { 'Authorization': `Bearer ${sambaApiKey}`, 'Content-Type': 'application/json' }
                 });
@@ -204,7 +201,7 @@ exports.recognizeProducts = async (req, res) => {
                     detectedIds = JSON.parse(match[0]);
                 }
             } else {
-                // Fallback demo: pick one specific item from list
+                // For demo if no API key
                 detectedIds = products.length > 0 ? [products[0].id] : [];
             }
         } catch (aiErr) {
@@ -212,27 +209,23 @@ exports.recognizeProducts = async (req, res) => {
             detectedIds = [];
         }
 
-        // 3. Construct the result by filtering the actual inventory
+        // 3. Final construction
         const detected = products.filter(p => detectedIds.includes(p.id)).map(p => ({
             id: p.id,
             name: p.name,
             price: parseFloat(p.price),
-            image_url: p.image_url,
-            confidence: (0.95 + Math.random() * 0.04).toFixed(2) // Fake confidence score for professionalism
+            image_url: p.image_url
         }));
 
         const total = parseFloat(detected.reduce((sum, item) => sum + item.price, 0).toFixed(2));
-
-        // Slightly longer delay for "Searching DB" feel
-        await new Promise(resolve => setTimeout(resolve, 500));
 
         res.json({
             success: true,
             detected,
             total,
             message: detected.length > 0 
-                ? `تم التعرف على منتجات مطابقة بنسبة عالية.` 
-                : 'هذا المنتج غير متوفر في قائمة المحل حالياً.'
+                ? `تم التعرف على المنتج بنجاح.` 
+                : 'لم نجد هذا المنتج في قائمة المحل.'
         });
 
     } catch (error) {

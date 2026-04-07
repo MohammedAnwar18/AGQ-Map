@@ -25,22 +25,34 @@ const ProductScanner = ({ shopId, products, onClose, onFinish }) => {
     const processImage = async (image) => {
         setIsProcessing(true);
         setError(null);
-        setStatus('جاري معاقبة الصورة...');
-        
-        // Progress steps simulation for better UX
-        const steps = ['جاري استخراج النصوص...', 'جاري البحث في المخزن...', 'جاري حساب الإجمالي...'];
-        let stepIdx = 0;
-        const interval = setInterval(() => {
-            if (stepIdx < steps.length) {
-                setStatus(steps[stepIdx]);
-                stepIdx++;
-            }
-        }, 1000);
+        setStatus('جاري استخراج النصوص من المنتج...');
 
         try {
+            // 1. PERFORM REAL OCR LOCALLY
+            const { data: { text } } = await Tesseract.recognize(
+                image,
+                'eng+ara', // Recognize English and Arabic
+                { logger: m => {
+                    if (m.status === 'recognizing text') {
+                        setStatus(`جاري القراءة: ${Math.round(m.progress * 100)}%`);
+                    }
+                } }
+            );
+
+            console.log("OCR Result:", text);
+            
+            if (!text || text.trim().length < 2) {
+                setStatus('لم أتمكن من قراءة أي نص، جرب تقريب الكاميرا أكثر.');
+                // We'll proceed anyway to let the AI try its best, but tell the user info
+            } else {
+                setStatus('تم استخراج البيانات، جاري المطابقة مع المخزن...');
+            }
+
+            // 2. SEND TO BACKEND FOR SMART MATCHING
             const token = localStorage.getItem('token');
             const response = await axios.post('/api/ai/recognize-products', {
-                image,
+                image, 
+                ocrText: text, // Send the real text from camera
                 shopId,
                 products
             }, {
@@ -50,13 +62,12 @@ const ProductScanner = ({ shopId, products, onClose, onFinish }) => {
             if (response.data.success) {
                 setResults(response.data);
             } else {
-                setError(response.data.message || 'فشل في التعرف على المنتجات');
+                setError(response.data.message || 'فشل في التعرف على المنتج');
             }
         } catch (err) {
             console.error(err);
-            setError('حدث خطأ أثناء الاتصال بالخادم');
+            setError('حدث خطأ أثناء الاتصال بالخادم أو معالجة الصورة');
         } finally {
-            clearInterval(interval);
             setIsProcessing(false);
             setStatus('');
         }
