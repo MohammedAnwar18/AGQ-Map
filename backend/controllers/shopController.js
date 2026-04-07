@@ -864,7 +864,7 @@ const requestTaxi = async (req, res) => {
 
         // Get requester info for notification
         const requesterRes = await pool.query(
-            'SELECT username, full_name, profile_picture, phone_number FROM users WHERE id = $1',
+            'SELECT username, full_name, profile_picture FROM users WHERE id = $1',
             [userId]
         );
         const requester = requesterRes.rows[0];
@@ -974,8 +974,7 @@ const getShopRequests = async (req, res) => {
         if (isDriver && !isOwnerOrAdmin) {
             // Drivers only see requests assigned to them OR unassigned requests for this shop
             query = `
-                SELECT tr.*, u.username, u.full_name, u.profile_picture, u.phone_number,
-                       u.gender, u.marital_status, u.workplace, u.education, u.institution,
+                SELECT tr.*, u.username, u.full_name, u.profile_picture,
                        ST_X(tr.pickup_location::geometry) as longitude,
                        ST_Y(tr.pickup_location::geometry) as latitude,
                        d.username as driver_username, d.full_name as driver_full_name
@@ -991,8 +990,7 @@ const getShopRequests = async (req, res) => {
         } else {
             // Owner/Admin sees all requests
             query = `
-                SELECT tr.*, u.username, u.full_name, u.profile_picture, u.phone_number,
-                       u.gender, u.marital_status, u.workplace, u.education, u.institution,
+                SELECT tr.*, u.username, u.full_name, u.profile_picture,
                        ST_X(tr.pickup_location::geometry) as longitude,
                        ST_Y(tr.pickup_location::geometry) as latitude,
                        d.username as driver_username, d.full_name as driver_full_name
@@ -1020,7 +1018,7 @@ const getDriverRequests = async (req, res) => {
 
         const result = await pool.query(`
             SELECT tr.*, 
-                   u.username, u.full_name, u.profile_picture, u.phone_number, u.gender,
+                   u.username, u.full_name, u.profile_picture,
                    s.name as shop_name, s.profile_picture as shop_picture,
                    ST_X(tr.pickup_location::geometry) as longitude,
                    ST_Y(tr.pickup_location::geometry) as latitude
