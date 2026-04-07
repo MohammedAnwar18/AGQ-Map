@@ -7,7 +7,7 @@ async function clearUsers() {
         const tables = [
             'likes', 'comments', 'friendships', 'friend_requests',
             'notifications', 'messages', 'shop_products', 'shop_followers',
-            'taxi_requests', 'local_news', 'community_members', 'posts',
+            'local_news', 'community_members', 'posts',
             'shops', 'communities', 'users'
         ];
 

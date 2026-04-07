@@ -1,4 +1,4 @@
-const pool = require('../config/database');
+﻿const pool = require('../config/database');
 
 // --- 1. Search Shops ---
 const searchShops = async (req, res) => {
@@ -52,10 +52,10 @@ const followShop = async (req, res) => {
             ON CONFLICT (user_id, shop_id) DO NOTHING
         `, [parseInt(userId), shopId]);
 
-        console.log(`âœ… User ${userId} successfully followed shop ${shopId}`);
+        console.log(`Γ£à User ${userId} successfully followed shop ${shopId}`);
         res.json({ message: 'Shop followed successfully', shopId });
     } catch (error) {
-        console.error('âŒ Follow shop error:', error);
+        console.error('Γ¥î Follow shop error:', error);
         res.status(500).json({ error: 'Failed to follow shop: ' + error.message });
     }
 };
@@ -96,7 +96,7 @@ const getFollowedShops = async (req, res) => {
                 FROM shops child
                 JOIN shops parent ON child.parent_shop_id = parent.id
                 WHERE parent.id IN (SELECT id FROM FollowedShops) 
-                  AND parent.category = 'Ø¨Ù†Ùƒ'
+                  AND parent.category = '╪¿┘å┘â'
                   AND child.is_hidden = FALSE
             ),
             AllRelevantShopIds AS (
@@ -105,16 +105,32 @@ const getFollowedShops = async (req, res) => {
                 SELECT id FROM BankChildren
             )
             SELECT s.*,
+            (
+                SELECT json_agg(json_build_object(
+                    'id', u.id,
+                    'username', u.username,
+                    'full_name', u.full_name,
+                    'latitude', u.last_latitude,
+                    'longitude', u.last_longitude,
+                    'profile_picture', u.profile_picture,
+                    'car_type', sd.car_type,
+                    'plate_number', sd.plate_number,
+                    'passengers_capacity', sd.passengers_capacity
+                ))
+                FROM shop_drivers sd
+                JOIN users u ON sd.user_id = u.id
+                WHERE sd.shop_id = s.id AND sd.is_active = TRUE AND u.last_latitude IS NOT NULL
+            ) as active_drivers,
             (s.id IN (SELECT id FROM FollowedShops)) as is_followed
             FROM shops s
             WHERE s.id IN (SELECT id FROM AllRelevantShopIds)
             ORDER BY s.name ASC
         `, [userId]);
 
-        console.log(`ðŸ“‹ User ${userId} has ${result.rows.length} followed shops in DB`);
+        console.log(`≡ƒôï User ${userId} has ${result.rows.length} followed shops in DB`);
         res.json({ shops: result.rows });
     } catch (error) {
-        console.error('âŒ Get followed shops error:', error);
+        console.error('Γ¥î Get followed shops error:', error);
         res.status(500).json({ error: 'Failed to get followed shops' });
     }
 };
@@ -730,6 +746,438 @@ const sendNotificationToFollowers = async (req, res) => {
     }
 };
 
+// --- 12. Add Shop Driver ---
+const addShopDriver = async (req, res) => {
+    try {
+        const { id } = req.params; // Shop ID
+        const { username, car_type, plate_number, passengers } = req.body;
+        const userId = req.user.userId;
+
+        // Check Permissions (Admin or Owner)
+        const shopRes = await pool.query('SELECT owner_id, name FROM shops WHERE id = $1', [id]);
+        if (shopRes.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
+        if (req.user.role !== 'admin' && shopRes.rows[0].owner_id !== userId) return res.status(403).json({ error: 'Not authorized' });
+
+        const shop = shopRes.rows[0];
+
+        // Find User
+        const userRes = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
+        if (userRes.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+        const driverId = userRes.rows[0].id;
+
+        // Add Driver with details
+        await pool.query(`
+            INSERT INTO shop_drivers (shop_id, user_id, car_type, plate_number, passengers_capacity) 
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (shop_id, user_id) DO UPDATE SET 
+                is_active = TRUE, 
+                car_type = $3, 
+                plate_number = $4, 
+                passengers_capacity = $5
+        `, [id, driverId, car_type, plate_number, passengers || 4]);
+
+        // ≡ƒöö Send notification to the driver
+        const notifPayload = JSON.stringify({
+            shopId: id,
+            shopName: shop.name,
+            text: `╪¬┘à ╪¬╪╣┘è┘è┘å┘â ┘â╪│╪º╪ª┘é ┘ü┘è ┘à┘â╪¬╪¿ ${shop.name}! ┘è┘à┘â┘å┘â ╪º┘ä╪ó┘å ╪º╪│╪¬┘é╪¿╪º┘ä ╪╖┘ä╪¿╪º╪¬ ╪º┘ä╪¬╪º┘â╪│┘è.`,
+            type: 'driver_assigned'
+        });
+        await pool.query(`
+            INSERT INTO notifications (user_id, sender_id, type, message)
+            VALUES ($1, $2, 'driver_assigned', $3)
+        `, [driverId, userId, notifPayload]);
+
+        // Emit real-time notification via socket
+        try {
+            const io = require('../server').get ? require('../server').get('io') : null;
+            if (io) {
+                io.to(`user_${driverId}`).emit('driver-assigned', {
+                    shopId: id,
+                    shopName: shop.name,
+                    message: `╪¬┘à ╪¬╪╣┘è┘è┘å┘â ┘â╪│╪º╪ª┘é ┘ü┘è ┘à┘â╪¬╪¿ ${shop.name}`
+                });
+            }
+        } catch(e) { /* socket optional */ }
+
+        res.json({ message: 'Driver added successfully' });
+    } catch (error) {
+        console.error('Add driver error:', error);
+        res.status(500).json({ error: 'Failed to add driver' });
+    }
+};
+
+// --- 13. Get Shop Drivers ---
+const getShopDrivers = async (req, res) => {
+    try {
+        const { id } = req.params;
+        // Fetch drivers including their last known location and car details
+        const result = await pool.query(`
+            SELECT u.id, u.username, u.full_name, u.profile_picture, 
+                   u.last_latitude as latitude, u.last_longitude as longitude,
+                   sd.car_type, sd.plate_number, sd.passengers_capacity
+            FROM shop_drivers sd
+            JOIN users u ON sd.user_id = u.id
+            WHERE sd.shop_id = $1 AND sd.is_active = TRUE
+        `, [id]);
+        res.json({ drivers: result.rows });
+    } catch (error) {
+        console.error('Get drivers error:', error);
+        res.status(500).json({ error: 'Failed to get drivers' });
+    }
+};
+
+// --- 14. Remove Shop Driver ---
+const removeShopDriver = async (req, res) => {
+    try {
+        const { id, driverId } = req.params;
+        const userId = req.user.userId;
+
+        // Check Permissions
+        const shopRes = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [id]);
+        if (shopRes.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
+        if (req.user.role !== 'admin' && shopRes.rows[0].owner_id !== userId) return res.status(403).json({ error: 'Not authorized' });
+
+        await pool.query('DELETE FROM shop_drivers WHERE shop_id = $1 AND user_id = $2', [id, driverId]);
+        res.json({ message: 'Driver removed successfully' });
+    } catch (error) {
+        console.error('Remove driver error:', error);
+        res.status(500).json({ error: 'Failed to remove driver' });
+    }
+};
+
+// --- 15. Request Taxi ---
+const requestTaxi = async (req, res) => {
+    try {
+        const { id } = req.params; // shopId
+        const userId = req.user.userId;
+        const { latitude, longitude, address, driverId } = req.body;
+
+        // Auto-cancel any stuck old requests instead of blocking
+        await pool.query(
+            "UPDATE taxi_requests SET status = 'cancelled' WHERE user_id = $1 AND status IN ('pending', 'accepted', 'arrived')",
+            [userId]
+        );
+
+        // Get requester info for notification
+        const requesterRes = await pool.query(
+            'SELECT username, full_name, profile_picture FROM users WHERE id = $1',
+            [userId]
+        );
+        const requester = requesterRes.rows[0];
+
+        // Get shop info
+        const shopRes = await pool.query('SELECT owner_id, name FROM shops WHERE id = $1', [id]);
+        if (shopRes.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
+        const shop = shopRes.rows[0];
+
+        const result = await pool.query(`
+            INSERT INTO taxi_requests (user_id, shop_id, pickup_location, pickup_address, assigned_driver_id)
+            VALUES ($1, $2, ST_SetSRID(ST_MakePoint($3, $4), 4326)::geography, $5, $6)
+            RETURNING *
+        `, [userId, id, longitude, latitude, address || '┘à┘ê┘é╪╣ ┘à╪¡╪»╪»', driverId || null]);
+
+        const newRequest = result.rows[0];
+
+        // Build notification payload with requester info
+        const notifPayload = JSON.stringify({
+            requestId: newRequest.id,
+            shopId: id,
+            shopName: shop.name,
+            requester: {
+                id: userId,
+                username: requester?.username,
+                full_name: requester?.full_name,
+                profile_picture: requester?.profile_picture
+            },
+            pickup_address: address || '┘à┘ê┘é╪╣ ┘à╪¡╪»╪»',
+            latitude,
+            longitude,
+            text: `╪╖┘ä╪¿ ╪¬╪º┘â╪│┘è ╪¼╪»┘è╪» ┘à┘å ${requester?.full_name || requester?.username}`,
+            type: 'taxi_request'
+        });
+
+        // Send notifications (wrapped in try/catch so failures don't kill the request)
+        try {
+            if (driverId) {
+                await pool.query(`
+                    INSERT INTO notifications (user_id, sender_id, type, message)
+                    VALUES ($1, $2, 'taxi_request', $3)
+                `, [driverId, userId, notifPayload]);
+            } else {
+                await pool.query(`
+                    INSERT INTO notifications (user_id, sender_id, type, message)
+                    SELECT sd.user_id, $1, 'taxi_request', $2
+                    FROM shop_drivers sd
+                    WHERE sd.shop_id = $3 AND sd.is_active = TRUE
+                `, [userId, notifPayload, id]);
+            }
+
+            if (shop.owner_id) {
+                await pool.query(`
+                    INSERT INTO notifications (user_id, sender_id, type, message)
+                    VALUES ($1, $2, 'taxi_request', $3)
+                `, [shop.owner_id, userId, notifPayload]);
+            }
+        } catch (notifErr) {
+            console.error('Notification insert failed (non-fatal):', notifErr.message);
+        }
+
+        // Emit real-time via socket to all drivers
+        try {
+            const app = require('../server');
+            const io = app.get ? app.get('io') : null;
+            if (io) {
+                const driversRes = await pool.query(
+                    'SELECT user_id FROM shop_drivers WHERE shop_id = $1 AND is_active = TRUE',
+                    [id]
+                );
+                driversRes.rows.forEach(d => {
+                    io.to(`user_${d.user_id}`).emit('new-taxi-request', {
+                        request: newRequest,
+                        requester
+                    });
+                });
+            }
+        } catch(e) { /* socket optional */ }
+
+        res.json(newRequest);
+    } catch (e) {
+        console.error('requestTaxi error:', e);
+        res.status(500).json({ error: 'Failed to request taxi' });
+    }
+};
+
+// --- 16. Get Shop REQUESTS (For Admin/Owner/Driver) ---
+const getShopRequests = async (req, res) => {
+    try {
+        const { id } = req.params; // shopId
+        const userId = req.user.userId;
+
+        const shopRes = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [id]);
+        if (shopRes.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
+
+        // Check if user is owner, admin, OR a driver of this shop
+        const isOwnerOrAdmin = req.user.role === 'admin' || shopRes.rows[0].owner_id === userId;
+        const driverCheck = await pool.query(
+            'SELECT id FROM shop_drivers WHERE shop_id = $1 AND user_id = $2 AND is_active = TRUE',
+            [id, userId]
+        );
+        const isDriver = driverCheck.rows.length > 0;
+
+        if (!isOwnerOrAdmin && !isDriver) return res.status(403).json({ error: 'Unauthorized' });
+
+        let query, params;
+        if (isDriver && !isOwnerOrAdmin) {
+            // Drivers only see requests assigned to them OR unassigned requests for this shop
+            query = `
+                SELECT tr.*, u.username, u.full_name, u.profile_picture,
+                       ST_X(tr.pickup_location::geometry) as longitude,
+                       ST_Y(tr.pickup_location::geometry) as latitude,
+                       d.username as driver_username, d.full_name as driver_full_name
+                FROM taxi_requests tr
+                JOIN users u ON tr.user_id = u.id
+                LEFT JOIN users d ON tr.assigned_driver_id = d.id
+                WHERE tr.shop_id = $1 
+                  AND tr.status IN ('pending', 'accepted', 'arrived')
+                  AND (tr.assigned_driver_id = $2 OR tr.assigned_driver_id IS NULL)
+                ORDER BY tr.created_at DESC
+            `;
+            params = [id, userId];
+        } else {
+            // Owner/Admin sees all requests
+            query = `
+                SELECT tr.*, u.username, u.full_name, u.profile_picture,
+                       ST_X(tr.pickup_location::geometry) as longitude,
+                       ST_Y(tr.pickup_location::geometry) as latitude,
+                       d.username as driver_username, d.full_name as driver_full_name
+                FROM taxi_requests tr
+                JOIN users u ON tr.user_id = u.id
+                LEFT JOIN users d ON tr.assigned_driver_id = d.id
+                WHERE tr.shop_id = $1 AND tr.status IN ('pending', 'accepted', 'arrived')
+                ORDER BY tr.created_at DESC
+            `;
+            params = [id];
+        }
+
+        const result = await pool.query(query, params);
+        res.json({ requests: result.rows, is_driver: isDriver, is_owner: isOwnerOrAdmin });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Failed' });
+    }
+};
+
+// --- 16.5. Get Driver's Own Requests (across all shops) ---
+const getDriverRequests = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+
+        const result = await pool.query(`
+            SELECT tr.*, 
+                   u.username, u.full_name, u.profile_picture,
+                   s.name as shop_name, s.profile_picture as shop_picture,
+                   ST_X(tr.pickup_location::geometry) as longitude,
+                   ST_Y(tr.pickup_location::geometry) as latitude
+            FROM taxi_requests tr
+            JOIN users u ON tr.user_id = u.id
+            JOIN shops s ON tr.shop_id = s.id
+            WHERE (tr.assigned_driver_id = $1 OR tr.assigned_driver_id IS NULL)
+              AND tr.shop_id IN (
+                  SELECT shop_id FROM shop_drivers WHERE user_id = $1 AND is_active = TRUE
+              )
+              AND tr.status IN ('pending', 'accepted', 'arrived')
+            ORDER BY tr.created_at DESC
+        `, [userId]);
+
+        res.json({ requests: result.rows });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Failed to get driver requests' });
+    }
+};
+
+// --- 16.6. Request Nearest Taxi ---
+const requestNearestTaxi = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const { shopId, latitude, longitude, address } = req.body;
+
+        if (!latitude || !longitude || !shopId) {
+            return res.status(400).json({ error: 'latitude, longitude, and shopId are required' });
+        }
+
+        // Check active request
+        const activeCheck = await pool.query(
+            "SELECT id FROM taxi_requests WHERE user_id = $1 AND status IN ('pending', 'accepted', 'arrived')",
+            [userId]
+        );
+        if (activeCheck.rows.length > 0) {
+            return res.status(400).json({ error: '┘ä╪»┘è┘â ╪╖┘ä╪¿ ╪¡╪º┘ä┘è ╪¿╪º┘ä┘ü╪╣┘ä' });
+        }
+
+        // Find the nearest active driver from this shop
+        const nearestDriverRes = await pool.query(`
+            SELECT u.id, u.username, u.full_name, u.profile_picture,
+                   ST_Distance(
+                       ST_SetSRID(ST_MakePoint(u.last_longitude, u.last_latitude), 4326)::geography,
+                       ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography
+                   ) as distance_meters
+            FROM shop_drivers sd
+            JOIN users u ON sd.user_id = u.id
+            WHERE sd.shop_id = $3
+              AND sd.is_active = TRUE
+              AND u.last_latitude IS NOT NULL
+              AND u.last_longitude IS NOT NULL
+            ORDER BY distance_meters ASC
+            LIMIT 1
+        `, [longitude, latitude, shopId]);
+
+        const nearestDriver = nearestDriverRes.rows[0];
+        const assignedDriverId = nearestDriver ? nearestDriver.id : null;
+
+        // Create request with nearest driver assigned
+        req.params = { id: shopId };
+        req.body = { latitude, longitude, address, driverId: assignedDriverId };
+        return requestTaxi(req, res);
+
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Failed to find nearest taxi' });
+    }
+};
+
+// --- 17. Update Request Status ---
+const updateRequestStatus = async (req, res) => {
+    try {
+        const { requestId } = req.params;
+        const { status, driverId } = req.body;
+        const userId = req.user.userId;
+
+        let updateQuery = `UPDATE taxi_requests SET status = $1`;
+        let params = [status];
+        let idx = 2;
+
+        // When driver accepts, assign themselves
+        if (driverId) {
+            updateQuery += `, assigned_driver_id = $${idx++}`;
+            params.push(driverId);
+        } else if (status === 'accepted') {
+            // Auto-assign current user as driver if they're accepting
+            updateQuery += `, assigned_driver_id = $${idx++}`;
+            params.push(userId);
+        }
+
+        updateQuery += ` WHERE id = $${idx++} RETURNING *`;
+        params.push(requestId);
+
+        const result = await pool.query(updateQuery, params);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Request not found' });
+        const request = result.rows[0];
+
+        // Get driver info for notification
+        const driverInfo = await pool.query(
+            'SELECT username, full_name, profile_picture FROM users WHERE id = $1',
+            [userId]
+        );
+        const driver = driverInfo.rows[0];
+
+        // Notify User with driver info
+        let msg = '';
+        let type = 'info';
+        let notifPayload = null;
+
+        if (status === 'accepted') {
+            notifPayload = JSON.stringify({
+                requestId,
+                type: 'taxi_accepted',
+                text: `╪¬┘à ┘é╪¿┘ê┘ä ╪╖┘ä╪¿┘â! ${driver?.full_name || driver?.username || '╪º┘ä╪│╪º╪ª┘é'} ┘ü┘è ╪º┘ä╪╖╪▒┘è┘é ╪Ñ┘ä┘è┘â.`,
+                driver: {
+                    id: userId,
+                    username: driver?.username,
+                    full_name: driver?.full_name,
+                    profile_picture: driver?.profile_picture
+                }
+            });
+            msg = notifPayload;
+            type = 'taxi_accepted';
+        } else if (status === 'arrived') {
+            msg = `┘ê╪╡┘ä ╪º┘ä╪│╪º╪ª┘é ${driver?.full_name || ''} ╪Ñ┘ä┘ë ┘à┘ê┘é╪╣┘â! ≡ƒÜû`;
+            type = 'taxi_arrived';
+        } else if (status === 'completed') {
+            msg = '╪¬┘à ╪Ñ┘â┘à╪º┘ä ╪º┘ä╪▒╪¡┘ä╪⌐. ╪┤┘â╪▒╪º┘ï ┘ä┘â!';
+            type = 'taxi_completed';
+        } else if (status === 'cancelled') {
+            msg = '╪¬┘à ╪Ñ┘ä╪║╪º╪í ╪╖┘ä╪¿┘â.';
+            type = 'taxi_cancelled';
+        }
+
+        if (msg) {
+            await pool.query(`
+                INSERT INTO notifications (user_id, sender_id, type, message)
+                VALUES ($1, $2, $3, $4)
+            `, [request.user_id, userId, type, msg]);
+        }
+
+        // Emit real-time status update
+        try {
+            const app = require('../server');
+            const io = app.get ? app.get('io') : null;
+            if (io) {
+                io.to(`user_${request.user_id}`).emit('taxi-status-update', {
+                    requestId,
+                    status,
+                    driver: driver || {}
+                });
+            }
+        } catch(e) { /* socket optional */ }
+
+        res.json(result.rows[0]);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Failed' });
+    }
+};
 
 // --- 18. Add University Facility ---
 const addUniversityFacility = async (req, res) => {
@@ -749,7 +1197,7 @@ const addUniversityFacility = async (req, res) => {
             INSERT INTO university_facilities (university_id, name, category, icon, latitude, longitude, description)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING *
-        `, [id, name, category, icon || 'ðŸ“', latitude, longitude, description || '']);
+        `, [id, name, category, icon || '≡ƒôì', latitude, longitude, description || '']);
 
         res.status(201).json({ message: 'Facility added', facility: result.rows[0] });
     } catch (error) {
@@ -811,7 +1259,7 @@ const getFacilityProfile = async (req, res) => {
 
         // 3. Get Specialties (Colleges only)
         let specialties = [];
-        if (facility.category === 'Ø§Ù„ÙƒÙ„ÙŠØ§Øª') {
+        if (facility.category === '╪º┘ä┘â┘ä┘è╪º╪¬') {
             const specRes = await pool.query(`
                 SELECT * FROM university_specialties WHERE facility_id = $1 ORDER BY name
             `, [facilityId]);
@@ -886,7 +1334,7 @@ const addCollegeSpecialty = async (req, res) => {
         `, [facilityId]);
 
         if (checkRes.rows.length === 0) return res.status(404).json({ error: 'College not found' });
-        if (checkRes.rows[0].category !== 'Ø§Ù„ÙƒÙ„ÙŠØ§Øª') return res.status(400).json({ error: 'Not a College' });
+        if (checkRes.rows[0].category !== '╪º┘ä┘â┘ä┘è╪º╪¬') return res.status(400).json({ error: 'Not a College' });
         if (req.user.role !== 'admin' && checkRes.rows[0].owner_id !== userId) return res.status(403).json({ error: 'Unauthorized' });
 
         const result = await pool.query(`
@@ -1056,37 +1504,45 @@ module.exports = {
     followShop,
     unfollowShop,
     getFollowedShops,
-    getManagedShops,
     createShop,
-    updateShopProfile,
     deleteShop,
+    getShopProfile,
+    updateShopProfile,
     updateShopImages,
     createShopPost,
-    deleteShopPost,
     addProduct,
     updateProduct,
     deleteProduct,
     assignShopOwner,
     removeShopOwner,
+    getManagedShops,
     sendNotificationToFollowers,
-    togglePostLike,
-    addPostComment,
+    addShopDriver,
+    getShopDrivers,
+    removeShopDriver,
+    requestTaxi,
+    getShopRequests,
+    getDriverRequests,
+    requestNearestTaxi,
+    updateRequestStatus,
     addUniversityFacility,
+    getUniversityFacilities,
+    getFacilityProfile,
     addFacilityPost,
     addCollegeSpecialty,
     deleteUniversityFacility,
     renameUniversityFacility,
-    addMunicipalityItem,
-    deleteMunicipalityItem,
-    getShopProfile,
-    getUniversityFacilities,
-    getFacilityProfile,
+    togglePostLike,
+    addPostComment,
     getPostComments,
-    getMunicipalityItems
+    deleteShopPost,
+    getMunicipalityItems,
+    addMunicipalityItem,
+    deleteMunicipalityItem
 };
 
 // ====================================================================
-// --- MUNICIPALITY ITEMS (البلديات) ---
+// --- MUNICIPALITY ITEMS (╪º┘ä╪¿┘ä╪»┘è╪º╪¬) ---
 // ====================================================================
 
 /**
@@ -1193,3 +1649,4 @@ async function deleteMunicipalityItem(req, res) {
         res.status(500).json({ error: 'Failed to delete item' });
     }
 }
+

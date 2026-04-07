@@ -118,50 +118,7 @@ io.on('connection', (socket) => {
         socket.to(`user_${receiverId}`).emit('user-stop-typing', { userId: socket.userId });
     });
 
-    // 🚕 TAXI: Driver broadcasts their location
-    socket.on('driver-location-update', async (data) => {
-        const { latitude, longitude, shopId } = data;
-        const driverId = socket.userId;
-        if (!driverId || !latitude || !longitude) return;
 
-        try {
-            const pool = require('./config/database');
-            // Update driver's location in users table
-            await pool.query(
-                'UPDATE users SET last_latitude = $1, last_longitude = $2 WHERE id = $3',
-                [latitude, longitude, driverId]
-            );
-
-            // Get shop followers to broadcast driver location
-            if (shopId) {
-                const followersRes = await pool.query(
-                    'SELECT user_id FROM shop_followers WHERE shop_id = $1',
-                    [shopId]
-                );
-                followersRes.rows.forEach(f => {
-                    io.to(`user_${f.user_id}`).emit('driver-location', {
-                        driverId,
-                        latitude,
-                        longitude,
-                        shopId
-                    });
-                });
-            }
-        } catch (e) {
-            console.error('Driver location update error:', e);
-        }
-    });
-
-    // 🚕 TAXI: Driver joins shop room to receive requests
-    socket.on('join-taxi-shop', (shopId) => {
-        socket.join(`taxi_shop_${shopId}`);
-        console.log(`Driver ${socket.userId} joined taxi room for shop ${shopId}`);
-    });
-
-    // 🚕 TAXI: Passenger tracking - subscribe to driver location
-    socket.on('track-driver', ({ driverId }) => {
-        socket.join(`track_${driverId}`);
-    });
 
     socket.on('disconnect', () => {
         console.log('User disconnected');
@@ -216,22 +173,7 @@ app.use('/api/comments', require('./routes/comments'));
 app.use('/api/push', require('./routes/push'));
 app.use('/api/radar', require('./routes/radar')); // <-- NEW RADAR MOUNT
 
-// Auto-migration: ensure critical columns exist on every startup (Vercel-safe)
-(async () => {
-    try {
-        const pool = require('./config/database');
-        await pool.query(`
-            ALTER TABLE taxi_requests ADD COLUMN IF NOT EXISTS assigned_driver_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
-            ALTER TABLE taxi_requests ADD COLUMN IF NOT EXISTS estimated_arrival INTEGER;
-            ALTER TABLE taxi_requests ADD COLUMN IF NOT EXISTS notes TEXT;
-        `);
-        // Clear any stuck requests from failed attempts
-        await pool.query("UPDATE taxi_requests SET status = 'cancelled' WHERE status IN ('pending', 'accepted') AND created_at < NOW() - INTERVAL '30 minutes'");
-        console.log('✅ Auto-migration: taxi_requests columns verified');
-    } catch (err) {
-        console.error('⚠️ Auto-migration warning:', err.message);
-    }
-})();
+
 
 // 7. التشغيل المحلي (فقط للمبرمج)
 if (!process.env.VERCEL) {

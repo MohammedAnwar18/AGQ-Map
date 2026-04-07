@@ -40,17 +40,6 @@ router.post('/:id/assign-owner', authenticateToken, shopController.assignShopOwn
 router.delete('/:id/owner', authenticateToken, shopController.removeShopOwner);
 router.post('/:id/notify', authenticateToken, shopController.sendNotificationToFollowers);
 
-// السائقون
-router.post('/:id/drivers', authenticateToken, shopController.addShopDriver);
-router.delete('/:id/drivers/:driverId', authenticateToken, shopController.removeShopDriver);
-
-// طلبات التاكسي (إنشاء / تحديث)
-router.post('/:id/request', authenticateToken, shopController.requestTaxi);
-router.put('/requests/:requestId', authenticateToken, shopController.updateRequestStatus);
-router.post('/request-nearest', authenticateToken, shopController.requestNearestTaxi);
-
-// طلبات السائق الشخصية
-router.get('/driver/my-requests', authenticateToken, shopController.getDriverRequests);
 
 // التفاعلات (إعجاب / تعليق)
 router.post('/posts/:postId/like', authenticateToken, shopController.togglePostLike);
@@ -78,11 +67,6 @@ router.get('/search', optionalAuth, shopController.searchShops);
 // ملف المحل (عام)
 router.get('/:id', optionalAuth, shopController.getShopProfile);
 
-// السائقون (عرض - عام)
-router.get('/:id/drivers', optionalAuth, shopController.getShopDrivers);
-
-// طلبات التاكسي (عرض)
-router.get('/:id/requests', authenticateToken, shopController.getShopRequests);
 
 // المرافق الجامعية (عرض - عام)
 router.get('/:id/facilities', optionalAuth, shopController.getUniversityFacilities);

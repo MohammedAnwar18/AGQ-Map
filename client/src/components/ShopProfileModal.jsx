@@ -5,8 +5,6 @@ import { optimizeImage } from '../utils/imageOptimizer';
 import CartModal from './CartModal';
 import ImageCropperModal from './ImageCropperModal';
 import PostDetailModal from './PostDetailModal';
-import TaxiDriverPanel from './TaxiDriverPanel';
-import TaxiRequestPanel from './TaxiRequestPanel';
 import './Modal.css';
 
 // --- Assets / Icons ---
@@ -48,14 +46,7 @@ const EditIcon = () => (
 );
 // ... existing icons ...
 
-const TaxiIcon = () => (
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#fbab15' }}>
-        <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"></path>
-        <circle cx="7" cy="17" r="2"></circle>
-        <path d="M9 17h6"></path>
-        <circle cx="17" cy="17" r="2"></circle>
-    </svg>
-);
+// TaxiIcon removed
 
 const SearchIcon = () => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -324,104 +315,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
         }
     };
 
-    // Drivers Logic (Taxi)
-    const loadDrivers = async () => {
-        if (!shopData?.id) return;
-        setLoadingDrivers(true);
-        try {
-            const data = await shopService.getDrivers(shopData.id);
-            setDrivers(data.drivers || []);
-        } catch (error) {
-            console.error("Failed to load drivers", error);
-        } finally {
-            setLoadingDrivers(false);
-        }
-    };
-
-    const handleAddDriver = async (e) => {
-        e.preventDefault();
-        if (!newDriverData.username.trim()) return;
-        try {
-            await shopService.addDriver(shopData.id, newDriverData);
-            setNewDriverData({ username: '', car_type: '', plate_number: '', passengers: 4 });
-            loadDrivers();
-            alert('تم إضافة السائق والسيارة بنجاح');
-        } catch (error) {
-            alert('فشل إضافة السائق: ' + (error.response?.data?.error || 'خطأ غير معروف'));
-        }
-    };
-
-    const handleRemoveDriver = async (driverId) => {
-        if (!window.confirm('هل أنت متأكد من إزالة هذا السائق؟')) return;
-        try {
-            await shopService.removeDriver(shopData.id, driverId);
-            setDrivers(drivers.filter(d => d.id !== driverId));
-        } catch (e) {
-            alert('فشل الحذف');
-        }
-    };
-
-    const handleRequestTaxi = async () => {
-        try {
-            if (!navigator.geolocation) {
-                alert('المتصفح لا يدعم تحديد الموقع');
-                return;
-            }
-
-            navigator.geolocation.getCurrentPosition(async (position) => {
-                try {
-                    await shopService.requestTaxi(shopData.id, {
-                        latitude: position.coords.latitude,
-                        longitude: position.coords.longitude,
-                        address: 'موقعي الحالي'
-                    });
-                    alert('تم إرسال طلبك بنجاح! سيتم إشعارك عند قبول الطلب.');
-                } catch (error) {
-                    alert(error.response?.data?.error || 'فشل إرسال الطلب');
-                }
-            }, (error) => {
-                alert('فشل تحديد موقعك. يرجى تفعيل خدمة الموقع.');
-            });
-        } catch (error) {
-            console.error(error);
-        }
-    };
-
-    const loadRequests = async () => {
-        if (!shopData?.id || !canEditShop) return;
-        setLoadingRequests(true);
-        try {
-            const data = await shopService.getShopRequests(shopData.id);
-            setRequests(data.requests || []);
-        } catch (error) {
-            console.error("Failed to load requests", error);
-        } finally {
-            setLoadingRequests(false);
-        }
-    };
-
-    const handleUpdateRequestStatus = async (requestId, status, driverId = null) => {
-        try {
-            await shopService.updateRequestStatus(requestId, status, driverId);
-            loadRequests(); // Reload
-            if (isDriver) loadMyDriverRequests(); // Reload driver's requests too
-            alert('تم تحديث حالة الطلب بنجاح');
-        } catch (error) {
-            alert('فشل التحديث');
-        }
-    };
-
-    const loadMyDriverRequests = async () => {
-        if (!shopData?.id || !isDriver) return;
-        try {
-            const data = await shopService.getShopRequests(shopData.id);
-            // Filter only requests assigned to current user
-            const myRequests = data.requests.filter(r => r.driver_id === currentUser?.id);
-            setMyDriverRequests(myRequests);
-        } catch (error) {
-            console.error("Failed to load my driver requests", error);
-        }
-    };
 
     // State for editing product
     const [editingProduct, setEditingProduct] = useState(null);
@@ -814,7 +707,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                         autoFocus
                                     >
                                         <option value="" disabled>اختر التصنيف</option>
-                                        <option value="مكتب تاكسي">مكتب تاكسي 🚕</option>
                                         <option value="مطعم">مطعم 🍔</option>
                                         <option value="ملابس">ملابس 👕</option>
                                         <option value="سوبر ماركت">سوبر ماركت 🛒</option>
@@ -868,32 +760,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                     </div>
                 </div>
 
-                {/* Driver Dashboard - uses TaxiDriverPanel for drivers, TaxiRequestPanel for followers */}
-                {shopData.category === 'مكتب تاكسي' && (
-                    <div style={{ padding: '0 20px', marginTop: '16px' }}>
-                        {isDriver ? (
-                            /* 🚕 DRIVER VIEW: Full driver panel with requests */
-                            <TaxiDriverPanel
-                                shopId={shopData.id}
-                                shopName={shopData.name}
-                                currentUser={currentUser}
-                                socket={null /* socket passed from parent if available */}
-                            />
-                        ) : isFollowing && !canEditShop ? (
-                            /* 👥 FOLLOWER VIEW: Request taxi panel */
-                            <TaxiRequestPanel
-                                shop={shopData}
-                                currentUser={currentUser}
-                                activeDrivers={shopData.active_drivers || drivers.filter(d => d.latitude && d.longitude)}
-                                socket={null}
-                                onDriverSelect={(driver) => {
-                                    // Could open map to show driver location
-                                    console.log('Driver selected for route:', driver);
-                                }}
-                            />
-                        ) : null}
-                    </div>
-                )}
+                {/* Driver Dashboard Removed */}
 
                 {/* Navigation Tabs */}
                 <div style={{
@@ -906,7 +773,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                     {[
                         ...((shopData.category === 'صراف آلي' || shopData.category === 'فرع بنك') ? [] : ['products']),
                         'timeline',
-                        ...((shopData.category === 'مكتب تاكسي' && canEditShop) ? ['requests', 'drivers'] : []),
                         ...(canEditShop ? ['simulate'] : []),
                         'about'
                     ]
@@ -935,7 +801,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                             {/* Make tab label dynamic */}
                             {(() => {
                                 if (tab === 'products') {
-                                    if (shopData.category === 'مكتب تاكسي') return 'الخدمات';
                                     if (shopData.category === 'مركز تسوق' || shopData.category === 'مجمع تجاري' || shopData.category === 'Mall') return 'الدليل';
                                     return 'المنتجات';
                                 }
@@ -1210,69 +1075,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                     )}
 
                     {/* --- Products Tab --- */}
-                    {/* --- Taxi Services Tab (Uber Style) --- */}
-                    {activeTab === 'products' && shopData.category === 'مكتب تاكسي' && (
-                        <div style={{ animation: 'fadeIn 0.5s' }}>
-                            <div style={{ textAlign: 'center', padding: '30px 20px', background: 'linear-gradient(135deg, #fbab15 0%, #f59e0b 100%)', borderRadius: 16, color: 'white', marginBottom: 25, boxShadow: '0 4px 15px rgba(251, 171, 21, 0.3)' }}>
-                                <h2 style={{ margin: '0 0 10px', fontSize: '1.8rem' }}>احجز رحلتك الآن</h2>
-                                <p style={{ margin: '0 0 20px', opacity: 0.9 }}>أقرب سائق إليك على بعد نقرة واحدة</p>
-                                <button className="pulse-button" style={{
-                                    background: 'white', color: '#fbab15', border: 'none',
-                                    padding: '15px 40px', borderRadius: 50, fontSize: '1.2rem', fontWeight: 'bold',
-                                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)', cursor: 'pointer', transition: 'transform 0.2s'
-                                }} onClick={handleRequestTaxi}>
-                                    🚖 طلب أقرب تاكسي
-                                </button>
-                            </div>
 
-                            <h3 style={{ margin: '0 0 15px', color: 'var(--text-primary)' }}>السائقون المتاحون ({drivers.length})</h3>
-
-                            {loadingDrivers ? <div className="spinner"></div> : (
-                                drivers.length === 0 ? <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 20 }}>لا يوجد سائقين متاحين حالياً.</p> :
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px' }}>
-                                        {drivers.map(driver => (
-                                            <div key={driver.id} style={{ background: 'var(--bg-primary)', borderRadius: 12, padding: 15, border: '1px solid var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
-                                                    <div style={{ position: 'relative' }}>
-                                                        <img src={getImageUrl(driver.profile_picture) || '/default-user.png'} style={{ width: 50, height: 50, borderRadius: '50%', objectFit: 'cover', border: '2px solid #fbab15' }} />
-                                                        <div style={{ position: 'absolute', bottom: -5, right: -5, background: '#fbab15', color: 'white', borderRadius: '50%', padding: 4, fontSize: '0.7rem' }}>🚕</div>
-                                                    </div>
-                                                    <div>
-                                                        <h4 style={{ margin: 0 }}>{driver.full_name || driver.username}</h4>
-                                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                                            ⭐ 4.9 • كابتن
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div style={{ background: 'var(--bg-secondary)', padding: 10, borderRadius: 8, fontSize: '0.9rem' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                                                        <span style={{ color: 'var(--text-muted)' }}>السيارة:</span>
-                                                        <span style={{ fontWeight: 'bold' }}>{driver.car_type || 'غير محدد'}</span>
-                                                    </div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                                                        <span style={{ color: 'var(--text-muted)' }}>اللوحة:</span>
-                                                        <span style={{ fontWeight: 'bold', fontFamily: 'monospace' }}>{driver.plate_number || '---'}</span>
-                                                    </div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                        <span style={{ color: 'var(--text-muted)' }}>الركاب:</span>
-                                                        <span style={{ fontWeight: 'bold' }}>{driver.passengers_capacity || 4} 👤</span>
-                                                    </div>
-                                                </div>
-
-                                                <button style={{
-                                                    background: '#fbab15', color: 'white', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 'bold', cursor: 'pointer', marginTop: 'auto'
-                                                }} onClick={() => {
-                                                    alert(`تم إرسال طلب للكابتن ${driver.username}.`);
-                                                }}>
-                                                    طلب هذا السائق
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                            )}
-                        </div>
-                    )}
 
                     {/* --- Bank View --- */}
                     {activeTab === 'products' && shopData.category === 'بنك' && (

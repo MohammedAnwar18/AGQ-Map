@@ -448,47 +448,7 @@ export const shopService = {
         return response.data;
     },
 
-    getDrivers: async (shopId) => {
-        const response = await api.get(`/shops/${shopId}/drivers`);
-        return response.data;
-    },
 
-    addDriver: async (shopId, driverData) => {
-        // driverData: { username, car_type, ... }
-        const response = await api.post(`/shops/${shopId}/drivers`, driverData);
-        return response.data;
-    },
-
-    removeDriver: async (shopId, driverId) => {
-        const response = await api.delete(`/shops/${shopId}/drivers/${driverId}`);
-        return response.data;
-    },
-
-    requestTaxi: async (shopId, data) => {
-        const response = await api.post(`/shops/${shopId}/request`, data);
-        return response.data;
-    },
-
-    getShopRequests: async (shopId) => {
-        const response = await api.get(`/shops/${shopId}/requests`);
-        return response.data;
-    },
-
-    updateRequestStatus: async (requestId, status, driverId) => {
-        const response = await api.put(`/shops/requests/${requestId}`, { status, driverId });
-        return response.data;
-    },
-
-    getDriverRequests: async () => {
-        const response = await api.get(`/shops/driver/my-requests`);
-        return response.data;
-    },
-
-    requestNearestTaxi: async (data) => {
-        // data: { shopId, latitude, longitude, address }
-        const response = await api.post(`/shops/request-nearest`, data);
-        return response.data;
-    },
 
     getFacilities: async (shopId) => {
         const response = await api.get(`/shops/${shopId}/facilities?t=${Date.now()}`);

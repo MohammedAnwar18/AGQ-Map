@@ -4,7 +4,7 @@ const tables = [
   'friend_requests', 'friendships', 'posts', 'users', 'messages',
   'communities', 'comments', 'community_members', 'local_news',
   'likes', 'notifications', 'shop_followers', 'shop_products',
-  'shop_drivers', 'taxi_requests', 'shops'
+  'shops'
 ];
 
 async function enableRLS() {
