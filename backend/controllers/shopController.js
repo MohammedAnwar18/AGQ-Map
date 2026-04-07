@@ -11,19 +11,35 @@ const searchShops = async (req, res) => {
         let result;
         if (userId) {
             result = await pool.query(`
-                SELECT s.id, s.name, s.category, s.profile_picture, s.latitude, s.longitude,
+                SELECT s.id, s.name, s.category, s.profile_picture, 
+                       s.latitude, s.longitude, s.floor,
+                       s.parent_shop_id,
+                       parent.name AS parent_shop_name,
+                       parent.category AS parent_shop_category,
                        EXISTS(SELECT 1 FROM shop_followers WHERE shop_id = s.id AND user_id = $2::int) as is_followed
                 FROM shops s
+                LEFT JOIN shops parent ON s.parent_shop_id = parent.id
                 WHERE s.name ILIKE $1 AND s.is_hidden = FALSE
-                LIMIT 10
+                ORDER BY 
+                    CASE WHEN s.parent_shop_id IS NULL THEN 0 ELSE 1 END,
+                    s.name ASC
+                LIMIT 15
             `, [`%${query}%`, parseInt(userId)]);
         } else {
             result = await pool.query(`
-                SELECT s.id, s.name, s.category, s.profile_picture, s.latitude, s.longitude,
+                SELECT s.id, s.name, s.category, s.profile_picture, 
+                       s.latitude, s.longitude, s.floor,
+                       s.parent_shop_id,
+                       parent.name AS parent_shop_name,
+                       parent.category AS parent_shop_category,
                        FALSE as is_followed
                 FROM shops s
+                LEFT JOIN shops parent ON s.parent_shop_id = parent.id
                 WHERE s.name ILIKE $1 AND s.is_hidden = FALSE
-                LIMIT 10
+                ORDER BY 
+                    CASE WHEN s.parent_shop_id IS NULL THEN 0 ELSE 1 END,
+                    s.name ASC
+                LIMIT 15
             `, [`%${query}%`]);
         }
 
@@ -123,9 +139,9 @@ const getFollowedShops = async (req, res) => {
 const createShop = async (req, res) => {
     try {
         const { name, latitude, longitude, category, parent_shop_id, floor } = req.body;
-        const ownerId = req.user.userId;
+        const ownerId = req.user.id || req.user.userId;
 
-        console.log('Creating shop with data:', { name, latitude, longitude, category, ownerId });
+        console.log('Creating shop with data:', { name, latitude, longitude, category, ownerId, parent_shop_id, floor });
 
         // Ensure lat/long are valid numbers
         const lat = parseFloat(latitude);
@@ -137,7 +153,7 @@ const createShop = async (req, res) => {
 
         const result = await pool.query(`
             INSERT INTO shops (name, latitude, longitude, category, owner_id, parent_shop_id, floor, location)
-            VALUES ($1, $2::numeric, $3::numeric, $4, $5, $6, $7, ST_SetSRID(ST_MakePoint($3::double precision, $2::double precision), 4326)::geography)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, ST_SetSRID(ST_MakePoint($3, $2), 4326)::geography)
             RETURNING *
         `, [name, lat, lon, category || 'General', ownerId, parent_shop_id || null, floor || null]);
 

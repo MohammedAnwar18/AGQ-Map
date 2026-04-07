@@ -3,6 +3,7 @@ const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const {
     sendFriendRequest,
+    cancelFriendRequest,
     acceptFriendRequest,
     rejectFriendRequest,
     getPendingRequests,
@@ -15,6 +16,9 @@ const {
 
 // إرسال طلب صداقة (محمي)
 router.post('/request', authenticateToken, sendFriendRequest);
+
+// إلغاء طلب صداقة أُرسل (من طرف المرسل)
+router.delete('/request/cancel/:receiverId', authenticateToken, cancelFriendRequest);
 
 // قبول طلب صداقة (محمي)
 router.post('/request/:requestId/accept', authenticateToken, acceptFriendRequest);

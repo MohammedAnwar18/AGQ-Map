@@ -643,9 +643,20 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                             </div>
                                                             <div className="chat-info" style={{ flex: 1, minWidth: 0 }}>
                                                                 <div className="chat-name" style={{ fontWeight: '700' }}>{shop.name}</div>
-                                                                <div className="chat-last-message" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fbab15', display: 'inline-block' }}></span>
-                                                                    {shop.category}
+                                                                <div className="chat-last-message" style={{ display: 'flex', alignItems: 'center', gap: '4.5px', flexWrap: 'wrap' }}>
+                                                                    <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{shop.category}</span>
+                                                                    {shop.parent_shop_name && (
+                                                                        <span style={{ 
+                                                                            fontSize: '0.75rem', 
+                                                                            color: '#fbab15', 
+                                                                            background: 'rgba(251,171,21,0.1)', 
+                                                                            padding: '2px 8px', 
+                                                                            borderRadius: '10px',
+                                                                            marginLeft: '5px'
+                                                                        }}>
+                                                                            في: {shop.parent_shop_name}
+                                                                        </span>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                             <div className="user-item-actions">
@@ -693,8 +704,20 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                             </div>
                                                             <div className="chat-info" style={{ flex: 1, minWidth: 0 }}>
                                                                 <div className="chat-name" style={{ fontWeight: '700' }}>{shop.name}</div>
-                                                                <div className="chat-last-message" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                                    {shop.category}
+                                                                <div className="chat-last-message" style={{ display: 'flex', alignItems: 'center', gap: '4.5px', flexWrap: 'wrap' }}>
+                                                                    <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{shop.category}</span>
+                                                                    {shop.parent_shop_name && (
+                                                                        <span style={{ 
+                                                                            fontSize: '0.75rem', 
+                                                                            color: '#fbab15', 
+                                                                            background: 'rgba(251,171,21,0.1)', 
+                                                                            padding: '2px 8px', 
+                                                                            borderRadius: '10px',
+                                                                            marginLeft: '5px'
+                                                                        }}>
+                                                                            في: {shop.parent_shop_name}
+                                                                        </span>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                             <div className="user-item-actions">

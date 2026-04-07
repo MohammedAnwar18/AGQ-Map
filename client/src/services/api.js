@@ -127,6 +127,11 @@ export const friendService = {
         return response.data;
     },
 
+    cancelFriendRequest: async (receiverId) => {
+        const response = await api.delete(`/friends/request/cancel/${receiverId}`);
+        return response.data;
+    },
+
     acceptFriendRequest: async (requestId) => {
         const response = await api.post(`/friends/request/${requestId}/accept`);
         return response.data;
@@ -176,6 +181,7 @@ export const friendService = {
         return response.data;
     }
 };
+
 
 // Post Services
 export const postService = {

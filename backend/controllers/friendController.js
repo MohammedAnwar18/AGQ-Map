@@ -83,6 +83,32 @@ const sendFriendRequest = async (req, res) => {
 };
 
 /**
+ * إلغاء طلب صداقة أرسله المستخدم (من جهة المرسل)
+ */
+const cancelFriendRequest = async (req, res) => {
+    try {
+        const senderId = req.user.id || req.user.userId;
+        const { receiverId } = req.params;
+
+        const result = await pool.query(
+            `DELETE FROM friend_requests 
+             WHERE sender_id = $1 AND receiver_id = $2 AND status = 'pending'
+             RETURNING id`,
+            [senderId, receiverId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'No pending friend request found to cancel' });
+        }
+
+        res.json({ message: 'Friend request cancelled successfully' });
+    } catch (error) {
+        console.error('Cancel friend request error:', error);
+        res.status(500).json({ error: 'Server error cancelling friend request' });
+    }
+};
+
+/**
  * قبول طلب صداقة
  */
 const acceptFriendRequest = async (req, res) => {
@@ -430,6 +456,7 @@ const toggleLocationSharing = async (req, res) => {
 
 module.exports = {
     sendFriendRequest,
+    cancelFriendRequest,
     acceptFriendRequest,
     rejectFriendRequest,
     getPendingRequests,

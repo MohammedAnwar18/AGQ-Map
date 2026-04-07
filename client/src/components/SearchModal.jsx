@@ -43,6 +43,22 @@ const SearchModal = ({ onClose }) => {
         }
     };
 
+    const handleCancelRequest = async (userId) => {
+        try {
+            setRequestLoading(userId);
+            await friendService.cancelFriendRequest(userId);
+            setResults(results.map(user =>
+                user.id === userId
+                    ? { ...user, has_pending_request: false }
+                    : user
+            ));
+        } catch (error) {
+            console.error('Failed to cancel friend request:', error);
+        } finally {
+            setRequestLoading(null);
+        }
+    };
+
     const getActionButton = (user) => {
         if (user.is_friend) {
             return (
@@ -52,16 +68,29 @@ const SearchModal = ({ onClose }) => {
             );
         }
 
-        if (user.has_pending_request) {
-            return (
-                <button className="btn-small btn-pending" disabled>
-                    تم الإرسال
-                </button>
-            );
-        }
-
         if (requestLoading === user.id) {
             return <div className="spinner-small"></div>;
+        }
+
+        if (user.has_pending_request) {
+            return (
+                <button
+                    className="btn-small"
+                    onClick={() => handleCancelRequest(user.id)}
+                    style={{
+                        background: 'rgba(251,171,21,0.15)',
+                        border: '1px solid #fbab15',
+                        color: '#fbab15',
+                        borderRadius: '20px',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                        padding: '5px 10px'
+                    }}
+                    title="اضغط لإلغاء طلب الصداقة"
+                >
+                    ✓ تم الإرسال - إلغاء؟
+                </button>
+            );
         }
 
         return (
@@ -73,6 +102,7 @@ const SearchModal = ({ onClose }) => {
             </button>
         );
     };
+
 
     return (
         <div className="modal-overlay" onClick={onClose}>

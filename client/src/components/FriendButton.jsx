@@ -7,15 +7,20 @@ const FriendButton = ({ userId, isFriend: initialIsFriend, hasRequest: initialHa
 
     const handleAddFriend = async (e) => {
         e.stopPropagation();
-        if (status !== 'none') return;
+        if (loading) return;
 
         try {
             setLoading(true);
-            await friendService.sendFriendRequest(userId);
-            setStatus('pending');
+            if (status === 'none') {
+                await friendService.sendFriendRequest(userId);
+                setStatus('pending');
+            } else if (status === 'pending') {
+                // Cancel the sent request
+                await friendService.cancelFriendRequest(userId);
+                setStatus('none');
+            }
         } catch (error) {
-            console.error('Failed to send friend request:', error);
-            // We could show a toast here if available
+            console.error('Friend request action failed:', error);
         } finally {
             setLoading(false);
         }
@@ -26,7 +31,23 @@ const FriendButton = ({ userId, isFriend: initialIsFriend, hasRequest: initialHa
     }
 
     if (status === 'pending') {
-        return <span className="friend-status-tag pending" style={style}>طلب معلق</span>;
+        return (
+            <button
+                className="btn btn-secondary"
+                onClick={handleAddFriend}
+                disabled={loading}
+                title="اضغط لإلغاء طلب الصداقة"
+                style={{
+                    padding: '6px 12px', fontSize: '0.8rem', height: 'auto',
+                    background: 'rgba(251,171,21,0.15)', border: '1px solid #fbab15',
+                    color: '#fbab15', borderRadius: '20px', cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    ...style
+                }}
+            >
+                {loading ? '...' : '✓ تم الإرسال - إلغاء؟'}
+            </button>
+        );
     }
 
     return (

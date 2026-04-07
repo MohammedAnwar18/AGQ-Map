@@ -5,10 +5,8 @@ import { optimizeImage } from '../utils/imageOptimizer';
 import CartModal from './CartModal';
 import ImageCropperModal from './ImageCropperModal';
 import PostDetailModal from './PostDetailModal';
-import PostDetailModal from './PostDetailModal';
 import './Modal.css';
 
-// --- Assets / Icons ---
 // --- Assets / Icons ---
 const CameraIcon = () => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -47,7 +45,14 @@ const EditIcon = () => (
 );
 // ... existing icons ...
 
-// TaxiIcon removed
+const TaxiIcon = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18.5 10H5.5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2z"></path>
+        <path d="M7 10l1-4h8l1 4"></path>
+        <circle cx="7" cy="18" r="1.5"></circle>
+        <circle cx="17" cy="18" r="1.5"></circle>
+    </svg>
+);
 
 const SearchIcon = () => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -326,23 +331,31 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
 
     const handleAddInternalShop = async (e) => {
         e.preventDefault();
+        if (!newInternalShopData.name.trim()) {
+            alert('يرجى إدخال اسم المحل');
+            return;
+        }
+        if (!newInternalShopData.category) {
+            alert('يرجى اختيار تصنيف المحل');
+            return;
+        }
         try {
-            // Logic to create a shop with parent_shop_id
-            // We use the same createShop API but with extra fields
-            await shopService.createShop({
+            // Use shopService.create (the correct API method name)
+            await shopService.create({
                 name: newInternalShopData.name,
                 category: newInternalShopData.category,
-                floor: newInternalShopData.floor,
+                floor: newInternalShopData.floor || null,
                 parent_shop_id: shopData.id,
                 latitude: shopData.latitude, // Same location as mall
                 longitude: shopData.longitude
             });
             setShowAddInternalShop(false);
             setNewInternalShopData({ name: '', category: '', floor: '', owner_username: '' });
-            loadShopData(); // Refresh list
-            alert('تم إضافة المحل للمجمع بنجاح');
+            await loadShopData(); // Refresh list
+            alert('تم إضافة المحل للمجمع بنجاح ✅');
         } catch (error) {
-            alert('فشل إضافة المحل');
+            console.error('Failed to add internal shop:', error);
+            alert('فشل إضافة المحل: ' + (error?.response?.data?.error || error.message || 'خطأ في الخادم'));
         }
     };
 
