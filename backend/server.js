@@ -225,6 +225,8 @@ app.use('/api/radar', require('./routes/radar')); // <-- NEW RADAR MOUNT
             ALTER TABLE taxi_requests ADD COLUMN IF NOT EXISTS estimated_arrival INTEGER;
             ALTER TABLE taxi_requests ADD COLUMN IF NOT EXISTS notes TEXT;
         `);
+        // Clear any stuck requests from failed attempts
+        await pool.query("UPDATE taxi_requests SET status = 'cancelled' WHERE status IN ('pending', 'accepted') AND created_at < NOW() - INTERVAL '30 minutes'");
         console.log('✅ Auto-migration: taxi_requests columns verified');
     } catch (err) {
         console.error('⚠️ Auto-migration warning:', err.message);
