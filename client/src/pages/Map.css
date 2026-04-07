@@ -518,11 +518,20 @@
     pointer-events: none;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 768px) {
     .more-menu-dropdown {
+        top: 0;
+        bottom: 0;
+        right: 0;
         width: 280px;
-        right: 10px;
-        left: auto;
+        max-width: 85%;
+        border-radius: 0;
+        border-top-left-radius: 24px;
+        border-bottom-left-radius: 24px;
+        border-right: none;
+        padding-top: max(env(safe-area-inset-top, 0px), 20px);
+        padding-bottom: max(env(safe-area-inset-bottom, 0px), 20px);
+        box-sizing: border-box;
     }
 }
 
