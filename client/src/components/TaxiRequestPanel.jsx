@@ -231,6 +231,35 @@ const TaxiRequestPanel = ({
                                     </div>
                                 )}
 
+                                {(activeRequest.status === 'accepted' || activeRequest.status === 'arrived') && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (window.showTaxiRoute && activeRequest.driver && activeRequest.driver.latitude) {
+                                                window.showTaxiRoute({
+                                                    passengerLoc: location,
+                                                    driverLoc: { lat: activeRequest.driver.latitude, lng: activeRequest.driver.longitude },
+                                                    passengerName: 'أنت',
+                                                    driverName: activeRequest.driver.full_name || activeRequest.driver.username
+                                                });
+                                                if (onClose) onClose();
+                                            } else {
+                                                alert('موقع السائق غير متوفر بعد');
+                                            }
+                                        }}
+                                        style={{
+                                            marginTop: '12px', width: '100%',
+                                            background: 'linear-gradient(135deg, #10b981, #059669)',
+                                            color: '#fff', border: 'none', borderRadius: '8px',
+                                            padding: '8px 20px', cursor: 'pointer', fontFamily: 'inherit',
+                                            fontSize: '0.85rem', fontWeight: 'bold', display: 'flex',
+                                            alignItems: 'center', justifyContent: 'center', gap: '6px'
+                                        }}
+                                    >
+                                        🗺️ تتبع السائق على الخريطة
+                                    </button>
+                                )}
+
                                 <button
                                     onClick={cancelRequest}
                                     style={{

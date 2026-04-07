@@ -239,6 +239,42 @@ const MapComponent = () => {
     // Community Mode State
     const [currentCommunity, setCurrentCommunity] = useState(null);
 
+    // Taxi Route Visualization State
+    const [taxiRoute, setTaxiRoute] = useState(null);
+
+    // Expose showTaxiRoute to window so nested modals can trigger map updates
+    useEffect(() => {
+        window.showTaxiRoute = (routeData) => {
+            setTaxiRoute(routeData);
+            // Hide any open modals to show the map purely
+            setShowShops(false);
+            setShowProfile(false);
+            
+            // Focus the map on this route
+            if (mapRef.current && routeData.passengerLoc && routeData.driverLoc) {
+                const pdLng = routeData.passengerLoc.longitude || routeData.passengerLoc.lng;
+                const pdLat = routeData.passengerLoc.latitude || routeData.passengerLoc.lat;
+                const drLng = routeData.driverLoc.longitude || routeData.driverLoc.lng;
+                const drLat = routeData.driverLoc.latitude || routeData.driverLoc.lat;
+
+                const centerLng = (pdLng + drLng) / 2;
+                const centerLat = (pdLat + drLat) / 2;
+
+                const dLat = Math.abs(pdLat - drLat);
+                const dLng = Math.abs(pdLng - drLng);
+                const maxDiff = Math.max(dLat, dLng);
+                
+                let zoom = 14;
+                if (maxDiff > 0.05) zoom = 12;
+                if (maxDiff > 0.2) zoom = 10;
+                
+                mapRef.current.flyTo({ center: [centerLng, centerLat], zoom, duration: 1500 });
+            }
+        };
+
+        return () => { delete window.showTaxiRoute; };
+    }, []);
+
     // Historical Atlas Layer State
     const [historicalTileUrl, setHistoricalTileUrl] = useState(null);
     const [historicalLayerName, setHistoricalLayerName] = useState(null);
@@ -1250,6 +1286,62 @@ const MapComponent = () => {
                                     <circle cx="40" cy="40" r="10" fill="#ffffff" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.3))' }} />
                                     <circle cx="40" cy="40" r="7" fill="#fbab15" />
                                 </svg>
+                            </div>
+                        </Marker>
+                    )}
+
+                    {/* Active Taxi Route Line */}
+                    {taxiRoute && taxiRoute.passengerLoc && taxiRoute.driverLoc && (
+                        <Source
+                            id="taxi-route"
+                            type="geojson"
+                            data={{
+                                type: "Feature",
+                                properties: {},
+                                geometry: {
+                                    type: "LineString",
+                                    coordinates: [
+                                        [taxiRoute.driverLoc.longitude || taxiRoute.driverLoc.lng, taxiRoute.driverLoc.latitude || taxiRoute.driverLoc.lat],
+                                        [taxiRoute.passengerLoc.longitude || taxiRoute.passengerLoc.lng, taxiRoute.passengerLoc.latitude || taxiRoute.passengerLoc.lat]
+                                    ]
+                                }
+                            }}
+                        >
+                            <Layer
+                                id="taxi-route-line"
+                                type="line"
+                                layout={{ "line-join": "round", "line-cap": "round" }}
+                                paint={{
+                                    "line-color": "#fbab15",
+                                    "line-width": 4,
+                                    "line-dasharray": [1, 2]
+                                }}
+                            />
+                        </Source>
+                    )}
+                    
+                    {/* Active Taxi Markers */}
+                    {taxiRoute && taxiRoute.driverLoc && (
+                        <Marker longitude={taxiRoute.driverLoc.longitude || taxiRoute.driverLoc.lng} latitude={taxiRoute.driverLoc.latitude || taxiRoute.driverLoc.lat} anchor="bottom">
+                            <div style={{
+                                background: '#10b981', color: '#fff', padding: '5px 10px',
+                                borderRadius: '20px', border: '2px solid white',
+                                boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
+                                fontSize: '13px', fontWeight: 'bold', whiteSpace: 'nowrap'
+                            }}>
+                                🚕 {taxiRoute.driverName || 'السائق'}
+                            </div>
+                        </Marker>
+                    )}
+                    {taxiRoute && taxiRoute.passengerLoc && (
+                        <Marker longitude={taxiRoute.passengerLoc.longitude || taxiRoute.passengerLoc.lng} latitude={taxiRoute.passengerLoc.latitude || taxiRoute.passengerLoc.lat} anchor="bottom">
+                            <div style={{
+                                background: '#3b82f6', color: '#fff', padding: '5px 10px',
+                                borderRadius: '20px', border: '2px solid white',
+                                boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
+                                fontSize: '13px', fontWeight: 'bold', whiteSpace: 'nowrap'
+                            }}>
+                                📍 {taxiRoute.passengerName || 'الراكب'}
                             </div>
                         </Marker>
                     )}

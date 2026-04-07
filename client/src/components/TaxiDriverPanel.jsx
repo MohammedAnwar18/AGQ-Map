@@ -308,19 +308,29 @@ const TaxiDriverPanel = ({ shopId, shopName, currentUser, onClose, socket }) => 
                                             </span>
                                         )}
                                         {req.latitude && req.longitude && (
-                                            <a
-                                                href={`https://maps.google.com/?q=${req.latitude},${req.longitude}`}
-                                                target="_blank"
-                                                rel="noreferrer"
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (window.showTaxiRoute) {
+                                                        window.showTaxiRoute({
+                                                            passengerLoc: { lat: req.latitude, lng: req.longitude },
+                                                            driverLoc: myLocation,
+                                                            passengerName: req.full_name || req.username
+                                                        });
+                                                    }
+                                                    if (onClose) onClose();
+                                                }}
                                                 style={{
-                                                    fontSize: '0.8rem', color: '#3b82f6',
-                                                    textDecoration: 'none', display: 'inline-flex',
-                                                    alignItems: 'center', gap: '4px',
-                                                    marginTop: '6px'
+                                                    fontSize: '0.8rem', color: '#fff',
+                                                    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                                                    border: 'none', padding: '6px 12px', borderRadius: '8px',
+                                                    cursor: 'pointer', display: 'inline-flex',
+                                                    alignItems: 'center', gap: '4px', marginTop: '6px',
+                                                    fontWeight: 'bold', fontFamily: 'inherit'
                                                 }}
                                             >
-                                                🗺️ فتح في خرائط Google
-                                            </a>
+                                                🗺️ عرض المسار على الخريطة
+                                            </button>
                                         )}
                                     </div>
 
