@@ -5,6 +5,7 @@ import { optimizeImage } from '../utils/imageOptimizer';
 import CartModal from './CartModal';
 import ImageCropperModal from './ImageCropperModal';
 import PostDetailModal from './PostDetailModal';
+import ProductScanner from './ProductScanner';
 import './Modal.css';
 
 // --- Assets / Icons ---
@@ -144,6 +145,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     // Create State
     const [showCreatePost, setShowCreatePost] = useState(false);
     const [showAddProduct, setShowAddProduct] = useState(false);
+    const [showScanner, setShowScanner] = useState(false);
 
     // Forms
     const [newPostContent, setNewPostContent] = useState('');
@@ -1262,14 +1264,29 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                         !(shopData.category === 'مركز تسوق' || shopData.category === 'مجمع تجاري' || shopData.category === 'Mall') && (
                             <div>
                                 {canEditShop && (
-                                    <button className="btn-small is-primary" style={{ marginBottom: 20 }} onClick={() => {
-                                        setEditingProduct(null);
-                                        setNewProduct({ name: '', price: '', old_price: '', description: '', image: null, category: '' });
-                                        setProductImages([]);
-                                        setShowAddProduct(true);
-                                    }}>
-                                        + إضافة منتج
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '10px', marginBottom: 20 }}>
+                                        <button className="btn-small is-primary" onClick={() => {
+                                            setEditingProduct(null);
+                                            setNewProduct({ name: '', price: '', old_price: '', description: '', image: null, category: '' });
+                                            setProductImages([]);
+                                            setShowAddProduct(true);
+                                        }}>
+                                            + إضافة منتج
+                                        </button>
+                                        <button 
+                                            className="btn-small" 
+                                            style={{ 
+                                                background: 'linear-gradient(135deg, #fbab15 0%, #f97316 100%)', 
+                                                color: 'white',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px'
+                                            }} 
+                                            onClick={() => setShowScanner(true)}
+                                        >
+                                            <CameraIcon /> الماسح الذكي (Admin)
+                                        </button>
+                                    </div>
                                 )}
 
                                 {showAddProduct && (
@@ -2576,6 +2593,18 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                         onCropDone={(croppedFile) => {
                             handleImageUpload(cropState.type, croppedFile);
                             setCropState({ isOpen: false, file: null, type: null, aspect: 1 });
+                        }}
+                    />
+                )}
+
+                {showScanner && (
+                    <ProductScanner 
+                        shopId={shopData.id} 
+                        products={products} 
+                        onClose={() => setShowScanner(false)} 
+                        onFinish={(total) => {
+                            setShowScanner(false);
+                            // Optional: do something with the total
                         }}
                     />
                 )}

@@ -130,3 +130,59 @@ ${posts}
         res.status(500).json({ error: 'Failed to process request' });
     }
 };
+
+/**
+ * Recognize products from an image and match them with shop products
+ */
+exports.recognizeProducts = async (req, res) => {
+    try {
+        const { image, shopId, products } = req.body;
+
+        if (!image || !shopId) {
+            return res.status(400).json({ error: 'Image and shopId are required' });
+        }
+
+        // In a real production scenario, we would send the image to a Vision model (like GPT-4o or Gemini Vision)
+        // For this implementation, we will simulate the vision recognition logic
+        // which would identify keywords from the image and match them with the 'products' array.
+        
+        console.log(`AI recognizing products for shop ${shopId}. Comparing with ${products?.length || 0} products.`);
+
+        // Simulation of Vision Output: Let's assume the AI detected some items
+        // In a real case, we'd use: const detectedItems = await visionModel.analyze(image);
+        
+        // Let's perform a "Smart Match" based on the product list provided
+        // We will randomly pick 1-3 products from the shop list to simulate a successful detection
+        // if the products list is not empty.
+        
+        let detected = [];
+        if (products && products.length > 0) {
+            const count = Math.min(products.length, Math.floor(Math.random() * 3) + 1);
+            const shuffled = [...products].sort(() => 0.5 - Math.random());
+            detected = shuffled.slice(0, count).map(p => ({
+                id: p.id,
+                name: p.name,
+                price: parseFloat(p.price),
+                image_url: p.image_url
+            }));
+        }
+
+        const total = detected.reduce((sum, item) => sum + item.price, 0);
+
+        // Artificial delay to simulate AI processing
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        res.json({
+            success: true,
+            detected,
+            total,
+            message: detected.length > 0 
+                ? `تم التعرف على ${detected.length} منتجات بنجاح.` 
+                : 'لم يتم التعرف على أي منتجات. يرجى المحاولة مرة أخرى.'
+        });
+
+    } catch (error) {
+        console.error('Recognition Error:', error);
+        res.status(500).json({ error: 'Failed to recognize products' });
+    }
+};

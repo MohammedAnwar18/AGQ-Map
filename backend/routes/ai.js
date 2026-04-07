@@ -7,5 +7,6 @@ const auth = require('../middleware/auth'); // Optional: if you want to protect 
 // or protect if the user is logged in (Map.jsx checks auth so we should likely expect a token if we use the same axios instance)
 // Let's assume protected properly since the rest of the app is.
 router.post('/chat', aiController.processQuery);
+router.post('/recognize-products', auth, aiController.recognizeProducts);
 
 module.exports = router;

@@ -404,7 +404,7 @@ const updateShopImages = async (req, res) => {
                 const url = await uploadToCloud(file.buffer, file.originalname, file.mimetype);
                 updateQueryPart.push(`profile_picture = $${index++}`);
                 params.push(url);
-                if (oldProfilePic) try { deleteFileFromCloud(oldProfilePic); } catch(e) {}
+                if (oldProfilePic) try { deleteFileFromCloud(oldProfilePic); } catch (e) { }
             }
 
             if (req.files.cover_picture) {
@@ -412,7 +412,7 @@ const updateShopImages = async (req, res) => {
                 const url = await uploadToCloud(file.buffer, file.originalname, file.mimetype);
                 updateQueryPart.push(`cover_picture = $${index++}`);
                 params.push(url);
-                if (oldCoverPic) try { deleteFileFromCloud(oldCoverPic); } catch(e) {}
+                if (oldCoverPic) try { deleteFileFromCloud(oldCoverPic); } catch (e) { }
             }
         }
 
@@ -424,7 +424,7 @@ const updateShopImages = async (req, res) => {
         const query = `UPDATE shops SET ${updateQueryPart.join(', ')} WHERE id = $${index} RETURNING *`;
         const updateRes = await pool.query(query, params);
 
-        res.json({ 
+        res.json({
             message: 'Shop updated successfully',
             shop: updateRes.rows[0]
         });
@@ -573,10 +573,10 @@ const updateProduct = async (req, res) => {
                 uploadToSupabase(file.buffer, file.originalname, file.mimetype)
             );
             const urls = await Promise.all(uploadPromises);
-            
+
             queryParts.push(`image_url = $${index++}`);
             values.push(urls[0]);
-            
+
             queryParts.push(`image_urls = $${index++}`);
             values.push(urls);
         }
@@ -1031,11 +1031,11 @@ const deleteShopPost = async (req, res) => {
         // Get post image before delete
         const postData = await pool.query('SELECT image_url FROM posts WHERE id = $1 AND shop_id = $2', [postId, id]);
         if (postData.rows.length === 0) return res.status(404).json({ error: 'Post not found' });
-        
+
         const imageUrl = postData.rows[0]?.image_url;
 
         await pool.query('DELETE FROM posts WHERE id = $1 AND shop_id = $2', [postId, id]);
-        
+
         if (imageUrl) {
             try {
                 await deleteFileFromCloud(imageUrl);
