@@ -151,29 +151,34 @@ const createShop = async (req, res) => {
             return res.status(400).json({ error: 'Invalid coordinates provided' });
         }
 
-        const result = await pool.query(`
-            INSERT INTO shops (name, latitude, longitude, category, owner_id, parent_shop_id, floor, location)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, ST_SetSRID(ST_MakePoint($3, $2), 4326)::geography)
-            RETURNING *
-        `, [name, lat, lon, category || 'General', ownerId, parent_shop_id || null, floor || null]);
-
-        const newShop = result.rows[0];
-        console.log('Shop created successfully:', newShop.id);
-
-        // Auto-follow for the creator
         try {
-            await pool.query(`
-                INSERT INTO shop_followers (user_id, shop_id)
-                VALUES ($1, $2)
-                ON CONFLICT DO NOTHING
-            `, [ownerId, newShop.id]);
-        } catch (followError) {
-            console.error('Auto-follow failed but shop was created:', followError);
-        }
+            const result = await pool.query(`
+                INSERT INTO shops (name, latitude, longitude, category, owner_id, parent_shop_id, floor, location)
+                VALUES ($1, $2::numeric, $3::numeric, $4, $5, $6, $7, ST_SetSRID(ST_MakePoint($3::double precision, $2::double precision), 4326)::geography)
+                RETURNING *
+            `, [name, lat, lon, category || 'General', ownerId, parent_shop_id || null, floor || null]);
 
-        res.json(newShop);
+            const newShop = result.rows[0];
+            console.log('Shop created successfully:', newShop.id);
+
+            // Auto-follow for the creator
+            try {
+                await pool.query(`
+                    INSERT INTO shop_followers (user_id, shop_id)
+                    VALUES ($1, $2)
+                    ON CONFLICT DO NOTHING
+                `, [ownerId, newShop.id]);
+            } catch (followError) {
+                console.error('Auto-follow failed but shop was created:', followError);
+            }
+
+            res.json(newShop);
+        } catch (dbError) {
+            console.error('Create shop database error details:', dbError.message, dbError.stack);
+            res.status(500).json({ error: 'Database error: ' + dbError.message });
+        }
     } catch (e) {
-        console.error('Create shop error database level:', e);
+        console.error('Create shop error system level:', e);
         res.status(500).json({ error: 'Failed to create shop: ' + (e.message || 'Server error') });
     }
 };
