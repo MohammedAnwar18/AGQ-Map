@@ -113,6 +113,23 @@
     gap: 1.5rem;
     overflow-y: auto;
     flex: 1;
+    -webkit-overflow-scrolling: touch;
+}
+
+.modal-content {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+}
+
+.friends-container,
+.shops-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
 }
 
 /* Info Cards for Profile */
@@ -488,6 +505,7 @@
     gap: 0;
     max-height: 500px;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .user-item {
@@ -663,7 +681,9 @@
 
     .user-list {
         max-height: none;
-        /* Full scroll */
+        flex: 1;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     .user-item {
