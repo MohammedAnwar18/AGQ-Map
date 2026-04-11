@@ -2,6 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { shopService, getImageUrl } from '../services/api';
 import './FacilityProfileModal.css';
 
+const ShareIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+        <polyline points="16 6 12 2 8 6"></polyline>
+        <line x1="12" y1="2" x2="12" y2="15"></line>
+    </svg>
+);
+
 const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -63,6 +71,16 @@ const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
         }
     };
 
+    const handleShare = () => {
+        const shareUrl = `${window.location.origin}/map?facilityId=${facilityId}`;
+        navigator.clipboard.writeText(shareUrl).then(() => {
+            alert('تم نسخ رابط المشاركة بنجاح! ✅');
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+            alert('فشل نسخ الرابط');
+        });
+    };
+
     if (loading) return (
         <div className="facility-modal-overlay">
             <div className="facility-modal-container" style={{ padding: '50px', textAlign: 'center' }}>
@@ -78,7 +96,26 @@ const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
     return (
         <div className="facility-modal-overlay" onClick={onClose}>
             <div className="facility-modal-container slide-up" onClick={e => e.stopPropagation()}>
-                <button className="fac-close-btn" onClick={onClose}>✕</button>
+                <div style={{ position: 'absolute', top: '15px', left: '15px', display: 'flex', gap: '10px', zIndex: 100 }}>
+                    <button 
+                        onClick={handleShare} 
+                        style={{ 
+                            background: 'rgba(0,0,0,0.5)', 
+                            border: '1px solid rgba(255,255,255,0.2)', 
+                            color: 'white', 
+                            padding: '6px 12px', 
+                            borderRadius: '8px', 
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            fontSize: '0.85rem'
+                        }}
+                    >
+                        <ShareIcon /> مشاركة
+                    </button>
+                    <button className="fac-close-btn" onClick={onClose} style={{ position: 'static' }}>✕</button>
+                </div>
 
                 <div className="fac-header">
                     <img 

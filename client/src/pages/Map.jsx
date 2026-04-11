@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import Map, { Marker, Popup, NavigationControl, Source, Layer } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -755,6 +756,62 @@ const MapComponent = () => {
 
         return () => clearInterval(interval);
     }, [user, currentCommunity]);
+
+    const [searchParams] = useSearchParams();
+
+    // Deep Link Handler (Shop/Place Share Link)
+    useEffect(() => {
+        const shopId = searchParams.get('shopId');
+        const facilityId = searchParams.get('facilityId');
+        
+        if ((shopId || facilityId) && user) {
+            const handleDeepLink = async () => {
+                try {
+                    if (shopId) {
+                        const data = await shopService.getProfile(shopId);
+                        if (data && data.shop) {
+                            const shop = data.shop;
+                            // Fly to shop position
+                            if (mapRef.current) {
+                                mapRef.current.flyTo({
+                                    center: [parseFloat(shop.longitude), parseFloat(shop.latitude)],
+                                    zoom: 18.5,
+                                    pitch: 45,
+                                    duration: 2500,
+                                    essential: true
+                                });
+                            }
+                            // Open appropriate profile modal
+                            handleOpenShopProfile(shop);
+                        }
+                    } else if (facilityId) {
+                        const data = await shopService.getFacilityProfile(facilityId);
+                        if (data && data.facility) {
+                            const fac = data.facility;
+                            // Fly to facility position
+                            if (mapRef.current) {
+                                mapRef.current.flyTo({
+                                    center: [parseFloat(fac.longitude), parseFloat(fac.latitude)],
+                                    zoom: 19,
+                                    pitch: 45,
+                                    duration: 2500,
+                                    essential: true
+                                });
+                            }
+                            // Open facility modal
+                            setSelectedFacilityId(facilityId);
+                            setShowFacilityProfile(true);
+                        }
+                    }
+                } catch (e) {
+                    console.error("Failed to load deep linked item:", e);
+                }
+            };
+            // Delay slightly to ensure map is ready
+            const timer = setTimeout(handleDeepLink, 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [searchParams, user]);
 
     // Native-Grade Geolocation Tracking
     useEffect(() => {

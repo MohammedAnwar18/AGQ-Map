@@ -43,6 +43,14 @@ const EditIcon = () => (
         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
     </svg>
 );
+
+const ShareIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+        <polyline points="16 6 12 2 8 6"></polyline>
+        <line x1="12" y1="2" x2="12" y2="15"></line>
+    </svg>
+);
 // ... existing icons ...
 
 const TaxiIcon = () => (
@@ -260,6 +268,16 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleShare = () => {
+        const shareUrl = `${window.location.origin}/map?shopId=${shopData.id}`;
+        navigator.clipboard.writeText(shareUrl).then(() => {
+            alert('تم نسخ رابط المشاركة بنجاح! ✅');
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+            alert('فشل نسخ الرابط');
+        });
     };
 
     // --- Actions ---
@@ -762,6 +780,21 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                             </div>
                         </div>
                         <div style={{ display: 'flex', gap: '10px' }}>
+                            <button 
+                                onClick={handleShare} 
+                                className="btn-small btn-accept" 
+                                style={{ 
+                                    fontFamily: 'inherit', 
+                                    background: 'var(--bg-secondary)', 
+                                    border: '1px solid var(--primary)',
+                                    color: 'var(--primary)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px'
+                                }}
+                            >
+                                <ShareIcon /> مشاركة
+                            </button>
                             {currentUser?.role === 'admin' && (
                                 <button onClick={handleDeleteShop} className="btn-small btn-reject" style={{ fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px' }}>
                                     <TrashIcon /> حذف المحل
