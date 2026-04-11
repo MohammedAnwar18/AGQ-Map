@@ -9,7 +9,8 @@ const categoryEmoji = (category) => {
         'مركز تسوق': '🏢', 'Restaurant': '🍽️', 'Cafe': '☕', 'بنك': '🏦',
         'University': '🎓', 'Clothing': '👕', 'Electronics': '📱',
         'Supermarket': '🛒', 'مكتب تاكسي': '🚕', 'مجمع تجاري': '🏘️', 'Service': '⚙️',
-        'بلدية': '🏩', 'Municipality': '🏩'
+        'بلدية': '🏩', 'Municipality': '🏩',
+        'مركز طبي': '🏥', 'مستشفى': '🏨', 'عيادة': '🩺', 'صيدلية': '💊'
     };
     return map[category] || '🏪';
 };
@@ -566,6 +567,10 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                         style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                                                     >
                                                         <option value="General">عام</option>
+                                                        <option value="مركز طبي">مركز طبي 🏥</option>
+                                                        <option value="مستشفى">مستشفى 🏨</option>
+                                                        <option value="عيادة">عيادة 🩺</option>
+                                                        <option value="صيدلية">صيدلية 💊</option>
                                                         <option value="بلدية">بلدية 🏩</option>
                                                         <option value="بنك">بنك 🏦</option>
                                                         <option value="مركز تسوق">مركز تسوق (مول) 🏢</option>

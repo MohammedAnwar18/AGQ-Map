@@ -19,6 +19,7 @@ import GeomolgViewer from '../components/GeomolgViewer';
 import NavigationPanel from '../components/NavigationPanel';
 import ManagedShopsModal from '../components/ManagedShopsModal';
 import ShopProfileModal from '../components/ShopProfileModal';
+import MedicalCenterProfileModal from '../components/MedicalCenterProfileModal';
 import UniversityProfileModal from '../components/UniversityProfileModal';
 import FacilityProfileModal from '../components/FacilityProfileModal';
 import HistoricalTimelinePanel from '../components/HistoricalTimelinePanel';
@@ -257,6 +258,10 @@ const MapComponent = () => {
     const [showShopProfile, setShowShopProfile] = useState(false);
     const [selectedShopProfile, setSelectedShopProfile] = useState(null);
 
+    // Medical Center Profile State
+    const [showMedicalProfile, setShowMedicalProfile] = useState(false);
+    const [selectedMedicalProfile, setSelectedMedicalProfile] = useState(null);
+
     // University Profile State
     const [showUniversityProfile, setShowUniversityProfile] = useState(false);
     const [selectedUniversityProfile, setSelectedUniversityProfile] = useState(null);
@@ -278,6 +283,8 @@ const MapComponent = () => {
                       nameRaw.includes('جامعة') ||
                       nameRaw.includes('university');
 
+        const isMedical = catRaw === 'مركز طبي' || catRaw === 'مستشفى' || catRaw === 'عيادة' || catRaw === 'صيدلية';
+
         if (isUni) {
             setSelectedUniversityProfile(shop);
             setShowUniversityProfile(true);
@@ -285,6 +292,13 @@ const MapComponent = () => {
                 const data = await shopService.getFacilities(shop.id);
                 setSelectedUniFacilities(data.list || []);
             } catch (e) { console.error("Failed to load facilities", e); }
+            return;
+        }
+
+        if (isMedical) {
+            setSelectedMedicalProfile(shop);
+            setShowMedicalProfile(true);
+            setSelectedUniFacilities([]);
             return;
         }
 
@@ -1328,6 +1342,13 @@ const MapComponent = () => {
                         if (shop.category === 'University' || shop.category === 'مؤسسة تعليمية') {
                             return viewState.zoom >= 13 && viewState.zoom < 16.5;
                         }
+                        // Medical centers visible from zoom 13+
+                        if (['مستشفى', 'مركز طبي'].includes(shop.category)) {
+                            return viewState.zoom >= 13;
+                        }
+                        if (['صيدلية', 'عيادة'].includes(shop.category)) {
+                            return viewState.zoom >= 15;
+                        }
                         // Banks and Malls visible from zoomed out view (zoom 13+)
                         if (['بنك', 'مركز تسوق', 'مجمع تجاري', 'Mall'].includes(shop.category)) {
                             return viewState.zoom >= 13;
@@ -1351,14 +1372,14 @@ const MapComponent = () => {
                             }}
                         >
                             <div style={{
-                                width: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall' || shop.category === 'بنك') ? '60px' : ((shop.category === 'صراف آلي' || shop.category === 'فرع بنك') ? '45px' : '50px'),
-                                height: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall' || shop.category === 'بنك') ? '60px' : ((shop.category === 'صراف آلي' || shop.category === 'فرع بنك') ? '45px' : '50px'),
+                                width: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall' || shop.category === 'بنك' || shop.category === 'مستشفى' || shop.category === 'مركز طبي') ? '60px' : ((shop.category === 'صراف آلي' || shop.category === 'فرع بنك') ? '45px' : '50px'),
+                                height: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall' || shop.category === 'بنك' || shop.category === 'مستشفى' || shop.category === 'مركز طبي') ? '60px' : ((shop.category === 'صراف آلي' || shop.category === 'فرع بنك') ? '45px' : '50px'),
                                 borderRadius: '50%',
                                 backgroundColor: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '#ffffff' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '#fbab15' : 'white'),
                                 backgroundImage: `url(${getImageUrl(shop.profile_picture) || getImageUrl(shop.image_url) || '/default-shop.png'})`,
                                 backgroundSize: 'cover',
                                 backgroundPosition: 'center',
-                                border: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '4px solid #f1f5f9' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '4px solid #fbab15' : '3px solid white'),
+                                border: (shop.category === 'مستشفى' || shop.category === 'مركز طبي' || shop.category === 'عيادة' || shop.category === 'صيدلية') ? '4px solid #ef4444' : ((shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '4px solid #f1f5f9' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '4px solid #fbab15' : '3px solid white')),
                                 boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
                                 position: 'relative',
                                 display: 'flex',
@@ -1372,13 +1393,13 @@ const MapComponent = () => {
                                         bottom: '-22px',
                                         left: '50%',
                                         transform: 'translateX(-50%)',
-                                        backgroundColor: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '#ffffff' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '#fbab15' : 'white'),
+                                        backgroundColor: (shop.category === 'مستشفى' || shop.category === 'مركز طبي' || shop.category === 'عيادة' || shop.category === 'صيدلية') ? '#ef4444' : ((shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '#ffffff' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '#fbab15' : 'white')),
                                         padding: '2px 10px',
                                         borderRadius: '12px',
                                         fontSize: '11px',
                                         fontWeight: 'bold',
                                         fontFamily: 'inherit',
-                                        color: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? 'white' : 'black',
+                                        color: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall' || shop.category === 'مستشفى' || shop.category === 'مركز طبي' || shop.category === 'عيادة' || shop.category === 'صيدلية') ? 'white' : 'black',
                                         border: '1px solid rgba(255,255,255,0.1)',
                                         whiteSpace: 'nowrap',
                                         boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
@@ -1650,6 +1671,15 @@ const MapComponent = () => {
                     shop={selectedShopProfile}
                     currentUser={user}
                     onClose={() => setShowShopProfile(false)}
+                    onFollowChange={handleShopFollowed}
+                    userLocation={userLocation}
+                />
+            )}
+            {showMedicalProfile && selectedMedicalProfile && (
+                <MedicalCenterProfileModal
+                    shop={selectedMedicalProfile}
+                    currentUser={user}
+                    onClose={() => setShowMedicalProfile(false)}
                     onFollowChange={handleShopFollowed}
                     userLocation={userLocation}
                 />
