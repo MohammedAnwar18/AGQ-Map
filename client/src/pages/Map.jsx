@@ -1387,7 +1387,7 @@ const MapComponent = () => {
                                 justifyContent: 'center'
                             }}>
                                 {/* Name Badge */}
-                                {!routePath && (
+                                {!routePath && viewState.zoom >= 19 && (
                                     <div style={{
                                         position: 'absolute',
                                         bottom: '-22px',

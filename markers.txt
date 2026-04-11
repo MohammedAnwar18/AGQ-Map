@@ -1,0 +1,9 @@
+1258: <Marker longitude={userLocation.longitude} latitude={userLocation.latitude} anchor="center">
+1277: <Marker
+1302: <Marker
+1363: <Marker
+1416: <Marker
+1445: <Marker longitude={parseFloat(selectedShopProfile.longitude)} latitude={parseFloat(selectedShopProfile.latitude)} anchor="bottom">
+1452: <Marker longitude={parseFloat(selectedUniversityProfile.longitude)} latitude={parseFloat(selectedUniversityProfile.latitude)} anchor="bottom">
+1460: <Marker key={`city-${index}`} longitude={city.lon} latitude={city.lat} anchor="bottom">
+1485: <Marker
