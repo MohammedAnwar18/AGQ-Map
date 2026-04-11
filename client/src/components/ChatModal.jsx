@@ -192,7 +192,7 @@ const ChatModal = ({ onClose }) => {
                         href={part}
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{ color: '#fbab15', textDecoration: 'underline', wordBreak: 'break-all' }}
+                        style={{ color: '#e5e7eb', textDecoration: 'underline', wordBreak: 'break-all', fontWeight: '500' }}
                         onClick={(e) => {
                             // If it's an internal map link, let the deep linking logic in Map.jsx handle it
                             if (part.includes(window.location.origin + '/map?')) {
