@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { friendService, messageService } from '../services/api';
 import './Modal.css';
 import './ChatModalStyles.css';
 
 const ChatModal = ({ onClose }) => {
     const { user, socket } = useAuth();
+    const navigate = useNavigate();
     const [friends, setFriends] = useState([]);
     const [selectedFriend, setSelectedFriend] = useState(null);
     const [messages, setMessages] = useState([]);
@@ -177,6 +179,38 @@ const ChatModal = ({ onClose }) => {
         return date.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
     };
 
+    const renderMessageContent = (content) => {
+        if (!content) return null;
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        const parts = content.split(urlRegex);
+
+        return parts.map((part, i) => {
+            if (part.match(urlRegex)) {
+                return (
+                    <a
+                        key={i}
+                        href={part}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: '#fbab15', textDecoration: 'underline', wordBreak: 'break-all' }}
+                        onClick={(e) => {
+                            // If it's an internal map link, let the deep linking logic in Map.jsx handle it
+                            if (part.includes(window.location.origin + '/map?')) {
+                                e.preventDefault();
+                                const url = new URL(part);
+                                navigate('/map' + url.search);
+                                onClose(); // Close chat to show the map/profile
+                            }
+                        }}
+                    >
+                        {part}
+                    </a>
+                );
+            }
+            return part;
+        });
+    };
+
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-container chat-modal-container" onClick={(e) => e.stopPropagation()}>
@@ -302,7 +336,7 @@ const ChatModal = ({ onClose }) => {
                                         )}
                                         {message.content && (
                                             <div className="message-text">
-                                                {message.content}
+                                                {renderMessageContent(message.content)}
                                             </div>
                                         )}
                                         {message.is_liked && (

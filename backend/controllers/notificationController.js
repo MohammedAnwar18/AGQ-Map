@@ -128,18 +128,30 @@ const createNotification = async (userId, senderId, type, message) => {
             );
             const senderName = senderResult.rows[0]?.username || 'مستخدم';
 
-            let title = 'تنبيه جديد';
+            let title = '🔔 تنبيه جديد';
             let body = message || `لديك تنبيه جديد من ${senderName}`;
 
             if (type === 'friend_request') {
-                title = 'طلب صداقة جديد';
+                title = '👥 طلب صداقة جديد';
                 body = `أرسل لك ${senderName} طلب صداقة`;
             } else if (type === 'friend_accepted') {
-                title = 'تم قبول طلب الصداقة';
+                title = '✅ تم قبول الصداقة';
                 body = `وافق ${senderName} على طلب صداقتك`;
             } else if (type === 'message') {
-                title = 'رسالة جديدة';
+                title = '💬 رسالة جديدة';
                 body = `${senderName}: ${message || 'أرسل لك رسالة'}`;
+            } else if (type === 'like') {
+                title = '❤️ إعجاب جديد';
+                body = `أعجب ${senderName} بمنشورك`;
+            } else if (type === 'comment') {
+                title = '📝 تعليق جديد';
+                body = `علق ${senderName} على منشورك`;
+            } else if (type === 'reply') {
+                title = '↩️ رد جديد';
+                body = `رد ${senderName} على تعليقك`;
+            } else if (type === 'shop_notification' || type === 'shop_update') {
+                title = '🏪 إشعار من محل';
+                body = message || `هناك تحديث جديد من ${senderName}`;
             }
 
             const payload = {
