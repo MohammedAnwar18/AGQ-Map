@@ -265,15 +265,15 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
     // --- Actions ---
 
     const handleDeleteShop = async () => {
-        if (!confirm('هل أنت متأكد من حذف هذا المحل بشكل نهائي؟')) return;
+        if (!confirm('هل أنت متأكد من حذف هذا المركز بشكل نهائي؟')) return;
         try {
             await shopService.deleteShop(shopData.id);
-            alert('تم حذف المحل بنجاح.');
+            alert('تم حذف المركز بنجاح.');
             if (onFollowChange) onFollowChange(); // Trigger map refresh
             onClose();
         } catch (e) {
             console.error(e);
-            alert('حدث خطأ أثناء محاولة حذف المحل.');
+            alert('حدث خطأ أثناء محاولة حذف المركز.');
         }
     };
 
@@ -355,7 +355,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
             alert('تم إضافة المحل للمجمع بنجاح ✅');
         } catch (error) {
             console.error('Failed to add internal shop:', error);
-            alert('فشل إضافة المحل: ' + (error?.response?.data?.error || error.message || 'خطأ في الخادم'));
+            alert('فشل إضافة العيادة / قسم: ' + (error?.response?.data?.error || error.message || 'خطأ في الخادم'));
         }
     };
 
@@ -442,11 +442,11 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
             if (editingProduct) {
                 savedProduct = await shopService.updateProduct(shopData.id, editingProduct.id, formData);
                 setProducts(products.map(p => p.id === editingProduct.id ? savedProduct : p));
-                alert('تم تعديل المنتج');
+                alert('تم تعديل القسم / العيادة');
             } else {
                 savedProduct = await shopService.addProduct(shopData.id, formData);
                 setProducts([savedProduct, ...products]);
-                alert('تم إضافة المنتج');
+                alert('تم إضافة القسم / العيادة');
             }
 
             setNewProduct({ name: '', price: '', old_price: '', description: '', image: null, category: '' });
@@ -455,7 +455,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
             setShowAddProduct(false);
         } catch (e) {
             console.error(e);
-            alert('فشل حفظ المنتج');
+            alert('فشل حفظ القسم / العيادة');
         }
     };
 
@@ -475,7 +475,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
     };
 
     const handleDeleteProduct = async (prodId) => {
-        if (!confirm('هل أنت متأكد من حذف هذا المنتج؟')) return;
+        if (!confirm('هل أنت متأكد من حذف هذا القسم / العيادة؟')) return;
         try {
             await shopService.deleteProduct(shopData.id, prodId);
             setProducts(products.filter(p => p.id !== prodId));
@@ -764,7 +764,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                         <div style={{ display: 'flex', gap: '10px' }}>
                             {currentUser?.role === 'admin' && (
                                 <button onClick={handleDeleteShop} className="btn-small btn-reject" style={{ fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px' }}>
-                                    <TrashIcon /> حذف المحل
+                                    <TrashIcon /> حذف المركز
                                 </button>
                             )}
                             <button onClick={handleFollow} className={`btn-small ${isFollowing ? 'btn-reject' : 'btn-accept'}`} style={{ fontFamily: 'inherit' }}>
@@ -804,8 +804,8 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                 border: 'none', background: 'none',
                                 padding: '15px 5px',
                                 fontSize: '1rem', fontWeight: activeTab === tab ? 'bold' : 'normal',
-                                color: activeTab === tab ? 'var(--primary)' : (hiddenSections.includes(tab) && isSystemAdmin ? '#9ca3af' : 'var(--text-muted)'),
-                                borderBottom: activeTab === tab ? '3px solid var(--primary)' : '3px solid transparent',
+                                color: activeTab === tab ? '#ef4444' : (hiddenSections.includes(tab) && isSystemAdmin ? '#9ca3af' : 'var(--text-muted)'),
+                                borderBottom: activeTab === tab ? '3px solid #ef4444' : '3px solid transparent',
                                 cursor: 'pointer',
                                 fontFamily: 'inherit',
                                 opacity: hiddenSections.includes(tab) && isSystemAdmin ? 0.5 : 1,
@@ -814,16 +814,10 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                         >
                             {/* Make tab label dynamic */}
                             {(() => {
-                                if (tab === 'products') {
-                                    if (shopData.category === 'مركز تسوق' || shopData.category === 'مجمع تجاري' || shopData.category === 'Mall') return 'الدليل';
-                                    return 'المنتجات';
-                                }
-                                if (tab === 'timeline') return 'أخبار';
-                                if (tab === 'drivers') return 'السائقين';
-                                if (tab === 'requests') return 'الطلبات';
-                                if (tab === 'mall_map') return 'خريطة المول 🗺️';
+                                if (tab === 'products') return 'العيادات والخدمات';
+                                if (tab === 'timeline') return 'أخبار ومنشورات';
                                 if (tab === 'simulate') return 'محاكي الأعمال';
-                                return 'حول';
+                                return 'حول المركز';
                             })()}
                         </button>
                     ))}
@@ -835,9 +829,9 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                             title="إدارة ظهور الأقسام"
                             style={{
                                 marginRight: 'auto', marginLeft: 10,
-                                background: showSectionControl ? 'rgba(239,68,68,0.1)' : 'rgba(251,171,21,0.1)',
-                                border: `1px solid ${showSectionControl ? '#ef4444' : '#fbab15'}`,
-                                color: showSectionControl ? '#ef4444' : '#fbab15',
+                                background: showSectionControl ? 'rgba(239,68,68,0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                border: `1px solid ${showSectionControl ? '#ef4444' : '#ef4444'}`,
+                                color: showSectionControl ? '#ef4444' : '#ef4444',
                                 borderRadius: '8px', padding: '5px 10px',
                                 cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit',
                                 display: 'flex', alignItems: 'center', gap: 5
@@ -859,7 +853,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                         display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center'
                     }}>
                         <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'inherit', marginLeft: 5 }}>
-                            🔒 إخفاء/إظهار للزوار وصاحب المحل:
+                            🔒 إخفاء/إظهار للزوار وصاحب العيادة / قسم:
                         </span>
                         {ALL_SECTIONS.map(sec => (
                             <button
@@ -889,7 +883,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                         <div style={{ animation: 'fadeIn 0.5s', maxWidth: '600px', margin: '0 auto' }}>
                             <div style={{ textAlign: 'center', marginBottom: '20px' }}>
 
-                                <h2 style={{ margin: 0, color: '#fbab15' }}>محاكي الأعمال الذكي (MiroFish)</h2>
+                                <h2 style={{ margin: 0, color: '#ef4444' }}>محاكي الأعمال الذكي (MiroFish)</h2>
                                 <p style={{ color: 'var(--text-secondary)' }}>توقع أثر قراراتك التجارية قبل تنفيذها باستخدام الذكاء الاصطناعي</p>
                             </div>
 
@@ -934,7 +928,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                                 const shopProducts = (shopData?.data?.products || shopData?.products) || [];
                                                 const getRandomProduct = () => shopProducts.length > 0 
                                                     ? shopProducts[Math.floor(Math.random() * shopProducts.length)].name 
-                                                    : 'أحد منتجاتكم';
+                                                    : 'أحد قسم / عيادةاتكم';
 
                                                 const jobs = ["طالب جامعي", "موظف حكومي", "صانع محتوى", "ربة منزل", "مدير مبيعات", "مهندس", "صاحب عمل حر", "طبيب"];
                                                 const budgets = ["متوسطة", "محدودة جداً", "مرتفعة", "حذرة"];
@@ -1002,7 +996,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                     </button>
                                 </div>
                             ) : (
-                                <div style={{ background: 'var(--bg-primary)', padding: '25px', borderRadius: '12px', border: '1px solid var(--primary)', boxShadow: '0 8px 25px rgba(251, 171, 21, 0.15)', animation: 'fadeIn 0.4s ease-out' }}>
+                                <div style={{ background: 'var(--bg-primary)', padding: '25px', borderRadius: '12px', border: '1px solid var(--primary)', boxShadow: '0 8px 25px rgba(239, 68, 68, 0.15)', animation: 'fadeIn 0.4s ease-out' }}>
                                     <h3 style={{ margin: '0 0 20px', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>نتيجة المحاكاة التقريبية</h3>
 
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
@@ -1030,7 +1024,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                                         style={{ padding: '10px 12px', fontSize: '0.9rem', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                                                         onClick={() => setExpandedAgentIndex(expandedAgentIndex === idx ? null : idx)}
                                                     >
-                                                        <span><span style={{ fontWeight: 'bold', color: '#fbab15' }}>العميل {log.id}:</span> {log.message}</span>
+                                                        <span><span style={{ fontWeight: 'bold', color: '#ef4444' }}>العميل {log.id}:</span> {log.message}</span>
                                                         <span style={{ opacity: 0.5 }}>{expandedAgentIndex === idx ? '▲' : '▼'}</span>
                                                     </div>
                                                     {expandedAgentIndex === idx && (
@@ -1064,7 +1058,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                                                     <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', borderLeft: '4px solid var(--primary)', color: 'var(--text-primary)', fontSize: '0.9rem', animation: 'fadeIn 0.3s' }}>
                                                                         <strong style={{ display: 'block', marginBottom: '6px', color: 'var(--primary)' }}>رد العميل {log.id}:</strong>
                                                                         "{log.message.includes('العرض ممتاز') || log.message.includes('جاء في وقته') || log.message.includes('شجعني') 
-                                                                            ? 'لأكون صريحاً، أنا أنتبه لميزانيتي باستمرار وعرضك على هذا المنتج تحديداً كان ذكياً! وفر علي نقوداً كنت سأصرفها في مكان آخر.' 
+                                                                            ? 'لأكون صريحاً، أنا أنتبه لميزانيتي باستمرار وعرضك على هذا القسم / العيادة تحديداً كان ذكياً! وفر علي نقوداً كنت سأصرفها في مكان آخر.' 
                                                                             : 'الوضع بصراحة لا يشجع على الذهاب بأي شكل من الأشكال. ربما في ظروف أخرى أو لو وفرتم خدمة توصيل آمنة سأفكر في الأمر.'}"
                                                                     </div>
                                                                 )}
@@ -1283,7 +1277,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                             setProductImages([]);
                                             setShowAddProduct(true);
                                         }}>
-                                            + إضافة منتج
+                                            + إضافة قسم / عيادة
                                         </button>
                                     </div>
                                 )}
@@ -1292,14 +1286,14 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                     <div style={{ background: 'var(--bg-primary)', padding: 20, borderRadius: 12, marginBottom: 20 }}>
                                         <h3 style={{ marginTop: 0 }}>
                                             {editingProduct
-                                                ? (shopData.category === 'مكتب تاكسي' ? 'تعديل الخدمة' : 'تعديل المنتج')
-                                                : (shopData.category === 'مكتب تاكسي' ? 'خدمة توصيل جديدة' : 'منتج جديد')}
+                                                ? (shopData.category === 'مكتب تاكسي' ? 'تعديل الخدمة' : 'تعديل القسم / العيادة')
+                                                : (shopData.category === 'مكتب تاكسي' ? 'خدمة توصيل جديدة' : 'قسم / عيادة جديد')}
                                         </h3>
                                         <form onSubmit={handleSaveProduct}>
                                             <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
                                                 <div style={{ flex: 1 }}>
                                                     <label style={{ display: 'block', marginBottom: 5 }}>
-                                                        {shopData.category === 'مكتب تاكسي' ? 'اسم الوجهة/الخدمة' : 'اسم المنتج'}
+                                                        {shopData.category === 'مكتب تاكسي' ? 'اسم الوجهة/الخدمة' : 'اسم القسم / العيادة'}
                                                     </label>
                                                     <input className="input" type="text" value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} required style={{ width: '100%' }} placeholder={shopData.category === 'مكتب تاكسي' ? 'مثال: توصيلة للمطار' : ''} />
                                                 </div>
@@ -1323,20 +1317,20 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                             <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
                                                 <div style={{ width: '100px' }}>
                                                     <label style={{ display: 'block', marginBottom: 5 }}>
-                                                        {shopData.category === 'مكتب تاكسي' ? 'التكلفة' : 'السعر الحالي'}
+                                                        {shopData.category === 'مكتب تاكسي' ? 'التكلفة' : 'سعر الكشفية / الخدمة'}
                                                     </label>
                                                     <input className="input" type="number" value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} required style={{ width: '100%' }} />
                                                 </div>
                                                 <div style={{ width: '100px' }}>
                                                     <label style={{ display: 'block', marginBottom: 5 }}>
-                                                        {shopData.category === 'مكتب تاكسي' ? 'سعر سابق' : 'السعر القديم'}
+                                                        {shopData.category === 'مكتب تاكسي' ? 'سعر سابق' : 'سعر سابق'}
                                                     </label>
                                                     <input className="input" type="number" value={newProduct.old_price} onChange={e => setNewProduct({ ...newProduct, old_price: e.target.value })} style={{ width: '100%' }} placeholder="اختياري" />
                                                 </div>
                                             </div>
                                             <textarea
                                                 className="input"
-                                                placeholder={shopData.category === 'مكتب تاكسي' ? 'تفاصيل الرحلة، نوع السيارة، عدد الركاب المسموح...' : 'وصف المنتج...'}
+                                                placeholder={shopData.category === 'مكتب تاكسي' ? 'تفاصيل الرحلة، نوع السيارة، عدد الركاب المسموح...' : 'وصف القسم / العيادة...'}
                                                 value={newProduct.description}
                                                 onChange={e => setNewProduct({ ...newProduct, description: e.target.value })}
                                                 style={{ width: '100%', marginBottom: 10 }}
@@ -1390,7 +1384,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                                         <div style={{ color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                                             {shopData.category === 'مكتب تاكسي' ? <TaxiIcon /> : <PhotoIcon />}
                                                             <span style={{ marginTop: 8, fontSize: '0.9rem' }}>
-                                                                {editingProduct ? 'إضافة/تغيير الصور (يمكنك اختيار عدة صور)' : (shopData.category === 'مكتب تاكسي' ? 'اضغط لإضافة صورة للسيارة/الوجهة' : 'اضغط لإضافة صور المنتج (يمكنك اختيار عدة صور)')}
+                                                                {editingProduct ? 'إضافة/تغيير الصور (يمكنك اختيار عدة صور)' : (shopData.category === 'مكتب تاكسي' ? 'اضغط لإضافة صورة للسيارة/الوجهة' : 'اضغط لإضافة صور القسم / العيادة (يمكنك اختيار عدة صور)')}
                                                             </span>
                                                         </div>
                                                     )}
@@ -1463,7 +1457,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                         <input
                                             className="input"
                                             type="text"
-                                            placeholder={shopData.category === 'مكتب تاكسي' ? 'بحث في الوجهات/الخدمات...' : 'بحث في المنتجات...'}
+                                            placeholder={shopData.category === 'مكتب تاكسي' ? 'بحث في الوجهات/الخدمات...' : 'بحث في القسم / العيادةات...'}
                                             value={productSearchQuery}
                                             onChange={e => setProductSearchQuery(e.target.value)}
                                             style={{
@@ -1499,7 +1493,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                             return matchesSearch;
                                         })
                                         .length === 0 ? <p style={{ color: 'var(--text-muted)', gridColumn: '1/-1', textAlign: 'center', padding: '20px' }}>
-                                        {products.length === 0 ? 'لا توجد منتجات.' : 'لا توجد منتجات تطابق البحث/الفلتر.'}
+                                        {products.length === 0 ? 'لا توجد قسم / عيادةات.' : 'لا توجد قسم / عيادةات تطابق البحث/الفلتر.'}
                                     </p> :
                                         products
                                             .filter(p => {
@@ -1525,19 +1519,19 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                                             borderRadius: 16,
                                                             overflow: 'hidden',
                                                             boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
-                                                            border: '1px solid #fbab15', // Taxi Yellow Border
+                                                            border: '1px solid #ef4444', // Taxi Yellow Border
                                                             display: 'flex',
                                                             flexDirection: 'column',
                                                             position: 'relative'
                                                         }}>
                                                             {/* Taxi Header Stripe */}
-                                                            <div style={{ height: '8px', background: 'repeating-linear-gradient(45deg, #000, #000 10px, #fbab15 10px, #fbab15 20px)' }}></div>
+                                                            <div style={{ height: '8px', background: 'repeating-linear-gradient(45deg, #000, #000 10px, #ef4444 10px, #ef4444 20px)' }}></div>
 
                                                             <div style={{ padding: 15, flex: 1 }}>
                                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                                                     <h4 style={{ margin: '0 0 5px', fontSize: '1.2rem', color: 'var(--text-primary)' }}>{product.name}</h4>
                                                                     <span style={{
-                                                                        background: '#fbab15', color: '#000',
+                                                                        background: '#ef4444', color: '#000',
                                                                         fontWeight: 'bold', padding: '2px 8px', borderRadius: '4px', fontSize: '0.9rem'
                                                                     }}>
                                                                         {product.price} ₪
@@ -1574,7 +1568,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                                                     }}
                                                                     style={{
                                                                         flex: 1, padding: '10px',
-                                                                        background: '#000', color: '#fbab15',
+                                                                        background: '#000', color: '#ef4444',
                                                                         border: 'none', borderRadius: '8px',
                                                                         cursor: 'pointer', fontWeight: 'bold',
                                                                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'
@@ -1630,7 +1624,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                                             <h4 style={{ margin: '0 0 8px', fontSize: '1.1rem' }}>{product.name}</h4>
 
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 5 }}>
-                                                                <div style={{ color: 'var(--primary)', fontWeight: 'bold', fontSize: '1.2rem' }}>{product.price} شيكل</div>
+                                                                <div style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '1.2rem' }}>{product.price > 0 ? `${product.price} شيكل (الكشفية)` : 'مجاني / حسب التأمين'}</div>
                                                                 {product.old_price && parseFloat(product.old_price) > parseFloat(product.price) && (
                                                                     <div style={{ color: 'var(--text-muted)', textDecoration: 'line-through', fontSize: '0.9rem' }}>{product.old_price} شيكل</div>
                                                                 )}
@@ -1639,12 +1633,11 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                                             <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: '8px 0', lineHeight: '1.5' }}>{product.description}</p>
                                                             <button
                                                                 onClick={() => {
-                                                                    cartService.addItem({ ...product, shop_name: shopData.name });
-                                                                    alert('تمت الإضافة للسلة');
+                                                                    alert('تم حجز الموعد مبدئياً بقسم: ' + product.name);
                                                                 }}
-                                                                style={{ width: '100%', padding: '10px', marginTop: '10px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+                                                                style={{ width: '100%', padding: '10px', marginTop: '10px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
                                                             >
-                                                                اضافة للسلة
+                                                                حجز موعد
                                                             </button>
                                                         </div>
                                                     </div>
@@ -1673,7 +1666,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
 
                     {activeTab === 'drivers' && (
                         <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-                            <h3 style={{ borderBottom: '2px solid #fbab15', paddingBottom: 10, marginBottom: 20 }}>🚖 إدارة السائقين (التاكسي)</h3>
+                            <h3 style={{ borderBottom: '2px solid #ef4444', paddingBottom: 10, marginBottom: 20 }}>🚖 إدارة السائقين (التاكسي)</h3>
 
                             {/* Add Driver Form */}
                             <div style={{ background: 'var(--bg-primary)', padding: 20, borderRadius: 12, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
@@ -1755,7 +1748,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
 
                     {activeTab === 'requests' && (
                         <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-                            <h3 style={{ borderBottom: '2px solid #fbab15', paddingBottom: 10, marginBottom: 20 }}>📋 طلبات التاكسي الحالية</h3>
+                            <h3 style={{ borderBottom: '2px solid #ef4444', paddingBottom: 10, marginBottom: 20 }}>📋 طلبات التاكسي الحالية</h3>
 
                             {loadingRequests ? <div className="spinner"></div> : (
                                 requests.length === 0 ? (
@@ -1770,7 +1763,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 15 }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
                                                         <img src={getImageUrl(req.profile_picture) || '/default-user.png'} style={{
-                                                            width: 50, height: 50, borderRadius: '50%', objectFit: 'cover', border: '2px solid #fbab15'
+                                                            width: 50, height: 50, borderRadius: '50%', objectFit: 'cover', border: '2px solid #ef4444'
                                                         }} />
                                                         <div>
                                                             <h4 style={{ margin: 0 }}>{req.full_name || req.username}</h4>
@@ -1781,7 +1774,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                                             {/* Additional User Info */}
                                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px 15px', marginTop: 8 }}>
                                                                 {req.marital_status && (
-                                                                    <div style={{ fontSize: '0.75rem', color: '#fbab15', fontWeight: '600' }}>
+                                                                    <div style={{ fontSize: '0.75rem', color: '#ef4444', fontWeight: '600' }}>
                                                                         💍 {req.marital_status}
                                                                     </div>
                                                                 )}
@@ -1842,7 +1835,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                                         <button
                                                             onClick={() => handleUpdateRequestStatus(req.id, 'arrived')}
                                                             style={{
-                                                                flex: 1, background: '#fbab15', color: 'white', border: 'none',
+                                                                flex: 1, background: '#ef4444', color: 'white', border: 'none',
                                                                 padding: '10px', borderRadius: 6, cursor: 'pointer', fontWeight: 'bold'
                                                             }}
                                                         >
@@ -2139,7 +2132,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                 <div key={post.id} style={{ background: 'var(--bg-primary)', borderRadius: 10, padding: 15, marginBottom: 15 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                                         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                                            <div style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', background: '#fbab15', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', border: '1px solid var(--border-color)' }}>
+                                            <div style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', background: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', border: '1px solid var(--border-color)' }}>
                                                 <div style={{ width: '100%', height: '100%', position: 'relative' }}>
                                                     <img src={getImageUrl(shopData.profile_picture) || '/default-shop.png'} alt={shopData.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                                 </div>
