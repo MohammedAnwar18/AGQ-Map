@@ -103,16 +103,20 @@ const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
                             background: 'rgba(0,0,0,0.5)', 
                             border: '1px solid rgba(255,255,255,0.2)', 
                             color: 'white', 
-                            padding: '6px 12px', 
-                            borderRadius: '8px', 
+                            width: '35px',
+                            height: '35px',
+                            borderRadius: '50%', 
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '8px',
-                            fontSize: '0.85rem'
+                            justifyContent: 'center',
+                            transition: 'background 0.2s'
                         }}
+                        onMouseOver={e => e.currentTarget.style.background = 'rgba(0,0,0,0.7)'}
+                        onMouseOut={e => e.currentTarget.style.background = 'rgba(0,0,0,0.5)'}
+                        title="مشاركة"
                     >
-                        <ShareIcon /> مشاركة
+                        <ShareIcon />
                     </button>
                     <button className="fac-close-btn" onClick={onClose} style={{ position: 'static' }}>✕</button>
                 </div>

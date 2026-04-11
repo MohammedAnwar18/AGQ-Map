@@ -384,7 +384,30 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                             }} disabled={isUploadingImage} />
                         </label>
                     )}
-                    <button className="uni-close-btn" onClick={onClose}>✕</button>
+                    <div style={{ position: 'absolute', top: '20px', left: '20px', display: 'flex', gap: '15px', zIndex: 100 }}>
+                        <button 
+                            onClick={handleShare} 
+                            style={{ 
+                                background: 'rgba(0,0,0,0.5)', 
+                                border: '1px solid rgba(255,255,255,0.2)', 
+                                color: 'white', 
+                                width: '40px',
+                                height: '40px',
+                                borderRadius: '50%', 
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseOver={e => e.currentTarget.style.background = 'rgba(0,0,0,0.7)'}
+                            onMouseOut={e => e.currentTarget.style.background = 'rgba(0,0,0,0.5)'}
+                            title="مشاركة"
+                        >
+                            <ShareIcon />
+                        </button>
+                        <button className="uni-close-btn" onClick={onClose} style={{ position: 'static' }}>✕</button>
+                    </div>
                     <div className="uni-cover-overlay"></div>
                     
                     <div className="uni-profile-info">
@@ -448,22 +471,6 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                             </div>
                         </div>
                         <div style={{ display: 'flex', gap: '10px' }}>
-                            <button 
-                                onClick={handleShare} 
-                                className="uni-follow-btn" 
-                                style={{ 
-                                    background: 'rgba(255,255,255,0.1)', 
-                                    border: '1px solid rgba(255,255,255,0.2)',
-                                    color: 'white',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    paddingLeft: '15px',
-                                    paddingRight: '15px'
-                                }}
-                            >
-                                <ShareIcon /> مشاركة
-                            </button>
                             <button className={`uni-follow-btn ${uniData.is_followed ? 'is-unfollow' : ''}`} onClick={handleFollow}>
                                 {uniData.is_followed ? 'إلغاء المتابعة' : 'متابعة'}
                             </button>

@@ -613,11 +613,33 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                 onClick={e => e.stopPropagation()}>
 
                 {/* Standard Modal Header */}
-                <div className="modal-header" style={{ position: 'sticky', top: 0, zIndex: 1000, background: 'var(--bg-secondary)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <button className="btn-close" onClick={onClose} style={{ fontSize: '1.2rem' }}>✕</button>
-                        <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 'bold' }}>{shopData?.name || 'الملف الشخصي'}</h2>
-                    </div>
+                <div className="modal-header" style={{ position: 'sticky', top: 0, zIndex: 1000, background: 'var(--bg-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 15px' }}>
+                    <button 
+                        onClick={handleShare} 
+                        style={{ 
+                            background: 'none', 
+                            border: 'none', 
+                            color: 'var(--primary)', 
+                            cursor: 'pointer',
+                            padding: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: '50%',
+                            transition: 'background 0.2s'
+                        }}
+                        onMouseOver={e => e.currentTarget.style.background = 'rgba(251, 171, 21, 0.1)'}
+                        onMouseOut={e => e.currentTarget.style.background = 'none'}
+                        title="مشاركة"
+                    >
+                        <ShareIcon />
+                    </button>
+                    
+                    <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '900', color: 'var(--text-primary)', flex: 1, textAlign: 'center' }}>
+                        {shopData?.name || 'الملف الشخصي'}
+                    </h2>
+
+                    <button className="btn-close" onClick={onClose} style={{ fontSize: '1.2rem', position: 'static' }}>✕</button>
                 </div>
 
                 {/* Body wrapper to match standard formatting and flex flow */}
@@ -780,21 +802,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                             </div>
                         </div>
                         <div style={{ display: 'flex', gap: '10px' }}>
-                            <button 
-                                onClick={handleShare} 
-                                className="btn-small btn-accept" 
-                                style={{ 
-                                    fontFamily: 'inherit', 
-                                    background: 'var(--bg-secondary)', 
-                                    border: '1px solid var(--primary)',
-                                    color: 'var(--primary)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px'
-                                }}
-                            >
-                                <ShareIcon /> مشاركة
-                            </button>
                             {currentUser?.role === 'admin' && (
                                 <button onClick={handleDeleteShop} className="btn-small btn-reject" style={{ fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px' }}>
                                     <TrashIcon /> حذف المحل
