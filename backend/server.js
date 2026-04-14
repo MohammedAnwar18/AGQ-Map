@@ -103,6 +103,13 @@ io.on('connection', (socket) => {
                  WHERE receiver_id = $1 AND sender_id = $2`,
                 [userId, friendId]
             );
+
+            // Mark notifications as read too
+            await pool.query(
+                `UPDATE notifications SET is_read = true 
+                 WHERE user_id = $1 AND sender_id = $2 AND type = 'message'`,
+                [userId, friendId]
+            );
             
             socket.emit('messages-loaded', result.rows);
         } catch (error) {

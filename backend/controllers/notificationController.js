@@ -24,7 +24,7 @@ const getNotifications = async (req, res) => {
                 u.institution
             FROM notifications n
             LEFT JOIN users u ON n.sender_id = u.id
-            WHERE n.user_id = $1
+            WHERE n.user_id = $1 AND n.type != 'message'
             ORDER BY n.created_at DESC
             LIMIT 50`,
             [userId]
@@ -61,7 +61,7 @@ const markAllAsRead = async (req, res) => {
         const userId = req.user.id || req.user.userId;
 
         await pool.query(
-            'UPDATE notifications SET is_read = true WHERE user_id = $1',
+            "UPDATE notifications SET is_read = true WHERE user_id = $1 AND type != 'message'",
             [userId]
         );
 
