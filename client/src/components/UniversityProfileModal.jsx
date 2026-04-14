@@ -3,6 +3,7 @@ import { shopService, getImageUrl } from '../services/api';
 import ImageCropperModal from './ImageCropperModal';
 import BirzeitCalendar from './BirzeitCalendar';
 import './UniversityProfileModal.css';
+import './Modal.css';
 
 const TrashIcon = () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -363,8 +364,43 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
 
     return (
         <div className="university-modal-overlay fade-in" onClick={onClose}>
-            <div className="university-modal-container slide-up" onClick={e => e.stopPropagation()}>
+            <div className="university-modal-container slide-up" onClick={e => e.stopPropagation()} style={{
+                display: 'flex',
+                flexDirection: 'column',
+                overflowY: 'auto'
+            }}>
                 
+                {/* Standard Modal Header */}
+                <div className="modal-header" style={{ position: 'sticky', top: 0, zIndex: 1000, background: 'var(--bg-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 15px' }}>
+                    <button 
+                        onClick={handleShare} 
+                        style={{ 
+                            background: 'none', 
+                            border: 'none', 
+                            color: 'var(--primary)', 
+                            cursor: 'pointer',
+                            padding: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: '50%',
+                            transition: 'background 0.2s'
+                        }}
+                        onMouseOver={e => e.currentTarget.style.background = 'rgba(251, 171, 21, 0.1)'}
+                        onMouseOut={e => e.currentTarget.style.background = 'none'}
+                        title="مشاركة"
+                    >
+                        <ShareIcon />
+                    </button>
+                    
+                    <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '900', color: 'var(--text-primary)', flex: 1, textAlign: 'center' }}>
+                        {uniData?.name || 'الملف الشخصي'}
+                    </h2>
+
+                    <button className="btn-close" onClick={onClose} style={{ fontSize: '1.2rem', position: 'static' }}>✕</button>
+                </div>
+
+                <div style={{ flex: 1, padding: 0, display: 'block', overflowY: 'auto' }}>
                 {/* Header & Cover */}
                 <div className="uni-cover-section">
                     <img 
@@ -384,30 +420,6 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                             }} disabled={isUploadingImage} />
                         </label>
                     )}
-                    <div style={{ position: 'absolute', top: '20px', left: '20px', display: 'flex', gap: '15px', zIndex: 100 }}>
-                        <button 
-                            onClick={handleShare} 
-                            style={{ 
-                                background: 'rgba(0,0,0,0.5)', 
-                                border: '1px solid rgba(255,255,255,0.2)', 
-                                color: 'white', 
-                                width: '40px',
-                                height: '40px',
-                                borderRadius: '50%', 
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                transition: 'all 0.2s'
-                            }}
-                            onMouseOver={e => e.currentTarget.style.background = 'rgba(0,0,0,0.7)'}
-                            onMouseOut={e => e.currentTarget.style.background = 'rgba(0,0,0,0.5)'}
-                            title="مشاركة"
-                        >
-                            <ShareIcon />
-                        </button>
-                        <button className="uni-close-btn" onClick={onClose} style={{ position: 'static' }}>✕</button>
-                    </div>
                     <div className="uni-cover-overlay"></div>
                     
                     <div className="uni-profile-info">
@@ -916,6 +928,7 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                             </div>
                         </div>
                     )}
+                </div>
                 </div>
 
             </div>
