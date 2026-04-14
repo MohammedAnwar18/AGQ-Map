@@ -369,7 +369,7 @@
     /* Ensure no extra spacing */
 }
 
-.nav-item span {
+.nav-item span:not(.notification-badge) {
     display: none;
 }
 
