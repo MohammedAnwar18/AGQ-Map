@@ -1634,7 +1634,7 @@ const MapComponent = () => {
                             <polygon points="19 31 13 19 1 13 31 1 19 31" />
                             <line x1="13" x2="25" y1="19" y2="7" />
                         </svg>
-                        {unreadChatCount > 0 && <span className="notification-badge" style={{ top: '-2px', right: '-2px' }}>{unreadChatCount}</span>}
+                        {unreadChatCount > 0 && <span className="notification-badge" style={{ top: '-6px', right: '-6px', transform: 'scale(0.9)' }}>{unreadChatCount}</span>}
                     </div>
                 </button>
             </nav>
