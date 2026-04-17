@@ -674,7 +674,7 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
                     borderBottom: '1px solid rgba(134,239,172,0.2)'
                 } : {}}>
                     <h2 style={isFloraComm ? { color: '#dcfce7' } : {}}>
-                        {isFloraComm ? 'توثيق نبتة 🌿' : 'منشور جديد'}
+                        {isFloraComm ? 'توثيق نبتة' : 'منشور جديد'}
                     </h2>
                     <button className="btn-close" onClick={handleClose} style={isFloraComm ? { color: '#bbf7d0' } : {}}>✕</button>
                 </div>
@@ -840,10 +840,13 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
                                 color: isFloraComm ? 'white' : undefined,
                                 fontWeight: isFloraComm ? 'bold' : undefined,
                                 borderRadius: isFloraComm ? '14px' : undefined,
-                                padding: isFloraComm ? '14px 20px' : undefined,
-                                fontSize: isFloraComm ? '1rem' : undefined
+                                padding: isFloraComm ? '14px 10px' : undefined,
+                                fontSize: isFloraComm ? 'clamp(0.85rem, 4vw, 1rem)' : undefined,
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
                             }}>
-                                {isFloraComm ? '📸 التقط صورة النبتة' : '📷 فتح الكاميرا'}
+                                {isFloraComm ? 'التقط صورة النبتة' : '📷 فتح الكاميرا'}
                                 <input
                                     type="file"
                                     ref={cameraInputRef}
@@ -1140,7 +1143,7 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
                                 جاري النشر...
                             </>
                         ) : (
-                            isFloraComm ? 'نشر التوثيق 🌿' : 'نشر'
+                            isFloraComm ? 'نشر التوثيق' : 'نشر'
                         )}
                     </button>
                 </form>

@@ -1235,7 +1235,7 @@ const MapComponent = () => {
                             whiteSpace: 'nowrap', maxWidth: '260px',
                             overflow: 'hidden', textOverflow: 'ellipsis'
                         }}>
-                            {isFloraComm ? '🌿' : '👥'} {currentCommunity.name}
+                            {isFloraComm ? '' : '👥 '} {currentCommunity.name.replace('🌿', '').trim()}
                         </div>
                         <button onClick={handleExitCommunity} style={{
                             background: isFloraComm ? 'rgba(239,68,68,0.85)' : '#ef4444',
@@ -1373,7 +1373,7 @@ const MapComponent = () => {
                                 backgroundImage: `url(${getImageUrl(post.user?.profile_picture) || '/default-avatar.png'})`,
                                 width: '45px', height: '45px',
                                 backgroundSize: 'cover', backgroundPosition: 'center',
-                                borderRadius: '50%', border: '2px solid white',
+                                borderRadius: '50%', border: isFloraComm ? '3px solid #22c55e' : '2px solid white',
                                 boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
                                 cursor: 'pointer'
                             }}></div>

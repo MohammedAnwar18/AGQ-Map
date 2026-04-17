@@ -176,6 +176,34 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
 
     return (
         <div className="post-modal-overlay" onClick={onClose}>
+            {plantInfo && (
+                <style>{`
+                    .flora-pill {
+                        background: rgba(22, 101, 52, 0.85) !important;
+                        border: 1px solid rgba(134, 239, 172, 0.4) !important;
+                    }
+                    .flora-pill .pill-btn, .flora-pill .pill-comments-btn {
+                        color: rgba(255, 255, 255, 0.9) !important;
+                    }
+                    .flora-pill .pill-count, .flora-pill .pill-comments-text {
+                        color: rgba(255, 255, 255, 0.9) !important;
+                    }
+                    .flora-pill .pill-divider-line {
+                        background: rgba(255, 255, 255, 0.2) !important;
+                    }
+                    .flora-pill .like-btn.liked {
+                        color: #86efac !important;
+                    }
+                    .flora-pill .like-btn.liked svg {
+                        fill: #86efac !important;
+                        filter: drop-shadow(0 0 8px rgba(134, 239, 172, 0.6)) !important;
+                    }
+                    .flora-pill .share-btn.send-mode {
+                        background: #16a34a !important;
+                        color: white !important;
+                    }
+                `}</style>
+            )}
             <div className="post-modal-container" onClick={(e) => e.stopPropagation()}>
 
                 {/* New Back Button in Top Bar Area */}
@@ -211,7 +239,7 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
 
                                 {/* NEW DESIGN: ACTION BAR PILL */}
                                 <div className="post-pill-action-bar-container">
-                                    <form className={`post-pill-action-bar ${isCommenting ? 'comment-mode' : ''}`} onClick={(e) => e.stopPropagation()} onSubmit={handleSendComment}>
+                                    <form className={`post-pill-action-bar ${isCommenting ? 'comment-mode' : ''} ${plantInfo ? 'flora-pill' : ''}`} onClick={(e) => e.stopPropagation()} onSubmit={handleSendComment}>
                                         <button 
                                             type="button"
                                             className={`pill-btn like-btn ${isLiked ? 'liked' : ''} ${likeAnimating ? 'animating' : ''}`} 
@@ -295,7 +323,7 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
                             {plantInfo && (
                                 <div style={{
                                     position: 'absolute',
-                                    bottom: '65px',
+                                    top: 'calc(env(safe-area-inset-top) + 65px)',
                                     left: '12px',
                                     right: '12px',
                                     display: 'flex',
@@ -344,7 +372,7 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
                             <p className="post-modal-text-large">{post.content}</p>
                             {/* Same action bar for text-only posts */}
                              <div className="post-pill-action-bar-container">
-                                    <form className={`post-pill-action-bar ${isCommenting ? 'comment-mode' : ''}`} onClick={(e) => e.stopPropagation()} onSubmit={handleSendComment}>
+                                    <form className={`post-pill-action-bar ${isCommenting ? 'comment-mode' : ''} ${plantInfo ? 'flora-pill' : ''}`} onClick={(e) => e.stopPropagation()} onSubmit={handleSendComment}>
                                         <button 
                                             type="button"
                                             className={`pill-btn like-btn ${isLiked ? 'liked' : ''}`} 
