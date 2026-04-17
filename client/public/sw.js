@@ -12,8 +12,8 @@ self.addEventListener('push', (event) => {
 
     const options = {
         body: data.body,
-        icon: data.icon || '/logo192.png',
-        badge: data.badge || '/logo192.png',
+        icon: data.icon || '/logo.png',
+        badge: data.badge || '/logo.png',
         data: data.data || {},
         vibrate: [100, 50, 100],
         actions: [
@@ -48,4 +48,9 @@ self.addEventListener('notificationclick', (event) => {
                 }
             })
     );
+});
+
+// A simple fetch handler is REQUIRED by Chrome/Android to show the "Add to Home Screen" prompt!
+self.addEventListener('fetch', (event) => {
+    // Just pass through all requests normally
 });
