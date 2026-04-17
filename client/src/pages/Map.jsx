@@ -255,6 +255,11 @@ const MapComponent = () => {
         currentCommunity.name?.includes('تاريخي')
     );
 
+    // Detect Flora Palestina community (plant documentation - allows posting)
+    const FLORA_PALESTINA_COMMUNITY_ID = 6;
+    // eslint-disable-next-line eqeqeq
+    const isFloraComm = currentCommunity?.id == FLORA_PALESTINA_COMMUNITY_ID;
+
     // Shop Profile State
     const [showShopProfile, setShowShopProfile] = useState(false);
     const [selectedShopProfile, setSelectedShopProfile] = useState(null);
@@ -1210,14 +1215,37 @@ const MapComponent = () => {
                         position: 'absolute', top: '75px', left: '50%', transform: 'translateX(-50%)',
                         zIndex: 900, display: 'flex', alignItems: 'center', gap: '10px'
                     }}>
-                        <button onClick={handleExitCommunity} style={{
-                            background: '#ef4444', color: 'white', border: 'none', borderRadius: '20px',
-                            padding: '8px 16px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem',
-                            boxShadow: '0 4px 15px rgba(239, 68, 68, 0.4)',
+                        {/* Community Name Badge */}
+                        <div style={{
+                            background: isFloraComm
+                                ? 'linear-gradient(135deg, #16a34a, #15803d)'
+                                : 'rgba(15,23,42,0.85)',
+                            color: 'white',
+                            borderRadius: '20px',
+                            padding: '7px 16px',
+                            fontWeight: 'bold',
+                            fontSize: '0.88rem',
+                            fontFamily: 'inherit',
+                            backdropFilter: 'blur(8px)',
+                            border: isFloraComm ? '1px solid rgba(134,239,172,0.4)' : '1px solid rgba(255,255,255,0.1)',
+                            boxShadow: isFloraComm
+                                ? '0 4px 15px rgba(22,163,74,0.4)'
+                                : '0 4px 15px rgba(0,0,0,0.3)',
                             display: 'flex', alignItems: 'center', gap: '6px',
-                            fontFamily: 'inherit'
+                            whiteSpace: 'nowrap', maxWidth: '260px',
+                            overflow: 'hidden', textOverflow: 'ellipsis'
                         }}>
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            {isFloraComm ? '🌿' : '👥'} {currentCommunity.name}
+                        </div>
+                        <button onClick={handleExitCommunity} style={{
+                            background: isFloraComm ? 'rgba(239,68,68,0.85)' : '#ef4444',
+                            color: 'white', border: 'none', borderRadius: '20px',
+                            padding: '7px 14px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.88rem',
+                            boxShadow: '0 4px 15px rgba(239, 68, 68, 0.4)',
+                            display: 'flex', alignItems: 'center', gap: '5px',
+                            fontFamily: 'inherit', backdropFilter: 'blur(8px)'
+                        }}>
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5">
                                 <path d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                             </svg>
                             مغادرة
@@ -1606,12 +1634,24 @@ const MapComponent = () => {
                     </svg>
                 </button>
 
-                {(!currentCommunity || user?.role === 'admin') && (
-                    <button className="nav-item center-btn" onClick={() => setShowCreatePost(true)}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            <line x1="12" y1="5" x2="12" y2="19" />
-                            <line x1="5" y1="12" x2="19" y2="12" />
-                        </svg>
+                {(!currentCommunity || isFloraComm || user?.role === 'admin') && (
+                    <button
+                        className="nav-item center-btn"
+                        onClick={() => setShowCreatePost(true)}
+                        style={isFloraComm ? {
+                            background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                            boxShadow: '0 4px 18px rgba(22,163,74,0.5)'
+                        } : {}}
+                        title={isFloraComm ? 'التقط صورة نبتة' : 'إنشاء منشور'}
+                    >
+                        {isFloraComm ? (
+                            <span style={{ fontSize: '1.4rem', lineHeight: 1 }}>🌿</span>
+                        ) : (
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                        )}
                     </button>
                 )}
 
