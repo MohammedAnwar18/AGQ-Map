@@ -206,6 +206,7 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate, isFloraCommunityCo
                     }
                     .flora-pill .like-btn.liked svg {
                         fill: #86efac !important;
+                        stroke: #86efac !important;
                         filter: drop-shadow(0 0 8px rgba(134, 239, 172, 0.6)) !important;
                     }
                     .flora-pill .share-btn.send-mode {
@@ -267,9 +268,16 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate, isFloraCommunityCo
                                             onClick={handleLike}
                                             title="Like"
                                         >
-                                            <svg viewBox="0 0 24 24" width="24" height="24">
-                                                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                                            </svg>
+                                            {isFloraComm ? (
+                                                <svg viewBox="0 0 24 24" width="24" height="24" fill={isLiked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z" />
+                                                    <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />
+                                                </svg>
+                                            ) : (
+                                                <svg viewBox="0 0 24 24" width="24" height="24">
+                                                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                                                </svg>
+                                            )}
                                             <span className="pill-count">{likesCount}</span>
                                         </button>
 
@@ -364,7 +372,16 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate, isFloraCommunityCo
                                             className={`pill-btn like-btn ${isLiked ? 'liked' : ''}`} 
                                             onClick={handleLike}
                                         >
-                                             <svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" /></svg>
+                                             {isFloraComm ? (
+                                                <svg viewBox="0 0 24 24" width="24" height="24" fill={isLiked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z" />
+                                                    <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />
+                                                </svg>
+                                            ) : (
+                                                <svg viewBox="0 0 24 24" width="24" height="24">
+                                                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                                                </svg>
+                                            )}
                                              <span className="pill-count">{likesCount}</span>
                                         </button>
                                         
