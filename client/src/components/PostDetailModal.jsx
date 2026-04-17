@@ -325,62 +325,46 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate, isFloraCommunityCo
                                 </div>
                             </div>
 
-                            {/* Optional: Simple user info floating in image-only mode */}
+                            {/* Simple user info floating in image-only mode and Plant Badge */}
                             {!showDetails && (
-                                <div className="post-modal-user-floating">
-                                    <img src={post.user.profile_picture || '/default-avatar.png'} alt="user" />
-                                    <span>{post.user.username}</span>
-                                </div>
-                            )}
-
-                            {/* Plant Name Badge — Flora Palestina */}
-                            {plantInfo && (
-                                <div style={{
-                                    position: 'absolute',
-                                    top: 'calc(env(safe-area-inset-top) + 85px)',
-                                    left: '50%',
-                                    transform: 'translateX(-50%)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    background: 'linear-gradient(135deg, rgba(22,101,52,0.92), rgba(21,128,61,0.88))',
-                                    backdropFilter: 'blur(12px)',
-                                    borderRadius: '16px',
-                                    padding: '10px 16px',
-                                    border: '1.5px solid rgba(134,239,172,0.4)',
-                                    boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-                                    zIndex: 1000,
-                                    width: 'max-content',
-                                    maxWidth: '90%',
-                                    animation: 'fadeInDown 0.4s ease'
-                                }}>
-                                    <span style={{ fontSize: '1.5rem' }}>🌿</span>
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{
-                                            color: '#dcfce7',
-                                            fontWeight: 'bold',
-                                            fontSize: '0.95rem',
-                                            fontFamily: 'inherit',
-                                            direction: 'rtl',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap'
-                                        }}>
-                                            {plantInfo.name}
-                                        </div>
-                                        {plantInfo.sci && (
-                                            <div style={{
-                                                color: '#86efac',
-                                                fontSize: '0.78rem',
-                                                fontStyle: 'italic',
-                                                fontFamily: 'inherit',
-                                                marginTop: '1px'
-                                            }}>
-                                                {plantInfo.sci}
-                                            </div>
-                                        )}
+                                <>
+                                    <div className="post-modal-user-floating">
+                                        <img src={post.user.profile_picture || '/default-avatar.png'} alt="user" />
+                                        <span>{post.user.username}</span>
                                     </div>
-                                </div>
+                                    
+                                    {/* Plant Name Badge — Flora Palestina */}
+                                    {plantInfo && (
+                                        <div className="post-modal-plant-badge">
+                                            <span style={{ fontSize: '1.4rem' }}>🌿</span>
+                                            <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
+                                                <div style={{
+                                                    color: '#dcfce7',
+                                                    fontWeight: 'bold',
+                                                    fontSize: '1.05rem',
+                                                    fontFamily: 'inherit',
+                                                    direction: 'rtl',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap'
+                                                }}>
+                                                    {plantInfo.name}
+                                                </div>
+                                                {plantInfo.sci && (
+                                                    <div style={{
+                                                        color: '#86efac',
+                                                        fontSize: '0.8rem',
+                                                        fontStyle: 'italic',
+                                                        fontFamily: 'inherit',
+                                                        marginTop: '2px'
+                                                    }}>
+                                                        {plantInfo.sci}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
                     ) : (

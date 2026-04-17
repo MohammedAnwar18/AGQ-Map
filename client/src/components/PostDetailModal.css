@@ -572,4 +572,5 @@
     flex: 1;
     max-height: calc(100% - 60px); /* Leave room for form */
 }
-
+
+.post-modal-plant-badge { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 75px); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; background: linear-gradient(135deg, rgba(22,101,52,0.95), rgba(21,128,61,0.9)); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-radius: 20px; padding: 8px 18px; border: 1.5px solid rgba(134,239,172,0.4); box-shadow: 0 8px 24px rgba(0,0,0,0.5); z-index: 1000; width: max-content; max-width: 90%; pointer-events: none; animation: fadeInDown 0.4s ease; }
