@@ -14,8 +14,15 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate, isFloraCommunityCo
         const plantMatch = text.match(/🌿\s*([^\r\n]+)/);
         const sciMatch = text.match(/📋\s*([^\r\n]+)/);
         if (plantMatch) {
+            const rawName = plantMatch[1].trim();
+            const parts = rawName.split(' / ');
+            const arName = parts[0] ? parts[0].trim() : rawName;
+            const enName = parts.length > 1 ? parts.slice(1).join(' / ').trim() : null;
+            
             return {
-                name: plantMatch[1].trim(),
+                name: rawName,
+                ar: arName,
+                en: enName,
                 sci: sciMatch ? sciMatch[1].trim() : null
             };
         }
@@ -330,11 +337,13 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate, isFloraCommunityCo
                                 <div className="post-modal-user-floating">
                                     <img src={post.user.profile_picture || '/default-avatar.png'} alt="user" />
                                     {plantInfo ? (
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', direction: 'rtl' }}>
-                                            <span style={{ fontSize: '1.05rem', color: '#dcfce7', lineHeight: '1.2' }}>{plantInfo.name}</span>
-                                            {plantInfo.sci && (
-                                                <span style={{ fontSize: '0.75rem', color: '#86efac', fontWeight: 'normal', lineHeight: '1', marginTop: '2px', fontStyle: 'italic' }}>
-                                                    {plantInfo.sci}
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', direction: 'rtl' }}>
+                                            <span style={{ fontSize: '1.05rem', color: '#dcfce7', lineHeight: '1.2', textAlign: 'center' }}>
+                                                {plantInfo.ar} {plantInfo.sci ? <span style={{ fontSize: '0.85rem', color: '#bbf7d0', fontWeight: 'normal' }}> / {plantInfo.sci}</span> : ''}
+                                            </span>
+                                            {plantInfo.en && (
+                                                <span style={{ fontSize: '0.75rem', color: '#86efac', fontWeight: 'normal', lineHeight: '1', marginTop: '3px', fontStyle: 'italic', textAlign: 'center' }}>
+                                                    {plantInfo.en}
                                                 </span>
                                             )}
                                         </div>
