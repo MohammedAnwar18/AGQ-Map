@@ -7,6 +7,29 @@ import './PostDetailModal.css';
 
 const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
     const { user } = useAuth();
+
+    // --- Extract plant info from content (Flora Palestina format) ---
+    const extractPlantInfo = (text) => {
+        if (!text) return null;
+        const plantMatch = text.match(/🌿\s*(.+?)(?:\n|$)/);
+        const sciMatch = text.match(/📋\s*(.+?)(?:\n|$)/);
+        if (plantMatch) {
+            return {
+                name: plantMatch[1].trim(),
+                sci: sciMatch ? sciMatch[1].trim() : null
+            };
+        }
+        return null;
+    };
+
+    // Content without the plant tag (to avoid showing it twice)
+    const plantInfo = extractPlantInfo(post?.content);
+    const cleanContent = post?.content
+        ? post.content
+            .replace(/🌿\s*.+?(\n|$)/g, '')
+            .replace(/📋\s*.+?(\n|$)/g, '')
+            .trim()
+        : '';
     // Local state for immediate UI feedback
     const [likesCount, setLikesCount] = useState(post?.likes_count || 0);
     const [isLiked, setIsLiked] = useState(post?.is_liked || false);
@@ -267,6 +290,54 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
                                     <span>{post.user.username}</span>
                                 </div>
                             )}
+
+                            {/* Plant Name Badge — Flora Palestina */}
+                            {plantInfo && (
+                                <div style={{
+                                    position: 'absolute',
+                                    bottom: '65px',
+                                    left: '12px',
+                                    right: '12px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    background: 'linear-gradient(135deg, rgba(22,101,52,0.92), rgba(21,128,61,0.88))',
+                                    backdropFilter: 'blur(12px)',
+                                    borderRadius: '14px',
+                                    padding: '10px 14px',
+                                    border: '1px solid rgba(134,239,172,0.3)',
+                                    boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                                    zIndex: 10,
+                                    animation: 'fadeInUp 0.4s ease'
+                                }}>
+                                    <span style={{ fontSize: '1.5rem' }}>🌿</span>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{
+                                            color: '#dcfce7',
+                                            fontWeight: 'bold',
+                                            fontSize: '0.95rem',
+                                            fontFamily: 'inherit',
+                                            direction: 'rtl',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap'
+                                        }}>
+                                            {plantInfo.name}
+                                        </div>
+                                        {plantInfo.sci && (
+                                            <div style={{
+                                                color: '#86efac',
+                                                fontSize: '0.78rem',
+                                                fontStyle: 'italic',
+                                                fontFamily: 'inherit',
+                                                marginTop: '1px'
+                                            }}>
+                                                {plantInfo.sci}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <div className="post-modal-text-only-container">
@@ -374,9 +445,9 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
                             </div>
                         </div>
 
-                        {/* Caption (if image exists, show caption here) */}
-                        {post.image_url && post.content && (
-                            <p className="post-modal-caption">{post.content}</p>
+                        {/* Caption (if image exists, show caption here — without plant tag) */}
+                        {post.image_url && cleanContent && (
+                            <p className="post-modal-caption">{cleanContent}</p>
                         )}
 
                         {/* Divider */}

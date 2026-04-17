@@ -668,15 +668,18 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
 
     return (
         <div className="modal-overlay" onClick={handleClose}>
-            <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                    <h2>
-                        {isFloraComm ? '🌿 توثيق نبتة' : 'منشور جديد'}
+            <div className="modal-container" onClick={(e) => e.stopPropagation()} style={isFloraComm ? { maxWidth: '480px' } : {}}>
+                <div className="modal-header" style={isFloraComm ? {
+                    background: 'linear-gradient(135deg, #15803d, #166534)',
+                    borderBottom: '1px solid rgba(134,239,172,0.2)'
+                } : {}}>
+                    <h2 style={isFloraComm ? { color: '#dcfce7' } : {}}>
+                        {isFloraComm ? 'توثيق نبتة 🌿' : 'منشور جديد'}
                     </h2>
-                    <button className="btn-close" onClick={handleClose}>✕</button>
+                    <button className="btn-close" onClick={handleClose} style={isFloraComm ? { color: '#bbf7d0' } : {}}>✕</button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="modal-body">
+                <form onSubmit={handleSubmit} className="modal-body" style={isFloraComm ? { padding: '16px' } : {}}>
                     {error && (
                         <div className="error-message">
                             <span className="error-icon">⚠️</span>
@@ -684,8 +687,94 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
                         </div>
                     )}
 
-                    {/* معاينة الوسائط */}
-                    {imagePreviews.length > 0 && (
+                    {/* ===== Flora: عرض الصورة الملتقطة بشكل بطاقة كبيرة ===== */}
+                    {isFloraComm && imagePreviews.length > 0 && (
+                        <div style={{
+                            position: 'relative',
+                            width: '100%',
+                            borderRadius: '16px',
+                            overflow: 'hidden',
+                            marginBottom: '16px',
+                            boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
+                            border: '2px solid rgba(134,239,172,0.3)'
+                        }}>
+                            <img
+                                src={imagePreviews[0]}
+                                alt="صورة النبتة"
+                                style={{
+                                    width: '100%',
+                                    maxHeight: '320px',
+                                    objectFit: 'cover',
+                                    display: 'block'
+                                }}
+                            />
+                            {/* زر الحذف */}
+                            <button
+                                type="button"
+                                onClick={() => removeImage(0)}
+                                style={{
+                                    position: 'absolute',
+                                    top: '10px',
+                                    right: '10px',
+                                    background: 'rgba(239,68,68,0.85)',
+                                    backdropFilter: 'blur(8px)',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '50%',
+                                    width: '32px',
+                                    height: '32px',
+                                    cursor: 'pointer',
+                                    fontSize: '1rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+                                }}
+                            >✕</button>
+
+                            {/* بادج النبتة المختارة فوق الصورة */}
+                            {selectedPlant && (
+                                <div style={{
+                                    position: 'absolute',
+                                    bottom: '0',
+                                    left: '0',
+                                    right: '0',
+                                    background: 'linear-gradient(transparent, rgba(0,0,0,0.75))',
+                                    padding: '30px 14px 12px 14px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px'
+                                }}>
+                                    <span style={{ fontSize: '1.3rem' }}>🌿</span>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{
+                                            color: '#bbf7d0',
+                                            fontWeight: 'bold',
+                                            fontSize: '0.95rem',
+                                            fontFamily: 'inherit',
+                                            direction: 'rtl',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap'
+                                        }}>
+                                            {selectedPlant.ar}{selectedPlant.en ? ` / ${selectedPlant.en}` : ''}
+                                        </div>
+                                        <div style={{
+                                            color: 'rgba(255,255,255,0.7)',
+                                            fontSize: '0.78rem',
+                                            fontStyle: 'italic',
+                                            fontFamily: 'inherit'
+                                        }}>
+                                            {selectedPlant.sci}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ===== الوضع العادي (ليس Flora): معاينة الوسائط ===== */}
+                    {!isFloraComm && imagePreviews.length > 0 && (
                         <div className="media-preview-container" style={{
                             display: 'flex',
                             gap: '10px',
@@ -710,7 +799,7 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
                                     </button>
                                 </div>
                             ))}
-                            {/* زر إضافة الكاميرا فقط في مجتمع النباتات */}
+                            {/* زر إضافة المزيد */}
                             <label style={{
                                 flex: '0 0 auto',
                                 width: '150px',
@@ -725,12 +814,11 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
                                 color: '#ccc',
                                 fontSize: '2rem'
                             }}>
-                                📷
+                                +
                                 <input
                                     type="file"
                                     accept="image/*"
-                                    capture={isFloraComm ? 'environment' : undefined}
-                                    multiple={!isFloraComm}
+                                    multiple
                                     onChange={handleFileChange}
                                     style={{ display: 'none' }}
                                 />
@@ -741,7 +829,7 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
                     {/* أزرار الإضافة الأولية */}
                     {imagePreviews.length === 0 && (
                         <div className="image-actions">
-                            {/* زر الكاميرا — موجود دائماً */}
+                            {/* زر الكاميرا */}
                             <label className="btn btn-secondary" style={{
                                 cursor: 'pointer',
                                 display: 'flex',
@@ -750,9 +838,12 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
                                 gap: '8px',
                                 background: isFloraComm ? 'linear-gradient(135deg, #16a34a, #15803d)' : undefined,
                                 color: isFloraComm ? 'white' : undefined,
-                                fontWeight: isFloraComm ? 'bold' : undefined
+                                fontWeight: isFloraComm ? 'bold' : undefined,
+                                borderRadius: isFloraComm ? '14px' : undefined,
+                                padding: isFloraComm ? '14px 20px' : undefined,
+                                fontSize: isFloraComm ? '1rem' : undefined
                             }}>
-                                📷 {isFloraComm ? 'التقط صورة النبتة' : 'فتح الكاميرا'}
+                                {isFloraComm ? '📸 التقط صورة النبتة' : '📷 فتح الكاميرا'}
                                 <input
                                     type="file"
                                     ref={cameraInputRef}
@@ -782,61 +873,151 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
 
                     {/* ===== اختيار اسم النبتة — يظهر بعد التصوير في مجتمع النباتات ===== */}
                     {isFloraComm && imagePreviews.length > 0 && (
-                        <div className="form-group" style={{ marginTop: '16px' }}>
-                            <label style={{
+                        <div style={{
+                            marginTop: '6px',
+                            background: 'linear-gradient(135deg, #f0fdf4, #ecfdf5)',
+                            borderRadius: '16px',
+                            padding: '16px',
+                            border: '1px solid #bbf7d0'
+                        }}>
+                            <div style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '6px',
-                                fontWeight: 'bold',
-                                color: '#15803d',
-                                marginBottom: '8px',
-                                fontFamily: 'inherit'
+                                justifyContent: 'space-between',
+                                marginBottom: '12px'
                             }}>
-                                🌱 اسم النبتة
-                                <span style={{ fontSize: '0.8rem', color: '#888', fontWeight: 'normal' }}>(اختياري)</span>
-                            </label>
+                                <label style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    fontWeight: 'bold',
+                                    color: '#15803d',
+                                    fontFamily: 'inherit',
+                                    fontSize: '0.95rem'
+                                }}>
+                                    🌱 تصنيف النبتة
+                                </label>
+                                <span style={{
+                                    fontSize: '0.75rem',
+                                    color: '#86efac',
+                                    background: '#166534',
+                                    padding: '3px 10px',
+                                    borderRadius: '20px',
+                                    fontWeight: '600'
+                                }}>اختياري</span>
+                            </div>
 
-                            {/* حقل البحث */}
-                            <input
-                                type="text"
-                                className="input"
-                                placeholder="ابحث بالعربية، الإنجليزية أو الاسم العلمي..."
-                                value={plantSearch}
-                                onChange={e => setPlantSearch(e.target.value)}
-                                style={{
-                                    marginBottom: '6px',
-                                    direction: 'rtl',
-                                    border: '2px solid #bbf7d0',
-                                    borderRadius: '10px'
-                                }}
-                            />
+                            {/* حقل البحث المحسّن */}
+                            <div style={{ position: 'relative', marginBottom: '10px' }}>
+                                <input
+                                    type="text"
+                                    placeholder="🔍 ابحث بالعربية، الإنجليزية أو الاسم العلمي..."
+                                    value={plantSearch}
+                                    onChange={e => setPlantSearch(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px 16px',
+                                        border: '2px solid #86efac',
+                                        borderRadius: '12px',
+                                        fontSize: '0.9rem',
+                                        fontFamily: 'inherit',
+                                        direction: 'rtl',
+                                        background: 'white',
+                                        outline: 'none',
+                                        transition: 'border-color 0.2s, box-shadow 0.2s',
+                                        boxSizing: 'border-box'
+                                    }}
+                                    onFocus={e => {
+                                        e.target.style.borderColor = '#16a34a';
+                                        e.target.style.boxShadow = '0 0 0 3px rgba(22,163,74,0.15)';
+                                    }}
+                                    onBlur={e => {
+                                        e.target.style.borderColor = '#86efac';
+                                        e.target.style.boxShadow = 'none';
+                                    }}
+                                />
+                            </div>
+
+                            {/* عرض الاختيار الحالي كبطاقة */}
+                            {selectedPlant && (
+                                <div style={{
+                                    marginBottom: '10px',
+                                    padding: '12px 14px',
+                                    background: 'linear-gradient(135deg, #166534, #15803d)',
+                                    borderRadius: '12px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    boxShadow: '0 4px 12px rgba(22,101,52,0.3)'
+                                }}>
+                                    <span style={{ fontSize: '1.6rem' }}>🌿</span>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{
+                                            fontWeight: 'bold',
+                                            color: '#dcfce7',
+                                            fontFamily: 'inherit',
+                                            direction: 'rtl',
+                                            fontSize: '0.95rem'
+                                        }}>
+                                            {selectedPlant.ar}
+                                            {selectedPlant.en && <span style={{ color: '#bbf7d0', fontWeight: 'normal' }}> / {selectedPlant.en}</span>}
+                                        </div>
+                                        <div style={{
+                                            fontSize: '0.78rem',
+                                            color: '#86efac',
+                                            fontStyle: 'italic',
+                                            fontFamily: 'inherit',
+                                            marginTop: '2px'
+                                        }}>
+                                            {selectedPlant.sci}
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedPlant('')}
+                                        style={{
+                                            background: 'rgba(255,255,255,0.15)',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            color: '#dcfce7',
+                                            fontSize: '0.9rem',
+                                            padding: '4px 8px',
+                                            borderRadius: '8px',
+                                            transition: 'background 0.15s'
+                                        }}
+                                    >✕</button>
+                                </div>
+                            )}
 
                             {/* القائمة المنسدلة */}
                             <div style={{
-                                maxHeight: '200px',
+                                maxHeight: '220px',
                                 overflowY: 'auto',
+                                borderRadius: '12px',
+                                background: 'white',
                                 border: '1px solid #d1fae5',
-                                borderRadius: '10px',
-                                background: '#f0fdf4',
-                                boxShadow: '0 4px 12px rgba(21,128,61,0.1)'
+                                boxShadow: '0 2px 8px rgba(21,128,61,0.08)'
                             }}>
                                 {/* خيار "بدون تصنيف" */}
                                 <div
                                     onClick={() => { setSelectedPlant(''); setPlantSearch(''); }}
                                     style={{
-                                        padding: '10px 14px',
+                                        padding: '11px 14px',
                                         cursor: 'pointer',
-                                        color: '#666',
+                                        color: '#64748b',
                                         fontSize: '0.88rem',
                                         fontFamily: 'inherit',
-                                        borderBottom: '1px solid #d1fae5',
-                                        background: selectedPlant === '' ? '#dcfce7' : 'transparent',
-                                        transition: 'background 0.15s'
+                                        borderBottom: '1px solid #f0fdf4',
+                                        background: selectedPlant === '' ? '#f0fdf4' : 'transparent',
+                                        transition: 'background 0.15s',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
                                     }}
-                                    onMouseEnter={e => e.currentTarget.style.background = '#dcfce7'}
-                                    onMouseLeave={e => e.currentTarget.style.background = selectedPlant === '' ? '#dcfce7' : 'transparent'}
+                                    onMouseEnter={e => e.currentTarget.style.background = '#f0fdf4'}
+                                    onMouseLeave={e => e.currentTarget.style.background = selectedPlant === '' ? '#f0fdf4' : 'transparent'}
                                 >
-                                    — بدون تصنيف
+                                    <span style={{ fontSize: '1rem' }}>🚫</span> بدون تصنيف
                                 </div>
 
                                 {filteredPlants.map((plant, idx) => {
@@ -852,37 +1033,47 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
                                                 padding: '10px 14px',
                                                 cursor: 'pointer',
                                                 background: isSelected ? '#dcfce7' : 'transparent',
-                                                borderBottom: idx < filteredPlants.length - 1 ? '1px solid #d1fae5' : 'none',
-                                                transition: 'background 0.15s'
+                                                borderBottom: idx < filteredPlants.length - 1 ? '1px solid #f0fdf4' : 'none',
+                                                transition: 'background 0.15s',
+                                                display: 'flex',
+                                                alignItems: 'flex-start',
+                                                gap: '10px'
                                             }}
-                                            onMouseEnter={e => e.currentTarget.style.background = '#d1fae5'}
+                                            onMouseEnter={e => e.currentTarget.style.background = isSelected ? '#dcfce7' : '#f0fdf4'}
                                             onMouseLeave={e => e.currentTarget.style.background = isSelected ? '#dcfce7' : 'transparent'}
                                         >
-                                            <div style={{
-                                                fontWeight: 'bold',
-                                                color: '#166534',
-                                                fontSize: '0.95rem',
-                                                fontFamily: 'inherit',
-                                                direction: 'rtl'
-                                            }}>
-                                                {plant.ar}
-                                            </div>
-                                            {plant.en && (
+                                            <span style={{
+                                                fontSize: '1.1rem',
+                                                marginTop: '2px',
+                                                filter: isSelected ? 'none' : 'grayscale(0.5)'
+                                            }}>{isSelected ? '✅' : '🌱'}</span>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
                                                 <div style={{
-                                                    color: '#4b7c59',
-                                                    fontSize: '0.82rem',
+                                                    fontWeight: '600',
+                                                    color: '#166534',
+                                                    fontSize: '0.93rem',
+                                                    fontFamily: 'inherit',
+                                                    direction: 'rtl'
+                                                }}>
+                                                    {plant.ar}
+                                                </div>
+                                                {plant.en && (
+                                                    <div style={{
+                                                        color: '#4b7c59',
+                                                        fontSize: '0.8rem',
+                                                        fontFamily: 'inherit'
+                                                    }}>
+                                                        {plant.en}
+                                                    </div>
+                                                )}
+                                                <div style={{
+                                                    color: '#94a3b8',
+                                                    fontSize: '0.75rem',
+                                                    fontStyle: 'italic',
                                                     fontFamily: 'inherit'
                                                 }}>
-                                                    {plant.en}
+                                                    {plant.sci}
                                                 </div>
-                                            )}
-                                            <div style={{
-                                                color: '#888',
-                                                fontSize: '0.78rem',
-                                                fontStyle: 'italic',
-                                                fontFamily: 'inherit'
-                                            }}>
-                                                {plant.sci}
                                             </div>
                                         </div>
                                     );
@@ -890,8 +1081,8 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
 
                                 {filteredPlants.length === 0 && plantSearch && (
                                     <div style={{
-                                        padding: '14px',
-                                        color: '#888',
+                                        padding: '20px 14px',
+                                        color: '#94a3b8',
                                         textAlign: 'center',
                                         fontFamily: 'inherit',
                                         fontSize: '0.88rem'
@@ -900,50 +1091,11 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
                                     </div>
                                 )}
                             </div>
-
-                            {/* عرض الاختيار الحالي */}
-                            {selectedPlant && (
-                                <div style={{
-                                    marginTop: '10px',
-                                    padding: '10px 14px',
-                                    background: 'linear-gradient(135deg, #dcfce7, #bbf7d0)',
-                                    borderRadius: '10px',
-                                    border: '1px solid #86efac',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px'
-                                }}>
-                                    <span style={{ fontSize: '1.4rem' }}>🌿</span>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 'bold', color: '#166534', fontFamily: 'inherit', direction: 'rtl' }}>
-                                            {selectedPlant.ar}
-                                        </div>
-                                        <div style={{ fontSize: '0.82rem', color: '#4b7c59', fontStyle: 'italic', fontFamily: 'inherit' }}>
-                                            {selectedPlant.sci}
-                                        </div>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => setSelectedPlant('')}
-                                        style={{
-                                            background: 'none',
-                                            border: 'none',
-                                            cursor: 'pointer',
-                                            color: '#666',
-                                            fontSize: '1rem',
-                                            padding: '2px 6px',
-                                            borderRadius: '4px'
-                                        }}
-                                    >
-                                        ✕
-                                    </button>
-                                </div>
-                            )}
                         </div>
                     )}
 
                     {/* النص / الوصف */}
-                    <div className="form-group">
+                    <div className="form-group" style={isFloraComm ? { marginTop: '12px' } : {}}>
                         <label htmlFor="content">
                             {isFloraComm ? 'ملاحظات (اختياري)' : 'الوصف (اختياري)'}
                         </label>
@@ -955,7 +1107,7 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
                             placeholder={isFloraComm
                                 ? 'أضف ملاحظاتك عن الموقع، الموسم، الحالة...'
                                 : 'اكتب وصفاً لمنشورك...'}
-                            rows="4"
+                            rows={isFloraComm ? "3" : "4"}
                         />
                     </div>
 
@@ -976,7 +1128,10 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
                         disabled={loading}
                         style={isFloraComm ? {
                             background: 'linear-gradient(135deg, #16a34a, #15803d)',
-                            boxShadow: '0 4px 14px rgba(22,163,74,0.35)'
+                            boxShadow: '0 4px 14px rgba(22,163,74,0.35)',
+                            borderRadius: '14px',
+                            fontSize: '1rem',
+                            padding: '14px'
                         } : {}}
                     >
                         {loading ? (
@@ -985,7 +1140,7 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
                                 جاري النشر...
                             </>
                         ) : (
-                            isFloraComm ? '🌿 نشر التوثيق' : 'نشر'
+                            isFloraComm ? 'نشر التوثيق 🌿' : 'نشر'
                         )}
                     </button>
                 </form>
@@ -995,3 +1150,4 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
 };
 
 export default CreatePostModal;
+
