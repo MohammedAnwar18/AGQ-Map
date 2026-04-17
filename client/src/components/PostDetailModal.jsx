@@ -345,12 +345,12 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate, isFloraCommunityCo
                                 <div className="post-modal-user-floating">
                                     <img src={post.user.profile_picture || '/default-avatar.png'} alt="user" />
                                     {plantInfo ? (
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', direction: 'rtl' }}>
-                                            <span style={{ fontSize: '1.05rem', color: '#dcfce7', lineHeight: '1.2', textAlign: 'center' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', direction: 'rtl', minWidth: 0, flex: 1 }}>
+                                            <span style={{ fontSize: '1.05rem', color: '#dcfce7', lineHeight: '1.3', textAlign: 'center', wordBreak: 'break-word', whiteSpace: 'normal' }}>
                                                 {plantInfo.ar} {plantInfo.sci ? <span style={{ fontSize: '0.85rem', color: '#bbf7d0', fontWeight: 'normal' }}> / {plantInfo.sci}</span> : ''}
                                             </span>
                                             {plantInfo.en && (
-                                                <span style={{ fontSize: '0.75rem', color: '#86efac', fontWeight: 'normal', lineHeight: '1', marginTop: '3px', fontStyle: 'italic', textAlign: 'center' }}>
+                                                <span style={{ fontSize: '0.75rem', color: '#86efac', fontWeight: 'normal', lineHeight: '1.2', marginTop: '4px', fontStyle: 'italic', textAlign: 'center', wordBreak: 'break-word', whiteSpace: 'normal' }}>
                                                     {plantInfo.en}
                                                 </span>
                                             )}
