@@ -11,8 +11,8 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate, isFloraCommunityCo
     // --- Extract plant info from content (Flora Palestina format) ---
     const extractPlantInfo = (text) => {
         if (!text) return null;
-        const plantMatch = text.match(/🌿\s*(.+?)(?:\n|$)/);
-        const sciMatch = text.match(/📋\s*(.+?)(?:\n|$)/);
+        const plantMatch = text.match(/🌿\s*([^\r\n]+)/);
+        const sciMatch = text.match(/📋\s*([^\r\n]+)/);
         if (plantMatch) {
             return {
                 name: plantMatch[1].trim(),
@@ -26,8 +26,8 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate, isFloraCommunityCo
     const plantInfo = extractPlantInfo(post?.content);
     const cleanContent = post?.content
         ? post.content
-            .replace(/🌿\s*.+?(\n|$)/g, '')
-            .replace(/📋\s*.+?(\n|$)/g, '')
+            .replace(/🌿\s*[^\r\n]+(?:\r?\n|$)/g, '')
+            .replace(/📋\s*[^\r\n]+(?:\r?\n|$)/g, '')
             .trim()
         : '';
         
