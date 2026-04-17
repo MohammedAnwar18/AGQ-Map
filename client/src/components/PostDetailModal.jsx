@@ -28,13 +28,11 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
         ? post.content
             .replace(/🌿\s*.+?(\n|$)/g, '')
             .replace(/📋\s*.+?(\n|$)/g, '')
-            .replace(/📋\s*.+?(\n|$)/g, '')
             .trim()
         : '';
-    
-    // Community indicator for styling (applies to ALL posts in community 6, or any with plant info)
+        
+    // Apply styling if it's the Flora community OR has plant info
     const isFloraComm = post?.community_id === 6 || plantInfo;
-
     // Local state for immediate UI feedback
     const [likesCount, setLikesCount] = useState(post?.likes_count || 0);
     const [isLiked, setIsLiked] = useState(post?.is_liked || false);
@@ -207,15 +205,15 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
                         background: #16a34a !important;
                         color: white !important;
                     }
-                    /* Custom Green styles for top user pill */
-                    .flora-user-pill {
-                        border: 1.5px solid rgba(34, 197, 94, 0.7) !important;
+                    /* Make default user pill green for this community */
+                    .post-modal-user-floating {
+                        border-color: rgba(34, 197, 94, 0.7) !important;
                         box-shadow: 0 4px 20px rgba(22, 101, 52, 0.4) !important;
                     }
-                    .flora-user-pill img {
+                    .post-modal-user-floating img {
                         border-color: #22c55e !important;
                     }
-                    .flora-user-pill span {
+                    .post-modal-user-floating span {
                         color: #dcfce7 !important;
                     }
                 `}</style>
@@ -327,68 +325,61 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
                                 </div>
                             </div>
 
-                            {/* Optional: Simple user info floating and Plant Title in image-only mode */}
+                            {/* Optional: Simple user info floating in image-only mode */}
                             {!showDetails && (
+                                <div className="post-modal-user-floating">
+                                    <img src={post.user.profile_picture || '/default-avatar.png'} alt="user" />
+                                    <span>{post.user.username}</span>
+                                </div>
+                            )}
+
+                            {/* Plant Name Badge — Flora Palestina */}
+                            {plantInfo && (
                                 <div style={{
                                     position: 'absolute',
-                                    top: 'calc(env(safe-area-inset-top) + 15px)',
-                                    left: '0',
-                                    right: '0',
+                                    top: 'calc(env(safe-area-inset-top) + 85px)',
+                                    left: '50%',
+                                    transform: 'translateX(-50%)',
                                     display: 'flex',
-                                    flexDirection: 'column',
                                     alignItems: 'center',
                                     gap: '8px',
-                                    zIndex: 10,
-                                    pointerEvents: 'none'
+                                    background: 'linear-gradient(135deg, rgba(22,101,52,0.92), rgba(21,128,61,0.88))',
+                                    backdropFilter: 'blur(12px)',
+                                    borderRadius: '16px',
+                                    padding: '10px 16px',
+                                    border: '1.5px solid rgba(134,239,172,0.4)',
+                                    boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+                                    zIndex: 1000,
+                                    width: 'max-content',
+                                    maxWidth: '90%',
+                                    animation: 'fadeInDown 0.4s ease'
                                 }}>
-                                    <div className={`post-modal-user-floating ${isFloraComm ? 'flora-user-pill' : ''}`} style={{ position: 'relative', top: 'auto', left: 'auto', transform: 'none', pointerEvents: 'auto' }}>
-                                        <img src={post.user.profile_picture || '/default-avatar.png'} alt="user" />
-                                        <span>{post.user.username}</span>
-                                    </div>
-                                    
-                                    {/* Plant Name Badge — Flora Palestina */}
-                                    {plantInfo && (
+                                    <span style={{ fontSize: '1.5rem' }}>🌿</span>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
                                         <div style={{
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '8px',
-                                            background: 'linear-gradient(135deg, rgba(22,101,52,0.92), rgba(21,128,61,0.88))',
-                                            backdropFilter: 'blur(12px)',
-                                            borderRadius: '16px',
-                                            padding: '8px 18px',
-                                            border: '1.5px solid rgba(134,239,172,0.4)',
-                                            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-                                            animation: 'fadeInDown 0.4s ease',
-                                            maxWidth: '90%',
-                                            pointerEvents: 'auto'
+                                            color: '#dcfce7',
+                                            fontWeight: 'bold',
+                                            fontSize: '0.95rem',
+                                            fontFamily: 'inherit',
+                                            direction: 'rtl',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap'
                                         }}>
-                                            <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
-                                                <div style={{
-                                                    color: '#dcfce7',
-                                                    fontWeight: 'bold',
-                                                    fontSize: '1.05rem',
-                                                    fontFamily: 'inherit',
-                                                    direction: 'rtl',
-                                                    overflow: 'hidden',
-                                                    textOverflow: 'ellipsis',
-                                                    whiteSpace: 'nowrap'
-                                                }}>
-                                                    {plantInfo.name}
-                                                </div>
-                                                {plantInfo.sci && (
-                                                    <div style={{
-                                                        color: '#86efac',
-                                                        fontSize: '0.8rem',
-                                                        fontStyle: 'italic',
-                                                        fontFamily: 'inherit',
-                                                        marginTop: '2px'
-                                                    }}>
-                                                        {plantInfo.sci}
-                                                    </div>
-                                                )}
-                                            </div>
+                                            {plantInfo.name}
                                         </div>
-                                    )}
+                                        {plantInfo.sci && (
+                                            <div style={{
+                                                color: '#86efac',
+                                                fontSize: '0.78rem',
+                                                fontStyle: 'italic',
+                                                fontFamily: 'inherit',
+                                                marginTop: '1px'
+                                            }}>
+                                                {plantInfo.sci}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -396,7 +387,7 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
                         <div className="post-modal-text-only-container">
                             <p className="post-modal-text-large">{post.content}</p>
                             {/* Same action bar for text-only posts */}
-                             <div className="post-pill-action-bar-container">
+                                <div className="post-pill-action-bar-container">
                                     <form className={`post-pill-action-bar ${isCommenting ? 'comment-mode' : ''} ${isFloraComm ? 'flora-pill' : ''}`} onClick={(e) => e.stopPropagation()} onSubmit={handleSendComment}>
                                         <button 
                                             type="button"
