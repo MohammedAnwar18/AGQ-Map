@@ -5,7 +5,7 @@ import CommentsSection from './CommentsSection';
 import FriendButton from './FriendButton';
 import './PostDetailModal.css';
 
-const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
+const PostDetailModal = ({ post, onClose, onDelete, onUpdate, isFloraCommunityContext = false }) => {
     const { user } = useAuth();
 
     // --- Extract plant info from content (Flora Palestina format) ---
@@ -32,7 +32,7 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate }) => {
         : '';
         
     // Apply styling if it's the Flora community OR has plant info
-    const isFloraComm = post?.community_id === 6 || plantInfo;
+    const isFloraComm = isFloraCommunityContext || post?.community_id === 6 || !!plantInfo;
     // Local state for immediate UI feedback
     const [likesCount, setLikesCount] = useState(post?.likes_count || 0);
     const [isLiked, setIsLiked] = useState(post?.is_liked || false);

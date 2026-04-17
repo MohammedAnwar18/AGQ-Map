@@ -1722,6 +1722,7 @@ const MapComponent = () => {
             {showCreatePost && <CreatePostModal onClose={() => setShowCreatePost(false)} onPostCreated={handlePostCreated} currentLocation={userLocation} communityId={currentCommunity?.id} />}
             {selectedPost && <PostDetailModal
                 post={selectedPost}
+                isFloraCommunityContext={isFloraComm}
                 onClose={() => setSelectedPost(null)}
                 onDelete={handleDeletePost}
                 onUpdate={(updatedPost) => {
