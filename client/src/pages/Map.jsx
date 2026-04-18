@@ -1590,10 +1590,11 @@ const MapComponent = () => {
                                 </div>
                                 {!routePath && (
                                     <div style={{
-                                        background: 'rgba(255,255,255,0.95)', color: 'black', fontSize: '11px',
+                                        background: 'rgba(255,255,255,0.95)', color: 'black', fontSize: '12px',
                                         fontWeight: 'bold', padding: '2px 8px', borderRadius: '10px',
                                         marginTop: '4px', border: '1px solid #3b82f6', whiteSpace: 'nowrap',
-                                        boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+                                        boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+                                        fontFamily: "'Tajawal', 'Segoe UI', sans-serif"
                                     }}>
                                         {fac.name}
                                     </div>
