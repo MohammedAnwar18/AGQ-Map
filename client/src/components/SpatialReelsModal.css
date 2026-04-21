@@ -15,12 +15,19 @@
 .srm-overlay {
     position: fixed;
     inset: 0;
+    height: 100dvh;
+    box-sizing: border-box;
     z-index: 5000;
     display: flex;
     flex-direction: column;
-    background: #080810;
+    background: #000; /* Pure black for immersive reel feel */
+    padding-top: env(safe-area-inset-top, 0);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    padding-left: env(safe-area-inset-left, 0);
+    padding-right: env(safe-area-inset-right, 0);
     font-family: 'Tajawal', sans-serif;
     direction: rtl;
+    overflow: hidden;
     animation: srm-slide-up 0.42s cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
