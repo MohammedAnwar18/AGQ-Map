@@ -13,6 +13,7 @@
     { "source": "/news/(.*)", "destination": "/api/index.js" },
     { "source": "/communities/(.*)", "destination": "/api/index.js" },
     { "source": "/admin/(.*)", "destination": "/api/index.js" },
+    { "source": "/reels/(.*)", "destination": "/api/index.js" },
     { "source": "/health", "destination": "/api/index.js" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]

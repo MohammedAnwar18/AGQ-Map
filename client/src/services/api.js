@@ -514,6 +514,38 @@ export const shopService = {
     }
 };
 
+// ── Reel Services (Spatial Reels) ──────────────────────────────────────────
+export const reelService = {
+    getReels: async (limit = 30, offset = 0) => {
+        const response = await api.get(`/reels?limit=${limit}&offset=${offset}`);
+        return response.data;
+    },
+    createReel: async (data) => {
+        const response = await api.post('/reels', data);
+        return response.data;
+    },
+    deleteReel: async (id) => {
+        const response = await api.delete(`/reels/${id}`);
+        return response.data;
+    },
+    toggleLike: async (id) => {
+        const response = await api.post(`/reels/${id}/like`);
+        return response.data;
+    },
+    getComments: async (id) => {
+        const response = await api.get(`/reels/${id}/comments`);
+        return response.data;
+    },
+    addComment: async (id, content) => {
+        const response = await api.post(`/reels/${id}/comments`, { content });
+        return response.data;
+    },
+    deleteComment: async (commentId) => {
+        const response = await api.delete(`/reels/comments/${commentId}`);
+        return response.data;
+    }
+};
+
 // Municipality Items Service (البلديات)
 export const municipalityService = {
     getItems: async (municipalityId) => {

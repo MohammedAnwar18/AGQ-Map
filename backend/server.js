@@ -163,6 +163,7 @@ app.use('/news', require('./routes/news'));
 app.use('/communities', require('./routes/communities'));
 app.use('/shops', require('./routes/shops'));
 app.use('/admin', require('./routes/admin'));
+app.use('/reels', require('./routes/reels'));
 
 // API Aliases
 app.use('/api/auth', require('./routes/auth'));
@@ -177,6 +178,7 @@ app.use('/api/communities', require('./routes/communities'));
 app.use('/api/ai', require('./routes/ai'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/comments', require('./routes/comments'));
+app.use('/api/reels', require('./routes/reels'));
 app.use('/api/push', require('./routes/push'));
 app.use('/api/radar', require('./routes/radar')); // <-- NEW RADAR MOUNT
 

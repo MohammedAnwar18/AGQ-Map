@@ -24,6 +24,7 @@ import MedicalCenterProfileModal from '../components/MedicalCenterProfileModal';
 import UniversityProfileModal from '../components/UniversityProfileModal';
 import FacilityProfileModal from '../components/FacilityProfileModal';
 import HistoricalTimelinePanel from '../components/HistoricalTimelinePanel';
+import SpatialReelsModal from '../components/SpatialReelsModal';
 import { postService, friendService, authService, notificationService, communityService, shopService, getImageUrl } from '../services/api';
 import './Map.css';
 
@@ -237,6 +238,7 @@ const MapComponent = () => {
     const [showGPSGuide, setShowGPSGuide] = useState(false);
     const [gpsErrorType, setGpsErrorType] = useState(null); // 'denied' or 'generic'
     const [lineDashOffset, setLineDashOffset] = useState(0);
+    const [showSpatialReels, setShowSpatialReels] = useState(false);
 
     // Community Mode State
     const [currentCommunity, setCurrentCommunity] = useState(null);
@@ -1098,6 +1100,34 @@ const MapComponent = () => {
                             <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                         </svg>
                         {unreadCount > 0 && <span className="notification-badge" style={{ top: '-4px', right: '-4px' }}>{unreadCount}</span>}
+                    </button>
+
+                    {/* Spatial Reels Button */}
+                    <button
+                        onClick={() => setShowSpatialReels(true)}
+                        title="Spatial Reels"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '7px 14px',
+                            borderRadius: '20px',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontFamily: 'inherit',
+                            fontSize: '13px',
+                            fontWeight: '700',
+                            background: 'linear-gradient(135deg, #00e5ff, #7c4dff)',
+                            color: '#000',
+                            transition: 'all 0.3s ease',
+                            boxShadow: '0 0 16px rgba(0,229,255,0.35)',
+                            whiteSpace: 'nowrap'
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.06)'; e.currentTarget.style.boxShadow = '0 0 24px rgba(0,229,255,0.6)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 0 16px rgba(0,229,255,0.35)'; }}
+                    >
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        Reels
                     </button>
 
                     <button
@@ -1966,6 +1996,15 @@ const MapComponent = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Spatial Reels Modal */}
+            {showSpatialReels && (
+                <SpatialReelsModal
+                    onClose={() => setShowSpatialReels(false)}
+                    currentUser={user}
+                    userLocation={userLocation}
+                />
             )}
         </div>
     );
