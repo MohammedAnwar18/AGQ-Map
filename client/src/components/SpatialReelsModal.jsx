@@ -1,6 +1,31 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import api, { getImageUrl } from '../services/api';
 import './SpatialReelsModal.css';
+
+// ─── Google Satellite map style (same as main map) ─────────────────────────
+const SATELLITE_STYLE = {
+    version: 8,
+    name: 'Satellite',
+    sprite: 'https://demotiles.maplibre.org/styles/osm-bright-gl-style/sprite',
+    glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+    sources: {
+        'satellite': {
+            type: 'raster',
+            tiles: ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'],
+            tileSize: 256,
+            attribution: '© Google'
+        }
+    },
+    layers: [{
+        id: 'satellite-layer',
+        type: 'raster',
+        source: 'satellite',
+        minzoom: 0,
+        maxzoom: 22
+    }]
+};
 
 // ─── Helper: Extract YouTube Video ID ─────────────────────────────────────────
 const getYouTubeId = (url) => {
@@ -9,135 +34,269 @@ const getYouTubeId = (url) => {
         /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([^&\n?#]+)/,
         /^([a-zA-Z0-9_-]{11})$/
     ];
-    for (const pattern of patterns) {
-        const match = url.match(pattern);
-        if (match) return match[1];
+    for (const p of patterns) {
+        const m = url.match(p);
+        if (m) return m[1];
     }
     return null;
 };
 
-// ─── Helper: Format numbers ────────────────────────────────────────────────────
+// ─── Format numbers ─────────────────────────────────────────────────────────
 const formatCount = (n) => {
     if (!n && n !== 0) return '0';
     if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
     return String(n);
 };
 
-// ─── YouTube Embed Player ─────────────────────────────────────────────────────
-const YouTubePlayer = React.memo(({ videoId, isActive, isMuted, onToggleMute }) => {
+// ─── Distance badge ─────────────────────────────────────────────────────────
+const distanceBadge = (km) => {
+    if (!km && km !== 0) return null;
+    if (km < 1) return `${Math.round(km * 1000)} م`;
+    return `${km.toFixed(1)} كم`;
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SATELLITE MINI MAP — Real MapLibre GL with Google tiles
+// ═══════════════════════════════════════════════════════════════════════════════
+const SatelliteMiniMap = ({ activeReel, allReels, onReelSelect }) => {
+    const containerRef = useRef(null);
+    const mapRef = useRef(null);
+    const markersRef = useRef([]);
+    const activeMarkerRef = useRef(null);
+
+    // Init map once
+    useEffect(() => {
+        if (!containerRef.current) return;
+
+        const map = new maplibregl.Map({
+            container: containerRef.current,
+            style: SATELLITE_STYLE,
+            center: [35.2034, 31.9038], // default center Palestine
+            zoom: 10,
+            pitch: 0,
+            bearing: 0,
+            attributionControl: false,
+            interactive: true,
+        });
+
+        map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
+
+        mapRef.current = map;
+
+        return () => {
+            map.remove();
+            mapRef.current = null;
+        };
+    }, []);
+
+    // Place/update markers when reels change
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !allReels?.length) return;
+
+        const whenReady = () => {
+            // Remove old markers
+            markersRef.current.forEach(m => m.remove());
+            markersRef.current = [];
+            if (activeMarkerRef.current) {
+                activeMarkerRef.current.remove();
+                activeMarkerRef.current = null;
+            }
+
+            // Add dot markers for all reels
+            allReels.forEach((reel, idx) => {
+                const lat = parseFloat(reel.latitude);
+                const lng = parseFloat(reel.longitude);
+                if (isNaN(lat) || isNaN(lng)) return;
+
+                // Small dot element
+                const el = document.createElement('div');
+                el.className = 'srm-map-dot';
+                el.style.cssText = `
+                    width: 8px; height: 8px;
+                    border-radius: 50%;
+                    background: rgba(255,255,255,0.6);
+                    border: 1.5px solid rgba(255,255,255,0.9);
+                    cursor: pointer;
+                    transition: all 0.2s;
+                `;
+                el.addEventListener('click', () => onReelSelect?.(idx));
+                el.addEventListener('mouseenter', () => {
+                    el.style.transform = 'scale(1.5)';
+                });
+                el.addEventListener('mouseleave', () => {
+                    el.style.transform = 'scale(1)';
+                });
+
+                const marker = new maplibregl.Marker({ element: el })
+                    .setLngLat([lng, lat])
+                    .addTo(map);
+
+                markersRef.current.push(marker);
+            });
+        };
+
+        if (map.isStyleLoaded()) {
+            whenReady();
+        } else {
+            map.once('load', whenReady);
+        }
+    }, [allReels]);
+
+    // Fly to + update active pin when activeReel changes
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !activeReel) return;
+
+        const lat = parseFloat(activeReel.latitude);
+        const lng = parseFloat(activeReel.longitude);
+        if (isNaN(lat) || isNaN(lng)) return;
+
+        // Remove old active marker
+        if (activeMarkerRef.current) {
+            activeMarkerRef.current.remove();
+            activeMarkerRef.current = null;
+        }
+
+        const flyAndPin = () => {
+            // Fly to reel location
+            map.flyTo({
+                center: [lng, lat],
+                zoom: 14,
+                speed: 1.2,
+                curve: 1,
+                essential: true
+            });
+
+            // Active glowing pin
+            const el = document.createElement('div');
+            el.innerHTML = `
+                <div style="
+                    display: flex; flex-direction: column; align-items: center;
+                    transform: translate(-50%, -100%);
+                ">
+                    <div style="
+                        background: linear-gradient(135deg, #00e5ff, #7c4dff);
+                        color: #000;
+                        font-size: 11px;
+                        font-weight: 700;
+                        padding: 5px 11px;
+                        border-radius: 20px;
+                        white-space: nowrap;
+                        max-width: 160px;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        box-shadow: 0 4px 16px rgba(0,229,255,0.5);
+                        margin-bottom: 4px;
+                        font-family: 'Tajawal', sans-serif;
+                    ">📍 ${activeReel.location_name || activeReel.city || 'موقع'}</div>
+                    <div style="
+                        width: 12px; height: 12px;
+                        border-radius: 50%;
+                        background: #00e5ff;
+                        box-shadow: 0 0 0 4px rgba(0,229,255,0.3), 0 0 16px rgba(0,229,255,0.6);
+                        animation: srm-pulse-map 2s ease-in-out infinite;
+                    "></div>
+                </div>
+            `;
+            el.style.cssText = 'position: absolute; pointer-events: none;';
+
+            const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+                .setLngLat([lng, lat])
+                .addTo(map);
+
+            activeMarkerRef.current = marker;
+        };
+
+        if (map.isStyleLoaded()) {
+            flyAndPin();
+        } else {
+            map.once('load', flyAndPin);
+        }
+    }, [activeReel]);
+
+    return (
+        <div ref={containerRef} className="srm-satellite-map">
+            {/* Overlay label */}
+            <div className="srm-map-mode-label">🛰️ Satellite · Reels</div>
+        </div>
+    );
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// YOUTUBE PLAYER
+// ═══════════════════════════════════════════════════════════════════════════════
+const YouTubePlayer = React.memo(({ videoId, isActive, isMuted }) => {
     const iframeRef = useRef(null);
+
     const embedUrl = videoId
-        ? `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=${isActive ? 1 : 0}&mute=${isMuted ? 1 : 0}&loop=1&playlist=${videoId}&controls=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=${window.location.origin}`
+        ? `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=${isActive ? 1 : 0}&mute=${isMuted ? 1 : 0}&loop=1&playlist=${videoId}&controls=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=0&fs=0`
         : null;
 
-    // Reload iframe when active state changes
+    // Refresh src when active/muted changes to trigger autoplay
     useEffect(() => {
         if (iframeRef.current && embedUrl) {
             iframeRef.current.src = embedUrl;
         }
-    }, [isActive, isMuted]);
+    }, [isActive, isMuted, embedUrl]);
 
     if (!videoId) {
         return (
             <div className="srm-no-video">
-                <div className="srm-no-video-icon">🎬</div>
+                <span style={{ fontSize: 56 }}>🎬</span>
                 <p>لا يوجد فيديو</p>
             </div>
         );
     }
 
     return (
-        <div className="srm-player-wrapper" onClick={onToggleMute}>
+        <div className="srm-player-wrapper">
             <iframe
                 ref={iframeRef}
                 className="srm-iframe"
                 src={embedUrl}
                 allow="autoplay; encrypted-media; picture-in-picture"
                 allowFullScreen
-                title="Reel Video"
+                title="Reel"
                 loading="lazy"
+                sandbox="allow-scripts allow-same-origin allow-presentation"
             />
+            {/* Click-through overlay — blocks iframe stealing scroll events */}
             <div className="srm-player-overlay-click" />
-            <button className="srm-mute-btn" onClick={(e) => { e.stopPropagation(); onToggleMute(); }}>
-                {isMuted ? '🔇' : '🔊'}
-            </button>
         </div>
     );
 });
 
-// ─── Mini Fake Map ─────────────────────────────────────────────────────────────
-const MiniMap = ({ reel, allReels, activeIndex }) => {
-    const current = reel || (allReels && allReels[activeIndex]);
-
-    // Generate deterministic "road" positions based on lat/lng
-    const pinLeft = current ? `${35 + (current.longitude - 35.2) * 80}%` : '45%';
-    const pinTop = current ? `${45 - (current.latitude - 31.9) * 70}%` : '45%';
-
-    return (
-        <div className="srm-minimap">
-            {/* Grid background */}
-            <div className="srm-minimap-grid" />
-
-            {/* SVG Roads */}
-            <svg className="srm-minimap-roads">
-                <line x1="0" y1="42%" x2="100%" y2="42%" stroke="rgba(0,229,255,0.3)" strokeWidth="2" />
-                <line x1="0" y1="68%" x2="100%" y2="68%" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
-                <line x1="32%" y1="0" x2="32%" y2="100%" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
-                <line x1="68%" y1="0" x2="68%" y2="100%" stroke="rgba(0,229,255,0.3)" strokeWidth="2" />
-                <path d="M 10% 10% Q 45% 55% 90% 90%" stroke="rgba(255,255,255,0.1)" strokeWidth="1" fill="none" />
-            </svg>
-
-            {/* Other pins (faded) */}
-            {allReels?.map((r, i) => i !== activeIndex && (
-                <div
-                    key={r.id}
-                    className="srm-mini-pin"
-                    style={{
-                        left: `${35 + (r.longitude - 35.2) * 80}%`,
-                        top: `${45 - (r.latitude - 31.9) * 70}%`,
-                    }}
-                />
-            ))}
-
-            {/* Active pin */}
-            {current && (
-                <div
-                    className="srm-active-pin"
-                    style={{ left: pinLeft, top: pinTop }}
-                >
-                    <div className="srm-pin-bubble">
-                        📍 {current.location_name || current.city || 'موقع'}
-                    </div>
-                    <div className="srm-pin-dot" />
-                </div>
-            )}
-
-            {/* Location label */}
-            <div className="srm-minimap-label">🎬 Reels Mode</div>
-        </div>
-    );
-};
-
-// ─── Comments Sheet ────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// COMMENTS SHEET
+// ═══════════════════════════════════════════════════════════════════════════════
 const CommentsSheet = ({ reel, onClose, currentUser, onCommentAdded }) => {
     const [comments, setComments] = useState([]);
     const [text, setText] = useState('');
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const inputRef = useRef(null);
+    const listRef = useRef(null);
 
     useEffect(() => {
         if (!reel?.id) return;
         setLoading(true);
         api.get(`/reels/${reel.id}/comments`)
             .then(r => setComments(r.data.comments || []))
-            .catch(e => console.error('comments fetch error', e))
+            .catch(e => console.error('comments error', e))
             .finally(() => setLoading(false));
     }, [reel?.id]);
 
     useEffect(() => {
-        setTimeout(() => inputRef.current?.focus(), 300);
+        setTimeout(() => inputRef.current?.focus(), 350);
     }, []);
+
+    // Auto-scroll to bottom on new comment
+    useEffect(() => {
+        if (listRef.current) {
+            listRef.current.scrollTop = listRef.current.scrollHeight;
+        }
+    }, [comments]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -149,7 +308,7 @@ const CommentsSheet = ({ reel, onClose, currentUser, onCommentAdded }) => {
             setText('');
             onCommentAdded?.();
         } catch (err) {
-            console.error('comment submit error', err);
+            console.error('add comment error', err);
         } finally {
             setSubmitting(false);
         }
@@ -166,21 +325,15 @@ const CommentsSheet = ({ reel, onClose, currentUser, onCommentAdded }) => {
 
     return (
         <div className="srm-comments-sheet">
+            <div className="srm-comments-handle" />
             <div className="srm-comments-header">
-                <span className="srm-comments-title">
-                    💬 التعليقات ({comments.length})
-                </span>
+                <span className="srm-comments-title">💬 التعليقات ({comments.length})</span>
                 <button className="srm-comments-close" onClick={onClose}>✕</button>
             </div>
-
-            <div className="srm-comments-list">
-                {loading && (
-                    <div className="srm-comments-loading">
-                        <div className="srm-spinner" />
-                    </div>
-                )}
+            <div className="srm-comments-list" ref={listRef}>
+                {loading && <div className="srm-center"><div className="srm-spinner" /></div>}
                 {!loading && comments.length === 0 && (
-                    <div className="srm-comments-empty">
+                    <div className="srm-center srm-empty-sm">
                         <span>💭</span>
                         <p>كن أول من يعلق!</p>
                     </div>
@@ -198,18 +351,11 @@ const CommentsSheet = ({ reel, onClose, currentUser, onCommentAdded }) => {
                             <p className="srm-comment-text">{c.content}</p>
                         </div>
                         {currentUser?.id === c.user_id && (
-                            <button
-                                className="srm-comment-delete"
-                                onClick={() => handleDelete(c.id)}
-                                title="حذف"
-                            >
-                                🗑️
-                            </button>
+                            <button className="srm-comment-delete" onClick={() => handleDelete(c.id)}>🗑️</button>
                         )}
                     </div>
                 ))}
             </div>
-
             <form className="srm-comment-form" onSubmit={handleSubmit}>
                 <div className="srm-comment-avatar-sm">
                     {currentUser?.profile_picture
@@ -230,14 +376,16 @@ const CommentsSheet = ({ reel, onClose, currentUser, onCommentAdded }) => {
                     className={`srm-comment-send ${text.trim() ? 'active' : ''}`}
                     disabled={!text.trim() || submitting}
                 >
-                    {submitting ? '...' : '↑'}
+                    {submitting ? '…' : '↑'}
                 </button>
             </form>
         </div>
     );
 };
 
-// ─── Add Reel Form ─────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// ADD REEL FORM
+// ═══════════════════════════════════════════════════════════════════════════════
 const AddReelForm = ({ onClose, onAdded, userLocation }) => {
     const [form, setForm] = useState({
         title: '',
@@ -254,8 +402,7 @@ const AddReelForm = ({ onClose, onAdded, userLocation }) => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setForm(prev => ({ ...prev, [name]: value }));
-
+        setForm(p => ({ ...p, [name]: value }));
         if (name === 'youtube_url') {
             const id = getYouTubeId(value);
             setPreview(id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null);
@@ -270,7 +417,7 @@ const AddReelForm = ({ onClose, onAdded, userLocation }) => {
             return;
         }
         if (!getYouTubeId(form.youtube_url)) {
-            setError('رابط يوتيوب غير صالح');
+            setError('رابط يوتيوب غير صالح — مثال: https://youtu.be/xxxxx');
             return;
         }
         setSubmitting(true);
@@ -305,91 +452,69 @@ const AddReelForm = ({ onClose, onAdded, userLocation }) => {
                 <form onSubmit={handleSubmit}>
                     <div className="srm-field">
                         <label>🔗 رابط يوتيوب *</label>
-                        <input
-                            name="youtube_url"
-                            value={form.youtube_url}
-                            onChange={handleChange}
-                            placeholder="https://youtu.be/xxxxx أو معرف الفيديو"
-                            className="srm-input"
-                            dir="ltr"
-                        />
+                        <input name="youtube_url" value={form.youtube_url} onChange={handleChange}
+                            placeholder="https://youtu.be/xxxxx" className="srm-input" dir="ltr" />
                     </div>
                     <div className="srm-field">
                         <label>📝 العنوان *</label>
-                        <input
-                            name="title"
-                            value={form.title}
-                            onChange={handleChange}
-                            placeholder="عنوان الريل"
-                            className="srm-input"
-                            maxLength={100}
-                        />
+                        <input name="title" value={form.title} onChange={handleChange}
+                            placeholder="عنوان الريل" className="srm-input" maxLength={100} />
                     </div>
                     <div className="srm-field">
                         <label>💬 الوصف</label>
-                        <textarea
-                            name="description"
-                            value={form.description}
-                            onChange={handleChange}
-                            placeholder="اكتب وصفاً..."
-                            className="srm-input srm-textarea"
-                            rows={2}
-                        />
+                        <textarea name="description" value={form.description} onChange={handleChange}
+                            placeholder="اكتب وصفاً..." className="srm-input srm-textarea" rows={2} />
                     </div>
                     <div className="srm-field-row">
                         <div className="srm-field">
                             <label>📍 اسم الموقع</label>
-                            <input
-                                name="location_name"
-                                value={form.location_name}
-                                onChange={handleChange}
-                                placeholder="مثل: وسط البلد"
-                                className="srm-input"
-                            />
+                            <input name="location_name" value={form.location_name} onChange={handleChange}
+                                placeholder="وسط البلد" className="srm-input" />
                         </div>
                         <div className="srm-field">
                             <label>🏙️ المدينة</label>
-                            <input
-                                name="city"
-                                value={form.city}
-                                onChange={handleChange}
-                                placeholder="مثل: رام الله"
-                                className="srm-input"
-                            />
+                            <input name="city" value={form.city} onChange={handleChange}
+                                placeholder="رام الله" className="srm-input" />
                         </div>
                     </div>
                     <div className="srm-field-row">
                         <div className="srm-field">
                             <label>Lat</label>
-                            <input
-                                name="latitude"
-                                type="number"
-                                step="any"
-                                value={form.latitude}
-                                onChange={handleChange}
-                                className="srm-input"
-                                dir="ltr"
-                            />
+                            <input name="latitude" type="number" step="any" value={form.latitude}
+                                onChange={handleChange} className="srm-input" dir="ltr" />
                         </div>
                         <div className="srm-field">
                             <label>Lng</label>
-                            <input
-                                name="longitude"
-                                type="number"
-                                step="any"
-                                value={form.longitude}
-                                onChange={handleChange}
-                                className="srm-input"
-                                dir="ltr"
-                            />
+                            <input name="longitude" type="number" step="any" value={form.longitude}
+                                onChange={handleChange} className="srm-input" dir="ltr" />
                         </div>
                     </div>
-
-                    <button
-                        type="submit"
-                        className="srm-add-submit"
-                        disabled={submitting}
-                    >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                        <button
+                            type="button"
+                            className="srm-locate-btn"
+                            onClick={() => {
+                                if (userLocation) {
+                                    setForm(p => ({
+                                        ...p,
+                                        latitude: userLocation.latitude,
+                                        longitude: userLocation.longitude
+                                    }));
+                                } else {
+                                    navigator.geolocation?.getCurrentPosition(pos => {
+                                        setForm(p => ({
+                                            ...p,
+                                            latitude: pos.coords.latitude,
+                                            longitude: pos.coords.longitude
+                                        }));
+                                    });
+                                }
+                            }}
+                        >
+                            📡 استخدم موقعي الحالي
+                        </button>
+                    </div>
+                    <button type="submit" className="srm-add-submit" disabled={submitting}>
                         {submitting ? '⏳ جاري النشر...' : '🚀 نشر الريل'}
                     </button>
                 </form>
@@ -398,11 +523,14 @@ const AddReelForm = ({ onClose, onAdded, userLocation }) => {
     );
 };
 
-// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════════
 const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
     const [reels, setReels] = useState([]);
     const [activeIndex, setActiveIndex] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [locationBased, setLocationBased] = useState(false);
     const [isMuted, setIsMuted] = useState(true);
     const [showComments, setShowComments] = useState(false);
     const [showAddForm, setShowAddForm] = useState(false);
@@ -410,24 +538,33 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
     const cardRefs = useRef([]);
     const observerRef = useRef(null);
 
-    // Fetch reels
-    useEffect(() => {
+    // ── Fetch reels (location-aware) ──────────────────────────────────────────
+    const fetchReels = useCallback(async (lat, lng) => {
         setLoading(true);
-        api.get('/reels?limit=30')
-            .then(res => {
-                setReels(res.data.reels || []);
-                setLoading(false);
-            })
-            .catch(err => {
-                console.error('fetch reels error', err);
-                setLoading(false);
-            });
+        try {
+            let url = '/reels?limit=30';
+            if (lat && lng) {
+                url += `&lat=${lat}&lng=${lng}&radius=200`; // 200km radius = all Palestine
+            }
+            const res = await api.get(url);
+            setReels(res.data.reels || []);
+            setLocationBased(!!res.data.location_based);
+        } catch (err) {
+            console.error('fetch reels error', err);
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
-    // IntersectionObserver — update active index on scroll snap
+    useEffect(() => {
+        const lat = userLocation?.latitude;
+        const lng = userLocation?.longitude;
+        fetchReels(lat, lng);
+    }, [fetchReels, userLocation]);
+
+    // ── IntersectionObserver for scroll-snap ──────────────────────────────────
     useEffect(() => {
         if (!reels.length) return;
-
         observerRef.current?.disconnect();
 
         observerRef.current = new IntersectionObserver(
@@ -439,15 +576,16 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
                     }
                 });
             },
-            { threshold: 0.6, root: scrollRef.current }
+            { threshold: 0.65, root: scrollRef.current }
         );
 
         cardRefs.current.forEach(el => el && observerRef.current.observe(el));
         return () => observerRef.current?.disconnect();
     }, [reels]);
 
-    // Handle like toggle
+    // ── Like toggle ───────────────────────────────────────────────────────────
     const handleLike = useCallback(async (reelId) => {
+        if (!currentUser) return;
         try {
             const res = await api.post(`/reels/${reelId}/like`);
             setReels(prev => prev.map(r =>
@@ -458,21 +596,19 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
         } catch (err) {
             console.error('like error', err);
         }
-    }, []);
+    }, [currentUser]);
 
-    // Scroll to reel by index
     const scrollToReel = (idx) => {
         cardRefs.current[idx]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
-    // Handle reel added
     const handleReelAdded = (newReel) => {
-        setReels(prev => [{ ...newReel, likes_count: 0, comments_count: 0, is_liked: false }, ...prev]);
+        const withMeta = { ...newReel, likes_count: 0, comments_count: 0, is_liked: false };
+        setReels(prev => [withMeta, ...prev]);
         setActiveIndex(0);
         setTimeout(() => scrollToReel(0), 100);
     };
 
-    // Update comment count locally
     const handleCommentAdded = () => {
         setReels(prev => prev.map((r, i) =>
             i === activeIndex ? { ...r, comments_count: (r.comments_count || 0) + 1 } : r
@@ -482,40 +618,57 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
     const activeReel = reels[activeIndex];
 
     return (
-        <div className="srm-overlay">
-            {/* ── MAP SECTION (top 36%) ─────────────────────────── */}
-            <div className="srm-map-section">
-                <MiniMap reel={activeReel} allReels={reels} activeIndex={activeIndex} />
+        <div className="srm-overlay" dir="rtl">
 
-                {/* Close button */}
+            {/* ── SATELLITE MAP (top 38%) ──────────────────────────────────── */}
+            <div className="srm-map-section">
+                <SatelliteMiniMap
+                    activeReel={activeReel}
+                    allReels={reels}
+                    onReelSelect={(idx) => {
+                        setActiveIndex(idx);
+                        scrollToReel(idx);
+                    }}
+                />
+
+                {/* Close */}
                 <button className="srm-close-btn" onClick={onClose} aria-label="إغلاق">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                         <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                     </svg>
                 </button>
 
-                {/* Add reel button */}
-                <button className="srm-add-btn" onClick={() => setShowAddForm(true)} aria-label="إضافة ريل">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
-                </button>
+                {/* Add reel */}
+                {currentUser && (
+                    <button className="srm-add-btn" onClick={() => setShowAddForm(true)} title="إضافة ريل">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                    </button>
+                )}
 
-                {/* Progress dots (vertical) */}
+                {/* Location badge */}
+                {locationBased && activeReel?.distance_km != null && (
+                    <div className="srm-dist-badge">
+                        📡 {distanceBadge(activeReel.distance_km)}
+                    </div>
+                )}
+
+                {/* Progress dots */}
                 <div className="srm-progress-dots">
-                    {reels.slice(0, 8).map((_, i) => (
+                    {reels.slice(0, 10).map((_, i) => (
                         <button
                             key={i}
                             className={`srm-dot ${i === activeIndex ? 'active' : ''}`}
                             onClick={() => scrollToReel(i)}
-                            aria-label={`ريل ${i + 1}`}
                         />
                     ))}
                 </div>
             </div>
 
-            {/* ── REELS SCROLL SECTION (bottom 64%) ────────────── */}
+            {/* ── REELS SCROLL (bottom 62%) ──────────────────────────────────── */}
             <div className="srm-reels-scroll" ref={scrollRef}>
+
                 {loading && (
                     <div className="srm-loading">
                         <div className="srm-spinner-large" />
@@ -525,12 +678,14 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
 
                 {!loading && reels.length === 0 && (
                     <div className="srm-empty">
-                        <div style={{ fontSize: 64 }}>🎬</div>
-                        <h3>لا يوجد ريلز بعد</h3>
-                        <p>كن أول من يضيف ريل مكاني!</p>
-                        <button className="srm-empty-add" onClick={() => setShowAddForm(true)}>
-                            + إضافة ريل
-                        </button>
+                        <div style={{ fontSize: 60 }}>🎬</div>
+                        <h3>لا يوجد ريلز {locationBased ? 'بالقرب منك' : 'بعد'}</h3>
+                        <p>{locationBased ? 'جرّب توسيع نطاق البحث أو أضف أول ريل!' : 'كن أول من يضيف ريل مكاني!'}</p>
+                        {currentUser && (
+                            <button className="srm-empty-add" onClick={() => setShowAddForm(true)}>
+                                + إضافة ريل
+                            </button>
+                        )}
                     </div>
                 )}
 
@@ -541,29 +696,38 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
                     return (
                         <div
                             key={reel.id}
-                            className={`srm-reel-card ${isActive ? 'active' : ''}`}
+                            className="srm-reel-card"
                             data-index={index}
                             ref={el => cardRefs.current[index] = el}
                         >
-                            {/* Video Player */}
-                            <YouTubePlayer
-                                videoId={videoId}
-                                isActive={isActive}
-                                isMuted={isMuted}
-                                onToggleMute={() => setIsMuted(p => !p)}
-                            />
+                            {/* YouTube Player */}
+                            <YouTubePlayer videoId={videoId} isActive={isActive} isMuted={isMuted} />
 
-                            {/* Gradient overlay */}
+                            {/* Gradient */}
                             <div className="srm-card-gradient" />
 
-                            {/* Location Tag */}
+                            {/* Location tag */}
                             <div className="srm-location-tag">
-                                📍 {reel.city ? `${reel.location_name || ''} — ${reel.city}` : (reel.location_name || 'موقع مجهول')}
+                                📍 {reel.city
+                                    ? `${reel.location_name ? reel.location_name + ' — ' : ''}${reel.city}`
+                                    : reel.location_name || 'موقع مجهول'
+                                }
+                                {reel.distance_km != null && (
+                                    <span className="srm-tag-dist"> · {distanceBadge(reel.distance_km)}</span>
+                                )}
                             </div>
+
+                            {/* Mute button */}
+                            <button
+                                className="srm-mute-floating"
+                                onClick={() => setIsMuted(p => !p)}
+                                aria-label={isMuted ? 'رفع الصوت' : 'كتم'}
+                            >
+                                {isMuted ? '🔇' : '🔊'}
+                            </button>
 
                             {/* Info */}
                             <div className="srm-reel-info">
-                                {/* User avatar */}
                                 <div className="srm-reel-user">
                                     <div className="srm-reel-avatar">
                                         {reel.profile_picture
@@ -571,28 +735,21 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
                                             : <span>{(reel.full_name || reel.username || '?')[0]?.toUpperCase()}</span>
                                         }
                                     </div>
-                                    <div>
-                                        <div className="srm-reel-username">@{reel.username}</div>
-                                    </div>
+                                    <div className="srm-reel-username">@{reel.username}</div>
                                 </div>
-
                                 <h3 className="srm-reel-title">{reel.title}</h3>
-                                {reel.description && (
-                                    <p className="srm-reel-desc">{reel.description}</p>
-                                )}
+                                {reel.description && <p className="srm-reel-desc">{reel.description}</p>}
                             </div>
 
-                            {/* Side Actions */}
+                            {/* Side actions */}
                             <div className="srm-side-actions">
                                 {/* Like */}
                                 <button
-                                    className={`srm-action-btn ${reel.is_liked ? 'liked' : ''}`}
+                                    className={`srm-action-btn ${reel.is_liked ? 'liked' : ''} ${!currentUser ? 'disabled' : ''}`}
                                     onClick={() => handleLike(reel.id)}
                                     aria-label="إعجاب"
                                 >
-                                    <div className="srm-action-icon">
-                                        {reel.is_liked ? '❤️' : '🤍'}
-                                    </div>
+                                    <div className="srm-action-icon">{reel.is_liked ? '❤️' : '🤍'}</div>
                                     <span className="srm-action-count">{formatCount(reel.likes_count)}</span>
                                 </button>
 
@@ -605,18 +762,9 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
                                     <div className="srm-action-icon">💬</div>
                                     <span className="srm-action-count">{formatCount(reel.comments_count)}</span>
                                 </button>
-
-                                {/* Mute */}
-                                <button
-                                    className="srm-action-btn"
-                                    onClick={() => setIsMuted(p => !p)}
-                                    aria-label="كتم/رفع الصوت"
-                                >
-                                    <div className="srm-action-icon">{isMuted ? '🔇' : '🔊'}</div>
-                                </button>
                             </div>
 
-                            {/* Scroll hint on first card */}
+                            {/* Scroll hint */}
                             {index === 0 && reels.length > 1 && (
                                 <div className="srm-scroll-hint">
                                     <span>↓</span>
@@ -628,7 +776,7 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
                 })}
             </div>
 
-            {/* ── COMMENTS SHEET ────────────────────────────────── */}
+            {/* Comments */}
             {showComments && activeReel && (
                 <CommentsSheet
                     reel={activeReel}
@@ -638,7 +786,7 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
                 />
             )}
 
-            {/* ── ADD REEL FORM ─────────────────────────────────── */}
+            {/* Add form */}
             {showAddForm && (
                 <AddReelForm
                     onClose={() => setShowAddForm(false)}

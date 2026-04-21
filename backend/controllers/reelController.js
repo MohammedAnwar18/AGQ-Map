@@ -4,33 +4,82 @@ const pool = require('../config/database');
 exports.getReels = async (req, res) => {
     try {
         const userId = req.user?.id;
-        const { limit = 20, offset = 0 } = req.query;
+        const { limit = 30, offset = 0, lat, lng, radius = 50 } = req.query;
 
-        const result = await pool.query(`
-            SELECT 
-                r.*,
-                u.username,
-                u.full_name,
-                u.profile_picture,
-                COUNT(DISTINCT rl.id)::int AS likes_count,
-                COUNT(DISTINCT rc.id)::int AS comments_count,
-                BOOL_OR(ul.user_id IS NOT NULL) AS is_liked
-            FROM reels r
-            JOIN users u ON u.id = r.user_id
-            LEFT JOIN reel_likes rl ON rl.reel_id = r.id
-            LEFT JOIN reel_comments rc ON rc.reel_id = r.id
-            LEFT JOIN reel_likes ul ON ul.reel_id = r.id AND ul.user_id = $1
-            GROUP BY r.id, u.id
-            ORDER BY r.created_at DESC
-            LIMIT $2 OFFSET $3
-        `, [userId || null, parseInt(limit), parseInt(offset)]);
+        // اذا تم ارسال إحداثيات — رتّب حسب القرب باستخدام دالة Haversine في SQL
+        const hasLocation = lat && lng && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng));
+        const userLat = hasLocation ? parseFloat(lat) : null;
+        const userLng = hasLocation ? parseFloat(lng) : null;
+        const radiusKm = parseFloat(radius);
 
-        res.json({ reels: result.rows });
+        let query, params;
+
+        if (hasLocation) {
+            // ─── Location-based query: sort by distance ─────────────────────
+            query = `
+                SELECT 
+                    r.*,
+                    u.username,
+                    u.full_name,
+                    u.profile_picture,
+                    COUNT(DISTINCT rl.id)::int AS likes_count,
+                    COUNT(DISTINCT rc.id)::int AS comments_count,
+                    BOOL_OR(ul.user_id IS NOT NULL) AS is_liked,
+                    (
+                        6371 * acos(
+                            LEAST(1, cos(radians($4)) * cos(radians(r.latitude::float))
+                            * cos(radians(r.longitude::float) - radians($5))
+                            + sin(radians($4)) * sin(radians(r.latitude::float)))
+                        )
+                    ) AS distance_km
+                FROM reels r
+                JOIN users u ON u.id = r.user_id
+                LEFT JOIN reel_likes rl ON rl.reel_id = r.id
+                LEFT JOIN reel_comments rc ON rc.reel_id = r.id
+                LEFT JOIN reel_likes ul ON ul.reel_id = r.id AND ul.user_id = $1
+                GROUP BY r.id, u.id
+                HAVING (
+                    6371 * acos(
+                        LEAST(1, cos(radians($4)) * cos(radians(r.latitude::float))
+                        * cos(radians(r.longitude::float) - radians($5))
+                        + sin(radians($4)) * sin(radians(r.latitude::float)))
+                    )
+                ) <= $6
+                ORDER BY distance_km ASC
+                LIMIT $2 OFFSET $3
+            `;
+            params = [userId || null, parseInt(limit), parseInt(offset), userLat, userLng, radiusKm];
+        } else {
+            // ─── Default query: latest first ─────────────────────────────────
+            query = `
+                SELECT 
+                    r.*,
+                    u.username,
+                    u.full_name,
+                    u.profile_picture,
+                    COUNT(DISTINCT rl.id)::int AS likes_count,
+                    COUNT(DISTINCT rc.id)::int AS comments_count,
+                    BOOL_OR(ul.user_id IS NOT NULL) AS is_liked
+                FROM reels r
+                JOIN users u ON u.id = r.user_id
+                LEFT JOIN reel_likes rl ON rl.reel_id = r.id
+                LEFT JOIN reel_comments rc ON rc.reel_id = r.id
+                LEFT JOIN reel_likes ul ON ul.reel_id = r.id AND ul.user_id = $1
+                GROUP BY r.id, u.id
+                ORDER BY r.created_at DESC
+                LIMIT $2 OFFSET $3
+            `;
+            params = [userId || null, parseInt(limit), parseInt(offset)];
+        }
+
+        const result = await pool.query(query, params);
+        res.json({ reels: result.rows, location_based: hasLocation });
     } catch (err) {
         console.error('getReels error:', err);
         res.status(500).json({ error: 'فشل في تحميل الريلز' });
     }
 };
+
 
 // ─── GET SINGLE REEL ─────────────────────────────────────────────────────────
 exports.getReel = async (req, res) => {

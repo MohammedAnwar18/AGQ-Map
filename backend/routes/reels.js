@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, optionalAuth } = require('../middleware/auth');
 const {
     getReels,
     getReel,
@@ -12,9 +12,9 @@ const {
     deleteComment
 } = require('../controllers/reelController');
 
-// ─── REELS ───────────────────────────────────────────────────────────────────
-router.get('/', authenticateToken, getReels);
-router.get('/:id', authenticateToken, getReel);
+// ─── REELS (GET = public with optional auth for is_liked) ─────────────────
+router.get('/', optionalAuth, getReels);
+router.get('/:id', optionalAuth, getReel);
 router.post('/', authenticateToken, createReel);
 router.delete('/:id', authenticateToken, deleteReel);
 
@@ -22,8 +22,9 @@ router.delete('/:id', authenticateToken, deleteReel);
 router.post('/:id/like', authenticateToken, toggleLike);
 
 // ─── COMMENTS ────────────────────────────────────────────────────────────────
-router.get('/:id/comments', authenticateToken, getComments);
+router.get('/:id/comments', optionalAuth, getComments);
 router.post('/:id/comments', authenticateToken, addComment);
 router.delete('/comments/:commentId', authenticateToken, deleteComment);
 
 module.exports = router;
+
