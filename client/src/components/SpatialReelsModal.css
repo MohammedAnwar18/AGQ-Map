@@ -42,6 +42,7 @@
     flex-shrink: 0;
     position: relative;
     overflow: hidden;
+    touch-action: none; /* Prevent map from capturing scroll events */
 }
 
 /* The real satellite MapLibre container */
@@ -196,10 +197,11 @@
 .srm-reels-scroll {
     flex: 1;
     overflow-y: scroll;
-    scroll-snap-type: y mandatory;
+    scroll-snap-type: y proximity;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     min-height: 0;
+    overscroll-behavior: contain; /* Prevent scroll chaining to parent */
 }
 
 .srm-reels-scroll::-webkit-scrollbar { display: none; }

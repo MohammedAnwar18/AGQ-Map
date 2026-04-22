@@ -227,7 +227,7 @@ const SatelliteMiniMap = ({ activeReel, allReels, onReelSelect }) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 // YOUTUBE PLAYER (Double-tap seek & Auto-advance)
 // ═══════════════════════════════════════════════════════════════════════════════
-const YouTubePlayer = React.memo(({ videoId, isActive, isMuted, onVideoEnd }) => {
+const YouTubePlayer = React.memo(({ videoId, isActive, isMuted }) => {
     const playerRef = useRef(null);
     const containerRef = useRef(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -276,8 +276,10 @@ const YouTubePlayer = React.memo(({ videoId, isActive, isMuted, onVideoEnd }) =>
                 },
                 onStateChange: (event) => {
                     setIsPlaying(event.data === 1);
-                    if (event.data === 0) { // ENDED
-                        onVideoEnd?.();
+                    // If video ends and loop didn't catch it, restart manually
+                    if (event.data === 0 && playerRef.current) {
+                        playerRef.current.seekTo(0, true);
+                        playerRef.current.playVideo();
                     }
                 }
             }
@@ -650,14 +652,7 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
         }
     };
 
-    const handleVideoEnd = useCallback(() => {
-        // Auto-advance is disabled per user request to allow manual scrolling only
-        /*
-        if (activeIndex < reels.length - 1) {
-            scrollToReel(activeIndex + 1);
-        }
-        */
-    }, [activeIndex, reels.length]);
+
 
     const activeReel = reels[activeIndex];
 
@@ -749,7 +744,7 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
                                 videoId={videoId} 
                                 isActive={isActive} 
                                 isMuted={isMuted} 
-                                onVideoEnd={handleVideoEnd}
+
                             />
 
                             {/* Gradient */}
