@@ -11,7 +11,7 @@ const MagazineBackground = () => {
                         and covers 100% of the screen without gaps.
                     */}
                     <pattern id="topoPatternComplex" x="0" y="0" width="1200" height="1200" patternUnits="userSpaceOnUse" patternTransform="scale(1.1) rotate(5)">
-                        <g transform="translate(0, 1200) scale(0.12, -0.12)" fill="none" stroke="rgba(255, 255, 255, 0.15)" strokeWidth="12">
+                        <g transform="translate(0, 1200) scale(0.12, -0.12)" fill="none" stroke="rgba(0, 0, 0, 0.2)" strokeWidth="12">
                             {/* Path 1: Large complex flow */}
                             <path d="M120 23052 c0 -5 25 -27 54 -49 l55 -40 133 -7 c195 -11 300 -45 508 -166 155 -90 484 -220 557 -220 54 0 235 105 327 189 39 36 92 81 116 100 58 43 185 201 162 201 -4 0 -32 -31 -61 -70 -29 -38 -74 -86 -99 -107 -26 -20 -83 -69 -127 -109 -106 -94 -265 -187 -320 -186 -74 2 -396 128 -535 211 -204 121 -351 171 -502 171 -121 1 -159 10 -212 54 -46 37 -56 42 -56 28z"/>
                             {/* Path 2: Intersecting ridges */}
@@ -25,7 +25,7 @@ const MagazineBackground = () => {
 
                     {/* Secondary supporting pattern for extra richness */}
                     <pattern id="topoPatternSubtle" x="400" y="400" width="800" height="800" patternUnits="userSpaceOnUse" patternTransform="scale(0.7) rotate(-15)">
-                        <g fill="none" stroke="rgba(255, 255, 255, 0.08)" strokeWidth="1.5">
+                        <g fill="none" stroke="rgba(0, 0, 0, 0.12)" strokeWidth="1.5">
                             <path d="M0 400 Q 200 200 400 400 T 800 400" />
                             <path d="M0 500 Q 200 300 400 500 T 800 500" />
                             <circle cx="200" cy="200" r="100" />
