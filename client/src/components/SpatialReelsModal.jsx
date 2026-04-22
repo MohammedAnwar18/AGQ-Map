@@ -385,121 +385,6 @@ const YouTubePlayer = React.memo(({ videoId, isActive, isMuted, onVideoEnd }) =>
     );
 });
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// COMMENTS SHEET
-// ═══════════════════════════════════════════════════════════════════════════════
-const CommentsSheet = ({ reel, onClose, currentUser, onCommentAdded }) => {
-    const [comments, setComments] = useState([]);
-    const [text, setText] = useState('');
-    const [loading, setLoading] = useState(true);
-    const [submitting, setSubmitting] = useState(false);
-    const inputRef = useRef(null);
-    const listRef = useRef(null);
-
-    useEffect(() => {
-        if (!reel?.id) return;
-        setLoading(true);
-        api.get(`/reels/${reel.id}/comments`)
-            .then(r => setComments(r.data.comments || []))
-            .catch(e => console.error('comments error', e))
-            .finally(() => setLoading(false));
-    }, [reel?.id]);
-
-    useEffect(() => {
-        setTimeout(() => inputRef.current?.focus(), 350);
-    }, []);
-
-    // Auto-scroll to bottom on new comment
-    useEffect(() => {
-        if (listRef.current) {
-            listRef.current.scrollTop = listRef.current.scrollHeight;
-        }
-    }, [comments]);
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (!text.trim() || submitting) return;
-        setSubmitting(true);
-        try {
-            const res = await api.post(`/reels/${reel.id}/comments`, { content: text.trim() });
-            setComments(prev => [...prev, res.data.comment]);
-            setText('');
-            onCommentAdded?.();
-        } catch (err) {
-            console.error('add comment error', err);
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    const handleDelete = async (commentId) => {
-        try {
-            await api.delete(`/reels/comments/${commentId}`);
-            setComments(prev => prev.filter(c => c.id !== commentId));
-        } catch (err) {
-            console.error('delete comment error', err);
-        }
-    };
-
-    return (
-        <div className="srm-comments-sheet">
-            <div className="srm-comments-handle" />
-            <div className="srm-comments-header">
-                <span className="srm-comments-title">💬 التعليقات ({comments.length})</span>
-                <button className="srm-comments-close" onClick={onClose}>✕</button>
-            </div>
-            <div className="srm-comments-list" ref={listRef}>
-                {loading && <div className="srm-center"><div className="srm-spinner" /></div>}
-                {!loading && comments.length === 0 && (
-                    <div className="srm-center srm-empty-sm">
-                        <span>💭</span>
-                        <p>كن أول من يعلق!</p>
-                    </div>
-                )}
-                {comments.map(c => (
-                    <div key={c.id} className="srm-comment-item">
-                        <div className="srm-comment-avatar">
-                            {c.profile_picture
-                                ? <img src={getImageUrl(c.profile_picture)} alt={c.username} />
-                                : <span>{(c.full_name || c.username || '?')[0].toUpperCase()}</span>
-                            }
-                        </div>
-                        <div className="srm-comment-body">
-                            <span className="srm-comment-name">{c.full_name || c.username}</span>
-                            <p className="srm-comment-text">{c.content}</p>
-                        </div>
-                        {currentUser?.id === c.user_id && (
-                            <button className="srm-comment-delete" onClick={() => handleDelete(c.id)}>🗑️</button>
-                        )}
-                    </div>
-                ))}
-            </div>
-            <form className="srm-comment-form" onSubmit={handleSubmit}>
-                <div className="srm-comment-avatar-sm">
-                    {currentUser?.profile_picture
-                        ? <img src={getImageUrl(currentUser.profile_picture)} alt="me" />
-                        : <span>{(currentUser?.full_name || currentUser?.username || '?')[0]?.toUpperCase()}</span>
-                    }
-                </div>
-                <input
-                    ref={inputRef}
-                    className="srm-comment-input"
-                    placeholder="أضف تعليقاً..."
-                    value={text}
-                    onChange={e => setText(e.target.value)}
-                    maxLength={500}
-                />
-                <button
-                    type="submit"
-                    className={`srm-comment-send ${text.trim() ? 'active' : ''}`}
-                    disabled={!text.trim() || submitting}
-                >
-                    {submitting ? '…' : '↑'}
-                </button>
-            </form>
-        </div>
-    );
-};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ADD REEL FORM
@@ -670,7 +555,6 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
     const [loading, setLoading] = useState(true);
     const [locationBased, setLocationBased] = useState(false);
     const [isMuted, setIsMuted] = useState(true);
-    const [showComments, setShowComments] = useState(false);
     const [showAddForm, setShowAddForm] = useState(false);
     const [editingReel, setEditingReel] = useState(null);
     
@@ -939,19 +823,6 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
                                     <span className="srm-action-count">{formatCount(reel.likes_count)}</span>
                                 </button>
 
-                                {/* Comment */}
-                                <button
-                                    className="srm-action-btn"
-                                    onClick={() => { setActiveIndex(index); setShowComments(true); }}
-                                    aria-label="تعليقات"
-                                >
-                                    <div className="srm-action-icon">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                                        </svg>
-                                    </div>
-                                    <span className="srm-action-count">{formatCount(reel.comments_count)}</span>
-                                </button>
                             </div>
 
                             {/* Scroll hint */}
@@ -966,15 +837,6 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
                 })}
             </div>
 
-            {/* Comments */}
-            {showComments && activeReel && (
-                <CommentsSheet
-                    reel={activeReel}
-                    onClose={() => setShowComments(false)}
-                    currentUser={currentUser}
-                    onCommentAdded={handleCommentAdded}
-                />
-            )}
 
             {/* Add/Edit form */}
             {showAddForm && (
