@@ -13,13 +13,27 @@
     overflow: hidden;
 }
 
-/* Subtle background texture/glow */
-.magazine-modal-overlay::before {
-    content: '';
+/* Subtle background topographic lines */
+.magazine-svg-bg {
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, transparent 70%);
+    width: 100%;
+    height: 100%;
+    z-index: 1;
     pointer-events: none;
+    opacity: 0.8; /* Adjust overall opacity */
+}
+
+.magazine-svg-bg svg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Re-ensuring other elements stay on top */
+.magazine-components-wrapper, 
+.magazine-close-btn {
+    z-index: 10;
 }
 
 .magazine-close-btn {

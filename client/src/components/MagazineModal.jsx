@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './MagazineModal.css';
+import MagazineBackground from './MagazineBackground';
 
 const MagazineModal = ({ onClose }) => {
     const [progress, setProgress] = useState(0);
@@ -26,6 +27,7 @@ const MagazineModal = ({ onClose }) => {
 
     return (
         <div className="magazine-modal-overlay">
+            <MagazineBackground />
             <button className="magazine-close-btn" onClick={onClose}>×</button>
             
             <div className="magazine-components-wrapper">
