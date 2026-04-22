@@ -174,11 +174,11 @@ const SatelliteMiniMap = ({ activeReel, allReels, onReelSelect }) => {
 
             const label = document.createElement('div');
             label.style.cssText = `
-                background: linear-gradient(135deg, #00e5ff, #7c4dff);
+                background: linear-gradient(135deg, #fbab15, #f59e0b);
                 color: #000;
-                font-size: 11px;
-                font-weight: 700;
-                padding: 5px 11px;
+                font-size: 13px;
+                font-weight: 800;
+                padding: 6px 14px;
                 border-radius: 20px;
                 white-space: nowrap;
                 max-width: 160px;
@@ -192,10 +192,10 @@ const SatelliteMiniMap = ({ activeReel, allReels, onReelSelect }) => {
 
             const dot = document.createElement('div');
             dot.style.cssText = `
-                width: 12px; height: 12px;
+                width: 14px; height: 14px;
                 border-radius: 50%;
-                background: #00e5ff;
-                box-shadow: 0 0 0 4px rgba(0,229,255,0.3), 0 0 16px rgba(0,229,255,0.6);
+                background: #fbab15;
+                box-shadow: 0 0 0 4px rgba(251, 171, 21, 0.3), 0 0 20px rgba(251, 171, 21, 0.6);
             `;
 
             el.appendChild(label);
