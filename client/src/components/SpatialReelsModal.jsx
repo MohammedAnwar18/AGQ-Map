@@ -265,8 +265,9 @@ const YouTubePlayer = React.memo(({ videoId, isActive, isMuted, onVideoEnd }) =>
                 rel: 0,
                 playsinline: 1,
                 enablejsapi: 1,
-                // Loop is removed to allow "auto-advance" on ENDED event
-                loop: 0
+                // Enable loop for a continuous reel experience
+                loop: 1,
+                playlist: videoId
             },
             events: {
                 onReady: (event) => {
@@ -336,6 +337,20 @@ const YouTubePlayer = React.memo(({ videoId, isActive, isMuted, onVideoEnd }) =>
         }
     };
 
+    const handleSeek = (e) => {
+        if (!playerRef.current) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        if (clientX === undefined) return;
+        const x = clientX - rect.left;
+        const pct = Math.max(0, Math.min(1, x / rect.width));
+        const duration = playerRef.current.getDuration();
+        if (duration > 0) {
+            playerRef.current.seekTo(duration * pct, true);
+            setProgress(pct * 100);
+        }
+    };
+
     if (!videoId) return (
         <div className="srm-no-video"><span>🎬</span><p>لا يوجد فيديو</p></div>
     );
@@ -363,7 +378,7 @@ const YouTubePlayer = React.memo(({ videoId, isActive, isMuted, onVideoEnd }) =>
                 </div>
             </div>
 
-            <div className="srm-progress-container">
+            <div className="srm-progress-container" onClick={handleSeek} onTouchStart={handleSeek}>
                 <div className="srm-progress-bar" style={{ width: `${progress}%` }} />
             </div>
         </div>
@@ -752,9 +767,12 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
     };
 
     const handleVideoEnd = useCallback(() => {
+        // Auto-advance is disabled per user request to allow manual scrolling only
+        /*
         if (activeIndex < reels.length - 1) {
             scrollToReel(activeIndex + 1);
         }
+        */
     }, [activeIndex, reels.length]);
 
     const activeReel = reels[activeIndex];

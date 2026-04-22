@@ -268,9 +268,16 @@
     bottom: 0;
     left: 0;
     right: 0;
-    height: 3px;
+    height: 4px;
     background: rgba(255,255,255,0.1);
     z-index: 10;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.srm-progress-container:hover {
+    height: 8px;
+    background: rgba(255,255,255,0.2);
 }
 
 .srm-progress-bar {
@@ -504,22 +511,30 @@
 .srm-tap-zone.center { flex: 1; }
 
 .srm-tap-hint {
-    display: none; /* Only show on double tap if desired, or keep light */
     color: white;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 800;
-    background: rgba(255,255,255,0.1);
-    padding: 6px 12px;
-    border-radius: 20px;
+    background: rgba(0,0,0,0.4);
+    padding: 10px 20px;
+    border-radius: 50%;
     backdrop-filter: blur(4px);
     pointer-events: none;
     opacity: 0;
-    transition: opacity 0.2s;
+    transform: scale(0.5);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.srm-tap-zone:active .srm-tap-hint {
+    opacity: 1;
+    transform: scale(1);
 }
 
 /* Optional: feedback on active/hover */
-.srm-tap-zone.left:active { background: linear-gradient(to right, rgba(255,255,255,0.05), transparent); }
-.srm-tap-zone.right:active { background: linear-gradient(to left, rgba(255,255,255,0.05), transparent); }
+.srm-tap-zone.left:active { background: radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, transparent 70%); }
+.srm-tap-zone.right:active { background: radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, transparent 70%); }
 
 .srm-play-icon-overlay {
     width: 60px;
