@@ -696,32 +696,28 @@
 .georeels-btn {
   position: relative;
   height: 42px;
-  padding: 0 18px;
-  border-radius: 14px;
-  cursor: pointer;
-  background: rgba(30, 41, 59, 0.5);
-  backdrop-filter: blur(12px) saturate(180%);
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
-  border: 1.5px solid rgba(255, 255, 255, 0.9);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-std)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--blur-std)) saturate(180%);
+  border: 1px solid var(--glass-border);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  box-shadow: 
-    0 4px 15px rgba(0, 0, 0, 0.4),
-    inset 0 1px 1px rgba(255, 255, 255, 0.1);
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  padding: 0 18px;
+  border-radius: 14px;
+  cursor: pointer;
+  box-shadow: none;
+  transition: all var(--transition-base);
   overflow: hidden;
   z-index: 1;
   font-family: 'Exo 2', sans-serif;
 }
 
 .georeels-btn:hover {
-  transform: scale(1.05) translateY(-2px);
-  border-color: #fff;
-  box-shadow: 
-    0 0 20px rgba(255, 255, 255, 0.3),
-    0 0 40px rgba(251, 171, 21, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
 }
 
 .georeels-btn::before {
