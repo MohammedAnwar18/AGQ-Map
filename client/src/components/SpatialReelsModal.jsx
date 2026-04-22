@@ -218,8 +218,6 @@ const SatelliteMiniMap = ({ activeReel, allReels, onReelSelect }) => {
 
     return (
         <div ref={containerRef} className="srm-satellite-map">
-            {/* Overlay label */}
-            <div className="srm-map-mode-label">🛰️ Satellite · Reels</div>
         </div>
     );
 };
