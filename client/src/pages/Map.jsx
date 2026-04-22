@@ -1103,31 +1103,20 @@ const MapComponent = () => {
                     </button>
 
                     {/* Spatial Reels Button */}
-                    <button
-                        onClick={() => setShowSpatialReels(true)}
-                        title="Spatial Reels"
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            padding: '7px 14px',
-                            borderRadius: '20px',
-                            border: 'none',
-                            cursor: 'pointer',
-                            fontFamily: 'inherit',
-                            fontSize: '13px',
-                            fontWeight: '700',
-                            background: 'linear-gradient(135deg, #00e5ff, #7c4dff)',
-                            color: '#000',
-                            transition: 'all 0.3s ease',
-                            boxShadow: '0 0 16px rgba(0,229,255,0.35)',
-                            whiteSpace: 'nowrap'
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.06)'; e.currentTarget.style.boxShadow = '0 0 24px rgba(0,229,255,0.6)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 0 16px rgba(0,229,255,0.35)'; }}
-                    >
-                        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                        Reels
+                    <button className="georeels-btn" onClick={() => setShowSpatialReels(true)}>
+                        <svg className="georeels-icon-svg" width="22" height="24" viewBox="0 0 60 70" fill="none">
+                            <defs>
+                                <linearGradient id="pinG" x1="0" y1="0" x2="60" y2="60" gradientUnits="userSpaceOnUse">
+                                    <stop offset="0%" stopColor="#fbab15" />
+                                    <stop offset="55%" stopColor="#f59e0b" />
+                                    <stop offset="100%" stopColor="#d97706" />
+                                </linearGradient>
+                            </defs>
+                            <path d="M30 2C19.5 2 11 10.5 11 21c0 13.5 19 45 19 45s19-31.5 19-45C49 10.5 40.5 2 30 2z" fill="url(#pinG)" />
+                            <circle cx="30" cy="21" r="12.5" fill="rgba(6,13,30,0.6)" />
+                            <polygon points="25,15 39,21 25,27" fill="white" />
+                        </svg>
+                        <span className="georeels-text">GeoReels</span>
                     </button>
 
                     <button
