@@ -567,8 +567,9 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
     const observerRef = useRef(null);
 
     // ── Fetch reels (location-aware) ──────────────────────────────────────────
-    const fetchReels = useCallback(async (lat, lng) => {
-        setLoading(true);
+    const fetchReels = useCallback(async (lat, lng, force = false) => {
+        // Only show loading spinner if we have no reels or explicitly forced
+        if (force || reels.length === 0) setLoading(true);
         try {
             let url = '/reels?limit=30';
             if (lat && lng) {
@@ -582,13 +583,23 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [reels.length]);
+
+    const hasFetched = useRef(false);
 
     useEffect(() => {
+        // Only fetch once when location becomes available or if it's already there
+        if (hasFetched.current) return;
+        
         const lat = userLocation?.latitude;
         const lng = userLocation?.longitude;
+        
+        // If we have location or if we want to fetch default reels (no location)
+        // We'll fetch once we have a location OR if we've waited enough.
+        // Actually, let's just fetch once on mount/initial location.
         fetchReels(lat, lng);
-    }, [fetchReels, userLocation]);
+        hasFetched.current = true;
+    }, [userLocation, fetchReels]);
 
     // ── IntersectionObserver for scroll-snap ──────────────────────────────────
     useEffect(() => {
