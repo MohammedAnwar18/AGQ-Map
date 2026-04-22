@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken, optionalAuth } = require('../middleware/auth');
+const { isAdmin } = require('../middleware/adminAuth');
 const {
     getReels,
     getReel,
@@ -15,7 +16,9 @@ const {
 // ─── REELS (GET = public with optional auth for is_liked) ─────────────────
 router.get('/', optionalAuth, getReels);
 router.get('/:id', optionalAuth, getReel);
-router.post('/', authenticateToken, createReel);
+// إنشاء الريل للأدمن فقط
+router.post('/', authenticateToken, isAdmin, createReel);
+// حذف الريل: أدمن يمكنه حذف أي ريل، المستخدم العادي يحذف ريله فقط (منطق في الcontroller)
 router.delete('/:id', authenticateToken, deleteReel);
 
 // ─── LIKES ───────────────────────────────────────────────────────────────────

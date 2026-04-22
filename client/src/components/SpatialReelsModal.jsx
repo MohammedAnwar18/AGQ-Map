@@ -168,39 +168,40 @@ const SatelliteMiniMap = ({ activeReel, allReels, onReelSelect }) => {
                 essential: true
             });
 
-            // Active glowing pin
+            // Active glowing pin — نستخدم عنصر HTML بسيط مرتبط بالإحداثيات
             const el = document.createElement('div');
-            el.innerHTML = `
-                <div style="
-                    display: flex; flex-direction: column; align-items: center;
-                    transform: translate(-50%, -100%);
-                ">
-                    <div style="
-                        background: linear-gradient(135deg, #00e5ff, #7c4dff);
-                        color: #000;
-                        font-size: 11px;
-                        font-weight: 700;
-                        padding: 5px 11px;
-                        border-radius: 20px;
-                        white-space: nowrap;
-                        max-width: 160px;
-                        overflow: hidden;
-                        text-overflow: ellipsis;
-                        box-shadow: 0 4px 16px rgba(0,229,255,0.5);
-                        margin-bottom: 4px;
-                        font-family: 'Tajawal', sans-serif;
-                    ">📍 ${activeReel.location_name || activeReel.city || 'موقع'}</div>
-                    <div style="
-                        width: 12px; height: 12px;
-                        border-radius: 50%;
-                        background: #00e5ff;
-                        box-shadow: 0 0 0 4px rgba(0,229,255,0.3), 0 0 16px rgba(0,229,255,0.6);
-                        animation: srm-pulse-map 2s ease-in-out infinite;
-                    "></div>
-                </div>
-            `;
-            el.style.cssText = 'position: absolute; pointer-events: none;';
+            el.style.cssText = 'pointer-events: none; display: flex; flex-direction: column; align-items: center;';
 
+            const label = document.createElement('div');
+            label.style.cssText = `
+                background: linear-gradient(135deg, #00e5ff, #7c4dff);
+                color: #000;
+                font-size: 11px;
+                font-weight: 700;
+                padding: 5px 11px;
+                border-radius: 20px;
+                white-space: nowrap;
+                max-width: 160px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                box-shadow: 0 4px 16px rgba(0,229,255,0.5);
+                margin-bottom: 4px;
+                font-family: 'Tajawal', sans-serif;
+            `;
+            label.textContent = '📍 ' + (activeReel.location_name || activeReel.city || 'موقع');
+
+            const dot = document.createElement('div');
+            dot.style.cssText = `
+                width: 12px; height: 12px;
+                border-radius: 50%;
+                background: #00e5ff;
+                box-shadow: 0 0 0 4px rgba(0,229,255,0.3), 0 0 16px rgba(0,229,255,0.6);
+            `;
+
+            el.appendChild(label);
+            el.appendChild(dot);
+
+            // anchor='bottom' يجعل نقطة التثبيت أسفل العنصر بالضبط على الإحداثيات
             const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
                 .setLngLat([lng, lat])
                 .addTo(map);
@@ -229,8 +230,10 @@ const SatelliteMiniMap = ({ activeReel, allReels, onReelSelect }) => {
 const YouTubePlayer = React.memo(({ videoId, isActive, isMuted }) => {
     const iframeRef = useRef(null);
 
+    // controls=1 يتيح للمستخدم التحكم في الصوت داخل المشغّل
+    // mute=0 يبدأ بصوت (المتصفح قد يُجبر على البدء مكتومًا حتى يتفاعل المستخدم)
     const embedUrl = videoId
-        ? `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=${isActive ? 1 : 0}&mute=${isMuted ? 1 : 0}&loop=1&playlist=${videoId}&controls=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=0&fs=0`
+        ? `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=${isActive ? 1 : 0}&mute=${isMuted ? 1 : 0}&loop=1&playlist=${videoId}&controls=1&rel=0&modestbranding=1&playsinline=1&enablejsapi=0&fs=1`
         : null;
 
     // Refresh src when active/muted changes to trigger autoplay
@@ -255,14 +258,13 @@ const YouTubePlayer = React.memo(({ videoId, isActive, isMuted }) => {
                 ref={iframeRef}
                 className="srm-iframe"
                 src={embedUrl}
-                allow="autoplay; encrypted-media; picture-in-picture"
+                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
                 allowFullScreen
                 title="Reel"
                 loading="lazy"
-                sandbox="allow-scripts allow-same-origin allow-presentation"
+                sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
             />
-            {/* Click-through overlay — blocks iframe stealing scroll events */}
-            <div className="srm-player-overlay-click" />
+            {/* overlay شفاف فقط للأجهزة المحمولة لمنع سرقة أحداث السكرول — لكن نتركه رقيقًا للصوت */}
         </div>
     );
 });
@@ -531,9 +533,13 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
     const [activeIndex, setActiveIndex] = useState(0);
     const [loading, setLoading] = useState(true);
     const [locationBased, setLocationBased] = useState(false);
+    // نبدأ بصوت مكتوم لأن المتصفح يمنع التشغيل التلقائي بصوت مرتفع
+    // المستخدم يفتح الصوت عبر زر الكتم
     const [isMuted, setIsMuted] = useState(true);
     const [showComments, setShowComments] = useState(false);
     const [showAddForm, setShowAddForm] = useState(false);
+    // هل المستخدم الحالي أدمن؟
+    const isAdmin = currentUser?.role === 'admin';
     const scrollRef = useRef(null);
     const cardRefs = useRef([]);
     const observerRef = useRef(null);
@@ -638,9 +644,9 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
                     </svg>
                 </button>
 
-                {/* Add reel */}
-                {currentUser && (
-                    <button className="srm-add-btn" onClick={() => setShowAddForm(true)} title="إضافة ريل">
+                {/* Add reel — للأدمن فقط */}
+                {isAdmin && (
+                    <button className="srm-add-btn" onClick={() => setShowAddForm(true)} title="إضافة ريل (أدمن)">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                             <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
                         </svg>
@@ -680,8 +686,8 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
                     <div className="srm-empty">
                         <div style={{ fontSize: 60 }}>🎬</div>
                         <h3>لا يوجد ريلز {locationBased ? 'بالقرب منك' : 'بعد'}</h3>
-                        <p>{locationBased ? 'جرّب توسيع نطاق البحث أو أضف أول ريل!' : 'كن أول من يضيف ريل مكاني!'}</p>
-                        {currentUser && (
+                        <p>{locationBased ? 'جرّب توسيع نطاق البحث' : 'قريباً سيتم إضافة ريلز!'}</p>
+                        {isAdmin && (
                             <button className="srm-empty-add" onClick={() => setShowAddForm(true)}>
                                 + إضافة ريل
                             </button>
@@ -726,16 +732,21 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
                                 {isMuted ? '🔇' : '🔊'}
                             </button>
 
-                            {/* Info */}
+                            {/* Info — الناشر يظهر دائمًا باسم palnovaa */}
                             <div className="srm-reel-info">
                                 <div className="srm-reel-user">
-                                    <div className="srm-reel-avatar">
-                                        {reel.profile_picture
-                                            ? <img src={getImageUrl(reel.profile_picture)} alt={reel.username} />
-                                            : <span>{(reel.full_name || reel.username || '?')[0]?.toUpperCase()}</span>
-                                        }
+                                    <div className="srm-reel-avatar" style={{ background: 'linear-gradient(135deg, #00e5ff22, #7c4dff22)', border: '2px solid #fbab15' }}>
+                                        <img
+                                            src="/logo_orange.svg"
+                                            alt="palnovaa"
+                                            style={{ width: '70%', height: '70%', objectFit: 'contain' }}
+                                            onError={e => { e.target.style.display = 'none'; e.target.parentNode.innerHTML = '<span style="color:#fbab15;font-weight:900;font-size:13px">P</span>'; }}
+                                        />
                                     </div>
-                                    <div className="srm-reel-username">@{reel.username}</div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                                        <div className="srm-reel-username" style={{ color: '#fbab15', fontWeight: '800' }}>palnovaa</div>
+                                        <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)' }}>Official</div>
+                                    </div>
                                 </div>
                                 <h3 className="srm-reel-title">{reel.title}</h3>
                                 {reel.description && <p className="srm-reel-desc">{reel.description}</p>}

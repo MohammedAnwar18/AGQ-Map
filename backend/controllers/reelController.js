@@ -117,7 +117,7 @@ exports.getReel = async (req, res) => {
 exports.createReel = async (req, res) => {
     try {
         const { title, description, youtube_url, latitude, longitude, location_name, city } = req.body;
-        const userId = req.user.id;
+        const userId = req.user.userId || req.user.id; // دعم كلا التنسيقين
 
         if (!title || !youtube_url || !latitude || !longitude) {
             return res.status(400).json({ error: 'بيانات ناقصة' });
@@ -141,11 +141,15 @@ exports.createReel = async (req, res) => {
 exports.deleteReel = async (req, res) => {
     try {
         const { id } = req.params;
-        const userId = req.user.id;
+        const userId = req.user.userId || req.user.id; // دعم كلا التنسيقين
+        const userRole = req.user.role;
 
         const check = await pool.query('SELECT user_id FROM reels WHERE id = $1', [id]);
         if (!check.rows[0]) return res.status(404).json({ error: 'غير موجود' });
-        if (check.rows[0].user_id !== userId) return res.status(403).json({ error: 'غير مصرح' });
+        // الأدمن يمكنه حذف أي ريل
+        if (userRole !== 'admin' && check.rows[0].user_id !== userId) {
+            return res.status(403).json({ error: 'غير مصرح' });
+        }
 
         await pool.query('DELETE FROM reels WHERE id = $1', [id]);
         res.json({ message: 'تم الحذف' });
@@ -159,7 +163,7 @@ exports.deleteReel = async (req, res) => {
 exports.toggleLike = async (req, res) => {
     try {
         const { id } = req.params;
-        const userId = req.user.id;
+        const userId = req.user.userId || req.user.id;
 
         // Check if already liked
         const existing = await pool.query(
@@ -213,7 +217,7 @@ exports.addComment = async (req, res) => {
     try {
         const { id } = req.params;
         const { content } = req.body;
-        const userId = req.user.id;
+        const userId = req.user.userId || req.user.id;
 
         if (!content?.trim()) return res.status(400).json({ error: 'التعليق فارغ' });
 
@@ -242,7 +246,7 @@ exports.addComment = async (req, res) => {
 exports.deleteComment = async (req, res) => {
     try {
         const { commentId } = req.params;
-        const userId = req.user.id;
+        const userId = req.user.userId || req.user.id;
 
         const check = await pool.query('SELECT user_id FROM reel_comments WHERE id = $1', [commentId]);
         if (!check.rows[0]) return res.status(404).json({ error: 'غير موجود' });

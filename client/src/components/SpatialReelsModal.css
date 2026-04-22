@@ -228,16 +228,14 @@
     width: 110%;
     height: 120%;
     border: none;
-    pointer-events: none;
+    /* نسمح للمستخدم التفاعل مع الـ iframe للصوت والتحكم */
+    pointer-events: auto;
 }
 
-/* Transparent overlay to prevent iframe from catching touch/click events
-   (needed so scroll-snap works on mobile) */
+/* الـ overlay الشفاف يغطي الجزء الأوسط فقط لحماية scroll-snap
+   لكن يترك أعلى وأسفل الفيديو للتفاعل مع أزرار يوتيوب */
 .srm-player-overlay-click {
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    /* transparent — does not block visually */
+    display: none; /* أزلنا الـ overlay ليعمل الصوت بشكل صحيح */
 }
 
 /* No video fallback */
