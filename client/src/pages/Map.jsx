@@ -25,6 +25,7 @@ import UniversityProfileModal from '../components/UniversityProfileModal';
 import FacilityProfileModal from '../components/FacilityProfileModal';
 import HistoricalTimelinePanel from '../components/HistoricalTimelinePanel';
 import SpatialReelsModal from '../components/SpatialReelsModal';
+import MagazineModal from '../components/MagazineModal';
 import { postService, friendService, authService, notificationService, communityService, shopService, getImageUrl } from '../services/api';
 import './Map.css';
 
@@ -232,6 +233,7 @@ const MapComponent = () => {
     const [unreadChatCount, setUnreadChatCount] = useState(0);
     const [showAIChat, setShowAIChat] = useState(false);
     const [showNews, setShowNews] = useState(false);
+    const [showMagazine, setShowMagazine] = useState(false);
     const [showCommunities, setShowCommunities] = useState(false);
     const [showMoreMenu, setShowMoreMenu] = useState(false);
     const [hasUnreadCommunity, setHasUnreadCommunity] = useState(false);
@@ -1197,6 +1199,20 @@ const MapComponent = () => {
                             </div>
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
+
+                        {/* PalNovaa Spatial Magazine */}
+                        <button onClick={() => { setShowMagazine(true); setShowMoreMenu(false); }}>
+                            <div className="menu-item-content">
+                                <div className="menu-icon-wrapper">
+                                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg">
+                                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                                    </svg>
+                                </div>
+                                <span>مجلة بالنوفا المكانية</span>
+                            </div>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+                        </button>
                         {user?.role === 'admin' && (
                             <button onClick={() => window.location.href = '/admin'}>
                                 <div className="menu-item-content">
@@ -1864,6 +1880,7 @@ const MapComponent = () => {
             )}
             {showNews && <NewsModal onClose={() => setShowNews(false)} location={{ latitude: viewState.latitude, longitude: viewState.longitude }} />}
             {showCommunities && <CommunitiesModal onClose={() => setShowCommunities(false)} onJoinCommunity={handleJoinCommunity} />}
+            {showMagazine && <MagazineModal onClose={() => setShowMagazine(false)} />}
             {showManagedShops && (
                 <ManagedShopsModal
                     onClose={() => setShowManagedShops(false)}

@@ -1,0 +1,191 @@
+.magazine-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.95);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+}
+
+.magazine-container {
+    width: 90%;
+    max-width: 450px;
+    height: 80vh;
+    background: #0f172a;
+    border-radius: 24px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(251, 171, 21, 0.3);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+}
+
+.magazine-close-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+}
+
+.magazine-close-btn:hover {
+    background: #ef4444;
+    transform: rotate(90deg);
+}
+
+/* Loading Screen */
+.magazine-loading-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    text-align: center;
+}
+
+.magazine-cover-preview {
+    width: 220px;
+    height: 300px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+    margin-bottom: 40px;
+    animation: cover-pulse 2s infinite ease-in-out;
+}
+
+.magazine-cover-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+@keyframes cover-pulse {
+    0% { transform: scale(1); box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4); }
+    50% { transform: scale(1.02); box-shadow: 0 20px 45px rgba(251, 171, 21, 0.2); }
+    100% { transform: scale(1); box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4); }
+}
+
+.magazine-loading-content h3 {
+    color: #fbab15;
+    font-size: 1.2rem;
+    margin-bottom: 20px;
+    font-weight: 700;
+}
+
+.magazine-progress-bar {
+    width: 200px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.magazine-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #fbab15, #f59e0b);
+    transition: width 0.1s linear;
+}
+
+.magazine-progress-text {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+/* Content Screen */
+.magazine-content-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+}
+
+.magazine-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mini-cover {
+    width: 40px;
+    height: 55px;
+    border-radius: 4px;
+    object-fit: cover;
+}
+
+.magazine-header h2 {
+    font-size: 1.1rem;
+    color: white;
+    margin: 0;
+}
+
+.magazine-coming-soon {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+}
+
+.coming-soon-icon {
+    font-size: 5rem;
+    margin-bottom: 20px;
+    filter: drop-shadow(0 10px 20px rgba(251, 171, 21, 0.3));
+}
+
+.magazine-coming-soon h1 {
+    font-size: 2.5rem;
+    color: #fbab15;
+    margin-bottom: 15px;
+    font-weight: 900;
+}
+
+.magazine-coming-soon p {
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.6;
+    margin-bottom: 30px;
+    max-width: 300px;
+}
+
+.fade-in {
+    animation: fadeIn 0.8s ease-out forwards;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 480px) {
+    .magazine-container {
+        width: 100%;
+        height: 100vh;
+        border-radius: 0;
+        border: none;
+    }
+    
+    .magazine-cover-preview {
+        width: 180px;
+        height: 250px;
+    }
+}
