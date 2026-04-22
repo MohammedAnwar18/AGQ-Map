@@ -137,6 +137,35 @@ exports.createReel = async (req, res) => {
     }
 };
 
+// ─── UPDATE REEL ─────────────────────────────────────────────────────────────
+exports.updateReel = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, description, youtube_url, latitude, longitude, location_name, city } = req.body;
+        const userId = req.user.userId || req.user.id;
+        const userRole = req.user.role;
+
+        const check = await pool.query('SELECT user_id FROM reels WHERE id = $1', [id]);
+        if (!check.rows[0]) return res.status(404).json({ error: 'غير موجود' });
+        
+        if (userRole !== 'admin' && check.rows[0].user_id !== userId) {
+            return res.status(403).json({ error: 'غير مصرح بالتعديل' });
+        }
+
+        const result = await pool.query(`
+            UPDATE reels 
+            SET title = $1, description = $2, youtube_url = $3, latitude = $4, longitude = $5, location_name = $6, city = $7
+            WHERE id = $8
+            RETURNING *
+        `, [title, description, youtube_url, latitude, longitude, location_name, city, id]);
+
+        res.json({ reel: result.rows[0] });
+    } catch (err) {
+        console.error('updateReel error:', err);
+        res.status(500).json({ error: 'فشل التحديث' });
+    }
+};
+
 // ─── DELETE REEL ─────────────────────────────────────────────────────────────
 exports.deleteReel = async (req, res) => {
     try {

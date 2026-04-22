@@ -6,6 +6,7 @@ const {
     getReels,
     getReel,
     createReel,
+    updateReel,
     deleteReel,
     toggleLike,
     getComments,
@@ -18,7 +19,9 @@ router.get('/', optionalAuth, getReels);
 router.get('/:id', optionalAuth, getReel);
 // إنشاء الريل للأدمن فقط
 router.post('/', authenticateToken, isAdmin, createReel);
-// حذف الريل: أدمن يمكنه حذف أي ريل، المستخدم العادي يحذف ريله فقط (منطق في الcontroller)
+// تعديل الريل
+router.put('/:id', authenticateToken, updateReel);
+// حذف الريل
 router.delete('/:id', authenticateToken, deleteReel);
 
 // ─── LIKES ───────────────────────────────────────────────────────────────────

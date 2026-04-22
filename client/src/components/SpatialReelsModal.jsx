@@ -225,45 +225,140 @@ const SatelliteMiniMap = ({ activeReel, allReels, onReelSelect }) => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// YOUTUBE PLAYER
+// YOUTUBE PLAYER (With API for Play/Pause/Progress)
 // ═══════════════════════════════════════════════════════════════════════════════
-const YouTubePlayer = React.memo(({ videoId, isActive, isMuted }) => {
-    const iframeRef = useRef(null);
+const YouTubePlayer = React.memo(({ videoId, isActive, isMuted, zoom = 1 }) => {
+    const playerRef = useRef(null);
+    const containerRef = useRef(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [progress, setProgress] = useState(0); // 0 to 100
+    const [isApiReady, setIsApiReady] = useState(false);
 
-    // controls=1 يتيح للمستخدم التحكم في الصوت داخل المشغّل
-    // mute=0 يبدأ بصوت (المتصفح قد يُجبر على البدء مكتومًا حتى يتفاعل المستخدم)
-    const embedUrl = videoId
-        ? `https://www.youtube.com/embed/${videoId}?autoplay=${isActive ? 1 : 0}&mute=${isMuted ? 1 : 0}&loop=1&playlist=${videoId}&controls=1&rel=0&modestbranding=1&playsinline=1&enablejsapi=0&fs=1`
-        : null;
-
-    // Refresh src when active/muted changes to trigger autoplay
+    // 1. Load YouTube API once
     useEffect(() => {
-        if (iframeRef.current && embedUrl) {
-            iframeRef.current.src = embedUrl;
+        if (!window.YT) {
+            const tag = document.createElement('script');
+            tag.src = "https://www.youtube.com/iframe_api";
+            const firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+            window.onYouTubeIframeAPIReady = () => {
+                document.dispatchEvent(new Event('youtubeApiReady'));
+            };
         }
-    }, [isActive, isMuted, embedUrl]);
+        
+        const handleReady = () => setIsApiReady(true);
+        if (window.YT && window.YT.Player) {
+            setIsApiReady(true);
+        } else {
+            document.addEventListener('youtubeApiReady', handleReady);
+        }
+        return () => document.removeEventListener('youtubeApiReady', handleReady);
+    }, []);
 
-    if (!videoId) {
-        return (
-            <div className="srm-no-video">
-                <span style={{ fontSize: 56 }}>🎬</span>
-                <p>لا يوجد فيديو</p>
-            </div>
-        );
-    }
+    // 2. Initialize Player
+    useEffect(() => {
+        if (!isApiReady || !videoId || !containerRef.current) return;
+
+        const player = new window.YT.Player(containerRef.current, {
+            videoId: videoId,
+            playerVars: {
+                autoplay: isActive ? 1 : 0,
+                mute: isMuted ? 1 : 0,
+                controls: 0, // We build our own UI
+                disablekb: 1,
+                fs: 0,
+                modestbranding: 1,
+                rel: 0,
+                playsinline: 1,
+                enablejsapi: 1,
+                loop: 1,
+                playlist: videoId
+            },
+            events: {
+                onReady: (event) => {
+                    playerRef.current = event.target;
+                    if (isActive) event.target.playVideo();
+                },
+                onStateChange: (event) => {
+                    // YT.PlayerState.PLAYING = 1
+                    setIsPlaying(event.data === 1);
+                }
+            }
+        });
+
+        return () => {
+            if (playerRef.current?.destroy) playerRef.current.destroy();
+            playerRef.current = null;
+        };
+    }, [isApiReady, videoId]);
+
+    // 3. Sync Active/Mute state
+    useEffect(() => {
+        if (!playerRef.current) return;
+        if (isActive) {
+            playerRef.current.playVideo();
+        } else {
+            playerRef.current.pauseVideo();
+        }
+    }, [isActive]);
+
+    useEffect(() => {
+        if (!playerRef.current) return;
+        if (isMuted) playerRef.current.mute();
+        else playerRef.current.unMute();
+    }, [isMuted]);
+
+    // 4. Progress Interval
+    useEffect(() => {
+        let interval;
+        if (isPlaying && playerRef.current) {
+            interval = setInterval(() => {
+                const duration = playerRef.current.getDuration();
+                const current = playerRef.current.getCurrentTime();
+                if (duration > 0) setProgress((current / duration) * 100);
+            }, 500);
+        }
+        return () => clearInterval(interval);
+    }, [isPlaying]);
+
+    const togglePlay = () => {
+        if (!playerRef.current) return;
+        if (isPlaying) playerRef.current.pauseVideo();
+        else playerRef.current.playVideo();
+    };
+
+    if (!videoId) return (
+        <div className="srm-no-video"><span>🎬</span><p>لا يوجد فيديو</p></div>
+    );
 
     return (
-        <div className="srm-player-wrapper">
-            <iframe
-                ref={iframeRef}
-                className="srm-iframe"
-                src={embedUrl}
-                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-                allowFullScreen
-                title="Reel"
-                loading="lazy"
-            />
-            {/* overlay شفاف فقط للأجهزة المحمولة لمنع سرقة أحداث السكرول — لكن نتركه رقيقًا للصوت */}
+        <div className="srm-player-wrapper" style={{ overflow: 'hidden' }}>
+            <div 
+                className="srm-player-container"
+                style={{
+                    width: '100%', height: '100%',
+                    transform: `scale(${zoom})`,
+                    transition: 'transform 0.3s ease-out'
+                }}
+            >
+                <div ref={containerRef} className="srm-yt-target" />
+            </div>
+
+            {/* Click to Pause/Play Overlay */}
+            <div className="srm-video-overlay" onClick={togglePlay}>
+                {!isPlaying && isActive && (
+                    <div className="srm-play-icon-overlay">
+                        <svg viewBox="0 0 24 24" width="48" height="48" fill="white">
+                            <path d="M8 5v14l11-7z" />
+                        </svg>
+                    </div>
+                )}
+            </div>
+
+            {/* Bottom Progress Bar */}
+            <div className="srm-progress-container">
+                <div className="srm-progress-bar" style={{ width: `${progress}%` }} />
+            </div>
         </div>
     );
 });
@@ -387,8 +482,16 @@ const CommentsSheet = ({ reel, onClose, currentUser, onCommentAdded }) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 // ADD REEL FORM
 // ═══════════════════════════════════════════════════════════════════════════════
-const AddReelForm = ({ onClose, onAdded, userLocation }) => {
-    const [form, setForm] = useState({
+const AddReelForm = ({ onClose, onAdded, userLocation, initialData = null }) => {
+    const [form, setForm] = useState(initialData ? {
+        title: initialData.title || '',
+        description: initialData.description || '',
+        youtube_url: initialData.youtube_url || '',
+        latitude: initialData.latitude || userLocation?.latitude || 31.9038,
+        longitude: initialData.longitude || userLocation?.longitude || 35.2034,
+        location_name: initialData.location_name || '',
+        city: initialData.city || ''
+    } : {
         title: '',
         description: '',
         youtube_url: '',
@@ -400,6 +503,13 @@ const AddReelForm = ({ onClose, onAdded, userLocation }) => {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [preview, setPreview] = useState(null);
+
+    useEffect(() => {
+        if (form.youtube_url) {
+            const id = getYouTubeId(form.youtube_url);
+            setPreview(id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null);
+        }
+    }, []);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -418,16 +528,21 @@ const AddReelForm = ({ onClose, onAdded, userLocation }) => {
             return;
         }
         if (!getYouTubeId(form.youtube_url)) {
-            setError('رابط يوتيوب غير صالح — مثال: https://youtu.be/xxxxx');
+            setError('رابط يوتيوب غير صالح');
             return;
         }
         setSubmitting(true);
         try {
-            const res = await api.post('/reels', form);
-            onAdded?.(res.data.reel);
+            if (initialData) {
+                const res = await api.put(`/reels/${initialData.id}`, form);
+                onAdded?.(res.data.reel || { ...form, id: initialData.id }, true);
+            } else {
+                const res = await api.post('/reels', form);
+                onAdded?.(res.data.reel);
+            }
             onClose();
         } catch (err) {
-            setError(err.response?.data?.error || 'فشل في النشر');
+            setError(err.response?.data?.error || 'فشل في الحفظ');
         } finally {
             setSubmitting(false);
         }
@@ -532,11 +647,12 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
     const [activeIndex, setActiveIndex] = useState(0);
     const [loading, setLoading] = useState(true);
     const [locationBased, setLocationBased] = useState(false);
-    // نبدأ بصوت مكتوم لأن المتصفح يمنع التشغيل التلقائي بصوت مرتفع
-    // المستخدم يفتح الصوت عبر زر الكتم
     const [isMuted, setIsMuted] = useState(true);
     const [showComments, setShowComments] = useState(false);
     const [showAddForm, setShowAddForm] = useState(false);
+    const [editingReel, setEditingReel] = useState(null);
+    const [zoomLevels, setZoomLevels] = useState({}); // { reelId: 1.0 - 3.0 }
+    
     // هل المستخدم الحالي أدمن؟
     const isAdmin = currentUser?.role === 'admin';
     const scrollRef = useRef(null);
@@ -607,17 +723,30 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
         cardRefs.current[idx]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
-    const handleReelAdded = (newReel) => {
-        const withMeta = { ...newReel, likes_count: 0, comments_count: 0, is_liked: false };
-        setReels(prev => [withMeta, ...prev]);
-        setActiveIndex(0);
-        setTimeout(() => scrollToReel(0), 100);
+    const handleReelAdded = (newReel, isUpdate = false) => {
+        if (isUpdate) {
+            setReels(prev => prev.map(r => r.id === newReel.id ? { ...r, ...newReel } : r));
+            setEditingReel(null);
+        } else {
+            const withMeta = { ...newReel, likes_count: 0, comments_count: 0, is_liked: false };
+            setReels(prev => [withMeta, ...prev]);
+            setActiveIndex(0);
+            setTimeout(() => scrollToReel(0), 100);
+        }
     };
 
-    const handleCommentAdded = () => {
-        setReels(prev => prev.map((r, i) =>
-            i === activeIndex ? { ...r, comments_count: (r.comments_count || 0) + 1 } : r
-        ));
+    const handleDeleteReel = async (id) => {
+        if (!window.confirm('هل أنت متأكد من حذف هذا الفيديو؟')) return;
+        try {
+            await api.delete(`/reels/${id}`);
+            setReels(prev => prev.filter(r => r.id !== id));
+        } catch (err) {
+            alert('فشل الحذف');
+        }
+    };
+
+    const handleZoomChange = (reelId, val) => {
+        setZoomLevels(prev => ({ ...prev, [reelId]: parseFloat(val) }));
     };
 
     const activeReel = reels[activeIndex];
@@ -706,10 +835,29 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
                             ref={el => cardRefs.current[index] = el}
                         >
                             {/* YouTube Player */}
-                            <YouTubePlayer videoId={videoId} isActive={isActive} isMuted={isMuted} />
+                            <YouTubePlayer 
+                                videoId={videoId} 
+                                isActive={isActive} 
+                                isMuted={isMuted} 
+                                zoom={zoomLevels[reel.id] || 1}
+                            />
 
                             {/* Gradient */}
                             <div className="srm-card-gradient" />
+
+                            {/* Zoom Slider */}
+                            <div className="srm-zoom-control">
+                                <span className="srm-zoom-label">🔍 تقريب</span>
+                                <input 
+                                    type="range" 
+                                    min="1" 
+                                    max="3" 
+                                    step="0.1" 
+                                    value={zoomLevels[reel.id] || 1} 
+                                    onChange={(e) => handleZoomChange(reel.id, e.target.value)}
+                                    className="srm-zoom-slider"
+                                />
+                            </div>
 
                             {/* Location tag */}
                             <div className="srm-location-tag">
@@ -721,6 +869,18 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
                                     <span className="srm-tag-dist"> · {distanceBadge(reel.distance_km)}</span>
                                 )}
                             </div>
+
+                            {/* Admin Controls (Edit/Delete) */}
+                            {isAdmin && (
+                                <div className="srm-admin-actions">
+                                    <button className="srm-admin-btn edit" onClick={() => { setEditingReel(reel); setShowAddForm(true); }}>
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                                    </button>
+                                    <button className="srm-admin-btn delete" onClick={() => handleDeleteReel(reel.id)}>
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                                    </button>
+                                </div>
+                            )}
 
                             {/* Mute button */}
                             <button
@@ -759,7 +919,11 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
                                     onClick={() => handleLike(reel.id)}
                                     aria-label="إعجاب"
                                 >
-                                    <div className="srm-action-icon">{reel.is_liked ? '❤️' : '🤍'}</div>
+                                    <div className="srm-action-icon">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill={reel.is_liked ? '#ff3250' : 'none'} stroke={reel.is_liked ? '#ff3250' : 'currentColor'} strokeWidth="2.5">
+                                            <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.505 4.044 3 5.5L12 21l7-7Z"/>
+                                        </svg>
+                                    </div>
                                     <span className="srm-action-count">{formatCount(reel.likes_count)}</span>
                                 </button>
 
@@ -769,7 +933,11 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
                                     onClick={() => { setActiveIndex(index); setShowComments(true); }}
                                     aria-label="تعليقات"
                                 >
-                                    <div className="srm-action-icon">💬</div>
+                                    <div className="srm-action-icon">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                                        </svg>
+                                    </div>
                                     <span className="srm-action-count">{formatCount(reel.comments_count)}</span>
                                 </button>
                             </div>
@@ -796,10 +964,11 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
                 />
             )}
 
-            {/* Add form */}
+            {/* Add/Edit form */}
             {showAddForm && (
                 <AddReelForm
-                    onClose={() => setShowAddForm(false)}
+                    initialData={editingReel}
+                    onClose={() => { setShowAddForm(false); setEditingReel(null); }}
                     onAdded={handleReelAdded}
                     userLocation={userLocation}
                 />
