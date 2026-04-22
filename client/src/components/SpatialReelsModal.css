@@ -482,53 +482,55 @@
     text-shadow: 0 1px 4px rgba(0,0,0,0.5);
 }
 
-/* ── ZOOM CONTROL ────────────────────────────────────────────── */
-.srm-zoom-control {
+/* ── INTERACTION OVERLAY ─────────────────────────────────────── */
+.srm-video-overlay-system {
     position: absolute;
-    bottom: 140px;
-    right: 14px;
+    inset: 0;
     display: flex;
-    flex-direction: column;
+    z-index: 3;
+}
+
+.srm-tap-zone {
+    height: 100%;
+    position: relative;
+    display: flex;
     align-items: center;
-    gap: 8px;
-    z-index: 10;
-    background: rgba(0,0,0,0.4);
-    backdrop-filter: blur(8px);
-    padding: 10px 6px;
-    border-radius: 20px;
-    border: 1px solid rgba(255,255,255,0.1);
-}
-
-.srm-zoom-label {
-    font-size: 10px;
-    font-weight: 700;
-    color: rgba(255,255,255,0.7);
-    writing-mode: vertical-lr;
-    text-orientation: mixed;
-    margin-bottom: 4px;
-}
-
-.srm-zoom-slider {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 4px;
-    height: 80px;
-    background: rgba(255,255,255,0.2);
-    border-radius: 2px;
-    outline: none;
+    justify-content: center;
     cursor: pointer;
-    writing-mode: bt-lr; /* Bottom to top */
-    -webkit-appearance: slider-vertical;
+    -webkit-tap-highlight-color: transparent;
 }
 
-.srm-zoom-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 14px;
-    height: 14px;
-    background: #00e5ff;
+.srm-tap-zone.left, .srm-tap-zone.right { width: 30%; }
+.srm-tap-zone.center { flex: 1; }
+
+.srm-tap-hint {
+    display: none; /* Only show on double tap if desired, or keep light */
+    color: white;
+    font-size: 12px;
+    font-weight: 800;
+    background: rgba(255,255,255,0.1);
+    padding: 6px 12px;
+    border-radius: 20px;
+    backdrop-filter: blur(4px);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+/* Optional: feedback on active/hover */
+.srm-tap-zone.left:active { background: linear-gradient(to right, rgba(255,255,255,0.05), transparent); }
+.srm-tap-zone.right:active { background: linear-gradient(to left, rgba(255,255,255,0.05), transparent); }
+
+.srm-play-icon-overlay {
+    width: 60px;
+    height: 60px;
+    background: rgba(0,0,0,0.35);
     border-radius: 50%;
-    box-shadow: 0 0 10px rgba(0,229,255,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    border: 1.5px solid rgba(255,255,255,0.15);
 }
 
 /* ── ADMIN ACTIONS ──────────────────────────────────────────── */

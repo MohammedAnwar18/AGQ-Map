@@ -225,16 +225,16 @@ const SatelliteMiniMap = ({ activeReel, allReels, onReelSelect }) => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// YOUTUBE PLAYER (With API for Play/Pause/Progress)
+// YOUTUBE PLAYER (Double-tap seek & Auto-advance)
 // ═══════════════════════════════════════════════════════════════════════════════
-const YouTubePlayer = React.memo(({ videoId, isActive, isMuted, zoom = 1 }) => {
+const YouTubePlayer = React.memo(({ videoId, isActive, isMuted, onVideoEnd }) => {
     const playerRef = useRef(null);
     const containerRef = useRef(null);
     const [isPlaying, setIsPlaying] = useState(false);
-    const [progress, setProgress] = useState(0); // 0 to 100
+    const [progress, setProgress] = useState(0);
     const [isApiReady, setIsApiReady] = useState(false);
+    const lastTapRef = useRef({ time: 0, side: null });
 
-    // 1. Load YouTube API once
     useEffect(() => {
         if (!window.YT) {
             const tag = document.createElement('script');
@@ -245,34 +245,28 @@ const YouTubePlayer = React.memo(({ videoId, isActive, isMuted, zoom = 1 }) => {
                 document.dispatchEvent(new Event('youtubeApiReady'));
             };
         }
-        
         const handleReady = () => setIsApiReady(true);
-        if (window.YT && window.YT.Player) {
-            setIsApiReady(true);
-        } else {
-            document.addEventListener('youtubeApiReady', handleReady);
-        }
+        if (window.YT && window.YT.Player) setIsApiReady(true);
+        else document.addEventListener('youtubeApiReady', handleReady);
         return () => document.removeEventListener('youtubeApiReady', handleReady);
     }, []);
 
-    // 2. Initialize Player
     useEffect(() => {
         if (!isApiReady || !videoId || !containerRef.current) return;
-
         const player = new window.YT.Player(containerRef.current, {
             videoId: videoId,
             playerVars: {
                 autoplay: isActive ? 1 : 0,
                 mute: isMuted ? 1 : 0,
-                controls: 0, // We build our own UI
+                controls: 0,
                 disablekb: 1,
                 fs: 0,
                 modestbranding: 1,
                 rel: 0,
                 playsinline: 1,
                 enablejsapi: 1,
-                loop: 1,
-                playlist: videoId
+                // Loop is removed to allow "auto-advance" on ENDED event
+                loop: 0
             },
             events: {
                 onReady: (event) => {
@@ -280,26 +274,23 @@ const YouTubePlayer = React.memo(({ videoId, isActive, isMuted, zoom = 1 }) => {
                     if (isActive) event.target.playVideo();
                 },
                 onStateChange: (event) => {
-                    // YT.PlayerState.PLAYING = 1
                     setIsPlaying(event.data === 1);
+                    if (event.data === 0) { // ENDED
+                        onVideoEnd?.();
+                    }
                 }
             }
         });
-
         return () => {
             if (playerRef.current?.destroy) playerRef.current.destroy();
             playerRef.current = null;
         };
     }, [isApiReady, videoId]);
 
-    // 3. Sync Active/Mute state
     useEffect(() => {
         if (!playerRef.current) return;
-        if (isActive) {
-            playerRef.current.playVideo();
-        } else {
-            playerRef.current.pauseVideo();
-        }
+        if (isActive) playerRef.current.playVideo();
+        else playerRef.current.pauseVideo();
     }, [isActive]);
 
     useEffect(() => {
@@ -308,7 +299,6 @@ const YouTubePlayer = React.memo(({ videoId, isActive, isMuted, zoom = 1 }) => {
         else playerRef.current.unMute();
     }, [isMuted]);
 
-    // 4. Progress Interval
     useEffect(() => {
         let interval;
         if (isPlaying && playerRef.current) {
@@ -321,10 +311,29 @@ const YouTubePlayer = React.memo(({ videoId, isActive, isMuted, zoom = 1 }) => {
         return () => clearInterval(interval);
     }, [isPlaying]);
 
-    const togglePlay = () => {
-        if (!playerRef.current) return;
-        if (isPlaying) playerRef.current.pauseVideo();
-        else playerRef.current.playVideo();
+    const handleInteraction = (side) => {
+        const now = Date.now();
+        const DOUBLE_TAP_DELAY = 300;
+
+        if (side === lastTapRef.current.side && (now - lastTapRef.current.time) < DOUBLE_TAP_DELAY) {
+            // Double tap detected
+            if (!playerRef.current) return;
+            const currentTime = playerRef.current.getCurrentTime();
+            if (side === 'left') {
+                playerRef.current.seekTo(Math.max(0, currentTime - 10), true);
+            } else {
+                playerRef.current.seekTo(currentTime + 10, true);
+            }
+            lastTapRef.current = { time: 0, side: null }; // reset
+        } else {
+            // Single tap logic
+            lastTapRef.current = { time: now, side };
+            // Optional: Toggle play on single tap in center
+            if (side === 'center') {
+                if (isPlaying) playerRef.current?.pauseVideo();
+                else playerRef.current?.playVideo();
+            }
+        }
     };
 
     if (!videoId) return (
@@ -332,30 +341,28 @@ const YouTubePlayer = React.memo(({ videoId, isActive, isMuted, zoom = 1 }) => {
     );
 
     return (
-        <div className="srm-player-wrapper" style={{ overflow: 'hidden' }}>
-            <div 
-                className="srm-player-container"
-                style={{
-                    width: '100%', height: '100%',
-                    transform: `scale(${zoom})`,
-                    transition: 'transform 0.3s ease-out'
-                }}
-            >
+        <div className="srm-player-wrapper">
+            <div className="srm-player-container">
                 <div ref={containerRef} className="srm-yt-target" />
             </div>
 
-            {/* Click to Pause/Play Overlay */}
-            <div className="srm-video-overlay" onClick={togglePlay}>
-                {!isPlaying && isActive && (
-                    <div className="srm-play-icon-overlay">
-                        <svg viewBox="0 0 24 24" width="48" height="48" fill="white">
-                            <path d="M8 5v14l11-7z" />
-                        </svg>
-                    </div>
-                )}
+            {/* Interaction Areas */}
+            <div className="srm-video-overlay-system">
+                <div className="srm-tap-zone left" onClick={() => handleInteraction('left')}>
+                    <div className="srm-tap-hint"><span>-10s</span></div>
+                </div>
+                <div className="srm-tap-zone center" onClick={() => handleInteraction('center')}>
+                    {!isPlaying && isActive && (
+                        <div className="srm-play-icon-overlay">
+                            <svg viewBox="0 0 24 24" width="44" height="44" fill="white"><path d="M8 5v14l11-7z" /></svg>
+                        </div>
+                    )}
+                </div>
+                <div className="srm-tap-zone right" onClick={() => handleInteraction('right')}>
+                    <div className="srm-tap-hint"><span>+10s</span></div>
+                </div>
             </div>
 
-            {/* Bottom Progress Bar */}
             <div className="srm-progress-container">
                 <div className="srm-progress-bar" style={{ width: `${progress}%` }} />
             </div>
@@ -651,7 +658,6 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
     const [showComments, setShowComments] = useState(false);
     const [showAddForm, setShowAddForm] = useState(false);
     const [editingReel, setEditingReel] = useState(null);
-    const [zoomLevels, setZoomLevels] = useState({}); // { reelId: 1.0 - 3.0 }
     
     // هل المستخدم الحالي أدمن؟
     const isAdmin = currentUser?.role === 'admin';
@@ -745,9 +751,11 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
         }
     };
 
-    const handleZoomChange = (reelId, val) => {
-        setZoomLevels(prev => ({ ...prev, [reelId]: parseFloat(val) }));
-    };
+    const handleVideoEnd = useCallback(() => {
+        if (activeIndex < reels.length - 1) {
+            scrollToReel(activeIndex + 1);
+        }
+    }, [activeIndex, reels.length]);
 
     const activeReel = reels[activeIndex];
 
@@ -839,25 +847,11 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
                                 videoId={videoId} 
                                 isActive={isActive} 
                                 isMuted={isMuted} 
-                                zoom={zoomLevels[reel.id] || 1}
+                                onVideoEnd={handleVideoEnd}
                             />
 
                             {/* Gradient */}
                             <div className="srm-card-gradient" />
-
-                            {/* Zoom Slider */}
-                            <div className="srm-zoom-control">
-                                <span className="srm-zoom-label">🔍 تقريب</span>
-                                <input 
-                                    type="range" 
-                                    min="1" 
-                                    max="3" 
-                                    step="0.1" 
-                                    value={zoomLevels[reel.id] || 1} 
-                                    onChange={(e) => handleZoomChange(reel.id, e.target.value)}
-                                    className="srm-zoom-slider"
-                                />
-                            </div>
 
                             {/* Location tag */}
                             <div className="srm-location-tag">
