@@ -13,12 +13,12 @@ const MagazineModal = ({ onClose }) => {
                     // Close the modal automatically after a brief delay when it hits 100%
                     setTimeout(() => {
                         onClose();
-                    }, 600);
+                    }, 400); // Small buffer after hitting 100%
                     return 100;
                 }
                 return prev + 2;
             });
-        }, 30);
+        }, 40); // 40ms * 50 steps = 2000ms (2 seconds)
 
         return () => clearInterval(timer);
     }, [onClose]);
