@@ -27,34 +27,21 @@ const MagazineModal = ({ onClose }) => {
 
     return (
         <div className="magazine-modal-overlay">
-            <div className="magazine-container">
-                <button className="magazine-close-btn" onClick={onClose}>×</button>
-                
+            <button className="magazine-close-btn" onClick={onClose}>×</button>
+            
+            <div className="magazine-content-wrapper">
                 {loading ? (
-                    <div className="magazine-loading-screen">
-                        <div className="magazine-cover-preview">
-                            <img src="/images/magazine/cover.png" alt="Magazine Cover" />
+                    <div className="magazine-loading-overlay">
+                        <div className="magazine-progress-bar">
+                            <div className="magazine-progress-fill" style={{ width: `${progress}%` }}></div>
                         </div>
-                        <div className="magazine-loading-content">
-                            <h3>جاري فتح المجلة...</h3>
-                            <div className="magazine-progress-bar">
-                                <div className="magazine-progress-fill" style={{ width: `${progress}%` }}></div>
-                            </div>
-                            <span className="magazine-progress-text">{progress}%</span>
-                        </div>
+                        <span className="magazine-progress-text">جاري التحميل... {progress}%</span>
                     </div>
                 ) : (
-                    <div className="magazine-content-screen fade-in">
-                        <div className="magazine-header">
-                            <img src="/images/magazine/cover.png" alt="Mini Cover" className="mini-cover" />
-                            <h2>مجلة بالنوفا المكانية</h2>
-                        </div>
-                        <div className="magazine-coming-soon">
-                            <div className="coming-soon-icon">📖</div>
-                            <h1>قريباً</h1>
-                            <p>نعمل حالياً على تجهيز أول عدد من مجلة بالنوفا المكانية لتجربة فريدة من نوعها.</p>
-                            <button className="btn-primary" onClick={onClose}>حسناً، سأنتظر!</button>
-                        </div>
+                    <div className="magazine-coming-soon-overlay fade-in">
+                        <h1>قريباً</h1>
+                        <p>نعمل حالياً على تجهيز أول عدد...</p>
+                        <button className="btn-primary" onClick={onClose}>العودة</button>
                     </div>
                 )}
             </div>

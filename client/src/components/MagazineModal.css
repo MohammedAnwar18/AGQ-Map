@@ -1,34 +1,27 @@
 .magazine-modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, 0.95);
-    z-index: 9999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    backdrop-filter: blur(10px);
-}
-
-.magazine-container {
-    width: 100%;
-    height: 100vh;
-    height: 100dvh;
-    background: #0f172a;
-    position: relative;
-    overflow: hidden;
+    z-index: 99999; /* Ensure it covers everything including top-bar */
+    background-image: url('/images/magazine/cover.png');
+    background-size: cover;
+    background-position: center bottom; /* Keep the man at the bottom visible */
+    background-color: #d79621; /* Fallback yellow */
+    background-repeat: no-repeat;
     display: flex;
     flex-direction: column;
+    justify-content: flex-end; /* Align content towards the bottom/middle */
 }
 
 .magazine-close-btn {
     position: absolute;
-    top: 20px;
+    top: max(20px, env(safe-area-inset-top, 20px));
     right: 20px;
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.1);
-    border: none;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     color: white;
     font-size: 24px;
     cursor: pointer;
@@ -40,54 +33,35 @@
 }
 
 .magazine-close-btn:hover {
-    background: #ef4444;
-    transform: rotate(90deg);
+    background: rgba(239, 68, 68, 0.8); /* Red on hover */
+    transform: rotate(90deg) scale(1.1);
 }
 
-/* Loading Screen */
-.magazine-loading-screen {
+.magazine-content-wrapper {
     flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 40px;
+    padding-bottom: 25vh; /* Push it up above the man */
+}
+
+/* Loading Overlay */
+.magazine-loading-overlay {
+    background: rgba(0, 0, 0, 0.4);
+    padding: 20px 40px;
+    border-radius: 20px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     text-align: center;
-}
-
-.magazine-cover-preview {
-    width: 220px;
-    height: 300px;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
-    margin-bottom: 40px;
-    animation: cover-pulse 2s infinite ease-in-out;
-}
-
-.magazine-cover-preview img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-@keyframes cover-pulse {
-    0% { transform: scale(1); box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4); }
-    50% { transform: scale(1.02); box-shadow: 0 20px 45px rgba(251, 171, 21, 0.2); }
-    100% { transform: scale(1); box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4); }
-}
-
-.magazine-loading-content h3 {
-    color: #fbab15;
-    font-size: 1.2rem;
-    margin-bottom: 20px;
-    font-weight: 700;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
 }
 
 .magazine-progress-bar {
     width: 200px;
     height: 6px;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.2);
     border-radius: 10px;
     overflow: hidden;
     margin-bottom: 10px;
@@ -100,92 +74,57 @@
 }
 
 .magazine-progress-text {
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 0.9rem;
-    font-weight: 600;
-}
-
-/* Content Screen */
-.magazine-content-screen {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    padding: env(safe-area-inset-top, 20px) 20px env(safe-area-inset-bottom, 20px);
-    background-image: linear-gradient(rgba(15, 23, 42, 0.4), rgba(15, 23, 42, 0.9)), url('/images/magazine/cover.png');
-    background-size: cover;
-    background-position: center;
-}
-
-.magazine-header {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(5px);
-}
-
-.mini-cover {
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid #fbab15;
-}
-
-.magazine-header h2 {
-    font-size: 1.2rem;
     color: white;
-    margin: 0;
-    font-weight: 800;
+    font-size: 0.95rem;
+    font-weight: bold;
     text-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }
 
-.magazine-coming-soon {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+/* Coming Soon Overlay */
+.magazine-coming-soon-overlay {
+    background: rgba(0, 0, 0, 0.5);
+    padding: 30px 40px;
+    border-radius: 24px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     text-align: center;
-    padding: 20px;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.4);
 }
 
-.coming-soon-icon {
-    font-size: 4rem;
-    margin-bottom: 20px;
-    animation: bounce 2s infinite;
-}
-
-@keyframes bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
-}
-
-.magazine-coming-soon h1 {
-    font-size: 3.5rem;
+.magazine-coming-soon-overlay h1 {
+    font-size: 2.5rem;
     color: #fbab15;
-    margin-bottom: 15px;
+    margin-bottom: 10px;
     font-weight: 900;
-    text-shadow: 0 4px 15px rgba(0,0,0,0.8);
+    text-shadow: 0 4px 10px rgba(0,0,0,0.6);
 }
 
-.magazine-coming-soon p {
+.magazine-coming-soon-overlay p {
     color: white;
     font-size: 1.1rem;
     line-height: 1.6;
-    margin-bottom: 40px;
-    max-width: 320px;
+    margin-bottom: 25px;
     font-weight: 600;
-    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+    text-shadow: 0 2px 6px rgba(0,0,0,0.6);
 }
 
-.magazine-coming-soon .btn-primary {
-    padding: 15px 40px;
+.magazine-coming-soon-overlay .btn-primary {
+    padding: 12px 35px;
     font-size: 1.1rem;
     border-radius: 30px;
     background: linear-gradient(135deg, #fbab15, #f59e0b);
-    box-shadow: 0 10px 25px rgba(251, 171, 21, 0.4);
+    box-shadow: 0 8px 20px rgba(251, 171, 21, 0.4);
+    border: none;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.magazine-coming-soon-overlay .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 25px rgba(251, 171, 21, 0.6);
 }
 
 .fade-in {
@@ -195,18 +134,4 @@
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
-}
-
-@media (max-width: 480px) {
-    .magazine-container {
-        width: 100%;
-        height: 100vh;
-        border-radius: 0;
-        border: none;
-    }
-    
-    .magazine-cover-preview {
-        width: 180px;
-        height: 250px;
-    }
 }
