@@ -233,7 +233,7 @@ const YouTubePlayer = React.memo(({ videoId, isActive, isMuted }) => {
     // controls=1 يتيح للمستخدم التحكم في الصوت داخل المشغّل
     // mute=0 يبدأ بصوت (المتصفح قد يُجبر على البدء مكتومًا حتى يتفاعل المستخدم)
     const embedUrl = videoId
-        ? `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=${isActive ? 1 : 0}&mute=${isMuted ? 1 : 0}&loop=1&playlist=${videoId}&controls=1&rel=0&modestbranding=1&playsinline=1&enablejsapi=0&fs=1`
+        ? `https://www.youtube.com/embed/${videoId}?autoplay=${isActive ? 1 : 0}&mute=${isMuted ? 1 : 0}&loop=1&playlist=${videoId}&controls=1&rel=0&modestbranding=1&playsinline=1&enablejsapi=0&fs=1`
         : null;
 
     // Refresh src when active/muted changes to trigger autoplay
@@ -262,7 +262,6 @@ const YouTubePlayer = React.memo(({ videoId, isActive, isMuted }) => {
                 allowFullScreen
                 title="Reel"
                 loading="lazy"
-                sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
             />
             {/* overlay شفاف فقط للأجهزة المحمولة لمنع سرقة أحداث السكرول — لكن نتركه رقيقًا للصوت */}
         </div>
