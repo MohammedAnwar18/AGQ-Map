@@ -144,7 +144,7 @@
     left: 0;
     right: 0;
     width: 100%;
-    height: calc(55px + env(safe-area-inset-top, 0px));
+    height: calc(65px + env(safe-area-inset-top, 0px));
     padding-top: env(safe-area-inset-top, 0px);
     box-sizing: border-box;
     padding-left: 1.2rem;
@@ -319,7 +319,7 @@
     left: 0;
     right: 0;
     width: 100%;
-    height: calc(60px + env(safe-area-inset-bottom, 0px));
+    height: calc(65px + env(safe-area-inset-bottom, 0px));
     padding-bottom: env(safe-area-inset-bottom, 0px);
     box-sizing: border-box;
     background: var(--glass-bg) !important;
