@@ -350,23 +350,35 @@
 /* Mute button (floating, always visible) */
 .srm-mute-floating {
     position: absolute;
-    top: 14px;
-    left: 14px;
-    background: rgba(0,0,0,0.5);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 20px;
+    top: 16px;
+    left: 16px;
+    width: 42px;
+    height: 42px;
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1.5px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
     color: white;
-    font-size: 15px;
-    padding: 5px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
-    z-index: 5;
-    transition: all 0.2s;
+    z-index: 10;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 0;
 }
 
 .srm-mute-floating:hover {
-    background: rgba(255,255,255,0.15);
+    background: rgba(15, 23, 42, 0.9);
+    border-color: #fbab15;
+    color: #fbab15;
+    transform: scale(1.1);
+    box-shadow: 0 0 15px rgba(251, 171, 21, 0.3);
+}
+
+.srm-mute-floating svg {
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
 }
 
 /* Reel info */
