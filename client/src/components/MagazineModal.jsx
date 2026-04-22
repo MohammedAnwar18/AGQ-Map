@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './MagazineModal.css';
 
 const MagazineModal = ({ onClose }) => {
-    const [loading, setLoading] = useState(true);
     const [progress, setProgress] = useState(0);
-    const [showComingSoon, setShowComingSoon] = useState(false);
 
     useEffect(() => {
         // Simulate loading
@@ -12,10 +10,10 @@ const MagazineModal = ({ onClose }) => {
             setProgress(prev => {
                 if (prev >= 100) {
                     clearInterval(timer);
+                    // Close the modal automatically after a brief delay when it hits 100%
                     setTimeout(() => {
-                        setLoading(false);
-                        setShowComingSoon(true);
-                    }, 500);
+                        onClose();
+                    }, 600);
                     return 100;
                 }
                 return prev + 2;
@@ -23,7 +21,7 @@ const MagazineModal = ({ onClose }) => {
         }, 30);
 
         return () => clearInterval(timer);
-    }, []);
+    }, [onClose]);
 
     return (
         <div className="magazine-modal-overlay">
@@ -38,22 +36,14 @@ const MagazineModal = ({ onClose }) => {
                     <h1 className="magazine-title">مجلة بالنوفا المكانية</h1>
                 </div>
 
-                {/* Dynamic Content: Loading or Coming Soon */}
+                {/* Dynamic Content: Loading */}
                 <div className="magazine-dynamic-content">
-                    {loading ? (
-                        <div className="magazine-loading-overlay">
-                            <div className="magazine-progress-bar">
-                                <div className="magazine-progress-fill" style={{ width: `${progress}%` }}></div>
-                            </div>
-                            <span className="magazine-progress-text">جاري التحميل... {progress}%</span>
+                    <div className="magazine-loading-overlay">
+                        <div className="magazine-progress-bar">
+                            <div className="magazine-progress-fill" style={{ width: `${progress}%` }}></div>
                         </div>
-                    ) : (
-                        <div className="magazine-coming-soon-overlay fade-in">
-                            <h2>قريباً</h2>
-                            <p>نعمل حالياً على تجهيز العدد الأول لتجربة فريدة من نوعها.</p>
-                            <button className="btn-primary" onClick={onClose}>العودة للخريطة</button>
-                        </div>
-                    )}
+                        <span className="magazine-progress-text">جاري التحميل... {progress}%</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -61,3 +51,4 @@ const MagazineModal = ({ onClose }) => {
 };
 
 export default MagazineModal;
+
