@@ -76,7 +76,7 @@ const SatelliteMiniMap = ({ activeReel, allReels, onReelSelect }) => {
             pitch: 0,
             bearing: 0,
             attributionControl: false,
-            interactive: true,
+            interactive: false, // Map only moves when user scrolls the reels
         });
 
         map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
@@ -602,7 +602,7 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
                     }
                 });
             },
-            { threshold: 0.65, root: scrollRef.current }
+            { threshold: 0.8, root: scrollRef.current }
         );
 
         cardRefs.current.forEach(el => el && observerRef.current.observe(el));
