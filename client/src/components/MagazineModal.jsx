@@ -3,6 +3,7 @@ import './MagazineModal.css';
 
 const MagazineModal = ({ onClose }) => {
     const [progress, setProgress] = useState(0);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         // Simulate loading
@@ -10,18 +11,18 @@ const MagazineModal = ({ onClose }) => {
             setProgress(prev => {
                 if (prev >= 100) {
                     clearInterval(timer);
-                    // Close the modal automatically after a brief delay when it hits 100%
+                    // Switch to Coming Soon screen after 100%
                     setTimeout(() => {
-                        onClose();
-                    }, 400); // Small buffer after hitting 100%
+                        setLoading(false);
+                    }, 400);
                     return 100;
                 }
                 return prev + 2;
             });
-        }, 40); // 40ms * 50 steps = 2000ms (2 seconds)
+        }, 40); // 2 seconds total
 
         return () => clearInterval(timer);
-    }, [onClose]);
+    }, []);
 
     return (
         <div className="magazine-modal-overlay">
@@ -36,14 +37,22 @@ const MagazineModal = ({ onClose }) => {
                     <h1 className="magazine-title">مجلة بالنوفا المكانية</h1>
                 </div>
 
-                {/* Dynamic Content: Loading */}
+                {/* Dynamic Content: Loading or Coming Soon */}
                 <div className="magazine-dynamic-content">
-                    <div className="magazine-loading-overlay">
-                        <div className="magazine-progress-bar">
-                            <div className="magazine-progress-fill" style={{ width: `${progress}%` }}></div>
+                    {loading ? (
+                        <div className="magazine-loading-overlay">
+                            <div className="magazine-progress-bar">
+                                <div className="magazine-progress-fill" style={{ width: `${progress}%` }}></div>
+                            </div>
+                            <span className="magazine-progress-text">جاري التحميل... {progress}%</span>
                         </div>
-                        <span className="magazine-progress-text">جاري التحميل... {progress}%</span>
-                    </div>
+                    ) : (
+                        <div className="magazine-coming-soon-overlay fade-in">
+                            <h2>قريباً</h2>
+                            <p>نعمل حالياً على تجهيز العدد الأول لتجربة فريدة من نوعها.</p>
+                            <button className="btn-primary" onClick={onClose}>العودة للخريطة</button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
