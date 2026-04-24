@@ -4,11 +4,11 @@ const MagazineBackground = () => {
     return (
         <div className="magazine-svg-bg">
             <svg version="1.0" xmlns="http://www.w3.org/2000/svg"
-                 width="100%" height="100%" viewBox="0 0 562 1000"
-                 preserveAspectRatio="xMidYMid slice"
-                 style={{ opacity: 0.25 }}>
+                width="100%" height="100%" viewBox="0 0 562 1000"
+                preserveAspectRatio="xMidYMid slice"
+                style={{ opacity: 0.25 }}>
                 <g transform="translate(0.000000,1000.000000) scale(0.100000,-0.100000)"
-                   fill="#ffffff" stroke="none">
+                    fill="#ffffff" stroke="none">
                     <path d="M4752 9119 c-51 -10 -72 -33 -122 -136 -89 -182 -162 -277 -399 -518
                     -164 -167 -232 -250 -275 -332 -27 -53 -10 -38 22 21 42 73 104 145 275 318
                     137 138 287 308 287 324 0 4 6 15 14 23 14 16 38 57 84 141 13 25 39 64 58 86

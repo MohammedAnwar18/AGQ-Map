@@ -234,12 +234,51 @@
 }
 
 .srm-yt-target iframe {
-    width: 110% !important; /* Slight overfill to hide bars */
-    height: 115% !important;
+    width: 105% !important;
+    height: 100% !important;
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.srm-player-wrapper.is-full .srm-yt-target iframe {
+    width: 300% !important; /* Force overflow to fill vertical screen with landscape content */
+    height: 100% !important;
+}
+
+/* ── ZOOM BUTTON ────────────────────────────────────────────── */
+.srm-zoom-btn {
+    position: absolute;
+    top: 68px; /* Below the mute button */
+    left: 16px;
+    width: 42px;
+    height: 42px;
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1.5px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 0;
+}
+
+.srm-zoom-btn:hover {
+    background: rgba(15, 23, 42, 0.9);
+    border-color: #fbab15;
+    color: #fbab15;
+    transform: scale(1.1);
+}
+
+.srm-zoom-btn:active {
+    transform: scale(0.9);
 }
 
 .srm-video-overlay {
