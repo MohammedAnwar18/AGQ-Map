@@ -1652,7 +1652,11 @@ const MapComponent = () => {
                 </button>
 
                 <button className={`nav-item ${showSpatialReels ? 'active' : ''}`} onClick={() => { setShowSpatialReels(true); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); setShowProfile(false); }}>
-                    <div className="georeels-icon-nav"></div>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" width="28" height="28">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                        <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" opacity="0.15" />
+                        <polygon points="10 8 16 12 10 16 10 8" />
+                    </svg>
                     <span>ريلز</span>
                 </button>
 

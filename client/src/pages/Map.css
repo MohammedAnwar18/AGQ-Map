@@ -740,25 +740,4 @@
   }
 }
 
-.georeels-icon-nav {
-  width: 30px;
-  height: 30px;
-  background-color: rgba(255, 255, 255, 0.85);
-  mask-image: url('/assets/reels-icon.svg');
-  -webkit-mask-image: url('/assets/reels-icon.svg');
-  mask-size: contain;
-  -webkit-mask-size: contain;
-  mask-repeat: no-repeat;
-  -webkit-mask-repeat: no-repeat;
-  mask-position: center;
-  -webkit-mask-position: center;
-  transition: all 0.3s ease;
-  /* Simulating thickness for masked icon */
-  filter: drop-shadow(0.3px 0 0 currentColor) drop-shadow(-0.3px 0 0 currentColor);
-}
 
-.nav-item:hover .georeels-icon-nav,
-.nav-item.active .georeels-icon-nav {
-  background-color: #fbab15;
-  filter: drop-shadow(0 0 5px rgba(251, 171, 21, 0.4));
-}
