@@ -739,3 +739,23 @@
     height: 24px;
   }
 }
+
+.georeels-icon-nav {
+  width: 28px;
+  height: 28px;
+  background-color: white;
+  mask-image: url('/assets/reels-icon.svg');
+  -webkit-mask-image: url('/assets/reels-icon.svg');
+  mask-size: contain;
+  -webkit-mask-size: contain;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-position: center;
+  transition: all 0.3s ease;
+}
+
+.nav-item:hover .georeels-icon-nav,
+.nav-item.active .georeels-icon-nav {
+  background-color: #fbab15;
+}
