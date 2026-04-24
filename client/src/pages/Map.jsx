@@ -163,6 +163,78 @@ const MapComponent = () => {
         return () => clearInterval(timer);
     }, []);
 
+    // ── Elegant Startup Sound ─────────────────────────────────────────────────
+    useEffect(() => {
+        if (sessionStorage.getItem('hasPlayedWelcomeSound')) return;
+
+        const playStartupSound = () => {
+            if (sessionStorage.getItem('hasPlayedWelcomeSound')) return;
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const ctx = new AudioContext();
+                
+                if (ctx.state === 'suspended') ctx.resume();
+                
+                const playNote = (freq, delay, vol) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+                    gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+                    gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + delay + 0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 4);
+                    
+                    const filter = ctx.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.value = 2000;
+                    
+                    osc.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(ctx.currentTime + delay);
+                    osc.stop(ctx.currentTime + delay + 4);
+                };
+
+                // Play a beautiful, sparkling ethereal chord (Amaj9)
+                playNote(440.00, 0.0, 0.1);     // A4
+                playNote(659.25, 0.05, 0.08);   // E5
+                playNote(830.61, 0.1, 0.06);    // G#5
+                playNote(1108.73, 0.15, 0.04);  // C#6
+                
+                sessionStorage.setItem('hasPlayedWelcomeSound', 'true');
+                
+                document.removeEventListener('click', playStartupSound);
+                document.removeEventListener('touchstart', playStartupSound);
+            } catch (e) {
+                console.error('Startup sound failed', e);
+            }
+        };
+
+        const tryImmediate = async () => {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const tempCtx = new AudioContext();
+                if (tempCtx.state === 'running') {
+                    playStartupSound();
+                } else {
+                    throw new Error('Suspended');
+                }
+            } catch(e) {
+                document.addEventListener('click', playStartupSound, { once: true, passive: true });
+                document.addEventListener('touchstart', playStartupSound, { once: true, passive: true });
+            }
+        };
+        
+        tryImmediate();
+
+        return () => {
+            document.removeEventListener('click', playStartupSound);
+            document.removeEventListener('touchstart', playStartupSound);
+        };
+    }, []);
+
     // Shop Management State
     const [showManagedShops, setShowManagedShops] = useState(false);
     const [hasManagedShops, setHasManagedShops] = useState(false);
