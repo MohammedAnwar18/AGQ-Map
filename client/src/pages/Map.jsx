@@ -1104,14 +1104,9 @@ const MapComponent = () => {
                         {unreadCount > 0 && <span className="notification-badge" style={{ top: '-4px', right: '-4px' }}>{unreadCount}</span>}
                     </button>
 
-                    {/* Friends Button */}
-                    <button className={`top-nav-icon ${showFriends ? 'active' : ''}`} onClick={() => setShowFriends(true)} title="الأصدقاء">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
-                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                            <circle cx="9" cy="7" r="4" />
-                            <line x1="19" y1="8" x2="19" y2="14" />
-                            <line x1="22" y1="11" x2="16" y2="11" />
-                        </svg>
+                    {/* Spatial Reels Button */}
+                    <button className="top-nav-icon" onClick={() => setShowSpatialReels(true)}>
+                        <div className="georeels-icon-custom"></div>
                     </button>
 
                     <button
@@ -1174,12 +1169,12 @@ const MapComponent = () => {
                             </div>
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
-                        <button onClick={() => { setShowSpatialReels(true); setShowMoreMenu(false); }}>
+                        <button onClick={() => { setShowFriends(true); setShowMoreMenu(false); }}>
                             <div className="menu-item-content">
                                 <div className="menu-icon-wrapper">
-                                    <div className="menu-icon-reels"></div>
+                                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" y1="8" x2="19" y2="14" /><line x1="22" y1="11" x2="16" y2="11" /></svg>
                                 </div>
-                                <span>ريلز (GeoReels)</span>
+                                <span>الأصدقاء</span>
                             </div>
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
