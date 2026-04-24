@@ -116,53 +116,56 @@
 /* Close button */
 .srm-close-btn {
     position: absolute;
-    top: 12px;
-    right: 12px;
-    width: 36px;
-    height: 36px;
+    top: calc(18px + env(safe-area-inset-top, 0px));
+    right: 16px;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
-    background: rgba(0,0,0,0.65);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,0.1);
-    color: #f0f0f8;
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1.5px solid rgba(255, 255, 255, 0.2);
+    color: white;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.2s;
-    z-index: 20;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 5100; /* Higher than everything else */
 }
 
 .srm-close-btn:hover {
-    background: rgba(255,255,255,0.12);
-    transform: scale(1.05);
+    background: rgba(15, 23, 42, 0.9);
+    border-color: #fbab15;
+    color: #fbab15;
+    transform: rotate(90deg) scale(1.1);
 }
 
 /* Add reel button */
 .srm-add-btn {
     position: absolute;
-    bottom: 14px;
-    right: 12px;
-    width: 36px;
-    height: 36px;
+    top: calc(18px + env(safe-area-inset-top, 0px));
+    left: 16px;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #00e5ff, #7c4dff);
+    background: linear-gradient(135deg, #fbab15, #ff5e3a);
     border: none;
-    color: #000;
+    color: white;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.2s;
-    z-index: 20;
-    box-shadow: 0 4px 14px rgba(0,229,255,0.45);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 5100;
+    box-shadow: 0 4px 14px rgba(251, 171, 21, 0.4);
 }
 
 .srm-add-btn:hover {
-    transform: scale(1.1);
-    box-shadow: 0 6px 20px rgba(0,229,255,0.65);
+    transform: scale(1.1) rotate(90deg);
+    box-shadow: 0 6px 20px rgba(251, 171, 21, 0.6);
 }
+
 
 /* Progress dots */
 .srm-progress-dots {
