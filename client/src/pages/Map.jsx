@@ -1651,7 +1651,7 @@ const MapComponent = () => {
                     </div>
                 </button>
 
-                <button className={`nav-item ${showSpatialReels ? 'active' : ''}`} onClick={() => { setShowSpatialReels(true); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); setShowProfile(false); }}>
+                <button className={`nav-item reels-nav-btn ${showSpatialReels ? 'active' : ''}`} onClick={() => { setShowSpatialReels(true); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); setShowProfile(false); }}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" width="36" height="36" style={{ marginBottom: '-2px' }}>
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                         <polygon points="10 6.5 16.5 10 10 13.5" fill="currentColor" stroke="none" />

@@ -456,6 +456,11 @@
         height: 24px;
     }
 
+    .nav-item.reels-nav-btn svg {
+        width: 30px !important;
+        height: 30px !important;
+    }
+
     .nav-item.center-btn {
         width: 58px;
         height: 58px;
