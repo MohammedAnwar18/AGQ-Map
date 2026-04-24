@@ -12,6 +12,7 @@ import Support from './pages/Support';
 import OfflinePage from './components/OfflinePage';
 import PushNotificationManager from './components/PushNotificationManager';
 import IosInstallPrompt from './components/IosInstallPrompt';
+import PwaInstallPrompt from './components/PwaInstallPrompt';
 import './index.css';
 
 const ProtectedRoute = ({ children }) => {
@@ -128,6 +129,7 @@ function App() {
             <div className="bg-blob blob-secondary"></div>
             <PushNotificationManager />
             <IosInstallPrompt />
+            <PwaInstallPrompt />
             <BrowserRouter>
                 <Routes>
                     <Route
