@@ -1105,9 +1105,8 @@ const MapComponent = () => {
                     </button>
 
                     {/* Spatial Reels Button */}
-                    <button className="georeels-btn" onClick={() => setShowSpatialReels(true)}>
+                    <button className="top-nav-icon" onClick={() => setShowSpatialReels(true)}>
                         <div className="georeels-icon-custom"></div>
-                        <span className="georeels-text">GeoReels</span>
                     </button>
 
                     <button
