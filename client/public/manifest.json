@@ -31,12 +31,11 @@
     "start_url": "/?source=pwa",
     "display": "standalone",
     "display_override": [
-        "window-controls-overlay",
         "standalone",
-        "minimal-ui"
+        "fullscreen"
     ],
-    "theme_color": "#fbab15",
-    "background_color": "#ffffff",
+    "theme_color": "#0f172a",
+    "background_color": "#0f172a",
     "orientation": "portrait",
     "categories": [
         "social",
