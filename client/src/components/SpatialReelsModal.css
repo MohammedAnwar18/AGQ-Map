@@ -281,6 +281,26 @@
     transform: scale(0.9);
 }
 
+.srm-zoom-icon-custom {
+    width: 26px;
+    height: 26px;
+    background-color: white;
+    mask-image: url('/assets/reels-icon.svg');
+    -webkit-mask-image: url('/assets/reels-icon.svg');
+    mask-size: contain;
+    -webkit-mask-size: contain;
+    mask-repeat: no-repeat;
+    -webkit-mask-repeat: no-repeat;
+    mask-position: center;
+    -webkit-mask-position: center;
+    transition: all 0.3s ease;
+}
+
+.srm-zoom-btn:hover .srm-zoom-icon-custom,
+.srm-zoom-icon-custom.is-active {
+    background-color: #fbab15;
+}
+
 .srm-video-overlay {
     position: absolute;
     inset: 0;

@@ -371,15 +371,7 @@ const YouTubePlayer = React.memo(({ videoId, isActive, isMuted }) => {
                 }}
                 title={isFull ? "تصغير" : "تكبير لملء الشاشة"}
             >
-                {isFull ? (
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <path d="M4 14h6m0 0v6m0-6L3 21M20 10h-6m0 0V4m0 6l7-7" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                ) : (
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <path d="M15 3h6m0 0v6m0-6L14 10M9 21H3m0 0v-6m0 6l7-7" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                )}
+                <div className={`srm-zoom-icon-custom ${isFull ? 'is-active' : ''}`}></div>
             </button>
 
             {/* Interaction Areas */}

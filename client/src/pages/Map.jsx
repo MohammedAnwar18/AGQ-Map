@@ -1106,18 +1106,7 @@ const MapComponent = () => {
 
                     {/* Spatial Reels Button */}
                     <button className="georeels-btn" onClick={() => setShowSpatialReels(true)}>
-                        <svg className="georeels-icon-svg" width="22" height="24" viewBox="0 0 60 70" fill="none">
-                            <defs>
-                                <linearGradient id="pinG" x1="0" y1="0" x2="60" y2="60" gradientUnits="userSpaceOnUse">
-                                    <stop offset="0%" stopColor="#fbab15" />
-                                    <stop offset="55%" stopColor="#f59e0b" />
-                                    <stop offset="100%" stopColor="#d97706" />
-                                </linearGradient>
-                            </defs>
-                            <path d="M30 2C19.5 2 11 10.5 11 21c0 13.5 19 45 19 45s19-31.5 19-45C49 10.5 40.5 2 30 2z" fill="url(#pinG)" />
-                            <circle cx="30" cy="21" r="12.5" fill="rgba(6,13,30,0.6)" />
-                            <polygon points="25,15 39,21 25,27" fill="white" />
-                        </svg>
+                        <div className="georeels-icon-custom"></div>
                         <span className="georeels-text">GeoReels</span>
                     </button>
 
