@@ -1676,8 +1676,8 @@ const MapComponent = () => {
                     </button>
                 )}
 
-                <button className={`nav-item ${showAIChat ? 'active' : ''}`} onClick={() => { setShowAIChat(true); setShowSearch(false); setShowCommunities(false); setShowProfile(false); }}>
-                    <svg viewBox="0 0 100 100" fill="currentColor" width="28" height="28">
+                <button className={`nav-item ai-nav-btn ${showAIChat ? 'active' : ''}`} onClick={() => { setShowAIChat(true); setShowSearch(false); setShowCommunities(false); setShowProfile(false); }}>
+                    <svg viewBox="0 0 100 100" fill="currentColor" width="30" height="30">
                         {/* Sparkles */}
                         <path d="M22 15 C24 28 28 32 40 34 C28 36 24 40 22 53 C20 40 16 36 4 34 C16 32 20 28 22 15 Z" />
                         <path d="M35 2 C36 7 38 9 43 10 C38 11 36 13 35 18 C34 13 32 11 27 10 C32 9 34 7 35 2 Z" />

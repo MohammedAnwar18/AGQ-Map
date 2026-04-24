@@ -461,6 +461,11 @@
         height: 30px !important;
     }
 
+    .nav-item.ai-nav-btn svg {
+        width: 27px !important;
+        height: 27px !important;
+    }
+
     .nav-item.center-btn {
         width: 58px;
         height: 58px;
