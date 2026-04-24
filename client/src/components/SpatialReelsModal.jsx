@@ -225,13 +225,12 @@ const SatelliteMiniMap = ({ activeReel, allReels, onReelSelect }) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 // YOUTUBE PLAYER (Double-tap seek & Auto-advance)
 // ═══════════════════════════════════════════════════════════════════════════════
-const YouTubePlayer = React.memo(({ videoId, isActive, isMuted }) => {
+const YouTubePlayer = React.memo(({ videoId, isActive, isMuted, isFull, onToggleFull }) => {
     const playerRef = useRef(null);
     const containerRef = useRef(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [progress, setProgress] = useState(0);
     const [isApiReady, setIsApiReady] = useState(false);
-    const [isFull, setIsFull] = useState(false);
     const lastTapRef = useRef({ time: 0, side: null });
 
     useEffect(() => {
@@ -367,7 +366,7 @@ const YouTubePlayer = React.memo(({ videoId, isActive, isMuted }) => {
                 className="srm-zoom-btn" 
                 onClick={(e) => {
                     e.stopPropagation();
-                    setIsFull(!isFull);
+                    if (onToggleFull) onToggleFull();
                 }}
                 title={isFull ? "تصغير" : "تكبير لملء الشاشة"}
             >
@@ -576,6 +575,7 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
     const [loading, setLoading] = useState(true);
     const [locationBased, setLocationBased] = useState(false);
     const [isMuted, setIsMuted] = useState(true);
+    const [isFullScreen, setIsFullScreen] = useState(false);
     const [showAddForm, setShowAddForm] = useState(false);
     const [editingReel, setEditingReel] = useState(null);
     
@@ -689,8 +689,24 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
     return (
         <div className="srm-overlay" dir="rtl">
 
+            {/* Close */}
+            <button className="srm-close-btn" onClick={onClose} aria-label="إغلاق" style={{ zIndex: 100 }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+            </button>
+
+            {/* Add reel — للأدمن فقط */}
+            {isAdmin && (
+                <button className="srm-add-btn" onClick={() => setShowAddForm(true)} title="إضافة ريل (أدمن)" style={{ zIndex: 100 }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                </button>
+            )}
+
             {/* ── SATELLITE MAP (top 38%) ──────────────────────────────────── */}
-            <div className="srm-map-section">
+            <div className="srm-map-section" style={{ height: isFullScreen ? 0 : '38%', opacity: isFullScreen ? 0 : 1, transition: 'height 0.4s ease, opacity 0.3s ease', minHeight: isFullScreen ? 0 : 'auto' }}>
                 <SatelliteMiniMap
                     activeReel={activeReel}
                     allReels={reels}
@@ -699,22 +715,6 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
                         scrollToReel(idx);
                     }}
                 />
-
-                {/* Close */}
-                <button className="srm-close-btn" onClick={onClose} aria-label="إغلاق">
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                </button>
-
-                {/* Add reel — للأدمن فقط */}
-                {isAdmin && (
-                    <button className="srm-add-btn" onClick={() => setShowAddForm(true)} title="إضافة ريل (أدمن)">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                        </svg>
-                    </button>
-                )}
 
                 {/* Location badge */}
                 {locationBased && activeReel?.distance_km != null && (
@@ -774,7 +774,8 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
                                 videoId={videoId} 
                                 isActive={isActive} 
                                 isMuted={isMuted} 
-
+                                isFull={isFullScreen}
+                                onToggleFull={() => setIsFullScreen(!isFullScreen)}
                             />
 
                             {/* Gradient */}
