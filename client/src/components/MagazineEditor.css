@@ -11,6 +11,10 @@
     --danger: #ef4444;
 }
 
+* {
+    font-family: 'Tajawal', sans-serif !important;
+}
+
 .magazine-editor-container {
     font-family: 'Tajawal', sans-serif;
     background: var(--bg-dark);

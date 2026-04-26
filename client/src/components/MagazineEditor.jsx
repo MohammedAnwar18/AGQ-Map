@@ -429,8 +429,10 @@ const MagazineEditor = ({ magazineId, onClose }) => {
         <div className="magazine-editor-container">
             <header className="editor-header">
                 <div className="header-logo">
-                    <div className="logo-badge">TI</div>
-                    <span className="logo-text">محرر {magazine?.title}</span>
+                    <div className="logo-badge" style={{ background: 'linear-gradient(135deg, #d4af37, #b87333)', color: '#000' }}>PN</div>
+                    <span className="logo-text" style={{ background: 'linear-gradient(135deg, #fff, #d4af37)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: '800' }}>
+                        مجلة بالنوفا المكانية
+                    </span>
                 </div>
                 
                 <div className="header-actions">
@@ -463,7 +465,7 @@ const MagazineEditor = ({ magazineId, onClose }) => {
                     <div className="page-tabs">
                         {pages.map((p, i) => (
                             <button key={i} className={`page-tab ${currentPageIndex === i ? 'active' : ''}`} onClick={() => { setCurrentPageIndex(i); setSelectedElementId(null); }}>
-                                {p.page_number}
+                                {i === 0 ? 'الغلاف' : p.page_number}
                             </button>
                         ))}
                         <button className="page-tab" onClick={addPage} style={{ background: 'var(--accent)', color: '#000' }}>+</button>
