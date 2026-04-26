@@ -973,8 +973,8 @@ const MapComponent = () => {
                 if (isNaN(shopLat) || isNaN(shopLon)) continue;
 
                 const dist = haversineDistance(userLocation, { latitude: shopLat, longitude: shopLon });
-
-                if (dist <= 500) {
+                const threshold = shop.proximity_radius || 500;
+                if (dist <= threshold) {
                     const storageKey = `proximity_notified_${shop.id}_${user.id}`;
                     // Check if already notified
                     if (!localStorage.getItem(storageKey)) {

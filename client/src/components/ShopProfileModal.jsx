@@ -5,6 +5,8 @@ import { optimizeImage } from '../utils/imageOptimizer';
 import CartModal from './CartModal';
 import ImageCropperModal from './ImageCropperModal';
 import PostDetailModal from './PostDetailModal';
+import Map, { Marker, Source, Layer } from 'react-map-gl/maplibre';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import './Modal.css';
 
 // --- Assets / Icons ---
@@ -132,6 +134,89 @@ const SUPERMARKET_CATEGORIES = [
     "مستلزمات الشواء", "الحلويات", "المشروبات", "التسالي"
 ];
 
+const MapPicker = ({ initialLocation, radius, onLocationChange }) => {
+    const [viewState, setViewState] = useState({
+        latitude: parseFloat(initialLocation?.latitude) || 32.2227,
+        longitude: parseFloat(initialLocation?.longitude) || 35.2621,
+        zoom: 15
+    });
+
+    const [marker, setMarker] = useState({
+        latitude: parseFloat(initialLocation?.latitude) || 32.2227,
+        longitude: parseFloat(initialLocation?.longitude) || 35.2621
+    });
+
+    const handleMapClick = (e) => {
+        const { lng, lat } = e.lngLat;
+        setMarker({ latitude: lat, longitude: lng });
+        onLocationChange({ latitude: lat, longitude: lng });
+    };
+
+    // Circle GeoJSON for visualization
+    const circleGeoJSON = useMemo(() => {
+        const center = [marker.longitude, marker.latitude];
+        const points = 64;
+        const coords = {
+            latitude: center[1],
+            longitude: center[0]
+        };
+        const km = radius / 1000;
+        const ret = [];
+        const distanceX = km / (111.32 * Math.cos(coords.latitude * Math.PI / 180));
+        const distanceY = km / 110.574;
+
+        for (let i = 0; i < points; i++) {
+            const theta = (i / points) * (2 * Math.PI);
+            const x = distanceX * Math.cos(theta);
+            const y = distanceY * Math.sin(theta);
+            ret.push([coords.longitude + x, coords.latitude + y]);
+        }
+        ret.push(ret[0]);
+
+        return {
+            type: 'Feature',
+            geometry: {
+                type: 'Polygon',
+                coordinates: [ret]
+            }
+        };
+    }, [marker, radius]);
+
+    return (
+        <div style={{ width: '100%', height: '300px', borderRadius: '10px', overflow: 'hidden', marginTop: '10px', border: '1px solid var(--borderColor)' }}>
+            <Map
+                {...viewState}
+                onMove={evt => setViewState(evt.viewState)}
+                mapStyle="https://tiles.openfreemap.org/styles/liberty"
+                onClick={handleMapClick}
+            >
+                <Marker latitude={marker.latitude} longitude={marker.longitude} color="red" />
+                <Source type="geojson" data={circleGeoJSON}>
+                    <Layer
+                        id="circle-fill"
+                        type="fill"
+                        paint={{
+                            'fill-color': 'var(--primary)',
+                            'fill-opacity': 0.2
+                        }}
+                    />
+                    <Layer
+                        id="circle-outline"
+                        type="line"
+                        paint={{
+                            'line-color': 'var(--primary)',
+                            'line-width': 2
+                        }}
+                    />
+                </Source>
+            </Map>
+            <div style={{ padding: '5px', fontSize: '0.8rem', textAlign: 'center', background: 'var(--bg-secondary)', color: 'var(--text-muted)' }}>
+                انقر على الخريطة لتحديد مركز منطقة الاستهداف
+            </div>
+        </div>
+    );
+};
+
 const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLocation }) => {
     const [shopData, setShopData] = useState(shop);
     const [posts, setPosts] = useState([]);
@@ -167,7 +252,14 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     const [selectedProductCategory, setSelectedProductCategory] = useState('الكل');
 
     // Info Editing
-    const [editingName, setEditingName] = useState(false);
+    const [isUpdatingCover, setIsUpdatingCover] = useState(false);
+
+    // --- Geographic Targeting State ---
+    const [isTargetingArea, setIsTargetingArea] = useState(false);
+    const [targetLocation, setTargetLocation] = useState(null);
+    const [targetRadius, setTargetRadius] = useState(500);
+    const [tempTargetRadius, setTempTargetRadius] = useState(500); // For slider
+    const [proximityRadius, setProximityRadius] = useState(500);
     const [nameInput, setNameInput] = useState('');
     const [editingCategory, setEditingCategory] = useState(false);
     const [categoryInput, setCategoryInput] = useState('');
@@ -259,6 +351,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
         try {
             const data = await shopService.getProfile(shop.id);
             setShopData(data.shop);
+            setProximityRadius(data.shop.proximity_radius || 500);
             setPosts(data.posts || []);
             setProducts(data.products || []);
             setInternalShops(data.internal_shops || []);
@@ -2381,44 +2474,75 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                             {canEditShop && (
                                 <div style={{ display: 'grid', gap: 20 }}>
                                     {/* Proximity Notification Feature */}
-                                    <div style={{ background: 'var(--bg-primary)', padding: 20, borderRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border-color)' }}>
-                                        <div>
-                                            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                <span>📡</span> ميزة اشعار القرب
-                                            </h3>
-                                            <p style={{ margin: '8px 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)', maxWidth: '400px', lineHeight: 1.4 }}>
-                                                عند تفعيل هذه الميزة، سيتم إرسال إشعار تلقائي للمتابعين عند مرورهم بالقرب من المحل (500 متر) يحتوي على أفضل العروض.
-                                            </p>
+                                    <div style={{ background: 'var(--bg-primary)', padding: 20, borderRadius: 10, border: '1px solid var(--border-color)' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
+                                            <div>
+                                                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                    <span>📡</span> ميزة اشعار القرب
+                                                </h3>
+                                                <p style={{ margin: '8px 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)', maxWidth: '400px', lineHeight: 1.4 }}>
+                                                    عند تفعيل هذه الميزة، سيتم إرسال إشعار تلقائي للمتابعين عند مرورهم بالقرب من المحل ضمن المسافة المحددة.
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={async () => {
+                                                    const newValue = !shopData.enable_proximity_notifications;
+                                                    try {
+                                                        await shopService.updateProfile(shopData.id, { enable_proximity_notifications: newValue });
+                                                        setShopData(prev => ({ ...prev, enable_proximity_notifications: newValue }));
+                                                        alert(`تم ${newValue ? 'تفعيل' : 'إيقاف'} ميزة إشعار القرب بنجاح.`);
+                                                    } catch (err) {
+                                                        console.error(err);
+                                                        alert('فشلت العملية، يرجى المحاولة لاحقاً.');
+                                                    }
+                                                }}
+                                                style={{
+                                                    padding: '10px 20px',
+                                                    borderRadius: '30px',
+                                                    border: 'none',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 'bold',
+                                                    background: shopData.enable_proximity_notifications ? '#22c55e' : 'var(--bg-tertiary)',
+                                                    color: shopData.enable_proximity_notifications ? 'white' : 'var(--text-muted)',
+                                                    transition: 'all 0.3s',
+                                                    boxShadow: shopData.enable_proximity_notifications ? '0 4px 12px rgba(34, 197, 94, 0.3)' : 'none',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 8
+                                                }}
+                                            >
+                                                {shopData.enable_proximity_notifications ? 'مفعل' : 'تعطيل'}
+                                            </button>
                                         </div>
-                                        <button
-                                            onClick={async () => {
-                                                const newValue = !shopData.enable_proximity_notifications;
-                                                try {
-                                                    await shopService.updateProfile(shopData.id, { enable_proximity_notifications: newValue });
-                                                    setShopData(prev => ({ ...prev, enable_proximity_notifications: newValue }));
-                                                    alert(`تم ${newValue ? 'تفعيل' : 'إيقاف'} ميزة إشعار القرب بنجاح.`);
-                                                } catch (err) {
-                                                    console.error(err);
-                                                    alert('فشلت العملية، يرجى المحاولة لاحقاً.');
-                                                }
-                                            }}
-                                            style={{
-                                                padding: '10px 20px',
-                                                borderRadius: '30px',
-                                                border: 'none',
-                                                cursor: 'pointer',
-                                                fontWeight: 'bold',
-                                                background: shopData.enable_proximity_notifications ? '#22c55e' : 'var(--bg-tertiary)',
-                                                color: shopData.enable_proximity_notifications ? 'white' : 'var(--text-muted)',
-                                                transition: 'all 0.3s',
-                                                boxShadow: shopData.enable_proximity_notifications ? '0 4px 12px rgba(34, 197, 94, 0.3)' : 'none',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: 8
-                                            }}
-                                        >
-                                            {shopData.enable_proximity_notifications ? 'مفعل' : 'تعطيل'}
-                                        </button>
+
+                                        {shopData.enable_proximity_notifications && (
+                                            <div style={{ marginTop: 15, padding: 15, background: 'var(--bg-secondary)', borderRadius: 8 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+                                                    <span style={{ fontSize: '0.9rem' }}>محيط الإشعار (متر):</span>
+                                                    <span style={{ fontWeight: 'bold', color: 'var(--primary)' }}>{proximityRadius} متر</span>
+                                                </div>
+                                                <input
+                                                    type="range"
+                                                    min="100"
+                                                    max="5000"
+                                                    step="100"
+                                                    value={proximityRadius}
+                                                    onChange={(e) => setProximityRadius(parseInt(e.target.value))}
+                                                    onMouseUp={async () => {
+                                                        try {
+                                                            await shopService.updateProfile(shopData.id, { proximity_radius: proximityRadius });
+                                                        } catch (err) {
+                                                            console.error('Failed to save radius', err);
+                                                        }
+                                                    }}
+                                                    style={{ width: '100%', accentColor: 'var(--primary)' }}
+                                                />
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 5 }}>
+                                                    <span>100م</span>
+                                                    <span>5 كم</span>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Shop Visibility Toggle */}
@@ -2465,31 +2589,89 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                     </div>
 
                                     {/* Send Notification Tool */}
-                                    <div style={{ background: 'var(--bg-primary)', padding: 20, borderRadius: 10 }}>
-                                        <h3>إرسال إشعار للمتابعين</h3>
+                                    <div style={{ background: 'var(--bg-primary)', padding: 20, borderRadius: 10, border: '1px solid var(--border-color)' }}>
+                                        <h3 style={{ marginTop: 0 }}>إرسال إشعار للمتابعين</h3>
                                         <form onSubmit={async (e) => {
                                             e.preventDefault();
                                             const message = e.target.elements.message.value;
                                             if (!message.trim()) return;
-                                            if (!confirm('هل أنت متأكد من إرسال هذا الإشعار لجميع المتابعين؟')) return;
+                                            
+                                            const targetStr = isTargetingArea ? ` (المستهدفين في المنطقة المحددة فقط)` : ` (جميع المتابعين)`;
+                                            if (!confirm(`هل أنت متأكد من إرسال هذا الإشعار لـ${targetStr}؟`)) return;
 
                                             try {
-                                                await shopService.sendNotification(shopData.id, message);
-                                                alert('تم إرسال الإشعار بنجاح');
+                                                const targeting = isTargetingArea ? {
+                                                    lat: targetLocation?.latitude || shopData.latitude,
+                                                    lon: targetLocation?.longitude || shopData.longitude,
+                                                    radius: targetRadius
+                                                } : null;
+
+                                                await shopService.sendNotification(shopData.id, message, targeting);
+                                                alert('تم إرسال الإشعار بنجاح ✅');
                                                 e.target.reset();
+                                                setIsTargetingArea(false);
                                             } catch (err) {
                                                 console.error(err);
-                                                alert('فشل الإرسال');
+                                                alert('فشل الإرسال ❌');
                                             }
                                         }}>
                                             <textarea
                                                 name="message"
                                                 className="input"
                                                 placeholder="اكتب رسالة الإشعار هنا..."
-                                                style={{ width: '100%', minHeight: '80px', marginBottom: 10 }}
+                                                style={{ width: '100%', minHeight: '80px', marginBottom: 15 }}
                                                 required
                                             ></textarea>
-                                            <button type="submit" className="btn-small is-primary">إرسال الإشعار 🔔</button>
+
+                                            <div style={{ marginBottom: 15 }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: '0.95rem', fontWeight: 'bold' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isTargetingArea}
+                                                        onChange={(e) => {
+                                                            setIsTargetingArea(e.target.checked);
+                                                            if (e.target.checked && !targetLocation) {
+                                                                setTargetLocation({ latitude: shopData.latitude, longitude: shopData.longitude });
+                                                            }
+                                                        }}
+                                                        style={{ width: 18, height: 18 }}
+                                                    />
+                                                    توجيه الإشعار لمنطقة محددة فقط 🎯
+                                                </label>
+                                                <p style={{ margin: '5px 0 0 28px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                                    عند التفعيل، سيتم إرسال الإشعار فقط للمتابعين المتواجدين حالياً داخل الدائرة المحددة.
+                                                </p>
+                                            </div>
+
+                                            {isTargetingArea && (
+                                                <div style={{ marginBottom: 20, padding: 15, background: 'var(--bg-secondary)', borderRadius: 10 }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                                                        <span style={{ fontWeight: 'bold' }}>تحديد النطاق الجغرافي:</span>
+                                                        <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{tempTargetRadius} متر</span>
+                                                    </div>
+                                                    
+                                                    <input
+                                                        type="range"
+                                                        min="100"
+                                                        max="10000"
+                                                        step="100"
+                                                        value={tempTargetRadius}
+                                                        onChange={(e) => setTempTargetRadius(parseInt(e.target.value))}
+                                                        onMouseUp={() => setTargetRadius(tempTargetRadius)}
+                                                        style={{ width: '100%', accentColor: 'var(--primary)', marginBottom: 15 }}
+                                                    />
+
+                                                    <MapPicker
+                                                        initialLocation={{ latitude: shopData.latitude, longitude: shopData.longitude }}
+                                                        radius={tempTargetRadius}
+                                                        onLocationChange={(loc) => setTargetLocation(loc)}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            <button type="submit" className="btn is-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                                                <SendIcon /> إرسال الإشعار الآن
+                                            </button>
                                         </form>
                                     </div>
 

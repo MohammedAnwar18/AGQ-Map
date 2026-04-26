@@ -362,6 +362,10 @@ const updateShopProfile = async (req, res) => {
             queryParts.push(`hidden_sections = $${index++}`);
             values.push(req.body.hidden_sections);
         }
+        if (req.body.proximity_radius !== undefined) {
+            queryParts.push(`proximity_radius = $${index++}`);
+            values.push(parseInt(req.body.proximity_radius) || 500);
+        }
 
         // Handle Coordinates
         let latVal = parseFloat(latitude);
@@ -735,14 +739,30 @@ const sendNotificationToFollowers = async (req, res) => {
             location: { latitude: shop.latitude, longitude: shop.longitude }
         });
 
-        // 3. Insert Notifications for all followers
-        // Sender ID is the current user (Owner)
+        // 3. Geographic Targeting Check
+        const { lat, lon, radius } = req.body;
+        let whereClause = 'WHERE sf.shop_id = $3';
+        let queryParams = [userId, payload, shopId];
+
+        if (lat && lon && radius) {
+            // Target followers within specific area
+            // We use ST_DWithin to check if user's last known location is within 'radius' meters of (lon, lat)
+            whereClause += ` AND ST_DWithin(
+                ST_SetSRID(ST_MakePoint(u.last_longitude, u.last_latitude), 4326)::geography,
+                ST_SetSRID(ST_MakePoint($4, $5), 4326)::geography,
+                $6
+            )`;
+            queryParams.push(parseFloat(lon), parseFloat(lat), parseFloat(radius));
+        }
+
+        // 4. Insert Notifications for all followers (filtered if area provided)
         await pool.query(`
             INSERT INTO notifications (user_id, sender_id, type, message)
-            SELECT user_id, $1, 'shop_alert', $2
-            FROM shop_followers
-            WHERE shop_id = $3
-        `, [userId, payload, shopId]);
+            SELECT sf.user_id, $1, 'shop_alert', $2
+            FROM shop_followers sf
+            JOIN users u ON sf.user_id = u.id
+            ${whereClause}
+        `, queryParams);
 
         res.json({ message: 'Notification sent successfully' });
     } catch (error) {

@@ -449,8 +449,14 @@ export const shopService = {
         return response.data;
     },
 
-    sendNotification: async (shopId, message) => {
-        const response = await api.post(`/shops/${shopId}/notify`, { message });
+    sendNotification: async (shopId, message, targeting = null) => {
+        const payload = { message };
+        if (targeting) {
+            payload.lat = targeting.lat;
+            payload.lon = targeting.lon;
+            payload.radius = targeting.radius;
+        }
+        const response = await api.post(`/shops/${shopId}/notify`, payload);
         return response.data;
     },
 
