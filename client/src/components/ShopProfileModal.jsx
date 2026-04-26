@@ -6,6 +6,7 @@ import CartModal from './CartModal';
 import ImageCropperModal from './ImageCropperModal';
 import PostDetailModal from './PostDetailModal';
 import Map, { Marker, Source, Layer } from 'react-map-gl/maplibre';
+import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './Modal.css';
 
@@ -188,6 +189,7 @@ const MapPicker = ({ initialLocation, radius, onLocationChange }) => {
                 {...viewState}
                 onMove={evt => setViewState(evt.viewState)}
                 mapStyle="https://tiles.openfreemap.org/styles/liberty"
+                mapLib={maplibregl}
                 onClick={handleMapClick}
             >
                 <Marker latitude={marker.latitude} longitude={marker.longitude} color="red" />
@@ -261,6 +263,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     const [tempTargetRadius, setTempTargetRadius] = useState(500); // For slider
     const [proximityRadius, setProximityRadius] = useState(500);
     const [nameInput, setNameInput] = useState('');
+    const [editingName, setEditingName] = useState(false);
     const [editingCategory, setEditingCategory] = useState(false);
     const [categoryInput, setCategoryInput] = useState('');
 
@@ -428,6 +431,33 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
             loadShopData();
         } catch (e) {
             alert('فشل تحديث الصورة');
+            console.error(e);
+        }
+    };
+
+
+    const handleLike = async (postId) => {
+        try {
+            const res = await postService.like(postId);
+            setPosts(posts.map(p => p.id === postId ? {
+                ...p,
+                is_liked: res.is_liked,
+                likes_count: res.likes_count
+            } : p));
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const handleComment = async (postId, content) => {
+        try {
+            await postService.comment(postId, { content });
+            // Refresh post to update comment count
+            setPosts(posts.map(p => p.id === postId ? {
+                ...p,
+                comments_count: (parseInt(p.comments_count) || 0) + 1
+            } : p));
+        } catch (e) {
             console.error(e);
         }
     };
@@ -2815,6 +2845,29 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                             handleImageUpload(cropState.type, croppedFile);
                             setCropState({ isOpen: false, file: null, type: null, aspect: 1 });
                         }}
+                    />
+                )}
+
+                {selectedPost && (
+                    <PostDetailModal
+                        post={selectedPost}
+                        onClose={() => setSelectedPost(null)}
+                        onUpdate={(updatedPost) => {
+                            setPosts(posts.map(p => p.id === updatedPost.id ? updatedPost : p));
+                            setSelectedPost(updatedPost);
+                        }}
+                        onDelete={(postId) => {
+                            setPosts(posts.filter(p => p.id !== postId));
+                            setSelectedPost(null);
+                        }}
+                    />
+                )}
+
+                {showCart && (
+                    <CartModal 
+                        onClose={() => setShowCart(false)} 
+                        shopId={shopData.id}
+                        shopName={shopData.name}
                     />
                 )}
 
