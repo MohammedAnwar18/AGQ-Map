@@ -13,6 +13,16 @@
     overflow-y: auto;
 }
 
+.magazine-svg-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+}
+
 .magazine-close-btn {
     position: absolute;
     top: 20px;
@@ -38,6 +48,8 @@
 }
 
 .magazine-library {
+    position: relative;
+    z-index: 1;
     max-width: 1200px;
     margin: 0 auto;
     width: 100%;
