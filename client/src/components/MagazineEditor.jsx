@@ -199,6 +199,12 @@ const MagazineEditor = ({ magazineId, onClose }) => {
     const handleMouseDown = (e, id) => {
         if (e.target.classList.contains('resize-handle')) return;
         
+        // If clicking on a text element that is already selected, don't start dragging
+        // to allow text selection/editing.
+        if (selectedElementId === id && e.target.getAttribute('contenteditable') === 'true') {
+            return;
+        }
+
         setSelectedElementId(id);
         setIsDragging(true);
         
@@ -456,7 +462,7 @@ const MagazineEditor = ({ magazineId, onClose }) => {
                 <main className="canvas-area">
                     <div className="book-canvas" ref={bookCanvasRef}>
                         <div className="page-spread">
-                            <div className="page-canvas left" ref={leftPageRef}>
+                            <div className="page-canvas left" ref={leftPageRef} onMouseDown={(e) => { if (e.target === leftPageRef.current) setSelectedElementId(null); }}>
                                 {elements.filter(el => el.page === 'left').map(el => (
                                     <RenderedElement 
                                         key={el.id} 
@@ -467,17 +473,18 @@ const MagazineEditor = ({ magazineId, onClose }) => {
                                         onTextChange={(content) => {
                                             const updated = elements.map(e => e.id === el.id ? { ...e, content } : e);
                                             setElements(updated);
+                                            saveState(updated);
                                         }}
                                     />
                                 ))}
                                 {elements.filter(el => el.page === 'left').length === 0 && (
-                                    <div className="empty-state">
+                                    <div className="empty-state" style={{ pointerEvents: 'none' }}>
                                         <p>الصفحة فارغة</p>
                                     </div>
                                 )}
                             </div>
                             <div className="page-spine"></div>
-                            <div className="page-canvas right" ref={rightPageRef}>
+                            <div className="page-canvas right" ref={rightPageRef} onMouseDown={(e) => { if (e.target === rightPageRef.current) setSelectedElementId(null); }}>
                                 {elements.filter(el => el.page === 'right').map(el => (
                                     <RenderedElement 
                                         key={el.id} 
@@ -488,11 +495,12 @@ const MagazineEditor = ({ magazineId, onClose }) => {
                                         onTextChange={(content) => {
                                             const updated = elements.map(e => e.id === el.id ? { ...e, content } : e);
                                             setElements(updated);
+                                            saveState(updated);
                                         }}
                                     />
                                 ))}
                                 {elements.filter(el => el.page === 'right').length === 0 && (
-                                    <div className="empty-state">
+                                    <div className="empty-state" style={{ pointerEvents: 'none' }}>
                                         <p>الصفحة فارغة</p>
                                     </div>
                                 )}

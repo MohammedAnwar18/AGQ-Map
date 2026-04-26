@@ -158,6 +158,7 @@
 .editable-element.selected {
     box-shadow: 0 0 0 3px var(--accent), 0 5px 20px rgba(212, 175, 55, 0.3);
     z-index: 100 !important;
+    user-select: auto;
 }
 
 .editable-element .resize-handle {
