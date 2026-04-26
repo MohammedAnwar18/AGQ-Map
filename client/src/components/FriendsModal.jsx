@@ -19,12 +19,17 @@ const ShopAvatar = ({ shop }) => {
     const pic = shop?.profile_picture;
     if (pic) {
         return (
-            <img
-                src={getImageUrl(pic)}
-                alt={shop.name}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }}
-                onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-            />
+            <>
+                <img
+                    src={getImageUrl(pic)}
+                    alt={shop.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }}
+                    onError={e => { e.target.style.display = 'none'; if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'; }}
+                />
+                <span className="fallback-icon" style={{ display: 'none', fontSize: '1.4rem', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+                    {categoryEmoji(shop?.category)}
+                </span>
+            </>
         );
     }
     return (
@@ -692,15 +697,20 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                                 width: '50px', height: '50px'
                                                             }}>
                                                                 {shop.profile_picture ? (
-                                                                    <img
-                                                                        src={getImageUrl(shop.profile_picture)}
-                                                                        alt={shop.name}
-                                                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                                                        onError={e => {
-                                                                            e.target.style.display = 'none';
-                                                                            e.target.parentElement.innerHTML = `<span style="font-size:1.3rem;color:white">${shop.name?.charAt(0) || '🏪'}</span>`;
-                                                                        }}
-                                                                    />
+                                                                    <>
+                                                                        <img
+                                                                            src={getImageUrl(shop.profile_picture)}
+                                                                            alt={shop.name}
+                                                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                                            onError={e => {
+                                                                                e.target.style.display = 'none';
+                                                                                if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                                                                            }}
+                                                                        />
+                                                                        <span className="fallback-icon" style={{ display: 'none', fontSize: '1.3rem', color: 'white', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+                                                                            {shop.name?.charAt(0) || '🏪'}
+                                                                        </span>
+                                                                    </>
                                                                 ) : (
                                                                     <span style={{ fontSize: '1.3rem', color: 'white' }}>
                                                                         {categoryEmoji(shop.category)}

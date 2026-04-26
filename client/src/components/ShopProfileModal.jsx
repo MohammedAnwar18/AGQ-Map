@@ -436,32 +436,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     };
 
 
-    const handleLike = async (postId) => {
-        try {
-            const res = await postService.like(postId);
-            setPosts(posts.map(p => p.id === postId ? {
-                ...p,
-                is_liked: res.is_liked,
-                likes_count: res.likes_count
-            } : p));
-        } catch (e) {
-            console.error(e);
-        }
-    };
-
-    const handleComment = async (postId, content) => {
-        try {
-            await postService.comment(postId, { content });
-            // Refresh post to update comment count
-            setPosts(posts.map(p => p.id === postId ? {
-                ...p,
-                comments_count: (parseInt(p.comments_count) || 0) + 1
-            } : p));
-        } catch (e) {
-            console.error(e);
-        }
-    };
-
 
     // State for editing product
     const [editingProduct, setEditingProduct] = useState(null);
