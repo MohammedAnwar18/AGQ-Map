@@ -77,7 +77,7 @@ const MagazineModal = ({ onClose }) => {
             <button className="magazine-close-btn" onClick={onClose}>×</button>
             
             <div className="magazine-library">
-                <h1>المجلة المكانية</h1>
+                <h1>مجلة بالنوفا المكانية</h1>
                 {isAdmin && (
                     <button className="header-btn save" style={{ margin: '0 auto 40px auto', display: 'block' }} onClick={handleCreate}>
                         + إنشاء عدد جديد

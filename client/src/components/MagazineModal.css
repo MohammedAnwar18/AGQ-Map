@@ -26,15 +26,16 @@
 }
 
 .magazine-close-btn {
-    position: absolute;
-    top: 20px;
+    position: fixed;
+    top: calc(15px + env(safe-area-inset-top));
     left: 20px;
     background: rgba(255, 255, 255, 0.1);
-    border: none;
+    border: 1px solid rgba(255,255,255,0.2);
+    backdrop-filter: blur(5px);
     color: white;
-    font-size: 30px;
-    width: 50px;
-    height: 50px;
+    font-size: 24px;
+    width: 45px;
+    height: 45px;
     border-radius: 50%;
     cursor: pointer;
     display: flex;
@@ -46,6 +47,7 @@
 
 .magazine-close-btn:hover {
     background: var(--danger);
+    border-color: var(--danger);
     transform: rotate(90deg);
 }
 
@@ -61,10 +63,19 @@
 .magazine-library h1 {
     font-family: 'Tajawal', sans-serif;
     font-size: 2.5rem;
+    margin-top: 40px;
     margin-bottom: 30px;
     background: linear-gradient(135deg, #fff, #d4af37);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    font-weight: 900;
+}
+
+@media (max-width: 768px) {
+    .magazine-library h1 {
+        font-size: 1.8rem;
+        margin-top: 60px;
+    }
 }
 
 .magazines-grid {
