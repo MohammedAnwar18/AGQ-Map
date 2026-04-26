@@ -2003,6 +2003,13 @@ const MapComponent = () => {
                     userLocation={userLocation}
                 />
             )}
+
+            {/* Magazine Modal */}
+            {showMagazine && (
+                <MagazineModal
+                    onClose={() => setShowMagazine(false)}
+                />
+            )}
         </div>
     );
 };

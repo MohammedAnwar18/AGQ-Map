@@ -572,5 +572,49 @@ export const municipalityService = {
     }
 };
 
+// Magazine Services
+export const magazineService = {
+    getMagazines: async () => {
+        const response = await api.get('/magazines');
+        return response.data;
+    },
+    getMagazineById: async (id) => {
+        const response = await api.get(`/magazines/${id}`);
+        return response.data;
+    },
+    getAllMagazines: async () => {
+        const response = await api.get('/magazines/admin/all');
+        return response.data;
+    },
+    createMagazine: async (data) => {
+        const response = await api.post('/magazines', data);
+        return response.data;
+    },
+    updateMagazine: async (id, data) => {
+        const response = await api.put(`/magazines/${id}`, data);
+        return response.data;
+    },
+    deleteMagazine: async (id) => {
+        const response = await api.delete(`/magazines/${id}`);
+        return response.data;
+    },
+    savePage: async (data) => {
+        const response = await api.post('/magazines/page', data);
+        return response.data;
+    },
+    uploadImage: async (formData) => {
+        const response = await api.post('/magazines/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    },
+    setCoverImage: async (id, formData) => {
+        const response = await api.post(`/magazines/${id}/cover`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    }
+};
+
 export default api;
 

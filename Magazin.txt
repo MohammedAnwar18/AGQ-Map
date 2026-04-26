@@ -1,0 +1,1954 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محرر المجلة - The Insider Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=Tajawal:wght@300;400;500;700;800&family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0d0d12;
+            --bg-panel: #15151d;
+            --bg-card: #1e1e28;
+            --accent: #d4af37;
+            --accent-hover: #e5c04a;
+            --text-primary: #f5f5f0;
+            --text-secondary: #9a9aa5;
+            --border-color: #2a2a38;
+            --success: #4ade80;
+            --danger: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .font-display { font-family: 'Playfair Display', serif; }
+        .font-cairo { font-family: 'Cairo', sans-serif; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+        /* Main Layout */
+        .editor-layout {
+            display: grid;
+            grid-template-columns: 280px 1fr 300px;
+            height: 100vh;
+            gap: 0;
+        }
+
+        @media (max-width: 1200px) {
+            .editor-layout {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr auto;
+            }
+        }
+
+        /* Panels */
+        .panel {
+            background: var(--bg-panel);
+            border-left: 1px solid var(--border-color);
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .panel:first-child {
+            border-left: none;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .panel-header {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Canvas Area */
+        .canvas-area {
+            background: 
+                radial-gradient(circle at center, rgba(212, 175, 55, 0.03) 0%, transparent 70%),
+                linear-gradient(180deg, #0a0a0f 0%, #12121a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            position: relative;
+            overflow: auto;
+        }
+
+        /* Book Canvas */
+        .book-canvas {
+            position: relative;
+            width: 800px;
+            min-height: 550px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 
+                0 25px 80px rgba(0, 0, 0, 0.5),
+                0 10px 30px rgba(0, 0, 0, 0.3);
+            display: flex;
+            overflow: hidden;
+        }
+
+        @media (max-width: 900px) {
+            .book-canvas {
+                width: 100%;
+                max-width: 500px;
+                min-height: 650px;
+            }
+        }
+
+        .page-spread {
+            display: flex;
+            width: 100%;
+            flex: 1;
+        }
+
+        .page-canvas {
+            flex: 1;
+            position: relative;
+            min-height: 550px;
+            background: linear-gradient(135deg, #fefefe 0%, #f8f6f0 100%);
+            border: none;
+            outline: none;
+            overflow: hidden;
+        }
+
+        .page-canvas.left {
+            border-right: 1px solid #ddd;
+            border-radius: 8px 0 0 8px;
+        }
+
+        .page-canvas.right {
+            border-radius: 0 8px 8px 0;
+        }
+
+        .page-spine {
+            width: 20px;
+            background: linear-gradient(180deg, #b87333, #d4af37, #b87333);
+            flex-shrink: 0;
+        }
+
+        /* Editable Elements */
+        .editable-element {
+            position: absolute;
+            cursor: move;
+            transition: box-shadow 0.2s ease;
+            user-select: none;
+        }
+
+        .editable-element:hover {
+            box-shadow: 0 0 0 2px var(--accent);
+        }
+
+        .editable-element.selected {
+            box-shadow: 0 0 0 3px var(--accent), 0 5px 20px rgba(212, 175, 55, 0.3);
+            z-index: 100 !important;
+        }
+
+        .editable-element .resize-handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: var(--accent);
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .editable-element.selected .resize-handle {
+            opacity: 1;
+        }
+
+        .resize-handle.nw { top: -5px; left: -5px; cursor: nw-resize; }
+        .resize-handle.ne { top: -5px; right: -5px; cursor: ne-resize; }
+        .resize-handle.sw { bottom: -5px; left: -5px; cursor: sw-resize; }
+        .resize-handle.se { bottom: -5px; right: -5px; cursor: se-resize; }
+
+        /* Text Element */
+        .text-element {
+            padding: 10px;
+            color: #1a1a1a;
+            word-wrap: break-word;
+            min-width: 50px;
+            min-height: 30px;
+        }
+
+        .text-element[contenteditable="true"] {
+            outline: none;
+            cursor: text;
+        }
+
+        /* Image Element */
+        .image-element {
+            overflow: hidden;
+            border-radius: 4px;
+        }
+
+        .image-element img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            pointer-events: none;
+        }
+
+        /* Shape Element */
+        .shape-element {
+            border-radius: 8px;
+        }
+
+        /* Toolbar Buttons */
+        .tool-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 14px 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .tool-btn:hover {
+            background: var(--bg-card);
+            border-color: var(--accent);
+            color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .tool-btn.active {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(184, 115, 51, 0.1));
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .tool-btn svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        /* Tool Grid */
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        /* Color Picker */
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .color-swatch {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .color-swatch:hover {
+            transform: scale(1.15);
+        }
+
+        .color-swatch.active {
+            border-color: white;
+            box-shadow: 0 0 0 2px var(--accent);
+        }
+
+        /* Input Styles */
+        .input-group {
+            margin-bottom: 16px;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        select.input-field {
+            cursor: pointer;
+        }
+
+        /* Range Slider */
+        .range-slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--bg-card);
+            appearance: none;
+            cursor: pointer;
+        }
+
+        .range-slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .range-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        /* Action Buttons */
+        .action-btn {
+            width: 100%;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border: none;
+        }
+
+        .action-btn.primary {
+            background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+            color: #000;
+        }
+
+        .action-btn.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(212, 175, 55, 0.4);
+        }
+
+        .action-btn.secondary {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .action-btn.secondary:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .action-btn.danger {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+        }
+
+        .action-btn.danger:hover {
+            background: var(--danger);
+            color: white;
+        }
+
+        /* Layer Item */
+        .layer-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .layer-item:hover {
+            border-color: var(--accent);
+        }
+
+        .layer-item.active {
+            border-color: var(--accent);
+            background: rgba(212, 175, 55, 0.1);
+        }
+
+        .layer-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-panel);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+        }
+
+        .layer-info {
+            flex: 1;
+        }
+
+        .layer-name {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .layer-type {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        /* Page Tabs */
+        .page-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .page-tab {
+            padding: 8px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-secondary);
+        }
+
+        .page-tab:hover {
+            border-color: var(--accent);
+        }
+
+        .page-tab.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #000;
+            font-weight: 600;
+        }
+
+        /* Header Bar */
+        .editor-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: rgba(13, 13, 18, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            z-index: 1000;
+        }
+
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-badge {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent), #b87333);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 16px;
+            color: #000;
+        }
+
+        .logo-text {
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .header-btn {
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        .header-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .header-btn.save {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #000;
+        }
+
+        .header-btn.save:hover {
+            background: var(--accent-hover);
+        }
+
+        /* Mobile Panel Toggle */
+        .mobile-toggle {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 999;
+        }
+
+        @media (max-width: 1200px) {
+            .editor-header {
+                position: relative;
+            }
+            
+            .panel {
+                display: none;
+                position: fixed;
+                top: 60px;
+                bottom: 0;
+                width: 300px;
+                z-index: 998;
+            }
+            
+            .panel.show-left {
+                display: block;
+                right: auto;
+                left: 0;
+            }
+            
+            .panel.show-right {
+                display: block;
+                left: auto;
+                right: 0;
+            }
+            
+            .canvas-area {
+                min-height: calc(100vh - 60px);
+            }
+            
+            .mobile-toggle {
+                display: flex;
+            }
+        }
+
+        /* Divider */
+        .divider {
+            height: 1px;
+            background: var(--border-color);
+            margin: 20px 0;
+        }
+
+        /* Template Preview */
+        .template-preview {
+            aspect-ratio: 3/4;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .template-preview:hover {
+            border-color: var(--accent);
+            transform: scale(1.02);
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--bg-card);
+            border: 1px solid var(--success);
+            color: var(--success);
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-weight: 600;
+            z-index: 2000;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        /* Empty State */
+        .empty-state {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+        }
+
+        /* Animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease forwards;
+        }
+
+        /* Reduced Motion */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="editor-header">
+        <div class="header-logo">
+            <div class="logo-badge">TI</div>
+            <span class="logo-text">محرر The Insider</span>
+        </div>
+        
+        <div class="header-actions">
+            <button class="header-btn" onclick="undoAction()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:middle;margin-left:6px"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/></svg>
+                تراجع
+            </button>
+            <button class="header-btn" onclick="redoAction()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:middle;margin-left:6px"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 019-9 9 9 0 016 2.3l3 2.7"/></svg>
+                إعادة
+            </button>
+            <button class="header-btn save" onclick="saveProject()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:middle;margin-left:6px"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
+                حفظ المشروع
+            </button>
+            <button class="header-btn save" onclick="exportPDF()" style="background:linear-gradient(135deg,#4ade80,#22c55e);border-color:#4ade80;color:#000;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:middle;margin-left:6px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                تصدير PDF
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Editor Layout -->
+    <div class="editor-layout" style="margin-top:60px;height:calc(100vh - 60px);">
+        
+        <!-- Left Panel - Tools -->
+        <aside class="panel show-left" id="leftPanel">
+            <div class="panel-header">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+                أدوات الإضافة
+            </div>
+
+            <div class="tools-grid">
+                <button class="tool-btn" onclick="addTextElement('heading')" title="عنوان رئيسي">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
+                    عنوان
+                </button>
+                <button class="tool-btn" onclick="addTextElement('subheading')" title="عنوان فرعي">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h8"/><path d="M4 18V6"/><path d="M12 18V6"/><path d="M17 12l3-2v8"/></svg>
+                    عنوان فرعي
+                </button>
+                <button class="tool-btn" onclick="addTextElement('paragraph')" title="نص عادي">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg>
+                    نص
+                </button>
+                <button class="tool-btn" onclick="addImageElement()" title="إضافة صورة">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg>
+                    صورة
+                </button>
+                <button class="tool-btn" onclick="addShapeElement('rectangle')" title="شكل مستطيل">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+                    مستطيل
+                </button>
+                <button class="tool-btn" onclick="addShapeElement('circle')" title="شكل دائري">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+                    دائرة
+                </button>
+                <button class="tool-btn" onclick="addShapeElement('line')" title="خط فاصل">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    خط
+                </button>
+                <button class="tool-btn" onclick="addHighlightBox()" title="صندوق تمييز">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                    تمييز
+                </button>
+                <button class="tool-btn" onclick="addLogoElement()" title="شعار">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5"/><line x1="12" y1="22" x2="12" y2="15.5"/><polyline points="22,8.5 12,15.5 2,8.5"/></svg>
+                    شعار
+                </button>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="panel-header">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                القوالب الجاهزة
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">
+                <div class="template-preview" onclick="loadTemplate('magazine')">
+                    <div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a24,#0d0d12);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px;text-align:center;">
+                        <div style="width:30px;height:30px;background:#d4af37;border-radius:6px;margin-bottom:8px;"></div>
+                        <div style="width:80%;height:8px;background:rgba(255,255,255,0.2);border-radius:4px;margin-bottom:4px;"></div>
+                        <div style="width:60%;height:6px;background:rgba(255,255,255,0.1);border-radius:4px;"></div>
+                    </div>
+                </div>
+                <div class="template-preview" onclick="loadTemplate('minimal')">
+                    <div style="width:100%;height:100%;background:#fff;display:flex;flex-direction:column;padding:15px;gap:8px;">
+                        <div style="width:40%;height:12px;background:#1a1a1a;border-radius:2px;"></div>
+                        <div style="width:100%;height:6px;background:#ccc;border-radius:2px;"></div>
+                        <div style="width:90%;height:6px;background:#ccc;border-radius:2px;"></div>
+                        <div style="width:95%;height:6px;background:#ccc;border-radius:2px;"></div>
+                        <div style="width:100%;height:60px;background:#f0f0f0;border-radius:4px;margin-top:auto;"></div>
+                    </div>
+                </div>
+                <div class="template-preview" onclick="loadTemplate('modern')">
+                    <div style="width:100%;height:100%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;flex-direction:column;padding:15px;justify-content:flex-end;">
+                        <div style="width:60%;height:10px;background:rgba(255,255,255,0.9);border-radius:2px;"></div>
+                        <div style="width:80%;height:6px;background:rgba(255,255,255,0.6);border-radius:2px;margin-top:6px;"></div>
+                    </div>
+                </div>
+                <div class="template-preview" onclick="loadTemplate('corporate')">
+                    <div style="width:100%;height:100%;background:#f8f9fa;display:flex;flex-direction:column;padding:15px;align-items:center;justify-content:center;border:2px solid #dee2e6;">
+                        <div style="width:50px;height:50px;background:#dc3545;border-radius:8px;"></div>
+                        <div style="width:70%;height:8px;background:#333;border-radius:2px;margin-top:12px;"></div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Center - Canvas -->
+        <main class="canvas-area">
+            <div class="book-canvas" id="bookCanvas">
+                <div class="page-spread">
+                    <div class="page-canvas left" id="leftPage" data-page="left">
+                        <div class="empty-state" id="leftEmpty">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M12 5v14M5 12h14"/>
+                            </svg>
+                            <p>اضف عناصر من الأدوات على اليمين</p>
+                            <p style="font-size:12px;margin-top:8px;">أو اسحب وأفلت هنا</p>
+                        </div>
+                    </div>
+                    <div class="page-spine"></div>
+                    <div class="page-canvas right" id="rightPage" data-page="right">
+                        <div class="empty-state" id="rightEmpty">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M12 5v14M5 12h14"/>
+                            </svg>
+                            <p>اضف عناصر من الأدوات على اليمين</p>
+                            <p style="font-size:12px;margin-top:8px;">أو اسحب وأفلت هنا</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Right Panel - Properties -->
+        <aside class="panel show-right" id="rightPanel">
+            <div class="panel-header">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                خصائص العنصر
+            </div>
+
+            <div id="propertiesPanel">
+                <div style="text-align:center;padding:30px;color:var(--text-secondary);">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:12px;opacity:0.5;">
+                        <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
+                        <path d="M13 13l6 6"/>
+                    </svg>
+                    <p>اختر عنصر لتعديله</p>
+                    <p style="font-size:12px;margin-top:8px;">انقر على أي عنصر في الصفحة</p>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="panel-header">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12,2 2,7 12,12 22,7"/><polyline points="2,17 12,22 22,17"/><polyline points="2,12 12,17 22,12"/></svg>
+                الطبقات
+            </div>
+
+            <div id="layersList">
+                <p style="text-align:center;color:var(--text-secondary);padding:20px;font-size:13px;">لا توجد عناصر بعد</p>
+            </div>
+
+            <div class="divider"></div>
+
+            <button class="action-btn danger" onclick="deleteSelected()" id="deleteBtn" style="display:none;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                حذف العنصر المحدد
+            </button>
+        </aside>
+    </div>
+
+    <!-- Mobile Toggles -->
+    <div class="mobile-toggle">
+        <button class="action-btn secondary" onclick="togglePanel('left')" style="width:auto;padding:12px 24px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            الأدوات
+        </button>
+        <button class="action-btn secondary" onclick="togglePanel('right')" style="width:auto;padding:12px 24px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+            الخصائص
+        </button>
+    </div>
+
+    <!-- Hidden File Input -->
+    <input type="file" id="imageInput" accept="image/*" style="display:none">
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ==================== STATE MANAGEMENT ====================
+        let elements = [];
+        let selectedElementId = null;
+        let elementIdCounter = 0;
+        let history = [];
+        let historyIndex = -1;
+        let activePage = 'right';
+        let isDragging = false;
+        let isResizing = false;
+        let dragOffset = { x: 0, y: 0 };
+        let currentResizeHandle = null;
+
+        // ==================== DOM REFERENCES ====================
+        const leftPage = document.getElementById('leftPage');
+        const rightPage = document.getElementById('rightPage');
+        const propertiesPanel = document.getElementById('propertiesPanel');
+        const layersList = document.getElementById('layersList');
+        const deleteBtn = document.getElementById('deleteBtn');
+        const imageInput = document.getElementById('imageInput');
+        const toast = document.getElementById('toast');
+
+        // ==================== UTILITY FUNCTIONS ====================
+        function generateId() {
+            return `el_${++elementIdCounter}_${Date.now()}`;
+        }
+
+        function showToast(message, type = 'success') {
+            toast.textContent = message;
+            toast.style.borderColor = type === 'success' ? 'var(--success)' : 'var(--danger)';
+            toast.style.color = type === 'success' ? 'var(--success)' : 'var(--danger)';
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+
+        function getActivePageEl() {
+            return activePage === 'left' ? leftPage : rightPage;
+        }
+
+        function saveState() {
+            history = history.slice(0, historyIndex + 1);
+            history.push(JSON.stringify(elements));
+            historyIndex++;
+            if (history.length > 50) {
+                history.shift();
+                historyIndex--;
+            }
+        }
+
+        function undoAction() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                elements = JSON.parse(history[historyIndex]);
+                renderAllElements();
+                deselectAll();
+                showToast('تم التراجع');
+            }
+        }
+
+        function redoAction() {
+            if (historyIndex < history.length - 1) {
+                historyIndex++;
+                elements = JSON.parse(history[historyIndex]);
+                renderAllElements();
+                deselectAll();
+                showToast('تم الإعادة');
+            }
+        }
+
+        // ==================== ELEMENT CREATION ====================
+        function addTextElement(type) {
+            const page = getActivePageEl();
+            const pageRect = page.getBoundingClientRect();
+            
+            const configs = {
+                heading: { 
+                    text: 'عنوان رئيسي', 
+                    fontSize: 28, 
+                    fontWeight: 'bold',
+                    fontFamily: 'Playfair Display',
+                    width: 280,
+                    height: 50
+                },
+                subheading: { 
+                    text: 'عنوان فرعي هنا', 
+                    fontSize: 20, 
+                    fontWeight: '600',
+                    fontFamily: 'Tajawal',
+                    width: 220,
+                    height: 35
+                },
+                paragraph: { 
+                    text: 'أضف نصك هنا... اكتب ما تريد عرضه في هذه المساحة. يمكنك تعديل هذا النص بالنقر عليه.', 
+                    fontSize: 14, 
+                    fontWeight: 'normal',
+                    fontFamily: 'Tajawal',
+                    width: 260,
+                    height: 100
+                }
+            };
+
+            const config = configs[type];
+            const element = {
+                id: generateId(),
+                type: 'text',
+                page: activePage,
+                content: config.text,
+                x: Math.max(20, (pageRect.width / 2) - (config.width / 2)),
+                y: Math.max(20, (pageRect.height / 2) - (config.height / 2)),
+                width: config.width,
+                height: config.height,
+                styles: {
+                    fontSize: config.fontSize,
+                    fontWeight: config.fontWeight,
+                    fontFamily: config.fontFamily,
+                    color: '#1a1a1a',
+                    textAlign: 'right',
+                    lineHeight: 1.5,
+                    backgroundColor: 'transparent',
+                    padding: '10px'
+                }
+            };
+
+            elements.push(element);
+            saveState();
+            renderElement(element);
+            selectElement(element.id);
+            updateLayersList();
+            updateEmptyStates();
+            showToast('تمت إضافة النص');
+        }
+
+        function addImageElement() {
+            imageInput.click();
+        }
+
+        imageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const page = getActivePageEl();
+                const pageRect = page.getBoundingClientRect();
+
+                const element = {
+                    id: generateId(),
+                    type: 'image',
+                    page: activePage,
+                    src: event.target.result,
+                    x: Math.max(20, (pageRect.width / 2) - 125),
+                    y: Math.max(20, (pageRect.height / 2) - 85),
+                    width: 250,
+                    height: 170,
+                    styles: {
+                        borderRadius: '8px',
+                        objectFit: 'cover'
+                    }
+                };
+
+                elements.push(element);
+                saveState();
+                renderElement(element);
+                selectElement(element.id);
+                updateLayersList();
+                updateEmptyStates();
+                showToast('تمت إضافة الصورة');
+            };
+            reader.readAsDataURL(file);
+            imageInput.value = '';
+        });
+
+        function addShapeElement(shapeType) {
+            const page = getActivePageEl();
+            const pageRect = page.getBoundingClientRect();
+
+            const element = {
+                id: generateId(),
+                type: 'shape',
+                shapeType: shapeType,
+                page: activePage,
+                x: Math.max(20, (pageRect.width / 2) - 75),
+                y: Math.max(20, (pageRect.height / 2) - 75),
+                width: shapeType === 'line' ? 200 : 150,
+                height: shapeType === 'line' ? 4 : 150,
+                styles: {
+                    backgroundColor: shapeType === 'line' ? '#d4af37' : 'rgba(212, 175, 55, 0.2)',
+                    borderColor: '#d4af37',
+                    borderWidth: shapeType === 'line' ? '0' : '2px',
+                    borderRadius: shapeType === 'circle' ? '50%' : '8px'
+                }
+            };
+
+            elements.push(element);
+            saveState();
+            renderElement(element);
+            selectElement(element.id);
+            updateLayersList();
+            updateEmptyStates();
+            showToast('تمت إضافة الشكل');
+        }
+
+        function addHighlightBox() {
+            const page = getActivePageEl();
+            const pageRect = page.getBoundingClientRect();
+
+            const element = {
+                id: generateId(),
+                type: 'highlight',
+                page: activePage,
+                title: 'نقطة مهمة',
+                content: 'أضف نص التمييز هنا...',
+                x: 20,
+                y: pageRect.height - 130,
+                width: pageRect - 40,
+                height: 110,
+                styles: {
+                    backgroundColor: 'rgba(212, 175, 55, 0.15)',
+                    borderColor: '#d4af37',
+                    borderWidth: '3px',
+                    borderStyle: 'solid',
+                    borderRadius: '0 12px 12px 0',
+                    titleColor: '#1a1a1a',
+                    titleFontSize: '16px',
+                    contentColor: '#444',
+                    contentFontSize: '13px'
+                }
+            };
+
+            elements.push(element);
+            saveState();
+            renderElement(element);
+            selectElement(element.id);
+            updateLayersList();
+            updateEmptyStates();
+            showToast('تمت إضافة صندوق التمييز');
+        }
+
+        function addLogoElement() {
+            const page = getActivePageEl();
+
+            const element = {
+                id: generateId(),
+                type: 'logo',
+                page: activePage,
+                x: 20,
+                y: 20,
+                width: 50,
+                height: 50,
+                styles: {
+                    backgroundColor: 'linear-gradient(135deg, #d4af37, #b87333)',
+                    borderRadius: '12px',
+                    text: 'TI',
+                    textColor: '#ffffff',
+                    fontSize: '20px'
+                }
+            };
+
+            elements.push(element);
+            saveState();
+            renderElement(element);
+            selectElement(element.id);
+            updateLayersList();
+            updateEmptyStates();
+            showToast('تمت إضافة الشعار');
+        }
+
+        // ==================== RENDERING ====================
+        function renderElement(el) {
+            const page = el.page === 'left' ? leftPage : rightPage;
+            
+            let html = '';
+            const baseStyles = `
+                position: absolute;
+                left: ${el.x}px;
+                top: ${el.y}px;
+                width: ${el.width}px;
+                height: ${el.height}px;
+            `;
+
+            switch(el.type) {
+                case 'text':
+                    html = `
+                        <div class="editable-element text-element" data-id="${el.id}" style="${baseStyles}
+                            font-size: ${el.styles.fontSize}px;
+                            font-weight: ${el.styles.fontWeight};
+                            font-family: '${el.styles.fontFamily}', sans-serif;
+                            color: ${el.styles.color};
+                            text-align: ${el.styles.textAlign};
+                            line-height: ${el.styles.lineHeight};
+                            background: ${el.styles.backgroundColor};
+                            padding: ${el.styles.padding};
+                        " contenteditable="false">${el.content}</div>
+                    `;
+                    break;
+
+                case 'image':
+                    html = `
+                        <div class="editable-element image-element" data-id="${el.id}" style="${baseStyles}
+                            border-radius: ${el.styles.borderRadius};
+                        ">
+                            <img src="${el.src}" alt="" draggable="false">
+                        </div>
+                    `;
+                    break;
+
+                case 'shape':
+                    const shapeStyles = el.shapeType === 'line' ? `
+                        background: ${el.styles.backgroundColor};
+                    ` : `
+                        background: ${el.styles.backgroundColor};
+                        border: ${el.styles.borderWidth} solid ${el.styles.borderColor};
+                        border-radius: ${el.styles.borderRadius};
+                    `;
+                    html = `
+                        <div class="editable-element shape-element" data-id="${el.id}" style="${baseStyles}${shapeStyles}"></div>
+                    `;
+                    break;
+
+                case 'highlight':
+                    html = `
+                        <div class="editable-element highlight-element" data-id="${el.id}" style="${baseStyles}
+                            background: ${el.styles.backgroundColor};
+                            border-${document.documentElement.dir === 'rtl' ? 'right' : 'left'}: ${el.styles.borderWidth} ${el.styles.borderStyle} ${el.styles.borderColor};
+                            border-radius: ${el.styles.borderRadius};
+                            padding: 15px;
+                            display: flex;
+                            flex-direction: column;
+                            justify-content: center;
+                        ">
+                            <div style="font-weight: bold; color: ${el.styles.titleColor}; font-size: ${el.styles.titleFontSize}; margin-bottom: 6px;">${el.title}</div>
+                            <div style="color: ${el.styles.contentColor}; font-size: ${el.styles.contentFontSize}; line-height: 1.6;">${el.content}</div>
+                        </div>
+                    `;
+                    break;
+
+                case 'logo':
+                    html = `
+                        <div class="editable-element logo-element" data-id="${el.id}" style="${baseStyles}
+                            background: ${el.styles.backgroundColor};
+                            border-radius: ${el.styles.borderRadius};
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-weight: 900;
+                            font-family: 'Playfair Display', serif;
+                            color: ${el.styles.textColor};
+                            font-size: ${el.styles.fontSize};
+                        ">${el.styles.text}</div>
+                    `;
+                    break;
+            }
+
+            // Add resize handles
+            if (html) {
+                html = html.replace('</div>', `
+                    <div class="resize-handle nw"></div>
+                    <div class="resize-handle ne"></div>
+                    <div class="resize-handle sw"></div>
+                    <div class="resize-handle se"></div>
+                </div>`);
+                
+                page.insertAdjacentHTML('beforeend', html);
+                
+                // Attach events to new element
+                const newEl = page.querySelector(`[data-id="${el.id}"]`);
+                attachElementEvents(newEl);
+            }
+        }
+
+        function renderAllElements() {
+            // Clear existing elements
+            document.querySelectorAll('.editable-element').forEach(el => el.remove());
+            
+            // Render all
+            elements.forEach(el => renderElement(el));
+            updateEmptyStates();
+        }
+
+        function updateEmptyStates() {
+            const leftElements = elements.filter(e => e.page === 'left').length;
+            const rightElements = elements.filter(e => e.page === 'right').length;
+            
+            document.getElementById('leftEmpty').style.display = leftElements > 0 ? 'none' : 'flex';
+            document.getElementById('rightEmpty').style.display = rightElements > 0 ? 'none' : 'flex';
+        }
+
+        // ==================== SELECTION & INTERACTION ====================
+        function attachElementEvents(el) {
+            el.addEventListener('mousedown', handleMouseDown);
+            el.addEventListener('touchstart', handleTouchStart, { passive: false });
+            
+            // Resize handles
+            el.querySelectorAll('.resize-handle').forEach(handle => {
+                handle.addEventListener('mousedown', handleResizeStart);
+                handle.addEventListener('touchstart', handleResizeTouchStart, { passive: false });
+            });
+
+            // Double click for text editing
+            if (el.classList.contains('text-element')) {
+                el.addEventListener('dblclick', () => {
+                    el.setAttribute('contenteditable', 'true');
+                    el.focus();
+                });
+                
+                el.addEventListener('blur', () => {
+                    el.setAttribute('contenteditable', 'false');
+                    const elementData = elements.find(e => e.id === el.dataset.id);
+                    if (elementData) {
+                        elementData.content = el.innerHTML;
+                        saveState();
+                    }
+                });
+            }
+        }
+
+        function handleMouseDown(e) {
+            if (e.target.classList.contains('resize-handle')) return;
+            
+            e.preventDefault();
+            const el = e.currentTarget;
+            selectElement(el.dataset.id);
+            
+            isDragging = true;
+            const rect = el.getBoundingClientRect();
+            dragOffset.x = e.clientX - rect.left;
+            dragOffset.y = e.clientY - rect.top;
+        }
+
+        function handleTouchStart(e) {
+            if (e.target.classList.contains('resize-handle')) return;
+            
+            e.preventDefault();
+            const el = e.currentTarget;
+            selectElement(el.dataset.id);
+            
+            isDragging = true;
+            const rect = el.getBoundingClientRect();
+            const touch = e.touches[0];
+            dragOffset.x = touch.clientX - rect.left;
+            dragOffset.y = touch.clientY - rect.top;
+        }
+
+        function handleMouseMove(e) {
+            if (!isDragging || !selectedElementId) return;
+            
+            const elementData = elements.find(el => el.id === selectedElementId);
+            if (!elementData) return;
+
+            const page = elementData.page === 'left' ? leftPage : rightPage;
+            const pageRect = page.getBoundingClientRect();
+            
+            let newX = e.clientX - pageRect.left - dragOffset.x;
+            let newY = e.clientY - pageRect.top - dragOffset.y;
+            
+            // Constrain to page bounds
+            newX = Math.max(0, Math.min(newX, pageRect.width - elementData.width));
+            newY = Math.max(0, Math.min(newY, pageRect.height - elementData.height));
+            
+            elementData.x = newX;
+            elementData.y = newY;
+            
+            const domEl = page.querySelector(`[data-id="${selectedElementId}"]`);
+            if (domEl) {
+                domEl.style.left = `${newX}px`;
+                domEl.style.top = `${newY}px`;
+            }
+        }
+
+        function handleTouchMove(e) {
+            if (!isDragging || !selectedElementId) return;
+            
+            const elementData = elements.find(el => el.id === selectedElementId);
+            if (!elementData) return;
+
+            const page = elementData.page === 'left' ? leftPage : rightPage;
+            const pageRect = page.getBoundingClientRect();
+            const touch = e.touches[0];
+            
+            let newX = touch.clientX - pageRect.left - dragOffset.x;
+            let newY = touch.clientY - pageRect.top - dragOffset.y;
+            
+            newX = Math.max(0, Math.min(newX, pageRect.width - elementData.width));
+            newY = Math.max(0, Math.min(newY, pageRect.height - elementData.height));
+            
+            elementData.x = newX;
+            elementData.y = newY;
+            
+            const domEl = page.querySelector(`[data-id="${selectedElementId}"]`);
+            if (domEl) {
+                domEl.style.left = `${newX}px`;
+                domEl.style.top = `${newY}px`;
+            }
+        }
+
+        function handleMouseUp() {
+            if (isDragging) {
+                isDragging = false;
+                saveState();
+            }
+            if (isResizing) {
+                isResizing = false;
+                currentResizeHandle = null;
+                saveState();
+            }
+        }
+
+        // Resize functionality
+        function handleResizeStart(e) {
+            e.stopPropagation();
+            isResizing = true;
+            currentResizeHandle = e.target.className.split(' ')[1];
+        }
+
+        function handleResizeTouchStart(e) {
+            e.stopPropagation();
+            isResizing = true;
+            currentResizeHandle = e.target.className.split(' ')[1];
+        }
+
+        function handleResizeMove(e) {
+            if (!isResizing || !selectedElementId || !currentResizeHandle) return;
+            
+            const elementData = elements.find(el => el.id === selectedElementId);
+            if (!elementData) return;
+
+            const page = elementData.page === 'left' ? leftPage : rightPage;
+            const pageRect = page.getBoundingClientRect();
+            const domEl = page.querySelector(`[data-id="${selectedElementId}"]`);
+            if (!domEl) return;
+
+            const mouseX = e.clientX - pageRect.left;
+            const mouseY = e.clientY - pageRect.top;
+            const minSize = 30;
+
+            switch(currentResizeHandle) {
+                case 'se':
+                    elementData.width = Math.max(minSize, mouseX - elementData.x);
+                    elementData.height = Math.max(minSize, mouseY - elementData.y);
+                    break;
+                case 'sw':
+                    const newWidthSW = Math.max(minSize, elementData.x + elementData.width - mouseX);
+                    elementData.x = elementData.x + elementData.width - newWidthSW;
+                    elementData.width = newWidthSW;
+                    elementData.height = Math.max(minSize, mouseY - elementData.y);
+                    break;
+                case 'ne':
+                    elementData.width = Math.max(minSize, mouseX - elementData.x);
+                    const newHeightNE = Math.max(minSize, elementData.y + elementData.height - mouseY);
+                    elementData.y = elementData.y + elementData.height - newHeightNE;
+                    elementData.height = newHeightNE;
+                    break;
+                case 'nw':
+                    const newWidthNW = Math.max(minSize, elementData.x + elementData.width - mouseX);
+                    const newHeightNW = Math.max(minSize, elementData.y + elementData.height - mouseY);
+                    elementData.x = elementData.x + elementData.width - newWidthNW;
+                    elementData.y = elementData.y + elementData.height - newHeightNW;
+                    elementData.width = newWidthNW;
+                    elementData.height = newHeightNW;
+                    break;
+            }
+
+            domEl.style.width = `${elementData.width}px`;
+            domEl.style.height = `${elementData.height}px`;
+            domEl.style.left = `${elementData.x}px`;
+            domEl.style.top = `${elementData.y}px`;
+        }
+
+        // Global event listeners for dragging/resizing
+        document.addEventListener('mousemove', (e) => {
+            handleMouseMove(e);
+            handleResizeMove(e);
+        });
+        document.addEventListener('touchmove', (e) => {
+            handleTouchMove(e);
+            handleResizeMove(e.touches[0]);
+        }, { passive: false });
+        document.addEventListener('mouseup', handleMouseUp);
+        document.addEventListener('touchend', handleMouseUp);
+
+        // Click outside to deselect
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.editable-element') && !e.target.closest('.panel')) {
+                deselectAll();
+            }
+        });
+
+        function selectElement(id) {
+            deselectAll();
+            selectedElementId = id;
+            
+            const el = document.querySelector(`[data-id="${id}"]`);
+            if (el) {
+                el.classList.add('selected');
+            }
+            
+            deleteBtn.style.display = 'flex';
+            updatePropertiesPanel();
+            updateLayersList();
+        }
+
+        function deselectAll() {
+            document.querySelectorAll('.editable-element').forEach(el => {
+                el.classList.remove('selected');
+            });
+            selectedElementId = null;
+            deleteBtn.style.display = 'none';
+            updatePropertiesPanel();
+            updateLayersList();
+        }
+
+        // ==================== PROPERTIES PANEL ====================
+        function updatePropertiesPanel() {
+            if (!selectedElementId) {
+                propertiesPanel.innerHTML = `
+                    <div style="text-align:center;padding:30px;color:var(--text-secondary);">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:12px;opacity:0.5;">
+                            <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
+                            <path d="M13 13l6 6"/>
+                        </svg>
+                        <p>اختر عنصر لتعديله</p>
+                        <p style="font-size:12px;margin-top:8px;">انقر على أي عنصر في الصفحة</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const el = elements.find(e => e.id === selectedElementId);
+            if (!el) return;
+
+            let html = '';
+
+            // Position & Size
+            html += `
+                <div class="input-group">
+                    <label class="input-label">الموقع X</label>
+                    <input type="number" class="input-field" value="${Math.round(el.x)}" onchange="updateProperty('x', this.value)">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">الموقع Y</label>
+                    <input type="number" class="input-field" value="${Math.round(el.y)}" onchange="updateProperty('y', this.value)">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">العرض</label>
+                    <input type="number" class="input-field" value="${Math.round(el.width)}" onchange="updateProperty('width', this.value)" min="30">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">الارتفاع</label>
+                    <input type="number" class="input-field" value="${Math.round(el.height)}" onchange="updateProperty('height', this.value)" min="30">
+                </div>
+            `;
+
+            // Type-specific properties
+            if (el.type === 'text') {
+                html += `<div class="divider"></div>`;
+                html += `
+                    <div class="input-group">
+                        <label class="input-label">حجم الخط</label>
+                        <input type="range" class="range-slider" min="10" max="72" value="${el.styles.fontSize}" onchange="updateStyle('fontSize', this.value + 'px')">
+                        <span style="font-size:12px;color:var(--text-secondary);margin-top:4px;display:block;">${el.styles.fontSize}px</span>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">الخط</label>
+                        <select class="input-field" onchange="updateStyle('fontFamily', this.value)">
+                            <option value="Tajawal" ${el.styles.fontFamily === 'Tajawal' ? 'selected' : ''}>Tajawal</option>
+                            <option value="Cairo" ${el.styles.fontFamily === 'Cairo' ? 'selected' : ''}>Cairo</option>
+                            <option value="Playfair Display" ${el.styles.fontFamily === 'Playfair Display' ? 'selected' : ''}>Playfair Display</option>
+                            <option value="Arial" ${el.styles.fontFamily === 'Arial' ? 'selected' : ''}>Arial</option>
+                            <option value="Georgia" ${el.styles.fontFamily === 'Georgia' ? 'selected' : ''}>Georgia</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">الوزن</label>
+                        <select class="input-field" onchange="updateStyle('fontWeight', this.value)">
+                            <option value="normal" ${el.styles.fontWeight === 'normal' ? 'selected' : ''}>عادي</option>
+                            <option value="500" ${el.styles.fontWeight === '500' ? 'selected' : ''}>متوسط</option>
+                            <option value="600" ${el.styles.fontWeight === '600' ? 'selected' : ''}>نصف غامق</option>
+                            <option value="bold" ${el.styles.fontWeight === 'bold' ? 'selected' : ''}>غامق</option>
+                            <option value="800" ${el.styles.fontWeight === '800' ? 'selected' : ''}>غامق جداً</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">محاذاة النص</label>
+                        <select class="input-field" onchange="updateStyle('textAlign', this.value)">
+                            <option value="right" ${el.styles.textAlign === 'right' ? 'selected' : ''}>يمين</option>
+                            <option value="center" ${el.styles.textAlign === 'center' ? 'selected' : ''}>وسط</option>
+                            <option value="left" ${el.styles.textAlign === 'left' ? 'selected' : ''}>يسار</option>
+                            <option value="justify" ${el.styles.textAlign === 'justify' ? 'selected' : ''}>ضبط</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">لون النص</label>
+                        <div class="color-grid">
+                            ${['#1a1a1a','#333333','#666666','#d4af37','#b87333','#2563eb','#dc2626','#059669'].map(c => `
+                                <div class="color-swatch ${el.styles.color === c ? 'active' : ''}" 
+                                     style="background:${c}" 
+                                     onclick="updateStyle('color', '${c}')"></div>
+                            `).join('')}
+                        </div>
+                        <input type="color" class="input-field" value="${el.styles.color}" onchange="updateStyle('color', this.value)" style="margin-top:8px;">
+                    </div>
+                `;
+            }
+
+            if (el.type === 'image' || el.type === 'shape' || el.type === 'highlight' || el.type === 'logo') {
+                html += `<div class="divider"></div>`;
+                
+                if (el.type !== 'logo') {
+                    html += `
+                        <div class="input-group">
+                            <label class="input-label">لون الخلفية</label>
+                            <div class="color-grid">
+                                ${['transparent','rgba(212,175,55,0.2)','rgba(0,0,0,0.8)','rgba(255,255,255,0.9)','#1a1a24','#d4af37','#2563eb','#dc2626'].map(c => `
+                                    <div class="color-swatch ${el.styles.backgroundColor === c ? 'active' : ''}" 
+                                         style="background:${c === 'transparent' ? 'repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 50%/10px 10px' : c}" 
+                                         onclick="updateStyle('backgroundColor', '${c}')"></div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                if (el.type !== 'logo') {
+                    html += `
+                        <div class="input-group">
+                            <label class="input-label">حافة مدورة</label>
+                            <input type="range" class="range-slider" min="0" max="50" value="${parseInt(el.styles.borderRadius) || 0}" onchange="updateStyle('borderRadius', this.value + 'px')">
+                        </div>
+                    `;
+                }
+            }
+
+            if (el.type === 'highlight') {
+                html += `
+                    <div class="input-group">
+                        <label class="input-label">العنوان</label>
+                        <input type="text" class="input-field" value="${el.title}" onchange="updateHighlightTitle(this.value)">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">المحتوى</label>
+                        <textarea class="input-field" rows="2" onchange="updateHighlightContent(this.value)">${el.content}</textarea>
+                    </div>
+                `;
+            }
+
+            propertiesPanel.innerHTML = html;
+        }
+
+        function updateProperty(prop, value) {
+            const el = elements.find(e => e.id === selectedElementId);
+            if (!el) return;
+            
+            el[prop] = parseFloat(value);
+            
+            const domEl = document.querySelector(`[data-id="${selectedElementId}"]`);
+            if (domEl) {
+                domEl.style[prop] = value + 'px';
+            }
+            
+            saveState();
+        }
+
+        function updateStyle(prop, value) {
+            const el = elements.find(e => e.id === selectedElementId);
+            if (!el) return;
+            
+            el.styles[prop] = value;
+            
+            const domEl = document.querySelector(`[data-id="${selectedElementId}"]`);
+            if (domEl) {
+                domEl.style[prop] = value;
+            }
+            
+            updatePropertiesPanel();
+            saveState();
+        }
+
+        function updateHighlightTitle(value) {
+            const el = elements.find(e => e.id === selectedElementId);
+            if (!el) return;
+            el.title = value;
+            
+            const domEl = document.querySelector(`[data-id="${selectedElementId}"]`);
+            if (domEl) {
+                const titleEl = domEl.querySelector('div:first-child');
+                if (titleEl) titleEl.textContent = value;
+            }
+            saveState();
+        }
+
+        function updateHighlightContent(value) {
+            const el = elements.find(e => e.id === selectedElementId);
+            if (!el) return;
+            el.content = value;
+            
+            const domEl = document.querySelector(`[data-id="${selectedElementId}"]`);
+            if (domEl) {
+                const contentEl = domEl.querySelector('div:last-child');
+                if (contentEl) contentEl.textContent = value;
+            }
+            saveState();
+        }
+
+        // ==================== LAYERS LIST ====================
+        function updateLayersList() {
+            if (elements.length === 0) {
+                layersList.innerHTML = '<p style="text-align:center;color:var(--text-secondary);padding:20px;font-size:13px;">لا توجد عناصر بعد</p>';
+                return;
+            }
+
+            layersList.innerHTML = [...elements].reverse().map((el, idx) => {
+                const icons = {
+                    text: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>',
+                    image: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg>',
+                    shape: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>',
+                    highlight: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/></svg>',
+                    logo: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5"/></svg>'
+                };
+                
+                const names = {
+                    text: el.content?.substring(0, 20) + '...' || 'نص',
+                    image: 'صورة',
+                    shape: 'شكل',
+                    highlight: el.title || 'تمييز',
+                    logo: 'شعار'
+                };
+                
+                return `
+                    <div class="layer-item ${el.id === selectedElementId ? 'active' : ''}" onclick="selectElement('${el.id}')">
+                        <div class="layer-icon">${icons[el.type]}</div>
+                        <div class="layer-info">
+                            <div class="layer-name">${names[el.type]}</div>
+                            <div class="layer-type">${el.page === 'left' ? 'يسار' : 'يمين'} • ${Math.round(el.width)}×${Math.round(el.height)}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ==================== DELETE ====================
+        function deleteSelected() {
+            if (!selectedElementId) return;
+            
+            const index = elements.findIndex(e => e.id === selectedElementId);
+            if (index > -1) {
+                elements.splice(index, 1);
+                
+                const domEl = document.querySelector(`[data-id="${selectedElementId}"]`);
+                if (domEl) domEl.remove();
+                
+                selectedElementId = null;
+                deleteBtn.style.display = 'none';
+                
+                saveState();
+                updatePropertiesPanel();
+                updateLayersList();
+                updateEmptyStates();
+                showToast('تم حذف العنصر');
+            }
+        }
+
+        // Delete with keyboard
+        document.addEventListener('keydown', (e) => {
+            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedElementId && !e.target.matches('input, textarea, [contenteditable="true"]')) {
+                e.preventDefault();
+                deleteSelected();
+            }
+        });
+
+        // ==================== TEMPLATES ====================
+        function loadTemplate(templateName) {
+            if (!confirm('هل تريد تحميل هذا القالب؟ سيتم استبدال المحتوى الحالي.')) return;
+            
+            elements = [];
+            
+            switch(templateName) {
+                case 'magazine':
+                    elements = [
+                        {
+                            id: generateId(), type: 'logo', page: 'left',
+                            x: 20, y: 20, width: 50, height: 50,
+                            styles: { backgroundColor: 'linear-gradient(135deg, #d4af37, #b87333)', borderRadius: '12px', text: 'TI', textColor: '#ffffff', fontSize: '20px' }
+                        },
+                        {
+                            id: generateId(), type: 'text', page: 'left',
+                            content: 'THE INSIDER', x: 20, y: 90, width: 280, height: 50,
+                            styles: { fontSize: 32, fontWeight: 'bold', fontFamily: 'Playfair Display', color: '#1a1a1a', textAlign: 'center', lineHeight: 1.2, backgroundColor: 'transparent', padding: '10px' }
+                        },
+                        {
+                            id: generateId(), type: 'text', page: 'left',
+                            content: 'March 2026 Edition', x: 20, y: 150, width: 280, height: 30,
+                            styles: { fontSize: 14, fontWeight: 'normal', fontFamily: 'Tajawal', color: '#d4af37', textAlign: 'center', lineHeight: 1.5, backgroundColor: 'transparent', padding: '5px' }
+                        },
+                        {
+                            id: generateId(), type: 'shape', page: 'left', shapeType: 'rectangle',
+                            x: 40, y: 210, width: 240, height: 200,
+                            styles: { backgroundColor: 'rgba(26, 26, 36, 0.95)', borderColor: '#d4af37', borderWidth: '2px', borderRadius: '12px' }
+                        },
+                        {
+                            id: generateId(), type: 'text', page: 'right',
+                            content: 'رسالة المحرر', x: 20, y: 20, width: 280, height: 40,
+                            styles: { fontSize: 24, fontWeight: 'bold', fontFamily: 'Playfair Display', color: '#1a1a1a', textAlign: 'right', lineHeight: 1.3, backgroundColor: 'transparent', padding: '10px' }
+                        },
+                        {
+                            id: generateId(), type: 'text', page: 'right',
+                            content: 'مرحباً بكم في عدد مارس من مجلة The Insider. نستكشف معاً أحدث الاتجاهات في عالم التقنية والأعمال.', x: 20, y: 70, width: 340, height: 100,
+                            styles: { fontSize: 14, fontWeight: 'normal', fontFamily: 'Tajawal', color: '#444', textAlign: 'right', lineHeight: 1.8, backgroundColor: 'transparent', padding: '10px' }
+                        },
+                        {
+                            id: generateId(), type: 'highlight', page: 'right',
+                            title: 'نقطة البداية', content: 'التغيير يبدأ من هنا - اكتشف المزيد داخل العدد',
+                            x: 20, y: 380, width: 340, height: 90,
+                            styles: { backgroundColor: 'rgba(212, 175, 55, 0.15)', borderColor: '#d4af37', borderWidth: '3px', borderStyle: 'solid', borderRadius: '0 12px 12px 0', titleColor: '#1a1a1a', titleFontSize: '16px', contentColor: '#555', contentFontSize: '13px' }
+                        }
+                    ];
+                    break;
+                    
+                case 'minimal':
+                    elements = [
+                        {
+                            id: generateId(), type: 'text', page: 'right',
+                            content: 'عنوان بسيط', x: 20, y: 30, width: 200, height: 35,
+                            styles: { fontSize: 22, fontWeight: 'bold', fontFamily: 'Cairo', color: '#1a1a1a', textAlign: 'right', lineHeight: 1.3, backgroundColor: 'transparent', padding: '5px' }
+                        },
+                        {
+                            id: generateId(), type: 'text', page: 'right',
+                            content: 'هذا نموذج تصميم بسيط وأنيق. أضف محتواك الخاص هنا مع الحفاظ على البساطة والأنيقة.', x: 20, y: 80, width: 340, height: 80,
+                            styles: { fontSize: 14, fontWeight: 'normal', fontFamily: 'Tajawal', color: '#555', textAlign: 'right', lineHeight: 1.8, backgroundColor: 'transparent', padding: '10px' }
+                        },
+                        {
+                            id: generateId(), type: 'shape', page: 'right', shapeType: 'rectangle',
+                            x: 20, y: 180, width: 340, height: 180,
+                            styles: { backgroundColor: '#f5f5f5', borderColor: 'transparent', borderWidth: '0', borderRadius: '8px' }
+                        },
+                        {
+                            id: generateId(), type: 'text', page: 'right',
+                            content: 'اقتباس ملهم', x: 40, y: 200, width: 300, height: 140,
+                            styles: { fontSize: 18, fontWeight: '600', fontFamily: 'Playfair Display', color: '#333', textAlign: 'center', lineHeight: 1.6, backgroundColor: 'transparent', padding: '15px' }
+                        }
+                    ];
+                    break;
+                    
+                case 'modern':
+                    elements = [
+                        {
+                            id: generateId(), type: 'shape', page: 'right', shapeType: 'rectangle',
+                            x: 0, y: 0, width: 388, height: 550,
+                            styles: { backgroundColor: 'linear-gradient(135deg, #667eea, #764ba2)', borderColor: 'transparent', borderWidth: '0', borderRadius: '0' }
+                        },
+                        {
+                            id: generateId(), type: 'text', page: 'right',
+                            content: 'تصميم عصري', x: 30, y: 200, width: 330, height: 50,
+                            styles: { fontSize: 36, fontWeight: 'bold', fontFamily: 'Cairo', color: '#ffffff', textAlign: 'center', lineHeight: 1.2, backgroundColor: 'transparent', padding: '10px' }
+                        },
+                        {
+                            id: generateId(), type: 'text', page: 'right',
+                            content: 'ألوان جريئة وتصميم جذاب', x: 30, y: 270, width: 330, height: 30,
+                            styles: { fontSize: 16, fontWeight: 'normal', fontFamily: 'Tajawal', color: 'rgba(255,255,255,0.8)', textAlign: 'center', lineHeight: 1.5, backgroundColor: 'transparent', padding: '5px' }
+                        }
+                    ];
+                    break;
+                    
+                case 'corporate':
+                    elements = [
+                        {
+                            id: generateId(), type: 'shape', page: 'right', shapeType: 'rectangle',
+                            x: 154, y: 40, width: 80, height: 80,
+                            styles: { backgroundColor: '#dc3545', borderColor: 'transparent', borderWidth: '0', borderRadius: '16px' }
+                        },
+                        {
+                            id: generateId(), type: 'text', page: 'right',
+                            content: 'اسم الشركة', x: 20, y: 140, width: 348, height: 35,
+                            styles: { fontSize: 24, fontWeight: 'bold', fontFamily: 'Cairo', color: '#1a1a1a', textAlign: 'center', lineHeight: 1.3, backgroundColor: 'transparent', padding: '5px' }
+                        },
+                        {
+                            id: generateId(), type: 'text', page: 'right',
+                            content: 'شعارنا أو رسالتنا هنا', x: 20, y: 190, width: 348, height: 25,
+                            styles: { fontSize: 14, fontWeight: 'normal', fontFamily: 'Tajawal', color: '#666', textAlign: 'center', lineHeight: 1.5, backgroundColor: 'transparent', padding: '5px' }
+                        },
+                        {
+                            id: generateId(), type: 'shape', page: 'right', shapeType: 'line',
+                            x: 144, y: 240, width: 100, height: 4,
+                            styles: { backgroundColor: '#dc3545', borderColor: 'transparent', borderWidth: '0', borderRadius: '2px' }
+                        },
+                        {
+                            id: generateId(), type: 'text', page: 'right',
+                            content: 'نبذة عن الشركة والخدمات التي نقدمها. يمكن إضافة معلومات إضافية هنا.', x: 40, y: 270, width: 308, height: 100,
+                            styles: { fontSize: 14, fontWeight: 'normal', fontFamily: 'Tajawal', color: '#444', textAlign: 'center', lineHeight: 1.8, backgroundColor: 'transparent', padding: '10px' }
+                        }
+                    ];
+                    break;
+            }
+            
+            saveState();
+            renderAllElements();
+            deselectAll();
+            showToast('تم تحميل القالب');
+        }
+
+        // ==================== SAVE & EXPORT ====================
+        function saveProject() {
+            const projectData = {
+                name: 'The Insider Magazine',
+                date: new Date().toISOString(),
+                elements: elements
+            };
+            
+            localStorage.setItem('magazineProject', JSON.stringify(projectData));
+            showToast('تم حفظ المشروع بنجاح!');
+        }
+
+        function exportPDF() {
+            showToast('جاري تجهيز PDF...', 'info');
+            
+            setTimeout(() => {
+                // In a real app, you would use a library like html2pdf.js or jsPDF
+                // For demo purposes, we'll just show a message
+                alert('في الإصدار الكامل، سيتم تصدير الصفحة كملف PDF.\n\nيمكنك استخدام:\n- Ctrl+P للطباعة\n- أو截图 للحفظ كصورة');
+                showToast('استخدم Ctrl+P للحفظ', 'info');
+            }, 500);
+        }
+
+        // ==================== MOBILE PANEL TOGGLE ====================
+        function togglePanel(side) {
+            const panel = document.getElementById(side === 'left' ? 'leftPanel' : 'rightPanel');
+            const otherPanel = document.getElementById(side === 'left' ? 'rightPanel' : 'leftPanel');
+            
+            panel.classList.toggle('show-' + side);
+            otherPanel.classList.remove('show-' + (side === 'left' ? 'right' : 'left'));
+        }
+
+        // Page selection
+        leftPage.addEventListener('click', (e) => {
+            if (e.target === leftPage || e.target.id === 'leftEmpty') {
+                activePage = 'left';
+            }
+        });
+
+        rightPage.addEventListener('click', (e) => {
+            if (e.target === rightPage || e.target.id === 'rightEmpty') {
+                activePage = 'right';
+            }
+        });
+
+        // ==================== INITIALIZATION ====================
+        function init() {
+            // Load saved project if exists
+            const saved = localStorage.getItem('magazineProject');
+            if (saved) {
+                try {
+                    const project = JSON.parse(saved);
+                    if (project.elements && project.elements.length > 0) {
+                        elements = project.elements;
+                        renderAllElements();
+                        saveState(); // Initialize history
+                        showToast('تم تحميل المشروع المحفوظ');
+                    }
+                } catch (e) {
+                    console.log('No valid saved project');
+                }
+            }
+            
+            // Initial state save
+            if (elements.length === 0) {
+                saveState();
+            }
+            
+            updateEmptyStates();
+        }
+
+        init();
+    </script>
+</body>
+</html>
