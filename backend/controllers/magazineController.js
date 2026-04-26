@@ -135,6 +135,34 @@ const magazineController = {
             console.error('Set cover image error:', error);
             res.status(500).json({ error: 'Failed to upload cover' });
         }
+    },
+
+    // Process and Upload Spatial Data (Shapefile ZIP)
+    uploadSpatial: async (req, res) => {
+        try {
+            if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+            
+            // Parse Shapefile from Buffer
+            const shp = require('shpjs');
+            const geojson = await shp(req.file.buffer);
+            
+            const dataSize = JSON.stringify(geojson).length;
+            
+            // If the resulting JSON is large, upload to R2
+            if (dataSize > 250000) { // 250KB threshold
+                const url = await uploadToCloud(
+                    Buffer.from(JSON.stringify(geojson)), 
+                    `spatial_${Date.now()}.json`, 
+                    'application/json'
+                );
+                return res.json({ url, type: 'link', size: dataSize });
+            }
+            
+            res.json({ data: geojson, type: 'data', size: dataSize });
+        } catch (error) {
+            console.error('Spatial data upload error:', error);
+            res.status(500).json({ error: 'Failed to process shapefile. Ensure it is a valid ZIP containing .shp, .dbf, etc.' });
+        }
     }
 };
 

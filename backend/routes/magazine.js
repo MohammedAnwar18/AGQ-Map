@@ -19,6 +19,7 @@ router.delete('/:id', isAdmin, magazineController.deleteMagazine);
 
 router.post('/page', isAdmin, magazineController.savePage);
 router.post('/upload', isAdmin, upload.single('image'), magazineController.uploadImage);
+router.post('/upload-spatial', isAdmin, upload.single('file'), magazineController.uploadSpatial);
 router.post('/:id/cover', isAdmin, upload.single('image'), magazineController.setCoverImage);
 
 module.exports = router;

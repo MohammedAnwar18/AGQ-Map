@@ -3,11 +3,12 @@ import './MagazineEditor.css';
 import { magazineService, getImageUrl } from '../services/api';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import axios from 'axios';
 
 const MagazineEditor = ({ magazineId, onClose }) => {
     // ==================== STATE MANAGEMENT ====================
     const [pages, setPages] = useState([{ page_number: 1, elements: [] }]);
-    const [currentPageIndex, setCurrentPageIndex] = useState(0); // 0-indexed for state
+    const [currentPageIndex, setCurrentPageIndex] = useState(0); 
     const [selectedElementId, setSelectedElementId] = useState(null);
     const [history, setHistory] = useState([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
@@ -28,7 +29,7 @@ const MagazineEditor = ({ magazineId, onClose }) => {
 
     const pageCanvasRef = useRef(null);
     const imageInputRef = useRef(null);
-    const editorLayoutRef = useRef(null);
+    const spatialInputRef = useRef(null);
 
     // ==================== INITIALIZATION ====================
     useEffect(() => {
@@ -52,9 +53,7 @@ const MagazineEditor = ({ magazineId, onClose }) => {
                 setPages([{ page_number: 1, elements: [] }]);
             }
             
-            // Initial history
-            const state = JSON.stringify(data.pages);
-            setHistory([state]);
+            setHistory([JSON.stringify(data.pages || [{ page_number: 1, elements: [] }])]);
             setHistoryIndex(0);
         } catch (error) {
             console.error('Failed to load magazine:', error);
@@ -74,7 +73,6 @@ const MagazineEditor = ({ magazineId, onClose }) => {
         const newHistory = history.slice(0, historyIndex + 1);
         newHistory.push(state);
         if (newHistory.length > 50) newHistory.shift();
-        
         setHistory(newHistory);
         setHistoryIndex(newHistory.length - 1);
     }, [history, historyIndex]);
@@ -82,154 +80,112 @@ const MagazineEditor = ({ magazineId, onClose }) => {
     const undoAction = () => {
         if (historyIndex > 0) {
             const prevIndex = historyIndex - 1;
-            const prevState = JSON.parse(history[prevIndex]);
-            setPages(prevState);
+            setPages(JSON.parse(history[prevIndex]));
             setHistoryIndex(prevIndex);
             setSelectedElementId(null);
-            showToast('تم التراجع');
         }
     };
 
     const redoAction = () => {
         if (historyIndex < history.length - 1) {
             const nextIndex = historyIndex + 1;
-            const nextState = JSON.parse(history[nextIndex]);
-            setPages(nextState);
+            setPages(JSON.parse(history[nextIndex]));
             setHistoryIndex(nextIndex);
             setSelectedElementId(null);
-            showToast('تم الإعادة');
         }
     };
 
     // ==================== PAGE MANAGEMENT ====================
     const addPage = () => {
-        const newPageNum = pages.length + 1;
-        const newPages = [...pages, { page_number: newPageNum, elements: [] }];
+        const newPages = [...pages, { page_number: pages.length + 1, elements: [] }];
         setPages(newPages);
         setCurrentPageIndex(newPages.length - 1);
         saveState(newPages);
-        showToast('تمت إضافة صفحة جديدة');
     };
 
     const deleteCurrentPage = () => {
-        if (pages.length <= 1) {
-            showToast('لا يمكن حذف آخر صفحة', 'danger');
-            return;
-        }
-        if (!window.confirm('هل أنت متأكد من حذف هذه الصفحة؟')) return;
-
-        const newPages = pages.filter((_, i) => i !== currentPageIndex)
-            .map((p, i) => ({ ...p, page_number: i + 1 }));
-        
+        if (pages.length <= 1) return;
+        if (!window.confirm('حذف الصفحة؟')) return;
+        const newPages = pages.filter((_, i) => i !== currentPageIndex).map((p, i) => ({ ...p, page_number: i + 1 }));
         setPages(newPages);
         setCurrentPageIndex(Math.max(0, currentPageIndex - 1));
         saveState(newPages);
-        showToast('تم حذف الصفحة');
     };
 
     // ==================== ELEMENT CREATION ====================
-    const generateId = () => `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
     const addElement = (elementData) => {
         const newPages = [...pages];
-        const currentElements = newPages[currentPageIndex].elements;
-        
         const newElement = {
-            id: generateId(),
-            x: 50,
-            y: 50,
-            width: 200,
-            height: 100,
+            id: `el_${Date.now()}`,
+            x: 50, y: 50, width: 200, height: 100,
             ...elementData
         };
-
-        newPages[currentPageIndex].elements = [...currentElements, newElement];
+        newPages[currentPageIndex].elements.push(newElement);
         setPages(newPages);
         saveState(newPages);
         setSelectedElementId(newElement.id);
     };
 
     const addTextElement = (type) => {
-        const configs = {
-            heading: { text: 'عنوان رئيسي', fontSize: 28, fontWeight: 'bold', fontFamily: 'Playfair Display', width: 280, height: 50 },
-            subheading: { text: 'عنوان فرعي هنا', fontSize: 20, fontWeight: '600', fontFamily: 'Tajawal', width: 220, height: 35 },
-            paragraph: { text: 'أضف نصك هنا...', fontSize: 14, fontWeight: 'normal', fontFamily: 'Tajawal', width: 260, height: 100 }
-        };
-
-        const config = configs[type];
+        const conf = {
+            heading: { text: 'عنوان رئيسي', fontSize: 28, fw: 'bold', width: 300, height: 60 },
+            subheading: { text: 'عنوان فرعي', fontSize: 20, fw: '600', width: 250, height: 40 },
+            paragraph: { text: 'نص المقال هنا...', fontSize: 14, fw: 'normal', width: 300, height: 150 }
+        }[type];
         addElement({
-            type: 'text',
-            content: config.text,
-            width: config.width,
-            height: config.height,
-            styles: {
-                fontSize: config.fontSize,
-                fontWeight: config.fontWeight,
-                fontFamily: config.fontFamily,
-                color: '#1a1a1a',
-                textAlign: 'right',
-                lineHeight: 1.5,
-                backgroundColor: 'transparent',
-                padding: '10px'
-            }
+            type: 'text', content: conf.text, width: conf.width, height: conf.height,
+            styles: { fontSize: conf.fontSize, fontWeight: conf.fw, color: '#1a1a1a', textAlign: 'right', padding: '10px' }
         });
-        showToast('تمت إضافة النص');
     };
 
     const handleImageUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-
         try {
             const formData = new FormData();
             formData.append('image', file);
             const { url } = await magazineService.uploadImage(formData);
+            addElement({ type: 'image', src: getImageUrl(url), raw_url: url, width: 300, height: 200, styles: { borderRadius: '8px' } });
+        } catch (err) { showToast('فشل التحميل', 'danger'); }
+    };
 
+    const handleSpatialUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+            showToast('جاري معالجة البيانات الجغرافية...', 'success');
+            const formData = new FormData();
+            formData.append('file', file);
+            const res = await magazineService.uploadSpatial(formData);
+            
             addElement({
-                type: 'image',
-                src: getImageUrl(url),
-                raw_url: url,
-                width: 250,
-                height: 170,
-                styles: { borderRadius: '8px', objectFit: 'cover' }
+                type: 'spatial',
+                spatialData: res.type === 'data' ? res.data : null,
+                spatialUrl: res.type === 'link' ? res.url : null,
+                width: 400,
+                height: 300,
+                theme: 'firefly',
+                styles: { backgroundColor: '#0d0d12', borderRadius: '12px', border: '1px solid #d4af37' }
             });
-            showToast('تمت إضافة الصورة');
-        } catch (error) {
-            console.error('Image upload failed:', error);
-            showToast('فشل تحميل الصورة', 'danger');
-        }
+            showToast('تمت إضافة الخريطة الفنية');
+        } catch (err) { showToast('فشل معالجة الملف. تأكد أنه ZIP يحتوي على .shp', 'danger'); }
     };
 
     const addShapeElement = (shapeType) => {
         addElement({
-            type: 'shape',
-            shapeType: shapeType,
-            width: shapeType === 'line' ? 200 : 150,
-            height: shapeType === 'line' ? 4 : 150,
-            styles: {
-                backgroundColor: shapeType === 'line' ? '#d4af37' : 'rgba(212, 175, 55, 0.2)',
-                borderColor: '#d4af37',
-                borderWidth: shapeType === 'line' ? '0' : '2px',
-                borderRadius: shapeType === 'circle' ? '50%' : '8px'
-            }
+            type: 'shape', shapeType, width: 150, height: 150,
+            styles: { backgroundColor: 'rgba(212, 175, 55, 0.2)', borderColor: '#d4af37', borderWidth: '2px', borderRadius: shapeType === 'circle' ? '50%' : '8px' }
         });
     };
 
-    // ==================== INTERACTION HANDLERS ====================
+    // ==================== INTERACTION ====================
     const handleMouseDown = (e, id) => {
         if (e.target.classList.contains('resize-handle')) return;
-        if (selectedElementId === id && e.target.getAttribute('contenteditable') === 'true') return;
-
         setSelectedElementId(id);
         setIsDragging(true);
-        
         const el = pages[currentPageIndex].elements.find(el => el.id === id);
         const rect = pageCanvasRef.current.getBoundingClientRect();
-        
-        setDragOffset({
-            x: e.clientX - rect.left - el.x,
-            y: e.clientY - rect.top - el.y
-        });
+        setDragOffset({ x: e.clientX - rect.left - el.x, y: e.clientY - rect.top - el.y });
     };
 
     const handleResizeStart = (e, id, handle) => {
@@ -241,55 +197,25 @@ const MagazineEditor = ({ magazineId, onClose }) => {
 
     const handleMouseMove = useCallback((e) => {
         if (!selectedElementId) return;
-
         if (isDragging) {
             const newPages = [...pages];
             const elIndex = newPages[currentPageIndex].elements.findIndex(el => el.id === selectedElementId);
-            const el = newPages[currentPageIndex].elements[elIndex];
             const rect = pageCanvasRef.current.getBoundingClientRect();
-            
-            const newX = e.clientX - rect.left - dragOffset.x;
-            const newY = e.clientY - rect.top - dragOffset.y;
-            
-            newPages[currentPageIndex].elements[elIndex] = { ...el, x: newX, y: newY };
+            newPages[currentPageIndex].elements[elIndex].x = e.clientX - rect.left - dragOffset.x;
+            newPages[currentPageIndex].elements[elIndex].y = e.clientY - rect.top - dragOffset.y;
             setPages(newPages);
         }
-
         if (isResizing) {
             const newPages = [...pages];
             const elIndex = newPages[currentPageIndex].elements.findIndex(el => el.id === selectedElementId);
             const el = newPages[currentPageIndex].elements[elIndex];
             const rect = pageCanvasRef.current.getBoundingClientRect();
-            
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
-            
-            const newEl = { ...el };
-            const minSize = 20;
-
             if (currentResizeHandle === 'se') {
-                newEl.width = Math.max(minSize, mouseX - el.x);
-                newEl.height = Math.max(minSize, mouseY - el.y);
-            } else if (currentResizeHandle === 'sw') {
-                const deltaX = el.x - mouseX;
-                newEl.x = mouseX;
-                newEl.width = Math.max(minSize, el.width + deltaX);
-                newEl.height = Math.max(minSize, mouseY - el.y);
-            } else if (currentResizeHandle === 'ne') {
-                newEl.width = Math.max(minSize, mouseX - el.x);
-                const deltaY = el.y - mouseY;
-                newEl.y = mouseY;
-                newEl.height = Math.max(minSize, el.height + deltaY);
-            } else if (currentResizeHandle === 'nw') {
-                const deltaX = el.x - mouseX;
-                const deltaY = el.y - mouseY;
-                newEl.x = mouseX;
-                newEl.y = mouseY;
-                newEl.width = Math.max(minSize, el.width + deltaX);
-                newEl.height = Math.max(minSize, el.height + deltaY);
+                el.width = Math.max(20, mouseX - el.x);
+                el.height = Math.max(20, mouseY - el.y);
             }
-
-            newPages[currentPageIndex].elements[elIndex] = newEl;
             setPages(newPages);
         }
     }, [isDragging, isResizing, selectedElementId, pages, currentPageIndex, dragOffset, currentResizeHandle]);
@@ -311,116 +237,37 @@ const MagazineEditor = ({ magazineId, onClose }) => {
         };
     }, [handleMouseMove, handleMouseUp]);
 
-    const updateProperty = (prop, value) => {
+    const updateStyle = (prop, val) => {
         const newPages = [...pages];
-        newPages[currentPageIndex].elements = newPages[currentPageIndex].elements.map(el => 
-            el.id === selectedElementId ? { ...el, [prop]: value } : el
-        );
-        setPages(newPages);
-        saveState(newPages);
-    };
-
-    const updateStyle = (styleProp, value) => {
-        const newPages = [...pages];
-        newPages[currentPageIndex].elements = newPages[currentPageIndex].elements.map(el => 
-            el.id === selectedElementId ? { 
-                ...el, 
-                styles: { ...el.styles, [styleProp]: value } 
-            } : el
-        );
-        setPages(newPages);
-        saveState(newPages);
-    };
-
-    const deleteSelected = () => {
-        const newPages = [...pages];
-        newPages[currentPageIndex].elements = newPages[currentPageIndex].elements.filter(el => el.id !== selectedElementId);
-        setPages(newPages);
-        setSelectedElementId(null);
-        saveState(newPages);
-        showToast('تم حذف العنصر');
-    };
-
-    const togglePublish = async () => {
-        try {
-            const newState = !magazine.is_published;
-            const updated = await magazineService.updateMagazine(magazineId, {
-                title: magazine.title,
-                description: magazine.description,
-                is_published: newState
-            });
-            setMagazine(updated);
-            showToast(newState ? 'تم نشر المجلة' : 'تم إلغاء النشر');
-        } catch (error) {
-            showToast('فشل تحديث حالة النشر', 'danger');
+        const el = newPages[currentPageIndex].elements.find(e => e.id === selectedElementId);
+        if (el) {
+            el.styles[prop] = val;
+            setPages(newPages);
+            saveState(newPages);
         }
     };
 
-    const handleSetCover = async () => {
-        const el = pages[currentPageIndex].elements.find(e => e.id === selectedElementId);
-        if (!el || el.type !== 'image') return;
-        try {
-            await magazineService.updateMagazine(magazineId, {
-                ...magazine,
-                cover_image: el.raw_url || el.src
-            });
-            showToast('تم تعيين الصورة كغلاف');
-        } catch (error) {
-            showToast('فشل تعيين الغلاف', 'danger');
+    const updateSpatialTheme = (theme) => {
+        const newPages = [...pages];
+        const el = newPages[currentPageIndex].elements.find(e => e.id === selectedElementId);
+        if (el) {
+            el.theme = theme;
+            setPages(newPages);
+            saveState(newPages);
         }
     };
 
-    // ==================== PERSISTENCE ====================
     const saveProject = async () => {
         try {
             setLoading(true);
             for (const page of pages) {
-                await magazineService.savePage({
-                    magazineId,
-                    pageNumber: page.page_number,
-                    content: { elements: page.elements }
-                });
+                await magazineService.savePage({ magazineId, pageNumber: page.page_number, content: { elements: page.elements } });
             }
-            showToast('تم حفظ جميع الصفحات بنجاح');
-        } catch (error) {
-            console.error('Save failed:', error);
-            showToast('فشل حفظ المشروع', 'danger');
-        } finally {
-            setLoading(false);
-        }
+            showToast('تم الحفظ بنجاح');
+        } catch (err) { showToast('فشل الحفظ', 'danger'); } finally { setLoading(false); }
     };
 
-    const exportPDF = async () => {
-        try {
-            showToast('جاري تحضير ملف PDF...');
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            
-            for (let i = 0; i < pages.length; i++) {
-                setCurrentPageIndex(i);
-                // Wait for state to update and render
-                await new Promise(r => setTimeout(r, 500));
-                
-                const canvas = await html2canvas(pageCanvasRef.current, {
-                    useCORS: true,
-                    scale: 2,
-                    backgroundColor: '#ffffff'
-                });
-                const imgData = canvas.toDataURL('image/png');
-                if (i > 0) pdf.addPage();
-                pdf.addImage(imgData, 'PNG', 0, 0, 210, 297);
-            }
-            
-            pdf.save(`${magazine?.title || 'magazine'}.pdf`);
-            showToast('تم تصدير PDF');
-        } catch (error) {
-            console.error('PDF export failed:', error);
-            showToast('فشل تصدير PDF', 'danger');
-        }
-    };
-
-    if (loading && !magazine) {
-        return <div className="magazine-editor-container"><div className="spinner"></div></div>;
-    }
+    if (loading && !magazine) return <div className="magazine-editor-container"><div className="spinner"></div></div>;
 
     const currentPage = pages[currentPageIndex];
     const selectedEl = currentPage.elements.find(el => el.id === selectedElementId);
@@ -434,68 +281,55 @@ const MagazineEditor = ({ magazineId, onClose }) => {
                         مجلة بالنوفا المكانية
                     </span>
                 </div>
-                
                 <div className="header-actions">
-                    <button className={`header-btn ${magazine?.is_published ? 'published' : ''}`} onClick={togglePublish}
-                        style={{ borderColor: magazine?.is_published ? '#4ade80' : 'var(--border-color)', color: magazine?.is_published ? '#4ade80' : 'white' }}>
-                        {magazine?.is_published ? '● منشور' : 'نشر'}
-                    </button>
                     <button className="header-btn" onClick={undoAction}>تراجع</button>
                     <button className="header-btn" onClick={redoAction}>إعادة</button>
-                    <button className="header-btn save" onClick={saveProject}>حفظ</button>
-                    <button className="header-btn" onClick={exportPDF} style={{ background: '#4ade80', color: '#000' }}>تصدير PDF</button>
+                    <button className="header-btn save" onClick={saveProject}>حفظ الكل</button>
                     <button className="header-btn" onClick={onClose}>خروج</button>
                 </div>
             </header>
 
             <div className="editor-layout">
                 <aside className="panel">
-                    <div className="panel-header">أدوات الإضافة</div>
+                    <div className="panel-header">أدوات التصميم</div>
                     <div className="tools-grid">
                         <button className="tool-btn" onClick={() => addTextElement('heading')}>عنوان</button>
-                        <button className="tool-btn" onClick={() => addTextElement('subheading')}>فرعي</button>
                         <button className="tool-btn" onClick={() => addTextElement('paragraph')}>نص</button>
                         <button className="tool-btn" onClick={() => imageInputRef.current.click()}>صورة</button>
-                        <button className="tool-btn" onClick={() => addShapeElement('rectangle')}>مستطيل</button>
-                        <button className="tool-btn" onClick={() => addShapeElement('circle')}>دائرة</button>
+                        <button className="tool-btn" onClick={() => spatialInputRef.current.click()} style={{ background: 'rgba(212, 175, 55, 0.2)', borderColor: '#d4af37' }}>
+                            <div style={{ fontSize: '18px' }}>🗺️</div>
+                            خريطة
+                        </button>
+                        <button className="tool-btn" onClick={() => addShapeElement('rectangle')}>شكل</button>
                     </div>
-                    
                     <div className="divider"></div>
-                    <div className="panel-header">الصفحات ({pages.length})</div>
+                    <div className="panel-header">الصفحات</div>
                     <div className="page-tabs">
                         {pages.map((p, i) => (
-                            <button key={i} className={`page-tab ${currentPageIndex === i ? 'active' : ''}`} onClick={() => { setCurrentPageIndex(i); setSelectedElementId(null); }}>
+                            <button key={i} className={`page-tab ${currentPageIndex === i ? 'active' : ''}`} onClick={() => setCurrentPageIndex(i)}>
                                 {i === 0 ? 'الغلاف' : p.page_number}
                             </button>
                         ))}
-                        <button className="page-tab" onClick={addPage} style={{ background: 'var(--accent)', color: '#000' }}>+</button>
+                        <button className="page-tab" onClick={addPage}>+</button>
                     </div>
-                    <button className="action-btn danger" onClick={deleteCurrentPage} style={{ fontSize: '12px', padding: '8px' }}>حذف الصفحة الحالية</button>
+                    <button className="action-btn danger" onClick={deleteCurrentPage} style={{ fontSize: '11px', marginTop: '10px' }}>حذف الصفحة</button>
                 </aside>
 
                 <main className="canvas-area">
-                    <div className="book-canvas" style={{ width: isMobile ? '90%' : '500px', minHeight: isMobile ? '550px' : '700px', flexDirection: 'column' }}>
-                        <div className="page-canvas" ref={pageCanvasRef} onMouseDown={(e) => { if (e.target === pageCanvasRef.current) setSelectedElementId(null); }} style={{ width: '100%', height: '100%' }}>
+                    <div className="book-canvas" style={{ width: isMobile ? '95%' : '500px', minHeight: isMobile ? '550px' : '700px' }}>
+                        <div className="page-canvas" ref={pageCanvasRef} onMouseDown={(e) => { if (e.target === pageCanvasRef.current) setSelectedElementId(null); }} style={{ width: '100%', height: '100%', position: 'relative' }}>
                             {currentPage.elements.map(el => (
                                 <RenderedElement 
-                                    key={el.id} 
-                                    el={el} 
-                                    isSelected={selectedElementId === el.id}
+                                    key={el.id} el={el} isSelected={selectedElementId === el.id}
                                     onMouseDown={(e) => handleMouseDown(e, el.id)}
-                                    onResizeStart={(e, handle) => handleResizeStart(e, el.id, handle)}
+                                    onResizeStart={(e, h) => handleResizeStart(e, el.id, h)}
                                     onTextChange={(content) => {
                                         const newPages = [...pages];
                                         newPages[currentPageIndex].elements = newPages[currentPageIndex].elements.map(e => e.id === el.id ? { ...e, content } : e);
                                         setPages(newPages);
-                                        saveState(newPages);
                                     }}
                                 />
                             ))}
-                            {currentPage.elements.length === 0 && (
-                                <div className="empty-state" style={{ pointerEvents: 'none' }}>
-                                    <p>الصفحة {currentPage.page_number} فارغة</p>
-                                </div>
-                            )}
                         </div>
                     </div>
                 </main>
@@ -504,101 +338,150 @@ const MagazineEditor = ({ magazineId, onClose }) => {
                     <div className="panel-header">الخصائص</div>
                     {selectedEl ? (
                         <div className="properties-editor">
-                            <div className="input-group">
-                                <label className="input-label">العرض</label>
-                                <input type="number" className="input-field" value={Math.round(selectedEl.width)} onChange={(e) => updateProperty('width', parseInt(e.target.value))} />
-                            </div>
-                            <div className="input-group">
-                                <label className="input-label">الارتفاع</label>
-                                <input type="number" className="input-field" value={Math.round(selectedEl.height)} onChange={(e) => updateProperty('height', parseInt(e.target.value))} />
-                            </div>
-
                             {selectedEl.type === 'text' && (
-                                <>
-                                    <div className="input-group">
-                                        <label className="input-label">حجم الخط</label>
-                                        <input type="range" className="range-slider" min="10" max="100" value={selectedEl.styles.fontSize} onChange={(e) => updateStyle('fontSize', parseInt(e.target.value))} />
-                                    </div>
-                                    <div className="input-group">
-                                        <label className="input-label">اللون</label>
-                                        <input type="color" className="input-field" value={selectedEl.styles.color} onChange={(e) => updateStyle('color', e.target.value)} />
-                                    </div>
-                                </>
+                                <div className="input-group">
+                                    <label className="input-label">لون النص</label>
+                                    <input type="color" className="input-field" value={selectedEl.styles.color} onChange={(e) => updateStyle('color', e.target.value)} />
+                                </div>
                             )}
-                            
-                            {selectedEl.type === 'image' && (
-                                <button className="action-btn secondary" onClick={handleSetCover} style={{ marginBottom: '10px' }}>تعيين كغلاف</button>
+                            {selectedEl.type === 'spatial' && (
+                                <div className="input-group">
+                                    <label className="input-label">نمط الخريطة (John Nelson)</label>
+                                    <select className="input-field" value={selectedEl.theme} onChange={(e) => updateSpatialTheme(e.target.value)}>
+                                        <option value="firefly">Firefly (متوهج)</option>
+                                        <option value="vintage">Vintage (عتيق)</option>
+                                        <option value="blueprint">Blueprint (مخطط)</option>
+                                    </select>
+                                </div>
                             )}
-
-                            <button className="action-btn danger" onClick={deleteSelected}>حذف العنصر</button>
+                            <button className="action-btn danger" onClick={() => {
+                                const newPages = [...pages];
+                                newPages[currentPageIndex].elements = newPages[currentPageIndex].elements.filter(e => e.id !== selectedElementId);
+                                setPages(newPages);
+                                setSelectedElementId(null);
+                                saveState(newPages);
+                            }}>حذف</button>
                         </div>
-                    ) : (
-                        <div style={{ textAlign: 'center', opacity: 0.5 }}>اختر عنصر لتعديله</div>
-                    )}
-
-                    <div className="divider"></div>
-                    <div className="panel-header">طبقات الصفحة {currentPage.page_number}</div>
-                    <div className="layers-list">
-                        {currentPage.elements.map((el, i) => (
-                            <div key={el.id} className={`layer-item ${selectedElementId === el.id ? 'active' : ''}`} onClick={() => setSelectedElementId(el.id)}>
-                                {el.type} {i + 1}
-                            </div>
-                        ))}
-                    </div>
+                    ) : <div style={{ opacity: 0.5, textAlign: 'center' }}>اختر عنصراً</div>}
                 </aside>
             </div>
 
             <input type="file" ref={imageInputRef} style={{ display: 'none' }} accept="image/*" onChange={handleImageUpload} />
-            {toast.show && (
-                <div className={`toast show ${toast.type}`} style={{ 
-                    position: 'fixed', bottom: 30, left: '50%', transform: 'translateX(-50%)',
-                    background: '#1e1e28', border: `1px solid ${toast.type === 'success' ? '#4ade80' : '#ef4444'}`,
-                    padding: '12px 24px', borderRadius: 12, color: toast.type === 'success' ? '#4ade80' : '#ef4444',
-                    zIndex: 11000
-                }}>
-                    {toast.message}
-                </div>
-            )}
+            <input type="file" ref={spatialInputRef} style={{ display: 'none' }} accept=".zip" onChange={handleSpatialUpload} />
+            
+            {toast.show && <div className={`toast show ${toast.type}`} style={{ position: 'fixed', bottom: 30, left: '50%', transform: 'translateX(-50%)', background: '#1e1e28', padding: '12px 24px', borderRadius: 12, color: toast.type === 'success' ? '#4ade80' : '#ef4444', zIndex: 20000 }}>{toast.message}</div>}
         </div>
     );
 };
 
 const RenderedElement = ({ el, isSelected, onMouseDown, onResizeStart, onTextChange }) => {
-    const style = {
-        position: 'absolute',
-        left: el.x,
-        top: el.y,
-        width: el.width,
-        height: el.height,
-        ...el.styles,
-        fontSize: el.type === 'text' ? `${el.styles.fontSize}px` : undefined,
-        zIndex: isSelected ? 100 : 1,
-        userSelect: isSelected ? 'auto' : 'none'
-    };
+    const [geoData, setGeoData] = useState(el.spatialData);
 
-    const handleInput = (e) => onTextChange(e.currentTarget.innerText);
+    useEffect(() => {
+        if (el.type === 'spatial' && el.spatialUrl && !geoData) {
+            axios.get(el.spatialUrl).then(res => setGeoData(res.data)).catch(console.error);
+        }
+    }, [el.spatialUrl, el.type, geoData]);
+
+    const style = {
+        position: 'absolute', left: el.x, top: el.y, width: el.width, height: el.height,
+        ...el.styles, zIndex: isSelected ? 100 : 1, userSelect: isSelected ? 'auto' : 'none'
+    };
 
     return (
         <div className={`editable-element ${el.type}-element ${isSelected ? 'selected' : ''}`} style={style} onMouseDown={onMouseDown}>
             {el.type === 'text' ? (
-                <div contentEditable={isSelected} onBlur={handleInput} suppressContentEditableWarning={true} style={{ width: '100%', height: '100%' }}>
-                    {el.content}
-                </div>
+                <div contentEditable={isSelected} onBlur={(e) => onTextChange(e.currentTarget.innerText)} suppressContentEditableWarning={true} style={{ width: '100%', height: '100%' }}>{el.content}</div>
             ) : el.type === 'image' ? (
                 <img src={el.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : el.type === 'shape' ? (
-                <div style={{ width: '100%', height: '100%', background: el.styles.backgroundColor, border: el.styles.borderWidth + ' solid ' + el.styles.borderColor, borderRadius: el.styles.borderRadius }}></div>
-            ) : null}
-
-            {isSelected && (
-                <>
-                    <div className="resize-handle nw" onMouseDown={(e) => onResizeStart(e, 'nw')}></div>
-                    <div className="resize-handle ne" onMouseDown={(e) => onResizeStart(e, 'ne')}></div>
-                    <div className="resize-handle sw" onMouseDown={(e) => onResizeStart(e, 'sw')}></div>
-                    <div className="resize-handle se" onMouseDown={(e) => onResizeStart(e, 'se')}></div>
-                </>
+            ) : el.type === 'spatial' ? (
+                <SpatialMapRenderer data={geoData} width={el.width} height={el.height} theme={el.theme} />
+            ) : (
+                <div style={{ width: '100%', height: '100%', background: el.styles.backgroundColor, border: `${el.styles.borderWidth} solid ${el.styles.borderColor}`, borderRadius: el.styles.borderRadius }}></div>
             )}
+            {isSelected && <div className="resize-handle se" onMouseDown={(e) => onResizeStart(e, 'se')}></div>}
         </div>
+    );
+};
+
+const SpatialMapRenderer = ({ data, width, height, theme }) => {
+    if (!data) return <div className="spinner-small"></div>;
+
+    // Helper to get all coordinates from GeoJSON
+    const getAllCoords = (obj) => {
+        let coords = [];
+        if (obj.type === 'FeatureCollection') obj.features.forEach(f => coords.push(...getAllCoords(f.geometry)));
+        else if (obj.type === 'GeometryCollection') obj.geometries.forEach(g => coords.push(...getAllCoords(g)));
+        else if (obj.coordinates) {
+            const flatten = (arr) => Array.isArray(arr[0]) ? arr.forEach(flatten) : coords.push(arr);
+            flatten(obj.coordinates);
+        }
+        return coords;
+    };
+
+    const coords = getAllCoords(data);
+    if (coords.length === 0) return null;
+
+    const minX = Math.min(...coords.map(c => c[0]));
+    const maxX = Math.max(...coords.map(c => c[0]));
+    const minY = Math.min(...coords.map(c => c[1]));
+    const maxY = Math.max(...coords.map(c => c[1]));
+
+    const pad = 10;
+    const scaleX = (width - pad * 2) / (maxX - minX);
+    const scaleY = (height - pad * 2) / (maxY - minY);
+    const scale = Math.min(scaleX, scaleY);
+
+    const project = (c) => [
+        pad + (c[0] - minX) * scale,
+        height - (pad + (c[1] - minY) * scale)
+    ];
+
+    const renderGeometry = (geom) => {
+        if (geom.type === 'Polygon') {
+            return geom.coordinates.map((ring, i) => (
+                <path key={i} d={`M ${ring.map(c => project(c).join(',')).join(' L ')} Z`} />
+            ));
+        } else if (geom.type === 'MultiPolygon') {
+            return geom.coordinates.map((poly, i) => poly.map((ring, j) => (
+                <path key={`${i}-${j}`} d={`M ${ring.map(c => project(c).join(',')).join(' L ')} Z`} />
+            )));
+        } else if (geom.type === 'LineString') {
+            return <path d={`M ${geom.coordinates.map(c => project(c).join(',')).join(' L ')}`} fill="none" />;
+        } else if (geom.type === 'MultiLineString') {
+            return geom.coordinates.map((line, i) => (
+                <path key={i} d={`M ${line.map(c => project(c).join(',')).join(' L ')}`} fill="none" />
+            ));
+        }
+        return null;
+    };
+
+    const colors = {
+        firefly: { stroke: '#d4af37', fill: 'rgba(212, 175, 55, 0.1)', glow: '#fbab15' },
+        vintage: { stroke: '#5d4037', fill: 'rgba(93, 64, 55, 0.05)', glow: 'none' },
+        blueprint: { stroke: '#fff', fill: 'rgba(255, 255, 255, 0.1)', glow: '#fff' }
+    }[theme || 'firefly'];
+
+    return (
+        <svg width={width} height={height} style={{ display: 'block' }}>
+            <defs>
+                <filter id="glow">
+                    <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+                    <feMerge>
+                        <feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                </filter>
+            </defs>
+            <g 
+                stroke={colors.stroke} 
+                fill={colors.fill} 
+                strokeWidth="1.5" 
+                filter={colors.glow !== 'none' ? 'url(#glow)' : ''}
+                strokeLinecap="round" strokeLinejoin="round"
+            >
+                {data.features ? data.features.map((f, i) => renderGeometry(f.geometry)) : renderGeometry(data)}
+            </g>
+        </svg>
     );
 };
 

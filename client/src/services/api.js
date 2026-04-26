@@ -613,6 +613,12 @@ export const magazineService = {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
         return response.data;
+    },
+    uploadSpatial: async (formData) => {
+        const response = await api.post('/magazines/upload-spatial', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
     }
 };
 
