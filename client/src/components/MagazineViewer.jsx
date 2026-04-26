@@ -107,7 +107,8 @@ const SpatialMapRenderer = ({ data, width, height, theme }) => {
     const coords = getAllCoords(data);
     if (coords.length === 0) return null;
     const minX = Math.min(...coords.map(c => c[0])), maxX = Math.max(...coords.map(c => c[0])), minY = Math.min(...coords.map(c => c[1])), maxY = Math.max(...coords.map(c => c[1]));
-    const pad = 10, scale = Math.min((width - pad * 2) / (maxX - minX), (height - pad * 2) / (maxY - minY));
+    const diffX = maxX - minX || 1, diffY = maxY - minY || 1;
+    const pad = 10, scale = Math.min((width - pad * 2) / diffX, (height - pad * 2) / diffY);
     const project = (c) => [pad + (c[0] - minX) * scale, height - (pad + (c[1] - minY) * scale)];
     const renderGeometry = (geom) => {
         if (geom.type === 'Polygon' || geom.type === 'MultiPolygon') {

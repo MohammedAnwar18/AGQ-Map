@@ -427,9 +427,12 @@ const SpatialMapRenderer = ({ data, width, height, theme }) => {
     const minY = Math.min(...coords.map(c => c[1]));
     const maxY = Math.max(...coords.map(c => c[1]));
 
+    const diffX = maxX - minX || 1;
+    const diffY = maxY - minY || 1;
+
     const pad = 10;
-    const scaleX = (width - pad * 2) / (maxX - minX);
-    const scaleY = (height - pad * 2) / (maxY - minY);
+    const scaleX = (width - pad * 2) / diffX;
+    const scaleY = (height - pad * 2) / diffY;
     const scale = Math.min(scaleX, scaleY);
 
     const project = (c) => [
