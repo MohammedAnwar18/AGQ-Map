@@ -4,162 +4,277 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(13, 13, 18, 0.98);
+    background: radial-gradient(circle at center, #15151d 0%, #0d0d12 100%);
     z-index: 9999;
     display: flex;
     flex-direction: column;
     padding: 20px;
-    padding-top: calc(20px + env(safe-area-inset-top));
-    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    padding-top: calc(40px + env(safe-area-inset-top));
+    padding-bottom: calc(40px + env(safe-area-inset-bottom));
     color: white;
     overflow-y: auto;
-}
-
-.magazine-svg-bg {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 0;
-}
-
-.magazine-close-btn {
-    position: fixed;
-    top: calc(15px + env(safe-area-inset-top));
-    left: 20px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255,255,255,0.2);
-    backdrop-filter: blur(5px);
-    color: white;
-    font-size: 24px;
-    width: 45px;
-    height: 45px;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10001;
-    transition: all 0.2s;
-}
-
-.magazine-close-btn:hover {
-    background: var(--danger);
-    border-color: var(--danger);
-    transform: rotate(90deg);
 }
 
 .magazine-library {
     position: relative;
     z-index: 1;
-    max-width: 1200px;
+    max-width: 1300px;
     margin: 0 auto;
     width: 100%;
-    text-align: center;
 }
 
 .magazine-library h1 {
     font-family: 'Tajawal', sans-serif;
-    font-size: 2.5rem;
-    margin-top: 40px;
-    margin-bottom: 30px;
-    background: linear-gradient(135deg, #fff, #d4af37);
+    font-size: 3rem;
+    text-align: center;
+    margin-bottom: 40px;
+    background: linear-gradient(135deg, #fff 0%, #d4af37 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     font-weight: 900;
-}
-
-@media (max-width: 768px) {
-    .magazine-library h1 {
-        font-size: 1.8rem;
-        margin-top: 60px;
-    }
+    letter-spacing: -1px;
 }
 
 .magazines-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 30px;
-    margin-top: 40px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 35px;
+    padding: 20px 0;
 }
 
 .magazine-card {
-    background: #1e1e28;
-    border-radius: 15px;
-    padding: 20px;
-    border: 1px solid #2a2a38;
-    transition: all 0.3s ease;
+    background: rgba(30, 30, 40, 0.4);
+    backdrop-filter: blur(10px);
+    border-radius: 24px;
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: flex;
+    flex-direction: column;
+    position: relative;
 }
 
 .magazine-card:hover {
-    transform: translateY(-10px);
-    border-color: #d4af37;
-    box-shadow: 0 10px 30px rgba(212, 175, 55, 0.1);
+    transform: translateY(-12px);
+    background: rgba(40, 40, 50, 0.6);
+    border-color: rgba(212, 175, 55, 0.3);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
 .magazine-cover {
+    position: relative;
     aspect-ratio: 3/4;
-    background: #0d0d12;
-    border-radius: 10px;
-    margin-bottom: 15px;
+    background: #000;
+    border-radius: 18px;
     overflow: hidden;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.mini-cover-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
+    background: #fff; /* Cover background color */
 }
 
-.magazine-cover img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+.mini-cover-viewport {
+    width: 500px;
+    height: 700px;
+    position: absolute;
+    transform-origin: center center;
+    pointer-events: none;
+    transform: scale(0.6); /* Adjusted scale to fit viewport better */
 }
 
 .no-cover {
-    color: #444;
-    font-size: 0.9rem;
-}
-
-.mag-actions {
+    width: 100%;
+    height: 100%;
     display: flex;
-    gap: 10px;
-    margin-top: 15px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #1e1e28 0%, #0d0d12 100%);
+    padding: 24px;
+    text-align: center;
 }
 
-.mag-actions button {
-    flex: 1;
-    padding: 10px;
-    border-radius: 8px;
+.cover-fallback-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin-bottom: 15px;
+    color: #fff;
+    opacity: 0.8;
+}
+
+.no-cover-icon {
+    color: #d4af37;
+    opacity: 0.3;
+}
+
+.cover-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    backdrop-filter: blur(2px);
+}
+
+.magazine-card:hover .cover-overlay {
+    opacity: 1;
+}
+
+.read-btn-overlay {
+    background: var(--accent);
+    color: #000;
+    padding: 12px 24px;
+    border-radius: 30px;
+    font-weight: 700;
     border: none;
     cursor: pointer;
-    font-family: inherit;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+}
+
+.magazine-card:hover .read-btn-overlay {
+    transform: translateY(0);
+}
+
+.magazine-info {
+    padding: 16px 8px 8px;
+}
+
+.mag-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mag-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.status-badge {
+    font-size: 0.75rem;
     font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+}
+
+.status-badge.published {
+    background: rgba(74, 222, 128, 0.1);
+    color: #4ade80;
+}
+
+.status-badge.draft {
+    background: rgba(154, 154, 165, 0.1);
+    color: #9a9aa5;
+}
+
+.date-badge {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.mag-admin-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.edit-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 10px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
     transition: all 0.2s;
 }
 
-.mag-actions button:first-child {
-    background: #d4af37;
-    color: #000;
+.edit-btn:hover {
+    background: rgba(212, 175, 55, 0.1);
+    border-color: #d4af37;
+    color: #d4af37;
 }
 
-.mag-actions button:last-child {
-    background: #2a2a38;
+.delete-btn {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.delete-btn:hover {
+    background: #ef4444;
     color: #fff;
 }
 
-.magazine-viewer {
-    flex: 1;
+.magazine-close-btn {
+    position: fixed;
+    top: 25px;
+    left: 25px;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    cursor: pointer;
+    z-index: 10000;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
 }
 
-.magazine-loading, .magazine-error {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    font-size: 1.2rem;
+.magazine-close-btn:hover {
+    background: #ef4444;
+    border-color: #ef4444;
+    transform: rotate(90deg);
+}
+
+@media (max-width: 768px) {
+    .magazine-library h1 {
+        font-size: 2.2rem;
+    }
+    
+    .magazines-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .magazine-modal-overlay {
+        padding: 15px;
+    }
 }

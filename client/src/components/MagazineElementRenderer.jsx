@@ -117,7 +117,7 @@ export const MagazineElementRenderer = ({ el, scale = 1 }) => {
 
     switch (el.type) {
         case 'text':
-            return <div style={style}>{el.content}</div>;
+            return <div style={{ ...style, whiteSpace: 'pre-wrap' }}>{el.content}</div>;
         case 'image':
             return <img src={el.src} alt="" style={{ ...style, objectFit: 'cover' }} />;
         case 'spatial':

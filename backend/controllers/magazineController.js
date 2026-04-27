@@ -84,9 +84,9 @@ const magazineController = {
     getMagazines: async (req, res) => {
         try {
             const result = await pool.query(`
-                SELECT m.*, mp.content as cover_content
+                SELECT m.*, 
+                (SELECT content FROM magazine_pages WHERE magazine_id = m.id ORDER BY page_number ASC LIMIT 1) as cover_content
                 FROM magazines m
-                LEFT JOIN magazine_pages mp ON m.id = mp.magazine_id AND mp.page_number = 1
                 WHERE m.is_published = TRUE
                 ORDER BY m.created_at DESC
             `);
@@ -101,9 +101,9 @@ const magazineController = {
     getAllMagazines: async (req, res) => {
         try {
             const result = await pool.query(`
-                SELECT m.*, mp.content as cover_content
+                SELECT m.*, 
+                (SELECT content FROM magazine_pages WHERE magazine_id = m.id ORDER BY page_number ASC LIMIT 1) as cover_content
                 FROM magazines m
-                LEFT JOIN magazine_pages mp ON m.id = mp.magazine_id AND mp.page_number = 1
                 ORDER BY m.created_at DESC
             `);
             res.json(result.rows);
@@ -136,11 +136,51 @@ const magazineController = {
     createMagazine: async (req, res) => {
         try {
             const { title, description } = req.body;
-            const result = await pool.query(
-                'INSERT INTO magazines (title, description) VALUES ($1, $2) RETURNING *',
-                [title, description]
-            );
-            res.status(201).json(result.rows[0]);
+            // Start a transaction
+            const client = await pool.connect();
+            try {
+                await client.query('BEGIN');
+                const result = await client.query(
+                    'INSERT INTO magazines (title, description) VALUES ($1, $2) RETURNING *',
+                    [title, description]
+                );
+                const newMag = result.rows[0];
+                
+                // Create initial page 1 (Cover) with a default title element
+                const initialContent = {
+                    elements: [
+                        {
+                            id: `el_${Date.now()}`,
+                            type: 'text',
+                            content: title,
+                            x: 50,
+                            y: 100,
+                            width: 400,
+                            height: 80,
+                            styles: {
+                                fontSize: '32px',
+                                fontWeight: 'bold',
+                                color: '#1a1a1a',
+                                textAlign: 'center',
+                                padding: '10px'
+                            }
+                        }
+                    ]
+                };
+
+                await client.query(
+                    'INSERT INTO magazine_pages (magazine_id, page_number, content) VALUES ($1, $2, $3)',
+                    [newMag.id, 1, JSON.stringify(initialContent)]
+                );
+                
+                await client.query('COMMIT');
+                res.status(201).json(newMag);
+            } catch (e) {
+                await client.query('ROLLBACK');
+                throw e;
+            } finally {
+                client.release();
+            }
         } catch (error) {
             console.error('Create magazine error:', error);
             res.status(500).json({ error: 'Failed to create magazine' });
