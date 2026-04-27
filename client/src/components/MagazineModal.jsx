@@ -90,8 +90,30 @@ const MagazineModal = ({ onClose }) => {
                     <div className="magazines-grid">
                         {magazines.map(mag => (
                             <div key={mag.id} className="magazine-card">
-                                <div className="magazine-cover">
-                                    {mag.cover_image ? (
+                                <div className="magazine-cover" style={{ position: 'relative' }}>
+                                    {mag.cover_content ? (
+                                        <div className="mini-cover-renderer" style={{ 
+                                            position: 'relative', 
+                                            width: '100%', 
+                                            height: '100%', 
+                                            overflow: 'hidden',
+                                            transform: 'scale(0.5)', 
+                                            transformOrigin: 'top left'
+                                        }}>
+                                            {(() => {
+                                                try {
+                                                    const content = typeof mag.cover_content === 'string' 
+                                                        ? JSON.parse(mag.cover_content) 
+                                                        : mag.cover_content;
+                                                    return content.elements?.map(el => (
+                                                        <MagazineElementRenderer key={el.id} el={el} scale={0.5} />
+                                                    ));
+                                                } catch (e) {
+                                                    return <p>خطأ في عرض الغلاف</p>;
+                                                }
+                                            })()}
+                                        </div>
+                                    ) : mag.cover_image ? (
                                         <img src={mag.cover_image} alt={mag.title} />
                                     ) : (
                                         <div className="no-cover">

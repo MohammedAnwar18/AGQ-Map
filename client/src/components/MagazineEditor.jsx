@@ -4,6 +4,9 @@ import { magazineService, getImageUrl } from '../services/api';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import axios from 'axios';
+import MagazineViewer from './MagazineViewer';
+import MagazineBackground from './MagazineBackground';
+import { MagazineElementRenderer, SpatialMapRenderer } from './MagazineElementRenderer';
 
 const MagazineEditor = ({ magazineId, onClose }) => {
     // ==================== STATE MANAGEMENT ====================
@@ -378,15 +381,6 @@ const MagazineEditor = ({ magazineId, onClose }) => {
 };
 
 const RenderedElement = ({ el, isSelected, onMouseDown, onResizeStart, onTextChange }) => {
-    const [geoData, setGeoData] = useState(el.spatialData);
-
-    useEffect(() => {
-        if (el.type === 'spatial' && el.spatialUrl && !geoData) {
-            const url = getImageUrl(el.spatialUrl);
-            axios.get(url).then(res => setGeoData(res.data)).catch(console.error);
-        }
-    }, [el.spatialUrl, el.type, geoData]);
-
     const style = {
         position: 'absolute', left: el.x, top: el.y, width: el.width, height: el.height,
         ...el.styles, zIndex: isSelected ? 100 : 1, userSelect: isSelected ? 'auto' : 'none'
@@ -394,93 +388,15 @@ const RenderedElement = ({ el, isSelected, onMouseDown, onResizeStart, onTextCha
 
     return (
         <div className={`editable-element ${el.type}-element ${isSelected ? 'selected' : ''}`} style={style} onMouseDown={onMouseDown}>
-            {el.type === 'text' ? (
-                <div contentEditable={isSelected} onBlur={(e) => onTextChange(e.currentTarget.innerText)} suppressContentEditableWarning={true} style={{ width: '100%', height: '100%' }}>{el.content}</div>
-            ) : el.type === 'image' ? (
-                <img src={el.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : el.type === 'spatial' ? (
-                <SpatialMapRenderer data={geoData} drawing={el.spatialDrawing} width={el.width} height={el.height} theme={el.theme} />
-            ) : (
-                <div style={{ width: '100%', height: '100%', background: el.styles.backgroundColor, border: `${el.styles.borderWidth} solid ${el.styles.borderColor}`, borderRadius: el.styles.borderRadius }}></div>
+            <MagazineElementRenderer el={el} />
+            {isSelected && el.type === 'text' && (
+                 <div contentEditable={isSelected} onBlur={(e) => onTextChange(e.currentTarget.innerText)} suppressContentEditableWarning={true} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0 }}>{el.content}</div>
             )}
             {isSelected && <div className="resize-handle se" onMouseDown={(e) => onResizeStart(e, 'se')}></div>}
         </div>
     );
 };
 
-const SpatialMapRenderer = ({ data, drawing, width, height, theme }) => {
-    // If we have a pre-rendered drawing path, use it directly (optimized)
-    if (drawing) {
-        return (
-            <svg width="100%" height="100%" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid meet">
-                <path 
-                    d={drawing} 
-                    fill="none" 
-                    stroke={theme === 'dark' ? '#d4af37' : '#2c3e50'} 
-                    strokeWidth="2" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                />
-            </svg>
-        );
-    }
-
-    if (!data) return (
-        <div className="spinner-container-small">
-            <div className="spinner-small"></div>
-            <div style={{ fontSize: '10px', marginTop: '5px', color: '#d4af37' }}>جاري تحميل البيانات...</div>
-        </div>
-    );
-
-    // Optimized helper to get all coordinates from GeoJSON
-    const getAllCoords = (obj) => {
-        const coords = [];
-        const extract = (item) => {
-            if (!item) return;
-            if (item.type === 'FeatureCollection' && item.features) {
-                for (let i = 0; i < item.features.length; i++) extract(item.features[i].geometry);
-            } else if (item.type === 'Feature' && item.geometry) {
-                extract(item.geometry);
-            } else if (item.type === 'GeometryCollection' && item.geometries) {
-                for (let i = 0; i < item.geometries.length; i++) extract(item.geometries[i]);
-            } else if (item.coordinates) {
-                const flatten = (arr) => {
-                    if (typeof arr[0] === 'number') {
-                        coords.push(arr);
-                    } else {
-                        for (let i = 0; i < arr.length; i++) flatten(arr[i]);
-                    }
-                };
-                flatten(item.coordinates);
-            }
-        };
-        extract(obj);
-        return coords;
-    };
-
-    const coords = getAllCoords(data);
-    if (coords.length === 0) return <div style={{ fontSize: '10px', color: '#888', textAlign: 'center', padding: '20px' }}>لا توجد بيانات جغرافية صالحة</div>;
-
-    let minX = coords[0][0], maxX = coords[0][0], minY = coords[0][1], maxY = coords[0][1];
-    for (let i = 1; i < coords.length; i++) {
-        const c = coords[i];
-        if (c[0] < minX) minX = c[0];
-        if (c[0] > maxX) maxX = c[0];
-        if (c[1] < minY) minY = c[1];
-        if (c[1] > maxY) maxY = c[1];
-    }
-
-    const diffX = maxX - minX || 1;
-    const diffY = maxY - minY || 1;
-
-    const pad = 10;
-    const scaleX = (width - pad * 2) / diffX;
-    const scaleY = (height - pad * 2) / diffY;
-    const scale = Math.min(scaleX, scaleY);
-
-    const project = (c) => [
-        pad + (c[0] - minX) * scale,
-        height - (pad + (c[1] - minY) * scale)
     ];
 
     const renderGeometry = (geom) => {

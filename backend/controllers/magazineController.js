@@ -83,7 +83,13 @@ const magazineController = {
     // Get all published magazines
     getMagazines: async (req, res) => {
         try {
-            const result = await pool.query('SELECT * FROM magazines WHERE is_published = TRUE ORDER BY created_at DESC');
+            const result = await pool.query(`
+                SELECT m.*, mp.content as cover_content
+                FROM magazines m
+                LEFT JOIN magazine_pages mp ON m.id = mp.magazine_id AND mp.page_number = 0
+                WHERE m.is_published = TRUE
+                ORDER BY m.created_at DESC
+            `);
             res.json(result.rows);
         } catch (error) {
             console.error('Get magazines error:', error);
@@ -94,7 +100,12 @@ const magazineController = {
     // Get all magazines (Admin only)
     getAllMagazines: async (req, res) => {
         try {
-            const result = await pool.query('SELECT * FROM magazines ORDER BY created_at DESC');
+            const result = await pool.query(`
+                SELECT m.*, mp.content as cover_content
+                FROM magazines m
+                LEFT JOIN magazine_pages mp ON m.id = mp.magazine_id AND mp.page_number = 0
+                ORDER BY m.created_at DESC
+            `);
             res.json(result.rows);
         } catch (error) {
             console.error('Get all magazines error:', error);
