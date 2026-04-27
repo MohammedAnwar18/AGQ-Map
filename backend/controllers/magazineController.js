@@ -86,7 +86,7 @@ const magazineController = {
             const result = await pool.query(`
                 SELECT m.*, mp.content as cover_content
                 FROM magazines m
-                LEFT JOIN magazine_pages mp ON m.id = mp.magazine_id AND mp.page_number = 0
+                LEFT JOIN magazine_pages mp ON m.id = mp.magazine_id AND mp.page_number = 1
                 WHERE m.is_published = TRUE
                 ORDER BY m.created_at DESC
             `);
@@ -103,7 +103,7 @@ const magazineController = {
             const result = await pool.query(`
                 SELECT m.*, mp.content as cover_content
                 FROM magazines m
-                LEFT JOIN magazine_pages mp ON m.id = mp.magazine_id AND mp.page_number = 0
+                LEFT JOIN magazine_pages mp ON m.id = mp.magazine_id AND mp.page_number = 1
                 ORDER BY m.created_at DESC
             `);
             res.json(result.rows);
