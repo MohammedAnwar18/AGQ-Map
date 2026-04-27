@@ -164,7 +164,7 @@ const MagazineEditor = ({ magazineId, onClose }) => {
                 width: 400,
                 height: 300,
                 theme: 'firefly',
-                styles: { backgroundColor: '#0d0d12', borderRadius: '12px', border: '1px solid #d4af37' }
+                styles: { backgroundColor: 'transparent', border: 'none' }
             });
             showToast('تمت إضافة الخريطة الفنية');
         } catch (err) { 
