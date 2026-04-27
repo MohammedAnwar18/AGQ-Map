@@ -410,27 +410,50 @@ const RenderedElement = ({ el, isSelected, onMouseDown, onResizeStart, onTextCha
 };
 
 const SpatialMapRenderer = ({ data, width, height, theme }) => {
-    if (!data) return <div className="spinner-small"></div>;
+    if (!data) return (
+        <div className="spinner-container-small">
+            <div className="spinner-small"></div>
+            <div style={{ fontSize: '10px', marginTop: '5px', color: '#d4af37' }}>جاري تحميل البيانات...</div>
+        </div>
+    );
 
-    // Helper to get all coordinates from GeoJSON
+    // Optimized helper to get all coordinates from GeoJSON
     const getAllCoords = (obj) => {
-        let coords = [];
-        if (obj.type === 'FeatureCollection') obj.features.forEach(f => coords.push(...getAllCoords(f.geometry)));
-        else if (obj.type === 'GeometryCollection') obj.geometries.forEach(g => coords.push(...getAllCoords(g)));
-        else if (obj.coordinates) {
-            const flatten = (arr) => Array.isArray(arr[0]) ? arr.forEach(flatten) : coords.push(arr);
-            flatten(obj.coordinates);
-        }
+        const coords = [];
+        const extract = (item) => {
+            if (!item) return;
+            if (item.type === 'FeatureCollection' && item.features) {
+                for (let i = 0; i < item.features.length; i++) extract(item.features[i].geometry);
+            } else if (item.type === 'Feature' && item.geometry) {
+                extract(item.geometry);
+            } else if (item.type === 'GeometryCollection' && item.geometries) {
+                for (let i = 0; i < item.geometries.length; i++) extract(item.geometries[i]);
+            } else if (item.coordinates) {
+                const flatten = (arr) => {
+                    if (typeof arr[0] === 'number') {
+                        coords.push(arr);
+                    } else {
+                        for (let i = 0; i < arr.length; i++) flatten(arr[i]);
+                    }
+                };
+                flatten(item.coordinates);
+            }
+        };
+        extract(obj);
         return coords;
     };
 
     const coords = getAllCoords(data);
-    if (coords.length === 0) return null;
+    if (coords.length === 0) return <div style={{ fontSize: '10px', color: '#888', textAlign: 'center', padding: '20px' }}>لا توجد بيانات جغرافية صالحة</div>;
 
-    const minX = Math.min(...coords.map(c => c[0]));
-    const maxX = Math.max(...coords.map(c => c[0]));
-    const minY = Math.min(...coords.map(c => c[1]));
-    const maxY = Math.max(...coords.map(c => c[1]));
+    let minX = coords[0][0], maxX = coords[0][0], minY = coords[0][1], maxY = coords[0][1];
+    for (let i = 1; i < coords.length; i++) {
+        const c = coords[i];
+        if (c[0] < minX) minX = c[0];
+        if (c[0] > maxX) maxX = c[0];
+        if (c[1] < minY) minY = c[1];
+        if (c[1] > maxY) maxY = c[1];
+    }
 
     const diffX = maxX - minX || 1;
     const diffY = maxY - minY || 1;
