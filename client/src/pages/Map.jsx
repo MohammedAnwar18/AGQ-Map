@@ -1871,7 +1871,6 @@ const MapComponent = () => {
             )}
             {showNews && <NewsModal onClose={() => setShowNews(false)} location={{ latitude: viewState.latitude, longitude: viewState.longitude }} />}
             {showCommunities && <CommunitiesModal onClose={() => setShowCommunities(false)} onJoinCommunity={handleJoinCommunity} />}
-            {showMagazine && <MagazineModal onClose={() => setShowMagazine(false)} />}
             {showManagedShops && (
                 <ManagedShopsModal
                     onClose={() => setShowManagedShops(false)}

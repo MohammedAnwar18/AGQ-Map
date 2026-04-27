@@ -26,9 +26,10 @@ const MagazineModal = ({ onClose }) => {
             const data = isAdmin 
                 ? await magazineService.getAllMagazines()
                 : await magazineService.getMagazines();
-            setMagazines(data);
+            setMagazines(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error('Failed to fetch magazines:', error);
+            setMagazines([]);
         } finally {
             setLoading(false);
         }
@@ -39,8 +40,7 @@ const MagazineModal = ({ onClose }) => {
         if (!title) return;
         try {
             const newMag = await magazineService.createMagazine({ title, description: '' });
-            setMagazines([newMag, ...magazines]);
-            // Automatically open editor for the new magazine
+            setMagazines(prev => [newMag, ...prev]);
             setSelectedMagazineId(newMag.id);
             setIsEditing(true);
         } catch (error) {
@@ -53,7 +53,7 @@ const MagazineModal = ({ onClose }) => {
         if (!window.confirm('هل أنت متأكد من حذف هذا العدد؟')) return;
         try {
             await magazineService.deleteMagazine(id);
-            setMagazines(magazines.filter(m => m.id !== id));
+            setMagazines(prev => prev.filter(m => m.id !== id));
         } catch (error) {
             alert('فشل في الحذف');
         }
@@ -65,7 +65,7 @@ const MagazineModal = ({ onClose }) => {
 
     if (selectedMagazineId) {
         return (
-            <div className="magazine-modal-overlay">
+            <div className="magazine-modal-overlay" style={{ zIndex: 10002 }}>
                 <button className="magazine-close-btn" onClick={() => setSelectedMagazineId(null)}>×</button>
                 <MagazineViewer magazineId={selectedMagazineId} />
             </div>
@@ -73,15 +73,16 @@ const MagazineModal = ({ onClose }) => {
     }
 
     return (
-        <div className="magazine-modal-overlay">
+        <div className="magazine-modal-overlay" style={{ zIndex: 10001 }}>
             <MagazineBackground />
             <button className="magazine-close-btn" onClick={onClose}>×</button>
             
-            <div className="magazine-library">
+            <div className="magazine-library" style={{ position: 'relative', zIndex: 10 }}>
                 <h1>مجلة بالنوفا المكانية</h1>
                 {isAdmin && (
-                    <button className="header-btn save" style={{ margin: '0 auto 40px auto', display: 'block' }} onClick={handleCreate}>
-                        + إنشاء عدد جديد
+                    <button className="create-mag-btn" onClick={handleCreate}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        إنشاء عدد جديد
                     </button>
                 )}
                 
@@ -89,7 +90,7 @@ const MagazineModal = ({ onClose }) => {
                     <div className="magazine-loading">جاري تحميل المكتبة...</div>
                 ) : (
                     <div className="magazines-grid">
-                        {magazines.map(mag => (
+                        {(magazines || []).map(mag => (
                             <div key={mag.id} className="magazine-card">
                                 <div className="magazine-cover">
                                     {mag.cover_content ? (
@@ -100,7 +101,7 @@ const MagazineModal = ({ onClose }) => {
                                                         const content = typeof mag.cover_content === 'string' 
                                                             ? JSON.parse(mag.cover_content) 
                                                             : mag.cover_content;
-                                                        return content.elements?.map(el => (
+                                                        return content?.elements?.map(el => (
                                                             <MagazineElementRenderer key={el.id} el={el} scale={0.6} />
                                                         ));
                                                     } catch (e) {
@@ -149,7 +150,7 @@ const MagazineModal = ({ onClose }) => {
                                 )}
                             </div>
                         ))}
-                        {magazines.length === 0 && !loading && (
+                        {(magazines || []).length === 0 && !loading && (
                             <div style={{ gridColumn: '1/-1', padding: '40px', opacity: 0.5 }}>
                                 <p>لا توجد مـجلات متاحة حالياً.</p>
                                 {isAdmin && <p>ابدأ بإنشاء العدد الأول الآن!</p>}

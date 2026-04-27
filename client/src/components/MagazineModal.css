@@ -15,6 +15,17 @@
     overflow-y: auto;
 }
 
+.magazine-svg-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.15;
+}
+
 .magazine-library {
     position: relative;
     z-index: 1;
@@ -38,8 +49,29 @@
 .magazines-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 35px;
     padding: 20px 0;
+}
+
+.create-mag-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 auto 40px auto;
+    background: linear-gradient(135deg, #fbab15 0%, #d4af37 100%);
+    color: #000;
+    border: none;
+    padding: 14px 28px;
+    border-radius: 16px;
+    font-size: 1rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 20px rgba(212, 175, 55, 0.2);
+}
+
+.create-mag-btn:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 15px 30px rgba(212, 175, 55, 0.3);
 }
 
 .magazine-card {
