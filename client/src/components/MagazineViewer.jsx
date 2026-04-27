@@ -43,7 +43,7 @@ const MagazineViewer = ({ magazineId }) => {
                 <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', margin: '5px 0' }}>العدد: {data.magazine?.title}</p>
             </div>
 
-            <div className="book-canvas" style={{ width: (isCover || isMobile) ? (isMobile ? '90%' : '450px') : '900px', minHeight: isMobile ? '500px' : '650px', transition: 'all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)', boxShadow: '0 20px 50px rgba(0,0,0,0.4)' }}>
+            <div className="book-canvas" style={{ width: (isCover || isMobile) ? (isMobile ? '95%' : '400px') : '800px', minHeight: isMobile ? '500px' : '550px', transition: 'all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)', boxShadow: '0 20px 50px rgba(0,0,0,0.4)' }}>
                 <div className="page-spread" style={{ flexDirection: isMobile ? 'column' : 'row', height: '100%' }}>
                     {currentPages.map((page, idx) => (
                         <React.Fragment key={page.id || page.page_number}>
