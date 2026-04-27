@@ -3,6 +3,7 @@ const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const { isAdmin } = require('../middleware/adminAuth');
 const upload = require('../middleware/upload');
+const spatialUpload = require('../middleware/spatialUpload');
 const magazineController = require('../controllers/magazineController');
 
 // Public Routes
@@ -19,7 +20,7 @@ router.delete('/:id', isAdmin, magazineController.deleteMagazine);
 
 router.post('/page', isAdmin, magazineController.savePage);
 router.post('/upload', isAdmin, upload.single('image'), magazineController.uploadImage);
-router.post('/upload-spatial', isAdmin, upload.single('file'), magazineController.uploadSpatial);
+router.post('/upload-spatial', isAdmin, spatialUpload.single('file'), magazineController.uploadSpatial);
 router.post('/:id/cover', isAdmin, upload.single('image'), magazineController.setCoverImage);
 
 module.exports = router;
