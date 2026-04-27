@@ -2,7 +2,82 @@ const pool = require('../config/database');
 const { uploadToCloud } = require('../utils/storage');
 // Removed top-level require for shpjs to avoid ERR_REQUIRE_ESM
 
-const magazineController = {
+// Helper to convert GeoJSON to a simplified SVG path string
+function convertGeoJSONToPath(geojson) {
+    let coords = [];
+    const extract = (item) => {
+        if (!item) return;
+        if (item.type === 'FeatureCollection' && item.features) {
+            item.features.forEach(f => extract(f.geometry));
+        } else if (item.type === 'Feature' && item.geometry) {
+            extract(item.geometry);
+        } else if (item.type === 'GeometryCollection' && item.geometries) {
+            item.geometries.forEach(g => extract(g));
+        } else if (item.coordinates) {
+            const flatten = (arr) => {
+                if (typeof arr[0] === 'number') coords.push(arr);
+                else arr.forEach(flatten);
+            };
+            flatten(item.coordinates);
+        }
+    };
+    extract(geojson);
+
+    if (coords.length === 0) return null;
+
+    let minX = coords[0][0], maxX = coords[0][0], minY = coords[0][1], maxY = coords[0][1];
+    coords.forEach(c => {
+        if (c[0] < minX) minX = c[0];
+        if (c[0] > maxX) maxX = c[0];
+        if (c[1] < minY) minY = c[1];
+        if (c[1] > maxY) maxY = c[1];
+    });
+
+    const diffX = maxX - minX || 1;
+    const diffY = maxY - minY || 1;
+    const padding = 20;
+    const w = 1000 - (padding * 2);
+    const h = 1000 - (padding * 2);
+
+    const project = (coord) => {
+        const x = padding + ((coord[0] - minX) / diffX) * w;
+        const y = padding + (1 - (coord[1] - minY) / diffY) * h;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+    };
+
+    let pathData = "";
+    const processGeometry = (geom) => {
+        if (!geom) return;
+        if (geom.type === 'Point') {
+            const p = project(geom.coordinates);
+            pathData += `M ${p} m -5,0 a 5,5 0 1,0 10,0 a 5,5 0 1,0 -10,0 `;
+        } else if (geom.type === 'LineString') {
+            pathData += "M " + geom.coordinates.map(project).join(" L ") + " ";
+        } else if (geom.type === 'MultiLineString') {
+            geom.coordinates.forEach(line => {
+                pathData += "M " + line.map(project).join(" L ") + " ";
+            });
+        } else if (geom.type === 'Polygon') {
+            geom.coordinates.forEach(ring => {
+                pathData += "M " + ring.map(project).join(" L ") + " Z ";
+            });
+        } else if (geom.type === 'MultiPolygon') {
+            geom.coordinates.forEach(poly => {
+                poly.forEach(ring => {
+                    pathData += "M " + ring.map(project).join(" L ") + " Z ";
+                });
+            });
+        }
+    };
+
+    if (geojson.type === 'FeatureCollection') {
+        geojson.features.forEach(f => processGeometry(f.geometry));
+    } else {
+        processGeometry(geojson);
+    }
+
+    return pathData.trim();
+}
     // Get all published magazines
     getMagazines: async (req, res) => {
         try {
@@ -174,19 +249,14 @@ const magazineController = {
                 };
             }
             
-            const dataSize = JSON.stringify(geojson).length;
+            // Convert to a simplified SVG drawing path
+            const drawingPath = convertGeoJSONToPath(geojson);
             
-            // If the resulting JSON is large, upload to R2
-            if (dataSize > 250000) { // 250KB threshold
-                const url = await uploadToCloud(
-                    Buffer.from(JSON.stringify(geojson)), 
-                    `spatial_${Date.now()}.json`, 
-                    'application/json'
-                );
-                return res.json({ url, type: 'link', size: dataSize });
-            }
-            
-            res.json({ data: geojson, type: 'data', size: dataSize });
+            res.json({ 
+                type: 'drawing', 
+                path: drawingPath,
+                size: req.file.size 
+            });
         } catch (error) {
             console.error('Spatial data upload error:', error);
             res.status(500).json({ 

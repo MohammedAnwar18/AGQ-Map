@@ -160,8 +160,7 @@ const MagazineEditor = ({ magazineId, onClose }) => {
             
             addElement({
                 type: 'spatial',
-                spatialData: res.type === 'data' ? res.data : null,
-                spatialUrl: res.type === 'link' ? res.url : null,
+                spatialDrawing: res.type === 'drawing' ? res.path : null,
                 width: 400,
                 height: 300,
                 theme: 'firefly',
@@ -400,7 +399,7 @@ const RenderedElement = ({ el, isSelected, onMouseDown, onResizeStart, onTextCha
             ) : el.type === 'image' ? (
                 <img src={el.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : el.type === 'spatial' ? (
-                <SpatialMapRenderer data={geoData} width={el.width} height={el.height} theme={el.theme} />
+                <SpatialMapRenderer data={geoData} drawing={el.spatialDrawing} width={el.width} height={el.height} theme={el.theme} />
             ) : (
                 <div style={{ width: '100%', height: '100%', background: el.styles.backgroundColor, border: `${el.styles.borderWidth} solid ${el.styles.borderColor}`, borderRadius: el.styles.borderRadius }}></div>
             )}
@@ -409,7 +408,23 @@ const RenderedElement = ({ el, isSelected, onMouseDown, onResizeStart, onTextCha
     );
 };
 
-const SpatialMapRenderer = ({ data, width, height, theme }) => {
+const SpatialMapRenderer = ({ data, drawing, width, height, theme }) => {
+    // If we have a pre-rendered drawing path, use it directly (optimized)
+    if (drawing) {
+        return (
+            <svg width="100%" height="100%" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid meet">
+                <path 
+                    d={drawing} 
+                    fill="none" 
+                    stroke={theme === 'dark' ? '#d4af37' : '#2c3e50'} 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                />
+            </svg>
+        );
+    }
+
     if (!data) return (
         <div className="spinner-container-small">
             <div className="spinner-small"></div>
