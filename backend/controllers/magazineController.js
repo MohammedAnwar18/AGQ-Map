@@ -144,7 +144,18 @@ const magazineController = {
             
             // Parse Shapefile from Buffer
             const shp = require('shpjs');
-            const geojson = await shp(req.file.buffer);
+            let geojson = await shp(req.file.buffer);
+            
+            // If the zip contains multiple shapefiles, shpjs returns an array.
+            // We'll normalize it to a single FeatureCollection for the editor.
+            if (Array.isArray(geojson)) {
+                console.log(`ZIP contains ${geojson.length} shapefiles, merging...`);
+                const features = geojson.flatMap(collection => collection.features || []);
+                geojson = {
+                    type: 'FeatureCollection',
+                    features: features
+                };
+            }
             
             const dataSize = JSON.stringify(geojson).length;
             
@@ -161,7 +172,11 @@ const magazineController = {
             res.json({ data: geojson, type: 'data', size: dataSize });
         } catch (error) {
             console.error('Spatial data upload error:', error);
-            res.status(500).json({ error: 'Failed to process shapefile. Ensure it is a valid ZIP containing .shp, .dbf, etc.' });
+            res.status(500).json({ 
+                error: 'Failed to process shapefile', 
+                details: error.message,
+                message: 'Ensure it is a valid ZIP containing .shp, .dbf, etc.' 
+            });
         }
     }
 };

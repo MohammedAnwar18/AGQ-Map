@@ -186,6 +186,15 @@ app.use('/api/radar', require('./routes/radar')); // <-- NEW RADAR MOUNT
 
 
 
+// Global Error Handler
+app.use((err, req, res, next) => {
+    console.error('Global Error:', err);
+    res.status(err.status || 500).json({
+        error: err.message || 'حدث خطأ داخلي في الخادم',
+        details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
+});
+
 // 7. التشغيل المحلي (فقط للمبرمج)
 if (!process.env.VERCEL) {
     const PORT = process.env.PORT || 5000;

@@ -168,7 +168,10 @@ const MagazineEditor = ({ magazineId, onClose }) => {
                 styles: { backgroundColor: '#0d0d12', borderRadius: '12px', border: '1px solid #d4af37' }
             });
             showToast('تمت إضافة الخريطة الفنية');
-        } catch (err) { showToast('فشل معالجة الملف. تأكد أنه ZIP يحتوي على .shp', 'danger'); }
+        } catch (err) { 
+            const errorMsg = err.response?.data?.details || err.response?.data?.error || 'فشل معالجة الملف. تأكد أنه ZIP يحتوي على .shp';
+            showToast(errorMsg, 'danger'); 
+        }
     };
 
     const addShapeElement = (shapeType) => {
