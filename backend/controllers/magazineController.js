@@ -1,6 +1,6 @@
 const pool = require('../config/database');
 const { uploadToCloud } = require('../utils/storage');
-const shp = require('shpjs');
+// Removed top-level require for shpjs to avoid ERR_REQUIRE_ESM
 
 const magazineController = {
     // Get all published magazines
@@ -148,7 +148,9 @@ const magazineController = {
             
             console.log(`Spatial upload: Processing file ${req.file.originalname} (${req.file.mimetype}, ${req.file.size} bytes)`);
             
-            // Parse Shapefile from Buffer
+            // Parse Shapefile from Buffer using dynamic import for ESM compatibility
+            const shpModule = await import('shpjs');
+            const shp = shpModule.default || shpModule;
             let geojson = await shp(req.file.buffer);
             
             // If the zip contains multiple shapefiles, shpjs returns an array.
