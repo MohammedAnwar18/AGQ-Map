@@ -27,6 +27,7 @@
     "uuid": "^9.0.1",
     "@aws-sdk/client-s3": "^3.1011.0",
     "@aws-sdk/lib-storage": "^3.1011.0",
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "shpjs": "^6.2.0"
   }
 }
