@@ -371,7 +371,7 @@ const MagazineEditor = ({ magazineId, onClose }) => {
             </div>
 
             <input type="file" ref={imageInputRef} style={{ display: 'none' }} accept="image/*" onChange={handleImageUpload} />
-            <input type="file" ref={spatialInputRef} style={{ display: 'none' }} accept=".zip" onChange={handleSpatialUpload} />
+            <input type="file" ref={spatialInputRef} style={{ display: 'none' }} accept=".zip,.json,.geojson" onChange={handleSpatialUpload} />
             
             {toast.show && <div className={`toast show ${toast.type}`} style={{ position: 'fixed', bottom: 30, left: '50%', transform: 'translateX(-50%)', background: '#1e1e28', padding: '12px 24px', borderRadius: 12, color: toast.type === 'success' ? '#4ade80' : '#ef4444', zIndex: 20000 }}>{toast.message}</div>}
         </div>

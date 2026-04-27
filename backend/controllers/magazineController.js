@@ -148,15 +148,25 @@ const magazineController = {
             
             console.log(`Spatial upload: Processing file ${req.file.originalname} (${req.file.mimetype}, ${req.file.size} bytes)`);
             
-            // Parse Shapefile from Buffer using dynamic import for ESM compatibility
-            const shpModule = await import('shpjs');
-            const shp = shpModule.default || shpModule;
-            let geojson = await shp(req.file.buffer);
+            let geojson;
+            const isJson = req.file.originalname.toLowerCase().endsWith('.json') || 
+                           req.file.originalname.toLowerCase().endsWith('.geojson') ||
+                           req.file.mimetype === 'application/json' ||
+                           req.file.mimetype === 'application/geo+json';
+
+            if (isJson) {
+                console.log('Detected direct JSON/GeoJSON upload');
+                geojson = JSON.parse(req.file.buffer.toString());
+            } else {
+                // Parse Shapefile from Buffer using dynamic import for ESM compatibility
+                const shpModule = await import('shpjs');
+                const shp = shpModule.default || shpModule;
+                geojson = await shp(req.file.buffer);
+            }
             
-            // If the zip contains multiple shapefiles, shpjs returns an array.
-            // We'll normalize it to a single FeatureCollection for the editor.
+            // Normalize to a single FeatureCollection
             if (Array.isArray(geojson)) {
-                console.log(`ZIP contains ${geojson.length} shapefiles, merging...`);
+                console.log(`Input contains ${geojson.length} objects, merging features...`);
                 const features = geojson.flatMap(collection => collection.features || []);
                 geojson = {
                     type: 'FeatureCollection',

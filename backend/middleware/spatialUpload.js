@@ -12,8 +12,19 @@ const spatialUpload = multer({
         fileSize: 30 * 1024 * 1024, // 30MB limit for shapefiles
     },
     fileFilter: (req, file, cb) => {
-        // More permissive filter for spatial data
-        cb(null, true); 
+        const ext = file.originalname.toLowerCase();
+        if (
+            ext.endsWith('.zip') || 
+            ext.endsWith('.json') || 
+            ext.endsWith('.geojson') ||
+            file.mimetype === 'application/zip' ||
+            file.mimetype === 'application/json' ||
+            file.mimetype === 'application/geo+json'
+        ) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only ZIP (Shapefile), JSON, or GeoJSON files are allowed'), false);
+        }
     }
 });
 
