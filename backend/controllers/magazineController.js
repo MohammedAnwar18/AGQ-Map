@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const { uploadToCloud } = require('../utils/storage');
+const shp = require('shpjs');
 
 const magazineController = {
     // Get all published magazines
@@ -140,10 +141,14 @@ const magazineController = {
     // Process and Upload Spatial Data (Shapefile ZIP)
     uploadSpatial: async (req, res) => {
         try {
-            if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+            if (!req.file) {
+                console.warn('Spatial upload: No file received');
+                return res.status(400).json({ error: 'No file uploaded' });
+            }
+            
+            console.log(`Spatial upload: Processing file ${req.file.originalname} (${req.file.mimetype}, ${req.file.size} bytes)`);
             
             // Parse Shapefile from Buffer
-            const shp = require('shpjs');
             let geojson = await shp(req.file.buffer);
             
             // If the zip contains multiple shapefiles, shpjs returns an array.

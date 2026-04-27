@@ -169,6 +169,7 @@ const MagazineEditor = ({ magazineId, onClose }) => {
             });
             showToast('تمت إضافة الخريطة الفنية');
         } catch (err) { 
+            console.error('Spatial upload failed:', err);
             const errorMsg = err.response?.data?.details || err.response?.data?.error || 'فشل معالجة الملف. تأكد أنه ZIP يحتوي على .shp';
             showToast(errorMsg, 'danger'); 
         }
