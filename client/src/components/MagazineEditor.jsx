@@ -383,7 +383,8 @@ const RenderedElement = ({ el, isSelected, onMouseDown, onResizeStart, onTextCha
 
     useEffect(() => {
         if (el.type === 'spatial' && el.spatialUrl && !geoData) {
-            axios.get(el.spatialUrl).then(res => setGeoData(res.data)).catch(console.error);
+            const url = getImageUrl(el.spatialUrl);
+            axios.get(url).then(res => setGeoData(res.data)).catch(console.error);
         }
     }, [el.spatialUrl, el.type, geoData]);
 
