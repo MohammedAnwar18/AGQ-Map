@@ -78,6 +78,8 @@ function convertGeoJSONToPath(geojson) {
 
     return pathData.trim();
 }
+
+const magazineController = {
     // Get all published magazines
     getMagazines: async (req, res) => {
         try {
