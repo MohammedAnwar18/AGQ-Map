@@ -332,7 +332,7 @@ const AIChatModal = ({ isOpen, onClose }) => {
 
                     {/* Floating Search Bar (when in results) */}
                     {showResults && (
-                        <div className="ai-search-wrap" style={{padding: '10px 0'}}>
+                        <div className="ai-search-wrap ai-search-wrap-floating">
                             <div className="ai-search-box">
                                 <input 
                                     className="ai-search-input" 
