@@ -482,7 +482,7 @@ const NewsModal = ({ onClose, location }) => {
                                     {flights.length > 0 && (
                                         <div className="feed-section-label">✈️ الحركة الجوية</div>
                                     )}
-                                    {flights.slice(0, 12).map((flight, i) => (
+                                    {flights.slice(0, 30).map((flight, i) => (
                                         <div key={`flight-${i}`} className="feed-card flight-card">
                                             <span className="feed-icon" style={{ transform: `rotate(${flight.heading - 45}deg)`, display: 'inline-block' }}>✈️</span>
                                             <div className="feed-info">
