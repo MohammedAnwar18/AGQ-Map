@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { smartSearchService, shopService, aiService } from '../services/api';
 import { getImageUrl } from '../services/api';
@@ -72,7 +72,7 @@ const AIChatModal = ({ onClose }) => {
     const setTheme = (t) => { setThemeState(t); applyTheme(t); localStorage.setItem('ai-theme', t); };
     const setAccent = (c) => { setAccentState(c); applyAccent(c); localStorage.setItem('ai-accent', c); };
 
-        const handleSearch = useCallback(async (searchText) => {
+    const handleSearch = useCallback(async (searchText) => {
         const q = searchText || query;
         if (!q.trim()) return;
         setLoading(true);
@@ -94,17 +94,14 @@ const AIChatModal = ({ onClose }) => {
             setResults(found);
 
             // 2. Get conversational AI response
-            // We pass [] for history for now, and null for location
-            // We also import aiService at the top (already there)
-            const { aiService } = await import('../services/api');
             const aiResponse = await aiService.chat(q, [], null, { name: userName });
             
             if (aiResponse && aiResponse.reply) {
                 setAiText(aiResponse.reply);
             } else if (found.length > 0) {
-                setAiText(\وجدت <strong>\ نتيجة</strong> تطابق بحثك. أفضل نتيجة هي <strong>\</strong>.\);
+                setAiText(`وجدت <strong>${found.length} نتيجة</strong> تطابق بحثك. أفضل نتيجة هي <strong>${found[0].name}</strong>.`);
             } else {
-                setAiText(\لم أجد نتائج لـ "\". حاول البحث بكلمات مختلفة.\);
+                setAiText(`لم أجد نتائج لـ "${q}". حاول البحث بكلمات مختلفة.`);
             }
 
         } catch (err) {
@@ -334,6 +331,3 @@ const AIChatModal = ({ onClose }) => {
 };
 
 export default AIChatModal;
-
-
-
