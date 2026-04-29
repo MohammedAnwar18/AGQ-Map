@@ -1,0 +1,1398 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>المساعد الذكي | PalNovaa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* ===== Theme Variables (Default Dark) ===== */
+  :root {
+    --primary: #F5A623;
+    --primary-light: #FFC15E;
+    --primary-dark: #D88B0E;
+    --primary-glow: rgba(245, 166, 35, 0.45);
+
+    --bg-1: #0A1628;
+    --bg-2: #0F1E33;
+    --bg-3: #142B47;
+    --surface: rgba(20, 43, 71, 0.65);
+    --surface-solid: #142B47;
+    --surface-hover: rgba(30, 58, 92, 0.85);
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(245, 166, 35, 0.35);
+
+    --text-primary: #FFFFFF;
+    --text-secondary: rgba(255, 255, 255, 0.72);
+    --text-muted: rgba(255, 255, 255, 0.45);
+
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 40px var(--primary-glow);
+
+    --radius-sm: 12px;
+    --radius-md: 18px;
+    --radius-lg: 28px;
+    --radius-full: 999px;
+
+    --transition: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Light Theme */
+  [data-theme="light"] {
+    --bg-1: #F7F4ED;
+    --bg-2: #FFFFFF;
+    --bg-3: #FFF6E6;
+    --surface: rgba(255, 255, 255, 0.85);
+    --surface-solid: #FFFFFF;
+    --surface-hover: rgba(255, 246, 230, 0.9);
+    --border: rgba(0, 0, 0, 0.08);
+    --border-strong: rgba(245, 166, 35, 0.5);
+    --text-primary: #1A1A2E;
+    --text-secondary: rgba(26, 26, 46, 0.75);
+    --text-muted: rgba(26, 26, 46, 0.5);
+  }
+
+  /* Midnight Theme */
+  [data-theme="midnight"] {
+    --bg-1: #050810;
+    --bg-2: #0A0F1E;
+    --bg-3: #111729;
+    --primary: #F5A623;
+    --primary-light: #FFD16E;
+    --surface: rgba(15, 22, 40, 0.7);
+    --surface-solid: #0F1628;
+  }
+
+  /* Sunset Theme */
+  [data-theme="sunset"] {
+    --bg-1: #1A0E1F;
+    --bg-2: #2A1428;
+    --bg-3: #3D1F35;
+    --primary: #FF7B47;
+    --primary-light: #FFB088;
+    --primary-dark: #E25827;
+    --primary-glow: rgba(255, 123, 71, 0.45);
+  }
+
+  /* Ocean Theme */
+  [data-theme="ocean"] {
+    --bg-1: #051E2E;
+    --bg-2: #08304A;
+    --bg-3: #0C436B;
+    --primary: #F5A623;
+    --primary-light: #FFC15E;
+  }
+
+  /* ===== Reset ===== */
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: 'Tajawal', 'Cairo', system-ui, -apple-system, sans-serif;
+    background: var(--bg-1);
+    color: var(--text-primary);
+    overflow: hidden;
+    transition: background 0.5s var(--transition), color 0.3s var(--transition);
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input, textarea { font-family: inherit; outline: none; border: none; background: none; color: inherit; }
+  ::selection { background: var(--primary); color: #fff; }
+
+  /* ===== Animated Background ===== */
+  .bg-canvas {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(circle at 15% 20%, var(--primary-glow) 0%, transparent 35%),
+      radial-gradient(circle at 85% 75%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+      linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 100%);
+  }
+  .bg-canvas::before {
+    content: ''; position: absolute; inset: 0;
+    background-image:
+      radial-gradient(circle at 25% 30%, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+      radial-gradient(circle at 75% 70%, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 60px 60px, 80px 80px;
+    opacity: 0.6;
+  }
+  .floating-orb {
+    position: fixed; border-radius: 50%; filter: blur(60px); opacity: 0.4;
+    animation: float 20s infinite ease-in-out; pointer-events: none; z-index: 0;
+  }
+  .orb-1 { width: 280px; height: 280px; background: var(--primary); top: -100px; right: -80px; }
+  .orb-2 { width: 220px; height: 220px; background: #6366F1; bottom: 10%; left: -60px; animation-delay: -7s; }
+  .orb-3 { width: 180px; height: 180px; background: var(--primary-light); top: 40%; right: 30%; animation-delay: -14s; opacity: 0.25; }
+  @keyframes float {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    33% { transform: translate(30px, -40px) scale(1.1); }
+    66% { transform: translate(-20px, 30px) scale(0.95); }
+  }
+
+  /* ===== App Container ===== */
+  .app {
+    position: relative; z-index: 1;
+    display: flex; flex-direction: column;
+    height: 100vh; height: 100dvh;
+    max-width: 1400px; margin: 0 auto;
+    padding: 16px;
+  }
+
+  /* ===== Header ===== */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px;
+    background: var(--surface);
+    backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    flex-shrink: 0;
+  }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 800; font-size: 18px;
+  }
+  .logo-mark {
+    width: 38px; height: 38px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border-radius: 12px;
+    display: grid; place-items: center;
+    box-shadow: 0 8px 20px var(--primary-glow);
+    position: relative; overflow: hidden;
+  }
+  .logo-mark::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, transparent 30%, rgba(255,255,255,0.3) 50%, transparent 70%);
+    animation: shine 3s infinite;
+  }
+  @keyframes shine {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  .logo-mark svg { width: 22px; height: 22px; color: white; z-index: 1; }
+  .logo-text { display: flex; flex-direction: column; line-height: 1.1; }
+  .logo-text small { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+
+  .header-actions { display: flex; gap: 8px; }
+  .icon-btn {
+    width: 40px; height: 40px;
+    display: grid; place-items: center;
+    border-radius: var(--radius-full);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    transition: all 0.25s var(--transition);
+    position: relative;
+  }
+  .icon-btn:hover {
+    background: var(--primary); color: white;
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px var(--primary-glow);
+  }
+  .icon-btn svg { width: 20px; height: 20px; }
+  .icon-btn .badge {
+    position: absolute; top: 4px; left: 4px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--primary); box-shadow: 0 0 0 2px var(--surface-solid);
+  }
+
+  /* ===== Main / Hero ===== */
+  .main {
+    flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    overflow-y: auto;
+    padding: 20px 0;
+    scroll-behavior: smooth;
+  }
+  .main::-webkit-scrollbar { width: 6px; }
+  .main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .hero {
+    width: 100%; max-width: 760px;
+    text-align: center;
+    animation: fadeUp 0.8s var(--transition);
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .hero-icon {
+    width: 76px; height: 76px;
+    margin: 0 auto 20px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border-radius: 22px;
+    display: grid; place-items: center;
+    box-shadow: 0 20px 60px var(--primary-glow);
+    position: relative;
+    animation: pulse 3s infinite ease-in-out;
+  }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 20px 60px var(--primary-glow); }
+    50% { transform: scale(1.05); box-shadow: 0 25px 80px var(--primary-glow); }
+  }
+  .hero-icon::before {
+    content: ''; position: absolute; inset: -8px;
+    border-radius: 28px;
+    border: 2px solid var(--primary);
+    opacity: 0.3;
+    animation: pulseRing 3s infinite ease-out;
+  }
+  @keyframes pulseRing {
+    0% { transform: scale(1); opacity: 0.5; }
+    100% { transform: scale(1.4); opacity: 0; }
+  }
+  .hero-icon svg { width: 36px; height: 36px; color: white; }
+
+  .hero h1 {
+    font-size: clamp(24px, 4.5vw, 36px);
+    font-weight: 800; margin-bottom: 10px;
+    background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    letter-spacing: -0.5px;
+  }
+  .hero h1 .accent {
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero p {
+    color: var(--text-secondary);
+    font-size: clamp(14px, 2vw, 16px);
+    max-width: 520px; margin: 0 auto 32px;
+    line-height: 1.6;
+  }
+
+  /* ===== Search Box (Centered) ===== */
+  .search-wrap {
+    width: 100%; max-width: 720px;
+    margin: 0 auto;
+    position: relative;
+  }
+  .search-box {
+    background: var(--surface);
+    backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+    border: 1.5px solid var(--border);
+    border-radius: 24px;
+    padding: 6px;
+    display: flex; align-items: center; gap: 4px;
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s var(--transition);
+    position: relative;
+  }
+  .search-box:focus-within {
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-lg), 0 0 0 4px var(--primary-glow);
+    transform: translateY(-2px);
+  }
+  .search-input {
+    flex: 1;
+    padding: 14px 18px;
+    font-size: 15px;
+    color: var(--text-primary);
+    min-width: 0;
+  }
+  .search-input::placeholder { color: var(--text-muted); }
+  .search-tools { display: flex; gap: 4px; align-items: center; }
+  .tool-btn {
+    width: 42px; height: 42px;
+    display: grid; place-items: center;
+    border-radius: var(--radius-full);
+    color: var(--text-secondary);
+    transition: all 0.25s var(--transition);
+    position: relative;
+  }
+  .tool-btn:hover { background: rgba(245, 166, 35, 0.1); color: var(--primary); }
+  .tool-btn svg { width: 20px; height: 20px; }
+  .tool-btn.active { background: var(--primary); color: white; }
+
+  .send-btn {
+    width: 46px; height: 46px;
+    display: grid; place-items: center;
+    border-radius: var(--radius-full);
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    box-shadow: 0 6px 20px var(--primary-glow);
+    transition: all 0.25s var(--transition);
+  }
+  .send-btn:hover { transform: translateY(-2px) rotate(-12deg); box-shadow: 0 10px 28px var(--primary-glow); }
+  .send-btn:active { transform: scale(0.95); }
+  .send-btn svg { width: 20px; height: 20px; transform: scaleX(-1); }
+
+  /* ===== Suggestions ===== */
+  .suggestions {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    justify-content: center;
+    margin-top: 22px;
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 18px;
+    background: var(--surface);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    color: var(--text-secondary);
+    font-size: 13px; font-weight: 500;
+    transition: all 0.25s var(--transition);
+  }
+  .chip:hover {
+    background: var(--primary); color: white;
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px var(--primary-glow);
+  }
+  .chip svg { width: 16px; height: 16px; }
+
+  /* ===== Quick Features Grid ===== */
+  .features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    width: 100%; max-width: 720px;
+    margin: 28px auto 0;
+  }
+  .feature-card {
+    padding: 16px;
+    background: var(--surface);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    text-align: right;
+    cursor: pointer;
+    transition: all 0.3s var(--transition);
+    position: relative; overflow: hidden;
+  }
+  .feature-card::before {
+    content: ''; position: absolute; top: 0; right: 0;
+    width: 80px; height: 80px;
+    background: radial-gradient(circle, var(--primary-glow), transparent 70%);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .feature-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-md);
+  }
+  .feature-card:hover::before { opacity: 1; }
+  .feature-icon {
+    width: 36px; height: 36px;
+    background: rgba(245, 166, 35, 0.15);
+    color: var(--primary);
+    border-radius: 10px;
+    display: grid; place-items: center;
+    margin-bottom: 10px;
+  }
+  .feature-icon svg { width: 18px; height: 18px; }
+  .feature-card h4 { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .feature-card p { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+
+  /* ===== Results View ===== */
+  .results {
+    display: none;
+    width: 100%; max-width: 760px;
+    margin: 0 auto;
+    animation: fadeUp 0.5s var(--transition);
+  }
+  .results.active { display: block; }
+  .result-query {
+    padding: 14px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .result-query .q-avatar {
+    width: 34px; height: 34px; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border-radius: 50%;
+    display: grid; place-items: center;
+    color: white; font-weight: 700;
+  }
+  .result-query .q-text { flex: 1; font-size: 14px; }
+
+  .ai-response {
+    padding: 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: 16px;
+    position: relative;
+  }
+  .ai-response::before {
+    content: ''; position: absolute;
+    top: -1px; right: -1px; bottom: -1px; width: 4px;
+    background: linear-gradient(180deg, var(--primary), var(--primary-dark));
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  }
+  .ai-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .ai-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px;
+    background: rgba(245, 166, 35, 0.15);
+    color: var(--primary);
+    border-radius: var(--radius-full);
+    font-size: 11px; font-weight: 700;
+  }
+  .ai-badge::before {
+    content: ''; width: 6px; height: 6px;
+    background: var(--primary); border-radius: 50%;
+    animation: blink 1.5s infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .ai-text { font-size: 14px; line-height: 1.7; color: var(--text-secondary); }
+
+  .results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 14px;
+  }
+  .place-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    transition: all 0.3s var(--transition);
+    cursor: pointer;
+  }
+  .place-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-md);
+  }
+  .place-image {
+    height: 140px;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    position: relative;
+    display: grid; place-items: center;
+  }
+  .place-image svg { width: 48px; height: 48px; color: rgba(255,255,255,0.5); }
+  .place-rating {
+    position: absolute; top: 10px; right: 10px;
+    padding: 4px 10px;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(8px);
+    border-radius: var(--radius-full);
+    color: white; font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .place-info { padding: 14px; }
+  .place-info h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .place-info .distance {
+    font-size: 12px; color: var(--text-muted);
+    display: flex; align-items: center; gap: 4px;
+    margin-bottom: 8px;
+  }
+  .place-info .distance svg { width: 12px; height: 12px; }
+  .place-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .place-tag {
+    font-size: 10px; font-weight: 600;
+    padding: 3px 8px;
+    background: rgba(245, 166, 35, 0.15);
+    color: var(--primary);
+    border-radius: var(--radius-full);
+  }
+
+  /* ===== Settings Panel ===== */
+  .panel-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s var(--transition);
+  }
+  .panel-overlay.active { opacity: 1; pointer-events: auto; }
+
+  .settings-panel {
+    position: fixed; top: 0; left: 0; bottom: 0;
+    width: 360px; max-width: 90vw;
+    background: var(--bg-2);
+    border-right: 1px solid var(--border);
+    z-index: 101;
+    transform: translateX(-100%);
+    transition: transform 0.4s var(--transition);
+    display: flex; flex-direction: column;
+    box-shadow: 8px 0 40px rgba(0,0,0,0.4);
+  }
+  .settings-panel.active { transform: translateX(0); }
+  .settings-header {
+    padding: 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+  .settings-header h2 {
+    font-size: 18px; font-weight: 800;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .settings-header h2 svg { width: 22px; height: 22px; color: var(--primary); }
+  .settings-body {
+    flex: 1; overflow-y: auto;
+    padding: 20px;
+  }
+  .settings-body::-webkit-scrollbar { width: 6px; }
+  .settings-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .settings-group { margin-bottom: 24px; }
+  .settings-group-title {
+    font-size: 12px; font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+
+  /* Theme Picker */
+  .theme-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .theme-option {
+    padding: 14px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.25s var(--transition);
+    background: var(--surface);
+    position: relative;
+  }
+  .theme-option:hover { border-color: var(--border-strong); }
+  .theme-option.active {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px var(--primary-glow);
+  }
+  .theme-option.active::after {
+    content: '✓'; position: absolute; top: 8px; left: 8px;
+    width: 20px; height: 20px;
+    background: var(--primary); color: white;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 12px; font-weight: 700;
+  }
+  .theme-preview {
+    height: 50px; border-radius: 10px;
+    margin-bottom: 8px;
+    position: relative; overflow: hidden;
+  }
+  .theme-preview::before {
+    content: ''; position: absolute; bottom: 6px; right: 6px;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+  }
+  .theme-name { font-size: 13px; font-weight: 600; }
+
+  .preview-dark { background: linear-gradient(135deg, #0F1E33, #142B47); }
+  .preview-dark::before { background: #F5A623; }
+  .preview-light { background: linear-gradient(135deg, #FFFFFF, #FFF6E6); border: 1px solid rgba(0,0,0,0.05); }
+  .preview-light::before { background: #F5A623; }
+  .preview-midnight { background: linear-gradient(135deg, #050810, #111729); }
+  .preview-midnight::before { background: #FFD16E; }
+  .preview-sunset { background: linear-gradient(135deg, #1A0E1F, #3D1F35); }
+  .preview-sunset::before { background: #FF7B47; }
+
+  /* Toggle */
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 0;
+  }
+  .toggle-row + .toggle-row { border-top: 1px solid var(--border); }
+  .toggle-label { font-size: 14px; font-weight: 500; }
+  .toggle-label small { display: block; font-size: 11px; color: var(--text-muted); margin-top: 2px; font-weight: 400; }
+  .toggle {
+    width: 42px; height: 24px;
+    background: var(--border); border-radius: var(--radius-full);
+    position: relative; cursor: pointer;
+    transition: background 0.25s;
+  }
+  .toggle::after {
+    content: ''; position: absolute; top: 2px; right: 2px;
+    width: 20px; height: 20px;
+    background: white; border-radius: 50%;
+    transition: all 0.25s var(--transition);
+  }
+  .toggle.on { background: var(--primary); }
+  .toggle.on::after { right: calc(100% - 22px); }
+
+  /* Slider */
+  .slider-group { margin: 14px 0; }
+  .slider-label {
+    display: flex; justify-content: space-between;
+    font-size: 13px; margin-bottom: 8px;
+  }
+  .slider-label span:last-child { color: var(--primary); font-weight: 700; }
+  .slider {
+    width: 100%; height: 4px;
+    background: var(--border); border-radius: 2px;
+    -webkit-appearance: none; appearance: none;
+    outline: none;
+  }
+  .slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 18px; height: 18px;
+    background: var(--primary); border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 8px var(--primary-glow);
+  }
+  .slider::-moz-range-thumb {
+    width: 18px; height: 18px;
+    background: var(--primary); border-radius: 50%;
+    cursor: pointer; border: none;
+  }
+
+  /* View Mode */
+  .view-modes {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .view-mode {
+    padding: 12px 8px;
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.25s var(--transition);
+    text-align: center;
+  }
+  .view-mode.active { border-color: var(--primary); background: rgba(245, 166, 35, 0.1); }
+  .view-mode svg { width: 22px; height: 22px; margin-bottom: 4px; color: var(--text-secondary); }
+  .view-mode.active svg { color: var(--primary); }
+  .view-mode span { display: block; font-size: 11px; font-weight: 600; }
+
+  /* ===== Camera Modal ===== */
+  .camera-modal {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 200;
+    display: none;
+    flex-direction: column;
+  }
+  .camera-modal.active { display: flex; }
+  .camera-header {
+    padding: 16px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    color: white;
+  }
+  .camera-header h3 {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 16px; font-weight: 700;
+  }
+  .camera-header svg { width: 22px; height: 22px; color: var(--primary); }
+  .camera-view {
+    flex: 1;
+    display: grid; place-items: center;
+    position: relative;
+    margin: 0 16px;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: linear-gradient(135deg, #1a1a1a, #0a0a0a);
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .camera-placeholder {
+    text-align: center; color: rgba(255,255,255,0.5);
+    padding: 40px 20px;
+  }
+  .camera-placeholder svg { width: 60px; height: 60px; margin-bottom: 14px; color: var(--primary); }
+  .camera-placeholder p { font-size: 14px; line-height: 1.6; }
+
+  .scan-frame {
+    position: absolute; inset: 30px;
+    border: 2px solid var(--primary);
+    border-radius: var(--radius-md);
+    pointer-events: none;
+  }
+  .scan-frame::before, .scan-frame::after {
+    content: ''; position: absolute;
+    width: 30px; height: 30px;
+    border: 4px solid var(--primary);
+  }
+  .scan-frame::before { top: -2px; right: -2px; border-bottom: none; border-left: none; border-radius: 0 var(--radius-md) 0 0; }
+  .scan-frame::after { bottom: -2px; left: -2px; border-top: none; border-right: none; border-radius: 0 0 0 var(--radius-md); }
+  .scan-line {
+    position: absolute; left: 30px; right: 30px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--primary), transparent);
+    box-shadow: 0 0 10px var(--primary);
+    animation: scan 2.5s infinite ease-in-out;
+  }
+  @keyframes scan {
+    0% { top: 30px; }
+    50% { top: calc(100% - 30px); }
+    100% { top: 30px; }
+  }
+
+  .camera-controls {
+    padding: 20px;
+    display: flex; align-items: center; justify-content: center; gap: 16px;
+  }
+  .camera-control-btn {
+    width: 50px; height: 50px;
+    background: rgba(255,255,255,0.1); color: white;
+    border-radius: 50%; display: grid; place-items: center;
+    border: 1px solid rgba(255,255,255,0.15);
+    transition: all 0.25s;
+  }
+  .camera-control-btn:hover { background: rgba(255,255,255,0.2); }
+  .camera-control-btn svg { width: 22px; height: 22px; }
+  .camera-capture {
+    width: 70px; height: 70px;
+    background: white; border-radius: 50%;
+    display: grid; place-items: center;
+    box-shadow: 0 0 0 4px rgba(255,255,255,0.2);
+    transition: transform 0.2s;
+  }
+  .camera-capture:hover { transform: scale(1.05); }
+  .camera-capture::after {
+    content: ''; width: 56px; height: 56px;
+    background: var(--primary); border-radius: 50%;
+  }
+
+  .translation-bar {
+    margin: 0 16px 16px;
+    padding: 14px;
+    background: rgba(245, 166, 35, 0.15);
+    border: 1px solid var(--primary);
+    border-radius: var(--radius-md);
+    color: white;
+  }
+  .translation-bar .lang-row {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; margin-bottom: 8px;
+  }
+  .lang-pill {
+    padding: 4px 10px;
+    background: rgba(255,255,255,0.1);
+    border-radius: var(--radius-full);
+    font-weight: 600;
+  }
+  .translation-bar .text-result {
+    font-size: 15px; line-height: 1.6;
+    padding: 10px 0;
+    border-top: 1px solid rgba(255,255,255,0.15);
+    margin-top: 8px;
+  }
+
+  /* ===== Loading ===== */
+  .loading {
+    display: none;
+    align-items: center; gap: 8px;
+    padding: 14px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: 14px;
+  }
+  .loading.active { display: flex; }
+  .loading-dots { display: flex; gap: 4px; }
+  .loading-dots span {
+    width: 8px; height: 8px;
+    background: var(--primary); border-radius: 50%;
+    animation: bounce 1.4s infinite ease-in-out both;
+  }
+  .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+  .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+  @keyframes bounce {
+    0%, 80%, 100% { transform: scale(0.5); opacity: 0.5; }
+    40% { transform: scale(1); opacity: 1; }
+  }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 768px) {
+    .app { padding: 10px; }
+    .header { padding: 10px 14px; border-radius: var(--radius-md); }
+    .logo { font-size: 15px; }
+    .logo-mark { width: 34px; height: 34px; }
+    .logo-text small { display: none; }
+    .icon-btn { width: 36px; height: 36px; }
+    .icon-btn svg { width: 18px; height: 18px; }
+
+    .hero-icon { width: 64px; height: 64px; margin-bottom: 14px; }
+    .hero-icon svg { width: 30px; height: 30px; }
+    .hero p { margin-bottom: 22px; padding: 0 10px; }
+
+    .search-input { padding: 12px 14px; font-size: 14px; }
+    .tool-btn { width: 38px; height: 38px; }
+    .send-btn { width: 42px; height: 42px; }
+
+    .features { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .feature-card { padding: 12px; }
+
+    .results-grid { grid-template-columns: 1fr; }
+
+    .settings-panel { width: 100%; }
+  }
+
+  @media (max-width: 380px) {
+    .features { grid-template-columns: 1fr; }
+    .suggestions .chip:nth-child(n+4) { display: none; }
+  }
+
+  @media (min-width: 1024px) {
+    .app { padding: 24px; }
+    .hero h1 { font-size: 42px; }
+  }
+
+  /* Hide search tools on tiny screens to save space */
+  @media (max-width: 360px) {
+    .tool-btn:not(.priority) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Animated Background -->
+<div class="bg-canvas"></div>
+<div class="floating-orb orb-1"></div>
+<div class="floating-orb orb-2"></div>
+<div class="floating-orb orb-3"></div>
+
+<div class="app">
+
+  <!-- ===== HEADER ===== -->
+  <header class="header">
+    <div class="header-right">
+      <button class="icon-btn" onclick="toggleSettings()" aria-label="الإعدادات">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+      <div class="logo">
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+        </div>
+        <div class="logo-text">
+          <span>المساعد الذكي</span>
+          <small>PalNovaa AI</small>
+        </div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" onclick="openCamera()" aria-label="الكاميرا">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+      </button>
+      <button class="icon-btn" aria-label="إغلاق">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ===== MAIN ===== -->
+  <main class="main">
+
+    <!-- HERO (initial state) -->
+    <section class="hero" id="hero">
+      <div class="hero-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <h1>مرحباً <span class="accent">Mohammed</span> 👋</h1>
+      <p>أنا مساعدك الذكي في PalNovaa، اسألني عن أي مكان أو موقع أو محل تجاري وسأساعدك بكل سهولة وذكاء</p>
+
+      <!-- Centered Search -->
+      <div class="search-wrap">
+        <div class="search-box">
+          <input class="search-input" id="searchInput" placeholder="ابحث عن مطاعم، أماكن، محلات..." autocomplete="off" />
+          <div class="search-tools">
+            <button class="tool-btn priority" onclick="openCamera()" title="ترجمة بالكاميرا">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+            </button>
+            <button class="tool-btn" id="micBtn" title="بحث صوتي">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+            </button>
+            <button class="send-btn priority" onclick="performSearch()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <line x1="22" y1="2" x2="11" y2="13"/>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Suggestions -->
+        <div class="suggestions">
+          <button class="chip" onclick="quickSearch('مطاعم قريبة')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
+            مطاعم قريبة
+          </button>
+          <button class="chip" onclick="quickSearch('كافيهات هادئة')">☕ كافيهات هادئة</button>
+          <button class="chip" onclick="quickSearch('صيدليات مفتوحة الآن')">💊 صيدليات</button>
+          <button class="chip" onclick="quickSearch('أماكن سياحية')">🏛️ أماكن سياحية</button>
+          <button class="chip" onclick="quickSearch('محلات ملابس')">👕 محلات ملابس</button>
+        </div>
+      </div>
+
+      <!-- Quick Features -->
+      <div class="features">
+        <div class="feature-card" onclick="openCamera()">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 8h14M5 8a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2M5 8V6a2 2 0 0 1 2-2h2M19 8V6a2 2 0 0 0-2-2h-2"/>
+              <path d="M9 14h6M9 18h4"/>
+            </svg>
+          </div>
+          <h4>ترجمة فورية</h4>
+          <p>ترجم أي لغة للعربية عبر الكاميرا</p>
+        </div>
+        <div class="feature-card" onclick="quickSearch('اكتشف حولي')">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+            </svg>
+          </div>
+          <h4>اكتشف حولي</h4>
+          <p>أماكن مميزة بالقرب منك</p>
+        </div>
+        <div class="feature-card" onclick="quickSearch('عروض اليوم')">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="20.59" y1="13.41" x2="13.42" y2="20.58"/>
+              <path d="M2 2h7l11 11-7 7L2 9z"/>
+              <line x1="7" y1="7" x2="7.01" y2="7"/>
+            </svg>
+          </div>
+          <h4>عروض اليوم</h4>
+          <p>أحدث العروض والخصومات</p>
+        </div>
+        <div class="feature-card" onclick="toggleSettings()">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/>
+              <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/>
+              <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>
+              <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/>
+              <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
+            </svg>
+          </div>
+          <h4>تخصيص الستايل</h4>
+          <p>اختر الثيم الذي يناسبك</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- RESULTS (after search) -->
+    <section class="results" id="results">
+      <div class="result-query">
+        <div class="q-avatar">M</div>
+        <div class="q-text" id="queryText">—</div>
+      </div>
+      <div class="loading" id="loading">
+        <div class="loading-dots"><span></span><span></span><span></span></div>
+        <span>المساعد الذكي يبحث لك...</span>
+      </div>
+      <div id="resultsContent"></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ===== SETTINGS PANEL ===== -->
+<div class="panel-overlay" id="overlay" onclick="toggleSettings()"></div>
+<aside class="settings-panel" id="settings">
+  <div class="settings-header">
+    <h2>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/>
+        <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/>
+        <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>
+        <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/>
+        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
+      </svg>
+      تخصيص الستايل
+    </h2>
+    <button class="icon-btn" onclick="toggleSettings()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="settings-body">
+
+    <!-- Theme -->
+    <div class="settings-group">
+      <div class="settings-group-title">المظهر</div>
+      <div class="theme-grid">
+        <div class="theme-option active" data-theme="dark" onclick="setTheme('dark', this)">
+          <div class="theme-preview preview-dark"></div>
+          <div class="theme-name">داكن</div>
+        </div>
+        <div class="theme-option" data-theme="light" onclick="setTheme('light', this)">
+          <div class="theme-preview preview-light"></div>
+          <div class="theme-name">فاتح</div>
+        </div>
+        <div class="theme-option" data-theme="midnight" onclick="setTheme('midnight', this)">
+          <div class="theme-preview preview-midnight"></div>
+          <div class="theme-name">منتصف الليل</div>
+        </div>
+        <div class="theme-option" data-theme="sunset" onclick="setTheme('sunset', this)">
+          <div class="theme-preview preview-sunset"></div>
+          <div class="theme-name">غروب</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Accent Color -->
+    <div class="settings-group">
+      <div class="settings-group-title">اللون المميز</div>
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <button onclick="setAccent('#F5A623')" style="width:36px;height:36px;border-radius:50%;background:#F5A623;border:3px solid var(--primary);cursor:pointer;"></button>
+        <button onclick="setAccent('#FF6B6B')" style="width:36px;height:36px;border-radius:50%;background:#FF6B6B;border:2px solid var(--border);cursor:pointer;"></button>
+        <button onclick="setAccent('#4ECDC4')" style="width:36px;height:36px;border-radius:50%;background:#4ECDC4;border:2px solid var(--border);cursor:pointer;"></button>
+        <button onclick="setAccent('#A78BFA')" style="width:36px;height:36px;border-radius:50%;background:#A78BFA;border:2px solid var(--border);cursor:pointer;"></button>
+        <button onclick="setAccent('#34D399')" style="width:36px;height:36px;border-radius:50%;background:#34D399;border:2px solid var(--border);cursor:pointer;"></button>
+        <button onclick="setAccent('#F472B6')" style="width:36px;height:36px;border-radius:50%;background:#F472B6;border:2px solid var(--border);cursor:pointer;"></button>
+      </div>
+    </div>
+
+    <!-- View Mode -->
+    <div class="settings-group">
+      <div class="settings-group-title">طريقة عرض النتائج</div>
+      <div class="view-modes">
+        <div class="view-mode active" onclick="setView(this, 'grid')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          <span>شبكي</span>
+        </div>
+        <div class="view-mode" onclick="setView(this, 'list')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          <span>قائمة</span>
+        </div>
+        <div class="view-mode" onclick="setView(this, 'map')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+          <span>خريطة</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Font Size -->
+    <div class="settings-group">
+      <div class="settings-group-title">حجم الخط</div>
+      <div class="slider-group">
+        <div class="slider-label"><span>الحجم</span><span id="fontVal">متوسط</span></div>
+        <input type="range" min="0" max="2" step="1" value="1" class="slider" id="fontSlider" oninput="setFontSize(this.value)" />
+      </div>
+    </div>
+
+    <!-- Toggles -->
+    <div class="settings-group">
+      <div class="settings-group-title">خيارات إضافية</div>
+      <div class="toggle-row">
+        <div class="toggle-label">
+          الحركات والرسوم
+          <small>تأثيرات الحركة في الواجهة</small>
+        </div>
+        <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-label">
+          الموقع التلقائي
+          <small>تحديد موقعك تلقائياً للبحث</small>
+        </div>
+        <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-label">
+          الأصوات
+          <small>أصوات التنبيهات والتفاعل</small>
+        </div>
+        <div class="toggle" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-label">
+          الترجمة التلقائية
+          <small>ترجمة فورية للنتائج الأجنبية</small>
+        </div>
+        <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+      </div>
+    </div>
+
+  </div>
+</aside>
+
+<!-- ===== CAMERA MODAL ===== -->
+<div class="camera-modal" id="cameraModal">
+  <div class="camera-header">
+    <h3>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M5 8h14M5 8a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2M5 8V6a2 2 0 0 1 2-2h2M19 8V6a2 2 0 0 0-2-2h-2"/>
+        <path d="M9 14h6M9 18h4"/>
+      </svg>
+      الترجمة الذكية بالكاميرا
+    </h3>
+    <button class="icon-btn" onclick="closeCamera()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="camera-view">
+    <div class="camera-placeholder">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M5 8h14M5 8a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2M5 8V6a2 2 0 0 1 2-2h2M19 8V6a2 2 0 0 0-2-2h-2"/>
+      </svg>
+      <p>وجّه الكاميرا نحو أي نص<br/>وسأترجمه فوراً للعربية</p>
+    </div>
+    <div class="scan-frame"><div class="scan-line"></div></div>
+  </div>
+  <div class="translation-bar">
+    <div class="lang-row">
+      <span class="lang-pill">🌐 كشف تلقائي</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      <span class="lang-pill">🇸🇦 العربية</span>
+    </div>
+    <div class="text-result" id="translationText">جاهز للترجمة... وجّه الكاميرا نحو أي نص باللغة الإنجليزية أو الفرنسية أو أي لغة أخرى</div>
+  </div>
+  <div class="camera-controls">
+    <button class="camera-control-btn" title="معرض">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+    </button>
+    <button class="camera-capture" onclick="simulateTranslate()" title="التقاط"></button>
+    <button class="camera-control-btn" title="قلب الكاميرا">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+  // ===== State =====
+  let state = {
+    theme: 'dark',
+    accent: '#F5A623',
+    view: 'grid',
+    fontSize: 1
+  };
+
+  // Load saved preferences
+  try {
+    const saved = JSON.parse(localStorage.getItem('palnovaa-prefs') || '{}');
+    state = { ...state, ...saved };
+    if (state.theme !== 'dark') applyTheme(state.theme);
+    if (state.accent) applyAccent(state.accent);
+    if (state.fontSize !== 1) applyFontSize(state.fontSize);
+  } catch (e) {}
+
+  function savePrefs() {
+    try { localStorage.setItem('palnovaa-prefs', JSON.stringify(state)); } catch (e) {}
+  }
+
+  // ===== Settings =====
+  function toggleSettings() {
+    document.getElementById('settings').classList.toggle('active');
+    document.getElementById('overlay').classList.toggle('active');
+  }
+
+  function applyTheme(t) {
+    if (t === 'dark') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', t);
+  }
+
+  function setTheme(t, el) {
+    state.theme = t;
+    applyTheme(t);
+    document.querySelectorAll('.theme-option').forEach(o => o.classList.remove('active'));
+    el.classList.add('active');
+    savePrefs();
+  }
+
+  function applyAccent(color) {
+    const r = parseInt(color.slice(1,3),16), g = parseInt(color.slice(3,5),16), b = parseInt(color.slice(5,7),16);
+    document.documentElement.style.setProperty('--primary', color);
+    document.documentElement.style.setProperty('--primary-glow', `rgba(${r}, ${g}, ${b}, 0.45)`);
+    // Lighter & darker
+    const lighten = (v) => Math.min(255, Math.round(v + (255-v)*0.3));
+    const darken = (v) => Math.max(0, Math.round(v*0.75));
+    document.documentElement.style.setProperty('--primary-light', `rgb(${lighten(r)},${lighten(g)},${lighten(b)})`);
+    document.documentElement.style.setProperty('--primary-dark', `rgb(${darken(r)},${darken(g)},${darken(b)})`);
+  }
+
+  function setAccent(color) {
+    state.accent = color;
+    applyAccent(color);
+    // Visual feedback on swatch buttons
+    document.querySelectorAll('.settings-group [onclick^="setAccent"]').forEach(b => {
+      b.style.border = b.getAttribute('onclick').includes(color) ? '3px solid var(--primary)' : '2px solid var(--border)';
+    });
+    savePrefs();
+  }
+
+  function setView(el, mode) {
+    state.view = mode;
+    document.querySelectorAll('.view-mode').forEach(v => v.classList.remove('active'));
+    el.classList.add('active');
+    savePrefs();
+    // Re-render results if showing
+    if (document.getElementById('results').classList.contains('active')) {
+      renderResults();
+    }
+  }
+
+  function applyFontSize(val) {
+    const sizes = ['14px', '15px', '17px'];
+    document.documentElement.style.fontSize = sizes[val];
+  }
+
+  function setFontSize(val) {
+    state.fontSize = +val;
+    const labels = ['صغير', 'متوسط', 'كبير'];
+    document.getElementById('fontVal').textContent = labels[val];
+    applyFontSize(val);
+    savePrefs();
+  }
+
+  // ===== Search =====
+  function performSearch() {
+    const input = document.getElementById('searchInput');
+    const query = input.value.trim();
+    if (!query) {
+      input.focus();
+      return;
+    }
+    runSearch(query);
+  }
+
+  function quickSearch(q) {
+    document.getElementById('searchInput').value = q;
+    runSearch(q);
+  }
+
+  function runSearch(query) {
+    document.getElementById('hero').style.display = 'none';
+    document.getElementById('results').classList.add('active');
+    document.getElementById('queryText').textContent = query;
+    document.getElementById('loading').classList.add('active');
+    document.getElementById('resultsContent').innerHTML = '';
+
+    setTimeout(() => {
+      document.getElementById('loading').classList.remove('active');
+      renderResults(query);
+    }, 1200);
+  }
+
+  // Sample data
+  const sampleResults = [
+    { name: 'مطعم الواحة', distance: '350 م', rating: 4.8, tags: ['مطعم', 'عربي', 'مفتوح الآن'] },
+    { name: 'كافيه السلام', distance: '1.2 كم', rating: 4.6, tags: ['كافيه', 'هادئ', 'WiFi'] },
+    { name: 'مكتبة المعرفة', distance: '600 م', rating: 4.9, tags: ['مكتبة', 'دراسة'] },
+    { name: 'صيدلية الحياة', distance: '200 م', rating: 4.7, tags: ['صيدلية', '24 ساعة'] },
+    { name: 'بقالة المدينة', distance: '450 م', rating: 4.5, tags: ['بقالة', 'توصيل'] },
+    { name: 'صالون النخبة', distance: '800 م', rating: 4.8, tags: ['صالون', 'حجز مسبق'] }
+  ];
+
+  function renderResults(query) {
+    query = query || document.getElementById('queryText').textContent;
+    const aiResp = `
+      <div class="ai-response">
+        <div class="ai-header">
+          <span class="ai-badge">المساعد الذكي</span>
+        </div>
+        <div class="ai-text">
+          وجدت لك <strong>${sampleResults.length} نتيجة</strong> مناسبة لبحثك "${query}". أنصحك بزيارة <strong>مطعم الواحة</strong> فهو الأقرب إليك ويحظى بتقييم ممتاز. هذه أبرز الأماكن المتاحة الآن:
+        </div>
+      </div>
+    `;
+
+    let grid = '<div class="results-grid">';
+    if (state.view === 'list') {
+      grid = '<div class="results-grid" style="grid-template-columns: 1fr;">';
+    }
+    sampleResults.forEach(r => {
+      grid += `
+        <div class="place-card">
+          <div class="place-image">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+            <div class="place-rating">⭐ ${r.rating}</div>
+          </div>
+          <div class="place-info">
+            <h3>${r.name}</h3>
+            <div class="distance">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              ${r.distance} عنك
+            </div>
+            <div class="place-tags">
+              ${r.tags.map(t => `<span class="place-tag">${t}</span>`).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    });
+    grid += '</div>';
+
+    document.getElementById('resultsContent').innerHTML = aiResp + grid;
+  }
+
+  // Reset to hero on input clear
+  document.getElementById('searchInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') performSearch();
+    if (e.key === 'Escape') {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('hero').style.display = '';
+      document.getElementById('results').classList.remove('active');
+    }
+  });
+
+  // ===== Camera =====
+  function openCamera() {
+    document.getElementById('cameraModal').classList.add('active');
+  }
+  function closeCamera() {
+    document.getElementById('cameraModal').classList.remove('active');
+  }
+
+  const sampleTexts = [
+    'مرحباً بكم في فلسطين - أرض السلام',
+    'القهوة العربية الأصيلة - خصم 20%',
+    'ساعات العمل: 9 صباحاً - 11 مساءً',
+    'مطعم تقليدي - أطباق شرقية متنوعة',
+    'مفتوح اليوم - الدخول مجاني'
+  ];
+  function simulateTranslate() {
+    const text = sampleTexts[Math.floor(Math.random() * sampleTexts.length)];
+    const el = document.getElementById('translationText');
+    el.style.opacity = '0.3';
+    setTimeout(() => {
+      el.textContent = text;
+      el.style.opacity = '1';
+    }, 400);
+  }
+
+  // ===== Voice (visual feedback only) =====
+  document.getElementById('micBtn').addEventListener('click', function() {
+    this.classList.toggle('active');
+  });
+
+  // ===== ESC to close panels =====
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      document.getElementById('settings').classList.remove('active');
+      document.getElementById('overlay').classList.remove('active');
+      closeCamera();
+    }
+  });
+</script>
+</body>
+</html>
