@@ -134,6 +134,12 @@ ${posts}
 
     } catch (error) {
         console.error('SambaNova API Error:', error.response?.data || error.message);
+        
+        // Handle Rate Limit Exceeded explicitly
+        if (error.response?.data?.error?.type === 'rate_limit_exceeded' || error.response?.status === 429) {
+            return res.status(429).json({ error: 'تم تجاوز الحد المسموح به للطلبات المجانية في خادم الذكاء الاصطناعي (SambaNova). يرجى المحاولة لاحقاً بعد قليل.' });
+        }
+        
         res.status(500).json({ error: 'Failed to process request' });
     }
 };

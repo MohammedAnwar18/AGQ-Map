@@ -167,7 +167,8 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
 
         } catch (error) {
             console.error('Search error:', error);
-            setChatHistory(prev => [...prev, { role: 'assistant', message: 'عذراً، واجهت مشكلة في الاتصال بالمساعد الذكي. يرجى المحاولة مرة أخرى.' }]);
+            const errorMsg = error.response?.data?.error || 'عذراً، واجهت مشكلة في الاتصال بالمساعد الذكي. يرجى المحاولة مرة أخرى.';
+            setChatHistory(prev => [...prev, { role: 'assistant', message: errorMsg }]);
         } finally {
             setLoading(false);
             setTimeout(() => {
