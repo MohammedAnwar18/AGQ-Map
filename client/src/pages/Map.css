@@ -329,10 +329,10 @@
     border-top: 1px solid var(--glass-border) !important;
     border-radius: 0;
     display: flex;
-    justify-content: space-around;
+    justify-content: space-evenly;
     align-items: center;
-    padding-left: 10px;
-    padding-right: 10px;
+    padding-left: 0;
+    padding-right: 0;
     z-index: 2200;
     box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.3);
 }
@@ -356,7 +356,7 @@
     border: none;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    width: 60px;
+    flex: 1;
     height: 100%;
     position: relative;
 }
