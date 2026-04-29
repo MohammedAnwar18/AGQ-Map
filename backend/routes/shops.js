@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const { authenticateToken, optionalAuth, isAdmin } = require('../middleware/auth');
 const shopController = require('../controllers/shopController');
@@ -61,6 +61,9 @@ router.delete('/municipality-items/:itemId', authenticateToken, shopController.d
 // المسارات العامة (قراءة فقط - auth اختياري)
 // ============================================================
 
+// البحث الذكي (محلات + منتجات + فلترة سعر)
+router.get('/smart-search', optionalAuth, shopController.smartSearch);
+
 // البحث عن محلات (عام)
 router.get('/search', optionalAuth, shopController.searchShops);
 
@@ -79,4 +82,5 @@ router.get('/posts/:postId/comments', optionalAuth, shopController.getPostCommen
 router.get('/:id/municipality-items', optionalAuth, shopController.getMunicipalityItems);
 
 module.exports = router;
+
 

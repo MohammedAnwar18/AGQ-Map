@@ -1,393 +1,339 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { aiService, shopService } from '../services/api';
-import './Modal.css';
-import axios from 'axios';
+import { smartSearchService, shopService, aiService } from '../services/api';
+import { getImageUrl } from '../services/api';
+import './AIChatModal.css';
 
-const AIChatModal = ({ onClose, onSearchResults, onRouteRequest, onClearMap, userLocation, onShopFollowed }) => {
+// Parse natural language query for price filters
+const parseQuery = (text) => {
+    const result = { shopQuery: '', productQuery: '', priceMin: '', priceMax: '', priceExact: '' };
+    let q = text.trim();
+
+    // Price exact: "بسعر X" or "يساوي X"
+    let m = q.match(/(?:بسعر|يساوي|سعره)\s*([\d.]+)/);
+    if (m) { result.priceExact = m[1]; q = q.replace(m[0], '').trim(); }
+
+    // Price max: "أقل من X" or "بأقل من X"
+    m = q.match(/(?:أقل\s*من|بأقل\s*من|تحت)\s*([\d.]+)/);
+    if (m) { result.priceMax = m[1]; q = q.replace(m[0], '').trim(); }
+
+    // Price min: "أكثر من X" or "أغلى من X" or "فوق X"
+    m = q.match(/(?:أكثر\s*من|أغلى\s*من|فوق)\s*([\d.]+)/);
+    if (m) { result.priceMin = m[1]; q = q.replace(m[0], '').trim(); }
+
+    // Product keywords
+    const prodMatch = q.match(/(?:يبيع|يوجد|عنده|فيه|ببيع|بيبيع)\s+(.+)/);
+    if (prodMatch) {
+        result.productQuery = prodMatch[1].trim();
+        q = q.replace(prodMatch[0], '').trim();
+    }
+
+    result.shopQuery = q;
+    return result;
+};
+
+const AIChatModal = ({ onClose }) => {
     const { user } = useAuth();
-    const [messages, setMessages] = useState([
-        { 
-            id: 1, 
-            role: 'CHATBOT', 
-            content: `مرحباً ${user?.full_name || user?.username || ''}! أنا مساعدك الذكي PalNovaa، رفيقك المتطور للبحث عن المواقع والأماكن والمحلات التجارية على الخريطة بكل سهولة وذكاء. كيف يمكنني مساعدتك اليوم؟` 
-        }
-    ]);
-    const [newMessage, setNewMessage] = useState('');
+    const [query, setQuery] = useState('');
     const [loading, setLoading] = useState(false);
-    const [pendingDestination, setPendingDestination] = useState(null);
-    const messagesEndRef = useRef(null);
+    const [results, setResults] = useState(null);
+    const [aiText, setAiText] = useState('');
+    const [showResults, setShowResults] = useState(false);
+    const [theme, setThemeState] = useState(() => localStorage.getItem('ai-theme') || 'dark');
+    const [accent, setAccentState] = useState(() => localStorage.getItem('ai-accent') || '#F5A623');
+    const [showSettings, setShowSettings] = useState(false);
+    const inputRef = useRef(null);
+
+    const userName = user?.full_name || user?.username || 'مستخدم';
+    const userInitial = userName.charAt(0).toUpperCase();
 
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+        applyTheme(theme);
+        applyAccent(accent);
+        inputRef.current?.focus();
+    }, []);
 
-    const performSearch = async (query) => {
-        try {
-            // Use Nominatim with country codes for Palestine (ps) and Israel (il)
-            let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=ps,il&limit=10`;
-
-            // If user location is available, bias the search
-            if (userLocation) {
-                const { latitude, longitude } = userLocation;
-                // Create a viewbox approx 50km to bias results but allow further matches
-                const offset = 0.5;
-                const viewbox = `${longitude - offset},${latitude + offset},${longitude + offset},${latitude - offset}`;
-                url += `&viewbox=${viewbox}`;
-                // Removed bounded=1 to allow finding results anywhere
-            }
-
-            const response = await axios.get(url);
-            let results = response.data;
-
-            if (userLocation && results.length > 0) {
-                const calculateDistance = (lat1, lon1, lat2, lon2) => {
-                    const R = 6371; // km
-                    const dLat = (lat2 - lat1) * Math.PI / 180;
-                    const dLon = (lon2 - lon1) * Math.PI / 180;
-                    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                    return R * c;
-                };
-
-                results = results.map(place => ({
-                    ...place,
-                    distance: calculateDistance(
-                        userLocation.latitude,
-                        userLocation.longitude,
-                        parseFloat(place.lat),
-                        parseFloat(place.lon)
-                    )
-                })).sort((a, b) => a.distance - b.distance);
-            }
-
-            return results;
-        } catch (error) {
-            console.error("OSM Search failed", error);
-            return [];
-        }
+    const applyTheme = (t) => {
+        const el = document.getElementById('ai-modal-root');
+        if (!el) return;
+        el.setAttribute('data-theme', t);
     };
 
-    const handleSendMessage = async (e) => {
-        e.preventDefault();
-        if (!newMessage.trim()) return;
+    const applyAccent = (color) => {
+        const el = document.getElementById('ai-modal-root');
+        if (!el) return;
+        const r = parseInt(color.slice(1,3),16), g = parseInt(color.slice(3,5),16), b = parseInt(color.slice(5,7),16);
+        el.style.setProperty('--primary', color);
+        el.style.setProperty('--primary-glow', `rgba(${r},${g},${b},0.4)`);
+        el.style.setProperty('--primary-light', `rgb(${Math.min(255,r+60)},${Math.min(255,g+60)},${Math.min(255,b+60)})`);
+        el.style.setProperty('--primary-dark', `rgb(${Math.round(r*0.75)},${Math.round(g*0.75)},${Math.round(b*0.75)})`);
+    };
 
-        const userMsg = {
-            id: Date.now(),
-            role: 'USER',
-            content: newMessage.trim()
-        };
+    const setTheme = (t) => { setThemeState(t); applyTheme(t); localStorage.setItem('ai-theme', t); };
+    const setAccent = (c) => { setAccentState(c); applyAccent(c); localStorage.setItem('ai-accent', c); };
 
-        setMessages(prev => [...prev, userMsg]);
-        setNewMessage('');
+        const handleSearch = useCallback(async (searchText) => {
+        const q = searchText || query;
+        if (!q.trim()) return;
         setLoading(true);
+        setShowResults(true);
+        setResults(null);
+        setAiText('');
 
         try {
-            // 1. Prepare history (exclude current message as it is sent as 'message')
-            // Map our messages to Cohere format: { role: "USER" | "CHATBOT", message: "..." }
-            const history = messages.map(m => ({
-                role: m.role,
-                message: m.content
-            }));
+            // 1. Get structured data results
+            const parsed = parseQuery(q);
+            const searchData = await smartSearchService.search({
+                query: parsed.shopQuery,
+                productQuery: parsed.productQuery,
+                priceMin: parsed.priceMin,
+                priceMax: parsed.priceMax,
+                priceExact: parsed.priceExact,
+            });
+            const found = searchData.results || [];
+            setResults(found);
 
-            // 2. Prepare User Info
-            let age = 'Unknown';
-            if (user?.date_of_birth) {
-                const dob = new Date(user.date_of_birth);
-                const diff_ms = Date.now() - dob.getTime();
-                const age_dt = new Date(diff_ms);
-                age = Math.abs(age_dt.getUTCFullYear() - 1970);
-            }
-
-            const userInfo = {
-                name: user?.full_name || user?.username || 'User',
-                gender: user?.gender || 'Unknown',
-                age: age
-            };
-
-            // 3. Send to AI with history and user info
-            const aiResponse = await aiService.chat(userMsg.content, history, userLocation, userInfo);
-
-            const { type, searchQuery, mode, reply, location, results } = aiResponse;
-
-            // 2. If there is a search query or direct location
-            let searchResults = [];
-
-            // Check if AI provided direct coordinates for a system shop
-            if (location && location.lat && location.lon) {
-                searchResults = [{
-                    lon: location.lon,
-                    lat: location.lat,
-                    display_name: searchQuery || "System Shop",
-                    name: searchQuery || "System Shop",
-                    type: "shop"
-                }];
-            } else if (searchQuery && (type === 'search' || type === 'route' || type === 'navigation_options')) {
-                // Fallback to OSM search for general queries (though currently restricted)
-                searchResults = await performSearch(searchQuery);
-            }
-
-            if (type === 'search_list') {
-                // LIST VIEW - No map update yet
-                setMessages(prev => [...prev, {
-                    id: Date.now() + 1,
-                    role: 'CHATBOT',
-                    content: reply || "إليك قائمة المحلات التي وجدتها:",
-                    results: results, // Pass the list
-                    isList: true
-                }]);
-            } else if (type === 'navigation_options' && searchResults.length > 0) {
-                const dest = searchResults[0];
-                setPendingDestination(dest); // Store for next turn if needed
-
-                // Show options
-                setMessages(prev => [...prev, {
-                    id: Date.now() + 1,
-                    role: 'CHATBOT',
-                    content: reply,
-                    isOptions: true,
-                    destination: dest,
-                    results: results && results.length > 0 ? results : null
-                }]);
-            } else if (type === 'route') {
-                // Determine destination: either from searchResults (if query provided) or pendingDestination
-                const targetDest = searchResults.length > 0 ? searchResults[0] : pendingDestination;
-
-                if (targetDest) {
-                    // Trigger routing to the result
-                    if (onRouteRequest) {
-                        onRouteRequest(targetDest, mode || 'driving');
-                    }
-                    setMessages(prev => [...prev, {
-                        id: Date.now() + 1,
-                        role: 'CHATBOT',
-                        content: reply || `جاري رسم المسار...`
-                    }]);
-                    // Clear pending after use
-                    setPendingDestination(null);
-                    onClose(); // Optional: close chat to show map immediately
-                } else {
-                    // AI thinks we are routing but we don't have a destination
-                    setMessages(prev => [...prev, {
-                        id: Date.now() + 1,
-                        role: 'CHATBOT',
-                        content: "عذراً، لم أستطع تحديد الوجهة. يرجى تحديد المكان أولاً."
-                    }]);
-                }
-
-            } else if (type === 'clear') {
-                if (onClearMap) onClearMap();
-                setPendingDestination(null);
-                setMessages(prev => [...prev, {
-                    id: Date.now() + 1,
-                    role: 'CHATBOT',
-                    content: reply || "تم مسح الخريطة."
-                }]);
+            // 2. Get conversational AI response
+            // We pass [] for history for now, and null for location
+            // We also import aiService at the top (already there)
+            const { aiService } = await import('../services/api');
+            const aiResponse = await aiService.chat(q, [], null, { name: userName });
+            
+            if (aiResponse && aiResponse.reply) {
+                setAiText(aiResponse.reply);
+            } else if (found.length > 0) {
+                setAiText(\وجدت <strong>\ نتيجة</strong> تطابق بحثك. أفضل نتيجة هي <strong>\</strong>.\);
             } else {
-                // Determine reply content
-                let finalReply = reply;
-
-                // If search was attempted but returned no results, override the AI's reply
-                if ((type === 'search' || type === 'navigation_options') && searchResults.length === 0) {
-                    finalReply = "عذراً، لم يتم العثور على مكان مطابق.";
-                } else if ((type === 'search' || type === 'navigation_options') && !finalReply) {
-                    // Fallback if AI didn't provide a reply but we found something
-                    finalReply = "وجدت هذه النتائج:";
-                }
-
-                // Pass results to Map
-                if (searchResults.length > 0 && onSearchResults && type !== 'navigation_options') {
-                    onSearchResults(searchResults);
-                }
-
-                setMessages(prev => [...prev, {
-                    id: Date.now() + 1,
-                    role: 'CHATBOT',
-                    content: finalReply || "تم."
-                }]);
+                setAiText(\لم أجد نتائج لـ "\". حاول البحث بكلمات مختلفة.\);
             }
 
-        } catch (error) {
-            console.error("AI Error", error);
-            setMessages(prev => [...prev, {
-                id: Date.now() + 1,
-                role: 'CHATBOT',
-                content: "عذراً، حدث خطأ أثناء المعالجة."
-            }]);
+        } catch (err) {
+            console.error(err);
+            setAiText('عذراً، واجهت مشكلة في الاتصال بالمساعد الذكي.');
+            setResults([]);
         } finally {
             setLoading(false);
         }
-    };
+    }, [query, userName]);
 
     const handleFollow = async (shopId) => {
         try {
             await shopService.follow(shopId);
-            // Update UI to reflect change
-            setMessages(prev => prev.map(msg => {
-                if (msg.results) {
-                    return {
-                        ...msg,
-                        results: msg.results.map(shop =>
-                            shop.id === shopId ? { ...shop, isFollowed: true } : shop
-                        )
-                    };
-                }
-                return msg;
-            }));
-
-            // Trigger parent refresh
-            if (onShopFollowed) {
-                onShopFollowed();
-            }
-
-        } catch (error) {
-            console.error("Failed to follow", error);
-            alert("فشل في المتابعة، حاول مرة أخرى.");
+            setResults(prev => prev.map(s => s.id === shopId ? { ...s, is_followed: true } : s));
+        } catch (e) {
+            console.error(e);
         }
     };
 
-    return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column' }}>
-                <div className="modal-header">
-                    <h2> المساعد الذكي</h2>
-                    <button className="btn-close" onClick={onClose}>✕</button>
-                </div>
+    const chips = [
+        { icon: '🍕', label: 'مطاعم' },
+        { icon: '☕', label: 'كافيهات' },
+        { icon: '💊', label: 'صيدليات' },
+        { icon: '👕', label: 'ملابس' },
+        { icon: '📱', label: 'إلكترونيات' },
+        { icon: '💇', label: 'صالونات' },
+    ];
 
-                <div className="modal-body" style={{ flex: 1, overflowY: 'auto', padding: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {messages.map(msg => (
-                        <div key={msg.id} style={{
-                            alignSelf: msg.role === 'USER' ? 'flex-end' : 'flex-start',
-                            maxWidth: '85%'
-                        }}>
-                            <div style={{
-                                backgroundColor: msg.role === 'USER' ? '#fbab15' : '#f1f3f4',
-                                color: msg.role === 'USER' ? 'white' : 'black',
-                                padding: '10px 15px',
-                                borderRadius: '18px',
-                                boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
-                            }}>
-                                {msg.content}
+    return (
+        <div id="ai-modal-root" data-theme={theme} className="ai-overlay" onClick={onClose}>
+            <div className="ai-panel" onClick={e => e.stopPropagation()}>
+
+                {/* BG Orbs */}
+                <div className="ai-orb ai-orb-1" />
+                <div className="ai-orb ai-orb-2" />
+
+                {/* Header */}
+                <header className="ai-header">
+                    <button className="ai-icon-btn" onClick={() => setShowSettings(!showSettings)} title="الإعدادات">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                    </button>
+                    <div className="ai-logo">
+                        <div className="ai-logo-mark">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                <circle cx="12" cy="10" r="3"/>
+                            </svg>
+                        </div>
+                        <div className="ai-logo-text">
+                            <span>المساعد الذكي</span>
+                            <small>PalNovaa AI</small>
+                        </div>
+                    </div>
+                    <button className="ai-icon-btn" onClick={onClose} title="إغلاق">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </header>
+
+                {/* Main */}
+                <main className="ai-main">
+
+                    {/* Settings Panel */}
+                    {showSettings && (
+                        <div className="ai-settings-panel">
+                            <div className="ai-settings-title">المظهر</div>
+                            <div className="ai-theme-grid">
+                                {[
+                                    { id: 'dark', label: 'داكن', cls: 'prev-dark' },
+                                    { id: 'light', label: 'فاتح', cls: 'prev-light' },
+                                    { id: 'midnight', label: 'منتصف الليل', cls: 'prev-midnight' },
+                                    { id: 'sunset', label: 'غروب', cls: 'prev-sunset' },
+                                ].map(t => (
+                                    <div key={t.id} className={`ai-theme-opt${theme === t.id ? ' active' : ''}`} onClick={() => setTheme(t.id)}>
+                                        <div className={`ai-theme-prev ${t.cls}`} />
+                                        <span>{t.label}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="ai-settings-title" style={{marginTop:'16px'}}>اللون المميز</div>
+                            <div className="ai-accents">
+                                {['#F5A623','#FF6B6B','#4ECDC4','#A78BFA','#34D399','#F472B6'].map(c => (
+                                    <button key={c} className={`ai-swatch${accent===c?' active':''}`} style={{background:c}} onClick={() => setAccent(c)} />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Hero (initial) */}
+                    {!showResults && (
+                        <section className="ai-hero">
+                            <div className="ai-hero-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                                    <path d="M2 17l10 5 10-5"/>
+                                    <path d="M2 12l10 5 10-5"/>
+                                </svg>
+                            </div>
+                            <h1>مرحباً <span className="ai-accent">{userName}</span> 👋</h1>
+                            <p>ابحث عن أي محل، منتج، أو سعر — أنا أساعدك بكل ذكاء</p>
+                            <div className="ai-chips">
+                                {chips.map(c => (
+                                    <button key={c.label} className="ai-chip" onClick={() => { setQuery(c.label); handleSearch(c.label); }}>
+                                        <span>{c.icon}</span> {c.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="ai-examples">
+                                <p className="ai-example-title">أمثلة على البحث الذكي:</p>
+                                {[
+                                    'مطعم يبيع شاورما بأقل من 15',
+                                    'صيدلية عندها بروتين بسعر 80',
+                                    'محل ملابس يبيع جاكيت',
+                                ].map(ex => (
+                                    <button key={ex} className="ai-example-chip" onClick={() => { setQuery(ex); handleSearch(ex); }}>
+                                        {ex}
+                                    </button>
+                                ))}
+                            </div>
+                        </section>
+                    )}
+
+                    {/* Results */}
+                    {showResults && (
+                        <section className="ai-results">
+                            {/* Query bubble */}
+                            <div className="ai-query-bubble">
+                                <div className="ai-q-avatar">{userInitial}</div>
+                                <div className="ai-q-text">{query}</div>
                             </div>
 
-                            {msg.isOptions && (
-                                <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-                                    <button
-                                        className="btn-option"
-                                        onClick={() => {
-                                            if (onRouteRequest) {
-                                                onRouteRequest(msg.destination, 'driving');
-                                                setMessages(prev => [...prev, { id: Date.now(), role: 'USER', content: '🚗' }]);
-                                                onClose(); // Close chat to show map
-                                            }
-                                        }}
-                                        style={{ flex: 1, padding: '8px', borderRadius: '12px', border: '1px solid #ddd', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', fontSize: '1.5rem' }}
-                                    >
-                                        🚗
-                                    </button>
-                                    <button
-                                        className="btn-option"
-                                        onClick={() => {
-                                            if (onRouteRequest) {
-                                                onRouteRequest(msg.destination, 'walking');
-                                                setMessages(prev => [...prev, { id: Date.now(), role: 'USER', content: '🚶' }]);
-                                                onClose();
-                                            }
-                                        }}
-                                        style={{ flex: 1, padding: '8px', borderRadius: '12px', border: '1px solid #ddd', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', fontSize: '1.5rem' }}
-                                    >
-                                        🚶
-                                    </button>
+                            {/* Loading */}
+                            {loading && (
+                                <div className="ai-loading">
+                                    <div className="ai-dots"><span/><span/><span/></div>
+                                    <span>المساعد الذكي يبحث لك...</span>
                                 </div>
                             )}
 
-                            {msg.results && (
-                                <div className="ai-results-list" style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
-                                     {msg.results.map((shop, idx) => (
-                                         <div 
-                                             key={idx} 
-                                             className="ai-shop-card" 
-                                             onClick={() => {
-                                                 // When user clicks a shop, show navigation options immediately
-                                                 setMessages(prev => [...prev, {
-                                                     role: 'USER',
-                                                     content: `أريد الذهاب إلى ${shop.name}`
-                                                 }, {
-                                                     id: Date.now() + 50,
-                                                     role: 'CHATBOT',
-                                                     content: `ممتاز! كيف تود الذهاب إلى ${shop.name}؟`,
-                                                     isOptions: true,
-                                                     destination: { lon: shop.location.lon, lat: shop.location.lat, name: shop.name }
-                                                 }]);
-                                             }}
-                                             style={{
-                                                 background: 'white',
-                                                 padding: '12px',
-                                                 borderRadius: '12px',
-                                                 boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                                                 display: 'flex',
-                                                 justifyContent: 'space-between',
-                                                 alignItems: 'center',
-                                                 gap: '10px',
-                                                 border: '1px solid #f0f0f0',
-                                                 cursor: 'pointer'
-                                             }}
-                                         >
-                                             <div style={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
-                                                 <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#1f2937' }}>{shop.name}</div>
-                                                 <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{shop.category || 'متجر'}</div>
-                                             </div>
-                                             <button
-                                                 onClick={(e) => {
-                                                     e.stopPropagation();
-                                                     handleFollow(shop.id);
-                                                 }}
-                                                 disabled={shop.isFollowed}
-                                                 style={{
-                                                     background: shop.isFollowed ? '#e5e7eb' : '#fbab15',
-                                                     color: shop.isFollowed ? '#9ca3af' : 'white',
-                                                     border: 'none',
-                                                     padding: '6px 14px',
-                                                     borderRadius: '20px',
-                                                     cursor: shop.isFollowed ? 'default' : 'pointer',
-                                                     fontSize: '0.8rem',
-                                                     fontWeight: '600',
-                                                     whiteSpace: 'nowrap'
-                                                 }}
-                                             >
-                                                 {shop.isFollowed ? 'متابع' : 'متابعة'}
-                                             </button>
-                                         </div>
-                                     ))}
-                                 </div>
-                             )}
-                        </div>
-                    ))}
-                    {loading && <div style={{ alignSelf: 'flex-start', color: '#666' }}>جاري الكتابة...</div>}
-                    <div ref={messagesEndRef} />
+                            {/* AI Response */}
+                            {!loading && aiText && (
+                                <div className="ai-response-card">
+                                    <div className="ai-badge"><span className="ai-badge-dot"/>المساعد الذكي</div>
+                                    <p className="ai-response-text" dangerouslySetInnerHTML={{ __html: aiText }} />
+                                </div>
+                            )}
+
+                            {/* Results Grid */}
+                            {!loading && results && results.length > 0 && (
+                                <div className="ai-results-grid">
+                                    {results.map(shop => (
+                                        <div key={shop.id} className="ai-shop-card">
+                                            <div className="ai-shop-img">
+                                                {shop.profile_picture
+                                                    ? <img src={getImageUrl(shop.profile_picture)} alt={shop.name} />
+                                                    : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                                }
+                                                <span className="ai-shop-cat">{shop.category || 'محل'}</span>
+                                            </div>
+                                            <div className="ai-shop-body">
+                                                <div className="ai-shop-top">
+                                                    <div>
+                                                        <h3>{shop.name}</h3>
+                                                        {shop.parent_shop_name && <p className="ai-shop-sub">📍 {shop.parent_shop_name}</p>}
+                                                    </div>
+                                                    <button
+                                                        className={`ai-follow-btn${shop.is_followed ? ' followed' : ''}`}
+                                                        onClick={() => handleFollow(shop.id)}
+                                                        disabled={shop.is_followed}
+                                                    >
+                                                        {shop.is_followed ? 'متابَع ✓' : 'متابعة'}
+                                                    </button>
+                                                </div>
+
+                                                {/* Products */}
+                                                {shop.products && shop.products.length > 0 && (
+                                                    <div className="ai-products">
+                                                        {shop.products.map(p => (
+                                                            <div key={p.id} className="ai-product-pill">
+                                                                <span className="ai-product-name">{p.name}</span>
+                                                                {p.price && <span className="ai-product-price">{parseFloat(p.price).toLocaleString('ar')} ₪</span>}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Back button */}
+                            <button className="ai-back-btn" onClick={() => { setShowResults(false); setQuery(''); }}>
+                                ← بحث جديد
+                            </button>
+                        </section>
+                    )}
+                </main>
+
+                {/* Search Box */}
+                <div className="ai-search-area">
+                    <div className="ai-search-box">
+                        <input
+                            ref={inputRef}
+                            className="ai-search-input"
+                            value={query}
+                            onChange={e => setQuery(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                            placeholder="ابحث عن محل، منتج، أو سعر... مثلاً: يبيع هاتف بأقل من 300"
+                        />
+                        <button className="ai-send-btn" onClick={() => handleSearch()} disabled={loading || !query.trim()}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{transform:'scaleX(-1)'}}>
+                                <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
-                <div style={{ padding: '10px', borderTop: '1px solid #eee' }}>
-                    <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '10px' }}>
-                        <input
-                            type="text"
-                            value={newMessage}
-                            onChange={(e) => setNewMessage(e.target.value)}
-                            placeholder="اطلب مكاناً..."
-                            className="input"
-                            style={{ flex: 1 }}
-                            autoFocus
-                        />
-                        <button type="submit" className="btn-primary btn-chat-send" style={{ background: '#fbab15', border: 'none', color: 'white' }} disabled={loading || !newMessage.trim()}>
-                            ➤
-                        </button>
-                    </form>
-                </div>
             </div>
         </div>
     );
 };
 
 export default AIChatModal;
+
+
+

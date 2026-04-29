@@ -1,4 +1,4 @@
-const pool = require('../config/database');
+﻿const pool = require('../config/database');
 
 // --- 1. Search Shops ---
 const searchShops = async (req, res) => {
@@ -50,6 +50,108 @@ const searchShops = async (req, res) => {
     }
 };
 
+
+// --- 1b. Smart Search: Shops + Products + Price Filter ---
+const smartSearch = async (req, res) => {
+    try {
+        const { query, priceMin, priceMax, priceExact, productQuery } = req.query;
+        const userId = req.user ? (req.user.id || req.user.userId) : null;
+
+        if (!query && !productQuery) return res.json({ results: [] });
+
+        const shopQuery = query ? `%${query}%` : '%';
+        const prodQuery = productQuery ? `%${productQuery}%` : (query ? `%${query}%` : '%');
+
+        let priceCondition = '';
+        const params = [shopQuery, prodQuery];
+        let paramIdx = 3;
+
+        if (priceExact !== undefined && priceExact !== '') {
+            priceCondition = `AND p.price = ${paramIdx}`;
+            params.push(parseFloat(priceExact));
+            paramIdx++;
+        } else {
+            if (priceMin !== undefined && priceMin !== '') {
+                priceCondition += ` AND p.price >= ${paramIdx}`;
+                params.push(parseFloat(priceMin));
+                paramIdx++;
+            }
+            if (priceMax !== undefined && priceMax !== '') {
+                priceCondition += ` AND p.price <= ${paramIdx}`;
+                params.push(parseFloat(priceMax));
+                paramIdx++;
+            }
+        }
+
+        if (userId) params.push(parseInt(userId));
+        const isFollowedExpr = userId
+            ? `EXISTS(SELECT 1 FROM shop_followers WHERE shop_id = s.id AND user_id = ${paramIdx}::int)`
+            : 'FALSE';
+
+        const sql = `
+            WITH matching_shops AS (
+                SELECT s.id, s.name, s.category, s.profile_picture,
+                       s.latitude, s.longitude, s.floor, s.parent_shop_id,
+                       parent.name AS parent_shop_name,
+                       ${isFollowedExpr} as is_followed,
+                       NULL::numeric as product_price, NULL::text as product_name,
+                       NULL::text as product_description, NULL::text[] as product_images,
+                       NULL::int as product_id, 'shop' as result_type
+                FROM shops s
+                LEFT JOIN shops parent ON s.parent_shop_id = parent.id
+                WHERE (s.name ILIKE $1 OR s.category ILIKE $1) AND s.is_hidden = FALSE
+                LIMIT 20
+            ),
+            matching_products AS (
+                SELECT s.id, s.name, s.category, s.profile_picture,
+                       s.latitude, s.longitude, s.floor, s.parent_shop_id,
+                       parent.name AS parent_shop_name,
+                       ${isFollowedExpr} as is_followed,
+                       p.price as product_price, p.name as product_name,
+                       p.description as product_description, p.images as product_images,
+                       p.id as product_id, 'product' as result_type
+                FROM shop_products p
+                JOIN shops s ON p.shop_id = s.id
+                LEFT JOIN shops parent ON s.parent_shop_id = parent.id
+                WHERE p.name ILIKE $2 ${priceCondition} AND s.is_hidden = FALSE
+                ORDER BY p.price ASC
+                LIMIT 30
+            )
+            SELECT * FROM matching_shops
+            UNION ALL
+            SELECT * FROM matching_products
+            ORDER BY result_type, product_price ASC NULLS LAST
+        `;
+
+        const result = await pool.query(sql, params);
+
+        const shopsMap = {};
+        result.rows.forEach(row => {
+            if (!shopsMap[row.id]) {
+                shopsMap[row.id] = {
+                    id: row.id, name: row.name, category: row.category,
+                    profile_picture: row.profile_picture, latitude: row.latitude,
+                    longitude: row.longitude, floor: row.floor,
+                    parent_shop_id: row.parent_shop_id,
+                    parent_shop_name: row.parent_shop_name,
+                    is_followed: row.is_followed, products: []
+                };
+            }
+            if (row.result_type === 'product' && row.product_id) {
+                shopsMap[row.id].products.push({
+                    id: row.product_id, name: row.product_name,
+                    description: row.product_description,
+                    price: row.product_price, images: row.product_images
+                });
+            }
+        });
+
+        res.json({ results: Object.values(shopsMap) });
+    } catch (error) {
+        console.error('Smart search error:', error);
+        res.status(500).json({ error: 'Smart search failed: ' + error.message });
+    }
+};
 // --- 2. Follow Shop ---
 const followShop = async (req, res) => {
     try {
@@ -1110,6 +1212,7 @@ const deleteShopPost = async (req, res) => {
 
 module.exports = {
     searchShops,
+    smartSearch,
     followShop,
     unfollowShop,
     getFollowedShops,
@@ -1250,3 +1353,4 @@ async function deleteMunicipalityItem(req, res) {
         res.status(500).json({ error: 'Failed to delete item' });
     }
 }
+

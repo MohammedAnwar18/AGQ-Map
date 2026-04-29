@@ -1,4 +1,4 @@
-import axios from 'axios';
+﻿import axios from 'axios';
 
 // Improved: Use relative path by default for unified Vercel deployment
 const API_URL = import.meta.env.VITE_API_URL || '/api';
@@ -243,6 +243,20 @@ export const aiService = {
     }
 };
 
+
+// Smart Search Service (shops + products + price)
+export const smartSearchService = {
+    search: async ({ query, productQuery, priceMin, priceMax, priceExact }) => {
+        const params = new URLSearchParams();
+        if (query) params.append('query', query);
+        if (productQuery) params.append('productQuery', productQuery);
+        if (priceMin !== undefined && priceMin !== '') params.append('priceMin', priceMin);
+        if (priceMax !== undefined && priceMax !== '') params.append('priceMax', priceMax);
+        if (priceExact !== undefined && priceExact !== '') params.append('priceExact', priceExact);
+        const response = await api.get('/shops/smart-search?' + params.toString());
+        return response.data;
+    }
+};
 // Notification Services
 export const notificationService = {
     getNotifications: async () => {
@@ -623,4 +637,5 @@ export const magazineService = {
 };
 
 export default api;
+
 

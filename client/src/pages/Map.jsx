@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import Map, { Marker, Popup, NavigationControl, Source, Layer } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
@@ -1848,27 +1848,7 @@ const MapComponent = () => {
                     }
                 }
             }} />}
-            {showAIChat && (
-                <AIChatModal
-                    onShopFollowed={handleShopFollowed}
-                    onClose={() => setShowAIChat(false)}
-                    onSearchResults={(results) => {
-                        setAiResults(results);
-                        setSearchResults(results); // Update both to be safe
-                        setRoutePath(null); setRouteStats(null); setDestination(null);
-                        if (results.length > 0) {
-                            mapRef.current?.flyTo({ center: [parseFloat(results[0].lon), parseFloat(results[0].lat)], zoom: 18.5, pitch: 45 });
-                        }
-                    }}
-                    onRouteRequest={(destination, mode) => {
-                        setAiResults([destination]);
-                        fetchRoute(destination, mode);
-                        setShowAIChat(false);
-                    }}
-                    onClearMap={() => { setAiResults([]); setRoutePath(null); setRouteStats(null); setDestination(null); setShowAIChat(false); }}
-                    userLocation={userLocation}
-                />
-            )}
+            {showAIChat && <AIChatModal onClose={() => setShowAIChat(false)} />}
             {showNews && <NewsModal onClose={() => setShowNews(false)} location={{ latitude: viewState.latitude, longitude: viewState.longitude }} />}
             {showCommunities && <CommunitiesModal onClose={() => setShowCommunities(false)} onJoinCommunity={handleJoinCommunity} />}
             {showManagedShops && (
@@ -2014,3 +1994,4 @@ const MapComponent = () => {
 };
 
 export default MapComponent;
+
