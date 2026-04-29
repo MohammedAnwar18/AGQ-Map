@@ -524,7 +524,8 @@ const MapComponent = () => {
             }
 
             if (routeData) {
-                const coordinates = routeData.geometry.coordinates;
+                // Apply Smart Smoothing (Chaikin) to the route path for a premium look
+                const coordinates = smartSmoothPolyline(routeData.geometry.coordinates);
 
                 setRoutePath({
                     type: 'Feature',
@@ -540,11 +541,11 @@ const MapComponent = () => {
                     if (activeMapType === 'geomolg') setActiveMapType('satellite');
 
                     if (mapRef.current) {
-                        // Smoothly transition to a Navigation Perspective
+                        // Smoothly transition to a Navigation Perspective (Direct Guidance)
                         mapRef.current.flyTo({
                             center: [startLon, startLat],
-                            zoom: 17.5,
-                            pitch: 60, // Deep tilt for professional navigation look
+                            zoom: 18.2, // Closer for direct guidance
+                            pitch: 65,  // Dramatic navigation angle
                             bearing: 0,
                             duration: 2500,
                             essential: true
@@ -1855,6 +1856,7 @@ const MapComponent = () => {
                         const routeMode = mode === 'walking' ? 'foot-walking' : 'driving-car';
                         fetchRoute(shop, routeMode);
                         setShowAIChat(false);
+                        setIsTracking(true); // Enable live guidance mode
                     }}
                 />
             )}
