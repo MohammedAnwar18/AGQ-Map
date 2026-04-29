@@ -122,25 +122,31 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                 priceMax: filters.priceMax,
                 priceExact: filters.priceExact
             });
-            const fetchedResults = searchData.results || [];
-            setResults(fetchedResults);
+            let fetchedResults = searchData.results || [];
 
             const aiResp = await aiService.chat(activeQuery, chatHistory, userLocation, { name: user?.full_name });
             let replyText = aiResp.reply;
 
+            // Use AI context results if direct search found nothing
+            if (fetchedResults.length === 0 && aiResp.results && aiResp.results.length > 0) {
+                fetchedResults = aiResp.results;
+            }
+            
+            setResults(fetchedResults);
+
             // Auto-Navigation Logic
             const qLower = activeQuery.toLowerCase();
-            const isAskingForLocation = qLower.includes('وين') || qLower.includes('اين') || qLower.includes('كيف اروح') || qLower.includes('موقع') || qLower.includes('طريق') || qLower.includes('ديلني') || qLower.includes('اقرب') || qLower.includes('وديني');
+            const isAskingForLocation = qLower.includes('وين') || qLower.includes('اين') || qLower.includes('كيف اروح') || qLower.includes('موقع') || qLower.includes('طريق') || qLower.includes('ديلني') || qLower.includes('اقرب') || qLower.includes('وديني') || qLower.includes('اذهب') || qLower.includes('روح') || qLower.includes('نروح') || qLower.includes('توجه') || qLower.includes('خذني') || qLower.includes('وصلني');
             const isDriving = qLower.match(/(سيارة|سياره|قيادة|بسيارة|تكسي)/);
             const isWalking = qLower.match(/(مشي|سير|اقدام|مشيًا)/);
 
-            if (fetchedResults.length > 0 && (isAskingForLocation || isDriving || isWalking || replyText.includes('يبعد'))) {
+            if (fetchedResults.length > 0 && (isAskingForLocation || isDriving || isWalking || replyText.includes('يبعد') || aiResp.type === 'route' || aiResp.type === 'navigation_options')) {
                 const target = fetchedResults[0];
                 let mode = 'driving';
                 
-                if (isDriving) {
+                if (isDriving || aiResp.mode === 'driving') {
                     mode = 'driving';
-                } else if (isWalking) {
+                } else if (isWalking || aiResp.mode === 'walking') {
                     mode = 'walking';
                 } else if (userLocation && target.latitude && target.longitude) {
                     const dist = calculateDistance(userLocation.latitude, userLocation.longitude, target.latitude, target.longitude);
@@ -154,7 +160,7 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                 
                 setTimeout(() => {
                     onNavigate(target, mode);
-                }, 2500);
+                }, 2000);
             }
 
             setChatHistory(prev => [...prev, { role: 'assistant', message: replyText, results: fetchedResults }]);
