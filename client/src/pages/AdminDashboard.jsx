@@ -258,7 +258,7 @@ const AdminDashboard = () => {
                                     <tbody>
                                         {users.map(u => (
                                             <tr key={u.id}>
-                                                <td>
+                                                <td className="clickable" onClick={() => navigate(`/admin/users/${u.id}`)}>
                                                     <div className="user-cell">
                                                         <div className="user-avatar-wrapper">
                                                             <img src={u.profile_picture || '/default-avatar.png'} alt={u.username} className="user-avatar" />
@@ -270,9 +270,9 @@ const AdminDashboard = () => {
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td><span style={{ opacity: 0.8, fontWeight: 600 }}>{u.email}</span></td>
-                                                <td>{formatDate(u.created_at)}</td>
-                                                <td>
+                                                <td className="clickable" onClick={() => navigate(`/admin/users/${u.id}`)}><span style={{ opacity: 0.8, fontWeight: 600 }}>{u.email}</span></td>
+                                                <td className="clickable" onClick={() => navigate(`/admin/users/${u.id}`)}>{formatDate(u.created_at)}</td>
+                                                <td className="clickable" onClick={() => navigate(`/admin/users/${u.id}`)}>
                                                     <span className={`status-tag ${u.is_active ? 'active' : 'inactive'}`}>
                                                         {u.is_active ? 'نشط' : 'موقوف'}
                                                     </span>
@@ -338,7 +338,7 @@ const AdminDashboard = () => {
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td>
+                                                <td className="clickable" onClick={() => navigate(`/admin/users/${p.user.id}`)}>
                                                     <div className="user-info">
                                                         <h4>{p.user.full_name}</h4>
                                                         <p>@{p.user.username}</p>
@@ -372,7 +372,12 @@ const AdminDashboard = () => {
                                     <div key={p.id} className="media-item">
                                         <img src={p.image_url} alt="System File" className="media-thumb" />
                                         <div className="media-info">
-                                            <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem' }}>بواسطة: @{p.user.username}</p>
+                                            <p 
+                                                style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', color: 'var(--accent)' }}
+                                                onClick={() => navigate(`/admin/users/${p.user.id}`)}
+                                            >
+                                                بواسطة: @{p.user.username}
+                                            </p>
                                             <small style={{ opacity: 0.6 }}>{formatDate(p.created_at)}</small>
                                             <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
                                                 <button className="btn-circle destructive" style={{ width: '36px', height: '36px', fontSize: '0.9rem' }} onClick={() => adminService.deletePost(p.id).then(loadData)}>🗑️</button>

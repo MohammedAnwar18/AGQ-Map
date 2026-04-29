@@ -13,13 +13,44 @@
 
 .admin-dashboard {
     display: flex;
-    min-height: 100vh;
+    height: 100vh;
     background: var(--bg-main);
     color: #f1f5f9;
     font-family: 'Inter', 'Outfit', 'Tajawal', sans-serif;
     direction: rtl;
-    overflow-x: hidden;
+    overflow: hidden; /* Prevent body scroll, use container scroll */
 }
+
+/* Smooth Scrolling Container */
+.admin-main {
+    flex: 1;
+    padding: 4rem;
+    max-width: 1600px;
+    margin: 0 auto;
+    width: 100%;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Custom Scrollbar for Premium Feel */
+.admin-main::-webkit-scrollbar {
+    width: 8px;
+}
+
+.admin-main::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.admin-main::-webkit-scrollbar-thumb {
+    background: rgba(251, 171, 21, 0.2);
+    border-radius: 10px;
+}
+
+.admin-main::-webkit-scrollbar-thumb:hover {
+    background: rgba(251, 171, 21, 0.4);
+}
+
 
 /* Sidebar Styling - Ultra Modern Glass */
 .admin-sidebar {
@@ -122,13 +153,7 @@
 }
 
 /* Main Content Area - Laptop Optimized */
-.admin-main {
-    flex: 1;
-    padding: 4rem;
-    max-width: 1600px;
-    margin: 0 auto;
-    width: 100%;
-}
+/* Removed redundant .admin-main styling here as it moved up */
 
 .admin-header {
     margin-bottom: 4rem;
@@ -297,7 +322,17 @@
 .admin-table tr:hover td {
     background: rgba(255, 255, 255, 0.05);
     border-color: rgba(251, 171, 21, 0.2);
+    cursor: default;
 }
+
+.admin-table tr td.clickable {
+    cursor: pointer;
+}
+
+.admin-table tr:hover td.clickable {
+    background: rgba(251, 171, 21, 0.05);
+}
+
 
 /* User & Media Cells */
 .user-cell {
@@ -327,6 +362,7 @@
     font-weight: 800;
     margin-bottom: 0.35rem;
     color: #fff;
+    white-space: nowrap; /* Ensure username doesn't wrap awkwardly */
 }
 
 .user-info p {
@@ -334,7 +370,9 @@
     color: var(--accent);
     font-weight: 700;
     opacity: 0.9;
+    white-space: nowrap;
 }
+
 
 /* Custom Buttons & Interactions */
 .btn-circle {

@@ -146,18 +146,23 @@ const AdminUserDetails = () => {
                     <div className="admin-content-card" style={{ height: 'fit-content' }}>
                         <div style={{ padding: '3rem', textAlign: 'center' }}>
                             <div style={{ position: 'relative', display: 'inline-block', marginBottom: '2.5rem' }}>
-                                <img
-                                    src={getImageUrl(user.profile_picture) || '/default-avatar.png'}
-                                    alt={user.username}
-                                    style={{
-                                        width: '180px',
-                                        height: '180px',
-                                        borderRadius: '40px',
-                                        objectFit: 'cover',
-                                        border: '4px solid var(--accent)',
-                                        boxShadow: '0 20px 40px rgba(0,0,0,0.4)'
-                                    }}
-                                />
+                                <a href={getImageUrl(user.profile_picture) || '/default-avatar.png'} target="_blank" rel="noopener noreferrer">
+                                    <img
+                                        src={getImageUrl(user.profile_picture) || '/default-avatar.png'}
+                                        alt={user.username}
+                                        style={{
+                                            width: '180px',
+                                            height: '180px',
+                                            borderRadius: '40px',
+                                            objectFit: 'cover',
+                                            border: '4px solid var(--accent)',
+                                            boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+                                            cursor: 'pointer'
+                                        }}
+                                        title="انقر لتكبير الصورة"
+                                    />
+                                </a>
+
                                 <div style={{ 
                                     position: 'absolute', 
                                     bottom: '-10px', 
@@ -198,6 +203,26 @@ const AdminUserDetails = () => {
                                     <strong style={{ color: '#64748b', display: 'block', fontSize: '0.9rem', marginBottom: '0.3rem' }}>تاريخ التسجيل</strong>
                                     <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>{formatDate(user.created_at)}</p>
                                 </div>
+                                <div className="info-row">
+                                    <strong style={{ color: '#64748b', display: 'block', fontSize: '0.9rem', marginBottom: '0.3rem' }}>آخر ظهور</strong>
+                                    <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>{user.last_seen ? formatDate(user.last_seen) : 'غير معروف'}</p>
+                                </div>
+                                <div className="info-row">
+                                    <strong style={{ color: '#64748b', display: 'block', fontSize: '0.9rem', marginBottom: '0.3rem' }}>الحالة الاجتماعية</strong>
+                                    <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>{user.marital_status || 'غير محدد'}</p>
+                                </div>
+                                <div className="info-row">
+                                    <strong style={{ color: '#64748b', display: 'block', fontSize: '0.9rem', marginBottom: '0.3rem' }}>مكان العمل</strong>
+                                    <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>{user.workplace || 'غير محدد'}</p>
+                                </div>
+                                <div className="info-row">
+                                    <strong style={{ color: '#64748b', display: 'block', fontSize: '0.9rem', marginBottom: '0.3rem' }}>المستوى التعليمي</strong>
+                                    <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>{user.education || 'غير محدد'} - {user.institution || ''}</p>
+                                </div>
+                                <div className="info-row">
+                                    <strong style={{ color: '#64748b', display: 'block', fontSize: '0.9rem', marginBottom: '0.3rem' }}>نوع الحساب</strong>
+                                    <p style={{ fontSize: '1.1rem', fontWeight: 600, color: user.role === 'admin' ? '#ef4444' : '#fbab15' }}>{user.role === 'admin' ? 'مدير نظام' : 'مستخدم عادي'}</p>
+                                </div>
                                 {user.bio && (
                                     <div className="info-row" style={{ background: 'rgba(251, 171, 21, 0.05)', padding: '1.5rem', borderRadius: '20px', border: '1px solid rgba(251, 171, 21, 0.1)' }}>
                                         <strong style={{ color: 'var(--accent)', display: 'block', fontSize: '0.9rem', marginBottom: '0.5rem' }}>نبذة تعريفية</strong>
@@ -206,6 +231,7 @@ const AdminUserDetails = () => {
                                 )}
                             </div>
                         </div>
+
                     </div>
 
                     {/* Content & Activity Section */}
@@ -269,11 +295,16 @@ const AdminUserDetails = () => {
                                             <tr key={post.id}>
                                                 <td>
                                                     <div className="user-cell">
-                                                        {post.image_url && <img src={post.image_url} alt="Content" className="user-avatar" style={{ width: '100px', height: '70px', borderRadius: '14px' }} />}
+                                                        {post.image_url && (
+                                                            <a href={post.image_url} target="_blank" rel="noopener noreferrer">
+                                                                <img src={post.image_url} alt="Content" className="user-avatar" style={{ width: '100px', height: '70px', borderRadius: '14px', cursor: 'pointer' }} title="انقر لتكبير الصورة" />
+                                                            </a>
+                                                        )}
                                                         <div className="user-info">
                                                             <h4 style={{ fontSize: '1rem' }}>{post.content || 'محتوى مرئي'}</h4>
                                                         </div>
                                                     </div>
+
                                                 </td>
                                                 <td>
                                                     <span style={{ fontSize: '0.85rem', opacity: 0.7 }}>
