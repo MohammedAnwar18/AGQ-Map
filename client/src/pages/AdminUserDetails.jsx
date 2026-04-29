@@ -75,7 +75,17 @@ const AdminUserDetails = () => {
         });
     };
 
+    const formatBirthDate = (dateString) => {
+        if (!dateString) return 'غير متوفر';
+        return new Date(dateString).toLocaleDateString('ar-SA', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    };
+
     const calculateAge = (dob) => {
+
         const diff = Date.now() - new Date(dob).getTime();
         return Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
     };
@@ -203,6 +213,11 @@ const AdminUserDetails = () => {
                                     <strong style={{ color: '#64748b', display: 'block', fontSize: '0.9rem', marginBottom: '0.3rem' }}>تاريخ التسجيل</strong>
                                     <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>{formatDate(user.created_at)}</p>
                                 </div>
+                                <div className="info-row">
+                                    <strong style={{ color: '#64748b', display: 'block', fontSize: '0.9rem', marginBottom: '0.3rem' }}>تاريخ الميلاد</strong>
+                                    <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>{formatBirthDate(user.date_of_birth)} ({calculateAge(user.date_of_birth)} سنة)</p>
+                                </div>
+
                                 <div className="info-row">
                                     <strong style={{ color: '#64748b', display: 'block', fontSize: '0.9rem', marginBottom: '0.3rem' }}>آخر ظهور</strong>
                                     <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>{user.last_seen ? formatDate(user.last_seen) : 'غير معروف'}</p>
