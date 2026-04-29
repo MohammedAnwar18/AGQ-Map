@@ -19,7 +19,6 @@ const AdminDashboard = () => {
 
     // Bulk selection states
     const [selectedUsers, setSelectedUsers] = useState([]);
-    const [selectedPosts, setSelectedPosts] = useState([]);
 
     // Check admin permissions
     useEffect(() => {
@@ -39,7 +38,6 @@ const AdminDashboard = () => {
     const loadData = async () => {
         setLoading(true);
         setSelectedUsers([]);
-        setSelectedPosts([]);
         try {
             if (activeTab === 'overview') {
                 const statsData = await adminService.getStats();
@@ -48,7 +46,7 @@ const AdminDashboard = () => {
                 const usersData = await adminService.getAllUsers(searchQuery, currentPage, 15);
                 setUsers(usersData.users);
                 setPagination(usersData.pagination);
-            } else if (activeTab === 'posts') {
+            } else if (activeTab === 'posts' || activeTab === 'data' || activeTab === 'files') {
                 const postsData = await adminService.getAllPosts(currentPage, 30);
                 setPosts(postsData.posts);
                 setPagination(postsData.pagination);
@@ -56,7 +54,7 @@ const AdminDashboard = () => {
         } catch (error) {
             console.error('Failed to load data:', error);
         } finally {
-            setTimeout(() => setLoading(false), 300); // Smooth transition
+            setTimeout(() => setLoading(false), 400); // Smooth transition for premium feel
         }
     };
 
@@ -121,14 +119,15 @@ const AdminDashboard = () => {
             <div className="admin-sidebar">
                 <div className="admin-logo">
                     <h1>📍 PalNovaa</h1>
-                    <p>إدارة الشبكة الاجتماعية</p>
+                    <p>SUPER ADMIN PANEL</p>
                 </div>
 
                 <nav className="admin-nav">
                     {[
-                        { id: 'overview', icon: '📊', label: 'لوحة التحكم' },
+                        { id: 'overview', icon: '📊', label: 'الرئيسية' },
                         { id: 'users', icon: '👥', label: 'المستخدمين' },
-                        { id: 'posts', icon: '🖼️', label: 'المحتوى والمنشورات' },
+                        { id: 'data', icon: '📝', label: 'كل البيانات' },
+                        { id: 'files', icon: '📁', label: 'ملفات الوسائط' },
                         { id: 'map', icon: '🌏', label: 'خارطة النشاط' },
                     ].map(tab => (
                         <a
@@ -154,12 +153,23 @@ const AdminDashboard = () => {
             <div className="admin-main">
                 {/* Modern Header Section */}
                 <div className="admin-header">
-                    <h2>{
-                        activeTab === 'overview' ? 'نظرة عامة' : 
-                        activeTab === 'users' ? 'إدارة المستخدمين' : 
-                        activeTab === 'posts' ? 'إدارة المنشورات' : 'خلاصة النشاط الجغرافي'
-                    }</h2>
-                    <p>مرحباً بك مجدداً يا {user.full_name || user.username} • {new Date().toLocaleDateString('ar-SA', { day: 'numeric', month: 'long' })}</p>
+                    <div className="header-title-area">
+                        <h2>{
+                            activeTab === 'overview' ? 'لوحة التحكم العامة' : 
+                            activeTab === 'users' ? 'إدارة الحسابات' : 
+                            activeTab === 'data' ? 'إدارة المحتوى والبيانات' :
+                            activeTab === 'files' ? 'مكتبة الوسائط' : 'خارطة النشاط الموحدة'
+                        }</h2>
+                        <p>مرحباً بك يا {user.full_name || user.username} • {new Date().toLocaleDateString('ar-SA', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                    </div>
+                    
+                    <div className="admin-profile-snippet">
+                        <div className="user-info" style={{ textAlign: 'left' }}>
+                            <h4 style={{ margin: 0 }}>{user.username}</h4>
+                            <p style={{ margin: 0, fontSize: '0.8rem' }}>المدير العام</p>
+                        </div>
+                        <img src={user.profile_picture || '/default-avatar.png'} alt="Admin" className="user-avatar" style={{ width: '45px', height: '45px' }} />
+                    </div>
                 </div>
 
                 {/* Dashboard Tabs Rendering */}
@@ -170,45 +180,44 @@ const AdminDashboard = () => {
                         ) : stats ? (
                             <>
                                 <div className="stats-grid">
-                                    <div className="stat-card" style={{ '--stat-color': 'rgba(251, 171, 21, 0.2)' }}>
-                                        <div className="stat-icon-wrapper">🚀</div>
+                                    <div className="stat-card" style={{ '--stat-color': '#fbab15' }}>
+                                        <div className="stat-icon-wrapper">👥</div>
                                         <div className="stat-value">
                                             {stats.totalUsers}
-                                            <span className="stat-trend trend-up">+12%</span>
                                         </div>
-                                        <div className="stat-label">إجمالي المستخدمين</div>
+                                        <div className="stat-label">إجمالي الحسابات</div>
                                     </div>
 
-                                    <div className="stat-card" style={{ '--stat-color': 'rgba(16, 185, 129, 0.2)' }}>
-                                        <div className="stat-icon-wrapper">🏙️</div>
+                                    <div className="stat-card" style={{ '--stat-color': '#10b981' }}>
+                                        <div className="stat-icon-wrapper">📝</div>
                                         <div className="stat-value">
                                             {stats.totalPosts}
-                                            <span className="stat-trend trend-up">+8%</span>
                                         </div>
-                                        <div className="stat-label">إجمالي المنشورات</div>
+                                        <div className="stat-label">إجمالي البيانات</div>
                                     </div>
 
-                                    <div className="stat-card" style={{ '--stat-color': 'rgba(59, 130, 246, 0.2)' }}>
+                                    <div className="stat-card" style={{ '--stat-color': '#3b82f6' }}>
                                         <div className="stat-icon-wrapper">🔥</div>
                                         <div className="stat-value">{stats.activeUsers}</div>
-                                        <div className="stat-label">المتصلين الآن</div>
+                                        <div className="stat-label">نشطون الآن</div>
                                     </div>
 
-                                    <div className="stat-card" style={{ '--stat-color': 'rgba(239, 68, 68, 0.2)' }}>
-                                        <div className="stat-icon-wrapper">📷</div>
+                                    <div className="stat-card" style={{ '--stat-color': '#ef4444' }}>
+                                        <div className="stat-icon-wrapper">📸</div>
                                         <div className="stat-value">{stats.todayPosts}</div>
-                                        <div className="stat-label">منشورات اليوم</div>
+                                        <div className="stat-label">مدخلات اليوم</div>
                                     </div>
                                 </div>
 
-                                {/* Placeholder for Analytics Charts */}
-                                <div className="admin-content-card" style={{ marginTop: '2rem' }}>
+                                <div className="admin-content-card">
                                     <div className="content-header">
-                                        <h3>تحليل التفاعل ونمو الشبكة</h3>
+                                        <h3>آخر النشاطات على الشبكة</h3>
                                     </div>
-                                    <div className="activity-placeholder" style={{ padding: '6rem 2rem' }}>
-                                        <div className="placeholder-icon" style={{ fontSize: '4rem', marginBottom: '1.5rem' }}>💠</div>
-                                        <p style={{ opacity: 0.6, fontSize: '1.1rem' }}>سيوفر هذا القسم قريباً رسوماً بيانية تفاعلية مدعومة بالذكاء الاصطناعي لتحليل نمو قاعدة بياناتك.</p>
+                                    <div className="activity-placeholder" style={{ padding: '6rem 2rem', textAlign: 'center' }}>
+                                        <div className="placeholder-icon" style={{ fontSize: '5rem', marginBottom: '1.5rem', opacity: 0.5 }}>📊</div>
+                                        <p style={{ opacity: 0.7, fontSize: '1.3rem', maxWidth: '700px', margin: '0 auto' }}>
+                                            كأدمن عام، يمكنك مراقبة كل صغيرة وكبيرة في النظام من هنا. الرسوم البيانية المتقدمة قيد المعالجة لتوفير تحليل أدق للبيانات.
+                                        </p>
                                     </div>
                                 </div>
                             </>
@@ -216,47 +225,39 @@ const AdminDashboard = () => {
                     </div>
                 )}
 
-                {/* Users Management Sub-Module */}
+                {/* Users Management */}
                 {activeTab === 'users' && (
                     <div className="admin-content-card">
                         <div className="content-header">
-                            <div className="admin-search-group">
-                                {selectedUsers.length > 0 && (
-                                    <button className="btn-circle destructive" onClick={handleBulkDeleteUsers} style={{ width: 'auto', padding: '0 2rem' }}>
-                                        حذف المحدد ({selectedUsers.length})
-                                    </button>
-                                )}
-                                <div className="admin-search">
-                                    <input
-                                        type="text"
-                                        placeholder="بحث عن مستخدم بالاسم أو المعرف..."
-                                        value={searchQuery}
-                                        onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                                    />
-                                    <span className="admin-search-icon">🔍</span>
-                                </div>
+                            <h3>إدارة الحسابات والملفات الشخصية</h3>
+                            <div className="admin-search">
+                                <input
+                                    type="text"
+                                    placeholder="بحث عن مستخدم..."
+                                    value={searchQuery}
+                                    onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                                />
+                                <span className="admin-search-icon">🔍</span>
                             </div>
                         </div>
 
                         <div className="admin-table-wrapper">
                             {loading ? (
-                                <div className="loading-container" style={{ padding: '6rem' }}><div className="spinner"></div></div>
+                                <div className="loading-container"><div className="spinner"></div></div>
                             ) : (
                                 <table className="admin-table">
                                     <thead>
                                         <tr>
-                                            <th><input type="checkbox" checked={selectedUsers.length === users.length && users.length > 0} onChange={handleSelectAllUsers} /></th>
-                                            <th>المستخدم والملف</th>
+                                            <th>المستخدم</th>
                                             <th>البريد الإلكتروني</th>
                                             <th>تاريخ الانضمام</th>
                                             <th>الحالة</th>
-                                            <th>الإجراءات السريعة</th>
+                                            <th>إجراءات الإدارة</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {users.map(u => (
                                             <tr key={u.id}>
-                                                <td><input type="checkbox" checked={selectedUsers.includes(u.id)} onChange={() => handleSelectUser(u.id)} /></td>
                                                 <td>
                                                     <div className="user-cell">
                                                         <div className="user-avatar-wrapper">
@@ -269,19 +270,19 @@ const AdminDashboard = () => {
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td><span style={{ opacity: 0.8 }}>{u.email}</span></td>
+                                                <td><span style={{ opacity: 0.8, fontWeight: 600 }}>{u.email}</span></td>
                                                 <td>{formatDate(u.created_at)}</td>
                                                 <td>
                                                     <span className={`status-tag ${u.is_active ? 'active' : 'inactive'}`}>
-                                                        {u.is_active ? 'نشط بالكامل' : 'موقوف إدارياً'}
+                                                        {u.is_active ? 'نشط' : 'موقوف'}
                                                     </span>
                                                 </td>
                                                 <td>
                                                     <div className="action-btns">
-                                                        <button className="btn-circle" title="زيارة الملف" onClick={() => navigate(`/admin/users/${u.id}`)}>👤</button>
+                                                        <button className="btn-circle" title="فتح الملف الكامل" onClick={() => navigate(`/admin/users/${u.id}`)}>👤</button>
                                                         <button 
                                                             className="btn-circle" 
-                                                            title={u.is_active ? 'إيقاف الصلاحيات' : 'إعادة تفعيل'} 
+                                                            title={u.is_active ? 'إيقاف' : 'تفعيل'} 
                                                             onClick={() => handleToggleUserStatus(u.id, u.is_active)}
                                                             style={{ color: u.is_active ? '#ef4444' : '#10b981' }}
                                                         >
@@ -306,24 +307,24 @@ const AdminDashboard = () => {
                     </div>
                 )}
 
-                {/* Posts/Content Tab Content (Similar Overhaul) */}
-                {activeTab === 'posts' && (
+                {/* Global Data View */}
+                {activeTab === 'data' && (
                     <div className="admin-content-card">
                         <div className="content-header">
-                            <h3>مراجعة محتوى الخريطة</h3>
+                            <h3>مراجعة كافة البيانات المدخلة</h3>
                         </div>
                         <div className="admin-table-wrapper">
                             {loading ? (
-                                <div className="loading-container" style={{ padding: '6rem' }}><div className="spinner"></div></div>
+                                <div className="loading-container"><div className="spinner"></div></div>
                             ) : (
                                 <table className="admin-table">
                                     <thead>
                                         <tr>
-                                            <th>المنشور</th>
+                                            <th>المحتوى</th>
                                             <th>الناشر</th>
-                                            <th>التفاعلات</th>
+                                            <th>الموقع</th>
                                             <th>التاريخ</th>
-                                            <th>الضبط</th>
+                                            <th>التحكم</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -331,10 +332,9 @@ const AdminDashboard = () => {
                                             <tr key={p.id}>
                                                 <td>
                                                     <div className="user-cell">
-                                                        {p.image_url && <img src={p.image_url} alt="Post" className="user-avatar" style={{ width: '60px', borderRadius: '12px' }} />}
+                                                        {p.image_url && <img src={p.image_url} alt="Post" className="user-avatar" style={{ width: '80px', height: '60px', borderRadius: '12px' }} />}
                                                         <div className="user-info">
-                                                            <h4 style={{ fontSize: '0.95rem' }}>{p.content?.substring(0, 30) || 'محتوى مرئي'}...</h4>
-                                                            <p style={{ fontSize: '0.75rem' }}>{p.address?.substring(0, 25) || 'موقع جغرافي'}</p>
+                                                            <h4 style={{ fontSize: '1rem' }}>{p.content?.substring(0, 40) || 'محتوى مرئي'}...</h4>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -344,7 +344,7 @@ const AdminDashboard = () => {
                                                         <p>@{p.user.username}</p>
                                                     </div>
                                                 </td>
-                                                <td><span style={{ fontWeight: 800 }}>{p.likes_count || 0} ❤️ / {p.comments_count || 0} 💬</span></td>
+                                                <td><span style={{ fontSize: '0.9rem', opacity: 0.7 }}>{p.address?.substring(0, 30) || 'إحداثيات جغرافية'}</span></td>
                                                 <td>{formatDate(p.created_at)}</td>
                                                 <td>
                                                     <button className="btn-circle destructive" onClick={() => adminService.deletePost(p.id).then(loadData)}>🗑️</button>
@@ -358,13 +358,42 @@ const AdminDashboard = () => {
                     </div>
                 )}
 
-                {/* Map View Content Placeholder */}
+                {/* Media Files View */}
+                {activeTab === 'files' && (
+                    <div className="admin-content-card">
+                        <div className="content-header">
+                            <h3>مكتبة الوسائط والملفات</h3>
+                        </div>
+                        {loading ? (
+                            <div className="loading-container"><div className="spinner"></div></div>
+                        ) : (
+                            <div className="media-grid">
+                                {posts.filter(p => p.image_url).map(p => (
+                                    <div key={p.id} className="media-item">
+                                        <img src={p.image_url} alt="System File" className="media-thumb" />
+                                        <div className="media-info">
+                                            <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem' }}>بواسطة: @{p.user.username}</p>
+                                            <small style={{ opacity: 0.6 }}>{formatDate(p.created_at)}</small>
+                                            <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
+                                                <button className="btn-circle destructive" style={{ width: '36px', height: '36px', fontSize: '0.9rem' }} onClick={() => adminService.deletePost(p.id).then(loadData)}>🗑️</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Map View */}
                 {activeTab === 'map' && (
                     <div className="admin-content-card" style={{ height: '70vh', position: 'relative' }}>
-                        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(15, 23, 42, 0.4)', borderRadius: '32px' }}>
-                            <div style={{ fontSize: '6rem', animation: 'pulse 2s infinite' }}>🌏</div>
-                            <h3 style={{ fontSize: '2.5rem', marginBottom: '1.5rem', marginTop: '2rem' }}>خارطة التحكم الموحدة</h3>
-                            <p style={{ maxWidth: '600px', textAlign: 'center', opacity: 0.8, fontSize: '1.2rem', lineHeight: 1.6 }}>سيتم ربط بيانات الـ GeoJSON هنا لتمكينك من مراقبة النشاط المباشر على الخريطة الإدارية بدقة متناهية.</p>
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(2, 6, 23, 0.6)', borderRadius: '40px' }}>
+                            <div style={{ fontSize: '7rem', filter: 'drop-shadow(0 0 30px rgba(251, 171, 21, 0.4))' }}>🌏</div>
+                            <h3 style={{ fontSize: '3rem', marginBottom: '1.5rem', marginTop: '2rem', fontWeight: 900 }}>خارطة التحكم الموحدة</h3>
+                            <p style={{ maxWidth: '700px', textAlign: 'center', opacity: 0.8, fontSize: '1.4rem', lineHeight: 1.6, fontWeight: 500 }}>
+                                يتم حالياً دمج طبقات البيانات الجغرافية المتقدمة لتمكينك من مراقبة النشاط الحي للمستخدمين والبيانات في الوقت الفعلي.
+                            </p>
                         </div>
                     </div>
                 )}
