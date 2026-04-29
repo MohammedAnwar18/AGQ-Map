@@ -979,7 +979,7 @@ const deleteUniversityFacility = async (req, res) => {
         res.json({ message: 'Facility deleted successfully' });
     } catch (error) {
         console.error('Delete facility error:', error);
-        res.status(500).json({ error: 'Failed to delete facility' });
+        res.status(500).json({ error: 'حدث خطأ أثناء حذف المرفق. يرجى المحاولة لاحقاً.' });
     }
 };
 
