@@ -1830,6 +1830,13 @@ const MapComponent = () => {
                         setShowAIChat(false);
                         setIsTracking(true); // Enable live guidance mode
                     }}
+                    onShopClick={(shop) => {
+                        handleOpenShopProfile(shop);
+                        setShowAIChat(false);
+                        if (shop.latitude && shop.longitude) {
+                            mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: 18.5, pitch: 45 });
+                        }
+                    }}
                 />
             )}
             {showNews && <NewsModal onClose={() => setShowNews(false)} location={{ latitude: viewState.latitude, longitude: viewState.longitude }} />}

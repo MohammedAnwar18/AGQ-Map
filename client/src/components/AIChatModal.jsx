@@ -222,13 +222,13 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                 <div className="ai-hero-icon">
                                 </div>
                                 <h1>مرحباً <span className="accent">{user?.full_name || 'صديقي'}</span> 👋</h1>
-                                <p>أنا مساعدك الذكي في PalNovaa، اسألني عن أي مكان أو منتج أو سعر وسأساعدك بكل سهولة وذكاء</p>
+                                <p>أنا مساعدك الذكي في PalNovaa، اسألني عن أي مكان أو منتج وسأساعدك بكل سهولة وذكاء</p>
 
                                 <div className="ai-search-wrap">
                                     <div className="ai-search-box">
                                         <input 
                                             className="ai-search-input" 
-                                            placeholder="ابحث عن مطاعم، منتجات، أسعار..." 
+                                            placeholder="ابحث عن أي مكان، خدمة، أو وجهة..." 
                                             value={query}
                                             onChange={(e) => setQuery(e.target.value)}
                                             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -325,97 +325,99 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                                 <div className={`ai-results-grid ${viewMode === 'list' ? 'list-view' : ''}`} 
                                                      style={{gridTemplateColumns: viewMode === 'list' ? '1fr' : undefined}}>
                                                     {results.map(shop => (
-                                                        <div key={shop.id} className="ai-place-card">
-                                                            <div className="ai-place-header" style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                                                <div>
-                                                                    <h3 style={{ fontSize: '15px', fontWeight: 'bold', margin: '0 0 4px 0' }}>{shop.name}</h3>
-                                                                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>📍 {shop.parent_shop_name || shop.category || 'محل'}</span>
+                                                        <div 
+                                                            key={shop.id} 
+                                                            className="ai-place-card"
+                                                            onClick={() => onShopClick && onShopClick(shop)}
+                                                            style={{ 
+                                                                cursor: 'pointer', 
+                                                                overflow: 'hidden', 
+                                                                borderRadius: '16px', 
+                                                                border: '1px solid var(--border)', 
+                                                                background: '#1e293b', 
+                                                                display: 'flex', 
+                                                                flexDirection: 'column',
+                                                                transition: 'transform 0.2s',
+                                                                boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
+                                                            }}
+                                                            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
+                                                            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                                                        >
+                                                            {/* Top Section - Image or Orange Gradient */}
+                                                            <div style={{ height: '140px', position: 'relative', background: shop.profile_picture ? '#1e293b' : 'linear-gradient(135deg, #f59e0b 0%, #fbab15 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                {/* Rating Badge */}
+                                                                <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.5)', padding: '4px 10px', borderRadius: '14px', fontSize: '13px', color: 'white', fontWeight: 'bold', display: 'flex', gap: '4px', alignItems: 'center', backdropFilter: 'blur(4px)', zIndex: 2 }}>
+                                                                    <span style={{ color: '#fbab15' }}>⭐</span> {shop.rating || '4.8'}
                                                                 </div>
+
+                                                                {/* Follow Button / Status */}
                                                                 <button 
-                                                                    className={`ai-follow-btn-small ${shop.is_followed ? 'followed' : ''}`}
-                                                                    onClick={() => handleFollow(shop.id)}
+                                                                    onClick={(e) => { e.stopPropagation(); handleFollow(shop.id); }}
                                                                     disabled={shop.is_followed}
                                                                     style={{
-                                                                        padding: '6px 12px',
-                                                                        borderRadius: '12px',
-                                                                        fontSize: '11px',
-                                                                        fontWeight: 'bold',
-                                                                        background: shop.is_followed ? 'rgba(245, 166, 35, 0.2)' : 'rgba(255,255,255,0.05)',
-                                                                        color: shop.is_followed ? 'var(--primary)' : 'var(--text-secondary)',
-                                                                        border: `1px solid ${shop.is_followed ? 'var(--primary)' : 'var(--border)'}`,
-                                                                        cursor: shop.is_followed ? 'default' : 'pointer',
-                                                                        transition: 'all 0.2s'
+                                                                        position: 'absolute', top: '10px', left: '10px',
+                                                                        background: shop.is_followed ? 'rgba(251, 171, 21, 0.9)' : 'rgba(0,0,0,0.5)',
+                                                                        padding: '4px 10px', borderRadius: '14px', fontSize: '11px', color: 'white', fontWeight: 'bold', border: 'none', cursor: shop.is_followed ? 'default' : 'pointer', backdropFilter: 'blur(4px)', zIndex: 2
                                                                     }}
                                                                 >
-                                                                    {shop.is_followed ? 'متابع ✓' : 'متابعة'}
+                                                                    {shop.is_followed ? 'متابع ✓' : 'متابعة +'}
                                                                 </button>
-                                                            </div>
-                                                            
-                                                            <div className="ai-place-img" style={{ height: 'auto', minHeight: '140px', maxHeight: '220px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                                {shop.profile_picture 
-                                                                    ? <img src={getImageUrl(shop.profile_picture)} alt={shop.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                                    : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{width: '48px', height: '48px', color: 'rgba(255,255,255,0.5)'}}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                                                                }
+
+                                                                {shop.profile_picture ? (
+                                                                    <img src={getImageUrl(shop.profile_picture)} alt={shop.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                                ) : (
+                                                                    <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="1.5" style={{width: '60px', height: '60px'}}>
+                                                                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                                                                    </svg>
+                                                                )}
                                                             </div>
 
-                                                            <div className="ai-place-info" style={{ padding: '12px 16px' }}>
+                                                            {/* Bottom Section - Info */}
+                                                            <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                                                                <h3 style={{ fontSize: '17px', fontWeight: 'bold', margin: '0 0 6px 0', color: 'white', textAlign: 'right' }}>{shop.name}</h3>
+                                                                
+                                                                <div style={{ fontSize: '13px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '16px', justifyContent: 'flex-start' }}>
+                                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width:'15px', height:'15px'}}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                                                    {shop.distance ? `${Math.round(shop.distance)} م عنك` : (shop.parent_shop_name || 'محل')}
+                                                                </div>
+
                                                                 {shop.products && shop.products.length > 0 && (
-                                                                    <div className="ai-place-products" style={{ marginBottom: '12px', paddingTop: '0', borderTop: 'none' }}>
+                                                                    <div className="ai-place-products" style={{ marginBottom: '16px', paddingTop: '0', borderTop: 'none' }}>
                                                                         {shop.products.slice(0, 3).map(p => (
                                                                             <div 
                                                                                 key={p.id} 
                                                                                 className="ai-prod-item" 
-                                                                                onClick={() => onNavigate(shop, 'driving')}
+                                                                                onClick={(e) => { e.stopPropagation(); onNavigate(shop, 'driving'); }}
                                                                                 style={{ 
-                                                                                    display: 'flex', 
-                                                                                    alignItems: 'center', 
-                                                                                    gap: '10px', 
-                                                                                    fontSize: '13px', 
-                                                                                    marginBottom: '8px',
-                                                                                    padding: '6px',
-                                                                                    background: 'rgba(255,255,255,0.03)',
-                                                                                    borderRadius: '8px',
-                                                                                    border: '1px solid rgba(255,255,255,0.05)',
-                                                                                    cursor: 'pointer',
-                                                                                    transition: 'all 0.2s ease'
+                                                                                    display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', marginBottom: '8px', padding: '6px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', transition: 'all 0.2s ease'
                                                                                 }}
                                                                                 onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(251, 171, 21, 0.1)'; e.currentTarget.style.borderColor = 'rgba(251, 171, 21, 0.3)'; }}
                                                                                 onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'; }}
-                                                                                title="انقر للحصول على مسار"
+                                                                                title="انقر للحصول على مسار لهذا المنتج"
                                                                             >
                                                                                 {p.image_url && viewMode === 'grid' && (
                                                                                     <img src={getImageUrl(p.image_url)} alt={p.name} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px' }} />
                                                                                 )}
                                                                                 <div style={{ flex: 1, display: 'flex', flexDirection: viewMode === 'grid' ? 'column' : 'row', justifyContent: viewMode === 'list' ? 'space-between' : 'center', alignItems: viewMode === 'list' ? 'center' : 'flex-start', gap: '4px' }}>
-                                                                                    <span className="ai-prod-name" style={{ color: 'var(--text-primary)', fontWeight: '500' }}>{p.name}</span>
-                                                                                    <span className="ai-prod-price" style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{p.price} ₪</span>
+                                                                                    <span className="ai-prod-name" style={{ color: 'white', fontWeight: '500' }}>{p.name}</span>
+                                                                                    <span className="ai-prod-price" style={{ color: '#fbab15', fontWeight: 'bold' }}>{p.price} ₪</span>
                                                                                 </div>
                                                                             </div>
                                                                         ))}
                                                                     </div>
                                                                 )}
 
-                                                                {shop.latitude && shop.longitude && (
-                                                                    <div className="ai-place-coordinates" style={{ 
-                                                                        display: 'flex', 
-                                                                        alignItems: 'center', 
-                                                                        justifyContent: 'center', 
-                                                                        gap: '6px',
-                                                                        padding: '10px',
-                                                                        background: 'var(--surface)',
-                                                                        border: '1px solid var(--border)',
-                                                                        borderRadius: '8px',
-                                                                        color: 'var(--text-muted)',
-                                                                        fontSize: '12px',
-                                                                        marginTop: '10px',
-                                                                        direction: 'ltr'
-                                                                    }}>
-                                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width: '14px', height: '14px', flexShrink: 0}}>
-                                                                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
-                                                                        </svg>
-                                                                        {Number(shop.latitude).toFixed(5)}, {Number(shop.longitude).toFixed(5)}
-                                                                    </div>
-                                                                )}
+                                                                {/* Tags Array */}
+                                                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: 'auto', justifyContent: 'flex-start' }}>
+                                                                    {shop.category && (
+                                                                        <span style={{ padding: '6px 12px', background: 'rgba(251, 171, 21, 0.15)', color: '#fbab15', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' }}>
+                                                                            {shop.category}
+                                                                        </span>
+                                                                    )}
+                                                                    <span style={{ padding: '6px 12px', background: 'rgba(251, 171, 21, 0.15)', color: '#fbab15', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' }}>
+                                                                        {shop.is_open !== false ? 'مفتوح الآن' : 'مغلق'}
+                                                                    </span>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     ))}
