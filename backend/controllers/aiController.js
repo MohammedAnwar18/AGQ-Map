@@ -1,4 +1,4 @@
-﻿const axios = require('axios');
+const axios = require('axios');
 const pool = require('../config/database');
 
 exports.processQuery = async (req, res) => {
@@ -9,18 +9,18 @@ exports.processQuery = async (req, res) => {
     }
 
     try {
-                // 1. Fetch Shops & Products Context (Enhanced for Product Awareness)
-        const shopsRes = await pool.query(\
+        // 1. Fetch Shops & Products Context (Enhanced for Product Awareness)
+        const shopsRes = await pool.query(`
             SELECT s.id, s.name, s.bio, s.category, s.latitude, s.longitude,
                    (SELECT json_agg(json_build_object('name', p.name, 'price', p.price))
                     FROM (SELECT name, price FROM shop_products WHERE shop_id = s.id LIMIT 8) p) as top_products
             FROM shops s 
             WHERE s.is_hidden = FALSE
-        \);
+        `);
         const shops = shopsRes.rows.map(s => {
-            const productsStr = s.top_products ? s.top_products.map(p => \\ (\₪)\).join(', ') : 'No products listed';
-            return \SHOP - ID: \ | NAME: "\" | CATEGORY: "\" | PRODUCTS: [\] | LOC: [{"lat":\, "lon":\}]\;
-        }).join('\\n');
+            const productsStr = s.top_products ? s.top_products.map(p => `${p.name} (${p.price}₪)`).join(', ') : 'No products listed';
+            return `SHOP - ID: ${s.id} | NAME: "${s.name}" | CATEGORY: "${s.category || 'General'}" | PRODUCTS: [${productsStr}] | LOC: [{"lat":${s.latitude}, "lon":${s.longitude}}]`;
+        }).join('\n');
 
         // 2. Fetch Users Context
         const usersRes = await pool.query('SELECT id, full_name, username, bio FROM users LIMIT 100');
@@ -240,4 +240,3 @@ exports.recognizeProducts = async (req, res) => {
         res.status(500).json({ error: 'Failed to recognize products' });
     }
 };
-
