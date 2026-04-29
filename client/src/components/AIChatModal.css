@@ -671,6 +671,41 @@
 .ai-follow-btn:hover:not(:disabled) { background: var(--primary); color: white; border-color: var(--primary); }
 .ai-follow-btn.followed { background: rgba(245, 166, 35, 0.2); color: var(--primary); border-color: var(--primary); }
 
+.ai-nav-options {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ai-nav-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.25s var(--transition);
+  cursor: pointer;
+}
+
+.ai-nav-btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: translateY(-2px);
+}
+
+.ai-nav-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
 /* Settings Panel */
 .ai-settings-panel {
   position: fixed;

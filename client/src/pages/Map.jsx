@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import Map, { Marker, Popup, NavigationControl, Source, Layer } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
@@ -1848,7 +1848,16 @@ const MapComponent = () => {
                     }
                 }
             }} />}
-            {showAIChat && <AIChatModal onClose={() => setShowAIChat(false)} />}
+            {showAIChat && (
+                <AIChatModal 
+                    onClose={() => setShowAIChat(false)} 
+                    onNavigate={(shop, mode) => {
+                        const routeMode = mode === 'walking' ? 'foot-walking' : 'driving-car';
+                        fetchRoute(shop, routeMode);
+                        setShowAIChat(false);
+                    }}
+                />
+            )}
             {showNews && <NewsModal onClose={() => setShowNews(false)} location={{ latitude: viewState.latitude, longitude: viewState.longitude }} />}
             {showCommunities && <CommunitiesModal onClose={() => setShowCommunities(false)} onJoinCommunity={handleJoinCommunity} />}
             {showManagedShops && (
