@@ -8,6 +8,7 @@ const AIChatModal = ({ isOpen, onClose }) => {
     
     // UI State
     const [theme, setTheme] = useState(localStorage.getItem('palnovaa-ai-theme') || 'dark');
+    const [accent, setAccent] = useState(localStorage.getItem('palnovaa-ai-accent') || '#F5A623');
     const [showSettings, setShowSettings] = useState(false);
     const [showCamera, setShowCamera] = useState(false);
     const [showResults, setShowResults] = useState(false);
@@ -30,10 +31,31 @@ const AIChatModal = ({ isOpen, onClose }) => {
         }
     }, [isOpen]);
 
+    // Apply Theme & Accent
+    useEffect(() => {
+        const applyAccent = (color) => {
+            const r = parseInt(color.slice(1,3),16), g = parseInt(color.slice(3,5),16), b = parseInt(color.slice(5,7),16);
+            const root = document.querySelector('.ai-modal-container');
+            if (!root) return;
+            root.style.setProperty('--primary', color);
+            root.style.setProperty('--primary-glow', `rgba(${r}, ${g}, ${b}, 0.45)`);
+            const lighten = (v) => Math.min(255, Math.round(v + (255-v)*0.3));
+            const darken = (v) => Math.max(0, Math.round(v*0.75));
+            root.style.setProperty('--primary-light', `rgb(${lighten(r)},${lighten(g)},${lighten(b)})`);
+            root.style.setProperty('--primary-dark', `rgb(${darken(r)},${darken(g)},${darken(b)})`);
+        };
+        applyAccent(accent);
+    }, [accent, theme]);
+
     // Handle Theme Change
     const changeTheme = (newTheme) => {
         setTheme(newTheme);
         localStorage.setItem('palnovaa-ai-theme', newTheme);
+    };
+
+    const changeAccent = (newColor) => {
+        setAccent(newColor);
+        localStorage.setItem('palnovaa-ai-accent', newColor);
     };
 
     // Parse natural language for price filters (existing logic)
@@ -341,6 +363,24 @@ const AIChatModal = ({ isOpen, onClose }) => {
                         </button>
                     </div>
                     <div className="ai-settings-body">
+                        <div className="ai-settings-group">
+                            <div className="ai-settings-title">اللون المميز</div>
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                {['#F5A623', '#FF6B6B', '#4ECDC4', '#A78BFA', '#34D399', '#F472B6'].map(color => (
+                                    <button 
+                                        key={color}
+                                        onClick={() => changeAccent(color)}
+                                        style={{
+                                            width: '36px', height: '36px', borderRadius: '50%', 
+                                            background: color, cursor: 'pointer',
+                                            border: accent === color ? '3px solid var(--text-primary)' : '2px solid var(--border)',
+                                            boxShadow: accent === color ? `0 0 10px ${color}` : 'none'
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+
                         <div className="ai-settings-group">
                             <div className="ai-settings-title">المظهر</div>
                             <div className="ai-theme-grid">
