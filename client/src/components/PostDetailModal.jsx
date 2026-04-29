@@ -226,14 +226,25 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate, isFloraCommunityCo
                     }
                 `}</style>
             )}
-            <div className="post-modal-container" onClick={(e) => e.stopPropagation()}>
+            {/* Top Navigation Bar - OUTSIDE container to avoid overflow clipping */}
+            <div className="post-modal-top-actions" onClick={(e) => e.stopPropagation()}>
+                {user && user.id === post.user.id && (
+                    <button className="post-modal-top-btn delete-btn" onClick={handleDelete} title="حذف المنشور">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6" />
+                        </svg>
+                    </button>
+                )}
 
-                {/* New Back Button in Top Bar Area */}
-                <button className="post-modal-back-btn" onClick={onClose} title="العودة">
+                <button className="post-modal-top-btn close-btn" onClick={onClose} title="إغلاق">
                     <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M19 12H5M12 19l-7-7 7-7" />
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
                 </button>
+            </div>
+
+            <div className="post-modal-container" onClick={(e) => e.stopPropagation()}>
 
                 <div className={`post-modal-content ${showDetails ? 'show-details' : 'image-only'}`}>
                     {/* Image/Video Section */}
@@ -465,9 +476,8 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate, isFloraCommunityCo
                                     />
                                 )}
 
-                                {/* Delete Option for Owner - Redesigned Trash Icon */}
                                 {user && user.id === post.user.id && (
-                                    <button className="post-modal-delete-pill" onClick={handleDelete} title="حذف المنشور">
+                                    <button className="post-modal-delete-pill desktop-only" onClick={handleDelete} title="حذف المنشور">
                                         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                             <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6" />
                                         </svg>
