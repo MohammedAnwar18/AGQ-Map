@@ -12,6 +12,7 @@ const AIChatModal = ({ isOpen, onClose }) => {
     const [showSettings, setShowSettings] = useState(false);
     const [showCamera, setShowCamera] = useState(false);
     const [showResults, setShowResults] = useState(false);
+    const [viewMode, setViewMode] = useState('grid');
     
     // Search & Chat State
     const [query, setQuery] = useState('');
@@ -57,7 +58,7 @@ const AIChatModal = ({ isOpen, onClose }) => {
         localStorage.setItem('palnovaa-ai-accent', newColor);
     };
 
-    // Parse natural language for price filters (existing logic)
+    // Parse natural language for price filters
     const parseQuery = (text) => {
         const result = { shopQuery: '', productQuery: '', priceMin: '', priceMax: '', priceExact: '' };
         let q = text.trim();
@@ -98,7 +99,6 @@ const AIChatModal = ({ isOpen, onClose }) => {
         setResults([]);
 
         try {
-            // 1. Smart Search (DB)
             const filters = parseQuery(activeQuery);
             const searchData = await smartSearchService.search({
                 query: filters.shopQuery,
@@ -109,11 +109,9 @@ const AIChatModal = ({ isOpen, onClose }) => {
             });
             setResults(searchData.results || []);
 
-            // 2. AI Conversational Context
             const aiResp = await aiService.chat(activeQuery, chatHistory, null, { name: user?.full_name });
             setAiText(aiResp.reply);
 
-            // Update History
             setChatHistory(prev => [...prev, 
                 { role: 'user', message: activeQuery },
                 { role: 'assistant', message: aiResp.reply }
@@ -136,29 +134,26 @@ const AIChatModal = ({ isOpen, onClose }) => {
         }
     };
 
-
     return (
         <div className="ai-modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
             <div className="ai-modal-container" data-theme={theme}>
                 
-                {/* Background Visuals */}
                 <div className="ai-bg-canvas" />
                 <div className="ai-floating-orb ai-orb-1" />
                 <div className="ai-floating-orb ai-orb-2" />
 
                 <div className="ai-modal-content">
                     
-                    {/* Header */}
                     <header className="ai-header">
                         <div className="ai-header-right">
-                            <button className="ai-icon-btn" onClick={() => setShowSettings(true)}>
+                            <button className="icon-btn" onClick={() => setShowSettings(true)}>
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                     <circle cx="12" cy="12" r="3"/>
                                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                                 </svg>
                             </button>
                             <div className="ai-logo">
-                                <div className="ai-logo-mark">
+                                <div className="logo-mark">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
                                         <circle cx="12" cy="10" r="3"/>
@@ -170,20 +165,25 @@ const AIChatModal = ({ isOpen, onClose }) => {
                                 </div>
                             </div>
                         </div>
-                        <button className="ai-icon-btn" onClick={onClose}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                            </svg>
-                        </button>
+                        <div style={{display: 'flex', gap: '8px'}}>
+                            <button className="icon-btn" onClick={() => setShowCamera(true)}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                                    <circle cx="12" cy="13" r="4"/>
+                                </svg>
+                            </button>
+                            <button className="icon-btn" onClick={onClose}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                                </svg>
+                            </button>
+                        </div>
                     </header>
 
-                    {/* Scrollable Content */}
                     <main className="ai-main-scroll" ref={scrollRef}>
-                        
                         {!showResults ? (
-                            /* Hero State */
                             <section className="ai-hero">
-                                <div className="ai-hero-icon">
+                                <div className="hero-icon">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                                         <path d="M12 2L2 7l10 5 10-5-10-5z"/>
                                         <path d="M2 17l10 5 10-5"/>
@@ -202,13 +202,13 @@ const AIChatModal = ({ isOpen, onClose }) => {
                                             onChange={(e) => setQuery(e.target.value)}
                                             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                                         />
-                                        <button className="ai-tool-btn" onClick={() => setShowCamera(true)}>
+                                        <button className="tool-btn" onClick={() => setShowCamera(true)}>
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                                                 <circle cx="12" cy="13" r="4"/>
                                             </svg>
                                         </button>
-                                        <button className="ai-send-btn" onClick={() => handleSearch()}>
+                                        <button className="send-btn" onClick={() => handleSearch()}>
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                                                 <line x1="22" y1="2" x2="11" y2="13"/>
                                                 <polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -227,7 +227,7 @@ const AIChatModal = ({ isOpen, onClose }) => {
 
                                 <div className="ai-features">
                                     <div className="ai-feature-card" onClick={() => setShowCamera(true)}>
-                                        <div className="ai-feature-icon">
+                                        <div className="feature-icon">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                                 <path d="M5 8h14M5 8a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2M5 8V6a2 2 0 0 1 2-2h2M19 8V6a2 2 0 0 0-2-2h-2"/>
                                                 <path d="M9 14h6M9 18h4"/>
@@ -237,7 +237,7 @@ const AIChatModal = ({ isOpen, onClose }) => {
                                         <p>ترجم أي نص عبر الكاميرا</p>
                                     </div>
                                     <div className="ai-feature-card" onClick={() => handleSearch('اكتشف حولي')}>
-                                        <div className="ai-feature-icon">
+                                        <div className="feature-icon">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                                 <circle cx="12" cy="12" r="10"/>
                                                 <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
@@ -247,8 +247,12 @@ const AIChatModal = ({ isOpen, onClose }) => {
                                         <p>أماكن مميزة بالقرب منك</p>
                                     </div>
                                     <div className="ai-feature-card" onClick={() => setShowSettings(true)}>
-                                        <div className="ai-feature-icon">
+                                        <div className="feature-icon">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/>
+                                                <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/>
+                                                <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>
+                                                <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/>
                                                 <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
                                             </svg>
                                         </div>
@@ -258,7 +262,6 @@ const AIChatModal = ({ isOpen, onClose }) => {
                                 </div>
                             </section>
                         ) : (
-                            /* Results State */
                             <section className="ai-results-section">
                                 <div className="ai-user-query">
                                     <div className="ai-user-avatar">{user?.full_name?.[0] || 'M'}</div>
@@ -279,7 +282,8 @@ const AIChatModal = ({ isOpen, onClose }) => {
                                             </div>
                                         )}
 
-                                        <div className="ai-results-grid">
+                                        <div className={`ai-results-grid ${viewMode === 'list' ? 'list-view' : ''}`} 
+                                             style={{gridTemplateColumns: viewMode === 'list' ? '1fr' : undefined}}>
                                             {results.map(shop => (
                                                 <div key={shop.id} className="ai-place-card">
                                                     <div className="ai-place-img">
@@ -330,7 +334,6 @@ const AIChatModal = ({ isOpen, onClose }) => {
                         )}
                     </main>
 
-                    {/* Floating Search Bar (when in results) */}
                     {showResults && (
                         <div className="ai-search-wrap ai-search-wrap-floating">
                             <div className="ai-search-box">
@@ -341,7 +344,7 @@ const AIChatModal = ({ isOpen, onClose }) => {
                                     onChange={(e) => setQuery(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                                 />
-                                <button className="ai-send-btn" onClick={() => handleSearch()}>
+                                <button className="send-btn" onClick={() => handleSearch()}>
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                                         <line x1="22" y1="2" x2="11" y2="13"/>
                                         <polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -352,33 +355,25 @@ const AIChatModal = ({ isOpen, onClose }) => {
                     )}
                 </div>
 
-                {/* Settings Panel */}
                 <aside className={`ai-settings-panel ${showSettings ? 'active' : ''}`}>
                     <div className="ai-settings-header">
-                        <h2 style={{fontSize: '18px', fontWeight: 800}}>تخصيص الستايل</h2>
-                        <button className="ai-icon-btn" onClick={() => setShowSettings(false)}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        <h2 style={{fontSize: '18px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px'}}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width: '20px'}}>
+                                <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/>
+                                <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/>
+                                <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>
+                                <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/>
+                                <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
+                            </svg>
+                            تخصيص الستايل
+                        </h2>
+                        <button className="icon-btn" onClick={() => setShowSettings(false)}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
                         </button>
                     </div>
                     <div className="ai-settings-body">
-                        <div className="ai-settings-group">
-                            <div className="ai-settings-title">اللون المميز</div>
-                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                {['#F5A623', '#FF6B6B', '#4ECDC4', '#A78BFA', '#34D399', '#F472B6'].map(color => (
-                                    <button 
-                                        key={color}
-                                        onClick={() => changeAccent(color)}
-                                        style={{
-                                            width: '36px', height: '36px', borderRadius: '50%', 
-                                            background: color, cursor: 'pointer',
-                                            border: accent === color ? '3px solid var(--text-primary)' : '2px solid var(--border)',
-                                            boxShadow: accent === color ? `0 0 10px ${color}` : 'none'
-                                        }}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-
                         <div className="ai-settings-group">
                             <div className="ai-settings-title">المظهر</div>
                             <div className="ai-theme-grid">
@@ -399,32 +394,90 @@ const AIChatModal = ({ isOpen, onClose }) => {
                                 ))}
                             </div>
                         </div>
+
+                        <div className="ai-settings-group">
+                            <div className="ai-settings-title">اللون المميز</div>
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                {['#F5A623', '#FF6B6B', '#4ECDC4', '#A78BFA', '#34D399', '#F472B6'].map(color => (
+                                    <button 
+                                        key={color}
+                                        onClick={() => changeAccent(color)}
+                                        style={{
+                                            width: '36px', height: '36px', borderRadius: '50%', 
+                                            background: color, cursor: 'pointer',
+                                            border: accent === color ? '3px solid var(--text-primary)' : '2px solid var(--border)',
+                                            boxShadow: accent === color ? `0 0 10px ${color}` : 'none'
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="ai-settings-group">
+                            <div className="ai-settings-title">طريقة عرض النتائج</div>
+                            <div className="view-modes">
+                                <div className={`view-mode ${viewMode === 'grid' ? 'active' : ''}`} onClick={() => setViewMode('grid')}>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                                    </svg>
+                                    <span>شبكي</span>
+                                </div>
+                                <div className={`view-mode ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+                                    </svg>
+                                    <span>قائمة</span>
+                                </div>
+                                <div className={`view-mode ${viewMode === 'map' ? 'active' : ''}`} onClick={() => setViewMode('map')}>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>
+                                    </svg>
+                                    <span>خريطة</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </aside>
 
-                {/* Camera Modal (Placeholder) */}
                 {showCamera && (
                     <div className="ai-camera-modal">
-                        <header className="ai-header" style={{margin: '16px'}}>
+                        <header className="ai-header" style={{margin: '0'}}>
                             <div className="ai-header-right">
-                                <h3 style={{fontSize: '16px'}}>الترجمة الذكية بالكاميرا</h3>
+                                <h3 style={{fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width: '20px'}}>
+                                        <path d="M5 8h14M5 8a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2M5 8V6a2 2 0 0 1 2-2h2M19 8V6a2 2 0 0 0-2-2h-2"/>
+                                        <path d="M9 14h6M9 18h4"/>
+                                    </svg>
+                                    الترجمة الذكية بالكاميرا
+                                </h3>
                             </div>
-                            <button className="ai-icon-btn" onClick={() => setShowCamera(false)}>
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            <button className="icon-btn" onClick={() => setShowCamera(false)}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                                </svg>
                             </button>
                         </header>
                         <div className="ai-camera-view">
                             <div style={{textAlign: 'center', color: 'rgba(255,255,255,0.5)', padding: '40px'}}>
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{width: '60px', marginBottom: '20px', color: 'var(--primary)'}}>
-                                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
+                                    <path d="M5 8h14M5 8a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2M5 8V6a2 2 0 0 1 2-2h2M19 8V6a2 2 0 0 0-2-2h-2"/>
+                                    <path d="M9 14h6M9 18h4"/>
                                 </svg>
                                 <p>وجّه الكاميرا نحو أي نص وسأترجمه فوراً للعربية</p>
                             </div>
-                            <div className="ai-scan-frame"><div className="ai-scan-line" /></div>
+                            <div className="scan-frame"><div className="scan-line" /></div>
                         </div>
-                        <div style={{padding: '20px', textAlign: 'center'}}>
-                            <button className="ai-send-btn" style={{width: '70px', height: '70px', background: '#fff'}} onClick={() => setShowCamera(false)}>
-                                <div style={{width: '56px', height: '56px', background: 'var(--primary)', borderRadius: '50%'}} />
+                        <div style={{padding: '20px', display: 'flex', justifyContent: 'center', gap: '20px', alignItems: 'center'}}>
+                            <button className="camera-control-btn" title="معرض">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                                </svg>
+                            </button>
+                            <button className="camera-capture" onClick={() => setShowCamera(false)}></button>
+                            <button className="camera-control-btn" title="قلب الكاميرا">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                                </svg>
                             </button>
                         </div>
                     </div>
