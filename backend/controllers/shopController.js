@@ -97,7 +97,7 @@ const smartSearch = async (req, res) => {
                        parent.name AS parent_shop_name,
                        ${isFollowedExpr} as is_followed,
                        NULL::numeric as product_price, NULL::text as product_name,
-                       NULL::text as product_description, NULL::text[] as product_images,
+                       NULL::text as product_description, NULL::text as product_image_url,
                        NULL::int as product_id, 'shop' as result_type
                 FROM shops s
                 LEFT JOIN shops parent ON s.parent_shop_id = parent.id
@@ -110,7 +110,7 @@ const smartSearch = async (req, res) => {
                        parent.name AS parent_shop_name,
                        ${isFollowedExpr} as is_followed,
                        p.price as product_price, p.name as product_name,
-                       p.description as product_description, p.images as product_images,
+                       p.description as product_description, p.image_url as product_image_url,
                        p.id as product_id, 'product' as result_type
                 FROM shop_products p
                 JOIN shops s ON p.shop_id = s.id
@@ -143,7 +143,7 @@ const smartSearch = async (req, res) => {
                 shopsMap[row.id].products.push({
                     id: row.product_id, name: row.product_name,
                     description: row.product_description,
-                    price: row.product_price, images: row.product_images
+                    price: row.product_price, image_url: row.product_image_url
                 });
             }
         });
@@ -1355,5 +1355,6 @@ async function deleteMunicipalityItem(req, res) {
         res.status(500).json({ error: 'Failed to delete item' });
     }
 }
+
 
 
