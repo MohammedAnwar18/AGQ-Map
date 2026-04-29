@@ -198,31 +198,98 @@
 }
 .logo-mark svg { width: 22px; height: 22px; color: white; z-index: 1; }
 
+/* ===== المربع المتحرك (بدل الأيقونة) ===== */
 .hero-icon {
-  width: 76px; height: 76px;
-  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-  border-radius: 22px;
-  display: grid; place-items: center;
-  box-shadow: 0 20px 60px var(--primary-glow);
+  width: 92px;
+  height: 92px;
+  margin: 0 auto 24px;
+  border-radius: 24px;
   position: relative;
-  animation: pulse 3s infinite ease-in-out;
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,0.35), transparent 55%),
+    linear-gradient(135deg, var(--primary), var(--primary-dark));
+  box-shadow:
+    0 20px 60px var(--primary-glow),
+    inset 0 -12px 30px rgba(0,0,0,0.18),
+    inset 0 0 0 1px rgba(255,255,255,0.25);
+  animation: heroIdle 5s infinite ease-in-out;
+  cursor: pointer;
 }
+
+/* الضوء الدوار الداخلي (Conic gradient) */
 .hero-icon::before {
-  content: ''; position: absolute; inset: -8px;
-  border-radius: 28px;
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(255,255,255,0.55) 80deg,
+    transparent 140deg,
+    rgba(255,255,255,0.25) 220deg,
+    transparent 280deg,
+    rgba(255,255,255,0.45) 340deg,
+    transparent 360deg
+  );
+  filter: blur(10px);
+  animation: heroSpin 8s linear infinite;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+/* الحلقة النابضة الخارجية */
+.hero-icon::after {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  border-radius: 30px;
   border: 2px solid var(--primary);
-  opacity: 0.3;
-  animation: pulseRing 3s infinite ease-out;
+  opacity: 0.4;
+  animation: heroRing 2.6s infinite ease-out;
+  pointer-events: none;
 }
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+
+/* === الحركات الافتراضية === */
+@keyframes heroIdle {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-8px) rotate(2deg); }
 }
-@keyframes pulseRing {
-  0% { transform: scale(1); opacity: 0.5; }
-  100% { transform: scale(1.4); opacity: 0; }
+@keyframes heroSpin {
+  to { transform: rotate(360deg); }
 }
-.hero-icon svg { width: 36px; height: 36px; color: white; }
+@keyframes heroRing {
+  0%   { transform: scale(1);    opacity: 0.6; }
+  100% { transform: scale(1.55); opacity: 0; }
+}
+
+/* ===== الحالة النشطة: لما المستخدم يبدأ يكتب ===== */
+.hero:focus-within .hero-icon {
+  animation: heroExcited 0.8s infinite ease-in-out;
+  box-shadow:
+    0 25px 80px var(--primary-glow),
+    0 0 60px var(--primary-glow),
+    inset 0 -12px 30px rgba(0,0,0,0.18),
+    inset 0 0 0 1px rgba(255,255,255,0.55);
+}
+
+.hero:focus-within .hero-icon::before {
+  animation-duration: 2s;   /* الضوء الدوار يسرع */
+  filter: blur(6px);
+}
+
+.hero:focus-within .hero-icon::after {
+  animation-duration: 1.2s; /* النبض يسرع */
+  border-width: 3px;
+  opacity: 0.65;
+}
+
+@keyframes heroExcited {
+  0%, 100% { transform: translateY(0)    scale(1)    rotate(0deg); }
+  25%      { transform: translateY(-10px) scale(1.06) rotate(-4deg); }
+  50%      { transform: translateY(-6px)  scale(1.09) rotate(0deg); }
+  75%      { transform: translateY(-10px) scale(1.06) rotate(4deg); }
+}
 
 .tool-btn {
   width: 42px; height: 42px;
