@@ -1296,18 +1296,6 @@ const MapComponent = () => {
                     {/* Visual Route with Advanced Premium Layering */}
                     {routePath && (
                         <Source id="route" type="geojson" data={routePath} tolerance={0}>
-                            {/* Layer 0: Depth Shadow - Broad & Soft */}
-                            <Layer
-                                id="route-layer-shadow"
-                                type="line"
-                                layout={{ "line-join": "round", "line-cap": "round" }}
-                                paint={{
-                                    "line-color": "#000000",
-                                    "line-width": 12,
-                                    "line-opacity": 0.2,
-                                    "line-blur": 3
-                                }}
-                            />
                             {/* Integrated Navigation Path - Site's Brand Identity Color (#fbab15) */}
                             <Layer
                                 id="route-layer-main"
@@ -1319,26 +1307,9 @@ const MapComponent = () => {
                                     "line-width": [
                                         'interpolate', ['exponential', 1.5], ['zoom'],
                                         12, 4,
-                                        18, 14
+                                        18, 10
                                     ],
-                                    "line-opacity": 0.95
-                                }}
-                            />
-                            {/* Premium Glow / Casing for High Visibility */}
-                            <Layer
-                                id="route-layer-casing"
-                                type="line"
-                                beforeId="route-layer-main"
-                                layout={{ "line-join": "round", "line-cap": "round" }}
-                                paint={{
-                                    "line-color": "#92400e", // Darker amber for contrast
-                                    "line-width": [
-                                        'interpolate', ['exponential', 1.5], ['zoom'],
-                                        12, 6,
-                                        18, 18
-                                    ],
-                                    "line-opacity": 0.15,
-                                    "line-blur": 1
+                                    "line-opacity": 1.0
                                 }}
                             />
                         </Source>

@@ -362,17 +362,27 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                                                 {shop.products && shop.products.length > 0 && (
                                                                     <div className="ai-place-products" style={{ marginBottom: '12px', paddingTop: '0', borderTop: 'none' }}>
                                                                         {shop.products.slice(0, 3).map(p => (
-                                                                            <div key={p.id} className="ai-prod-item" style={{ 
-                                                                                display: 'flex', 
-                                                                                alignItems: 'center', 
-                                                                                gap: '10px', 
-                                                                                fontSize: '13px', 
-                                                                                marginBottom: '8px',
-                                                                                padding: '6px',
-                                                                                background: 'rgba(255,255,255,0.03)',
-                                                                                borderRadius: '8px',
-                                                                                border: '1px solid rgba(255,255,255,0.05)'
-                                                                            }}>
+                                                                            <div 
+                                                                                key={p.id} 
+                                                                                className="ai-prod-item" 
+                                                                                onClick={() => onNavigate(shop, 'driving')}
+                                                                                style={{ 
+                                                                                    display: 'flex', 
+                                                                                    alignItems: 'center', 
+                                                                                    gap: '10px', 
+                                                                                    fontSize: '13px', 
+                                                                                    marginBottom: '8px',
+                                                                                    padding: '6px',
+                                                                                    background: 'rgba(255,255,255,0.03)',
+                                                                                    borderRadius: '8px',
+                                                                                    border: '1px solid rgba(255,255,255,0.05)',
+                                                                                    cursor: 'pointer',
+                                                                                    transition: 'all 0.2s ease'
+                                                                                }}
+                                                                                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(251, 171, 21, 0.1)'; e.currentTarget.style.borderColor = 'rgba(251, 171, 21, 0.3)'; }}
+                                                                                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'; }}
+                                                                                title="انقر للحصول على مسار"
+                                                                            >
                                                                                 {p.image_url && viewMode === 'grid' && (
                                                                                     <img src={getImageUrl(p.image_url)} alt={p.name} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px' }} />
                                                                                 )}
