@@ -54,10 +54,10 @@ const NewsModal = ({ onClose, location }) => {
     const [loading, setLoading] = useState(true);
     const [showAddForm, setShowAddForm] = useState(false);
     const [viewState, setViewState] = useState({
-        longitude: 35.2,
+        longitude: 35.1,
         latitude: 31.9,
-        zoom: 5.5, // Zoomed out to see sea deployments
-        pitch: 40
+        zoom: 8.5, // Focused on West Bank and Gaza
+        pitch: 0
     });
 
     const [selectedFeature, setSelectedFeature] = useState(null);
@@ -189,32 +189,7 @@ const NewsModal = ({ onClose, location }) => {
                             <FullscreenControl position="top-right" />
                             <NavigationControl position="top-right" />
 
-                            {/* Render Conflicts / Hot Zones (Cities/Red Circles) */}
-                            {intel.conflicts?.map((zone, idx) => {
-                                const size = window.innerWidth > 768 ? 16 : 12; // Radius approx mapping to div sizing
-                                const color = zone.city.includes('إيران') ? '#ff6666' : zone.city.includes('غزة') || zone.city.includes('لبنان') ? '#ff3366' : '#999999';
-                                
-                                return (
-                                    <Marker 
-                                        key={`zone-${idx}`} 
-                                        longitude={zone.lon} 
-                                        latitude={zone.lat}
-                                    >
-                                        <div 
-                                            className="city-flash-marker"
-                                            style={{
-                                                width: `${size}px`,
-                                                height: `${size}px`,
-                                                backgroundColor: color,
-                                                borderRadius: '50%',
-                                                opacity: 0.6,
-                                                border: `1px solid ${color}`
-                                            }}
-                                        ></div>
-                                        <div className="city-label">{zone.city}</div>
-                                    </Marker>
-                                );
-                            })}
+                            {/* Conflicts section removed per user request */}
 
                             {/* Render Incidents */}
                             {intel.incidents?.map((inc, idx) => (
@@ -231,8 +206,8 @@ const NewsModal = ({ onClose, location }) => {
                                 </Marker>
                             ))}
 
-                            {/* Render Ships, Subs, Commercial */}
-                            {ships.map((ship, idx) => {
+                            {/* Render Ships & Subs - Filtered for local area */}
+                            {ships.filter(ship => ship.lon > 34 && ship.lon < 36 && ship.lat > 29 && ship.lat < 33.5).map((ship, idx) => {
                                 const isCommercial = ship.navy === 'Commercial';
                                 const color = isCommercial ? '#4fc3f7' : (getNavyColor(ship.navy) || '#888888');
                                 const isSub = ship.type.toLowerCase().includes('submarine');
@@ -270,8 +245,8 @@ const NewsModal = ({ onClose, location }) => {
                                 );
                             })}
 
-                            {/* Render Flights with Orientation */}
-                            {flights.filter(f => f.lat && f.lon).map((flight, idx) => {
+                            {/* Render Flights - Filtered for local area */}
+                            {flights.filter(f => f.lat && f.lon && f.lon > 34 && f.lon < 36 && f.lat > 29 && f.lat < 33.5).map((flight, idx) => {
                                 const isCiv = flight.type === 'طائرة مدنية' || !flight.type.includes('Fighter');
                                 const color = isCiv ? '#ffffff' : (flight.type.includes('Fighter') ? '#ff3b30' : '#fbab15');
                                 
@@ -485,18 +460,7 @@ const NewsModal = ({ onClose, location }) => {
                                         </div>
                                     ))}
 
-                                    {/* ---- CONFLICT ZONES ---- */}
-                                    {intel.conflicts?.length > 0 && (
-                                        <div className="feed-section-label">⚔️ مناطق الصراع</div>
-                                    )}
-                                    {intel.conflicts?.map((zone, i) => (
-                                        <div key={`conflict-${i}`} className="feed-card conflict-card">
-                                            <div className="feed-info">
-                                                <h4>{zone.city}</h4>
-                                                <p>الحالة: {zone.status} &nbsp;|&nbsp; الحدّة: {zone.intensity}</p>
-                                            </div>
-                                        </div>
-                                    ))}
+                                    {/* Conflict zones section removed per user request */}
 
                                     {/* ---- NAVY SHIPS ---- */}
                                     {ships.length > 0 && (

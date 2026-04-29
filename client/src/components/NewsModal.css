@@ -110,8 +110,8 @@
    TOGGLE BUTTON ON MAP
    ============================================= */
 .toggle-news-btn {
-    position: absolute;
-    bottom: 80px;
+    position: fixed; /* Changed to fixed for better stability on zoom */
+    bottom: 100px;
     left: 50%;
     transform: translateX(-50%);
     background: linear-gradient(135deg, #ff3b30, #c0392b);
@@ -123,7 +123,7 @@
     font-weight: 700;
     cursor: pointer;
     box-shadow: 0 8px 25px rgba(255, 59, 48, 0.45);
-    z-index: 10;
+    z-index: 2000; /* High z-index */
     display: flex;
     align-items: center;
     gap: 8px;
