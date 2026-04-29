@@ -193,26 +193,20 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                     
                     <header className="ai-header">
                         <div className="ai-header-right">
-                            <div className="ai-logo">
+                            <div className="ai-logo" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                 <div className="ai-logo-mark">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
                                         <circle cx="12" cy="10" r="3"/>
                                     </svg>
                                 </div>
-                                <div className="ai-logo-text">
-                                    <span>المساعد الذكي</span>
-                                    <small style={{display: 'block', fontSize: '10px', opacity: 0.6}}>PalNovaa AI</small>
+                                <div className="ai-logo-text" style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <span style={{ fontWeight: 'bold', fontSize: '15px' }}>المساعد الذكي</span>
+                                    <small style={{ fontSize: '10px', opacity: 0.6, marginTop: '2px' }}>PalNovaa AI</small>
                                 </div>
                             </div>
                         </div>
                         <div style={{display: 'flex', gap: '8px'}}>
-                            <button className="ai-icon-btn" onClick={() => setShowCamera(true)}>
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                                    <circle cx="12" cy="13" r="4"/>
-                                </svg>
-                            </button>
                             <button className="ai-icon-btn" onClick={onClose}>
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                     <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -332,46 +326,59 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                                      style={{gridTemplateColumns: viewMode === 'list' ? '1fr' : undefined}}>
                                                     {results.map(shop => (
                                                         <div key={shop.id} className="ai-place-card">
-                                                            <div className="ai-place-img">
+                                                            <div className="ai-place-header" style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                                <div>
+                                                                    <h3 style={{ fontSize: '15px', fontWeight: 'bold', margin: '0 0 4px 0' }}>{shop.name}</h3>
+                                                                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>📍 {shop.parent_shop_name || shop.category || 'محل'}</span>
+                                                                </div>
+                                                                <button 
+                                                                    className={`ai-follow-btn-small ${shop.is_followed ? 'followed' : ''}`}
+                                                                    onClick={() => handleFollow(shop.id)}
+                                                                    disabled={shop.is_followed}
+                                                                    style={{
+                                                                        padding: '6px 12px',
+                                                                        borderRadius: '12px',
+                                                                        fontSize: '11px',
+                                                                        fontWeight: 'bold',
+                                                                        background: shop.is_followed ? 'rgba(245, 166, 35, 0.2)' : 'rgba(255,255,255,0.05)',
+                                                                        color: shop.is_followed ? 'var(--primary)' : 'var(--text-secondary)',
+                                                                        border: `1px solid ${shop.is_followed ? 'var(--primary)' : 'var(--border)'}`,
+                                                                        cursor: shop.is_followed ? 'default' : 'pointer',
+                                                                        transition: 'all 0.2s'
+                                                                    }}
+                                                                >
+                                                                    {shop.is_followed ? 'متابع ✓' : 'متابعة'}
+                                                                </button>
+                                                            </div>
+                                                            
+                                                            <div className="ai-place-img" style={{ height: 'auto', minHeight: '140px', maxHeight: '220px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                                 {shop.profile_picture 
-                                                                    ? <img src={getImageUrl(shop.profile_picture)} alt={shop.name} />
-                                                                    : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                                                    ? <img src={getImageUrl(shop.profile_picture)} alt={shop.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                                    : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{width: '48px', height: '48px', color: 'rgba(255,255,255,0.5)'}}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                                                                 }
                                                             </div>
-                                                            <div className="ai-place-info">
-                                                                <h3>{shop.name}</h3>
-                                                                <div className="ai-place-meta">
-                                                                    <span>📍 {shop.parent_shop_name || shop.category || 'محل'}</span>
-                                                                </div>
-                                                                
+
+                                                            <div className="ai-place-info" style={{ padding: '12px 16px' }}>
                                                                 {shop.products && shop.products.length > 0 && (
-                                                                    <div className="ai-place-products">
+                                                                    <div className="ai-place-products" style={{ marginBottom: '12px', paddingTop: '0', borderTop: 'none' }}>
                                                                         {shop.products.slice(0, 3).map(p => (
-                                                                            <div key={p.id} className="ai-prod-item">
-                                                                                <span className="ai-prod-name">{p.name}</span>
-                                                                                <span className="ai-prod-price">{p.price} ₪</span>
+                                                                            <div key={p.id} className="ai-prod-item" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
+                                                                                <span className="ai-prod-name" style={{ color: 'var(--text-secondary)' }}>{p.name}</span>
+                                                                                <span className="ai-prod-price" style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{p.price} ₪</span>
                                                                             </div>
                                                                         ))}
                                                                     </div>
                                                                 )}
 
-                                                                <button 
-                                                                    className={`ai-follow-btn ${shop.is_followed ? 'followed' : ''}`}
-                                                                    onClick={() => handleFollow(shop.id)}
-                                                                    disabled={shop.is_followed}
-                                                                >
-                                                                    {shop.is_followed ? 'متابع ✓' : 'متابعة'}
-                                                                </button>
-
-                                                                <div className="ai-nav-options">
-                                                                    <button className="ai-nav-btn" onClick={() => onNavigate(shop, 'walking')}>
-                                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                <div className="ai-nav-options" style={{ display: 'flex', gap: '8px', marginTop: '5px' }}>
+                                                                    <button className="ai-nav-btn" onClick={() => onNavigate(shop, 'walking')} style={{ flex: 1, padding: '10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width: '16px', height: '16px'}}>
                                                                             <path d="M13 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM6 14l3-3 4-4 3 3 4-2M8.5 22l.5-5 2-4 2 5 .5 5"/>
                                                                         </svg>
                                                                         مشي
                                                                     </button>
-                                                                    <button className="ai-nav-btn" onClick={() => onNavigate(shop, 'driving')}>
-                                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                    <button className="ai-nav-btn" onClick={() => onNavigate(shop, 'driving')} style={{ flex: 1, padding: '10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width: '16px', height: '16px'}}>
                                                                             <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/>
                                                                             <circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>
                                                                         </svg>
