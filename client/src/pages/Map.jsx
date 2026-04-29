@@ -1852,6 +1852,7 @@ const MapComponent = () => {
             {showAIChat && (
                 <AIChatModal 
                     onClose={() => setShowAIChat(false)} 
+                    userLocation={userLocation}
                     onNavigate={(shop, mode) => {
                         const routeMode = mode === 'walking' ? 'foot-walking' : 'driving-car';
                         fetchRoute(shop, routeMode);

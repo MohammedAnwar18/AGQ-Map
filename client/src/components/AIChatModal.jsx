@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { smartSearchService, shopService, aiService, getImageUrl } from '../services/api';
 import './AIChatModal.css';
 
-const AIChatModal = ({ isOpen, onClose, onNavigate }) => {
+const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
     const { user } = useAuth();
     
     // UI State
@@ -30,6 +30,19 @@ const AIChatModal = ({ isOpen, onClose, onNavigate }) => {
             document.body.style.overflow = '';
         };
     }, []);
+
+    // Calculate distance using Haversine formula
+    const calculateDistance = (lat1, lon1, lat2, lon2) => {
+        if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+        const R = 6371; // km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    };
 
     // Apply Theme & Accent
     useEffect(() => {
@@ -93,10 +106,12 @@ const AIChatModal = ({ isOpen, onClose, onNavigate }) => {
         const activeQuery = overrideQuery || query;
         if (!activeQuery.trim()) return;
 
+        const newHistory = [...chatHistory, { role: 'user', message: activeQuery }];
+        setChatHistory(newHistory);
+        setQuery('');
+        
         setLoading(true);
         setShowResults(true);
-        setAiText('');
-        setResults([]);
 
         try {
             const filters = parseQuery(activeQuery);
@@ -107,21 +122,53 @@ const AIChatModal = ({ isOpen, onClose, onNavigate }) => {
                 priceMax: filters.priceMax,
                 priceExact: filters.priceExact
             });
-            setResults(searchData.results || []);
+            const fetchedResults = searchData.results || [];
+            setResults(fetchedResults);
 
-            const aiResp = await aiService.chat(activeQuery, chatHistory, null, { name: user?.full_name });
-            setAiText(aiResp.reply);
+            const aiResp = await aiService.chat(activeQuery, chatHistory, userLocation, { name: user?.full_name });
+            let replyText = aiResp.reply;
 
-            setChatHistory(prev => [...prev, 
-                { role: 'user', message: activeQuery },
-                { role: 'assistant', message: aiResp.reply }
-            ]);
+            // Auto-Navigation Logic
+            const qLower = activeQuery.toLowerCase();
+            const isAskingForLocation = qLower.includes('وين') || qLower.includes('اين') || qLower.includes('كيف اروح') || qLower.includes('موقع') || qLower.includes('طريق') || qLower.includes('ديلني') || qLower.includes('اقرب') || qLower.includes('وديني');
+            const isDriving = qLower.match(/(سيارة|سياره|قيادة|بسيارة|تكسي)/);
+            const isWalking = qLower.match(/(مشي|سير|اقدام|مشيًا)/);
+
+            if (fetchedResults.length > 0 && (isAskingForLocation || isDriving || isWalking || replyText.includes('يبعد'))) {
+                const target = fetchedResults[0];
+                let mode = 'driving';
+                
+                if (isDriving) {
+                    mode = 'driving';
+                } else if (isWalking) {
+                    mode = 'walking';
+                } else if (userLocation && target.latitude && target.longitude) {
+                    const dist = calculateDistance(userLocation.latitude, userLocation.longitude, target.latitude, target.longitude);
+                    if (dist !== null && dist <= 1.5) {
+                        mode = 'walking';
+                    }
+                }
+                
+                const modeText = mode === 'walking' ? 'مشياً على الأقدام 🚶' : 'بالسيارة 🚗';
+                replyText += `<br/><br/><div style="background: rgba(var(--primary-rgb), 0.1); border-left: 3px solid var(--primary); padding: 10px; border-radius: 8px; margin-top: 10px; font-weight: bold; color: var(--primary);">يتم الآن فتح الخريطة لتوجيهك ${modeText} إلى ${target.name}...</div>`;
+                
+                setTimeout(() => {
+                    onNavigate(target, mode);
+                }, 2500);
+            }
+
+            setChatHistory(prev => [...prev, { role: 'assistant', message: replyText, results: fetchedResults }]);
 
         } catch (error) {
             console.error('Search error:', error);
-            setAiText('عذراً، واجهت مشكلة في الاتصال بالمساعد الذكي. يرجى المحاولة مرة أخرى.');
+            setChatHistory(prev => [...prev, { role: 'assistant', message: 'عذراً، واجهت مشكلة في الاتصال بالمساعد الذكي. يرجى المحاولة مرة أخرى.' }]);
         } finally {
             setLoading(false);
+            setTimeout(() => {
+                if (scrollRef.current) {
+                    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+                }
+            }, 100);
         }
     };
 
@@ -146,12 +193,6 @@ const AIChatModal = ({ isOpen, onClose, onNavigate }) => {
                     
                     <header className="ai-header">
                         <div className="ai-header-right">
-                            <button className="ai-icon-btn" onClick={() => setShowSettings(true)}>
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <circle cx="12" cy="12" r="3"/>
-                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                                </svg>
-                            </button>
                             <div className="ai-logo">
                                 <div className="ai-logo-mark">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -242,33 +283,29 @@ const AIChatModal = ({ isOpen, onClose, onNavigate }) => {
                                 </div>
                             </section>
                         ) : (
-                            <section className="ai-results-section">
-                                <div className="ai-user-query">
-                                    <div className="ai-user-avatar">{user?.full_name?.[0] || 'M'}</div>
-                                    <div className="ai-user-text">{query}</div>
-                                </div>
-
-                                {loading ? (
-                                    <div className="ai-loading-box">
-                                        <div className="ai-dots"><span></span><span></span><span></span></div>
-                                        <span>جاري البحث والتحليل...</span>
-                                    </div>
-                                ) : (
-                                    <>
-                                        {aiText && (
-                                            <div className="ai-response-card">
+                            <section className="ai-results-section" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                
+                                {chatHistory.map((msg, idx) => (
+                                    <div key={idx} className={msg.role === 'user' ? 'ai-user-query' : 'ai-response-card'}>
+                                        {msg.role === 'user' ? (
+                                            <>
+                                                <div className="ai-user-avatar">{user?.full_name?.[0] || 'M'}</div>
+                                                <div className="ai-user-text">{msg.message}</div>
+                                            </>
+                                        ) : (
+                                            <>
                                                 <div className="ai-badge"><span className="ai-badge-dot"/>المساعد الذكي</div>
-                                                <p className="ai-response-text" dangerouslySetInnerHTML={{ __html: aiText }} />
+                                                <p className="ai-response-text" dangerouslySetInnerHTML={{ __html: msg.message }} />
                                                 
-                                                {(aiText.includes('ذهاب') || aiText.includes('توجه') || aiText.includes('طريق') || aiText.includes('موقع')) && results.length > 0 && (
+                                                {(idx === chatHistory.length - 1) && msg.results && msg.results.length > 0 && !msg.message.includes('يتم الآن فتح الخريطة') && (
                                                     <div className="ai-nav-options" style={{marginTop: '15px', borderTop: '1px solid var(--border)', paddingTop: '15px'}}>
-                                                        <button className="ai-nav-btn" onClick={() => onNavigate(results[0], 'walking')}>
+                                                        <button className="ai-nav-btn" onClick={() => onNavigate(msg.results[0], 'walking')}>
                                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                                                 <path d="M13 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM6 14l3-3 4-4 3 3 4-2M8.5 22l.5-5 2-4 2 5 .5 5"/>
                                                             </svg>
                                                             مشي
                                                         </button>
-                                                        <button className="ai-nav-btn" onClick={() => onNavigate(results[0], 'driving')}>
+                                                        <button className="ai-nav-btn" onClick={() => onNavigate(msg.results[0], 'driving')}>
                                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                                                 <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/>
                                                                 <circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>
@@ -277,73 +314,84 @@ const AIChatModal = ({ isOpen, onClose, onNavigate }) => {
                                                         </button>
                                                     </div>
                                                 )}
-                                            </div>
+                                            </>
                                         )}
+                                    </div>
+                                ))}
 
-                                        <div className={`ai-results-grid ${viewMode === 'list' ? 'list-view' : ''}`} 
-                                             style={{gridTemplateColumns: viewMode === 'list' ? '1fr' : undefined}}>
-                                            {results.map(shop => (
-                                                <div key={shop.id} className="ai-place-card">
-                                                    <div className="ai-place-img">
-                                                        {shop.profile_picture 
-                                                            ? <img src={getImageUrl(shop.profile_picture)} alt={shop.name} />
-                                                            : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                                                        }
-                                                    </div>
-                                                    <div className="ai-place-info">
-                                                        <h3>{shop.name}</h3>
-                                                        <div className="ai-place-meta">
-                                                            <span>📍 {shop.parent_shop_name || shop.category || 'محل'}</span>
-                                                        </div>
-                                                        
-                                                        {shop.products && shop.products.length > 0 && (
-                                                            <div className="ai-place-products">
-                                                                {shop.products.slice(0, 3).map(p => (
-                                                                    <div key={p.id} className="ai-prod-item">
-                                                                        <span className="ai-prod-name">{p.name}</span>
-                                                                        <span className="ai-prod-price">{p.price} ₪</span>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        )}
-
-                                                        <button 
-                                                            className={`ai-follow-btn ${shop.is_followed ? 'followed' : ''}`}
-                                                            onClick={() => handleFollow(shop.id)}
-                                                            disabled={shop.is_followed}
-                                                        >
-                                                            {shop.is_followed ? 'متابع ✓' : 'متابعة'}
-                                                        </button>
-
-                                                        <div className="ai-nav-options">
-                                                            <button className="ai-nav-btn" onClick={() => onNavigate(shop, 'walking')}>
-                                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                    <path d="M13 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM6 14l3-3 4-4 3 3 4-2M8.5 22l.5-5 2-4 2 5 .5 5"/>
-                                                                </svg>
-                                                                مشي
-                                                            </button>
-                                                            <button className="ai-nav-btn" onClick={() => onNavigate(shop, 'driving')}>
-                                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                    <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/>
-                                                                    <circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>
-                                                                </svg>
-                                                                سيارة
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        <button 
-                                            className="ai-follow-btn" 
-                                            style={{marginTop: '30px', width: 'auto', padding: '12px 30px', margin: '30px auto', display: 'block'}}
-                                            onClick={() => { setShowResults(false); setQuery(''); }}
-                                        >
-                                            ← بحث جديد
-                                        </button>
-                                    </>
+                                {loading && (
+                                    <div className="ai-loading-box">
+                                        <div className="ai-dots"><span></span><span></span><span></span></div>
+                                        <span>جاري البحث والتحليل...</span>
+                                    </div>
                                 )}
+
+                                        {!loading && results.length > 0 && (
+                                            <>
+                                                <div className={`ai-results-grid ${viewMode === 'list' ? 'list-view' : ''}`} 
+                                                     style={{gridTemplateColumns: viewMode === 'list' ? '1fr' : undefined}}>
+                                                    {results.map(shop => (
+                                                        <div key={shop.id} className="ai-place-card">
+                                                            <div className="ai-place-img">
+                                                                {shop.profile_picture 
+                                                                    ? <img src={getImageUrl(shop.profile_picture)} alt={shop.name} />
+                                                                    : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                                                }
+                                                            </div>
+                                                            <div className="ai-place-info">
+                                                                <h3>{shop.name}</h3>
+                                                                <div className="ai-place-meta">
+                                                                    <span>📍 {shop.parent_shop_name || shop.category || 'محل'}</span>
+                                                                </div>
+                                                                
+                                                                {shop.products && shop.products.length > 0 && (
+                                                                    <div className="ai-place-products">
+                                                                        {shop.products.slice(0, 3).map(p => (
+                                                                            <div key={p.id} className="ai-prod-item">
+                                                                                <span className="ai-prod-name">{p.name}</span>
+                                                                                <span className="ai-prod-price">{p.price} ₪</span>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+
+                                                                <button 
+                                                                    className={`ai-follow-btn ${shop.is_followed ? 'followed' : ''}`}
+                                                                    onClick={() => handleFollow(shop.id)}
+                                                                    disabled={shop.is_followed}
+                                                                >
+                                                                    {shop.is_followed ? 'متابع ✓' : 'متابعة'}
+                                                                </button>
+
+                                                                <div className="ai-nav-options">
+                                                                    <button className="ai-nav-btn" onClick={() => onNavigate(shop, 'walking')}>
+                                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                            <path d="M13 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM6 14l3-3 4-4 3 3 4-2M8.5 22l.5-5 2-4 2 5 .5 5"/>
+                                                                        </svg>
+                                                                        مشي
+                                                                    </button>
+                                                                    <button className="ai-nav-btn" onClick={() => onNavigate(shop, 'driving')}>
+                                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                            <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/>
+                                                                            <circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>
+                                                                        </svg>
+                                                                        سيارة
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                                <button 
+                                                    className="ai-follow-btn" 
+                                                    style={{marginTop: '30px', width: 'auto', padding: '12px 30px', margin: '30px auto', display: 'block'}}
+                                                    onClick={() => { setShowResults(false); setQuery(''); setChatHistory([]); setResults([]); }}
+                                                >
+                                                    ← محادثة جديدة
+                                                </button>
+                                            </>
+                                        )}
                             </section>
                         )}
                     </main>

@@ -155,14 +155,14 @@ const AdminDashboard = () => {
                 <div className="admin-header">
                     <div className="header-title-area">
                         <h2>{
-                            activeTab === 'overview' ? 'لوحة التحكم العامة' : 
-                            activeTab === 'users' ? 'إدارة الحسابات' : 
-                            activeTab === 'data' ? 'إدارة المحتوى والبيانات' :
-                            activeTab === 'files' ? 'مكتبة الوسائط' : 'خارطة النشاط الموحدة'
+                            activeTab === 'overview' ? 'لوحة التحكم العامة' :
+                                activeTab === 'users' ? 'إدارة الحسابات' :
+                                    activeTab === 'data' ? 'إدارة المحتوى والبيانات' :
+                                        activeTab === 'files' ? 'مكتبة الوسائط' : 'خارطة النشاط الموحدة'
                         }</h2>
                         <p>مرحباً بك يا {user.full_name || user.username} • {new Date().toLocaleDateString('ar-SA', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                     </div>
-                    
+
                     <div className="admin-profile-snippet">
                         <div className="user-info" style={{ textAlign: 'left' }}>
                             <h4 style={{ margin: 0 }}>{user.username}</h4>
@@ -282,9 +282,9 @@ const AdminDashboard = () => {
                                                 <td>
                                                     <div className="action-btns">
                                                         <button className="btn-circle" title="فتح الملف الكامل" onClick={() => navigate(`/admin/users/${u.id}`)}>👤</button>
-                                                        <button 
-                                                            className="btn-circle" 
-                                                            title={u.is_active ? 'إيقاف' : 'تفعيل'} 
+                                                        <button
+                                                            className="btn-circle"
+                                                            title={u.is_active ? 'إيقاف' : 'تفعيل'}
                                                             onClick={() => handleToggleUserStatus(u.id, u.is_active)}
                                                             style={{ color: u.is_active ? '#ef4444' : '#10b981' }}
                                                         >
@@ -380,7 +380,7 @@ const AdminDashboard = () => {
                                             <img src={p.image_url} alt="System File" className="media-thumb" title="انقر للمعاينة الكاملة" />
                                         </a>
                                         <div className="media-info">
-                                            <p 
+                                            <p
                                                 style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', color: 'var(--accent)' }}
                                                 onClick={() => navigate(`/admin/users/${p.user.id}`)}
                                             >
