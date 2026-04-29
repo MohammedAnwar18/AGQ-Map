@@ -1,329 +1,396 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { smartSearchService, shopService, aiService } from '../services/api';
-import { getImageUrl } from '../services/api';
+import { smartSearchService, shopService, aiService, getImageUrl } from '../services/api';
 import './AIChatModal.css';
 
-// Parse natural language query for price filters
-const parseQuery = (text) => {
-    const result = { shopQuery: '', productQuery: '', priceMin: '', priceMax: '', priceExact: '' };
-    let q = text.trim();
-
-    // Price exact: "بسعر X" or "يساوي X"
-    let m = q.match(/(?:بسعر|يساوي|سعره)\s*([\d.]+)/);
-    if (m) { result.priceExact = m[1]; q = q.replace(m[0], '').trim(); }
-
-    // Price max: "أقل من X" or "بأقل من X"
-    m = q.match(/(?:أقل\s*من|بأقل\s*من|تحت)\s*([\d.]+)/);
-    if (m) { result.priceMax = m[1]; q = q.replace(m[0], '').trim(); }
-
-    // Price min: "أكثر من X" or "أغلى من X" or "فوق X"
-    m = q.match(/(?:أكثر\s*من|أغلى\s*من|فوق)\s*([\d.]+)/);
-    if (m) { result.priceMin = m[1]; q = q.replace(m[0], '').trim(); }
-
-    // Product keywords
-    const prodMatch = q.match(/(?:يبيع|يوجد|عنده|فيه|ببيع|بيبيع)\s+(.+)/);
-    if (prodMatch) {
-        result.productQuery = prodMatch[1].trim();
-        q = q.replace(prodMatch[0], '').trim();
-    }
-
-    result.shopQuery = q;
-    return result;
-};
-
-const AIChatModal = ({ onClose }) => {
+const AIChatModal = ({ isOpen, onClose }) => {
     const { user } = useAuth();
+    
+    // UI State
+    const [theme, setTheme] = useState(localStorage.getItem('palnovaa-ai-theme') || 'dark');
+    const [showSettings, setShowSettings] = useState(false);
+    const [showCamera, setShowCamera] = useState(false);
+    const [showResults, setShowResults] = useState(false);
+    
+    // Search & Chat State
     const [query, setQuery] = useState('');
     const [loading, setLoading] = useState(false);
-    const [results, setResults] = useState(null);
     const [aiText, setAiText] = useState('');
-    const [showResults, setShowResults] = useState(false);
-    const [theme, setThemeState] = useState(() => localStorage.getItem('ai-theme') || 'dark');
-    const [accent, setAccentState] = useState(() => localStorage.getItem('ai-accent') || '#F5A623');
-    const [showSettings, setShowSettings] = useState(false);
-    const inputRef = useRef(null);
+    const [results, setResults] = useState([]);
+    const [chatHistory, setChatHistory] = useState([]);
+    
+    const scrollRef = useRef(null);
 
-    const userName = user?.full_name || user?.username || 'مستخدم';
-    const userInitial = userName.charAt(0).toUpperCase();
-
+    // Initial setup
     useEffect(() => {
-        applyTheme(theme);
-        applyAccent(accent);
-        inputRef.current?.focus();
-    }, []);
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+    }, [isOpen]);
 
-    const applyTheme = (t) => {
-        const el = document.getElementById('ai-modal-root');
-        if (!el) return;
-        el.setAttribute('data-theme', t);
+    // Handle Theme Change
+    const changeTheme = (newTheme) => {
+        setTheme(newTheme);
+        localStorage.setItem('palnovaa-ai-theme', newTheme);
     };
 
-    const applyAccent = (color) => {
-        const el = document.getElementById('ai-modal-root');
-        if (!el) return;
-        const r = parseInt(color.slice(1,3),16), g = parseInt(color.slice(3,5),16), b = parseInt(color.slice(5,7),16);
-        el.style.setProperty('--primary', color);
-        el.style.setProperty('--primary-glow', `rgba(${r},${g},${b},0.4)`);
-        el.style.setProperty('--primary-light', `rgb(${Math.min(255,r+60)},${Math.min(255,g+60)},${Math.min(255,b+60)})`);
-        el.style.setProperty('--primary-dark', `rgb(${Math.round(r*0.75)},${Math.round(g*0.75)},${Math.round(b*0.75)})`);
+    // Parse natural language for price filters (existing logic)
+    const parseQuery = (text) => {
+        const result = { shopQuery: '', productQuery: '', priceMin: '', priceMax: '', priceExact: '' };
+        let q = text.trim();
+        
+        const priceRegex = /(بسيار|بسعر|سعر|بكم|بكام)\s*(\d+)/i;
+        const match = q.match(priceRegex);
+        if (match) {
+            result.priceExact = match[2];
+            q = q.replace(priceRegex, '').trim();
+        }
+
+        const minRegex = /(أكثر من|اكبر من|فوق|من)\s*(\d+)/i;
+        const minMatch = q.match(minRegex);
+        if (minMatch) {
+            result.priceMin = minMatch[2];
+            q = q.replace(minMatch, '').trim();
+        }
+
+        const maxRegex = /(أقل من|اصغر من|تحت|حتى)\s*(\d+)/i;
+        const maxMatch = q.match(maxRegex);
+        if (maxMatch) {
+            result.priceMax = maxMatch[2];
+            q = q.replace(maxMatch, '').trim();
+        }
+
+        result.shopQuery = q;
+        result.productQuery = q;
+        return result;
     };
 
-    const setTheme = (t) => { setThemeState(t); applyTheme(t); localStorage.setItem('ai-theme', t); };
-    const setAccent = (c) => { setAccentState(c); applyAccent(c); localStorage.setItem('ai-accent', c); };
+    const handleSearch = async (overrideQuery = null) => {
+        const activeQuery = overrideQuery || query;
+        if (!activeQuery.trim()) return;
 
-    const handleSearch = useCallback(async (searchText) => {
-        const q = searchText || query;
-        if (!q.trim()) return;
         setLoading(true);
         setShowResults(true);
-        setResults(null);
         setAiText('');
+        setResults([]);
 
         try {
-            // 1. Get structured data results
-            const parsed = parseQuery(q);
+            // 1. Smart Search (DB)
+            const filters = parseQuery(activeQuery);
             const searchData = await smartSearchService.search({
-                query: parsed.shopQuery,
-                productQuery: parsed.productQuery,
-                priceMin: parsed.priceMin,
-                priceMax: parsed.priceMax,
-                priceExact: parsed.priceExact,
+                query: filters.shopQuery,
+                productQuery: filters.productQuery,
+                priceMin: filters.priceMin,
+                priceMax: filters.priceMax,
+                priceExact: filters.priceExact
             });
-            const found = searchData.results || [];
-            setResults(found);
+            setResults(searchData.results || []);
 
-            // 2. Get conversational AI response
-            const aiResponse = await aiService.chat(q, [], null, { name: userName });
-            
-            if (aiResponse && aiResponse.reply) {
-                setAiText(aiResponse.reply);
-            } else if (found.length > 0) {
-                setAiText(`وجدت <strong>${found.length} نتيجة</strong> تطابق بحثك. أفضل نتيجة هي <strong>${found[0].name}</strong>.`);
-            } else {
-                setAiText(`لم أجد نتائج لـ "${q}". حاول البحث بكلمات مختلفة.`);
-            }
+            // 2. AI Conversational Context
+            const aiResp = await aiService.chat(activeQuery, chatHistory, null, { name: user?.full_name });
+            setAiText(aiResp.reply);
 
-        } catch (err) {
-            console.error(err);
-            setAiText('عذراً، واجهت مشكلة في الاتصال بالمساعد الذكي.');
-            setResults([]);
+            // Update History
+            setChatHistory(prev => [...prev, 
+                { role: 'user', message: activeQuery },
+                { role: 'assistant', message: aiResp.reply }
+            ]);
+
+        } catch (error) {
+            console.error('Search error:', error);
+            setAiText('عذراً، واجهت مشكلة في الاتصال بالمساعد الذكي. يرجى المحاولة مرة أخرى.');
         } finally {
             setLoading(false);
         }
-    }, [query, userName]);
+    };
 
     const handleFollow = async (shopId) => {
         try {
             await shopService.follow(shopId);
             setResults(prev => prev.map(s => s.id === shopId ? { ...s, is_followed: true } : s));
-        } catch (e) {
-            console.error(e);
+        } catch (error) {
+            console.error('Follow error:', error);
         }
     };
 
-    const chips = [
-        { icon: '🍕', label: 'مطاعم' },
-        { icon: '☕', label: 'كافيهات' },
-        { icon: '💊', label: 'صيدليات' },
-        { icon: '👕', label: 'ملابس' },
-        { icon: '📱', label: 'إلكترونيات' },
-        { icon: '💇', label: 'صالونات' },
-    ];
+    if (!isOpen) return null;
 
     return (
-        <div id="ai-modal-root" data-theme={theme} className="ai-overlay" onClick={onClose}>
-            <div className="ai-panel" onClick={e => e.stopPropagation()}>
+        <div className="ai-modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+            <div className="ai-modal-container" data-theme={theme}>
+                
+                {/* Background Visuals */}
+                <div className="ai-bg-canvas" />
+                <div className="ai-floating-orb ai-orb-1" />
+                <div className="ai-floating-orb ai-orb-2" />
 
-                {/* BG Orbs */}
-                <div className="ai-orb ai-orb-1" />
-                <div className="ai-orb ai-orb-2" />
-
-                {/* Header */}
-                <header className="ai-header">
-                    <button className="ai-icon-btn" onClick={() => setShowSettings(!showSettings)} title="الإعدادات">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="12" cy="12" r="3"/>
-                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                        </svg>
-                    </button>
-                    <div className="ai-logo">
-                        <div className="ai-logo-mark">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                                <circle cx="12" cy="10" r="3"/>
+                <div className="ai-modal-content">
+                    
+                    {/* Header */}
+                    <header className="ai-header">
+                        <div className="ai-header-right">
+                            <button className="ai-icon-btn" onClick={() => setShowSettings(true)}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <circle cx="12" cy="12" r="3"/>
+                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                                </svg>
+                            </button>
+                            <div className="ai-logo">
+                                <div className="ai-logo-mark">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                        <circle cx="12" cy="10" r="3"/>
+                                    </svg>
+                                </div>
+                                <div className="ai-logo-text">
+                                    <span>المساعد الذكي</span>
+                                    <small style={{display: 'block', fontSize: '10px', opacity: 0.6}}>PalNovaa AI</small>
+                                </div>
+                            </div>
+                        </div>
+                        <button className="ai-icon-btn" onClick={onClose}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                             </svg>
+                        </button>
+                    </header>
+
+                    {/* Scrollable Content */}
+                    <main className="ai-main-scroll" ref={scrollRef}>
+                        
+                        {!showResults ? (
+                            /* Hero State */
+                            <section className="ai-hero">
+                                <div className="ai-hero-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                                        <path d="M2 17l10 5 10-5"/>
+                                        <path d="M2 12l10 5 10-5"/>
+                                    </svg>
+                                </div>
+                                <h1>مرحباً <span className="accent">{user?.full_name || 'صديقي'}</span> 👋</h1>
+                                <p>أنا مساعدك الذكي في PalNovaa، اسألني عن أي مكان أو منتج أو سعر وسأساعدك بكل سهولة وذكاء</p>
+
+                                <div className="ai-search-wrap">
+                                    <div className="ai-search-box">
+                                        <input 
+                                            className="ai-search-input" 
+                                            placeholder="ابحث عن مطاعم، منتجات، أسعار..." 
+                                            value={query}
+                                            onChange={(e) => setQuery(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                        />
+                                        <button className="ai-tool-btn" onClick={() => setShowCamera(true)}>
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                                                <circle cx="12" cy="13" r="4"/>
+                                            </svg>
+                                        </button>
+                                        <button className="ai-send-btn" onClick={() => handleSearch()}>
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                                <line x1="22" y1="2" x2="11" y2="13"/>
+                                                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+
+                                    <div className="ai-suggestions">
+                                        {['مطاعم قريبة', 'كافيهات هادئة', 'أقرب صيدلية', 'عروض اليوم'].map(tag => (
+                                            <button key={tag} className="ai-chip" onClick={() => { setQuery(tag); handleSearch(tag); }}>
+                                                {tag}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="ai-features">
+                                    <div className="ai-feature-card" onClick={() => setShowCamera(true)}>
+                                        <div className="ai-feature-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M5 8h14M5 8a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2M5 8V6a2 2 0 0 1 2-2h2M19 8V6a2 2 0 0 0-2-2h-2"/>
+                                                <path d="M9 14h6M9 18h4"/>
+                                            </svg>
+                                        </div>
+                                        <h4>ترجمة ذكية</h4>
+                                        <p>ترجم أي نص عبر الكاميرا</p>
+                                    </div>
+                                    <div className="ai-feature-card" onClick={() => handleSearch('اكتشف حولي')}>
+                                        <div className="ai-feature-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <circle cx="12" cy="12" r="10"/>
+                                                <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+                                            </svg>
+                                        </div>
+                                        <h4>اكتشف حولي</h4>
+                                        <p>أماكن مميزة بالقرب منك</p>
+                                    </div>
+                                    <div className="ai-feature-card" onClick={() => setShowSettings(true)}>
+                                        <div className="ai-feature-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
+                                            </svg>
+                                        </div>
+                                        <h4>تخصيص الواجهة</h4>
+                                        <p>اختر الثيم الذي يناسبك</p>
+                                    </div>
+                                </div>
+                            </section>
+                        ) : (
+                            /* Results State */
+                            <section className="ai-results-section">
+                                <div className="ai-user-query">
+                                    <div className="ai-user-avatar">{user?.full_name?.[0] || 'M'}</div>
+                                    <div className="ai-user-text">{query}</div>
+                                </div>
+
+                                {loading ? (
+                                    <div className="ai-loading-box">
+                                        <div className="ai-dots"><span></span><span></span><span></span></div>
+                                        <span>جاري البحث والتحليل...</span>
+                                    </div>
+                                ) : (
+                                    <>
+                                        {aiText && (
+                                            <div className="ai-response-card">
+                                                <div className="ai-badge"><span className="ai-badge-dot"/>المساعد الذكي</div>
+                                                <p className="ai-response-text" dangerouslySetInnerHTML={{ __html: aiText }} />
+                                            </div>
+                                        )}
+
+                                        <div className="ai-results-grid">
+                                            {results.map(shop => (
+                                                <div key={shop.id} className="ai-place-card">
+                                                    <div className="ai-place-img">
+                                                        {shop.profile_picture 
+                                                            ? <img src={getImageUrl(shop.profile_picture)} alt={shop.name} />
+                                                            : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                                        }
+                                                    </div>
+                                                    <div className="ai-place-info">
+                                                        <h3>{shop.name}</h3>
+                                                        <div className="ai-place-meta">
+                                                            <span>📍 {shop.parent_shop_name || shop.category || 'محل'}</span>
+                                                        </div>
+                                                        
+                                                        {shop.products && shop.products.length > 0 && (
+                                                            <div className="ai-place-products">
+                                                                {shop.products.slice(0, 3).map(p => (
+                                                                    <div key={p.id} className="ai-prod-item">
+                                                                        <span className="ai-prod-name">{p.name}</span>
+                                                                        <span className="ai-prod-price">{p.price} ₪</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+
+                                                        <button 
+                                                            className={`ai-follow-btn ${shop.is_followed ? 'followed' : ''}`}
+                                                            onClick={() => handleFollow(shop.id)}
+                                                            disabled={shop.is_followed}
+                                                        >
+                                                            {shop.is_followed ? 'متابع ✓' : 'متابعة'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <button 
+                                            className="ai-follow-btn" 
+                                            style={{marginTop: '30px', width: 'auto', padding: '12px 30px', margin: '30px auto', display: 'block'}}
+                                            onClick={() => { setShowResults(false); setQuery(''); }}
+                                        >
+                                            ← بحث جديد
+                                        </button>
+                                    </>
+                                )}
+                            </section>
+                        )}
+                    </main>
+
+                    {/* Floating Search Bar (when in results) */}
+                    {showResults && (
+                        <div className="ai-search-wrap" style={{padding: '10px 0'}}>
+                            <div className="ai-search-box">
+                                <input 
+                                    className="ai-search-input" 
+                                    placeholder="اسأل شيئاً آخر..." 
+                                    value={query}
+                                    onChange={(e) => setQuery(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                />
+                                <button className="ai-send-btn" onClick={() => handleSearch()}>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                        <line x1="22" y1="2" x2="11" y2="13"/>
+                                        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
-                        <div className="ai-logo-text">
-                            <span>المساعد الذكي</span>
-                            <small>PalNovaa AI</small>
-                        </div>
+                    )}
+                </div>
+
+                {/* Settings Panel */}
+                <aside className={`ai-settings-panel ${showSettings ? 'active' : ''}`}>
+                    <div className="ai-settings-header">
+                        <h2 style={{fontSize: '18px', fontWeight: 800}}>تخصيص الستايل</h2>
+                        <button className="ai-icon-btn" onClick={() => setShowSettings(false)}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
                     </div>
-                    <button className="ai-icon-btn" onClick={onClose} title="إغلاق">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                        </svg>
-                    </button>
-                </header>
-
-                {/* Main */}
-                <main className="ai-main">
-
-                    {/* Settings Panel */}
-                    {showSettings && (
-                        <div className="ai-settings-panel">
+                    <div className="ai-settings-body">
+                        <div className="ai-settings-group">
                             <div className="ai-settings-title">المظهر</div>
                             <div className="ai-theme-grid">
                                 {[
-                                    { id: 'dark', label: 'داكن', cls: 'prev-dark' },
-                                    { id: 'light', label: 'فاتح', cls: 'prev-light' },
-                                    { id: 'midnight', label: 'منتصف الليل', cls: 'prev-midnight' },
-                                    { id: 'sunset', label: 'غروب', cls: 'prev-sunset' },
+                                    {id: 'dark', name: 'داكن', class: 'ai-p-dark'},
+                                    {id: 'light', name: 'فاتح', class: 'ai-p-light'},
+                                    {id: 'midnight', name: 'منتصف الليل', class: 'ai-p-midnight'},
+                                    {id: 'sunset', name: 'غروب', class: 'ai-p-sunset'}
                                 ].map(t => (
-                                    <div key={t.id} className={`ai-theme-opt${theme === t.id ? ' active' : ''}`} onClick={() => setTheme(t.id)}>
-                                        <div className={`ai-theme-prev ${t.cls}`} />
-                                        <span>{t.label}</span>
+                                    <div 
+                                        key={t.id} 
+                                        className={`ai-theme-opt ${theme === t.id ? 'active' : ''}`}
+                                        onClick={() => changeTheme(t.id)}
+                                    >
+                                        <div className={`ai-theme-preview ${t.class}`} />
+                                        <span style={{fontSize: '13px'}}>{t.name}</span>
                                     </div>
                                 ))}
                             </div>
-                            <div className="ai-settings-title" style={{marginTop:'16px'}}>اللون المميز</div>
-                            <div className="ai-accents">
-                                {['#F5A623','#FF6B6B','#4ECDC4','#A78BFA','#34D399','#F472B6'].map(c => (
-                                    <button key={c} className={`ai-swatch${accent===c?' active':''}`} style={{background:c}} onClick={() => setAccent(c)} />
-                                ))}
-                            </div>
                         </div>
-                    )}
-
-                    {/* Hero (initial) */}
-                    {!showResults && (
-                        <section className="ai-hero">
-                            <div className="ai-hero-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                                    <path d="M2 17l10 5 10-5"/>
-                                    <path d="M2 12l10 5 10-5"/>
-                                </svg>
-                            </div>
-                            <h1>مرحباً <span className="ai-accent">{userName}</span> 👋</h1>
-                            <p>ابحث عن أي محل، منتج، أو سعر — أنا أساعدك بكل ذكاء</p>
-                            <div className="ai-chips">
-                                {chips.map(c => (
-                                    <button key={c.label} className="ai-chip" onClick={() => { setQuery(c.label); handleSearch(c.label); }}>
-                                        <span>{c.icon}</span> {c.label}
-                                    </button>
-                                ))}
-                            </div>
-                            <div className="ai-examples">
-                                <p className="ai-example-title">أمثلة على البحث الذكي:</p>
-                                {[
-                                    'مطعم يبيع شاورما بأقل من 15',
-                                    'صيدلية عندها بروتين بسعر 80',
-                                    'محل ملابس يبيع جاكيت',
-                                ].map(ex => (
-                                    <button key={ex} className="ai-example-chip" onClick={() => { setQuery(ex); handleSearch(ex); }}>
-                                        {ex}
-                                    </button>
-                                ))}
-                            </div>
-                        </section>
-                    )}
-
-                    {/* Results */}
-                    {showResults && (
-                        <section className="ai-results">
-                            {/* Query bubble */}
-                            <div className="ai-query-bubble">
-                                <div className="ai-q-avatar">{userInitial}</div>
-                                <div className="ai-q-text">{query}</div>
-                            </div>
-
-                            {/* Loading */}
-                            {loading && (
-                                <div className="ai-loading">
-                                    <div className="ai-dots"><span/><span/><span/></div>
-                                    <span>المساعد الذكي يبحث لك...</span>
-                                </div>
-                            )}
-
-                            {/* AI Response */}
-                            {!loading && aiText && (
-                                <div className="ai-response-card">
-                                    <div className="ai-badge"><span className="ai-badge-dot"/>المساعد الذكي</div>
-                                    <p className="ai-response-text" dangerouslySetInnerHTML={{ __html: aiText }} />
-                                </div>
-                            )}
-
-                            {/* Results Grid */}
-                            {!loading && results && results.length > 0 && (
-                                <div className="ai-results-grid">
-                                    {results.map(shop => (
-                                        <div key={shop.id} className="ai-shop-card">
-                                            <div className="ai-shop-img">
-                                                {shop.profile_picture
-                                                    ? <img src={getImageUrl(shop.profile_picture)} alt={shop.name} />
-                                                    : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                                                }
-                                                <span className="ai-shop-cat">{shop.category || 'محل'}</span>
-                                            </div>
-                                            <div className="ai-shop-body">
-                                                <div className="ai-shop-top">
-                                                    <div>
-                                                        <h3>{shop.name}</h3>
-                                                        {shop.parent_shop_name && <p className="ai-shop-sub">📍 {shop.parent_shop_name}</p>}
-                                                    </div>
-                                                    <button
-                                                        className={`ai-follow-btn${shop.is_followed ? ' followed' : ''}`}
-                                                        onClick={() => handleFollow(shop.id)}
-                                                        disabled={shop.is_followed}
-                                                    >
-                                                        {shop.is_followed ? 'متابَع ✓' : 'متابعة'}
-                                                    </button>
-                                                </div>
-
-                                                {/* Products */}
-                                                {shop.products && shop.products.length > 0 && (
-                                                    <div className="ai-products">
-                                                        {shop.products.map(p => (
-                                                            <div key={p.id} className="ai-product-pill">
-                                                                <span className="ai-product-name">{p.name}</span>
-                                                                {p.price && <span className="ai-product-price">{parseFloat(p.price).toLocaleString('ar')} ₪</span>}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* Back button */}
-                            <button className="ai-back-btn" onClick={() => { setShowResults(false); setQuery(''); }}>
-                                ← بحث جديد
-                            </button>
-                        </section>
-                    )}
-                </main>
-
-                {/* Search Box */}
-                <div className="ai-search-area">
-                    <div className="ai-search-box">
-                        <input
-                            ref={inputRef}
-                            className="ai-search-input"
-                            value={query}
-                            onChange={e => setQuery(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                            placeholder="ابحث عن محل، منتج، أو سعر... مثلاً: يبيع هاتف بأقل من 300"
-                        />
-                        <button className="ai-send-btn" onClick={() => handleSearch()} disabled={loading || !query.trim()}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{transform:'scaleX(-1)'}}>
-                                <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                            </svg>
-                        </button>
                     </div>
-                </div>
+                </aside>
+
+                {/* Camera Modal (Placeholder) */}
+                {showCamera && (
+                    <div className="ai-camera-modal">
+                        <header className="ai-header" style={{margin: '16px'}}>
+                            <div className="ai-header-right">
+                                <h3 style={{fontSize: '16px'}}>الترجمة الذكية بالكاميرا</h3>
+                            </div>
+                            <button className="ai-icon-btn" onClick={() => setShowCamera(false)}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
+                        </header>
+                        <div className="ai-camera-view">
+                            <div style={{textAlign: 'center', color: 'rgba(255,255,255,0.5)', padding: '40px'}}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{width: '60px', marginBottom: '20px', color: 'var(--primary)'}}>
+                                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
+                                </svg>
+                                <p>وجّه الكاميرا نحو أي نص وسأترجمه فوراً للعربية</p>
+                            </div>
+                            <div className="ai-scan-frame"><div className="ai-scan-line" /></div>
+                        </div>
+                        <div style={{padding: '20px', textAlign: 'center'}}>
+                            <button className="ai-send-btn" style={{width: '70px', height: '70px', background: '#fff'}} onClick={() => setShowCamera(false)}>
+                                <div style={{width: '56px', height: '56px', background: 'var(--primary)', borderRadius: '50%'}} />
+                            </button>
+                        </div>
+                    </div>
+                )}
 
             </div>
         </div>
