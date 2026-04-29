@@ -24,12 +24,11 @@ const AIChatModal = ({ isOpen, onClose }) => {
 
     // Initial setup
     useEffect(() => {
-        if (isOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
+        document.body.style.overflow = 'hidden';
+        return () => {
             document.body.style.overflow = '';
-        }
-    }, [isOpen]);
+        };
+    }, []);
 
     // Apply Theme & Accent
     useEffect(() => {
@@ -137,7 +136,6 @@ const AIChatModal = ({ isOpen, onClose }) => {
         }
     };
 
-    if (!isOpen) return null;
 
     return (
         <div className="ai-modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
