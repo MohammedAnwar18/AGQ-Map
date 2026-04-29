@@ -362,7 +362,7 @@
     font-weight: 800;
     margin-bottom: 0.35rem;
     color: #fff;
-    white-space: nowrap; /* Ensure username doesn't wrap awkwardly */
+    word-break: break-word; /* Ensure full name is visible by wrapping if needed */
 }
 
 .user-info p {
@@ -370,7 +370,7 @@
     color: var(--accent);
     font-weight: 700;
     opacity: 0.9;
-    white-space: nowrap;
+    word-break: break-all;
 }
 
 
@@ -457,6 +457,12 @@
 
 .media-info {
     padding: 1.5rem;
+    background: rgba(15, 23, 42, 0.6);
+}
+
+.media-info p {
+    white-space: normal;
+    word-break: break-word;
 }
 
 /* Loading & Empty States */

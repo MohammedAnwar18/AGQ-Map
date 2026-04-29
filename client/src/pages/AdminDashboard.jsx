@@ -261,7 +261,9 @@ const AdminDashboard = () => {
                                                 <td className="clickable" onClick={() => navigate(`/admin/users/${u.id}`)}>
                                                     <div className="user-cell">
                                                         <div className="user-avatar-wrapper">
-                                                            <img src={u.profile_picture || '/default-avatar.png'} alt={u.username} className="user-avatar" />
+                                                            <a href={u.profile_picture || '/default-avatar.png'} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
+                                                                <img src={u.profile_picture || '/default-avatar.png'} alt={u.username} className="user-avatar" title="مشاهدة الصورة بالحجم الكامل" />
+                                                            </a>
                                                             {u.is_active && <div className="user-status-dot"></div>}
                                                         </div>
                                                         <div className="user-info">
@@ -332,7 +334,11 @@ const AdminDashboard = () => {
                                             <tr key={p.id}>
                                                 <td>
                                                     <div className="user-cell">
-                                                        {p.image_url && <img src={p.image_url} alt="Post" className="user-avatar" style={{ width: '80px', height: '60px', borderRadius: '12px' }} />}
+                                                        {p.image_url && (
+                                                            <a href={p.image_url} target="_blank" rel="noopener noreferrer">
+                                                                <img src={p.image_url} alt="Post" className="user-avatar" style={{ width: '80px', height: '60px', borderRadius: '12px', cursor: 'pointer' }} title="توسيع الصورة" />
+                                                            </a>
+                                                        )}
                                                         <div className="user-info">
                                                             <h4 style={{ fontSize: '1rem' }}>{p.content?.substring(0, 40) || 'محتوى مرئي'}...</h4>
                                                         </div>
@@ -370,7 +376,9 @@ const AdminDashboard = () => {
                             <div className="media-grid">
                                 {posts.filter(p => p.image_url).map(p => (
                                     <div key={p.id} className="media-item">
-                                        <img src={p.image_url} alt="System File" className="media-thumb" />
+                                        <a href={p.image_url} target="_blank" rel="noopener noreferrer">
+                                            <img src={p.image_url} alt="System File" className="media-thumb" title="انقر للمعاينة الكاملة" />
+                                        </a>
                                         <div className="media-info">
                                             <p 
                                                 style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', color: 'var(--accent)' }}

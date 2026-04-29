@@ -945,18 +945,33 @@ const addCollegeSpecialty = async (req, res) => {
 
 // --- 23. Post Interactions (Like/Comment) ---
 
-// --- 22-A. Delete University Facility (Admin Only) ---
+// --- 22-A. Delete University Facility (Admin or University Owner) ---
 const deleteUniversityFacility = async (req, res) => {
     try {
         const { facilityId } = req.params;
+        const userId = req.user.userId || req.user.id;
+        const userRole = req.user.role;
 
-        if (req.user.role !== 'admin') {
-            return res.status(403).json({ error: 'Unauthorized: Admin only' });
+        // Check facility and get university owner
+        const facilityCheck = await pool.query(`
+            SELECT f.id, s.owner_id 
+            FROM university_facilities f
+            JOIN shops s ON f.university_id = s.id
+            WHERE f.id = $1
+        `, [facilityId]);
+
+        if (facilityCheck.rows.length === 0) {
+            return res.status(404).json({ error: 'Facility not found' });
         }
 
-        const checkRes = await pool.query('SELECT id FROM university_facilities WHERE id = $1', [facilityId]);
-        if (checkRes.rows.length === 0) return res.status(404).json({ error: 'Facility not found' });
+        const uniOwnerId = facilityCheck.rows[0].owner_id;
 
+        // Permission: Admin OR University Owner
+        if (userRole !== 'admin' && uniOwnerId !== userId) {
+            return res.status(403).json({ error: 'Unauthorized: You do not own this university' });
+        }
+
+        // Delete dependencies first
         await pool.query('DELETE FROM facility_posts WHERE facility_id = $1', [facilityId]);
         await pool.query('DELETE FROM university_specialties WHERE facility_id = $1', [facilityId]);
         await pool.query('DELETE FROM university_facilities WHERE id = $1', [facilityId]);
@@ -967,6 +982,7 @@ const deleteUniversityFacility = async (req, res) => {
         res.status(500).json({ error: 'Failed to delete facility' });
     }
 };
+
 
 // --- 22-B. Rename University Facility (Admin or Owner) ---
 const renameUniversityFacility = async (req, res) => {

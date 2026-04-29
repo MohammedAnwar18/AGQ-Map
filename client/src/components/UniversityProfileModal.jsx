@@ -769,7 +769,7 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                                                             <h4>{item.name}</h4>
                                                             <p>انقر لعرض التفاصيل على الخريطة</p>
                                                         </div>
-                                                        {currentUser?.role === 'admin' && (
+                                                        {isAdminOrOwner && (
                                                             <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                                                                 <button
                                                                     onClick={() => { setEditingFacilityId(item.id); setEditingFacilityName(item.name); }}
@@ -787,7 +787,7 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                                                                 </button>
                                                             </div>
                                                         )}
-                                                        {currentUser?.role !== 'admin' && (
+                                                        {!isAdminOrOwner && (
                                                             <div className="item-action" onClick={() => handleFeatureClick(item)} style={{ cursor: 'pointer' }}>
                                                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
                                                             </div>
