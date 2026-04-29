@@ -51,6 +51,7 @@ const searchShops = async (req, res) => {
 };
 
 
+
 // --- 1b. Smart Search: Shops + Products + Price Filter ---
 const smartSearch = async (req, res) => {
     try {
@@ -67,25 +68,26 @@ const smartSearch = async (req, res) => {
         let paramIdx = 3;
 
         if (priceExact !== undefined && priceExact !== '') {
-            priceCondition = `AND p.price = ${paramIdx}`;
+            priceCondition = `AND p.price = $` + paramIdx;
             params.push(parseFloat(priceExact));
             paramIdx++;
         } else {
             if (priceMin !== undefined && priceMin !== '') {
-                priceCondition += ` AND p.price >= ${paramIdx}`;
+                priceCondition += ` AND p.price >= $` + paramIdx;
                 params.push(parseFloat(priceMin));
                 paramIdx++;
             }
             if (priceMax !== undefined && priceMax !== '') {
-                priceCondition += ` AND p.price <= ${paramIdx}`;
+                priceCondition += ` AND p.price <= $` + paramIdx;
                 params.push(parseFloat(priceMax));
                 paramIdx++;
             }
         }
 
         if (userId) params.push(parseInt(userId));
+        const userParamIdx = paramIdx;
         const isFollowedExpr = userId
-            ? `EXISTS(SELECT 1 FROM shop_followers WHERE shop_id = s.id AND user_id = ${paramIdx}::int)`
+            ? `EXISTS(SELECT 1 FROM shop_followers WHERE shop_id = s.id AND user_id = $` + userParamIdx + `::int)`
             : 'FALSE';
 
         const sql = `
@@ -1353,4 +1355,5 @@ async function deleteMunicipalityItem(req, res) {
         res.status(500).json({ error: 'Failed to delete item' });
     }
 }
+
 
