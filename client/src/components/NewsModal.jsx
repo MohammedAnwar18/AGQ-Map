@@ -423,79 +423,113 @@ const NewsModal = ({ onClose, location }) => {
                             ) : (
                                 <div className="live-feed-list">
 
-                                    {/* BREAKING ALERTS FIRST */}
+                                    {/* ---- BREAKING ALERTS ---- */}
+                                    {alerts.length > 0 && (
+                                        <div className="feed-section-label">🚨 تنبيهات عاجلة</div>
+                                    )}
                                     {alerts.map((alert, i) => (
-                                        <div key={`alert-${i}`} className="feed-card alert-card breaking-card alert-flash">
+                                        <div key={`alert-${i}`} className="feed-card alert-card breaking-card">
                                             <div className="card-header">
                                                 <span className="breaking-badge">صفارات إنذار 🚨</span>
-                                                <span className="feed-time">{new Intl.DateTimeFormat('ar-EG', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true }).format(new Date(alert.time))}</span>
+                                                <span className="feed-time">
+                                                    {new Intl.DateTimeFormat('ar-EG', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true }).format(new Date(alert.time))}
+                                                </span>
                                             </div>
                                             <h4 className="feed-threat">{alert.threat}</h4>
-                                            <p className="feed-locations">📍 الموقع: {alert.locations?.join('، ')}</p>
+                                            <p className="feed-locations">📍 {alert.locations?.join(' · ')}</p>
                                         </div>
                                     ))}
 
-                                    <div className="section-divider">الوضع الميداني والأسواق</div>
-
+                                    {/* ---- MARKETS ---- */}
                                     {markets && (
-                                        <div className="feed-card market-card">
-                                            <div className="market-row" style={{color:'#f8d02e'}}>أونصة الذهب: <strong>${markets.goldOunce}</strong></div>
-                                            <div className="market-row" style={{color:'#66bdf5'}}>برميل النفط: <strong>${markets.crudeOil}</strong></div>
-                                        </div>
+                                        <>
+                                            <div className="feed-section-label">📊 الأسواق المالية</div>
+                                            <div className="feed-card market-card">
+                                                <div className="market-row" style={{ color: '#f8d02e' }}>
+                                                    <span>🥇 أونصة الذهب</span>
+                                                    <strong>${markets.goldOunce}</strong>
+                                                </div>
+                                                <div className="market-row" style={{ color: '#66bdf5' }}>
+                                                    <span>🛢️ برميل النفط</span>
+                                                    <strong>${markets.crudeOil}</strong>
+                                                </div>
+                                            </div>
+                                        </>
                                     )}
 
-                                    {/* TELEGRAM BREAKING NEWS */}
+                                    {/* ---- TELEGRAM BREAKING NEWS ---- */}
+                                    {telegram.length > 0 && (
+                                        <div className="feed-section-label">📡 أخبار عاجلة مباشرة</div>
+                                    )}
                                     {telegram.map((post, i) => (
                                         <div key={`tg-${i}`} className="feed-card telegram-card">
                                             <div className="telegram-header">
-                                                <span className="telegram-source">{post.channel}</span>
-                                                <span className="feed-time" style={{ fontSize: '0.85rem' }}>{new Intl.DateTimeFormat('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }).format(new Date(post.date))}</span>
+                                                <span className="telegram-source">📢 {post.channel}</span>
+                                                <span className="feed-time">
+                                                    {new Intl.DateTimeFormat('ar-EG', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true }).format(new Date(post.date))}
+                                                </span>
                                             </div>
                                             <p>{post.text}</p>
                                         </div>
                                     ))}
 
+                                    {/* ---- STRIKES ---- */}
+                                    {intel.strikes?.length > 0 && (
+                                        <div className="feed-section-label">🔥 ضربات وعمليات</div>
+                                    )}
                                     {intel.strikes?.map((strike, i) => (
                                         <div key={`strike-${i}`} className="feed-card strike-card">
-                                            <span className="breaking-badge" style={{background: '#ff6b00'}}>ضربة صاروخية 🔥</span>
+                                            <span className="breaking-badge" style={{ background: '#ff6b00', width: 'fit-content' }}>ضربة صاروخية 🔥</span>
                                             <h4>{strike.target}</h4>
                                             <p>{strike.details}</p>
                                         </div>
                                     ))}
 
+                                    {/* ---- CONFLICT ZONES ---- */}
+                                    {intel.conflicts?.length > 0 && (
+                                        <div className="feed-section-label">⚔️ مناطق الصراع</div>
+                                    )}
                                     {intel.conflicts?.map((zone, i) => (
-                                        <div key={`conflict-${i}`} className="feed-card conflict-card highlight-hover">
+                                        <div key={`conflict-${i}`} className="feed-card conflict-card">
                                             <div className="feed-info">
                                                 <h4>{zone.city}</h4>
-                                                <p>الحالة: {zone.status} | الحدّة: {zone.intensity}</p>
+                                                <p>الحالة: {zone.status} &nbsp;|&nbsp; الحدّة: {zone.intensity}</p>
                                             </div>
                                         </div>
                                     ))}
 
-                                    {/* Removed Military Movements Divider per user request */}
-
-                                    {/* NAVY SHIPS */}
+                                    {/* ---- NAVY SHIPS ---- */}
+                                    {ships.length > 0 && (
+                                        <div className="feed-section-label">⛴ التحركات البحرية</div>
+                                    )}
                                     {ships.map((ship, i) => (
-                                        <div key={`shipf-${i}`} className="feed-card ship-card highlight-hover" style={{ borderRightColor: getNavyColor(ship.navy) }}>
-                                            <span className="feed-icon" style={{color: getNavyColor(ship.navy)}}>{ship.type === 'Submarine' ? '▼' : '⛴'}</span>
+                                        <div key={`shipf-${i}`} className="feed-card ship-card" style={{ borderColor: `${getNavyColor(ship.navy)}33` }}>
+                                            <span className="feed-icon" style={{ color: getNavyColor(ship.navy) }}>
+                                                {ship.type === 'Submarine' ? '▼' : '⛴'}
+                                            </span>
                                             <div className="feed-info">
-                                                <h4>{ship.name} ({getTranslation(ship.navy)})</h4>
-                                                <p>تتمركز حالياً في: {getTranslation(ship.region)}</p>
+                                                <h4>{ship.name}</h4>
+                                                <p>{getTranslation(ship.navy)} · {getTranslation(ship.region)}</p>
                                             </div>
                                         </div>
                                     ))}
 
-                                    {/* FLIGHTS */}
-                                    {flights.slice(0, 15).map((flight, i) => (
-                                        <div key={`flight-${i}`} className="feed-card flight-card highlight-hover">
-                                            <span className="feed-icon rotation-trans" style={{ transform: `rotate(${flight.heading - 45}deg)` }}>✈️</span>
+                                    {/* ---- FLIGHTS ---- */}
+                                    {flights.length > 0 && (
+                                        <div className="feed-section-label">✈️ الحركة الجوية</div>
+                                    )}
+                                    {flights.slice(0, 12).map((flight, i) => (
+                                        <div key={`flight-${i}`} className="feed-card flight-card">
+                                            <span className="feed-icon" style={{ transform: `rotate(${flight.heading - 45}deg)`, display: 'inline-block' }}>✈️</span>
                                             <div className="feed-info">
-                                                <h4>رقم النداء: {flight.callsign || 'مدنية'}</h4>
-                                                <p>طائرة تجارية | الارتفاع: {flight.altitude} قدم</p>
+                                                <h4>{flight.callsign || 'طائرة مدنية'}</h4>
+                                                <p>الارتفاع: {flight.altitude?.toLocaleString()} قدم · {flight.speed} عقدة</p>
                                             </div>
                                         </div>
                                     ))}
+
                                 </div>
+
                             )}
                         </div>
                     </div>

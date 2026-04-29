@@ -1,3 +1,7 @@
+/* =============================================
+   NEWS MODAL - PREMIUM REDESIGN
+   ============================================= */
+
 .news-modal-overlay {
     position: fixed;
     inset: 0;
@@ -16,26 +20,29 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    animation: fadeInPage 0.3s ease-out;
 }
 
+/* =============================================
+   HEADER
+   ============================================= */
 .news-header {
-    padding: 15px 24px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 14px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: #111;
+    background: linear-gradient(135deg, #0d0d0d 0%, #1a1a1a 100%);
     color: white;
     z-index: 10;
 }
 
 .news-header h2 {
-    font-size: 1.2rem;
+    font-size: 1.15rem;
     font-weight: 700;
     margin: 0;
     flex: 1;
     margin-left: 12px;
+    color: #fff;
 }
 
 .location-badge {
@@ -60,594 +67,376 @@
 
 @keyframes blink {
     0% { opacity: 1; }
-    50% { opacity: 0.4; }
+    50% { opacity: 0.3; }
     100% { opacity: 1; }
 }
 
 .close-btn {
-    background: rgba(255,255,255,0.1);
-    border: none;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.1);
     cursor: pointer;
     padding: 8px;
     border-radius: 50%;
     transition: background 0.2s;
     color: white;
-    width: 40px;
-    height: 40px;
+    width: 38px;
+    height: 38px;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
 }
+.close-btn:hover { background: rgba(255,255,255,0.15); }
 
-.close-btn svg {
-    width: 24px;
-    height: 24px;
-}
-
-.close-btn:hover {
-    background: rgba(255,255,255,0.2);
-}
-
+/* =============================================
+   LAYOUT
+   ============================================= */
 .news-dashboard-content {
     flex: 1;
     display: flex;
     flex-direction: row;
-    height: calc(100vh - 70px);
+    height: calc(100vh - 62px);
+    position: relative;
 }
 
 .news-map-container {
     flex: 1;
     position: relative;
     background: #000;
+    height: 100%;
 }
 
-.mil-aircraft-marker, .naval-marker {
-    cursor: pointer;
-    font-family: Arial, sans-serif;
-}
-
-/* Alert flash animation */
-@keyframes alert-flash {
-  0%, 100% { background-color: rgba(127, 29, 29, 0.3); box-shadow: inset 0 0 10px rgba(127, 29, 29, 0.5); }
-  50% { background-color: rgba(127, 29, 29, 0.6); box-shadow: inset 0 0 20px rgba(255, 59, 48, 0.8); }
-}
-
-.alert-flash {
-  animation: alert-flash 1.5s ease-in-out infinite;
-}
-
-/* Map highlight pulse */
-@keyframes highlight-pulse {
-  0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.5); opacity: 0.5; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-.highlight-pulse {
-  animation: highlight-pulse 1.5s ease-in-out infinite;
-  display: inline-block;
-}
-
-/* Radar sweep animation */
-@keyframes radar-sweep {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.radar-sweep {
-  animation: radar-sweep 4s linear infinite;
-  display: inline-block;
-}
-
-/* Pulse Dot */
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; box-shadow: 0 0 5px var(--green, #00ff88); }
-  50% { opacity: 0.3; box-shadow: 0 0 0px transparent; }
-}
-
-.sidebar-title-container .status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--green, #00ff88);
-  animation: pulse-dot 2s ease-in-out infinite;
-}
-
-/* Radar pulsing effect for ships isn't required anymore as radar-sweep replaced it */
-
-/* Polished Popups */
-.maplibregl-popup-content {
-    background: transparent !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-}
-.maplibregl-popup-tip {
-    border-top-color: rgba(15, 20, 25, 0.95) !important;
-}
-.feature-popup {
-    background: rgba(15, 20, 25, 0.95);
-    border: 1px solid #333;
-    border-radius: 12px;
-    padding: 15px 18px;
-    min-width: 240px;
-    max-width: 85vw; /* Prevent overflow on mobiles */
-    color: #e0e0e0;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.8);
-    font-family: 'Tajawal', sans-serif;
-    position: relative;
-    backdrop-filter: blur(5px);
-    word-break: break-word;
-}
-.popup-close-btn {
-    position: absolute;
-    top: 10px;
-    left: 12px;
-    right: auto;
-    background: transparent;
-    border: none;
-    color: #ff3b30;
-    font-size: 24px;
-    cursor: pointer;
-    transition: transform 0.2s;
-    line-height: 1;
-}
-.popup-close-btn:hover {
-    transform: scale(1.2);
-}
-.popup-title {
-    margin: 0 0 10px 0;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #444;
-    font-size: 16px;
-}
-.popup-details p {
-    margin: 6px 0;
-    font-size: 13px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.popup-details span { color: #aaa; }
-.maplibregl-popup-close-button {
-    display: none !important; /* Hide default maplibre close button */
-}
-
-/* Sidebar List Styling */
-.sidebar-title-container {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 15px;
-}
-
-
-.breaking-card {
-    background: linear-gradient(145deg, rgba(255,59,48,0.15) 0%, rgba(30,30,30,1) 100%);
-    border: 1px solid rgba(255,59,48,0.4);
-    border-right: 4px solid #ff3b30; /* Arabic RTL */
-    border-left: none;
-}
-.card-header {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 6px;
-}
-.breaking-badge {
-    background: #ff3b30;
-    color: white;
-    font-size: 11px;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-weight: bold;
-}
-
-.section-divider {
-    color: #888;
-    font-size: 13px;
-    margin: 20px 0 10px;
-    text-align: center;
-    border-bottom: 1px solid #333;
-    line-height: 0.1em;
-}
-.section-divider::after {
-    content: "التحركات العسكرية المباشرة";
-    background: #1e1e1e;
-    padding: 0 10px;
-}
-
-.highlight-hover:hover {
-    background: #333;
-    transform: translateX(5px);
-    cursor: pointer;
-}
-
-.city-flash-marker {
-    animation: alert-flash 1.5s ease-in-out infinite;
-}
-
-.city-label {
-    background: rgba(0, 0, 0, 0.85);
-    color: white;
-    font-size: 11px;
-    padding: 3px 6px;
-    border-radius: 4px;
-    margin-top: 5px;
-    margin-left: 10px;
-    white-space: nowrap;
-    border: 1px solid #ff3b30;
-    box-shadow: 0 0 5px rgba(255, 59, 48, 0.4);
-}
-
-.market-card {
-    background: #111;
-    border-left-color: #28a745;
-    flex-direction: row !important;
-    justify-content: space-around;
-}
-
-.strike-card {
-    border-left-color: #ff6b00;
-}
-.strike-card h4 {
-    color: #ff6b00;
-    margin: 5px 0;
-}
-.strike-card p {
-    margin: 0;
-    font-size: 12px;
-    color: #aaa;
-}
-.telegram-card {
-    border-left-color: #0088cc;
-    background: linear-gradient(145deg, rgba(0,136,204,0.1) 0%, rgba(30,30,30,1) 100%);
-}
-.telegram-card h4 {
-    color: #0088cc !important;
-}
-.telegram-card p {
-    color: #ddd;
-    line-height: 1.4;
-    font-size: 13px;
-}
-.telegram.news-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 20px;
-    background: #1e1e1e;
-    border-bottom: 2px solid #333;
-}
-
-.news-header h2 {
-    margin: 0 auto;
-    color: #fff;
-    font-size: 20px;
-    font-weight: bold;
-    text-align: center;
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-}
-
-.refresh-action-btn {
-    width: 100%;
-    padding: 12px;
-    background: #ff3b30;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-weight: bold;
-    font-size: 14px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: transform 0.2s, background 0.3s;
-    margin-bottom: 15px;
-    box-shadow: 0 4px 10px rgba(255, 59, 48, 0.4);
-}
-.refresh-action-btn:hover {
-    background: #cc0000;
-    transform: translateY(-2px);
-}
-.refresh-action-btn.spinning svg {
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin { 100% { transform: rotate(360deg); } }
-
-/* Toggle News Button on Map */
+/* =============================================
+   TOGGLE BUTTON ON MAP
+   ============================================= */
 .toggle-news-btn {
     position: absolute;
     bottom: 80px;
     left: 50%;
     transform: translateX(-50%);
-    background: #ff3b30;
+    background: linear-gradient(135deg, #ff3b30, #c0392b);
     color: #fff;
     border: none;
-    padding: 12px 24px;
+    padding: 13px 28px;
     border-radius: 30px;
-    font-size: 16px;
-    font-weight: bold;
+    font-size: 15px;
+    font-weight: 700;
     cursor: pointer;
-    box-shadow: 0 5px 15px rgba(255, 59, 48, 0.5);
+    box-shadow: 0 8px 25px rgba(255, 59, 48, 0.45);
     z-index: 10;
     display: flex;
     align-items: center;
     gap: 8px;
-    transition: all 0.3s;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    letter-spacing: 0.3px;
 }
 .toggle-news-btn:hover {
-    background: #e60000;
-    transform: translateX(-50%) scale(1.05);
+    transform: translateX(-50%) translateY(-2px);
+    box-shadow: 0 12px 30px rgba(255, 59, 48, 0.6);
 }
 
-.close-layer-btn {
-    width: 100%;
-    background: #333;
-    color: white;
-    border: none;
-    padding: 12px;
-    border-radius: 8px;
-    font-weight: bold;
-    margin-bottom: 20px;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-.close-layer-btn:hover { background: #444; }
-
-/* Sidebar Styles (Now a sliding layer) */
-.news-modal-overlay {
-    overflow: hidden;
-}
-.news-panel {
-    position: relative;
-    overflow: hidden;
-}
-.news-dashboard-content {
-    position: relative;
-    height: calc(100vh - 100px);
-}
-.news-map-container {
-    height: 100%;
-}
-
-.incident-pin-marker {
-    font-size: 30px;
-    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.8));
-    animation: marker-bounce 2s infinite ease-in-out;
-    cursor: pointer;
-    line-height: 1;
-}
-
-@keyframes marker-bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-8px) scale(1.1); }
-}
-
+/* =============================================
+   NEWS SIDEBAR (SLIDING PANEL)
+   ============================================= */
 .news-sidebar {
     position: absolute;
     top: 0;
     right: 0;
     height: 100%;
     width: 100%;
-    max-width: 450px;
-    background: rgba(10, 12, 16, 0.98);
-    backdrop-filter: blur(15px);
+    max-width: 460px;
+    background: #0c0e12;
     display: flex;
     flex-direction: column;
-    padding: 30px;
-    padding-top: calc(env(safe-area-inset-top) + 70px) !important;
-    overflow-y: auto;
-    border-left: 1px solid #333;
+    overflow: hidden;
+    border-left: 1px solid rgba(255,255,255,0.08);
     z-index: 50;
     transform: translateX(100%);
-    transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease;
+    transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
     visibility: hidden;
-    opacity: 0;
     font-family: 'Tajawal', sans-serif;
 }
 
 .news-sidebar.open {
     transform: translateX(0);
     visibility: visible;
-    opacity: 1;
 }
 
-/* Mobile Adjustments for Full Page Overlay */
-@media (max-width: 768px) {
-    .news-dashboard-content {
-        flex-direction: column;
-    }
-    .news-sidebar {
-        padding: 20px;
-        padding-top: calc(env(safe-area-inset-top) + 65px) !important;
-        border-radius: 0;
-    }
-    .news-map-container {
-        flex: 1;
-        min-height: 50vh;
-    }
-    .news-header h2 {
-        font-size: 16px;
-    }
+/* =============================================
+   SIDEBAR HEADER
+   ============================================= */
+.sidebar-action-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    background: linear-gradient(180deg, #111418 0%, #0c0e12 100%);
+    flex-shrink: 0;
+    gap: 12px;
 }
 
-.admin-actions {
-    padding: 15px;
-    background: #000;
-    border-bottom: 1px solid #333;
-}
-
-.action-toggle-btn {
-    width: 100%;
-    padding: 12px;
-    background: #fbab15;
-    color: white;
-    font-weight: bold;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-.action-toggle-btn.active {
-    background: #dc3545;
-}
-
-.news-form-container {
-    padding: 20px;
-}
-
-.sidebar-title {
-    font-size: 1.1rem;
-    margin-top: 0;
-    margin-bottom: 15px;
-    color: #fbab15;
-    border-bottom: 1px solid #333;
-    padding-bottom: 10px;
-}
-
-.form-group {
-    margin-bottom: 15px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 5px;
-    color: #ccc;
-    font-size: 14px;
-}
-
-.form-group input,
-.form-group textarea {
-    width: 100%;
-    padding: 10px;
-    background: #2a2a2a;
-    border: 1px solid #444;
-    color: white;
-    border-radius: 6px;
-    font-family: inherit;
-}
-
-.submit-news-btn {
-    width: 100%;
-    padding: 12px;
-    background: #28a745;
-    color: white;
-    font-weight: bold;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-}
-
-.live-feed-panel {
-    padding: 20px;
+.sidebar-title-minimal {
     flex: 1;
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin: 0;
+    color: #fff;
+    text-align: center;
+    letter-spacing: 0.2px;
+}
+
+.sidebar-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.07);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+    flex-shrink: 0;
+}
+.sidebar-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(1.08);
+}
+.back-btn { border-color: rgba(255,255,255,0.2); }
+.refresh-btn {
+    background: rgba(251, 171, 21, 0.1);
+    color: #fbab15;
+    border-color: rgba(251, 171, 21, 0.25);
+}
+.refresh-btn:hover { background: rgba(251, 171, 21, 0.2); }
+.spinning svg { animation: spin-refresh 0.8s linear infinite; }
+@keyframes spin-refresh { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* =============================================
+   FEED PANEL + SCROLL
+   ============================================= */
+.live-feed-panel {
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+.live-feed-panel::-webkit-scrollbar { width: 4px; }
+.live-feed-panel::-webkit-scrollbar-track { background: transparent; }
+.live-feed-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+
+.live-feed-loading {
+    text-align: center;
+    color: #666;
+    margin-top: 50px;
+    font-size: 0.95rem;
+    animation: blink 1.5s infinite;
 }
 
 .live-feed-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    padding: 12px;
+    gap: 0;
 }
 
+/* =============================================
+   BASE CARD - REDESIGNED
+   ============================================= */
 .feed-card {
-    background: #2a2a2a;
-    padding: 12px;
-    border-radius: 8px;
+    background: #13161c;
+    border-radius: 12px;
+    padding: 14px 16px;
     display: flex;
     flex-direction: column;
-    border-left: 4px solid #555;
-    transition: transform 0.2s;
+    gap: 8px;
+    border: 1px solid rgba(255,255,255,0.06);
+    margin-bottom: 10px;
+    transition: transform 0.18s ease, background 0.18s ease;
+    will-change: transform;
+    position: relative;
+    overflow: hidden;
 }
-
+.feed-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 3px;
+    height: 100%;
+    background: #333;
+}
 .feed-card:hover {
-    transform: translateX(-5px);
+    background: #1a1e27;
+    transform: translateY(-1px);
 }
 
+/* =============================================
+   BREAKING / ALERT CARDS
+   ============================================= */
 .alert-card {
-    border-left-color: #ff3b30;
+    background: linear-gradient(135deg, rgba(255,59,48,0.12) 0%, #13161c 70%);
+    border-color: rgba(255,59,48,0.2);
+}
+.alert-card::before { background: #ff3b30; }
+
+@keyframes alert-glow {
+    0%, 100% { box-shadow: 0 0 0 rgba(255,59,48,0); }
+    50% { box-shadow: 0 0 18px rgba(255,59,48,0.22); }
+}
+.breaking-card { animation: alert-glow 2.5s ease-in-out infinite; }
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
 }
 
-.ship-card, .flight-card {
-    flex-direction: row;
-    align-items: center;
-    gap: 12px;
+.breaking-badge {
+    background: #ff3b30;
+    color: white;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
 }
 
 .feed-time {
-    font-size: 11px;
-    color: #aaa;
-    margin-bottom: 4px;
+    font-size: 10.5px;
+    color: #555;
+    flex-shrink: 0;
 }
 
 .feed-threat {
-    margin: 0 0 5px 0;
-    font-size: 14px;
-    color: #ff3b30;
+    margin: 0;
+    font-size: 14.5px;
+    font-weight: 700;
+    color: #ff5f54;
+    line-height: 1.4;
 }
 
 .feed-locations {
     margin: 0;
-    font-size: 13px;
-    color: #ddd;
-}
-
-.feed-icon {
-    font-size: 24px;
-}
-
-.feed-info h4 {
-    margin: 0;
-    font-size: 14px;
-    color: #fff;
-}
-
-.feed-info p {
-    margin: 2px 0 0 0;
     font-size: 12px;
-    color: #bbb;
+    color: #888;
+    line-height: 1.5;
 }
 
-.live-feed-loading, .empty-state {
-    text-align: center;
-    color: #777;
-    margin-top: 30px;
+/* =============================================
+   MARKET CARD
+   ============================================= */
+.market-card {
+    background: linear-gradient(135deg, rgba(40,167,69,0.1) 0%, #13161c 100%);
+    border-color: rgba(40,167,69,0.2);
+    flex-direction: row !important;
+    align-items: center;
+    justify-content: space-around;
+    padding: 16px;
+    gap: 12px;
+}
+.market-card::before { background: #28a745; }
+
+.market-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    font-size: 11px;
+    color: #888;
+}
+.market-row strong {
+    font-size: 16px;
+    font-weight: 700;
 }
 
-@media (max-width: 768px) {
-    .news-dashboard-content {
-        display: block;
-    }
-    .news-sidebar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        max-width: 100%;
-        background: #0f1419;
-        border: none;
-        border-radius: 0;
-        z-index: 99999;
-    }
-    .news-map-container {
-        height: calc(100vh - 100px);
-    }
+/* =============================================
+   TELEGRAM CARD
+   ============================================= */
+.telegram-card {
+    background: linear-gradient(135deg, rgba(0,136,204,0.1) 0%, #13161c 100%);
+    border-color: rgba(0,136,204,0.18);
 }
+.telegram-card::before { background: #0088cc; }
+
+.telegram-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.telegram-source {
+    font-size: 11px;
+    font-weight: 800;
+    color: #0088cc;
+    background: rgba(0,136,204,0.12);
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+
+.telegram-card p {
+    margin: 0;
+    font-size: 13.5px;
+    color: #ccc;
+    line-height: 1.6;
+}
+
+/* =============================================
+   STRIKE CARD
+   ============================================= */
+.strike-card {
+    background: linear-gradient(135deg, rgba(255,107,0,0.1) 0%, #13161c 100%);
+    border-color: rgba(255,107,0,0.2);
+}
+.strike-card::before { background: #ff6b00; }
+.strike-card h4 { margin: 0; font-size: 14px; font-weight: 700; color: #ff7b1a; }
+.strike-card p { margin: 0; font-size: 12.5px; color: #999; line-height: 1.5; }
+
+/* =============================================
+   CONFLICT / ZONE CARD
+   ============================================= */
+.conflict-card::before { background: #fbab15; }
+.conflict-card .feed-info h4 { color: #fbab15; font-size: 14px; font-weight: 700; margin: 0; }
+.conflict-card .feed-info p { margin: 3px 0 0; font-size: 12px; color: #888; }
+
+/* =============================================
+   SHIP / FLIGHT CARDS
+   ============================================= */
+.ship-card, .flight-card {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 14px;
+}
+.feed-icon {
+    font-size: 22px;
+    flex-shrink: 0;
+    line-height: 1;
+}
+.feed-info { flex: 1; min-width: 0; }
+.feed-info h4 { margin: 0; font-size: 13.5px; font-weight: 700; color: #e8e8e8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.feed-info p { margin: 3px 0 0; font-size: 11.5px; color: #777; }
+
+/* =============================================
+   MAP MARKERS
+   ============================================= */
+.mil-aircraft-marker, .naval-marker { cursor: pointer; }
 
 .city-flash-marker {
     position: relative;
     cursor: pointer;
-    animation: alert-flash 1.5s infinite;
+    animation: city-pulse 2s ease-in-out infinite;
+    will-change: transform, opacity;
 }
-
-@keyframes alert-flash {
-    0%, 100% { opacity: 0.8; transform: scale(1); }
-    50% { opacity: 1; transform: scale(1.2); }
+@keyframes city-pulse {
+    0%, 100% { opacity: 0.75; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.3); }
 }
 
 .city-label {
@@ -655,189 +444,199 @@
     top: 100%;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(15, 20, 25, 0.85);
+    background: rgba(10, 12, 16, 0.9);
     color: white;
     padding: 3px 8px;
     border-radius: 4px;
-    font-size: 13px;
+    font-size: 11.5px;
     white-space: nowrap;
-    margin-top: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    font-family: 'Tajawal', inherit, sans-serif;
-    font-weight: bold;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+    margin-top: 5px;
+    border: 1px solid rgba(255,59,48,0.4);
+    font-family: 'Tajawal', sans-serif;
+    font-weight: 700;
+    text-shadow: 0 1px 4px rgba(0,0,0,1);
+    pointer-events: none;
 }
 
-/* Premium Incident Popup Styles */
-.premium-incident-popup {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+.incident-pin-marker {
+    font-size: 26px;
+    filter: drop-shadow(0 3px 6px rgba(0,0,0,0.8));
+    animation: pin-bounce 2.5s ease-in-out infinite;
+    cursor: pointer;
+    will-change: transform;
 }
+@keyframes pin-bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+}
+
+/* =============================================
+   MAP POPUPS
+   ============================================= */
+.maplibregl-popup-content {
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+.maplibregl-popup-tip { border-top-color: rgba(12, 14, 18, 0.97) !important; }
+.maplibregl-popup-close-button { display: none !important; }
+
+.feature-popup {
+    background: rgba(12, 14, 18, 0.97);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 16px 18px;
+    min-width: 230px;
+    max-width: 85vw;
+    color: #e0e0e0;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.8);
+    font-family: 'Tajawal', sans-serif;
+    position: relative;
+    backdrop-filter: blur(10px);
+    word-break: break-word;
+}
+.popup-close-btn {
+    position: absolute;
+    top: 10px;
+    left: 12px;
+    background: transparent;
+    border: none;
+    color: #666;
+    font-size: 22px;
+    cursor: pointer;
+    transition: color 0.2s;
+    line-height: 1;
+}
+.popup-close-btn:hover { color: #ff3b30; }
+
+.popup-title {
+    margin: 0 0 10px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    font-size: 15px;
+    font-weight: 700;
+}
+.popup-details p {
+    margin: 7px 0;
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+.popup-details span { color: #777; }
+.popup-details strong { color: #eee; }
+
+/* =============================================
+   PREMIUM INCIDENT POPUP
+   ============================================= */
+.premium-incident-popup { display: flex; flex-direction: column; gap: 10px; }
 .premium-incident-popup .header-incident {
     color: #ff3b30;
-    font-size: 1.15rem;
+    font-size: 1.1rem;
     font-weight: 900;
     margin: 0;
-    padding-bottom: 12px;
-    border-bottom: 2px solid rgba(255, 59, 48, 0.3);
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255,59,48,0.25);
     display: flex;
     align-items: center;
     gap: 8px;
 }
-.pulse-icon {
-    animation: flash 1.5s infinite;
-}
+.pulse-icon { animation: flash 1.5s infinite; }
 @keyframes flash {
-    0%, 100% { opacity: 1; text-shadow: 0 0 10px #ff3b30; }
-    50% { opacity: 0.4; text-shadow: none; }
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
 }
 .incident-meta-details {
-    background: rgba(0, 0, 0, 0.4);
-    padding: 12px;
+    background: rgba(0,0,0,0.35);
+    padding: 10px 12px;
     border-radius: 8px;
     display: flex;
     flex-direction: column;
     gap: 6px;
-    border-right: 2px solid #555;
+    border-right: 2px solid rgba(255,255,255,0.1);
 }
-.meta-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.9rem;
-}
-.meta-label {
-    color: #a0a0a0;
-    font-weight: 600;
-}
-.meta-value {
-    color: #ffffff;
-    font-weight: 700;
-}
-.loc-highlight {
-    color: #fbab15;
-}
+.meta-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.88rem; gap: 8px; }
+.meta-label { color: #888; font-weight: 600; }
+.meta-value { color: #fff; font-weight: 700; text-align: left; }
+.loc-highlight { color: #fbab15; }
 .incident-description {
-    background: linear-gradient(145deg, rgba(255,59,48,0.1), rgba(0,0,0,0));
+    background: rgba(255,59,48,0.06);
     border-right: 3px solid #ff3b30;
-    padding: 12px;
+    padding: 10px 12px;
     border-radius: 6px;
-    font-size: 1rem;
-    line-height: 1.6;
-    color: #e0e0e0;
+    font-size: 0.95rem;
+    line-height: 1.65;
+    color: #ddd;
 }
 
-/* Mobile Responsiveness for Premium Popups */
+/* =============================================
+   MOBILE
+   ============================================= */
+@media (max-width: 768px) {
+    .news-dashboard-content { flex-direction: column; }
+    .news-map-container { height: calc(100vh - 62px); }
+    .news-sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100vw;
+        max-width: 100%;
+        height: 100vh;
+        border: none;
+        border-radius: 0;
+        z-index: 99999;
+    }
+    .meta-row { flex-direction: column; align-items: flex-start; gap: 2px; }
+    .feature-popup { min-width: 200px; padding: 12px; }
+}
+
 @media (max-width: 480px) {
-    .feature-popup {
-        min-width: 200px;
-        padding: 12px;
-    }
-    .premium-incident-popup .header-incident {
-        font-size: 1rem;
-        padding-bottom: 8px;
-    }
-    .meta-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
-        margin-bottom: 4px;
-    }
-    .incident-meta-details {
-        padding: 10px;
-    }
-    .incident-description {
-        font-size: 0.9rem;
-        padding: 10px;
-    }
-    .meta-value {
-        font-size: 0.85rem;
-    }
+    .sidebar-action-header { padding: 14px 14px 12px; }
+    .live-feed-list { padding: 8px; }
+    .feed-card { padding: 12px 14px; }
 }
 
-/* News Sidebar Header Revision */
-.sidebar-action-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    margin-bottom: 25px;
-    gap: 15px;
-    padding-bottom: 15px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+/* =============================================
+   ADMIN / FORM
+   ============================================= */
+.admin-actions { padding: 15px; background: #000; border-bottom: 1px solid #222; }
+.action-toggle-btn {
+    width: 100%; padding: 11px;
+    background: #fbab15; color: #000;
+    font-weight: 800; border: none; border-radius: 8px; cursor: pointer;
+    transition: background 0.2s;
+}
+.action-toggle-btn.active { background: #dc3545; color: #fff; }
+.news-form-container { padding: 20px; }
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; margin-bottom: 5px; color: #bbb; font-size: 13px; }
+.form-group input, .form-group textarea {
+    width: 100%; padding: 10px 12px;
+    background: #1e2028; border: 1px solid rgba(255,255,255,0.1);
+    color: white; border-radius: 8px; font-family: inherit; font-size: 14px;
+}
+.submit-news-btn {
+    width: 100%; padding: 12px;
+    background: #28a745; color: white;
+    font-weight: 700; border: none; border-radius: 8px; cursor: pointer;
 }
 
-.sidebar-btn {
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
-    border: 1.5px solid rgba(255, 255, 255, 0.15);
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    position: relative;
-    overflow: hidden;
-}
-
-.sidebar-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-    transform: scale(1.1);
-}
-
-.back-btn {
-    background: rgba(255, 255, 255, 0.15);
-    color: #ffffff !important;
-    border-color: rgba(255, 255, 255, 0.3);
-}
-
-.back-btn svg {
-    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
-}
-
-
-.refresh-btn {
-    background: rgba(251, 171, 21, 0.1);
-    color: #fbab15;
-    border-color: rgba(251, 171, 21, 0.2);
-}
-
-.refresh-btn:hover {
-    background: rgba(251, 171, 21, 0.2);
-    box-shadow: 0 0 15px rgba(251, 171, 21, 0.2);
-}
-
-.sidebar-title-minimal {
-    flex: 1;
-    font-size: 1.1rem;
-    font-weight: 700;
-    margin: 0;
-    color: #fff;
+.section-divider {
+    color: #444;
+    font-size: 11px;
+    margin: 16px 0 8px;
     text-align: center;
-    letter-spacing: -0.5px;
+    border-bottom: 1px solid #222;
+    line-height: 0.1em;
+}
+.section-divider::after {
+    content: "التحركات العسكرية المباشرة";
+    background: #0c0e12;
+    padding: 0 10px;
+    color: #555;
 }
 
-.spinning svg {
-    animation: spin-refresh 0.8s linear infinite;
-}
-
-@keyframes spin-refresh {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-@media (max-width: 480px) {
-    .sidebar-title-minimal {
-        font-size: 0.95rem;
-    }
-    .sidebar-btn {
-        width: 40px;
-        height: 40px;
-    }
-}
-
-
+@keyframes spin { 100% { transform: rotate(360deg); } }
