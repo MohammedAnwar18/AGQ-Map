@@ -93,6 +93,7 @@
   flex-direction: column;
   font-family: 'Tajawal', sans-serif;
   direction: rtl;
+  box-sizing: border-box;
 }
 
 /* Animated Background */
@@ -137,6 +138,8 @@
   margin: 0 auto;
   width: 100%;
   padding: 16px;
+  min-height: 0;
+  box-sizing: border-box;
 }
 
 /* Header */

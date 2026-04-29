@@ -362,29 +362,50 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                                                 {shop.products && shop.products.length > 0 && (
                                                                     <div className="ai-place-products" style={{ marginBottom: '12px', paddingTop: '0', borderTop: 'none' }}>
                                                                         {shop.products.slice(0, 3).map(p => (
-                                                                            <div key={p.id} className="ai-prod-item" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
-                                                                                <span className="ai-prod-name" style={{ color: 'var(--text-secondary)' }}>{p.name}</span>
-                                                                                <span className="ai-prod-price" style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{p.price} ₪</span>
+                                                                            <div key={p.id} className="ai-prod-item" style={{ 
+                                                                                display: 'flex', 
+                                                                                alignItems: 'center', 
+                                                                                gap: '10px', 
+                                                                                fontSize: '13px', 
+                                                                                marginBottom: '8px',
+                                                                                padding: '6px',
+                                                                                background: 'rgba(255,255,255,0.03)',
+                                                                                borderRadius: '8px',
+                                                                                border: '1px solid rgba(255,255,255,0.05)'
+                                                                            }}>
+                                                                                {p.image_url && viewMode === 'grid' && (
+                                                                                    <img src={getImageUrl(p.image_url)} alt={p.name} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px' }} />
+                                                                                )}
+                                                                                <div style={{ flex: 1, display: 'flex', flexDirection: viewMode === 'grid' ? 'column' : 'row', justifyContent: viewMode === 'list' ? 'space-between' : 'center', alignItems: viewMode === 'list' ? 'center' : 'flex-start', gap: '4px' }}>
+                                                                                    <span className="ai-prod-name" style={{ color: 'var(--text-primary)', fontWeight: '500' }}>{p.name}</span>
+                                                                                    <span className="ai-prod-price" style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{p.price} ₪</span>
+                                                                                </div>
                                                                             </div>
                                                                         ))}
                                                                     </div>
                                                                 )}
 
-                                                                <div className="ai-nav-options" style={{ display: 'flex', gap: '8px', marginTop: '5px' }}>
-                                                                    <button className="ai-nav-btn" onClick={() => onNavigate(shop, 'walking')} style={{ flex: 1, padding: '10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width: '16px', height: '16px'}}>
-                                                                            <path d="M13 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM6 14l3-3 4-4 3 3 4-2M8.5 22l.5-5 2-4 2 5 .5 5"/>
+                                                                {shop.latitude && shop.longitude && (
+                                                                    <div className="ai-place-coordinates" style={{ 
+                                                                        display: 'flex', 
+                                                                        alignItems: 'center', 
+                                                                        justifyContent: 'center', 
+                                                                        gap: '6px',
+                                                                        padding: '10px',
+                                                                        background: 'var(--surface)',
+                                                                        border: '1px solid var(--border)',
+                                                                        borderRadius: '8px',
+                                                                        color: 'var(--text-muted)',
+                                                                        fontSize: '12px',
+                                                                        marginTop: '10px',
+                                                                        direction: 'ltr'
+                                                                    }}>
+                                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width: '14px', height: '14px', flexShrink: 0}}>
+                                                                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
                                                                         </svg>
-                                                                        مشي
-                                                                    </button>
-                                                                    <button className="ai-nav-btn" onClick={() => onNavigate(shop, 'driving')} style={{ flex: 1, padding: '10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width: '16px', height: '16px'}}>
-                                                                            <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/>
-                                                                            <circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>
-                                                                        </svg>
-                                                                        سيارة
-                                                                    </button>
-                                                                </div>
+                                                                        {Number(shop.latitude).toFixed(5)}, {Number(shop.longitude).toFixed(5)}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     ))}
