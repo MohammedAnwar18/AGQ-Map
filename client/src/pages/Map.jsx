@@ -524,8 +524,8 @@ const MapComponent = () => {
             }
 
             if (routeData) {
-                // Apply Smart Smoothing (Chaikin) to the route path for a premium look
-                const coordinates = smartSmoothPolyline(routeData.geometry.coordinates);
+                // Route smoothing removed because it distorts precise street navigation
+                const coordinates = routeData.geometry.coordinates;
 
                 setRoutePath({
                     type: 'Feature',
