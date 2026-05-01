@@ -132,6 +132,13 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                 fetchedResults = aiResp.results;
             }
             
+            // Normalize coordinates for navigation
+            fetchedResults = fetchedResults.map(r => ({
+                ...r,
+                latitude: r.latitude || r.location?.lat,
+                longitude: r.longitude || r.location?.lon
+            }));
+            
             setResults(fetchedResults);
 
             // Auto-Navigation Logic
