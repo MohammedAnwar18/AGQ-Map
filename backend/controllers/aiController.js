@@ -96,21 +96,21 @@ ${posts}
         
         messages.push({ role: "user", content: query });
 
-        const sambaApiKey = process.env.SAMBANOVA_API_KEY;
+        const groqApiKey = process.env.GROQ_API_KEY;
 
-        if (!sambaApiKey) {
-            console.error('SAMBANOVA_API_KEY is not defined in the environment variables.');
+        if (!groqApiKey) {
+            console.error('GROQ_API_KEY is not defined in the environment variables.');
             return res.status(500).json({ error: 'AI Assistant is currently unavailable due to missing configuration.' });
         }
 
-        const response = await axios.post('https://api.sambanova.ai/v1/chat/completions', {
-            model: "Meta-Llama-3.3-70B-Instruct",
+        const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
+            model: "llama-3.3-70b-versatile",
             messages: messages,
             temperature: 0.1,
             top_p: 0.1
         }, {
             headers: {
-                'Authorization': `Bearer ${sambaApiKey}`,
+                'Authorization': `Bearer ${groqApiKey}`,
                 'Content-Type': 'application/json'
             }
         });
@@ -122,7 +122,7 @@ ${posts}
             const text = replyContent.replace(/\`\`\`json/gi, '').replace(/\`\`\`/gi, '').trim();
             jsonResponse = JSON.parse(text);
         } catch (e) {
-            console.error("Failed to parse AI response from SambaNova:", replyContent);
+            console.error("Failed to parse AI response from Groq:", replyContent);
             jsonResponse = {
                 type: 'chat',
                 searchQuery: null,
@@ -133,11 +133,11 @@ ${posts}
         res.json(jsonResponse);
 
     } catch (error) {
-        console.error('SambaNova API Error:', error.response?.data || error.message);
+        console.error('Groq API Error:', error.response?.data || error.message);
         
         // Handle Rate Limit Exceeded explicitly
         if (error.response?.data?.error?.type === 'rate_limit_exceeded' || error.response?.status === 429) {
-            return res.status(429).json({ error: 'تم تجاوز الحد المسموح به للطلبات المجانية في خادم الذكاء الاصطناعي (SambaNova). يرجى المحاولة لاحقاً بعد قليل.' });
+            return res.status(429).json({ error: 'تم تجاوز الحد المسموح به للطلبات المجانية في خادم الذكاء الاصطناعي (Groq). يرجى المحاولة لاحقاً بعد قليل.' });
         }
         
         res.status(500).json({ error: 'Failed to process request' });
@@ -177,7 +177,7 @@ exports.recognizeProducts = async (req, res) => {
         
         console.log("Processing Real OCR Text:", ocrText);
 
-        const sambaApiKey = process.env.SAMBANOVA_API_KEY;
+        const groqApiKey = process.env.GROQ_API_KEY;
         const productListStr = products.map(p => `ID: ${p.id} | Name: ${p.name}`).join('\n');
 
         const aiMatchPrompt = `
@@ -199,13 +199,13 @@ exports.recognizeProducts = async (req, res) => {
 
         let detectedIds = [];
         try {
-            if (sambaApiKey) {
-                const response = await axios.post('https://api.sambanova.ai/v1/chat/completions', {
-                    model: "Meta-Llama-3.3-70B-Instruct",
+            if (groqApiKey) {
+                const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
+                    model: "llama-3.3-70b-versatile",
                     messages: [{ role: "user", content: aiMatchPrompt }],
                     temperature: 0.1
                 }, {
-                    headers: { 'Authorization': `Bearer ${sambaApiKey}`, 'Content-Type': 'application/json' }
+                    headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' }
                 });
 
                 const content = response.data.choices[0].message.content;
