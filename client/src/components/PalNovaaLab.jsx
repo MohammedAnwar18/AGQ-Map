@@ -120,11 +120,24 @@ const PalNovaaLab = ({ onClose }) => {
                 layers: allLayerIds
             });
             if (features && features.length > 0) {
+                const clickedFeature = features[0];
                 setSelectedFeatureInfo({
-                    properties: features[0].properties || {},
+                    properties: clickedFeature.properties || {},
                     longitude: e.lngLat.lng,
                     latitude: e.lngLat.lat
                 });
+
+                // Auto-open attribute table for the clicked layer
+                const layerId = clickedFeature.layer.id;
+                let originalLayerId = null;
+                if (layerId.startsWith('poly-')) originalLayerId = layerId.replace('poly-', '');
+                else if (layerId.startsWith('line-')) originalLayerId = layerId.replace('line-', '');
+                else if (layerId.startsWith('point-')) originalLayerId = layerId.replace('point-', '');
+
+                if (originalLayerId) {
+                    setActiveTableLayerId(originalLayerId);
+                    setShowBottomTable(true);
+                }
             } else {
                 setSelectedFeatureInfo(null);
             }
@@ -433,19 +446,6 @@ const onMouseLeave = (e) => {
                         </Map>
                     </div>
 
-                    <div className="map-overlay-card" style={{ pointerEvents: 'none' }}>
-                        <h4>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/></svg>
-                            إحصائيات الجلسة
-                        </h4>
-                        <div className="map-stat-row"><span>عدد الطبقات المرفوعة</span><span>{geoLayers.length}</span></div>
-                        <div className="map-stat-row"><span>الأشكال المرسومة يدوياً</span><span>{drawnFeatures.features.length}</span></div>
-                        {measurement !== null && (
-                            <div className="map-stat-row">
-                                <span style={{ color: '#EF4444', fontWeight: 'bold' }}>مسافة القياس</span>
-                                <span style={{ color: '#EF4444' }}>{measurement > 1000 ? (measurement / 1000).toFixed(2) + ' كم' : measurement.toFixed(1) + ' م'}</span>
-                            </div>
-                        )}
                     </div>
 
                     {/* Bottom Attribute Table Drawer */}
