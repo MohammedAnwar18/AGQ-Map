@@ -110,36 +110,47 @@ const PalNovaaLab = ({ onClose }) => {
         // If not drawing, check for feature clicks using a BBox for better click tolerance
         const map = mapRef.current?.getMap();
         if (map) {
-            const bbox = [
-                [e.point.x - 5, e.point.y - 5],
-                [e.point.x + 5, e.point.y + 5]
-            ];
-            const dynamicLayerIds = geoLayers.flatMap(l => [`poly-${l.id}`, `line-${l.id}`, `point-${l.id}`]);
-            const allLayerIds = [...dynamicLayerIds, 'drawn-polygon', 'drawn-line', 'drawn-point'];
-            const features = map.queryRenderedFeatures(bbox, {
-                layers: allLayerIds
-            });
-            if (features && features.length > 0) {
-                const clickedFeature = features[0];
-                setSelectedFeatureInfo({
-                    properties: clickedFeature.properties || {},
-                    longitude: e.lngLat.lng,
-                    latitude: e.lngLat.lat
-                });
+            try {
+                const bbox = [
+                    [e.point.x - 5, e.point.y - 5],
+                    [e.point.x + 5, e.point.y + 5]
+                ];
+                
+                // Get all features in BBox without specifying layers to avoid exceptions from non-existent layers
+                const features = map.queryRenderedFeatures(bbox);
+                
+                // Filter only our app's specific layer prefixes
+                const myFeatures = features.filter(f => 
+                    f.layer.id.startsWith('poly-') || 
+                    f.layer.id.startsWith('line-') || 
+                    f.layer.id.startsWith('point-') || 
+                    f.layer.id.startsWith('drawn-')
+                );
 
-                // Auto-open attribute table for the clicked layer
-                const layerId = clickedFeature.layer.id;
-                let originalLayerId = null;
-                if (layerId.startsWith('poly-')) originalLayerId = layerId.replace('poly-', '');
-                else if (layerId.startsWith('line-')) originalLayerId = layerId.replace('line-', '');
-                else if (layerId.startsWith('point-')) originalLayerId = layerId.replace('point-', '');
+                if (myFeatures && myFeatures.length > 0) {
+                    const clickedFeature = myFeatures[0];
+                    setSelectedFeatureInfo({
+                        properties: clickedFeature.properties || {},
+                        longitude: e.lngLat.lng,
+                        latitude: e.lngLat.lat
+                    });
 
-                if (originalLayerId) {
-                    setActiveTableLayerId(originalLayerId);
-                    setShowBottomTable(true);
+                    // Auto-open attribute table for the clicked layer
+                    const layerId = clickedFeature.layer.id;
+                    let originalLayerId = null;
+                    if (layerId.startsWith('poly-')) originalLayerId = layerId.replace('poly-', '');
+                    else if (layerId.startsWith('line-')) originalLayerId = layerId.replace('line-', '');
+                    else if (layerId.startsWith('point-')) originalLayerId = layerId.replace('point-', '');
+
+                    if (originalLayerId) {
+                        setActiveTableLayerId(originalLayerId);
+                        setShowBottomTable(true);
+                    }
+                } else {
+                    setSelectedFeatureInfo(null);
                 }
-            } else {
-                setSelectedFeatureInfo(null);
+            } catch (err) {
+                console.error("Map click query error:", err);
             }
         }
     };
