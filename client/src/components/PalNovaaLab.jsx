@@ -197,6 +197,7 @@ const onMouseLeave = (e) => {
                 const json = JSON.parse(event.target.result);
                 if (json.type === 'FeatureCollection' || json.type === 'Feature') {
                     setGeoJsonData(json);
+                    setShowBottomTable(true); // Auto-open the bottom attribute table
                     // Fly to data
                     if (mapRef.current) {
                         try {
