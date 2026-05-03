@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import Map, { Source, Layer, NavigationControl } from 'react-map-gl/maplibre';
+import Map, { Source, Layer, NavigationControl, Popup } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './PalNovaaLab.css';
 
@@ -41,6 +41,7 @@ const PalNovaaLab = ({ onClose }) => {
     }), []);
 
     const [drawingMode, setDrawingMode] = useState(null); // 'point', 'line', 'polygon', 'measure'
+    const [selectedFeatureInfo, setSelectedFeatureInfo] = useState(null);
     const [draftCoordinates, setDraftCoordinates] = useState([]);
     const [drawnFeatures, setDrawnFeatures] = useState({ type: 'FeatureCollection', features: [] });
     const [measurement, setMeasurement] = useState(null);
@@ -86,7 +87,21 @@ const PalNovaaLab = ({ onClose }) => {
                 return newCoords;
             });
         }
-    };
+        return;
+    }
+
+    // If not drawing, check for feature clicks
+    if (e.features && e.features.length > 0) {
+        const feature = e.features[0];
+        setSelectedFeatureInfo({
+            properties: feature.properties,
+            longitude: e.lngLat.lng,
+            latitude: e.lngLat.lat
+        });
+    } else {
+        setSelectedFeatureInfo(null);
+    }
+};
 
     const handleContextMenu = (e) => {
         if (drawingMode) {
@@ -289,6 +304,7 @@ const PalNovaaLab = ({ onClose }) => {
                             onMove={evt => setMapState(evt.viewState)}
                             onClick={handleMapClick}
                             onContextMenu={handleContextMenu}
+                            interactiveLayerIds={['palnovaa-lab-polygon', 'palnovaa-lab-line', 'palnovaa-lab-point', 'drawn-polygon', 'drawn-line', 'drawn-point']}
                             cursor={drawingMode ? 'crosshair' : 'grab'}
                             mapStyle={mapStyle}
                             style={{ width: '100%', height: '100%' }}
@@ -335,6 +351,38 @@ const PalNovaaLab = ({ onClose }) => {
                                     <Layer id="drawn-line" type="line" filter={['==', '$type', 'LineString']} paint={{ 'line-color': '#8B5CF6', 'line-width': 3 }} />
                                     <Layer id="drawn-point" type="circle" filter={['==', '$type', 'Point']} paint={{ 'circle-radius': 6, 'circle-color': '#8B5CF6', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' }} />
                                 </Source>
+                            )}
+
+                            {selectedFeatureInfo && (
+                                <Popup
+                                    longitude={selectedFeatureInfo.longitude}
+                                    latitude={selectedFeatureInfo.latitude}
+                                    anchor="bottom"
+                                    onClose={() => setSelectedFeatureInfo(null)}
+                                    closeOnClick={false}
+                                    offset={10}
+                                >
+                                    <div style={{ padding: '15px', maxWidth: '300px', maxHeight: '350px', overflowY: 'auto' }}>
+                                        <h4 style={{ margin: '0 0 10px 0', borderBottom: '1px solid rgba(6, 214, 242, 0.3)', paddingBottom: '8px', color: '#06D6F2', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+                                            </svg>
+                                            تفاصيل البيانات
+                                        </h4>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.9rem' }}>
+                                            {Object.keys(selectedFeatureInfo.properties).length === 0 ? (
+                                                <span style={{ color: 'rgba(255,255,255,0.5)' }}>لا توجد بيانات وصفية</span>
+                                            ) : (
+                                                Object.entries(selectedFeatureInfo.properties).map(([key, val]) => (
+                                                    <div key={key} style={{ background: 'rgba(255,255,255,0.05)', padding: '6px 8px', borderRadius: '4px', wordBreak: 'break-word' }}>
+                                                        <strong style={{ color: '#F5A623', display: 'block', fontSize: '0.8rem', marginBottom: '2px' }}>{key}</strong>
+                                                        <span style={{ fontFamily: 'var(--font-mono)' }}>{typeof val === 'object' ? JSON.stringify(val) : String(val)}</span>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                </Popup>
                             )}
                         </Map>
                     </div>

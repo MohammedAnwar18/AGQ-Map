@@ -764,3 +764,5 @@
     .tool svg { width: 18px; height: 18px; }
     .user-chip span { display: none; }
   }
+
+.palnovaa-lab-container .maplibregl-popup-content { background: rgba(10, 22, 40, 0.95) !important; border: 1px solid var(--accent-cyan) !important; color: white !important; padding: 0 !important; border-radius: 8px !important; box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important; backdrop-filter: blur(10px) !important; } .palnovaa-lab-container .maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: var(--accent-cyan) !important; } .palnovaa-lab-container .maplibregl-popup-close-button { color: white !important; font-size: 1.2rem !important; padding: 5px 10px !important; outline: none !important; } .palnovaa-lab-container .maplibregl-popup-close-button:hover { background: rgba(255,255,255,0.1) !important; border-radius: 0 8px 0 0 !important; }
