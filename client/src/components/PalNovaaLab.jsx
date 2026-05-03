@@ -46,6 +46,18 @@ const PalNovaaLab = ({ onClose }) => {
     const [drawnFeatures, setDrawnFeatures] = useState({ type: 'FeatureCollection', features: [] });
     const [measurement, setMeasurement] = useState(null);
 
+    const attributeKeys = useMemo(() => {
+        if (!geoJsonData || !geoJsonData.features) return [];
+        const keys = new Set();
+        for (let i = 0; i < Math.min(geoJsonData.features.length, 100); i++) {
+            const props = geoJsonData.features[i].properties;
+            if (props) {
+                Object.keys(props).forEach(k => keys.add(k));
+            }
+        }
+        return Array.from(keys);
+    }, [geoJsonData]);
+
     const haversineDistance = (coords1, coords2) => {
         const R = 6371e3;
         const toRad = x => x * Math.PI / 180;
@@ -432,6 +444,10 @@ const onMouseLeave = (e) => {
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                             التحليل
                         </button>
+                        <button className={`panel-tab ${activeTab === 'table' ? 'active' : ''}`} onClick={() => setActiveTab('table')}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                            البيانات
+                        </button>
                         <button className={`panel-tab ${activeTab === 'inspector' ? 'active' : ''}`} onClick={() => setActiveTab('inspector')}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                             التفاصيل
@@ -502,6 +518,60 @@ const onMouseLeave = (e) => {
                                             <h6>Heatmap</h6>
                                             <p>خريطة حرارية</p>
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'table' && (
+                            <div className="tab-content" style={{ padding: '0', display: 'flex', flexDirection: 'column', height: '100%' }}>
+                                <div className="panel-section" style={{ flex: 1, margin: 0, padding: '10px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                                    <div className="panel-section-title">
+                                        <span style={{ color: 'var(--accent-cyan)' }}>جدول البيانات الوصفية</span>
+                                    </div>
+                                    <div style={{ flex: 1, overflow: 'auto', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '6px', background: 'rgba(0,0,0,0.2)' }}>
+                                        {(!geoJsonData || !geoJsonData.features || geoJsonData.features.length === 0) ? (
+                                            <div style={{ padding: '30px', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: '40px', height: '40px', marginBottom: '10px', opacity: '0.5' }}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                                                <p>يرجى استيراد ملف GeoJSON أولاً لعرض البيانات الوصفية.</p>
+                                            </div>
+                                        ) : (
+                                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'right' }}>
+                                                <thead>
+                                                    <tr>
+                                                        <th style={{ padding: '10px 8px', borderBottom: '1px solid var(--accent-cyan)', background: 'rgba(6, 214, 242, 0.15)', color: '#06D6F2', position: 'sticky', top: 0, zIndex: 10 }}>#</th>
+                                                        {attributeKeys.map(key => (
+                                                            <th key={key} style={{ padding: '10px 8px', borderBottom: '1px solid var(--accent-cyan)', background: 'rgba(6, 214, 242, 0.15)', color: '#06D6F2', position: 'sticky', top: 0, whiteSpace: 'nowrap', zIndex: 10 }}>{key}</th>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {geoJsonData.features.map((feature, i) => (
+                                                        <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent', cursor: 'pointer', transition: 'background 0.2s' }} 
+                                                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(6, 214, 242, 0.1)'}
+                                                            onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent'}
+                                                            onClick={() => {
+                                                                setSelectedFeatureInfo({
+                                                                    properties: feature.properties,
+                                                                    longitude: mapState.longitude, 
+                                                                    latitude: mapState.latitude
+                                                                });
+                                                                setActiveTab('inspector');
+                                                            }}>
+                                                            <td style={{ padding: '8px', color: '#F5A623', borderLeft: '1px solid rgba(255,255,255,0.05)' }}>{i + 1}</td>
+                                                            {attributeKeys.map(key => {
+                                                                const val = feature.properties?.[key];
+                                                                return (
+                                                                    <td key={key} style={{ padding: '8px', whiteSpace: 'nowrap', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', borderLeft: '1px solid rgba(255,255,255,0.05)' }} title={val !== undefined && val !== null ? String(val) : ''}>
+                                                                        {val !== undefined && val !== null ? (typeof val === 'object' ? JSON.stringify(val) : String(val)) : <span style={{ color: 'rgba(255,255,255,0.2)' }}>-</span>}
+                                                                    </td>
+                                                                );
+                                                            })}
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        )}
                                     </div>
                                 </div>
                             </div>
