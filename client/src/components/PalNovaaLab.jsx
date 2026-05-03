@@ -138,14 +138,6 @@ const PalNovaaLab = ({ onClose }) => {
 
                     <div className="topbar-divider"></div>
 
-                    <nav className="breadcrumb">
-                        <span>المشاريع</span>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
-                        <span>تحليل مكاني</span>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
-                        <span className="current">جلسة نشطة</span>
-                    </nav>
-
                     <div className="topbar-spacer"></div>
 
                     <div className="topbar-actions">
@@ -194,7 +186,7 @@ const PalNovaaLab = ({ onClose }) => {
                             {...mapState}
                             onMove={evt => setMapState(evt.viewState)}
                             mapStyle={mapStyle}
-                            style={{ width: '100%', height: '100%', opacity: 0.8 }}
+                            style={{ width: '100%', height: '100%' }}
                             maxPitch={85}
                             attributionControl={false}
                         >
@@ -258,7 +250,7 @@ const PalNovaaLab = ({ onClose }) => {
                                     <div className="panel-section-title">
                                         <span>استيراد بيانات GeoJSON</span>
                                     </div>
-                                    <label className="upload-zone">
+                                    <label className="upload-zone" style={{ display: 'block' }}>
                                         <input type="file" accept=".json,.geojson" onChange={handleFileUpload} style={{ display: 'none' }} />
                                         <div className="upload-icon">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -267,7 +259,7 @@ const PalNovaaLab = ({ onClose }) => {
                                                 <line x1="12" y1="3" x2="12" y2="15"/>
                                             </svg>
                                         </div>
-                                        <h4>اضغط للاختيار من جهازك</h4>
+                                        <h4 style={{ margin: '10px 0 5px 0' }}>اضغط للاختيار من جهازك</h4>
                                         <div className="formats">
                                             <span className="format-pill">.geojson</span>
                                             <span className="format-pill">.json</span>
