@@ -90,10 +90,14 @@ const PalNovaaLab = ({ onClose }) => {
             return;
         }
 
-        // If not drawing, check for feature clicks
+        // If not drawing, check for feature clicks using a BBox for better click tolerance
         const map = mapRef.current?.getMap();
         if (map) {
-            const features = map.queryRenderedFeatures(e.point, {
+            const bbox = [
+                [e.point.x - 5, e.point.y - 5],
+                [e.point.x + 5, e.point.y + 5]
+            ];
+            const features = map.queryRenderedFeatures(bbox, {
                 layers: ['palnovaa-lab-polygon', 'palnovaa-lab-line', 'palnovaa-lab-point', 'drawn-polygon', 'drawn-line', 'drawn-point']
             });
             if (features && features.length > 0) {
@@ -102,6 +106,7 @@ const PalNovaaLab = ({ onClose }) => {
                     longitude: e.lngLat.lng,
                     latitude: e.lngLat.lat
                 });
+                setActiveTab('inspector'); // Switch to Inspector tab
             } else {
                 setSelectedFeatureInfo(null);
             }
@@ -504,6 +509,36 @@ const onMouseLeave = (e) => {
 
                         {activeTab === 'inspector' && (
                             <div className="tab-content">
+                                {selectedFeatureInfo ? (
+                                    <div className="panel-section">
+                                        <div className="panel-section-title">
+                                            <span style={{ color: 'var(--accent-cyan)' }}>تفاصيل المعلم المحدد</span>
+                                            <button onClick={() => setSelectedFeatureInfo(null)} style={{ color: '#EF4444' }}>إغلاق</button>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.9rem' }}>
+                                            {Object.keys(selectedFeatureInfo.properties).length === 0 ? (
+                                                <span style={{ color: 'rgba(255,255,255,0.5)' }}>لا توجد بيانات وصفية</span>
+                                            ) : (
+                                                Object.entries(selectedFeatureInfo.properties).map(([key, val]) => (
+                                                    <div key={key} style={{ background: 'rgba(255,255,255,0.05)', padding: '6px 8px', borderRadius: '4px', wordBreak: 'break-word', borderRight: '2px solid var(--accent-cyan)' }}>
+                                                        <strong style={{ color: '#F5A623', display: 'block', fontSize: '0.8rem', marginBottom: '2px' }}>{key}</strong>
+                                                        <span style={{ fontFamily: 'var(--font-mono)' }}>{typeof val === 'object' ? JSON.stringify(val) : String(val)}</span>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="panel-section">
+                                        <div style={{ padding: '20px', textAlign: 'center', color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.02)', borderRadius: '8px' }}>
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: '40px', height: '40px', marginBottom: '10px', opacity: '0.5' }}>
+                                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                                            </svg>
+                                            <p>اضغط على أي نقطة أو خط أو مضلع على الخريطة لعرض تفاصيله هنا.</p>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="panel-section">
                                     <div className="panel-section-title">
                                         <span>معلومات الخريطة</span>
