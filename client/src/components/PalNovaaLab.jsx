@@ -17,8 +17,28 @@ const PalNovaaLab = ({ onClose }) => {
     });
     const mapRef = useRef(null);
 
-    const MAPTILER_KEY = 'N6uNP3sTu25OIBUyi9G1';
-    const mapStyle = `https://api.maptiler.com/maps/019b8b76-e5e2-7f02-b5d1-74fd0cf725bb/style.json?key=${MAPTILER_KEY}`;
+    const mapStyle = {
+        version: 8,
+        name: "Google Satellite",
+        sprite: "https://demotiles.maplibre.org/styles/osm-bright-gl-style/sprite",
+        glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+        sources: {
+            'raster-tiles': {
+                type: 'raster',
+                tiles: [`https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}`],
+                tileSize: 256
+            }
+        },
+        layers: [
+            {
+                id: 'simple-tiles',
+                type: 'raster',
+                source: 'raster-tiles',
+                minzoom: 0,
+                maxzoom: 22
+            }
+        ]
+    };
 
     useEffect(() => {
         // Generate particles
