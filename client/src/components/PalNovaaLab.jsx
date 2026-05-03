@@ -7,7 +7,6 @@ const PalNovaaLab = ({ onClose }) => {
     const [showIntro, setShowIntro] = useState(true);
     const [particles, setParticles] = useState([]);
     const [activeTab, setActiveTab] = useState('layers');
-    const [geoJsonData, setGeoJsonData] = useState(null);
     const [mapState, setMapState] = useState({
         longitude: 35.2034,
         latitude: 31.9038,
@@ -47,17 +46,22 @@ const PalNovaaLab = ({ onClose }) => {
     const [measurement, setMeasurement] = useState(null);
     const [showBottomTable, setShowBottomTable] = useState(false);
 
+    const [geoLayers, setGeoLayers] = useState([]);
+    const [activeTableLayerId, setActiveTableLayerId] = useState(null);
+
+    const activeTableLayer = useMemo(() => geoLayers.find(l => l.id === activeTableLayerId) || null, [geoLayers, activeTableLayerId]);
+
     const attributeKeys = useMemo(() => {
-        if (!geoJsonData || !geoJsonData.features) return [];
+        if (!activeTableLayer || !activeTableLayer.data.features) return [];
         const keys = new Set();
-        for (let i = 0; i < Math.min(geoJsonData.features.length, 100); i++) {
-            const props = geoJsonData.features[i].properties;
+        for (let i = 0; i < Math.min(activeTableLayer.data.features.length, 100); i++) {
+            const props = activeTableLayer.data.features[i].properties;
             if (props) {
                 Object.keys(props).forEach(k => keys.add(k));
             }
         }
         return Array.from(keys);
-    }, [geoJsonData]);
+    }, [activeTableLayer]);
 
     const haversineDistance = (coords1, coords2) => {
         const R = 6371e3;
@@ -110,8 +114,10 @@ const PalNovaaLab = ({ onClose }) => {
                 [e.point.x - 5, e.point.y - 5],
                 [e.point.x + 5, e.point.y + 5]
             ];
+            const dynamicLayerIds = geoLayers.flatMap(l => [`poly-${l.id}`, `line-${l.id}`, `point-${l.id}`]);
+            const allLayerIds = [...dynamicLayerIds, 'drawn-polygon', 'drawn-line', 'drawn-point'];
             const features = map.queryRenderedFeatures(bbox, {
-                layers: ['palnovaa-lab-polygon', 'palnovaa-lab-line', 'palnovaa-lab-point', 'drawn-polygon', 'drawn-line', 'drawn-point']
+                layers: allLayerIds
             });
             if (features && features.length > 0) {
                 setSelectedFeatureInfo({
@@ -196,7 +202,14 @@ const onMouseLeave = (e) => {
             try {
                 const json = JSON.parse(event.target.result);
                 if (json.type === 'FeatureCollection' || json.type === 'Feature') {
-                    setGeoJsonData(json);
+                    const newLayer = {
+                        id: Date.now().toString(),
+                        name: file.name,
+                        data: json,
+                        color: ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899'][geoLayers.length % 5]
+                    };
+                    setGeoLayers(prev => [...prev, newLayer]);
+                    setActiveTableLayerId(newLayer.id);
                     setShowBottomTable(true); // Auto-open the bottom attribute table
                     // Fly to data
                     if (mapRef.current) {
@@ -336,7 +349,7 @@ const onMouseLeave = (e) => {
                             onContextMenu={handleContextMenu}
                             onMouseEnter={onMouseEnter}
                             onMouseLeave={onMouseLeave}
-                            interactiveLayerIds={['palnovaa-lab-polygon', 'palnovaa-lab-line', 'palnovaa-lab-point', 'drawn-polygon', 'drawn-line', 'drawn-point']}
+                            interactiveLayerIds={[...geoLayers.flatMap(l => [`poly-${l.id}`, `line-${l.id}`, `point-${l.id}`]), 'drawn-polygon', 'drawn-line', 'drawn-point']}
                             cursor={drawingMode ? 'crosshair' : 'auto'}
                             mapStyle={mapStyle}
                             style={{ width: '100%', height: '100%' }}
@@ -345,28 +358,28 @@ const onMouseLeave = (e) => {
                         >
                             <NavigationControl position="bottom-right" />
                             
-                            {geoJsonData && (
-                                <Source id="palnovaa-lab-source" type="geojson" data={geoJsonData}>
+                            {geoLayers.map(layer => (
+                                <Source key={layer.id} id={`src-${layer.id}`} type="geojson" data={layer.data}>
                                     <Layer
-                                        id="palnovaa-lab-polygon"
+                                        id={`poly-${layer.id}`}
                                         type="fill"
                                         filter={['==', '$type', 'Polygon']}
-                                        paint={{ 'fill-color': '#06D6F2', 'fill-opacity': 0.4, 'fill-outline-color': '#06D6F2' }}
+                                        paint={{ 'fill-color': layer.color, 'fill-opacity': 0.4, 'fill-outline-color': layer.color }}
                                     />
                                     <Layer
-                                        id="palnovaa-lab-line"
+                                        id={`line-${layer.id}`}
                                         type="line"
                                         filter={['==', '$type', 'LineString']}
-                                        paint={{ 'line-color': '#F5A623', 'line-width': 3 }}
+                                        paint={{ 'line-color': layer.color, 'line-width': 3 }}
                                     />
                                     <Layer
-                                        id="palnovaa-lab-point"
+                                        id={`point-${layer.id}`}
                                         type="circle"
                                         filter={['==', '$type', 'Point']}
-                                        paint={{ 'circle-radius': 6, 'circle-color': '#10D9A0', 'circle-stroke-width': 2, 'circle-stroke-color': '#0A1628' }}
+                                        paint={{ 'circle-radius': 6, 'circle-color': layer.color, 'circle-stroke-width': 2, 'circle-stroke-color': '#0A1628' }}
                                     />
                                 </Source>
-                            )}
+                            ))}
 
                             {/* Draft Drawing Layer */}
                             {draftGeoJson && (
@@ -425,7 +438,7 @@ const onMouseLeave = (e) => {
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/></svg>
                             إحصائيات الجلسة
                         </h4>
-                        <div className="map-stat-row"><span>عدد الميزات المرفوعة</span><span>{geoJsonData ? (geoJsonData.features?.length || 1) : 0}</span></div>
+                        <div className="map-stat-row"><span>عدد الطبقات المرفوعة</span><span>{geoLayers.length}</span></div>
                         <div className="map-stat-row"><span>الأشكال المرسومة يدوياً</span><span>{drawnFeatures.features.length}</span></div>
                         {measurement !== null && (
                             <div className="map-stat-row">
@@ -433,6 +446,94 @@ const onMouseLeave = (e) => {
                                 <span style={{ color: '#EF4444' }}>{measurement > 1000 ? (measurement / 1000).toFixed(2) + ' كم' : measurement.toFixed(1) + ' م'}</span>
                             </div>
                         )}
+                    </div>
+
+                    {/* Bottom Attribute Table Drawer */}
+                    <div style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        height: '350px',
+                        background: 'rgba(10, 22, 40, 0.95)',
+                        borderTop: '2px solid var(--accent-cyan)',
+                        backdropFilter: 'blur(10px)',
+                        zIndex: 2000,
+                        transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                        transform: showBottomTable ? 'translateY(0)' : 'translateY(calc(100% - 45px))',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        boxShadow: '0 -10px 30px rgba(0,0,0,0.5)'
+                    }}>
+                        <div onClick={() => setShowBottomTable(!showBottomTable)} style={{
+                            height: '45px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '0 20px',
+                            background: 'rgba(6, 214, 242, 0.15)',
+                            cursor: 'pointer',
+                            color: 'var(--accent-cyan)',
+                            fontWeight: 'bold',
+                            borderBottom: '1px solid rgba(6, 214, 242, 0.3)',
+                            userSelect: 'none'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                                جدول البيانات الوصفية (Attribute Table)
+                                <span style={{ background: 'rgba(6,214,242,0.2)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem', marginLeft: '10px' }}>
+                                    {activeTableLayer ? activeTableLayer.data.features?.length || 0 : 0} معلم
+                                </span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <span style={{ fontSize: '0.85rem', opacity: 0.8, fontWeight: 'normal' }}>{showBottomTable ? 'إخفاء' : 'إظهار'}</span>
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: showBottomTable ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }}><polyline points="6 9 12 15 18 9"/></svg>
+                            </div>
+                        </div>
+                        <div style={{ flex: 1, overflow: 'auto', padding: '0', position: 'relative' }}>
+                            {(!activeTableLayer || !activeTableLayer.data.features || activeTableLayer.data.features.length === 0) ? (
+                                <div style={{ padding: '40px', textAlign: 'center', color: 'rgba(255,255,255,0.4)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: '50px', height: '50px', marginBottom: '15px', opacity: '0.3' }}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                                    <p style={{ fontSize: '1.1rem' }}>لا توجد بيانات وصفية لعرضها</p>
+                                    <p style={{ fontSize: '0.9rem', opacity: 0.7 }}>يرجى استيراد ملف GeoJSON ثم النقر على زر عرض البيانات</p>
+                                </div>
+                            ) : (
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem', textAlign: 'right' }}>
+                                    <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: '#0a1628', boxShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
+                                        <tr>
+                                            <th style={{ padding: '12px 15px', borderBottom: '1px solid var(--accent-cyan)', color: '#06D6F2', width: '50px' }}>#</th>
+                                            {attributeKeys.map(key => (
+                                                <th key={key} style={{ padding: '12px 15px', borderBottom: '1px solid var(--accent-cyan)', color: '#06D6F2', whiteSpace: 'nowrap' }}>{key}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {activeTableLayer.data.features.map((feature, i) => (
+                                            <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent', cursor: 'pointer', transition: 'background 0.2s' }} 
+                                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(6, 214, 242, 0.15)'}
+                                                onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent'}
+                                                onClick={() => {
+                                                    setSelectedFeatureInfo({
+                                                        properties: feature.properties,
+                                                        longitude: mapState.longitude, 
+                                                        latitude: mapState.latitude
+                                                    });
+                                                }}>
+                                                <td style={{ padding: '10px 15px', color: '#F5A623', borderLeft: '1px solid rgba(255,255,255,0.05)' }}>{i + 1}</td>
+                                                {attributeKeys.map(key => {
+                                                    const val = feature.properties?.[key];
+                                                    return (
+                                                        <td key={key} style={{ padding: '10px 15px', whiteSpace: 'nowrap', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', borderLeft: '1px solid rgba(255,255,255,0.05)' }} title={val !== undefined && val !== null ? String(val) : ''}>
+                                                            {val !== undefined && val !== null ? (typeof val === 'object' ? JSON.stringify(val) : String(val)) : <span style={{ color: 'rgba(255,255,255,0.2)' }}>-</span>}
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
                     </div>
                 </section>
 
@@ -476,19 +577,31 @@ const onMouseLeave = (e) => {
                                     </label>
                                 </div>
 
-                                {geoJsonData && (
+                                {geoLayers.length > 0 && (
                                     <div className="panel-section">
                                         <div className="panel-section-title">
                                             <span>الطبقات النشطة</span>
-                                            <button onClick={() => setGeoJsonData(null)} style={{color: '#EF4444'}}>إزالة</button>
+                                            <button onClick={() => setGeoLayers([])} style={{color: '#EF4444'}}>إزالة الكل</button>
                                         </div>
-                                        <div className="layer-item active">
-                                            <div className="layer-color" style={{ background: 'var(--accent-cyan)' }}></div>
-                                            <div className="layer-info">
-                                                <h5>بيانات جيوجيسون المرفوعة</h5>
-                                                <small>{geoJsonData.type} · {geoJsonData.features?.length || 1} ميزة</small>
+                                        {geoLayers.map(layer => (
+                                            <div key={layer.id} className="layer-item active" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+                                                    <div className="layer-color" style={{ background: layer.color, minWidth: '12px', width: '12px', height: '12px', borderRadius: '50%' }}></div>
+                                                    <div className="layer-info" style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                        <h5 style={{ margin: 0, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>{layer.name}</h5>
+                                                        <small style={{ color: 'rgba(255,255,255,0.5)' }}>{layer.data.features?.length || 0} ميزة</small>
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '5px' }}>
+                                                    <button onClick={() => { setActiveTableLayerId(layer.id); setShowBottomTable(true); }} style={{ background: 'transparent', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer', padding: '4px' }} title="عرض البيانات الوصفية">
+                                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                                                    </button>
+                                                    <button onClick={() => { setGeoLayers(prev => prev.filter(l => l.id !== layer.id)); if (activeTableLayerId === layer.id) { setActiveTableLayerId(null); setShowBottomTable(false); } }} style={{ background: 'transparent', border: 'none', color: '#EF4444', cursor: 'pointer', padding: '4px' }} title="حذف الطبقة">
+                                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                                    </button>
+                                                </div>
                                             </div>
-                                        </div>
+                                        ))}
                                     </div>
                                 )}
                             </div>
