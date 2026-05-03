@@ -26,6 +26,7 @@ import FacilityProfileModal from '../components/FacilityProfileModal';
 import HistoricalTimelinePanel from '../components/HistoricalTimelinePanel';
 import SpatialReelsModal from '../components/SpatialReelsModal';
 import MagazineModal from '../components/MagazineModal';
+import PalNovaaLabModal from '../components/PalNovaaLabModal';
 import { postService, friendService, authService, notificationService, communityService, shopService, getImageUrl } from '../services/api';
 import './Map.css';
 
@@ -236,6 +237,8 @@ const MapComponent = () => {
     const [showAIChat, setShowAIChat] = useState(false);
     const [showNews, setShowNews] = useState(false);
     const [showMagazine, setShowMagazine] = useState(false);
+    const [showLabModal, setShowLabModal] = useState(false);
+    const [labGeoJson, setLabGeoJson] = useState(null);
     const [showCommunities, setShowCommunities] = useState(false);
     const [showMoreMenu, setShowMoreMenu] = useState(false);
     const [hasUnreadCommunity, setHasUnreadCommunity] = useState(false);
@@ -1194,6 +1197,23 @@ const MapComponent = () => {
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
 
+                        {/* PalNovaa Lab */}
+                        <button onClick={() => { setShowLabModal(true); setShowMoreMenu(false); }}>
+                            <div className="menu-item-content">
+                                <div className="menu-icon-wrapper" style={{ color: '#fbab15' }}>
+                                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg">
+                                        <path d="M10 2v7.31"></path>
+                                        <path d="M14 9.3V1.99"></path>
+                                        <path d="M8.5 2h7"></path>
+                                        <path d="M14 9.3a6.5 6.5 0 1 1-4 0"></path>
+                                        <path d="M5.52 16h12.96"></path>
+                                    </svg>
+                                </div>
+                                <span>مختبر بالنوفا (Lab)</span>
+                            </div>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+                        </button>
+
                         {/* PalNovaa Spatial Magazine */}
                         <button onClick={() => { setShowMagazine(true); setShowMoreMenu(false); }}>
                             <div className="menu-item-content">
@@ -1293,6 +1313,30 @@ const MapComponent = () => {
                     maxPitch={85}
                     attributionControl={false}
                 >
+                    {/* PalNovaa Lab GeoJSON Overlay */}
+                    {labGeoJson && (
+                        <Source id="palnovaa-lab-source" type="geojson" data={labGeoJson}>
+                            <Layer
+                                id="palnovaa-lab-polygon"
+                                type="fill"
+                                filter={['==', '$type', 'Polygon']}
+                                paint={{ 'fill-color': '#fbab15', 'fill-opacity': 0.3, 'fill-outline-color': '#fbab15' }}
+                            />
+                            <Layer
+                                id="palnovaa-lab-line"
+                                type="line"
+                                filter={['==', '$type', 'LineString']}
+                                paint={{ 'line-color': '#fbab15', 'line-width': 3 }}
+                            />
+                            <Layer
+                                id="palnovaa-lab-point"
+                                type="circle"
+                                filter={['==', '$type', 'Point']}
+                                paint={{ 'circle-radius': 6, 'circle-color': '#fbab15', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' }}
+                            />
+                        </Source>
+                    )}
+
                     {/* Visual Route with Advanced Premium Layering */}
                     {routePath && (
                         <Source id="route" type="geojson" data={routePath} tolerance={0}>
@@ -1718,6 +1762,48 @@ const MapComponent = () => {
             )}
 
             {/* Modals */}
+            {showLabModal && (
+                <PalNovaaLabModal 
+                    onClose={() => setShowLabModal(false)} 
+                    onDataLoaded={(data) => {
+                        setLabGeoJson(data);
+                        // Fit bounds to data
+                        if (mapRef.current) {
+                            try {
+                                const coordinates = [];
+                                const extractCoords = (obj) => {
+                                    if(obj.type === 'FeatureCollection') obj.features.forEach(extractCoords);
+                                    else if(obj.geometry) extractCoords(obj.geometry);
+                                    else if(obj.coordinates) {
+                                        if(typeof obj.coordinates[0] === 'number') coordinates.push(obj.coordinates);
+                                        else obj.coordinates.forEach(c => {
+                                            if(typeof c[0] === 'number') coordinates.push(c);
+                                            else c.forEach(sub => {
+                                                if(typeof sub[0] === 'number') coordinates.push(sub);
+                                            });
+                                        });
+                                    }
+                                };
+                                extractCoords(data);
+                                if(coordinates.length > 0) {
+                                    const lons = coordinates.map(c => c[0]);
+                                    const lats = coordinates.map(c => c[1]);
+                                    const minLon = Math.min(...lons);
+                                    const maxLon = Math.max(...lons);
+                                    const minLat = Math.min(...lats);
+                                    const maxLat = Math.max(...lats);
+                                    mapRef.current.fitBounds(
+                                        [[minLon, minLat], [maxLon, maxLat]],
+                                        { padding: 50, duration: 1500 }
+                                    );
+                                }
+                            } catch(e) { console.error('Fit bounds error', e); }
+                        }
+                    }} 
+                    onClearData={() => setLabGeoJson(null)} 
+                    currentData={labGeoJson} 
+                />
+            )}
             {showCreatePost && <CreatePostModal onClose={() => setShowCreatePost(false)} onPostCreated={handlePostCreated} currentLocation={userLocation} communityId={currentCommunity?.id} />}
             {selectedPost && <PostDetailModal
                 post={selectedPost}
