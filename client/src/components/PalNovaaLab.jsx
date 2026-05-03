@@ -446,8 +446,6 @@ const onMouseLeave = (e) => {
                         </Map>
                     </div>
 
-                    </div>
-
                     {/* Bottom Attribute Table Drawer */}
                     <div style={{
                         position: 'absolute',
