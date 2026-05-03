@@ -91,16 +91,28 @@ const PalNovaaLab = ({ onClose }) => {
     }
 
     // If not drawing, check for feature clicks
-    if (e.features && e.features.length > 0) {
-        const feature = e.features[0];
-        setSelectedFeatureInfo({
-            properties: feature.properties,
-            longitude: e.lngLat.lng,
-            latitude: e.lngLat.lat
+    const map = mapRef.current?.getMap();
+    if (map) {
+        const features = map.queryRenderedFeatures(e.point, {
+            layers: ['palnovaa-lab-polygon', 'palnovaa-lab-line', 'palnovaa-lab-point', 'drawn-polygon', 'drawn-line', 'drawn-point']
         });
-    } else {
-        setSelectedFeatureInfo(null);
+        if (features && features.length > 0) {
+            setSelectedFeatureInfo({
+                properties: features[0].properties || {},
+                longitude: e.lngLat.lng,
+                latitude: e.lngLat.lat
+            });
+        } else {
+            setSelectedFeatureInfo(null);
+        }
     }
+};
+
+const onMouseEnter = (e) => {
+    if (!drawingMode) e.target.getCanvas().style.cursor = 'pointer';
+};
+const onMouseLeave = (e) => {
+    if (!drawingMode) e.target.getCanvas().style.cursor = 'grab';
 };
 
     const handleContextMenu = (e) => {
@@ -304,8 +316,10 @@ const PalNovaaLab = ({ onClose }) => {
                             onMove={evt => setMapState(evt.viewState)}
                             onClick={handleMapClick}
                             onContextMenu={handleContextMenu}
+                            onMouseEnter={onMouseEnter}
+                            onMouseLeave={onMouseLeave}
                             interactiveLayerIds={['palnovaa-lab-polygon', 'palnovaa-lab-line', 'palnovaa-lab-point', 'drawn-polygon', 'drawn-line', 'drawn-point']}
-                            cursor={drawingMode ? 'crosshair' : 'grab'}
+                            cursor={drawingMode ? 'crosshair' : 'auto'}
                             mapStyle={mapStyle}
                             style={{ width: '100%', height: '100%' }}
                             maxPitch={85}
