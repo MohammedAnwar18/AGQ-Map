@@ -17,7 +17,7 @@ const PalNovaaLab = ({ onClose }) => {
     });
     const mapRef = useRef(null);
 
-    const mapStyle = {
+    const mapStyle = useMemo(() => ({
         version: 8,
         name: "Google Satellite",
         sprite: "https://demotiles.maplibre.org/styles/osm-bright-gl-style/sprite",
@@ -38,7 +38,89 @@ const PalNovaaLab = ({ onClose }) => {
                 maxzoom: 22
             }
         ]
+    }), []);
+
+    const [drawingMode, setDrawingMode] = useState(null); // 'point', 'line', 'polygon', 'measure'
+    const [draftCoordinates, setDraftCoordinates] = useState([]);
+    const [drawnFeatures, setDrawnFeatures] = useState({ type: 'FeatureCollection', features: [] });
+    const [measurement, setMeasurement] = useState(null);
+
+    const haversineDistance = (coords1, coords2) => {
+        const R = 6371e3;
+        const toRad = x => x * Math.PI / 180;
+        const dLat = toRad(coords2[1] - coords1[1]);
+        const dLon = toRad(coords2[0] - coords1[0]);
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(toRad(coords1[1])) * Math.cos(toRad(coords2[1])) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
     };
+
+    const finishDrawing = () => {
+        if (draftCoordinates.length > 1) {
+            let geometryType = drawingMode === 'polygon' && draftCoordinates.length > 2 ? 'Polygon' : 'LineString';
+            let coords = geometryType === 'Polygon' ? [[...draftCoordinates, draftCoordinates[0]]] : draftCoordinates;
+            const newFeature = { type: 'Feature', geometry: { type: geometryType, coordinates: coords }, properties: { type: `drawn_${drawingMode}` } };
+            setDrawnFeatures(prev => ({ ...prev, features: [...prev.features, newFeature] }));
+        }
+        setDraftCoordinates([]);
+        setDrawingMode(null);
+    };
+
+    const handleMapClick = (e) => {
+        if (!drawingMode) return;
+        const coord = [e.lngLat.lng, e.lngLat.lat];
+        
+        if (drawingMode === 'point') {
+            const newFeature = { type: 'Feature', geometry: { type: 'Point', coordinates: coord }, properties: { type: 'drawn_point' } };
+            setDrawnFeatures(prev => ({ ...prev, features: [...prev.features, newFeature] }));
+            setDrawingMode(null);
+        } else if (drawingMode === 'line' || drawingMode === 'measure' || drawingMode === 'polygon') {
+            setDraftCoordinates(prev => {
+                const newCoords = [...prev, coord];
+                if (drawingMode === 'measure' && prev.length > 0) {
+                    const dist = haversineDistance(prev[prev.length - 1], coord);
+                    setMeasurement(m => (m || 0) + dist);
+                }
+                return newCoords;
+            });
+        }
+    };
+
+    const handleContextMenu = (e) => {
+        if (drawingMode) {
+            e.preventDefault();
+            finishDrawing();
+        }
+    };
+
+    const handleToolClick = (tool) => {
+        if (drawingMode === tool) {
+            finishDrawing();
+        } else {
+            finishDrawing();
+            setDrawingMode(tool);
+            setMeasurement(tool === 'measure' ? 0 : null);
+        }
+    };
+
+    const draftGeoJson = useMemo(() => {
+        if (draftCoordinates.length === 0) return null;
+        if (draftCoordinates.length === 1) {
+            return { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: draftCoordinates[0] } }] };
+        }
+        return {
+            type: 'FeatureCollection',
+            features: [{
+                type: 'Feature',
+                geometry: {
+                    type: 'LineString',
+                    coordinates: draftCoordinates
+                }
+            }]
+        };
+    }, [draftCoordinates]);
 
     useEffect(() => {
         // Generate particles
@@ -173,22 +255,22 @@ const PalNovaaLab = ({ onClose }) => {
                 </header>
 
                 <aside className="sidebar">
-                    <button className="tool active" data-tip="مؤشر التحديد">
+                    <button className={`tool ${drawingMode === null ? 'active' : ''}`} data-tip="مؤشر التحديد" onClick={() => handleToolClick(null)}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 3l3.057-3 11.943 11.943-4.057.057L13 16.943l-3 3L5 3z"/></svg>
                     </button>
-                    <button className="tool" data-tip="رسم نقطة">
+                    <button className={`tool ${drawingMode === 'point' ? 'active' : ''}`} data-tip="رسم نقطة" onClick={() => handleToolClick('point')}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/></svg>
                     </button>
-                    <button className="tool" data-tip="رسم خط">
+                    <button className={`tool ${drawingMode === 'line' ? 'active' : ''}`} data-tip="رسم خط (كليك يمين للإنهاء)" onClick={() => handleToolClick('line')}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="19" x2="19" y2="5"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/></svg>
                     </button>
-                    <button className="tool" data-tip="رسم مضلع">
+                    <button className={`tool ${drawingMode === 'polygon' ? 'active' : ''}`} data-tip="رسم مضلع (كليك يمين للإنهاء)" onClick={() => handleToolClick('polygon')}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
                     </button>
 
                     <div className="sidebar-divider"></div>
 
-                    <button className="tool" data-tip="قياس المسافة">
+                    <button className={`tool ${drawingMode === 'measure' ? 'active' : ''}`} data-tip="قياس المسافة (كليك يمين للإنهاء)" onClick={() => handleToolClick('measure')}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.3 8.7L8.7 21.3a2.4 2.4 0 0 1-3.4 0L2.7 18.7a2.4 2.4 0 0 1 0-3.4L15.3 2.7a2.4 2.4 0 0 1 3.4 0l2.6 2.6a2.4 2.4 0 0 1 0 3.4z"/><path d="M7 17l-3-3M11 13l-3-3M15 9l-3-3"/></svg>
                     </button>
                     
@@ -205,6 +287,9 @@ const PalNovaaLab = ({ onClose }) => {
                             ref={mapRef}
                             {...mapState}
                             onMove={evt => setMapState(evt.viewState)}
+                            onClick={handleMapClick}
+                            onContextMenu={handleContextMenu}
+                            cursor={drawingMode ? 'crosshair' : 'grab'}
                             mapStyle={mapStyle}
                             style={{ width: '100%', height: '100%' }}
                             maxPitch={85}
@@ -234,6 +319,23 @@ const PalNovaaLab = ({ onClose }) => {
                                     />
                                 </Source>
                             )}
+
+                            {/* Draft Drawing Layer */}
+                            {draftGeoJson && (
+                                <Source id="draft-source" type="geojson" data={draftGeoJson}>
+                                    <Layer id="draft-line" type="line" filter={['==', '$type', 'LineString']} paint={{ 'line-color': '#EF4444', 'line-width': 3, 'line-dasharray': [2, 2] }} />
+                                    <Layer id="draft-point" type="circle" filter={['==', '$type', 'Point']} paint={{ 'circle-radius': 5, 'circle-color': '#EF4444' }} />
+                                </Source>
+                            )}
+
+                            {/* Finished Drawings Layer */}
+                            {drawnFeatures.features.length > 0 && (
+                                <Source id="drawn-source" type="geojson" data={drawnFeatures}>
+                                    <Layer id="drawn-polygon" type="fill" filter={['==', '$type', 'Polygon']} paint={{ 'fill-color': '#8B5CF6', 'fill-opacity': 0.3 }} />
+                                    <Layer id="drawn-line" type="line" filter={['==', '$type', 'LineString']} paint={{ 'line-color': '#8B5CF6', 'line-width': 3 }} />
+                                    <Layer id="drawn-point" type="circle" filter={['==', '$type', 'Point']} paint={{ 'circle-radius': 6, 'circle-color': '#8B5CF6', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' }} />
+                                </Source>
+                            )}
                         </Map>
                     </div>
 
@@ -243,7 +345,13 @@ const PalNovaaLab = ({ onClose }) => {
                             إحصائيات الجلسة
                         </h4>
                         <div className="map-stat-row"><span>عدد الميزات المرفوعة</span><span>{geoJsonData ? (geoJsonData.features?.length || 1) : 0}</span></div>
-                        <div className="map-stat-row"><span>الطبقات النشطة</span><span>{geoJsonData ? 1 : 0}</span></div>
+                        <div className="map-stat-row"><span>الأشكال المرسومة يدوياً</span><span>{drawnFeatures.features.length}</span></div>
+                        {measurement !== null && (
+                            <div className="map-stat-row">
+                                <span style={{ color: '#EF4444', fontWeight: 'bold' }}>مسافة القياس</span>
+                                <span style={{ color: '#EF4444' }}>{measurement > 1000 ? (measurement / 1000).toFixed(2) + ' كم' : measurement.toFixed(1) + ' م'}</span>
+                            </div>
+                        )}
                     </div>
                 </section>
 
