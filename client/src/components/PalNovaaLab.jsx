@@ -70,43 +70,43 @@ const PalNovaaLab = ({ onClose }) => {
     };
 
     const handleMapClick = (e) => {
-        if (!drawingMode) return;
-        const coord = [e.lngLat.lng, e.lngLat.lat];
-        
-        if (drawingMode === 'point') {
-            const newFeature = { type: 'Feature', geometry: { type: 'Point', coordinates: coord }, properties: { type: 'drawn_point' } };
-            setDrawnFeatures(prev => ({ ...prev, features: [...prev.features, newFeature] }));
-            setDrawingMode(null);
-        } else if (drawingMode === 'line' || drawingMode === 'measure' || drawingMode === 'polygon') {
-            setDraftCoordinates(prev => {
-                const newCoords = [...prev, coord];
-                if (drawingMode === 'measure' && prev.length > 0) {
-                    const dist = haversineDistance(prev[prev.length - 1], coord);
-                    setMeasurement(m => (m || 0) + dist);
-                }
-                return newCoords;
-            });
+        if (drawingMode) {
+            const coord = [e.lngLat.lng, e.lngLat.lat];
+            
+            if (drawingMode === 'point') {
+                const newFeature = { type: 'Feature', geometry: { type: 'Point', coordinates: coord }, properties: { type: 'drawn_point' } };
+                setDrawnFeatures(prev => ({ ...prev, features: [...prev.features, newFeature] }));
+                setDrawingMode(null);
+            } else if (drawingMode === 'line' || drawingMode === 'measure' || drawingMode === 'polygon') {
+                setDraftCoordinates(prev => {
+                    const newCoords = [...prev, coord];
+                    if (drawingMode === 'measure' && prev.length > 0) {
+                        const dist = haversineDistance(prev[prev.length - 1], coord);
+                        setMeasurement(m => (m || 0) + dist);
+                    }
+                    return newCoords;
+                });
+            }
+            return;
         }
-        return;
-    }
 
-    // If not drawing, check for feature clicks
-    const map = mapRef.current?.getMap();
-    if (map) {
-        const features = map.queryRenderedFeatures(e.point, {
-            layers: ['palnovaa-lab-polygon', 'palnovaa-lab-line', 'palnovaa-lab-point', 'drawn-polygon', 'drawn-line', 'drawn-point']
-        });
-        if (features && features.length > 0) {
-            setSelectedFeatureInfo({
-                properties: features[0].properties || {},
-                longitude: e.lngLat.lng,
-                latitude: e.lngLat.lat
+        // If not drawing, check for feature clicks
+        const map = mapRef.current?.getMap();
+        if (map) {
+            const features = map.queryRenderedFeatures(e.point, {
+                layers: ['palnovaa-lab-polygon', 'palnovaa-lab-line', 'palnovaa-lab-point', 'drawn-polygon', 'drawn-line', 'drawn-point']
             });
-        } else {
-            setSelectedFeatureInfo(null);
+            if (features && features.length > 0) {
+                setSelectedFeatureInfo({
+                    properties: features[0].properties || {},
+                    longitude: e.lngLat.lng,
+                    latitude: e.lngLat.lat
+                });
+            } else {
+                setSelectedFeatureInfo(null);
+            }
         }
-    }
-};
+    };
 
 const onMouseEnter = (e) => {
     if (!drawingMode) e.target.getCanvas().style.cursor = 'pointer';
