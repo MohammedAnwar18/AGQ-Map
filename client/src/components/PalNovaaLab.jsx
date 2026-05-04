@@ -457,22 +457,18 @@ const onMouseLeave = (e) => {
                         </Map>
                     </div>
 
-                    {/* Bottom Attribute Table Drawer */}
+                    {/* Bottom Attribute Table - Integrated below map */}
                     <div style={{
-                        position: 'absolute',
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        height: '350px',
+                        height: showBottomTable ? '350px' : '45px',
                         background: 'rgba(10, 22, 40, 0.95)',
                         borderTop: '2px solid var(--accent-cyan)',
-                        backdropFilter: 'blur(10px)',
-                        zIndex: 2000,
-                        transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-                        transform: showBottomTable ? 'translateY(0)' : 'translateY(calc(100% - 45px))',
+                        zIndex: 10,
+                        transition: 'height 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
                         display: 'flex',
                         flexDirection: 'column',
-                        boxShadow: '0 -10px 30px rgba(0,0,0,0.5)'
+                        overflow: 'hidden',
+                        flexShrink: 0,
+                        boxShadow: '0 -4px 20px rgba(0,0,0,0.3)'
                     }}>
                         <div onClick={() => setShowBottomTable(!showBottomTable)} style={{
                             height: '45px',
@@ -499,7 +495,7 @@ const onMouseLeave = (e) => {
                                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: showBottomTable ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }}><polyline points="6 9 12 15 18 9"/></svg>
                             </div>
                         </div>
-                        <div style={{ flex: 1, overflow: 'auto', padding: '0', position: 'relative' }}>
+                        <div className="table-scroll-area" style={{ flex: 1, overflow: 'auto', padding: '0', position: 'relative', scrollBehavior: 'smooth' }}>
                             {(!activeTableLayer || !activeTableLayer.data.features || activeTableLayer.data.features.length === 0) ? (
                                 <div style={{ padding: '40px', textAlign: 'center', color: 'rgba(255,255,255,0.4)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: '50px', height: '50px', marginBottom: '15px', opacity: '0.3' }}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
