@@ -53,9 +53,11 @@ const PalNovaaLab = ({ onClose }) => {
     const [designSelections, setDesignSelections] = useState({
         layout: 'fullmap',
         palette: 'classic',
-        font: 'cairo',
+        font: 'tajawal',
         basemap: 'dark',
-        marker: 'pin'
+        marker: 'pin',
+        component: 'pill',
+        effect: 'glow'
     });
 
     const activeTableLayer = useMemo(() => geoLayers.find(l => l.id === activeTableLayerId) || null, [geoLayers, activeTableLayerId]);
@@ -960,7 +962,6 @@ const onMouseLeave = (e) => {
                 </footer>
             </div>
 
-            {/* DESIGN STUDIO MODAL */}
             <div className={`design-studio ${isDesignStudioOpen ? 'active' : ''}`} id="designStudio">
                 <header className="ds-header">
                     <div className="ds-brand">
@@ -975,41 +976,45 @@ const onMouseLeave = (e) => {
                         </div>
                         <div className="ds-brand-text">
                             <strong>PalNovaa WebApp Design</strong>
-                            <small>DESIGN STUDIO</small>
+                            <small>DESIGN STUDIO v2.0</small>
                         </div>
                     </div>
-
                     <div className="ds-header-actions">
-                        <button className="ds-btn">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                            <span>معاينة كاملة</span>
-                        </button>
                         <button className="ds-btn primary" onClick={performActualExport}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
-                            <span>تطبيق وتصدير</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            حفظ وتصدير
                         </button>
                         <button className="ds-close" onClick={() => setIsDesignStudioOpen(false)}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                         </button>
                     </div>
                 </header>
 
                 <div className="ds-body">
                     <aside className="ds-categories">
-                        <div className="ds-cat-title">الفئات</div>
+                        <div className="ds-cat-title">تخصيص الهيكل</div>
                         {[
-                            { id: 'layouts', label: 'التخطيطات', icon: 'M3 3h18v18H3z M9 3v18', num: 8 },
-                            { id: 'palettes', label: 'الألوان', icon: 'M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.6-.7 1.6-1.6 0-.4-.1-.8-.4-1.1-.3-.3-.4-.6-.4-1.1 0-.9.7-1.6 1.6-1.6h2c3 0 5.5-2.5 5.5-5.5C22 6 17.5 2 12 2z', num: 8 },
-                            { id: 'typography', label: 'الخطوط', icon: 'M4 7V4h16v3 M9 20h6 M12 4v16', num: 6 },
-                            { id: 'components', label: 'المكونات', icon: 'M3 3h7v7H3z M14 3h7v7h-7z M14 14h7v7h-7z M3 14h7v7H3z', num: 12 },
-                            { id: 'basemaps', label: 'الخلفيات', icon: 'M1 6l0 16 7-4 8 4 7-4 0-16-7 4-8-4z M8 2v16 M16 6v16', num: 6 },
-                            { id: 'markers', label: 'المعالم', icon: 'M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z M12 10m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0', num: 8 },
-                            { id: 'icons', label: 'الأيقونات', icon: 'M12 12m-10 0a10 10 0 1 0 20 0a10 10 0 1 0 -20 0 M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0', num: 48 },
-                            { id: 'effects', label: 'التأثيرات', icon: 'M13 2L3 14h9l-1 8 10-12h-9z', num: 10 }
+                            { id: 'layouts', name: 'التخطيط العام', icon: 'M3 3h18v18H3z M3 9h18 M9 9v12', num: 6 },
+                            { id: 'palettes', name: 'باليت الألوان', icon: 'M12 22a10 10 0 1 1 0-20c5.5 0 10 4 10 9 0 3-2.5 5-5.5 5h-2a1.5 1.5 0 0 0 0 3c0 1.5-1 3-2.5 3z', num: 4 },
+                            { id: 'typography', name: 'الخطوط والطباعة', icon: 'M4 7V4h16v3 M9 20h6 M12 4v16', num: 3 },
                         ].map(cat => (
                             <div key={cat.id} className={`ds-cat ${activeDsCategory === cat.id ? 'active' : ''}`} onClick={() => setActiveDsCategory(cat.id)}>
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d={cat.icon}/></svg>
-                                <span>{cat.label}</span>
+                                <span>{cat.name}</span>
+                                <span className="ds-cat-num">{cat.num}</span>
+                            </div>
+                        ))}
+
+                        <div className="ds-cat-title" style={{ marginTop: '20px' }}>العناصر المرئية</div>
+                        {[
+                            { id: 'basemaps', name: 'خرائط الأساس', icon: 'M1 6l7-4 8 4 7-4v16l-7 4-8-4-7 4V6z M8 2v16 M16 6v16', num: 6 },
+                            { id: 'markers', name: 'أنماط المؤشرات', icon: 'M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z', num: 5 },
+                            { id: 'components', name: 'نمط العناصر', icon: 'M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z', num: 4 },
+                            { id: 'effects', name: 'المؤثرات والظلال', icon: 'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5', num: 6 },
+                        ].map(cat => (
+                            <div key={cat.id} className={`ds-cat ${activeDsCategory === cat.id ? 'active' : ''}`} onClick={() => setActiveDsCategory(cat.id)}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d={cat.icon}/></svg>
+                                <span>{cat.name}</span>
                                 <span className="ds-cat-num">{cat.num}</span>
                             </div>
                         ))}
@@ -1019,103 +1024,174 @@ const onMouseLeave = (e) => {
                         {activeDsCategory === 'layouts' && (
                             <div className="ds-section active">
                                 <div className="ds-section-head">
-                                    <h2>تخطيطات الصفحة <span className="ds-tag">LAYOUTS</span></h2>
-                                    <p>اختر هيكل الصفحة الأنسب لعرض الخريطة في موقعك</p>
+                                    <h2>تخطيط التطبيق <span className="ds-tag">Layout</span></h2>
+                                    <p>اختر الهيكل التنظيمي لواجهة المستخدم وتوزيع العناصر الجغرافية.</p>
                                 </div>
                                 <div className="ds-grid">
-                                    <div className={`ds-pick ${designSelections.layout === 'fullmap' ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, layout: 'fullmap'}))}>
-                                        <div className="layout-mockup"><div className="lm-block" style={{ gridColumn: 'span 2' }}></div><div className="lm-block"></div><div className="lm-block"></div></div>
-                                        <div className="ds-pick-title">خريطة كاملة</div>
-                                        <div className="ds-pick-sub">لوحة عائمة فوق الخريطة</div>
-                                    </div>
-                                    <div className={`ds-pick ${designSelections.layout === 'sidebar' ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, layout: 'sidebar'}))}>
-                                        <div className="layout-mockup" style={{ gridTemplateColumns: '1fr 2fr' }}><div className="lm-block" style={{ gridRow: 'span 2' }}></div><div className="lm-block"></div><div className="lm-block"></div></div>
-                                        <div className="ds-pick-title">خريطة + لوحة جانبية</div>
-                                        <div className="ds-pick-sub">قائمة طبقات تفاعلية على اليمين</div>
-                                    </div>
+                                    {[
+                                        { id: 'fullmap', name: 'خريطة كاملة', sub: 'تركيز مطلق على البيانات', class: 'lm-fullmap' },
+                                        { id: 'sidebar', name: 'لوحة جانبية', sub: 'لإدارة الطبقات والبيانات', class: 'lm-sidebar' },
+                                        { id: 'split', name: 'تقسيم ثنائي', sub: 'عرض متوازي للبيانات', class: 'lm-split' },
+                                        { id: 'dashboard', name: 'لوحة تحكم', sub: 'إحصائيات وخرائط معاً', class: 'lm-dashboard' }
+                                    ].map(item => (
+                                        <div key={item.id} className={`ds-pick ${designSelections.layout === item.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, layout: item.id}))}>
+                                            <div className={`layout-mockup ${item.class}`}>
+                                                <div className="lm-block map"></div>
+                                                {item.id === 'sidebar' && <div className="lm-block"></div>}
+                                                {item.id === 'split' && <div className="lm-block alt"></div>}
+                                                {item.id === 'dashboard' && <div className="lm-block muted"></div>}
+                                            </div>
+                                            <div className="ds-pick-title">{item.name}</div>
+                                            <div className="ds-pick-sub">{item.sub}</div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         )}
+
                         {activeDsCategory === 'palettes' && (
                             <div className="ds-section active">
                                 <div className="ds-section-head">
-                                    <h2>لوحات الألوان <span className="ds-tag">PALETTES</span></h2>
-                                    <p>مجموعات ألوان احترافية مدروسة لتطبيقات الخرائط</p>
+                                    <h2>باليت الألوان <span className="ds-tag">Themes</span></h2>
+                                    <p>اختر الهوية البصرية وتناسق الألوان العام للتطبيق.</p>
                                 </div>
                                 <div className="ds-grid">
-                                    <div className={`ds-pick ${designSelections.palette === 'classic' ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, palette: 'classic'}))}>
-                                        <div className="palette-strip"><span style={{background:'#F5A623'}}></span><span style={{background:'#0F1E33'}}></span><span style={{background:'#142B47'}}></span></div>
-                                        <div className="ds-pick-title">PalNovaa Classic</div>
-                                        <div className="ds-pick-sub">برتقالي دافئ وكحلي</div>
-                                    </div>
-                                    <div className={`ds-pick ${designSelections.palette === 'ocean' ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, palette: 'ocean'}))}>
-                                        <div className="palette-strip"><span style={{background:'#06D6F2'}}></span><span style={{background:'#1A2980'}}></span><span style={{background:'#0A1628'}}></span></div>
-                                        <div className="ds-pick-title">Ocean Deep</div>
-                                        <div className="ds-pick-sub">ألوان البحر الهادئة</div>
-                                    </div>
-                                    <div className={`ds-pick ${designSelections.palette === 'heritage' ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, palette: 'heritage'}))}>
-                                        <div className="palette-strip"><span style={{background:'#CE1126'}}></span><span style={{background:'#007A3D'}}></span><span style={{background:'#FFFFFF'}}></span></div>
-                                        <div className="ds-pick-title">Heritage</div>
-                                        <div className="ds-pick-sub">ألوان فلسطينية تراثية</div>
-                                    </div>
-                                    <div className={`ds-pick ${designSelections.palette === 'forest' ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, palette: 'forest'}))}>
-                                        <div className="palette-strip"><span style={{background:'#10D9A0'}}></span><span style={{background:'#064E3B'}}></span><span style={{background:'#F5F4ED'}}></span></div>
-                                        <div className="ds-pick-title">Forest Green</div>
-                                        <div className="ds-pick-sub">طبيعة خضراء منعشة</div>
-                                    </div>
+                                    {[
+                                        { id: 'classic', name: 'كلاسيك ذهبي', sub: 'هوية بال نوفا الرسمية', colors: ['#F5A623', '#0A1628', '#142B47'] },
+                                        { id: 'ocean', name: 'أوشن بلو', sub: 'لمسة تقنية باردة', colors: ['#06D6F2', '#0A1628', '#1e293b'] },
+                                        { id: 'heritage', name: 'تراثي', sub: 'ألوان دافئة وعميقة', colors: ['#E4D5B7', '#1A2614', '#2C3E50'] },
+                                        { id: 'forest', name: 'غابة', sub: 'طبيعي ومريح للعين', colors: ['#10D9A0', '#050B16', '#1A2614'] }
+                                    ].map(item => (
+                                        <div key={item.id} className={`ds-pick ${designSelections.palette === item.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, palette: item.id}))}>
+                                            <div className="palette-strip">
+                                                {item.colors.map((c, i) => <span key={i} style={{background: c}}></span>)}
+                                            </div>
+                                            <div className="ds-pick-title">{item.name}</div>
+                                            <div className="ds-pick-sub">{item.sub}</div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         )}
+
                         {activeDsCategory === 'typography' && (
                             <div className="ds-section active">
                                 <div className="ds-section-head">
-                                    <h2>الخطوط <span className="ds-tag">FONTS</span></h2>
-                                    <p>اختر نمط الخط المناسب لتطبيقك</p>
+                                    <h2>الخطوط والطباعة <span className="ds-tag">Typography</span></h2>
+                                    <p>اختر نوع الخط المستخدم في العناوين والبيانات الوصفية.</p>
                                 </div>
                                 <div className="ds-grid">
-                                    <div className={`ds-pick ${designSelections.font === 'cairo' ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, font: 'cairo'}))}>
-                                        <div style={{ padding: '10px', fontSize: '18px', fontFamily: 'Cairo', textAlign: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>خط كايرو الحديث</div>
-                                        <div className="ds-pick-title">Cairo</div>
-                                    </div>
-                                    <div className={`ds-pick ${designSelections.font === 'tajawal' ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, font: 'tajawal'}))}>
-                                        <div style={{ padding: '10px', fontSize: '18px', fontFamily: 'Tajawal', textAlign: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>خط تجوّل الأنيق</div>
-                                        <div className="ds-pick-title">Tajawal</div>
-                                    </div>
-                                    <div className={`ds-pick ${designSelections.font === 'mono' ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, font: 'mono'}))}>
-                                        <div style={{ padding: '10px', fontSize: '14px', fontFamily: 'JetBrains Mono', textAlign: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>JetBrains Mono {`{ code }`}</div>
-                                        <div className="ds-pick-title">Developer Mono</div>
-                                    </div>
+                                    {[
+                                        { id: 'tajawal', name: 'Tajawal', sub: 'عصري وواضح جداً', family: "'Tajawal', sans-serif" },
+                                        { id: 'cairo', name: 'Cairo', sub: 'خط هندسي متناسق', family: "'Cairo', sans-serif" },
+                                        { id: 'mono', name: 'JetBrains Mono', sub: 'لعرض البيانات التقنية', family: "'JetBrains Mono', monospace" }
+                                    ].map(item => (
+                                        <div key={item.id} className={`ds-pick ${designSelections.font === item.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, font: item.id}))}>
+                                            <div className="type-preview" style={{ fontFamily: item.family }}>
+                                                <div className="t-title">نظام بال نوفا</div>
+                                                <div className="t-body">أبجد هوز حطي كلمن سعفص قرشت ثخذ ضظغ</div>
+                                            </div>
+                                            <div className="ds-pick-title">{item.name}</div>
+                                            <div className="ds-pick-sub">{item.sub}</div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         )}
-                        <div style={{ marginTop: '40px', padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', textAlign: 'center' }}>
-                            <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>جاري العمل على إضافة المزيد من التصاميم في التحديثات القادمة...</p>
-                        </div>
+
+                        {activeDsCategory === 'basemaps' && (
+                            <div className="ds-section active">
+                                <div className="ds-section-head">
+                                    <h2>خرائط الأساس <span className="ds-tag">Basemaps</span></h2>
+                                    <p>اختر نمط الخريطة الجغرافية الافتراضي.</p>
+                                </div>
+                                <div className="ds-grid">
+                                    {[
+                                        { id: 'dark', name: 'الوضع الداكن', class: 'bm-dark' },
+                                        { id: 'light', name: 'الوضع الفاتح', class: 'bm-light' },
+                                        { id: 'satellite', name: 'قمر صناعي', class: 'bm-satellite' },
+                                        { id: 'terrain', name: 'تضاريس', class: 'bm-terrain' },
+                                        { id: 'cyber', name: 'سايبر بانك', class: 'bm-cyber' }
+                                    ].map(item => (
+                                        <div key={item.id} className={`ds-pick ${designSelections.basemap === item.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, basemap: item.id}))}>
+                                            <div className={`basemap-preview ${item.class}`}></div>
+                                            <div className="ds-pick-title">{item.name}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeDsCategory === 'markers' && (
+                            <div className="ds-section active">
+                                <div className="ds-section-head">
+                                    <h2>أنماط المؤشرات <span className="ds-tag">Markers</span></h2>
+                                    <p>اختر شكل تمثيل النقاط والمعالم على الخريطة.</p>
+                                </div>
+                                <div className="ds-grid">
+                                    {[
+                                        { id: 'pin', name: 'دبوس كلاسيكي', class: 'mk-pin' },
+                                        { id: 'dot', name: 'نقطة متوهجة', class: 'mk-dot' },
+                                        { id: 'pulse', name: 'نبض راداري', class: 'mk-pulse' },
+                                        { id: 'cluster', name: 'تجميع ذكي', class: 'mk-cluster' }
+                                    ].map(item => (
+                                        <div key={item.id} className={`ds-pick ${designSelections.marker === item.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, marker: item.id}))}>
+                                            <div className="marker-preview">
+                                                <div className={item.class}>{item.id === 'cluster' ? '24' : ''}</div>
+                                            </div>
+                                            <div className="ds-pick-title">{item.name}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeDsCategory === 'effects' && (
+                            <div className="ds-section active">
+                                <div className="ds-section-head">
+                                    <h2>المؤثرات والظلال <span className="ds-tag">Effects</span></h2>
+                                    <p>أضف لمسة جمالية على عناصر الواجهة.</p>
+                                </div>
+                                <div className="ds-grid">
+                                    {[
+                                        { id: 'glow', name: 'توهج نيون', class: 'ef-glow' },
+                                        { id: 'glass', name: 'زجاجي (Glass)', class: 'ef-glass' },
+                                        { id: 'float', name: 'عائم (Float)', class: 'ef-anim-float' },
+                                        { id: 'pulse', name: 'نبض تفاعلي', class: 'ef-anim-pulse' }
+                                    ].map(item => (
+                                        <div key={item.id} className={`ds-pick ${designSelections.effect === item.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, effect: item.id}))}>
+                                            <div className={`effect-preview ${item.class}`}>
+                                                <div className="effect-box"></div>
+                                            </div>
+                                            <div className="ds-pick-title">{item.name}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </main>
 
                     <aside className="ds-preview">
-                        <div className="preview-info">
-                            <div className="preview-info-row"><span className="pi-label">التخطيط</span><span className="pi-value">{designSelections.layout}</span></div>
-                            <div className="preview-info-row"><span className="pi-label">اللوحة</span><span className="pi-value">{designSelections.palette}</span></div>
-                            <div className="preview-info-row"><span className="pi-label">الخط</span><span className="pi-value">{designSelections.font}</span></div>
-                        </div>
                         <div className="ds-preview-head">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                             المعاينة المباشرة
                         </div>
                         <div className="preview-mock">
                             <div className="preview-mock-content">
+                                <div className="pmc-header"></div>
                                 <div className="pmc-map"></div>
                                 <div className="pmc-bar"></div>
                             </div>
                         </div>
                         <div className="preview-info">
-                            <div className="preview-info-row"><span className="pi-label">التخطيط</span><span className="pi-value">FullMap</span></div>
-                            <div className="preview-info-row"><span className="pi-label">اللوحة</span><span className="pi-value">PalNovaa</span></div>
-                            <div className="preview-info-row"><span className="pi-label">الخريطة</span><span className="pi-value">Dark Matter</span></div>
+                            <div className="preview-info-row"><span className="pi-label">التخطيط المختارة</span><span className="pi-value">{designSelections.layout}</span></div>
+                            <div className="preview-info-row"><span className="pi-label">باليت الألوان</span><span className="pi-value">{designSelections.palette}</span></div>
+                            <div className="preview-info-row"><span className="pi-label">نوع الخط</span><span className="pi-value">{designSelections.font}</span></div>
+                            <div className="preview-info-row"><span className="pi-label">خريطة الأساس</span><span className="pi-value">{designSelections.basemap}</span></div>
+                            <div className="preview-info-row" style={{ border: 'none' }}><span className="pi-label">النمط العام</span><span className="pi-value">{designSelections.effect}</span></div>
                         </div>
-                        <div className="preview-actions" style={{ marginTop: '20px' }}>
-                            <button className="ds-btn primary" style={{ width: '100%' }} onClick={performActualExport}>
+                        <div style={{ marginTop: '20px' }}>
+                            <button className="ds-btn primary" style={{ width: '100%', justifyContent: 'center' }} onClick={performActualExport}>
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                                 حفظ وتحميل التطبيق
                             </button>
