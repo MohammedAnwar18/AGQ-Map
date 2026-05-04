@@ -342,6 +342,8 @@ const onMouseLeave = (e) => {
     };
 
     const exportAsWebApp = () => {
+        alert("جاري فتح استوديو التصميم...");
+        console.log("Opening Design Studio. Current state:", isDesignStudioOpen);
         setIsDesignStudioOpen(true);
     };
 
