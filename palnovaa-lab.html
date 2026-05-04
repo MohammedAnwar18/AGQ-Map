@@ -1,0 +1,2676 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PalNovaa Lab | مختبر التحليل المكاني</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ================================================================
+     PalNovaa Lab — مختبر التحليل المكاني
+     ================================================================ */
+  :root {
+    --primary: #F5A623;
+    --primary-light: #FFC15E;
+    --primary-dark: #D88B0E;
+    --primary-glow: rgba(245, 166, 35, 0.45);
+
+    --accent-cyan: #06D6F2;
+    --accent-purple: #8B5CF6;
+    --accent-green: #10D9A0;
+    --accent-pink: #F472B6;
+    --accent-red: #EF4444;
+
+    --bg-0: #050B16;
+    --bg-1: #0A1628;
+    --bg-2: #0F1E33;
+    --bg-3: #142B47;
+    --surface: rgba(20, 43, 71, 0.55);
+    --surface-solid: #142B47;
+    --surface-hover: rgba(30, 58, 92, 0.85);
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(245, 166, 35, 0.4);
+    --grid-line: rgba(245, 166, 35, 0.08);
+
+    --text-primary: #FFFFFF;
+    --text-secondary: rgba(255, 255, 255, 0.72);
+    --text-muted: rgba(255, 255, 255, 0.45);
+
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.55);
+    --shadow-glow: 0 0 40px var(--primary-glow);
+
+    --radius-sm: 10px;
+    --radius-md: 16px;
+    --radius-lg: 22px;
+    --radius-full: 999px;
+
+    --transition: cubic-bezier(0.4, 0, 0.2, 1);
+
+    --topbar-h: 56px;
+    --statusbar-h: 32px;
+    --sidebar-w: 76px;
+    --panel-w: 320px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: 'Tajawal', system-ui, -apple-system, sans-serif;
+    background: var(--bg-0);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input { font-family: inherit; outline: none; border: none; background: none; color: inherit; }
+  ::selection { background: var(--primary); color: #fff; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* ============================================================
+     INTRO SPLASH — دخول إلى عالم جديد
+     ============================================================ */
+  .intro {
+    position: fixed; inset: 0; z-index: 1000;
+    background: radial-gradient(ellipse at center, var(--bg-1) 0%, var(--bg-0) 100%);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    transition: opacity 1s var(--transition), visibility 1s;
+  }
+  .intro.hidden { opacity: 0; visibility: hidden; }
+
+  /* خطوط شبكة سايبر متحركة */
+  .intro-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 40px 40px;
+    transform-origin: center center;
+    animation: gridZoom 6s var(--transition) forwards;
+  }
+  @keyframes gridZoom {
+    0% { transform: perspective(800px) rotateX(70deg) scale(2) translateY(50%); opacity: 0; }
+    30% { opacity: 1; }
+    100% { transform: perspective(1200px) rotateX(45deg) scale(1.5) translateY(20%); opacity: 0.5; }
+  }
+
+  /* ضوء وسط متوهج */
+  .intro-glow {
+    position: absolute;
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--primary-glow) 0%, transparent 60%);
+    filter: blur(40px);
+    animation: glowPulse 3s ease-in-out infinite alternate;
+  }
+  @keyframes glowPulse {
+    0% { transform: scale(0.8); opacity: 0.5; }
+    100% { transform: scale(1.2); opacity: 0.9; }
+  }
+
+  /* الكتلة المركزية */
+  .intro-content {
+    position: relative; z-index: 2;
+    text-align: center;
+    animation: contentRise 1.2s var(--transition) 0.3s both;
+  }
+  @keyframes contentRise {
+    from { opacity: 0; transform: translateY(40px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .intro-logo {
+    width: 110px; height: 110px;
+    margin: 0 auto 24px;
+    position: relative;
+    border-radius: 28px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    box-shadow:
+      0 30px 80px var(--primary-glow),
+      inset 0 -16px 30px rgba(0,0,0,0.2),
+      inset 0 0 0 1px rgba(255,255,255,0.3);
+    display: grid; place-items: center;
+    animation: logoFloat 3s ease-in-out infinite;
+  }
+  @keyframes logoFloat {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-10px) rotate(3deg); }
+  }
+  .intro-logo::before {
+    content: ''; position: absolute; inset: -12px;
+    border-radius: 36px;
+    border: 2px solid var(--primary);
+    opacity: 0.4;
+    animation: introRing 2s ease-out infinite;
+  }
+  .intro-logo::after {
+    content: ''; position: absolute; inset: -24px;
+    border-radius: 44px;
+    border: 1px solid var(--primary);
+    opacity: 0.2;
+    animation: introRing 2s ease-out 0.5s infinite;
+  }
+  @keyframes introRing {
+    0% { transform: scale(1); opacity: 0.6; }
+    100% { transform: scale(1.4); opacity: 0; }
+  }
+  .intro-logo svg { width: 56px; height: 56px; color: white; z-index: 1; }
+
+  .intro-content h1 {
+    font-size: clamp(28px, 5vw, 48px);
+    font-weight: 800;
+    letter-spacing: -1px;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #fff, var(--primary-light));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .intro-content h1 .lab-tag {
+    display: inline-block;
+    color: var(--primary);
+    -webkit-text-fill-color: var(--primary);
+    font-weight: 800;
+    margin-left: 4px;
+    text-shadow: 0 0 24px var(--primary-glow);
+  }
+  .intro-content p {
+    font-size: 16px;
+    color: var(--text-secondary);
+    margin-bottom: 32px;
+    max-width: 480px;
+    margin-left: auto; margin-right: auto;
+  }
+
+  .intro-loader {
+    width: 240px; max-width: 80vw;
+    height: 4px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 4px;
+    margin: 0 auto 14px;
+    overflow: hidden;
+    position: relative;
+  }
+  .intro-loader::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, var(--primary), var(--primary-light), var(--primary), transparent);
+    width: 60%;
+    border-radius: 4px;
+    animation: loaderSlide 2s ease-in-out infinite;
+    box-shadow: 0 0 20px var(--primary);
+  }
+  @keyframes loaderSlide {
+    0% { transform: translateX(100%); }
+    100% { transform: translateX(-200%); }
+  }
+  .intro-status {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--primary);
+    letter-spacing: 2px;
+  }
+
+  /* جزيئات حول اللوغو */
+  .intro-particles { position: absolute; inset: 0; pointer-events: none; }
+  .particle {
+    position: absolute; width: 3px; height: 3px;
+    background: var(--primary);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--primary);
+    opacity: 0;
+    animation: particleFly 4s ease-out infinite;
+  }
+  @keyframes particleFly {
+    0% { transform: translate(0, 0) scale(0); opacity: 0; }
+    20% { opacity: 1; }
+    100% { transform: translate(var(--px), var(--py)) scale(1); opacity: 0; }
+  }
+
+  /* ============================================================
+     LAB MAIN LAYOUT
+     ============================================================ */
+  .lab-app {
+    display: grid;
+    grid-template-columns: var(--sidebar-w) 1fr var(--panel-w);
+    grid-template-rows: var(--topbar-h) 1fr var(--statusbar-h);
+    grid-template-areas:
+      "topbar topbar topbar"
+      "sidebar canvas panel"
+      "statusbar statusbar statusbar";
+    height: 100vh; height: 100dvh;
+    background: var(--bg-0);
+    opacity: 0;
+    animation: appFadeIn 0.8s var(--transition) 0.3s forwards;
+  }
+  @keyframes appFadeIn {
+    to { opacity: 1; }
+  }
+
+  /* ============================================================
+     TOPBAR
+     ============================================================ */
+  .topbar {
+    grid-area: topbar;
+    display: flex; align-items: center;
+    padding: 0 16px;
+    background: var(--bg-1);
+    border-bottom: 1px solid var(--border);
+    z-index: 10;
+    gap: 16px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .brand-logo {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border-radius: 10px;
+    display: grid; place-items: center;
+    box-shadow: 0 6px 16px var(--primary-glow);
+    position: relative; overflow: hidden;
+  }
+  .brand-logo svg { width: 20px; height: 20px; color: white; }
+  .brand-text { line-height: 1.1; }
+  .brand-text strong { font-size: 14px; font-weight: 800; }
+  .brand-text small {
+    display: block; font-size: 10px;
+    color: var(--primary);
+    letter-spacing: 2px;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .topbar-divider {
+    width: 1px; height: 28px;
+    background: var(--border);
+  }
+
+  .breadcrumb {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; color: var(--text-muted);
+  }
+  .breadcrumb .current { color: var(--text-primary); font-weight: 600; }
+  .breadcrumb svg { width: 14px; height: 14px; }
+
+  .topbar-spacer { flex: 1; }
+
+  .topbar-actions { display: flex; align-items: center; gap: 8px; }
+
+  .top-btn {
+    height: 36px;
+    padding: 0 14px;
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text-secondary);
+    font-size: 13px; font-weight: 600;
+    transition: all 0.2s var(--transition);
+  }
+  .top-btn:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+    border-color: var(--border-strong);
+  }
+  .top-btn.primary {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    border-color: transparent;
+    box-shadow: 0 4px 12px var(--primary-glow);
+  }
+  .top-btn.primary:hover { transform: translateY(-1px); box-shadow: 0 8px 20px var(--primary-glow); }
+  .top-btn svg { width: 16px; height: 16px; }
+
+  .user-chip {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 10px 4px 4px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .user-chip:hover { background: var(--surface-hover); }
+  .user-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    display: grid; place-items: center;
+    color: white; font-weight: 700; font-size: 12px;
+  }
+
+  /* ============================================================
+     SIDEBAR (TOOLS)
+     ============================================================ */
+  .sidebar {
+    grid-area: sidebar;
+    background: var(--bg-1);
+    border-left: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    align-items: center;
+    padding: 16px 0;
+    gap: 8px;
+    overflow-y: auto;
+  }
+  .sidebar::-webkit-scrollbar { width: 0; }
+
+  .tool {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid transparent;
+    display: grid; place-items: center;
+    color: var(--text-secondary);
+    transition: all 0.25s var(--transition);
+    position: relative;
+  }
+  .tool:hover {
+    background: var(--surface-hover);
+    color: var(--primary);
+    transform: translateY(-2px);
+  }
+  .tool.active {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    box-shadow: 0 6px 20px var(--primary-glow);
+  }
+  .tool svg { width: 22px; height: 22px; }
+
+  /* تول تيب */
+  .tool::after {
+    content: attr(data-tip);
+    position: absolute;
+    right: calc(100% + 12px); top: 50%;
+    transform: translateY(-50%) translateX(-8px);
+    padding: 6px 12px;
+    background: var(--surface-solid);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px; font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0; transition: all 0.2s;
+    box-shadow: var(--shadow-md);
+    z-index: 100;
+  }
+  .tool:hover::after { opacity: 1; transform: translateY(-50%) translateX(0); }
+
+  .sidebar-divider {
+    width: 32px; height: 1px;
+    background: var(--border);
+    margin: 4px 0;
+  }
+
+  .sidebar-bottom { margin-top: auto; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+
+  /* ============================================================
+     CANVAS (MAP AREA)
+     ============================================================ */
+  .canvas {
+    grid-area: canvas;
+    position: relative;
+    background: var(--bg-2);
+    overflow: hidden;
+  }
+
+  /* خلفية الخريطة */
+  .map-bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 30% 40%, rgba(245, 166, 35, 0.12) 0%, transparent 50%),
+      radial-gradient(circle at 70% 70%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
+      radial-gradient(ellipse at center, var(--bg-2) 0%, var(--bg-1) 100%);
+  }
+  .map-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 50px 50px;
+    opacity: 0.6;
+    animation: gridDrift 60s linear infinite;
+  }
+  .map-grid-fine {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 10px 10px;
+    opacity: 0.5;
+  }
+  @keyframes gridDrift {
+    from { background-position: 0 0; }
+    to { background-position: 100px 100px; }
+  }
+
+  /* رسم وهمي لخريطة فلسطين */
+  .map-shape {
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    pointer-events: none;
+  }
+  .map-shape svg {
+    width: 50%; max-width: 380px;
+    opacity: 0.85;
+    filter: drop-shadow(0 0 30px var(--primary-glow));
+  }
+
+  /* نقاط بيانات */
+  .data-point {
+    position: absolute;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--primary);
+    box-shadow: 0 0 0 4px rgba(245,166,35,0.2), 0 0 20px var(--primary);
+    animation: dataPing 2s ease-out infinite;
+  }
+  .data-point::after {
+    content: ''; position: absolute; inset: -8px;
+    border: 2px solid var(--primary);
+    border-radius: 50%;
+    opacity: 0; animation: dataPing 2s ease-out infinite;
+  }
+  @keyframes dataPing {
+    0% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(2.5); opacity: 0; }
+  }
+  .data-point.cyan { background: var(--accent-cyan); box-shadow: 0 0 0 4px rgba(6,214,242,0.2), 0 0 20px var(--accent-cyan); }
+  .data-point.cyan::after { border-color: var(--accent-cyan); }
+  .data-point.purple { background: var(--accent-purple); box-shadow: 0 0 0 4px rgba(139,92,246,0.2), 0 0 20px var(--accent-purple); }
+  .data-point.purple::after { border-color: var(--accent-purple); }
+  .data-point.green { background: var(--accent-green); box-shadow: 0 0 0 4px rgba(16,217,160,0.2), 0 0 20px var(--accent-green); }
+  .data-point.green::after { border-color: var(--accent-green); }
+
+  /* أزرار التحكم بالخريطة */
+  .map-controls {
+    position: absolute;
+    top: 16px; left: 16px;
+    display: flex; flex-direction: column; gap: 6px;
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 6px;
+    z-index: 5;
+  }
+  .map-ctrl {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    color: var(--text-secondary);
+    display: grid; place-items: center;
+    transition: all 0.2s;
+  }
+  .map-ctrl:hover { background: var(--surface-hover); color: var(--primary); }
+  .map-ctrl svg { width: 18px; height: 18px; }
+
+  /* أداة القياس - لوحة عائمة */
+  .map-overlay-card {
+    position: absolute;
+    bottom: 16px; left: 16px;
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    min-width: 220px;
+    z-index: 5;
+    box-shadow: var(--shadow-md);
+  }
+  .map-overlay-card h4 {
+    font-size: 11px; font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 1.5px;
+    margin-bottom: 10px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .map-overlay-card h4 svg { width: 14px; height: 14px; color: var(--primary); }
+  .map-stat-row {
+    display: flex; justify-content: space-between;
+    font-size: 13px; padding: 4px 0;
+  }
+  .map-stat-row span:first-child { color: var(--text-secondary); }
+  .map-stat-row span:last-child { color: var(--primary); font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+
+  /* أداة المسطرة (legend) */
+  .map-legend {
+    position: absolute;
+    bottom: 16px; right: 16px;
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    z-index: 5;
+    box-shadow: var(--shadow-md);
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 3px 0; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  /* ============================================================
+     RIGHT PANEL
+     ============================================================ */
+  .panel {
+    grid-area: panel;
+    background: var(--bg-1);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+
+  .panel-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-2);
+  }
+  .panel-tab {
+    flex: 1;
+    padding: 12px 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .panel-tab svg { width: 14px; height: 14px; }
+  .panel-tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    background: rgba(245, 166, 35, 0.05);
+  }
+  .panel-tab:hover:not(.active) { color: var(--text-primary); }
+
+  .panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+  }
+  .panel-body::-webkit-scrollbar { width: 5px; }
+  .panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .panel-section { margin-bottom: 22px; }
+  .panel-section-title {
+    font-size: 11px; font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 1.5px;
+    margin-bottom: 10px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .panel-section-title button {
+    color: var(--primary); font-size: 11px; font-weight: 700;
+  }
+
+  /* رفع GeoJSON */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-md);
+    padding: 24px 16px;
+    text-align: center;
+    transition: all 0.25s var(--transition);
+    cursor: pointer;
+    background: rgba(245, 166, 35, 0.02);
+    position: relative; overflow: hidden;
+  }
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--primary);
+    background: rgba(245, 166, 35, 0.08);
+    transform: scale(1.01);
+  }
+  .upload-icon {
+    width: 50px; height: 50px;
+    margin: 0 auto 10px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border-radius: 14px;
+    display: grid; place-items: center;
+    box-shadow: 0 8px 20px var(--primary-glow);
+    animation: floatGently 3s ease-in-out infinite;
+  }
+  @keyframes floatGently {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+  .upload-icon svg { width: 24px; height: 24px; color: white; }
+  .upload-zone h4 { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .upload-zone p { font-size: 11px; color: var(--text-muted); }
+  .upload-zone .formats {
+    display: inline-flex; gap: 4px; margin-top: 8px;
+    flex-wrap: wrap; justify-content: center;
+  }
+  .upload-zone .format-pill {
+    font-size: 9px; font-weight: 700;
+    padding: 3px 7px;
+    background: rgba(245, 166, 35, 0.15);
+    color: var(--primary);
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* قائمة الطبقات */
+  .layer-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 6px;
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+  .layer-item:hover { background: var(--surface-hover); border-color: var(--border-strong); }
+  .layer-item.active { border-color: var(--primary); background: rgba(245, 166, 35, 0.05); }
+
+  .layer-color {
+    width: 14px; height: 14px; border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .layer-info { flex: 1; min-width: 0; }
+  .layer-info h5 {
+    font-size: 13px; font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .layer-info small {
+    font-size: 10px; color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .layer-actions { display: flex; gap: 2px; }
+  .layer-actions button {
+    width: 24px; height: 24px;
+    border-radius: 6px;
+    color: var(--text-muted);
+    display: grid; place-items: center;
+    transition: all 0.15s;
+  }
+  .layer-actions button:hover { background: rgba(255,255,255,0.06); color: var(--primary); }
+  .layer-actions svg { width: 12px; height: 12px; }
+
+  /* أدوات التحليل */
+  .analysis-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+  }
+  .analysis-card {
+    padding: 12px 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.25s var(--transition);
+    text-align: center;
+    position: relative; overflow: hidden;
+  }
+  .analysis-card::before {
+    content: ''; position: absolute; top: -50%; right: -50%;
+    width: 100%; height: 100%;
+    background: radial-gradient(circle, var(--primary-glow), transparent 70%);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .analysis-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-strong);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+  }
+  .analysis-card:hover::before { opacity: 1; }
+
+  .analysis-icon {
+    width: 32px; height: 32px;
+    margin: 0 auto 6px;
+    background: rgba(245, 166, 35, 0.12);
+    color: var(--primary);
+    border-radius: 8px;
+    display: grid; place-items: center;
+  }
+  .analysis-icon svg { width: 16px; height: 16px; }
+  .analysis-card h6 { font-size: 11px; font-weight: 700; margin-bottom: 2px; }
+  .analysis-card p { font-size: 9px; color: var(--text-muted); }
+
+  /* معلومات / Inspector */
+  .info-row {
+    display: flex; justify-content: space-between;
+    padding: 8px 0;
+    font-size: 12px;
+    border-bottom: 1px dashed var(--border);
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-row .label { color: var(--text-muted); font-weight: 500; }
+  .info-row .value {
+    color: var(--text-primary);
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+  }
+  .info-row .value.accent { color: var(--primary); }
+
+  /* قائمة العمليات */
+  .op-item {
+    padding: 10px;
+    background: rgba(255,255,255,0.03);
+    border-right: 3px solid var(--primary);
+    border-radius: 8px;
+    margin-bottom: 6px;
+    font-size: 12px;
+  }
+  .op-item .op-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 4px;
+  }
+  .op-item .op-name { font-weight: 700; }
+  .op-item .op-time { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+  .op-item .op-detail { font-size: 11px; color: var(--text-muted); }
+  .op-item.success { border-right-color: var(--accent-green); }
+  .op-item.warning { border-right-color: var(--primary); }
+  .op-item.processing { border-right-color: var(--accent-cyan); }
+
+  /* ============================================================
+     STATUSBAR
+     ============================================================ */
+  .statusbar {
+    grid-area: statusbar;
+    background: var(--bg-1);
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center;
+    padding: 0 12px;
+    gap: 12px;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .status-item { display: flex; align-items: center; gap: 6px; }
+  .status-item svg { width: 12px; height: 12px; color: var(--primary); }
+  .status-divider { width: 1px; height: 14px; background: var(--border); }
+  .status-spacer { flex: 1; }
+  .status-pill {
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(16, 217, 160, 0.15);
+    color: var(--accent-green);
+    font-weight: 700;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .status-pill::before {
+    content: ''; width: 6px; height: 6px;
+    border-radius: 50%; background: var(--accent-green);
+    box-shadow: 0 0 6px var(--accent-green);
+    animation: blink 1.5s infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* ============================================================
+     RESPONSIVE
+     ============================================================ */
+  @media (max-width: 1024px) {
+    :root { --panel-w: 280px; }
+    .analysis-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 768px) {
+    .lab-app {
+      grid-template-columns: var(--sidebar-w) 1fr;
+      grid-template-rows: var(--topbar-h) 1fr auto var(--statusbar-h);
+      grid-template-areas:
+        "topbar topbar"
+        "sidebar canvas"
+        "panel panel"
+        "statusbar statusbar";
+    }
+    :root { --sidebar-w: 60px; --panel-w: 100%; }
+    .panel { max-height: 320px; border-right: none; border-top: 1px solid var(--border); }
+    .breadcrumb { display: none; }
+    .top-btn span { display: none; }
+    .top-btn svg { margin: 0; }
+    .top-btn { padding: 0 10px; }
+    .map-shape svg { width: 60%; }
+  }
+
+  @media (max-width: 480px) {
+    .brand-text small { display: none; }
+    .map-overlay-card { min-width: 180px; padding: 10px; }
+    .map-legend { font-size: 10px; padding: 8px 10px; }
+    .tool { width: 44px; height: 44px; }
+    .tool svg { width: 18px; height: 18px; }
+    .user-chip span { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     INTRO SPLASH
+     ============================================================ -->
+<div class="intro" id="intro">
+  <div class="intro-grid"></div>
+  <div class="intro-glow"></div>
+  <div class="intro-particles" id="particles"></div>
+
+  <div class="intro-content">
+    <div class="intro-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <!-- شعار المختبر: قارورة (Flask) مع فقاعات -->
+        <path d="M9 2h6"/>
+        <path d="M10 2v7.5L4.5 19a2 2 0 0 0 1.7 3h11.6a2 2 0 0 0 1.7-3L14 9.5V2"/>
+        <path d="M7 16h10"/>
+        <circle cx="11" cy="14" r="0.6" fill="currentColor"/>
+        <circle cx="13.5" cy="17" r="0.5" fill="currentColor"/>
+        <circle cx="9.5" cy="18" r="0.5" fill="currentColor"/>
+      </svg>
+    </div>
+    <h1 dir="ltr">PalNovaa <span class="lab-tag">Lab</span></h1>
+    <div class="intro-loader"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     LAB APP
+     ============================================================ -->
+<div class="lab-app">
+
+  <!-- ===== TOPBAR ===== -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 2h6"/>
+          <path d="M10 2v7.5L4.5 19a2 2 0 0 0 1.7 3h11.6a2 2 0 0 0 1.7-3L14 9.5V2"/>
+          <path d="M7 16h10"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <strong>PalNovaa</strong>
+        <small>LAB · v2.0</small>
+      </div>
+    </div>
+
+    <div class="topbar-divider"></div>
+
+    <nav class="breadcrumb">
+      <span>المشاريع</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      <span>تحليل الكثافة السكانية</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      <span class="current">جلسة #2456</span>
+    </nav>
+
+    <div class="topbar-spacer"></div>
+
+    <div class="topbar-actions">
+      <button class="top-btn" title="حفظ">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        <span>حفظ</span>
+      </button>
+      <button class="top-btn" title="تصدير" onclick="openDesignStudio()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span>تصدير</span>
+      </button>
+      <button class="top-btn primary" title="تشغيل التحليل">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span>تشغيل التحليل</span>
+      </button>
+      <div class="user-chip">
+        <div class="user-avatar">M</div>
+        <span>Mohammed</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== SIDEBAR (TOOLS) ===== -->
+  <aside class="sidebar">
+    <button class="tool active" data-tip="مؤشر التحديد">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3l3.057-3 11.943 11.943-4.057.057L13 16.943l-3 3L5 3z"/></svg>
+    </button>
+    <button class="tool" data-tip="رسم نقطة">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/></svg>
+    </button>
+    <button class="tool" data-tip="رسم خط">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="19" x2="19" y2="5"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/></svg>
+    </button>
+    <button class="tool" data-tip="رسم مضلع">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
+    </button>
+
+    <div class="sidebar-divider"></div>
+
+    <button class="tool" data-tip="قياس المسافة">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.3 8.7L8.7 21.3a2.4 2.4 0 0 1-3.4 0L2.7 18.7a2.4 2.4 0 0 1 0-3.4L15.3 2.7a2.4 2.4 0 0 1 3.4 0l2.6 2.6a2.4 2.4 0 0 1 0 3.4z"/><path d="M7 17l-3-3M11 13l-3-3M15 9l-3-3"/></svg>
+    </button>
+    <button class="tool" data-tip="قياس المساحة">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>
+    </button>
+    <button class="tool" data-tip="نطاق احتمالي (Buffer)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7" stroke-dasharray="2 2"/><circle cx="12" cy="12" r="11" stroke-dasharray="1 3"/></svg>
+    </button>
+    <button class="tool" data-tip="تقاطع الطبقات">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/></svg>
+    </button>
+    <button class="tool" data-tip="خريطة حرارية">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12c0 5.5-4.5 10-10 10S2 17.5 2 12 6.5 2 12 2"/><path d="M22 12c0-5.5-4.5-10-10-10v10h10z"/></svg>
+    </button>
+
+    <div class="sidebar-divider"></div>
+
+    <button class="tool" data-tip="بحث جغرافي">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </button>
+    <button class="tool" data-tip="بيانات وصفية">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+    </button>
+
+    <div class="sidebar-bottom">
+      <button class="tool" data-tip="الإعدادات">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ===== CANVAS / MAP AREA ===== -->
+  <section class="canvas">
+    <div class="map-bg"></div>
+    <div class="map-grid"></div>
+    <div class="map-grid-fine"></div>
+
+    <!-- شكل وهمي للخريطة -->
+    <div class="map-shape">
+      <svg viewBox="0 0 200 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="mapGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#F5A623" stop-opacity="0.45"/>
+            <stop offset="100%" stop-color="#D88B0E" stop-opacity="0.15"/>
+          </linearGradient>
+          <filter id="mapBlur"><feGaussianBlur stdDeviation="0.5"/></filter>
+        </defs>
+        <!-- شكل تقريبي مبسط لفلسطين -->
+        <path d="M100 20 L120 40 L130 70 L125 100 L135 130 L130 160 L140 200 L130 240 L120 280 L100 320 L80 360 L70 380 L60 350 L65 310 L70 270 L75 230 L70 190 L80 150 L85 110 L90 70 L95 40 Z"
+              fill="url(#mapGrad)" stroke="#F5A623" stroke-width="1.5"/>
+        <path d="M100 20 L120 40 L130 70 L125 100 L135 130 L130 160 L140 200 L130 240 L120 280 L100 320 L80 360 L70 380 L60 350 L65 310 L70 270 L75 230 L70 190 L80 150 L85 110 L90 70 L95 40 Z"
+              fill="none" stroke="#FFD16E" stroke-width="0.5" stroke-dasharray="3 3" opacity="0.6"/>
+      </svg>
+    </div>
+
+    <!-- نقاط بيانات حية -->
+    <div class="data-point" style="top: 30%; right: 45%;"></div>
+    <div class="data-point cyan" style="top: 45%; right: 55%; animation-delay: 0.5s;"></div>
+    <div class="data-point purple" style="top: 60%; right: 48%; animation-delay: 1s;"></div>
+    <div class="data-point green" style="top: 25%; right: 50%; animation-delay: 1.5s;"></div>
+    <div class="data-point" style="top: 70%; right: 52%; animation-delay: 0.7s;"></div>
+    <div class="data-point cyan" style="top: 50%; right: 42%; animation-delay: 1.2s;"></div>
+    <div class="data-point purple" style="top: 35%; right: 58%; animation-delay: 0.3s;"></div>
+
+    <!-- أزرار التحكم -->
+    <div class="map-controls">
+      <button class="map-ctrl" title="تكبير">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+      </button>
+      <button class="map-ctrl" title="تصغير">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+      </button>
+      <button class="map-ctrl" title="موقعي">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>
+      </button>
+      <button class="map-ctrl" title="ملء الشاشة">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+      </button>
+    </div>
+
+    <!-- بطاقة إحصائيات -->
+    <div class="map-overlay-card">
+      <h4>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/></svg>
+        إحصائيات الجلسة
+      </h4>
+      <div class="map-stat-row"><span>عدد الميزات</span><span>1,247</span></div>
+      <div class="map-stat-row"><span>الطبقات النشطة</span><span>4</span></div>
+      <div class="map-stat-row"><span>المساحة الكلية</span><span>27.3 km²</span></div>
+      <div class="map-stat-row"><span>الدقة</span><span>0.5 m</span></div>
+    </div>
+
+    <!-- مفتاح الخريطة -->
+    <div class="map-legend">
+      <div class="legend-item"><span class="legend-dot" style="background: var(--primary);"></span>المواقع التجارية</div>
+      <div class="legend-item"><span class="legend-dot" style="background: var(--accent-cyan);"></span>الخدمات</div>
+      <div class="legend-item"><span class="legend-dot" style="background: var(--accent-purple);"></span>المعالم</div>
+      <div class="legend-item"><span class="legend-dot" style="background: var(--accent-green);"></span>المناطق السكنية</div>
+    </div>
+  </section>
+
+  <!-- ===== RIGHT PANEL ===== -->
+  <aside class="panel">
+    <div class="panel-tabs">
+      <button class="panel-tab active" onclick="switchTab(this, 'layers')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+        الطبقات
+      </button>
+      <button class="panel-tab" onclick="switchTab(this, 'analysis')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        التحليل
+      </button>
+      <button class="panel-tab" onclick="switchTab(this, 'inspector')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        التفاصيل
+      </button>
+    </div>
+
+    <div class="panel-body">
+
+      <!-- ===== TAB: LAYERS ===== -->
+      <div class="tab-content" id="tab-layers">
+
+        <!-- رفع GeoJSON -->
+        <div class="panel-section">
+          <div class="panel-section-title">
+            <span>استيراد بيانات</span>
+          </div>
+          <div class="upload-zone" id="uploadZone">
+            <div class="upload-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+            </div>
+            <h4>اسحب ملف GeoJSON هنا</h4>
+            <p>أو اضغط للاختيار من جهازك</p>
+            <div class="formats">
+              <span class="format-pill">.geojson</span>
+              <span class="format-pill">.json</span>
+              <span class="format-pill">.kml</span>
+              <span class="format-pill">.shp</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- قائمة الطبقات -->
+        <div class="panel-section">
+          <div class="panel-section-title">
+            <span>الطبقات النشطة</span>
+            <button>+ جديدة</button>
+          </div>
+          <div class="layer-item active">
+            <div class="layer-color" style="background: var(--primary);"></div>
+            <div class="layer-info">
+              <h5>المواقع التجارية</h5>
+              <small>POINT · 412 ميزة</small>
+            </div>
+            <div class="layer-actions">
+              <button title="إخفاء"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+              <button title="إعدادات"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+            </div>
+          </div>
+          <div class="layer-item">
+            <div class="layer-color" style="background: var(--accent-cyan);"></div>
+            <div class="layer-info">
+              <h5>الخدمات الصحية</h5>
+              <small>POINT · 87 ميزة</small>
+            </div>
+            <div class="layer-actions">
+              <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+              <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+            </div>
+          </div>
+          <div class="layer-item">
+            <div class="layer-color" style="background: var(--accent-purple);"></div>
+            <div class="layer-info">
+              <h5>الحدود الإدارية</h5>
+              <small>POLYGON · 24 ميزة</small>
+            </div>
+            <div class="layer-actions">
+              <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+              <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+            </div>
+          </div>
+          <div class="layer-item">
+            <div class="layer-color" style="background: var(--accent-green);"></div>
+            <div class="layer-info">
+              <h5>شبكة الطرق</h5>
+              <small>LINESTRING · 724 ميزة</small>
+            </div>
+            <div class="layer-actions">
+              <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+              <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ===== TAB: ANALYSIS ===== -->
+      <div class="tab-content" id="tab-analysis" style="display: none;">
+
+        <div class="panel-section">
+          <div class="panel-section-title">
+            <span>عمليات التحليل</span>
+          </div>
+          <div class="analysis-grid">
+            <div class="analysis-card">
+              <div class="analysis-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7" stroke-dasharray="2 2"/></svg></div>
+              <h6>Buffer</h6>
+              <p>نطاق احتمالي</p>
+            </div>
+            <div class="analysis-card">
+              <div class="analysis-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/></svg></div>
+              <h6>Intersection</h6>
+              <p>تقاطع الطبقات</p>
+            </div>
+            <div class="analysis-card">
+              <div class="analysis-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="12" r="6"/><path d="M15 6a6 6 0 0 1 0 12"/></svg></div>
+              <h6>Union</h6>
+              <p>دمج المضلعات</p>
+            </div>
+            <div class="analysis-card">
+              <div class="analysis-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12c0 5.5-4.5 10-10 10S2 17.5 2 12 6.5 2 12 2"/><path d="M22 12c0-5.5-4.5-10-10-10v10h10z"/></svg></div>
+              <h6>Heatmap</h6>
+              <p>خريطة حرارية</p>
+            </div>
+            <div class="analysis-card">
+              <div class="analysis-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="14" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg></div>
+              <h6>Cluster</h6>
+              <p>تجميع النقاط</p>
+            </div>
+            <div class="analysis-card">
+              <div class="analysis-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+              <h6>Voronoi</h6>
+              <p>تقسيم تيسن</p>
+            </div>
+            <div class="analysis-card">
+              <div class="analysis-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+              <h6>Nearest</h6>
+              <p>الأقرب جوار</p>
+            </div>
+            <div class="analysis-card">
+              <div class="analysis-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/></svg></div>
+              <h6>Statistics</h6>
+              <p>إحصائيات</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <div class="panel-section-title">
+            <span>سجل العمليات</span>
+            <button>مسح</button>
+          </div>
+          <div class="op-item success">
+            <div class="op-head">
+              <span class="op-name">Buffer Analysis</span>
+              <span class="op-time mono">10:42:15</span>
+            </div>
+            <div class="op-detail">تم إنشاء نطاق 500 متر حول 412 نقطة</div>
+          </div>
+          <div class="op-item processing">
+            <div class="op-head">
+              <span class="op-name">Heatmap Generation</span>
+              <span class="op-time mono">10:43:02</span>
+            </div>
+            <div class="op-detail">جارٍ المعالجة... 67%</div>
+          </div>
+          <div class="op-item warning">
+            <div class="op-head">
+              <span class="op-name">Spatial Join</span>
+              <span class="op-time mono">10:38:51</span>
+            </div>
+            <div class="op-detail">3 ميزات بدون تطابق - يُنصح بالمراجعة</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ===== TAB: INSPECTOR ===== -->
+      <div class="tab-content" id="tab-inspector" style="display: none;">
+
+        <div class="panel-section">
+          <div class="panel-section-title">
+            <span>الميزة المحددة</span>
+          </div>
+          <div class="info-row"><span class="label">المعرّف</span><span class="value mono">#FT-2456-A12</span></div>
+          <div class="info-row"><span class="label">النوع</span><span class="value accent">POINT</span></div>
+          <div class="info-row"><span class="label">الطبقة</span><span class="value">المواقع التجارية</span></div>
+          <div class="info-row"><span class="label">الإحداثيات</span><span class="value mono">31.9°N, 35.2°E</span></div>
+          <div class="info-row"><span class="label">المنطقة</span><span class="value">رام الله</span></div>
+        </div>
+
+        <div class="panel-section">
+          <div class="panel-section-title">
+            <span>الخصائص (Properties)</span>
+          </div>
+          <div class="info-row"><span class="label">name</span><span class="value">مطعم الواحة</span></div>
+          <div class="info-row"><span class="label">category</span><span class="value">restaurant</span></div>
+          <div class="info-row"><span class="label">rating</span><span class="value accent">4.8 ★</span></div>
+          <div class="info-row"><span class="label">opened_at</span><span class="value mono">2019-03-15</span></div>
+          <div class="info-row"><span class="label">capacity</span><span class="value">120</span></div>
+          <div class="info-row"><span class="label">is_open</span><span class="value accent">true</span></div>
+        </div>
+
+        <div class="panel-section">
+          <div class="panel-section-title">
+            <span>التحليل المكاني</span>
+          </div>
+          <div class="info-row"><span class="label">المسافة من المركز</span><span class="value mono">1.42 km</span></div>
+          <div class="info-row"><span class="label">أقرب خدمة صحية</span><span class="value mono">340 m</span></div>
+          <div class="info-row"><span class="label">كثافة المنطقة</span><span class="value">عالية</span></div>
+          <div class="info-row"><span class="label">المنطقة الزمنية</span><span class="value mono">UTC+2</span></div>
+        </div>
+
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- ===== STATUSBAR ===== -->
+  <footer class="statusbar">
+    <div class="status-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/></svg>
+      <span id="coords">31.9038°N, 35.2034°E</span>
+    </div>
+    <div class="status-divider"></div>
+    <div class="status-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span>EPSG:4326</span>
+    </div>
+    <div class="status-divider"></div>
+    <div class="status-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="6" y1="9" x2="6" y2="15"/><line x1="12" y1="9" x2="12" y2="15"/><line x1="18" y1="9" x2="18" y2="15"/></svg>
+      <span id="zoom">Scale: 1:25,000</span>
+    </div>
+    <div class="status-divider"></div>
+    <div class="status-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/></svg>
+      <span>4 طبقات · 1,247 ميزة</span>
+    </div>
+    <div class="status-spacer"></div>
+    <div class="status-pill">المختبر متصل</div>
+  </footer>
+
+</div>
+
+<script>
+  // إنشاء جزيئات
+  const particlesContainer = document.getElementById('particles');
+  for (let i = 0; i < 30; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const angle = (Math.PI * 2 * i) / 30;
+    const dist = 200 + Math.random() * 200;
+    p.style.left = '50%';
+    p.style.top = '50%';
+    p.style.setProperty('--px', Math.cos(angle) * dist + 'px');
+    p.style.setProperty('--py', Math.sin(angle) * dist + 'px');
+    p.style.animationDelay = (Math.random() * 4) + 's';
+    particlesContainer.appendChild(p);
+  }
+
+  // إخفاء الـ intro بعد 2.8 ثانية
+  setTimeout(() => {
+    document.getElementById('intro').classList.add('hidden');
+    setTimeout(() => {
+      document.getElementById('intro').remove();
+    }, 1000);
+  }, 2800);
+
+  // ===== Tabs =====
+  function switchTab(btn, tab) {
+    document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+    document.getElementById('tab-' + tab).style.display = 'block';
+  }
+
+  // ===== Sidebar Tools =====
+  document.querySelectorAll('.sidebar .tool').forEach(t => {
+    t.addEventListener('click', function() {
+      document.querySelectorAll('.sidebar .tool').forEach(x => x.classList.remove('active'));
+      this.classList.add('active');
+    });
+  });
+
+  // ===== Layer Items =====
+  document.querySelectorAll('.layer-item').forEach(l => {
+    l.addEventListener('click', function() {
+      document.querySelectorAll('.layer-item').forEach(x => x.classList.remove('active'));
+      this.classList.add('active');
+    });
+  });
+
+  // ===== Upload Zone (UI feedback only) =====
+  const uploadZone = document.getElementById('uploadZone');
+  ['dragenter', 'dragover'].forEach(e => uploadZone.addEventListener(e, ev => { ev.preventDefault(); uploadZone.classList.add('dragover'); }));
+  ['dragleave', 'drop'].forEach(e => uploadZone.addEventListener(e, ev => { ev.preventDefault(); uploadZone.classList.remove('dragover'); }));
+  uploadZone.addEventListener('click', () => {
+    // ضع هنا الفنكشن الخاصة بك لرفع GeoJSON
+    console.log('Open file picker for GeoJSON');
+  });
+
+  // ===== Live coordinates simulation =====
+  const canvas = document.querySelector('.canvas');
+  canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width);
+    const y = ((e.clientY - rect.top) / rect.height);
+    const lat = (32.5 - y * 1.2).toFixed(4);
+    const lon = (35.0 + x * 0.8).toFixed(4);
+    document.getElementById('coords').textContent = lat + '°N, ' + lon + '°E';
+  });
+
+  // ===== Design Studio =====
+  function openDesignStudio() {
+    document.getElementById('designStudio').classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeDesignStudio() {
+    document.getElementById('designStudio').classList.remove('active');
+    document.body.style.overflow = '';
+  }
+  function switchCategory(cat) {
+    document.querySelectorAll('.ds-cat').forEach(c => c.classList.remove('active'));
+    document.querySelector('.ds-cat[data-cat="' + cat + '"]').classList.add('active');
+    document.querySelectorAll('.ds-section').forEach(s => s.classList.remove('active'));
+    document.getElementById('ds-' + cat).classList.add('active');
+  }
+  // Toggle selection for any pickable card
+  document.addEventListener('click', (e) => {
+    const card = e.target.closest('.ds-pick');
+    if (card) {
+      const group = card.parentElement;
+      group.querySelectorAll('.ds-pick').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+    }
+  });
+</script>
+
+<!-- =================================================================
+     PALNOVAA WEBAPP DESIGN STUDIO
+     ================================================================= -->
+<style>
+  /* ===== Studio Container ===== */
+  .design-studio {
+    position: fixed; inset: 0;
+    background: var(--bg-0);
+    z-index: 2000;
+    display: flex; flex-direction: column;
+    opacity: 0; pointer-events: none;
+    transform: scale(0.97);
+    transition: all 0.5s var(--transition);
+  }
+  .design-studio.active {
+    opacity: 1; pointer-events: auto;
+    transform: scale(1);
+  }
+
+  /* خلفية الستوديو الإبداعية */
+  .design-studio::before {
+    content: ''; position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 20% 20%, rgba(245, 166, 35, 0.12) 0%, transparent 40%),
+      radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.08) 0%, transparent 40%),
+      linear-gradient(180deg, var(--bg-0) 0%, var(--bg-1) 100%);
+    pointer-events: none;
+  }
+  .design-studio::after {
+    content: ''; position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(245, 166, 35, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(245, 166, 35, 0.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none; opacity: 0.5;
+  }
+
+  /* ===== Studio Header ===== */
+  .ds-header {
+    position: relative; z-index: 5;
+    padding: 16px 24px;
+    background: rgba(10, 22, 40, 0.7);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px;
+  }
+  .ds-brand { display: flex; align-items: center; gap: 14px; }
+  .ds-brand-icon {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border-radius: 12px;
+    display: grid; place-items: center;
+    box-shadow: 0 8px 24px var(--primary-glow);
+    position: relative; overflow: hidden;
+  }
+  .ds-brand-icon::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, transparent 30%, rgba(255,255,255,0.3) 50%, transparent 70%);
+    animation: shine 3s infinite;
+  }
+  .ds-brand-icon svg { width: 24px; height: 24px; color: white; z-index: 1; }
+  .ds-brand-text { line-height: 1.2; }
+  .ds-brand-text strong {
+    font-size: 17px; font-weight: 800;
+    background: linear-gradient(135deg, #fff, var(--primary-light));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .ds-brand-text small {
+    display: block; font-size: 11px;
+    color: var(--primary); font-weight: 700;
+    letter-spacing: 2px; font-family: 'JetBrains Mono', monospace;
+  }
+
+  .ds-header-actions { display: flex; align-items: center; gap: 10px; }
+  .ds-btn {
+    padding: 9px 18px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text-secondary);
+    font-size: 13px; font-weight: 600;
+    transition: all 0.25s var(--transition);
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .ds-btn:hover { background: var(--surface-hover); color: var(--text-primary); border-color: var(--border-strong); }
+  .ds-btn svg { width: 16px; height: 16px; }
+  .ds-btn.primary {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white; border-color: transparent;
+    box-shadow: 0 8px 22px var(--primary-glow);
+  }
+  .ds-btn.primary:hover { transform: translateY(-2px); box-shadow: 0 12px 30px var(--primary-glow); }
+
+  .ds-close {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    display: grid; place-items: center;
+    transition: all 0.2s;
+  }
+  .ds-close:hover { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); border-color: var(--accent-red); }
+  .ds-close svg { width: 20px; height: 20px; }
+
+  /* ===== Studio Body Layout ===== */
+  .ds-body {
+    flex: 1; min-height: 0;
+    display: grid;
+    grid-template-columns: 240px 1fr 300px;
+    position: relative; z-index: 5;
+  }
+
+  /* ===== Categories Sidebar ===== */
+  .ds-categories {
+    background: rgba(15, 30, 51, 0.6);
+    backdrop-filter: blur(16px);
+    border-left: 1px solid var(--border);
+    padding: 20px 14px;
+    overflow-y: auto;
+  }
+  .ds-categories::-webkit-scrollbar { width: 4px; }
+  .ds-categories::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .ds-cat-title {
+    font-size: 10px; font-weight: 800;
+    color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 2px;
+    padding: 10px 12px 8px;
+  }
+
+  .ds-cat {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s var(--transition);
+    margin-bottom: 4px;
+    font-size: 13px; font-weight: 600;
+    position: relative;
+  }
+  .ds-cat:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
+  .ds-cat.active {
+    background: linear-gradient(135deg, rgba(245,166,35,0.18), rgba(245,166,35,0.06));
+    color: var(--primary);
+    border: 1px solid rgba(245,166,35,0.3);
+  }
+  .ds-cat.active::before {
+    content: ''; position: absolute; right: -14px; top: 50%;
+    transform: translateY(-50%);
+    width: 4px; height: 24px;
+    background: var(--primary);
+    border-radius: 4px 0 0 4px;
+    box-shadow: 0 0 16px var(--primary);
+  }
+  .ds-cat svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .ds-cat .ds-cat-num {
+    margin-right: auto;
+    font-size: 10px; font-weight: 700;
+    padding: 2px 7px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .ds-cat.active .ds-cat-num { background: rgba(245,166,35,0.2); color: var(--primary); }
+
+  /* ===== Main Content ===== */
+  .ds-main {
+    overflow-y: auto;
+    padding: 24px 28px;
+  }
+  .ds-main::-webkit-scrollbar { width: 6px; }
+  .ds-main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .ds-section { display: none; animation: dsFadeIn 0.4s var(--transition); }
+  .ds-section.active { display: block; }
+  @keyframes dsFadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .ds-section-head { margin-bottom: 22px; }
+  .ds-section-head h2 {
+    font-size: 22px; font-weight: 800;
+    margin-bottom: 6px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .ds-section-head h2 .ds-tag {
+    font-size: 11px; font-weight: 700;
+    padding: 3px 10px;
+    background: rgba(245,166,35,0.15);
+    color: var(--primary);
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .ds-section-head p { font-size: 13px; color: var(--text-muted); }
+
+  .ds-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
+  }
+
+  /* === Pickable Card === */
+  .ds-pick {
+    background: rgba(20, 43, 71, 0.5);
+    backdrop-filter: blur(12px);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.25s var(--transition);
+    position: relative; overflow: hidden;
+  }
+  .ds-pick:hover {
+    transform: translateY(-3px);
+    border-color: var(--border-strong);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+  }
+  .ds-pick.selected {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-glow), 0 12px 30px rgba(0,0,0,0.4);
+  }
+  .ds-pick.selected::after {
+    content: '✓';
+    position: absolute; top: 8px; left: 8px;
+    width: 22px; height: 22px;
+    background: var(--primary); color: white;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 13px; font-weight: 700;
+    box-shadow: 0 4px 12px var(--primary-glow);
+  }
+
+  .ds-pick-title { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+  .ds-pick-sub { font-size: 11px; color: var(--text-muted); }
+
+  /* ===== Layout Mockups ===== */
+  .layout-mockup {
+    aspect-ratio: 16/10;
+    background: rgba(255,255,255,0.04);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    padding: 6px;
+    display: grid;
+    gap: 4px;
+    position: relative; overflow: hidden;
+  }
+  .lm-block { background: linear-gradient(135deg, rgba(245,166,35,0.3), rgba(245,166,35,0.1)); border-radius: 4px; }
+  .lm-block.alt { background: linear-gradient(135deg, rgba(6,214,242,0.25), rgba(6,214,242,0.08)); }
+  .lm-block.muted { background: rgba(255,255,255,0.06); }
+  .lm-block.map {
+    background:
+      radial-gradient(circle at 50% 50%, rgba(245,166,35,0.4), transparent 50%),
+      linear-gradient(135deg, rgba(20,43,71,0.8), rgba(15,30,51,0.8));
+    position: relative;
+  }
+  .lm-block.map::after {
+    content: ''; position: absolute; inset: 30%;
+    border: 1.5px dashed rgba(245,166,35,0.6);
+    border-radius: 50%;
+  }
+
+  /* Layout types */
+  .lm-fullmap { grid-template-rows: 1fr; }
+  .lm-fullmap > .lm-overlay {
+    position: absolute; top: 10px; right: 10px;
+    width: 30%; height: 60%;
+    background: rgba(15,30,51,0.85);
+    border-radius: 4px;
+  }
+  .lm-sidebar { grid-template-columns: 30% 1fr; }
+  .lm-three { grid-template-columns: 18% 1fr 22%; }
+  .lm-dashboard { grid-template-rows: 16% 1fr 22%; }
+  .lm-dashboard > .lm-bottom { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
+  .lm-split { grid-template-columns: 1fr 1fr; }
+  .lm-stacked { grid-template-rows: 1fr 35%; }
+  .lm-floating { position: relative; }
+  .lm-floating > .lm-card {
+    position: absolute;
+    background: rgba(15,30,51,0.85);
+    border-radius: 4px;
+    border: 1px solid rgba(245,166,35,0.3);
+  }
+  .lm-modal { display: grid; place-items: center; }
+  .lm-modal > .lm-block:first-child { width: 60%; height: 70%; border-radius: 8px; }
+
+  /* ===== Color Palette Card ===== */
+  .palette-strip {
+    display: flex;
+    height: 90px;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 10px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
+  }
+  .palette-strip > span { flex: 1; transition: flex 0.3s; }
+  .palette-strip:hover > span:hover { flex: 2; }
+
+  /* ===== Typography Card ===== */
+  .type-preview {
+    background: rgba(255,255,255,0.04);
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 10px;
+    min-height: 90px;
+  }
+  .type-preview .t-title { font-size: 18px; font-weight: 800; margin-bottom: 4px; line-height: 1.2; }
+  .type-preview .t-body { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+  .type-pair-name { font-size: 11px; color: var(--primary); font-family: 'JetBrains Mono', monospace; margin-top: 4px; }
+
+  /* ===== Component Cards ===== */
+  .comp-preview {
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 10px;
+    min-height: 100px;
+    display: grid; place-items: center;
+  }
+  .comp-btn {
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 12px; font-weight: 700;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white; box-shadow: 0 6px 16px var(--primary-glow);
+  }
+  .comp-btn.outline {
+    background: transparent;
+    border: 2px solid var(--primary);
+    color: var(--primary);
+    box-shadow: none;
+  }
+  .comp-btn.ghost {
+    background: rgba(245,166,35,0.12);
+    color: var(--primary); box-shadow: none;
+  }
+  .comp-btn.pill { border-radius: 999px; padding: 8px 18px; }
+  .comp-btn.glow {
+    background: var(--primary); color: white;
+    box-shadow: 0 0 30px var(--primary-glow), inset 0 0 20px rgba(255,255,255,0.2);
+  }
+  .comp-card {
+    width: 100%;
+    padding: 12px;
+    background: rgba(20,43,71,0.6);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .comp-card .c-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .comp-card .c-text { font-size: 11px; color: var(--text-muted); }
+  .comp-search {
+    width: 100%;
+    padding: 10px 14px;
+    background: rgba(15,30,51,0.7);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 12px;
+    color: var(--text-muted);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .comp-search svg { width: 14px; height: 14px; color: var(--primary); }
+
+  /* ===== Basemap Theme ===== */
+  .basemap-preview {
+    aspect-ratio: 16/10;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    position: relative; overflow: hidden;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
+    background-size: 12px 12px;
+  }
+  .bm-dark { background-color: #0F1E33; }
+  .bm-light { background-color: #F5F4ED; background-image: linear-gradient(rgba(0,0,0,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.06) 1px, transparent 1px); }
+  .bm-satellite { background-color: #1A2614; background-image: radial-gradient(circle at 30% 40%, rgba(120, 168, 80, 0.4) 20%, transparent 60%), radial-gradient(circle at 70% 60%, rgba(80, 120, 60, 0.3) 20%, transparent 60%); }
+  .bm-terrain { background-color: #D4C49B; background-image: radial-gradient(circle at 40% 50%, rgba(170, 130, 80, 0.5) 30%, transparent 70%); }
+  .bm-vintage { background-color: #E4D5B7; background-image: radial-gradient(circle at 50% 50%, rgba(180, 140, 90, 0.3), transparent 80%); }
+  .bm-cyber { background-color: #050B16; background-image: linear-gradient(rgba(245,166,35,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(6,214,242,0.15) 1px, transparent 1px); background-size: 16px 16px; }
+
+  /* مقياس الخريطة */
+  .basemap-preview::after {
+    content: ''; position: absolute;
+    bottom: 8px; right: 8px;
+    width: 30px; height: 4px;
+    background: var(--primary);
+    border-radius: 2px;
+  }
+
+  /* ===== Marker Styles ===== */
+  .marker-preview {
+    background: rgba(20,43,71,0.6);
+    border-radius: 8px;
+    padding: 18px;
+    margin-bottom: 10px;
+    min-height: 110px;
+    display: grid; place-items: center;
+    position: relative; overflow: hidden;
+    background-image:
+      radial-gradient(circle at 30% 30%, rgba(245,166,35,0.1), transparent 50%),
+      linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+    background-size: cover, 14px 14px, 14px 14px;
+  }
+  .mk-pin {
+    width: 28px; height: 36px;
+    background: var(--primary);
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+    position: relative;
+  }
+  .mk-pin::after {
+    content: ''; position: absolute;
+    top: 8px; left: 8px;
+    width: 12px; height: 12px;
+    background: white; border-radius: 50%;
+  }
+  .mk-dot {
+    width: 18px; height: 18px;
+    background: var(--primary); border-radius: 50%;
+    box-shadow: 0 0 0 4px rgba(245,166,35,0.25), 0 0 16px var(--primary);
+  }
+  .mk-pulse {
+    width: 16px; height: 16px;
+    background: var(--accent-cyan); border-radius: 50%;
+    position: relative;
+    box-shadow: 0 0 12px var(--accent-cyan);
+  }
+  .mk-pulse::after {
+    content: ''; position: absolute; inset: -8px;
+    border: 2px solid var(--accent-cyan); border-radius: 50%;
+    animation: mkPulse 1.6s ease-out infinite;
+  }
+  @keyframes mkPulse {
+    0% { transform: scale(0.5); opacity: 1; }
+    100% { transform: scale(2); opacity: 0; }
+  }
+  .mk-cluster {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border-radius: 50%;
+    display: grid; place-items: center;
+    color: white; font-size: 12px; font-weight: 800;
+    box-shadow: 0 0 0 4px rgba(245,166,35,0.25), 0 6px 16px var(--primary-glow);
+  }
+  .mk-num {
+    width: 32px; height: 32px;
+    background: white;
+    border: 3px solid var(--primary);
+    border-radius: 50%;
+    display: grid; place-items: center;
+    color: var(--primary); font-size: 13px; font-weight: 800;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.3);
+  }
+  .mk-square {
+    width: 28px; height: 28px;
+    background: var(--accent-purple); border-radius: 8px;
+    transform: rotate(45deg);
+    box-shadow: 0 6px 16px rgba(139,92,246,0.5);
+  }
+
+  /* ===== Icons Grid ===== */
+  .icons-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    gap: 6px;
+    background: rgba(20,43,71,0.4);
+    border-radius: 12px;
+    padding: 12px;
+  }
+  .icon-cell {
+    aspect-ratio: 1;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    display: grid; place-items: center;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .icon-cell:hover {
+    background: rgba(245,166,35,0.1);
+    color: var(--primary);
+    border-color: var(--border-strong);
+    transform: scale(1.1);
+  }
+  .icon-cell svg { width: 20px; height: 20px; }
+  .icon-tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .icon-tab {
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    font-size: 11px; font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .icon-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+  .icon-tab:hover:not(.active) { background: var(--surface-hover); }
+
+  /* ===== Effects Cards ===== */
+  .effect-preview {
+    aspect-ratio: 16/9;
+    background: linear-gradient(135deg, var(--bg-2), var(--bg-3));
+    border-radius: 12px;
+    margin-bottom: 10px;
+    display: grid; place-items: center;
+    position: relative; overflow: hidden;
+  }
+  .effect-box {
+    width: 60%; aspect-ratio: 1;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border-radius: 12px;
+  }
+  .ef-shadow-sm .effect-box { box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+  .ef-shadow-md .effect-box { box-shadow: 0 8px 20px rgba(0,0,0,0.4); }
+  .ef-shadow-lg .effect-box { box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+  .ef-glow .effect-box { box-shadow: 0 0 50px var(--primary-glow), 0 0 100px rgba(245,166,35,0.3); }
+  .ef-glass .effect-box {
+    background: rgba(245,166,35,0.15);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.2);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  }
+  .ef-grad-sunset .effect-box { background: linear-gradient(135deg, #F5A623, #FF6B6B, #8B5CF6); }
+  .ef-grad-ocean .effect-box { background: linear-gradient(135deg, #06D6F2, #8B5CF6, #1A2980); }
+  .ef-grad-forest .effect-box { background: linear-gradient(135deg, #10D9A0, #06D6F2, #1A2980); }
+  .ef-anim-float .effect-box { animation: efFloat 3s ease-in-out infinite; }
+  @keyframes efFloat {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-10px) rotate(3deg); }
+  }
+  .ef-anim-pulse .effect-box { animation: efPulse 1.5s infinite; }
+  @keyframes efPulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 var(--primary-glow); }
+    50% { transform: scale(1.05); box-shadow: 0 0 0 20px transparent; }
+  }
+
+  /* ===== Right Preview Panel ===== */
+  .ds-preview {
+    background: rgba(15, 30, 51, 0.6);
+    backdrop-filter: blur(16px);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 18px;
+  }
+  .ds-preview::-webkit-scrollbar { width: 4px; }
+  .ds-preview::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .ds-preview-head {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 800;
+    color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 2px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .ds-preview-head svg { width: 14px; height: 14px; color: var(--primary); }
+
+  .preview-mock {
+    aspect-ratio: 9/16;
+    max-height: 360px;
+    margin: 0 auto 16px;
+    background: var(--bg-2);
+    border-radius: 18px;
+    border: 4px solid var(--bg-3);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    overflow: hidden;
+    position: relative;
+  }
+  .preview-mock::before {
+    content: ''; position: absolute; top: 8px; left: 50%;
+    transform: translateX(-50%);
+    width: 50px; height: 4px;
+    background: var(--bg-1); border-radius: 4px;
+    z-index: 5;
+  }
+  .preview-mock-content {
+    width: 100%; height: 100%;
+    background:
+      radial-gradient(circle at 50% 30%, rgba(245,166,35,0.15), transparent 60%),
+      linear-gradient(180deg, var(--bg-1), var(--bg-2));
+    background-size: cover;
+    position: relative;
+    display: flex; flex-direction: column;
+    padding: 24px 12px 12px;
+  }
+  .preview-mock-content .pmc-header {
+    height: 28px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+  .preview-mock-content .pmc-map {
+    flex: 1;
+    background:
+      radial-gradient(circle at 40% 50%, rgba(245,166,35,0.25), transparent 50%),
+      linear-gradient(135deg, var(--bg-3), var(--bg-2));
+    border-radius: 8px;
+    margin-bottom: 8px;
+    position: relative;
+  }
+  .preview-mock-content .pmc-map::after {
+    content: ''; position: absolute;
+    top: 50%; left: 50%;
+    width: 12px; height: 12px;
+    background: var(--primary);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 0 6px rgba(245,166,35,0.3);
+  }
+  .preview-mock-content .pmc-bar {
+    height: 36px;
+    background: rgba(245,166,35,0.15);
+    border: 1px solid rgba(245,166,35,0.3);
+    border-radius: 999px;
+  }
+
+  .preview-info {
+    background: rgba(255,255,255,0.03);
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 12px;
+  }
+  .preview-info-row {
+    display: flex; justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px dashed var(--border);
+  }
+  .preview-info-row:last-child { border-bottom: none; }
+  .preview-info-row .pi-label { color: var(--text-muted); }
+  .preview-info-row .pi-value {
+    color: var(--primary); font-weight: 700;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  }
+
+  .preview-actions { margin-top: 16px; }
+  .preview-actions button {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 13px; font-weight: 700;
+    margin-bottom: 8px;
+    transition: all 0.2s;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .preview-actions svg { width: 16px; height: 16px; }
+  .preview-actions .pa-export {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    box-shadow: 0 6px 16px var(--primary-glow);
+  }
+  .preview-actions .pa-export:hover { transform: translateY(-2px); box-shadow: 0 10px 24px var(--primary-glow); }
+  .preview-actions .pa-copy {
+    background: rgba(255,255,255,0.05);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+  .preview-actions .pa-copy:hover { background: var(--surface-hover); color: var(--text-primary); }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 1100px) {
+    .ds-body { grid-template-columns: 200px 1fr; }
+    .ds-preview { display: none; }
+  }
+  @media (max-width: 768px) {
+    .ds-body { grid-template-columns: 1fr; }
+    .ds-categories {
+      display: flex; overflow-x: auto;
+      padding: 12px;
+      gap: 8px;
+      border-left: none;
+      border-bottom: 1px solid var(--border);
+    }
+    .ds-cat { white-space: nowrap; flex-shrink: 0; margin-bottom: 0; padding: 8px 14px; }
+    .ds-cat.active::before { display: none; }
+    .ds-cat-title { display: none; }
+    .ds-cat .ds-cat-num { display: none; }
+    .ds-main { padding: 16px; }
+    .ds-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+    .ds-header { padding: 12px 14px; }
+    .ds-btn span { display: none; }
+    .ds-brand-text small { display: none; }
+  }
+</style>
+
+<div class="design-studio" id="designStudio">
+
+  <!-- ===== Header ===== -->
+  <header class="ds-header">
+    <div class="ds-brand">
+      <div class="ds-brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="13.5" cy="6.5" r="2.5" fill="currentColor"/>
+          <circle cx="19" cy="11" r="1.5" fill="currentColor"/>
+          <circle cx="6.5" cy="9" r="2" fill="currentColor"/>
+          <circle cx="5" cy="15" r="1.5" fill="currentColor"/>
+          <path d="M12 22a10 10 0 0 1 0-20c5.5 0 10 4 10 9 0 3-2.5 5-5.5 5h-2a1.5 1.5 0 0 0 0 3c0 1.5-1 3-2.5 3z"/>
+        </svg>
+      </div>
+      <div class="ds-brand-text">
+        <strong>PalNovaa WebApp Design</strong>
+        <small>DESIGN STUDIO</small>
+      </div>
+    </div>
+
+    <div class="ds-header-actions">
+      <button class="ds-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <span>معاينة كاملة</span>
+      </button>
+      <button class="ds-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        <span>الكود</span>
+      </button>
+      <button class="ds-btn primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        <span>تطبيق التصميم</span>
+      </button>
+      <button class="ds-close" onclick="closeDesignStudio()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ===== Body ===== -->
+  <div class="ds-body">
+
+    <!-- ===== Categories ===== -->
+    <aside class="ds-categories">
+      <div class="ds-cat-title">الفئات</div>
+      <div class="ds-cat active" data-cat="layouts" onclick="switchCategory('layouts')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+        <span>التخطيطات</span>
+        <span class="ds-cat-num">8</span>
+      </div>
+      <div class="ds-cat" data-cat="palettes" onclick="switchCategory('palettes')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+        <span>لوحات الألوان</span>
+        <span class="ds-cat-num">8</span>
+      </div>
+      <div class="ds-cat" data-cat="typography" onclick="switchCategory('typography')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+        <span>الخطوط</span>
+        <span class="ds-cat-num">6</span>
+      </div>
+      <div class="ds-cat" data-cat="components" onclick="switchCategory('components')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <span>المكونات</span>
+        <span class="ds-cat-num">12</span>
+      </div>
+      <div class="ds-cat" data-cat="basemaps" onclick="switchCategory('basemaps')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+        <span>ثيمات الخرائط</span>
+        <span class="ds-cat-num">6</span>
+      </div>
+      <div class="ds-cat" data-cat="markers" onclick="switchCategory('markers')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        <span>المعالم والنوافذ</span>
+        <span class="ds-cat-num">8</span>
+      </div>
+      <div class="ds-cat" data-cat="icons" onclick="switchCategory('icons')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+        <span>مكتبة الأيقونات</span>
+        <span class="ds-cat-num">48</span>
+      </div>
+      <div class="ds-cat" data-cat="effects" onclick="switchCategory('effects')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <span>التأثيرات</span>
+        <span class="ds-cat-num">10</span>
+      </div>
+    </aside>
+
+    <!-- ===== Main Content ===== -->
+    <main class="ds-main">
+
+      <!-- ============ LAYOUTS ============ -->
+      <div class="ds-section active" id="ds-layouts">
+        <div class="ds-section-head">
+          <h2>تخطيطات الصفحة <span class="ds-tag">LAYOUTS</span></h2>
+          <p>اختر هيكل الصفحة الأنسب لعرض الخريطة في موقعك</p>
+        </div>
+        <div class="ds-grid">
+          <div class="ds-pick selected">
+            <div class="layout-mockup lm-fullmap">
+              <div class="lm-block map"></div>
+              <div class="lm-overlay lm-block alt"></div>
+            </div>
+            <div class="ds-pick-title">خريطة كاملة</div>
+            <div class="ds-pick-sub">الخريطة تملأ الشاشة + لوحة عائمة</div>
+          </div>
+          <div class="ds-pick">
+            <div class="layout-mockup lm-sidebar">
+              <div class="lm-block"></div>
+              <div class="lm-block map"></div>
+            </div>
+            <div class="ds-pick-title">خريطة + لوحة جانبية</div>
+            <div class="ds-pick-sub">لوحة معلومات + خريطة</div>
+          </div>
+          <div class="ds-pick">
+            <div class="layout-mockup lm-three">
+              <div class="lm-block"></div>
+              <div class="lm-block map"></div>
+              <div class="lm-block alt"></div>
+            </div>
+            <div class="ds-pick-title">ثلاث لوحات</div>
+            <div class="ds-pick-sub">أدوات + خريطة + تفاصيل</div>
+          </div>
+          <div class="ds-pick">
+            <div class="layout-mockup lm-dashboard">
+              <div class="lm-block"></div>
+              <div class="lm-block map"></div>
+              <div class="lm-bottom"><div class="lm-block alt"></div><div class="lm-block alt"></div><div class="lm-block alt"></div></div>
+            </div>
+            <div class="ds-pick-title">لوحة قيادة</div>
+            <div class="ds-pick-sub">رأس + خريطة + إحصائيات</div>
+          </div>
+          <div class="ds-pick">
+            <div class="layout-mockup lm-split">
+              <div class="lm-block map"></div>
+              <div class="lm-block alt"></div>
+            </div>
+            <div class="ds-pick-title">تقسيم 50/50</div>
+            <div class="ds-pick-sub">خريطة + محتوى متوازي</div>
+          </div>
+          <div class="ds-pick">
+            <div class="layout-mockup lm-stacked">
+              <div class="lm-block map"></div>
+              <div class="lm-block muted"></div>
+            </div>
+            <div class="ds-pick-title">خريطة + قائمة</div>
+            <div class="ds-pick-sub">الخريطة فوق وقائمة النتائج تحت</div>
+          </div>
+          <div class="ds-pick">
+            <div class="layout-mockup lm-floating">
+              <div class="lm-block map" style="position:absolute;inset:0;"></div>
+              <div class="lm-card" style="top:10%;right:8%;width:25%;height:30%;"></div>
+              <div class="lm-card" style="bottom:10%;left:8%;width:30%;height:25%;"></div>
+              <div class="lm-card" style="top:35%;left:10%;width:20%;height:20%;"></div>
+            </div>
+            <div class="ds-pick-title">بطاقات عائمة</div>
+            <div class="ds-pick-sub">خريطة + ودجتس على السطح</div>
+          </div>
+          <div class="ds-pick">
+            <div class="layout-mockup lm-modal">
+              <div class="lm-block map"></div>
+            </div>
+            <div class="ds-pick-title">خريطة في مودال</div>
+            <div class="ds-pick-sub">نافذة خريطة وسط الصفحة</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ COLOR PALETTES ============ -->
+      <div class="ds-section" id="ds-palettes">
+        <div class="ds-section-head">
+          <h2>لوحات الألوان <span class="ds-tag">PALETTES</span></h2>
+          <p>مجموعات ألوان احترافية مدروسة لتطبيقات الخرائط</p>
+        </div>
+        <div class="ds-grid">
+          <div class="ds-pick selected">
+            <div class="palette-strip">
+              <span style="background:#F5A623"></span>
+              <span style="background:#D88B0E"></span>
+              <span style="background:#0F1E33"></span>
+              <span style="background:#142B47"></span>
+              <span style="background:#FFFFFF"></span>
+            </div>
+            <div class="ds-pick-title">PalNovaa Classic</div>
+            <div class="ds-pick-sub">برتقالي دافئ + كحلي عميق</div>
+          </div>
+          <div class="ds-pick">
+            <div class="palette-strip">
+              <span style="background:#CE1126"></span>
+              <span style="background:#000000"></span>
+              <span style="background:#FFFFFF"></span>
+              <span style="background:#007A3D"></span>
+              <span style="background:#F5A623"></span>
+            </div>
+            <div class="ds-pick-title">Heritage</div>
+            <div class="ds-pick-sub">ألوان فلسطينية تراثية</div>
+          </div>
+          <div class="ds-pick">
+            <div class="palette-strip">
+              <span style="background:#06D6F2"></span>
+              <span style="background:#1A2980"></span>
+              <span style="background:#0A1628"></span>
+              <span style="background:#26D0CE"></span>
+              <span style="background:#F0F8FF"></span>
+            </div>
+            <div class="ds-pick-title">Ocean Deep</div>
+            <div class="ds-pick-sub">بحر هادئ ومحيط لانهائي</div>
+          </div>
+          <div class="ds-pick">
+            <div class="palette-strip">
+              <span style="background:#FF6B6B"></span>
+              <span style="background:#F5A623"></span>
+              <span style="background:#8B5CF6"></span>
+              <span style="background:#FCD34D"></span>
+              <span style="background:#1A0E1F"></span>
+            </div>
+            <div class="ds-pick-title">Sunset</div>
+            <div class="ds-pick-sub">غروب الصحراء الدافئ</div>
+          </div>
+          <div class="ds-pick">
+            <div class="palette-strip">
+              <span style="background:#10D9A0"></span>
+              <span style="background:#059669"></span>
+              <span style="background:#064E3B"></span>
+              <span style="background:#A7F3D0"></span>
+              <span style="background:#F5F4ED"></span>
+            </div>
+            <div class="ds-pick-title">Forest</div>
+            <div class="ds-pick-sub">طبيعة خضراء منعشة</div>
+          </div>
+          <div class="ds-pick">
+            <div class="palette-strip">
+              <span style="background:#D4C49B"></span>
+              <span style="background:#A0826D"></span>
+              <span style="background:#5C4033"></span>
+              <span style="background:#F5F4ED"></span>
+              <span style="background:#2C1810"></span>
+            </div>
+            <div class="ds-pick-title">Earth Tones</div>
+            <div class="ds-pick-sub">ألوان ترابية كلاسيكية</div>
+          </div>
+          <div class="ds-pick">
+            <div class="palette-strip">
+              <span style="background:#06D6F2"></span>
+              <span style="background:#8B5CF6"></span>
+              <span style="background:#EC4899"></span>
+              <span style="background:#050B16"></span>
+              <span style="background:#F5A623"></span>
+            </div>
+            <div class="ds-pick-title">Cyber Neon</div>
+            <div class="ds-pick-sub">مستقبلي وعصري</div>
+          </div>
+          <div class="ds-pick">
+            <div class="palette-strip">
+              <span style="background:#FFFFFF"></span>
+              <span style="background:#F5F4ED"></span>
+              <span style="background:#E5E5E5"></span>
+              <span style="background:#1A1A2E"></span>
+              <span style="background:#F5A623"></span>
+            </div>
+            <div class="ds-pick-title">Minimal</div>
+            <div class="ds-pick-sub">بساطة وأناقة</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ TYPOGRAPHY ============ -->
+      <div class="ds-section" id="ds-typography">
+        <div class="ds-section-head">
+          <h2>أزواج الخطوط <span class="ds-tag">TYPOGRAPHY</span></h2>
+          <p>أزواج خطوط متناغمة للعناوين والنصوص العربية والإنجليزية</p>
+        </div>
+        <div class="ds-grid">
+          <div class="ds-pick selected">
+            <div class="type-preview">
+              <div class="t-title" style="font-family:'Cairo',sans-serif">العنوان الرئيسي</div>
+              <div class="t-body" style="font-family:'Tajawal',sans-serif">نص توضيحي للقراءة في موقعك. يدعم كل اللغات بسلاسة وأناقة.</div>
+            </div>
+            <div class="ds-pick-title">Cairo + Tajawal</div>
+            <div class="type-pair-name">عربي حديث · موصى به</div>
+          </div>
+          <div class="ds-pick">
+            <div class="type-preview">
+              <div class="t-title" style="font-family:'Tajawal',sans-serif;font-weight:800">العنوان الرئيسي</div>
+              <div class="t-body" style="font-family:system-ui">A clean modern body text that pairs beautifully with bold headings.</div>
+            </div>
+            <div class="ds-pick-title">Tajawal + Inter</div>
+            <div class="type-pair-name">مختلط · أنيق</div>
+          </div>
+          <div class="ds-pick">
+            <div class="type-preview">
+              <div class="t-title" style="font-family:'Cairo',sans-serif;font-weight:900;letter-spacing:-0.5px">PalNovaa Studio</div>
+              <div class="t-body" style="font-family:'JetBrains Mono',monospace;font-size:11px">{ font: "tech", style: "developer" }</div>
+            </div>
+            <div class="ds-pick-title">Cairo + JetBrains Mono</div>
+            <div class="type-pair-name">تقني · للمطورين</div>
+          </div>
+          <div class="ds-pick">
+            <div class="type-preview">
+              <div class="t-title" style="font-family:'Tajawal',serif;font-weight:700">عنوان كلاسيكي</div>
+              <div class="t-body" style="font-family:'Tajawal',sans-serif;font-weight:300">نص رفيع وأنيق مناسب للقراءة الطويلة والتقارير الرسمية.</div>
+            </div>
+            <div class="ds-pick-title">Tajawal Editorial</div>
+            <div class="type-pair-name">تحريري · رسمي</div>
+          </div>
+          <div class="ds-pick">
+            <div class="type-preview">
+              <div class="t-title" style="font-family:'Cairo',sans-serif;font-weight:700;font-size:22px">عرض كبير</div>
+              <div class="t-body" style="font-family:'Tajawal',sans-serif;font-weight:500">للشاشات الكبيرة والعروض التقديمية البصرية.</div>
+            </div>
+            <div class="ds-pick-title">Display Big</div>
+            <div class="type-pair-name">عرض · بصري</div>
+          </div>
+          <div class="ds-pick">
+            <div class="type-preview">
+              <div class="t-title" style="font-family:'Cairo',sans-serif;font-weight:600;font-size:14px">واجهة مدمجة</div>
+              <div class="t-body" style="font-family:'Tajawal',sans-serif;font-weight:500;font-size:11px">خطوط صغيرة لواجهات كثيفة المعلومات والداشبورد.</div>
+            </div>
+            <div class="ds-pick-title">Compact UI</div>
+            <div class="type-pair-name">مدمج · واجهات</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ COMPONENTS ============ -->
+      <div class="ds-section" id="ds-components">
+        <div class="ds-section-head">
+          <h2>المكونات الجاهزة <span class="ds-tag">COMPONENTS</span></h2>
+          <p>عناصر واجهة جاهزة للنسخ والاستخدام في موقعك</p>
+        </div>
+        <div class="ds-grid">
+          <div class="ds-pick selected">
+            <div class="comp-preview"><button class="comp-btn">زر رئيسي</button></div>
+            <div class="ds-pick-title">Primary Button</div>
+            <div class="ds-pick-sub">زر متدرج مع توهج</div>
+          </div>
+          <div class="ds-pick">
+            <div class="comp-preview"><button class="comp-btn outline">زر محدد</button></div>
+            <div class="ds-pick-title">Outline Button</div>
+            <div class="ds-pick-sub">زر بحدود فقط</div>
+          </div>
+          <div class="ds-pick">
+            <div class="comp-preview"><button class="comp-btn ghost">زر شفاف</button></div>
+            <div class="ds-pick-title">Ghost Button</div>
+            <div class="ds-pick-sub">خفيف ومنخفض</div>
+          </div>
+          <div class="ds-pick">
+            <div class="comp-preview"><button class="comp-btn pill">زر بيضاوي</button></div>
+            <div class="ds-pick-title">Pill Button</div>
+            <div class="ds-pick-sub">شكل بيضاوي ناعم</div>
+          </div>
+          <div class="ds-pick">
+            <div class="comp-preview"><button class="comp-btn glow">متوهج</button></div>
+            <div class="ds-pick-title">Glow Button</div>
+            <div class="ds-pick-sub">تأثير ضوئي قوي</div>
+          </div>
+          <div class="ds-pick">
+            <div class="comp-preview">
+              <div class="comp-card">
+                <div class="c-title">عنوان البطاقة</div>
+                <div class="c-text">نص قصير يصف محتوى البطاقة</div>
+              </div>
+            </div>
+            <div class="ds-pick-title">Card Default</div>
+            <div class="ds-pick-sub">بطاقة معلومات قياسية</div>
+          </div>
+          <div class="ds-pick">
+            <div class="comp-preview">
+              <div class="comp-search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                ابحث عن مكان...
+              </div>
+            </div>
+            <div class="ds-pick-title">Search Bar</div>
+            <div class="ds-pick-sub">شريط بحث بيضاوي</div>
+          </div>
+          <div class="ds-pick">
+            <div class="comp-preview">
+              <div style="display:flex;align-items:center;gap:10px;font-size:12px;">
+                <div style="width:36px;height:20px;background:var(--primary);border-radius:999px;position:relative;">
+                  <div style="position:absolute;top:2px;right:2px;width:16px;height:16px;background:white;border-radius:50%;"></div>
+                </div>
+                <span>مفعّل</span>
+              </div>
+            </div>
+            <div class="ds-pick-title">Toggle Switch</div>
+            <div class="ds-pick-sub">مفتاح تبديل</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ BASEMAPS ============ -->
+      <div class="ds-section" id="ds-basemaps">
+        <div class="ds-section-head">
+          <h2>ثيمات خلفية الخريطة <span class="ds-tag">BASEMAPS</span></h2>
+          <p>اختر مظهر الخريطة الأنسب لتطبيقك</p>
+        </div>
+        <div class="ds-grid">
+          <div class="ds-pick selected">
+            <div class="basemap-preview bm-dark"></div>
+            <div class="ds-pick-title">Dark Matter</div>
+            <div class="ds-pick-sub">داكن أنيق · للتطبيقات الحديثة</div>
+          </div>
+          <div class="ds-pick">
+            <div class="basemap-preview bm-light"></div>
+            <div class="ds-pick-title">Light Streets</div>
+            <div class="ds-pick-sub">فاتح ونظيف · للقراءة الواضحة</div>
+          </div>
+          <div class="ds-pick">
+            <div class="basemap-preview bm-satellite"></div>
+            <div class="ds-pick-title">Satellite</div>
+            <div class="ds-pick-sub">صور أقمار صناعية</div>
+          </div>
+          <div class="ds-pick">
+            <div class="basemap-preview bm-terrain"></div>
+            <div class="ds-pick-title">Terrain</div>
+            <div class="ds-pick-sub">تضاريس وارتفاعات</div>
+          </div>
+          <div class="ds-pick">
+            <div class="basemap-preview bm-vintage"></div>
+            <div class="ds-pick-title">Vintage Map</div>
+            <div class="ds-pick-sub">خريطة تاريخية كلاسيكية</div>
+          </div>
+          <div class="ds-pick">
+            <div class="basemap-preview bm-cyber"></div>
+            <div class="ds-pick-title">Cyber Grid</div>
+            <div class="ds-pick-sub">سايبر بانك مستقبلي</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ MARKERS ============ -->
+      <div class="ds-section" id="ds-markers">
+        <div class="ds-section-head">
+          <h2>المعالم والنوافذ المنبثقة <span class="ds-tag">MARKERS</span></h2>
+          <p>أشكال مختلفة لتمييز المواقع على الخريطة</p>
+        </div>
+        <div class="ds-grid">
+          <div class="ds-pick selected">
+            <div class="marker-preview"><div class="mk-pin"></div></div>
+            <div class="ds-pick-title">Classic Pin</div>
+            <div class="ds-pick-sub">دبوس تقليدي</div>
+          </div>
+          <div class="ds-pick">
+            <div class="marker-preview"><div class="mk-dot"></div></div>
+            <div class="ds-pick-title">Glow Dot</div>
+            <div class="ds-pick-sub">نقطة متوهجة</div>
+          </div>
+          <div class="ds-pick">
+            <div class="marker-preview"><div class="mk-pulse"></div></div>
+            <div class="ds-pick-title">Pulse Marker</div>
+            <div class="ds-pick-sub">نبض حي مع موجة</div>
+          </div>
+          <div class="ds-pick">
+            <div class="marker-preview"><div class="mk-cluster">12</div></div>
+            <div class="ds-pick-title">Cluster</div>
+            <div class="ds-pick-sub">تجميع نقاط مع عدد</div>
+          </div>
+          <div class="ds-pick">
+            <div class="marker-preview"><div class="mk-num">5</div></div>
+            <div class="ds-pick-title">Numbered</div>
+            <div class="ds-pick-sub">رقم داخل دائرة</div>
+          </div>
+          <div class="ds-pick">
+            <div class="marker-preview"><div class="mk-square"></div></div>
+            <div class="ds-pick-title">Diamond</div>
+            <div class="ds-pick-sub">مربع مائل عصري</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ ICONS ============ -->
+      <div class="ds-section" id="ds-icons">
+        <div class="ds-section-head">
+          <h2>مكتبة الأيقونات <span class="ds-tag">ICONS</span></h2>
+          <p>أيقونات احترافية للخرائط والواجهات بنمط Lucide</p>
+        </div>
+        <div class="icon-tabs">
+          <span class="icon-tab active">الكل</span>
+          <span class="icon-tab">خرائط</span>
+          <span class="icon-tab">واجهة</span>
+          <span class="icon-tab">إجراءات</span>
+          <span class="icon-tab">بيانات</span>
+        </div>
+        <div class="icons-grid">
+          <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+          <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg></div>
+          <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/></svg></div>
+          <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+          <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg></div>
+          <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg></div>
+          <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></div>
+          <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>
+          <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
+          <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg></div>
+          <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/></svg></div>
+          <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+          <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+          <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+          <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+          <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+          <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+          <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div>
+          <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+          <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
+          <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
+          <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+        </div>
+      </div>
+
+      <!-- ============ EFFECTS ============ -->
+      <div class="ds-section" id="ds-effects">
+        <div class="ds-section-head">
+          <h2>التأثيرات والظلال <span class="ds-tag">EFFECTS</span></h2>
+          <p>ظلال وتدرجات وتأثيرات بصرية لإضافة العمق</p>
+        </div>
+        <div class="ds-grid">
+          <div class="ds-pick selected">
+            <div class="effect-preview ef-shadow-md"><div class="effect-box"></div></div>
+            <div class="ds-pick-title">Shadow Medium</div>
+            <div class="ds-pick-sub">ظل متوسط متوازن</div>
+          </div>
+          <div class="ds-pick">
+            <div class="effect-preview ef-shadow-lg"><div class="effect-box"></div></div>
+            <div class="ds-pick-title">Shadow Large</div>
+            <div class="ds-pick-sub">ظل عميق دراماتيكي</div>
+          </div>
+          <div class="ds-pick">
+            <div class="effect-preview ef-glow"><div class="effect-box"></div></div>
+            <div class="ds-pick-title">Glow Effect</div>
+            <div class="ds-pick-sub">توهج برتقالي قوي</div>
+          </div>
+          <div class="ds-pick">
+            <div class="effect-preview ef-glass"><div class="effect-box"></div></div>
+            <div class="ds-pick-title">Glassmorphism</div>
+            <div class="ds-pick-sub">زجاج ضبابي عصري</div>
+          </div>
+          <div class="ds-pick">
+            <div class="effect-preview ef-grad-sunset"><div class="effect-box"></div></div>
+            <div class="ds-pick-title">Sunset Gradient</div>
+            <div class="ds-pick-sub">تدرج غروب الشمس</div>
+          </div>
+          <div class="ds-pick">
+            <div class="effect-preview ef-grad-ocean"><div class="effect-box"></div></div>
+            <div class="ds-pick-title">Ocean Gradient</div>
+            <div class="ds-pick-sub">تدرج المحيط العميق</div>
+          </div>
+          <div class="ds-pick">
+            <div class="effect-preview ef-grad-forest"><div class="effect-box"></div></div>
+            <div class="ds-pick-title">Forest Gradient</div>
+            <div class="ds-pick-sub">تدرج أخضر منعش</div>
+          </div>
+          <div class="ds-pick">
+            <div class="effect-preview ef-anim-float"><div class="effect-box"></div></div>
+            <div class="ds-pick-title">Float Animation</div>
+            <div class="ds-pick-sub">حركة طفو ناعمة</div>
+          </div>
+          <div class="ds-pick">
+            <div class="effect-preview ef-anim-pulse"><div class="effect-box"></div></div>
+            <div class="ds-pick-title">Pulse Animation</div>
+            <div class="ds-pick-sub">نبضة دائرية</div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- ===== Live Preview Panel ===== -->
+    <aside class="ds-preview">
+      <div class="ds-preview-head">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        المعاينة المباشرة
+      </div>
+
+      <div class="preview-mock">
+        <div class="preview-mock-content">
+          <div class="pmc-header"></div>
+          <div class="pmc-map"></div>
+          <div class="pmc-bar"></div>
+        </div>
+      </div>
+
+      <div class="preview-info">
+        <div class="preview-info-row"><span class="pi-label">التخطيط</span><span class="pi-value">FullMap</span></div>
+        <div class="preview-info-row"><span class="pi-label">اللوحة</span><span class="pi-value">PalNovaa</span></div>
+        <div class="preview-info-row"><span class="pi-label">الخط</span><span class="pi-value">Cairo</span></div>
+        <div class="preview-info-row"><span class="pi-label">الخريطة</span><span class="pi-value">Dark Matter</span></div>
+        <div class="preview-info-row"><span class="pi-label">المعالم</span><span class="pi-value">Pulse</span></div>
+        <div class="preview-info-row"><span class="pi-label">الحجم</span><span class="pi-value">~24 KB</span></div>
+      </div>
+
+      <div class="preview-actions">
+        <button class="pa-export">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          حفظ على الجهاز
+        </button>
+        <button class="pa-copy">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          نسخ HTML
+        </button>
+      </div>
+    </aside>
+
+  </div>
+</div>
+
+</body>
+</html>
