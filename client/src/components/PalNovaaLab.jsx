@@ -250,6 +250,36 @@ const onMouseLeave = (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
+        if (file.type.startsWith('image/')) {
+            const imageUrl = URL.createObjectURL(file);
+            if (mapRef.current) {
+                const map = mapRef.current.getMap();
+                const bounds = map.getBounds();
+                const sw = bounds.getSouthWest();
+                const ne = bounds.getNorthEast();
+                const latDiff = ne.lat - sw.lat;
+                const lngDiff = ne.lng - sw.lng;
+                
+                // Coordinates: [top-left, top-right, bottom-right, bottom-left]
+                const tl = [sw.lng + lngDiff*0.2, ne.lat - latDiff*0.2];
+                const tr = [ne.lng - lngDiff*0.2, ne.lat - latDiff*0.2];
+                const br = [ne.lng - lngDiff*0.2, sw.lat + latDiff*0.2];
+                const bl = [sw.lng + lngDiff*0.2, sw.lat + latDiff*0.2];
+
+                const newLayer = {
+                    id: Date.now().toString(),
+                    name: file.name,
+                    type: 'raster',
+                    url: imageUrl,
+                    coordinates: [tl, tr, br, bl],
+                    color: '#06D6F2',
+                    data: { type: 'FeatureCollection', features: [] }
+                };
+                setGeoLayers(prev => [...prev, newLayer]);
+            }
+            return;
+        }
+
         const reader = new FileReader();
         reader.onload = (event) => {
             try {
@@ -411,28 +441,41 @@ const onMouseLeave = (e) => {
                         >
                             <NavigationControl position="bottom-right" />
                             
-                            {geoLayers.map(layer => (
-                                <Source key={layer.id} id={`src-${layer.id}`} type="geojson" data={layer.data}>
-                                    <Layer
-                                        id={`poly-${layer.id}`}
-                                        type="fill"
-                                        filter={['==', '$type', 'Polygon']}
-                                        paint={{ 'fill-color': layer.color, 'fill-opacity': 0.4, 'fill-outline-color': layer.color }}
-                                    />
-                                    <Layer
-                                        id={`line-${layer.id}`}
-                                        type="line"
-                                        filter={['==', '$type', 'LineString']}
-                                        paint={{ 'line-color': layer.color, 'line-width': 3 }}
-                                    />
-                                    <Layer
-                                        id={`point-${layer.id}`}
-                                        type="circle"
-                                        filter={['==', '$type', 'Point']}
-                                        paint={{ 'circle-radius': 6, 'circle-color': layer.color, 'circle-stroke-width': 2, 'circle-stroke-color': '#0A1628' }}
-                                    />
-                                </Source>
-                            ))}
+                            {geoLayers.map(layer => {
+                                if (layer.type === 'raster') {
+                                    return (
+                                        <Source key={layer.id} id={`src-${layer.id}`} type="image" url={layer.url} coordinates={layer.coordinates}>
+                                            <Layer
+                                                id={`raster-${layer.id}`}
+                                                type="raster"
+                                                paint={{ 'raster-opacity': 0.8 }}
+                                            />
+                                        </Source>
+                                    );
+                                }
+                                return (
+                                    <Source key={layer.id} id={`src-${layer.id}`} type="geojson" data={layer.data}>
+                                        <Layer
+                                            id={`poly-${layer.id}`}
+                                            type="fill"
+                                            filter={['==', '$type', 'Polygon']}
+                                            paint={{ 'fill-color': layer.color, 'fill-opacity': 0.4, 'fill-outline-color': layer.color }}
+                                        />
+                                        <Layer
+                                            id={`line-${layer.id}`}
+                                            type="line"
+                                            filter={['==', '$type', 'LineString']}
+                                            paint={{ 'line-color': layer.color, 'line-width': 3 }}
+                                        />
+                                        <Layer
+                                            id={`point-${layer.id}`}
+                                            type="circle"
+                                            filter={['==', '$type', 'Point']}
+                                            paint={{ 'circle-radius': 6, 'circle-color': layer.color, 'circle-stroke-width': 2, 'circle-stroke-color': '#0A1628' }}
+                                        />
+                                    </Source>
+                                );
+                            })}
 
                             {/* Draft Drawing Layer */}
                             {draftGeoJson && (
@@ -592,10 +635,10 @@ const onMouseLeave = (e) => {
                             <div className="tab-content">
                                 <div className="panel-section">
                                     <div className="panel-section-title">
-                                        <span>استيراد بيانات GeoJSON</span>
+                                        <span>استيراد بيانات أو صور</span>
                                     </div>
                                     <label className="upload-zone" style={{ display: 'block' }}>
-                                        <input type="file" accept=".json,.geojson" onChange={handleFileUpload} style={{ display: 'none' }} />
+                                        <input type="file" accept=".json,.geojson,image/*" onChange={handleFileUpload} style={{ display: 'none' }} />
                                         <div className="upload-icon">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -607,6 +650,7 @@ const onMouseLeave = (e) => {
                                         <div className="formats">
                                             <span className="format-pill">.geojson</span>
                                             <span className="format-pill">.json</span>
+                                            <span className="format-pill">.png/.jpg</span>
                                         </div>
                                     </label>
                                 </div>
