@@ -1208,7 +1208,7 @@ const MapComponent = () => {
                                         <path d="M5.52 16h12.96"></path>
                                     </svg>
                                 </div>
-                                <span>مختبر بالنوفا (Lab)</span>
+                                <span>مختبر بالنوفا</span>
                             </div>
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
