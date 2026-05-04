@@ -343,6 +343,11 @@ const onMouseLeave = (e) => {
         reader.readAsText(file);
     };
 
+    useEffect(() => {
+        console.log("PalNovaa Lab Component Mounted - Version 3.0");
+        alert("PalNovaa Studio v3.0 Ready 🚀"); 
+    }, []);
+
     const launchDesignStudioFinal = () => {
         console.log("FORCE LAUNCH: Design Studio");
         setIsDesignStudioOpen(true);
