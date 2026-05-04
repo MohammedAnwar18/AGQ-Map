@@ -48,6 +48,8 @@ const PalNovaaLab = ({ onClose }) => {
 
     const [geoLayers, setGeoLayers] = useState([]);
     const [activeTableLayerId, setActiveTableLayerId] = useState(null);
+    const [isDesignStudioOpen, setIsDesignStudioOpen] = useState(false);
+    const [activeDsCategory, setActiveDsCategory] = useState('layouts');
 
     const activeTableLayer = useMemo(() => geoLayers.find(l => l.id === activeTableLayerId) || null, [geoLayers, activeTableLayerId]);
 
@@ -332,7 +334,11 @@ const onMouseLeave = (e) => {
         reader.readAsText(file);
     };
 
-    const exportAsWebApp = async () => {
+    const exportAsWebApp = () => {
+        setIsDesignStudioOpen(true);
+    };
+
+    const performActualExport = async () => {
         const map = mapRef.current?.getMap();
         if (!map) return;
         const center = map.getCenter();
@@ -376,23 +382,26 @@ const onMouseLeave = (e) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تطبيق الخريطة المخصص</title>
+    <title>PalNovaa Web Map</title>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; }
-        .map-title { position: absolute; top: 20px; right: 20px; background: rgba(10, 22, 40, 0.9); color: white; padding: 15px 25px; border-radius: 12px; z-index: 1; border: 1px solid #06D6F2; box-shadow: 0 8px 32px rgba(0,0,0,0.4); backdrop-filter: blur(10px); }
-        .maplibregl-popup-content { background: rgba(10, 22, 40, 0.95); color: #fff; border: 1px solid #06D6F2; border-radius: 8px; font-family: inherit; }
-        .maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: #06D6F2; }
+        .watermark { 
+            position: absolute; bottom: 25px; left: 10px; 
+            background: rgba(10, 22, 40, 0.6); color: rgba(255,255,255,0.7); 
+            padding: 5px 12px; border-radius: 6px; z-index: 10; 
+            font-size: 11px; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.1);
+            pointer-events: none; letter-spacing: 0.5px;
+        }
+        .maplibregl-popup-content { background: rgba(10, 22, 40, 0.95); color: #fff; border: 1px solid #F5A623; border-radius: 8px; font-family: inherit; }
+        .maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: #F5A623; }
     </style>
 </head>
 <body>
-    <div class="map-title">
-        <h3 style="margin: 0 0 5px 0; font-size: 1.4rem;">تطبيق خريطة PalNovaa</h3>
-        <small style="color: #06D6F2; font-size: 0.9rem;">تم التصدير من المختبر</small>
-    </div>
     <div id="map"></div>
+    <div class="watermark">Powered by <b>PalNovaa Lab</b></div>
     <script>
         const layers = ${JSON.stringify(exportLayers)};
         const mapStyle = ${JSON.stringify(mapStyle)};
@@ -455,7 +464,7 @@ const onMouseLeave = (e) => {
                             if (!e.features.length) return;
                             let props = e.features[0].properties;
                             let html = '<div style="direction: rtl; text-align: right; max-height: 250px; overflow-y: auto; padding-right: 5px;">';
-                            html += '<h4 style="margin: 0 0 10px 0; color: #06D6F2; border-bottom: 1px solid rgba(6, 214, 242, 0.3); padding-bottom: 5px;">البيانات الوصفية</h4>';
+                            html += '<h4 style="margin: 0 0 10px 0; color: #F5A623; border-bottom: 1px solid rgba(245, 166, 35, 0.3); padding-bottom: 5px;">البيانات الوصفية</h4>';
                             for (let key in props) {
                                 html += '<div style="margin-bottom: 8px; font-size: 0.9rem;"><strong style="color: rgba(255,255,255,0.7);">' + key + ':</strong> <span style="color: white;">' + props[key] + '</span></div>';
                             }
@@ -480,11 +489,12 @@ const onMouseLeave = (e) => {
         const downloadUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = downloadUrl;
-        a.download = 'PalNovaa_WebApp_' + Date.now() + '.html';
+        a.download = 'PalNovaa_Map_' + Date.now() + '.html';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(downloadUrl);
+        setIsDesignStudioOpen(false);
     };
 
     return (
@@ -923,12 +933,133 @@ const onMouseLeave = (e) => {
                     </div>
                     <div className="status-divider"></div>
                     <div className="status-item">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                        <span>EPSG:4326</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <span>{new Date().toLocaleTimeString()}</span>
                     </div>
-                    <div className="status-spacer"></div>
-                    <div className="status-pill">المختبر متصل</div>
                 </footer>
+            </div>
+
+            {/* DESIGN STUDIO MODAL */}
+            <div className={`design-studio ${isDesignStudioOpen ? 'active' : ''}`} id="designStudio">
+                <header className="ds-header">
+                    <div className="ds-brand">
+                        <div className="ds-brand-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <circle cx="13.5" cy="6.5" r="2.5" fill="currentColor"/>
+                                <circle cx="19" cy="11" r="1.5" fill="currentColor"/>
+                                <circle cx="6.5" cy="9" r="2" fill="currentColor"/>
+                                <circle cx="5" cy="15" r="1.5" fill="currentColor"/>
+                                <path d="M12 22a10 10 0 0 1 0-20c5.5 0 10 4 10 9 0 3-2.5 5-5.5 5h-2a1.5 1.5 0 0 0 0 3c0 1.5-1 3-2.5 3z"/>
+                            </svg>
+                        </div>
+                        <div className="ds-brand-text">
+                            <strong>PalNovaa WebApp Design</strong>
+                            <small>DESIGN STUDIO</small>
+                        </div>
+                    </div>
+
+                    <div className="ds-header-actions">
+                        <button className="ds-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <span>معاينة كاملة</span>
+                        </button>
+                        <button className="ds-btn primary" onClick={performActualExport}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                            <span>تطبيق وتصدير</span>
+                        </button>
+                        <button className="ds-close" onClick={() => setIsDesignStudioOpen(false)}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                    </div>
+                </header>
+
+                <div className="ds-body">
+                    <aside className="ds-categories">
+                        <div className="ds-cat-title">الفئات</div>
+                        {[
+                            { id: 'layouts', label: 'التخطيطات', icon: 'M3 3h18v18H3z M9 3v18', num: 8 },
+                            { id: 'palettes', label: 'الألوان', icon: 'M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.6-.7 1.6-1.6 0-.4-.1-.8-.4-1.1-.3-.3-.4-.6-.4-1.1 0-.9.7-1.6 1.6-1.6h2c3 0 5.5-2.5 5.5-5.5C22 6 17.5 2 12 2z', num: 8 },
+                            { id: 'typography', label: 'الخطوط', icon: 'M4 7V4h16v3 M9 20h6 M12 4v16', num: 6 },
+                            { id: 'components', label: 'المكونات', icon: 'M3 3h7v7H3z M14 3h7v7h-7z M14 14h7v7h-7z M3 14h7v7H3z', num: 12 },
+                            { id: 'basemaps', label: 'الخلفيات', icon: 'M1 6l0 16 7-4 8 4 7-4 0-16-7 4-8-4z M8 2v16 M16 6v16', num: 6 },
+                            { id: 'markers', label: 'المعالم', icon: 'M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z M12 10m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0', num: 8 },
+                            { id: 'icons', label: 'الأيقونات', icon: 'M12 12m-10 0a10 10 0 1 0 20 0a10 10 0 1 0 -20 0 M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0', num: 48 },
+                            { id: 'effects', label: 'التأثيرات', icon: 'M13 2L3 14h9l-1 8 10-12h-9z', num: 10 }
+                        ].map(cat => (
+                            <div key={cat.id} className={`ds-cat ${activeDsCategory === cat.id ? 'active' : ''}`} onClick={() => setActiveDsCategory(cat.id)}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d={cat.icon}/></svg>
+                                <span>{cat.label}</span>
+                                <span className="ds-cat-num">{cat.num}</span>
+                            </div>
+                        ))}
+                    </aside>
+
+                    <main className="ds-main">
+                        {activeDsCategory === 'layouts' && (
+                            <div className="ds-section active">
+                                <div className="ds-section-head">
+                                    <h2>تخطيطات الصفحة <span className="ds-tag">LAYOUTS</span></h2>
+                                    <p>اختر هيكل الصفحة الأنسب لعرض الخريطة في موقعك</p>
+                                </div>
+                                <div className="ds-grid">
+                                    <div className="ds-pick selected">
+                                        <div className="layout-mockup"><div className="lm-block" style={{ gridColumn: 'span 2' }}></div><div className="lm-block"></div><div className="lm-block"></div></div>
+                                        <div className="ds-pick-title">خريطة كاملة</div>
+                                    </div>
+                                    <div className="ds-pick">
+                                        <div className="layout-mockup" style={{ gridTemplateColumns: '1fr 2fr' }}><div className="lm-block" style={{ gridRow: 'span 2' }}></div><div className="lm-block"></div><div className="lm-block"></div></div>
+                                        <div className="ds-pick-title">خريطة + لوحة جانبية</div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        {activeDsCategory === 'palettes' && (
+                            <div className="ds-section active">
+                                <div className="ds-section-head">
+                                    <h2>لوحات الألوان <span className="ds-tag">PALETTES</span></h2>
+                                    <p>مجموعات ألوان احترافية مدروسة لتطبيقات الخرائط</p>
+                                </div>
+                                <div className="ds-grid">
+                                    <div className="ds-pick selected">
+                                        <div className="palette-strip"><span style={{background:'#F5A623'}}></span><span style={{background:'#0F1E33'}}></span><span style={{background:'#142B47'}}></span></div>
+                                        <div className="ds-pick-title">PalNovaa Classic</div>
+                                    </div>
+                                    <div className="ds-pick">
+                                        <div className="palette-strip"><span style={{background:'#06D6F2'}}></span><span style={{background:'#1A2980'}}></span><span style={{background:'#0A1628'}}></span></div>
+                                        <div className="ds-pick-title">Ocean Deep</div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        <div style={{ marginTop: '40px', padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', textAlign: 'center' }}>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>جاري العمل على إضافة المزيد من التصاميم في التحديثات القادمة...</p>
+                        </div>
+                    </main>
+
+                    <aside className="ds-preview">
+                        <div className="ds-preview-head">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            المعاينة المباشرة
+                        </div>
+                        <div className="preview-mock">
+                            <div className="preview-mock-content">
+                                <div className="pmc-map"></div>
+                                <div className="pmc-bar"></div>
+                            </div>
+                        </div>
+                        <div className="preview-info">
+                            <div className="preview-info-row"><span className="pi-label">التخطيط</span><span className="pi-value">FullMap</span></div>
+                            <div className="preview-info-row"><span className="pi-label">اللوحة</span><span className="pi-value">PalNovaa</span></div>
+                            <div className="preview-info-row"><span className="pi-label">الخريطة</span><span className="pi-value">Dark Matter</span></div>
+                        </div>
+                        <div className="preview-actions" style={{ marginTop: '20px' }}>
+                            <button className="ds-btn primary" style={{ width: '100%' }} onClick={performActualExport}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                حفظ وتحميل التطبيق
+                            </button>
+                        </div>
+                    </aside>
+                </div>
             </div>
         </div>
     );
