@@ -50,6 +50,13 @@ const PalNovaaLab = ({ onClose }) => {
     const [activeTableLayerId, setActiveTableLayerId] = useState(null);
     const [isDesignStudioOpen, setIsDesignStudioOpen] = useState(false);
     const [activeDsCategory, setActiveDsCategory] = useState('layouts');
+    const [designSelections, setDesignSelections] = useState({
+        layout: 'fullmap',
+        palette: 'classic',
+        font: 'cairo',
+        basemap: 'dark',
+        marker: 'pin'
+    });
 
     const activeTableLayer = useMemo(() => geoLayers.find(l => l.id === activeTableLayerId) || null, [geoLayers, activeTableLayerId]);
 
@@ -346,11 +353,11 @@ const onMouseLeave = (e) => {
         const pitch = map.getPitch();
         const bearing = map.getBearing();
 
+        // 1. Prepare Layers
         const exportLayers = [];
         for (const layer of geoLayers) {
             let data = layer.data;
             let url = layer.url;
-            
             if (layer.type === 'raster' && url && url.startsWith('blob:')) {
                 try {
                     const res = await fetch(url);
@@ -361,33 +368,62 @@ const onMouseLeave = (e) => {
                         reader.readAsDataURL(blob);
                     });
                     url = base64;
-                } catch (e) {
-                    console.error('Failed to convert raster blob to base64', e);
-                }
+                } catch (e) { console.error(e); }
             }
-            
             exportLayers.push({
-                id: layer.id,
-                name: layer.name,
-                type: layer.type || 'vector',
-                data: data,
-                url: url,
-                coordinates: layer.coordinates,
-                color: layer.color
+                id: layer.id, name: layer.name, type: layer.type || 'vector',
+                data: data, url: url, coordinates: layer.coordinates, color: layer.color
             });
         }
 
+        // 2. Map Selections to Themes
+        const palettes = {
+            classic: { primary: '#F5A623', bg: '#0A1628', accent: '#D88B0E' },
+            ocean: { primary: '#06D6F2', bg: '#050B16', accent: '#1A2980' },
+            heritage: { primary: '#CE1126', bg: '#000000', accent: '#007A3D' },
+            forest: { primary: '#10D9A0', bg: '#064E3B', accent: '#059669' }
+        };
+        const theme = palettes[designSelections.palette] || palettes.classic;
+
+        const fonts = {
+            cairo: "'Cairo', sans-serif",
+            tajawal: "'Tajawal', sans-serif",
+            mono: "'JetBrains Mono', monospace"
+        };
+        const selectedFontFamily = fonts[designSelections.font] || fonts.cairo;
+
+        // 3. Generate HTML Template
         const htmlTemplate = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PalNovaa Web Map</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Tajawal:wght@300;500;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <style>
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        :root {
+            --primary: ${theme.primary};
+            --bg: ${theme.bg};
+            --accent: ${theme.accent};
+            --font: ${selectedFontFamily};
+        }
+        body { margin: 0; padding: 0; font-family: var(--font); background: var(--bg); color: white; overflow: hidden; }
+        
+        .app-container { display: flex; height: 100vh; width: 100vw; position: relative; }
+        
+        #map { flex: 1; position: relative; }
+        
+        ${designSelections.layout === 'sidebar' ? `
+        .sidebar { width: 320px; background: rgba(10, 22, 40, 0.95); border-left: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(15px); padding: 20px; display: flex; flex-direction: column; z-index: 10; }
+        .sidebar-header { border-bottom: 1px solid var(--primary); padding-bottom: 15px; margin-bottom: 20px; }
+        .sidebar-header h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
+        .layer-item { background: rgba(255,255,255,0.03); border-radius: 8px; padding: 12px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05); }
+        ` : `
+        .floating-panel { position: absolute; top: 20px; right: 20px; width: 280px; background: rgba(10, 22, 40, 0.9); backdrop-filter: blur(10px); border-radius: 12px; border: 1px solid var(--primary); padding: 15px; z-index: 100; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+        `}
+
         .watermark { 
             position: absolute; bottom: 25px; left: 10px; 
             background: rgba(10, 22, 40, 0.6); color: rgba(255,255,255,0.7); 
@@ -395,13 +431,31 @@ const onMouseLeave = (e) => {
             font-size: 11px; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.1);
             pointer-events: none; letter-spacing: 0.5px;
         }
-        .maplibregl-popup-content { background: rgba(10, 22, 40, 0.95); color: #fff; border: 1px solid #F5A623; border-radius: 8px; font-family: inherit; }
-        .maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: #F5A623; }
+        .maplibregl-popup-content { background: rgba(10, 22, 40, 0.95); color: #fff; border: 1px solid var(--primary); border-radius: 8px; font-family: var(--font); }
+        .maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: var(--primary); }
     </style>
 </head>
 <body>
-    <div id="map"></div>
-    <div class="watermark">Powered by <b>PalNovaa Lab</b></div>
+    <div class="app-container">
+        ${designSelections.layout === 'sidebar' ? `
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>خريطة PalNovaa</h2>
+            </div>
+            <div class="layers-list">
+                \${layers.map(l => \`<div class="layer-item"><div style="display:flex;align-items:center;gap:10px;"><div style="width:12px;height:12px;border-radius:50%;background:\${l.color}"></div><span>\${l.name}</span></div></div>\`).join('')}
+            </div>
+        </aside>
+        ` : `
+        <div class="floating-panel">
+            <h3 style="margin:0 0 10px 0; color:var(--primary);">الطبقات المتاحة</h3>
+            <div style="font-size: 0.9rem; opacity: 0.8;">تم استيراد \${layers.length} طبقات مكانيّة.</div>
+        </div>
+        `}
+        <div id="map"></div>
+        <div class="watermark">Powered by <b>PalNovaa Lab</b></div>
+    </div>
+
     <script>
         const layers = ${JSON.stringify(exportLayers)};
         const mapStyle = ${JSON.stringify(mapStyle)};
@@ -419,44 +473,13 @@ const onMouseLeave = (e) => {
         map.on('load', () => {
             layers.forEach(layer => {
                 if (layer.type === 'raster') {
-                    map.addSource('src-' + layer.id, {
-                        type: 'image',
-                        url: layer.url,
-                        coordinates: layer.coordinates
-                    });
-                    map.addLayer({
-                        id: 'raster-' + layer.id,
-                        type: 'raster',
-                        source: 'src-' + layer.id,
-                        paint: { 'raster-opacity': 0.8 }
-                    });
+                    map.addSource('src-' + layer.id, { type: 'image', url: layer.url, coordinates: layer.coordinates });
+                    map.addLayer({ id: 'raster-' + layer.id, type: 'raster', source: 'src-' + layer.id, paint: { 'raster-opacity': 0.8 } });
                 } else {
-                    map.addSource('src-' + layer.id, {
-                        type: 'geojson',
-                        data: layer.data
-                    });
-                    
-                    map.addLayer({
-                        id: 'poly-' + layer.id,
-                        type: 'fill',
-                        source: 'src-' + layer.id,
-                        filter: ['==', '$type', 'Polygon'],
-                        paint: { 'fill-color': layer.color, 'fill-opacity': 0.4, 'fill-outline-color': layer.color }
-                    });
-                    map.addLayer({
-                        id: 'line-' + layer.id,
-                        type: 'line',
-                        source: 'src-' + layer.id,
-                        filter: ['==', '$type', 'LineString'],
-                        paint: { 'line-color': layer.color, 'line-width': 3 }
-                    });
-                    map.addLayer({
-                        id: 'point-' + layer.id,
-                        type: 'circle',
-                        source: 'src-' + layer.id,
-                        filter: ['==', '$type', 'Point'],
-                        paint: { 'circle-radius': 6, 'circle-color': layer.color, 'circle-stroke-width': 2, 'circle-stroke-color': '#0A1628' }
-                    });
+                    map.addSource('src-' + layer.id, { type: 'geojson', data: layer.data });
+                    map.addLayer({ id: 'poly-' + layer.id, type: 'fill', source: 'src-' + layer.id, filter: ['==', '$type', 'Polygon'], paint: { 'fill-color': layer.color, 'fill-opacity': 0.4, 'fill-outline-color': layer.color } });
+                    map.addLayer({ id: 'line-' + layer.id, type: 'line', source: 'src-' + layer.id, filter: ['==', '$type', 'LineString'], paint: { 'line-color': layer.color, 'line-width': 3 } });
+                    map.addLayer({ id: 'point-' + layer.id, type: 'circle', source: 'src-' + layer.id, filter: ['==', '$type', 'Point'], paint: { 'circle-radius': 6, 'circle-color': layer.color, 'circle-stroke-width': 2, 'circle-stroke-color': '#0A1628' } });
 
                     const layerIds = ['poly-' + layer.id, 'line-' + layer.id, 'point-' + layer.id];
                     layerIds.forEach(lId => {
@@ -464,16 +487,12 @@ const onMouseLeave = (e) => {
                             if (!e.features.length) return;
                             let props = e.features[0].properties;
                             let html = '<div style="direction: rtl; text-align: right; max-height: 250px; overflow-y: auto; padding-right: 5px;">';
-                            html += '<h4 style="margin: 0 0 10px 0; color: #F5A623; border-bottom: 1px solid rgba(245, 166, 35, 0.3); padding-bottom: 5px;">البيانات الوصفية</h4>';
+                            html += '<h4 style="margin: 0 0 10px 0; color: var(--primary); border-bottom: 1px solid rgba(245, 166, 35, 0.3); padding-bottom: 5px;">البيانات</h4>';
                             for (let key in props) {
-                                html += '<div style="margin-bottom: 8px; font-size: 0.9rem;"><strong style="color: rgba(255,255,255,0.7);">' + key + ':</strong> <span style="color: white;">' + props[key] + '</span></div>';
+                                html += '<div style="margin-bottom: 8px; font-size: 0.9rem;"><strong>' + key + ':</strong> ' + props[key] + '</div>';
                             }
                             html += '</div>';
-                            
-                            new maplibregl.Popup()
-                                .setLngLat(e.lngLat)
-                                .setHTML(html)
-                                .addTo(map);
+                            new maplibregl.Popup().setLngLat(e.lngLat).setHTML(html).addTo(map);
                         });
                         map.on('mouseenter', lId, () => { map.getCanvas().style.cursor = 'pointer'; });
                         map.on('mouseleave', lId, () => { map.getCanvas().style.cursor = ''; });
@@ -489,7 +508,7 @@ const onMouseLeave = (e) => {
         const downloadUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = downloadUrl;
-        a.download = 'PalNovaa_Map_' + Date.now() + '.html';
+        a.download = `PalNovaa_${designSelections.layout}_${Date.now()}.html`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -1002,13 +1021,15 @@ const onMouseLeave = (e) => {
                                     <p>اختر هيكل الصفحة الأنسب لعرض الخريطة في موقعك</p>
                                 </div>
                                 <div className="ds-grid">
-                                    <div className="ds-pick selected">
+                                    <div className={`ds-pick ${designSelections.layout === 'fullmap' ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, layout: 'fullmap'}))}>
                                         <div className="layout-mockup"><div className="lm-block" style={{ gridColumn: 'span 2' }}></div><div className="lm-block"></div><div className="lm-block"></div></div>
                                         <div className="ds-pick-title">خريطة كاملة</div>
+                                        <div className="ds-pick-sub">لوحة عائمة فوق الخريطة</div>
                                     </div>
-                                    <div className="ds-pick">
+                                    <div className={`ds-pick ${designSelections.layout === 'sidebar' ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, layout: 'sidebar'}))}>
                                         <div className="layout-mockup" style={{ gridTemplateColumns: '1fr 2fr' }}><div className="lm-block" style={{ gridRow: 'span 2' }}></div><div className="lm-block"></div><div className="lm-block"></div></div>
                                         <div className="ds-pick-title">خريطة + لوحة جانبية</div>
+                                        <div className="ds-pick-sub">قائمة طبقات تفاعلية على اليمين</div>
                                     </div>
                                 </div>
                             </div>
@@ -1020,13 +1041,47 @@ const onMouseLeave = (e) => {
                                     <p>مجموعات ألوان احترافية مدروسة لتطبيقات الخرائط</p>
                                 </div>
                                 <div className="ds-grid">
-                                    <div className="ds-pick selected">
+                                    <div className={`ds-pick ${designSelections.palette === 'classic' ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, palette: 'classic'}))}>
                                         <div className="palette-strip"><span style={{background:'#F5A623'}}></span><span style={{background:'#0F1E33'}}></span><span style={{background:'#142B47'}}></span></div>
                                         <div className="ds-pick-title">PalNovaa Classic</div>
+                                        <div className="ds-pick-sub">برتقالي دافئ وكحلي</div>
                                     </div>
-                                    <div className="ds-pick">
+                                    <div className={`ds-pick ${designSelections.palette === 'ocean' ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, palette: 'ocean'}))}>
                                         <div className="palette-strip"><span style={{background:'#06D6F2'}}></span><span style={{background:'#1A2980'}}></span><span style={{background:'#0A1628'}}></span></div>
                                         <div className="ds-pick-title">Ocean Deep</div>
+                                        <div className="ds-pick-sub">ألوان البحر الهادئة</div>
+                                    </div>
+                                    <div className={`ds-pick ${designSelections.palette === 'heritage' ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, palette: 'heritage'}))}>
+                                        <div className="palette-strip"><span style={{background:'#CE1126'}}></span><span style={{background:'#007A3D'}}></span><span style={{background:'#FFFFFF'}}></span></div>
+                                        <div className="ds-pick-title">Heritage</div>
+                                        <div className="ds-pick-sub">ألوان فلسطينية تراثية</div>
+                                    </div>
+                                    <div className={`ds-pick ${designSelections.palette === 'forest' ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, palette: 'forest'}))}>
+                                        <div className="palette-strip"><span style={{background:'#10D9A0'}}></span><span style={{background:'#064E3B'}}></span><span style={{background:'#F5F4ED'}}></span></div>
+                                        <div className="ds-pick-title">Forest Green</div>
+                                        <div className="ds-pick-sub">طبيعة خضراء منعشة</div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        {activeDsCategory === 'typography' && (
+                            <div className="ds-section active">
+                                <div className="ds-section-head">
+                                    <h2>الخطوط <span className="ds-tag">FONTS</span></h2>
+                                    <p>اختر نمط الخط المناسب لتطبيقك</p>
+                                </div>
+                                <div className="ds-grid">
+                                    <div className={`ds-pick ${designSelections.font === 'cairo' ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, font: 'cairo'}))}>
+                                        <div style={{ padding: '10px', fontSize: '18px', fontFamily: 'Cairo', textAlign: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>خط كايرو الحديث</div>
+                                        <div className="ds-pick-title">Cairo</div>
+                                    </div>
+                                    <div className={`ds-pick ${designSelections.font === 'tajawal' ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, font: 'tajawal'}))}>
+                                        <div style={{ padding: '10px', fontSize: '18px', fontFamily: 'Tajawal', textAlign: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>خط تجوّل الأنيق</div>
+                                        <div className="ds-pick-title">Tajawal</div>
+                                    </div>
+                                    <div className={`ds-pick ${designSelections.font === 'mono' ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, font: 'mono'}))}>
+                                        <div style={{ padding: '10px', fontSize: '14px', fontFamily: 'JetBrains Mono', textAlign: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>JetBrains Mono {`{ code }`}</div>
+                                        <div className="ds-pick-title">Developer Mono</div>
                                     </div>
                                 </div>
                             </div>
@@ -1037,6 +1092,11 @@ const onMouseLeave = (e) => {
                     </main>
 
                     <aside className="ds-preview">
+                        <div className="preview-info">
+                            <div className="preview-info-row"><span className="pi-label">التخطيط</span><span className="pi-value">{designSelections.layout}</span></div>
+                            <div className="preview-info-row"><span className="pi-label">اللوحة</span><span className="pi-value">{designSelections.palette}</span></div>
+                            <div className="preview-info-row"><span className="pi-label">الخط</span><span className="pi-value">{designSelections.font}</span></div>
+                        </div>
                         <div className="ds-preview-head">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                             المعاينة المباشرة
