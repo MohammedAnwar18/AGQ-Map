@@ -79,8 +79,32 @@ const PalNovaaLab = ({ onClose }) => {
         if (draftCoordinates.length > 1) {
             let geometryType = drawingMode === 'polygon' && draftCoordinates.length > 2 ? 'Polygon' : 'LineString';
             let coords = geometryType === 'Polygon' ? [[...draftCoordinates, draftCoordinates[0]]] : draftCoordinates;
-            const newFeature = { type: 'Feature', geometry: { type: geometryType, coordinates: coords }, properties: { type: `drawn_${drawingMode}` } };
-            setDrawnFeatures(prev => ({ ...prev, features: [...prev.features, newFeature] }));
+            
+            let metricText = '';
+            if (geometryType === 'LineString' || drawingMode === 'measure') {
+                let dist = 0;
+                for (let i = 0; i < coords.length - 1; i++) dist += haversineDistance(coords[i], coords[i+1]);
+                metricText = dist > 1000 ? (dist / 1000).toFixed(2) + ' كم' : dist.toFixed(1) + ' م';
+            } else if (geometryType === 'Polygon') {
+                let area = 0;
+                const pts = coords[0];
+                for (let i = 0; i < pts.length - 1; i++) {
+                    let p1 = pts[i];
+                    let p2 = pts[i + 1];
+                    area += (p2[0] - p1[0]) * Math.PI/180 * (2 + Math.sin(p1[1]*Math.PI/180) + Math.sin(p2[1]*Math.PI/180));
+                }
+                area = Math.abs(area * 6378137 * 6378137 / 2.0);
+                metricText = area > 1000000 ? (area / 1000000).toFixed(2) + ' كم²' : area.toFixed(1) + ' م²';
+            }
+
+            const newFeature = { type: 'Feature', geometry: { type: geometryType, coordinates: coords }, properties: { type: `drawn_${drawingMode}`, name: `رسمة (${drawingMode})`, Measurement: metricText } };
+            setGeoLayers(prev => [...prev, {
+                id: Date.now().toString(),
+                name: `رسم (${drawingMode === 'polygon' ? 'مساحة' : drawingMode === 'measure' ? 'قياس مسافة' : 'مسار'})`,
+                data: { type: 'FeatureCollection', features: [newFeature] },
+                color: ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899'][prev.length % 5],
+                measurement: metricText
+            }]);
         }
         setDraftCoordinates([]);
         setDrawingMode(null);
@@ -91,8 +115,13 @@ const PalNovaaLab = ({ onClose }) => {
             const coord = [e.lngLat.lng, e.lngLat.lat];
             
             if (drawingMode === 'point') {
-                const newFeature = { type: 'Feature', geometry: { type: 'Point', coordinates: coord }, properties: { type: 'drawn_point' } };
-                setDrawnFeatures(prev => ({ ...prev, features: [...prev.features, newFeature] }));
+                const newFeature = { type: 'Feature', geometry: { type: 'Point', coordinates: coord }, properties: { type: 'drawn_point', name: 'نقطة محددة' } };
+                setGeoLayers(prev => [...prev, {
+                    id: Date.now().toString(),
+                    name: 'رسم (نقطة)',
+                    data: { type: 'FeatureCollection', features: [newFeature] },
+                    color: ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899'][prev.length % 5]
+                }]);
                 setDrawingMode(null);
             } else if (drawingMode === 'line' || drawingMode === 'measure' || drawingMode === 'polygon') {
                 setDraftCoordinates(prev => {
@@ -595,6 +624,7 @@ const onMouseLeave = (e) => {
                                                     <div className="layer-info" style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                         <h5 style={{ margin: 0, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>{layer.name}</h5>
                                                         <small style={{ color: 'rgba(255,255,255,0.5)' }}>{layer.data.features?.length || 0} ميزة</small>
+                                                        {layer.measurement && <small style={{ color: '#06D6F2', display: 'block', marginTop: '2px', fontWeight: 'bold' }}>القياس: {layer.measurement}</small>}
                                                     </div>
                                                 </div>
                                                 <div style={{ display: 'flex', gap: '5px' }}>
