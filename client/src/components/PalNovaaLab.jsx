@@ -332,6 +332,161 @@ const onMouseLeave = (e) => {
         reader.readAsText(file);
     };
 
+    const exportAsWebApp = async () => {
+        const map = mapRef.current?.getMap();
+        if (!map) return;
+        const center = map.getCenter();
+        const zoom = map.getZoom();
+        const pitch = map.getPitch();
+        const bearing = map.getBearing();
+
+        const exportLayers = [];
+        for (const layer of geoLayers) {
+            let data = layer.data;
+            let url = layer.url;
+            
+            if (layer.type === 'raster' && url && url.startsWith('blob:')) {
+                try {
+                    const res = await fetch(url);
+                    const blob = await res.blob();
+                    const base64 = await new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result);
+                        reader.readAsDataURL(blob);
+                    });
+                    url = base64;
+                } catch (e) {
+                    console.error('Failed to convert raster blob to base64', e);
+                }
+            }
+            
+            exportLayers.push({
+                id: layer.id,
+                name: layer.name,
+                type: layer.type || 'vector',
+                data: data,
+                url: url,
+                coordinates: layer.coordinates,
+                color: layer.color
+            });
+        }
+
+        const htmlTemplate = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تطبيق الخريطة المخصص</title>
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"><\\/script>
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        .map-title { position: absolute; top: 20px; right: 20px; background: rgba(10, 22, 40, 0.9); color: white; padding: 15px 25px; border-radius: 12px; z-index: 1; border: 1px solid #06D6F2; box-shadow: 0 8px 32px rgba(0,0,0,0.4); backdrop-filter: blur(10px); }
+        .maplibregl-popup-content { background: rgba(10, 22, 40, 0.95); color: #fff; border: 1px solid #06D6F2; border-radius: 8px; font-family: inherit; }
+        .maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: #06D6F2; }
+    </style>
+</head>
+<body>
+    <div class="map-title">
+        <h3 style="margin: 0 0 5px 0; font-size: 1.4rem;">تطبيق خريطة PalNovaa</h3>
+        <small style="color: #06D6F2; font-size: 0.9rem;">تم التصدير من المختبر</small>
+    </div>
+    <div id="map"></div>
+    <script>
+        const layers = \${JSON.stringify(exportLayers)};
+        const mapStyle = \${JSON.stringify(mapStyle)};
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: mapStyle,
+            center: [\${center.lng}, \${center.lat}],
+            zoom: \${zoom},
+            pitch: \${pitch},
+            bearing: \${bearing}
+        });
+
+        map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+
+        map.on('load', () => {
+            layers.forEach(layer => {
+                if (layer.type === 'raster') {
+                    map.addSource('src-' + layer.id, {
+                        type: 'image',
+                        url: layer.url,
+                        coordinates: layer.coordinates
+                    });
+                    map.addLayer({
+                        id: 'raster-' + layer.id,
+                        type: 'raster',
+                        source: 'src-' + layer.id,
+                        paint: { 'raster-opacity': 0.8 }
+                    });
+                } else {
+                    map.addSource('src-' + layer.id, {
+                        type: 'geojson',
+                        data: layer.data
+                    });
+                    
+                    map.addLayer({
+                        id: 'poly-' + layer.id,
+                        type: 'fill',
+                        source: 'src-' + layer.id,
+                        filter: ['==', '$type', 'Polygon'],
+                        paint: { 'fill-color': layer.color, 'fill-opacity': 0.4, 'fill-outline-color': layer.color }
+                    });
+                    map.addLayer({
+                        id: 'line-' + layer.id,
+                        type: 'line',
+                        source: 'src-' + layer.id,
+                        filter: ['==', '$type', 'LineString'],
+                        paint: { 'line-color': layer.color, 'line-width': 3 }
+                    });
+                    map.addLayer({
+                        id: 'point-' + layer.id,
+                        type: 'circle',
+                        source: 'src-' + layer.id,
+                        filter: ['==', '$type', 'Point'],
+                        paint: { 'circle-radius': 6, 'circle-color': layer.color, 'circle-stroke-width': 2, 'circle-stroke-color': '#0A1628' }
+                    });
+
+                    const layerIds = ['poly-' + layer.id, 'line-' + layer.id, 'point-' + layer.id];
+                    layerIds.forEach(lId => {
+                        map.on('click', lId, (e) => {
+                            if (!e.features.length) return;
+                            let props = e.features[0].properties;
+                            let html = '<div style="direction: rtl; text-align: right; max-height: 250px; overflow-y: auto; padding-right: 5px;">';
+                            html += '<h4 style="margin: 0 0 10px 0; color: #06D6F2; border-bottom: 1px solid rgba(6, 214, 242, 0.3); padding-bottom: 5px;">البيانات الوصفية</h4>';
+                            for (let key in props) {
+                                html += '<div style="margin-bottom: 8px; font-size: 0.9rem;"><strong style="color: rgba(255,255,255,0.7);">' + key + ':</strong> <span style="color: white;">' + props[key] + '</span></div>';
+                            }
+                            html += '</div>';
+                            
+                            new maplibregl.Popup()
+                                .setLngLat(e.lngLat)
+                                .setHTML(html)
+                                .addTo(map);
+                        });
+                        map.on('mouseenter', lId, () => { map.getCanvas().style.cursor = 'pointer'; });
+                        map.on('mouseleave', lId, () => { map.getCanvas().style.cursor = ''; });
+                    });
+                }
+            });
+        });
+    <\\/script>
+</body>
+</html>`;
+
+        const blob = new Blob([htmlTemplate], { type: 'text/html' });
+        const downloadUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = 'PalNovaa_WebApp_' + Date.now() + '.html';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(downloadUrl);
+    };
+
     return (
         <div className="palnovaa-lab-container">
             {/* INTRO SPLASH */}
@@ -416,6 +571,9 @@ const onMouseLeave = (e) => {
                     </button>
                     
                     <div className="sidebar-bottom">
+                        <button className="tool" data-tip="تصدير الخريطة كتطبيق ويب" onClick={exportAsWebApp} style={{ color: '#10D9A0' }}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        </button>
                         <button className="tool" data-tip="الإعدادات">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                         </button>
