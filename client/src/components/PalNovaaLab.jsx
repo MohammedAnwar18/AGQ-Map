@@ -341,8 +341,8 @@ const onMouseLeave = (e) => {
         reader.readAsText(file);
     };
 
-    const exportAsWebApp = () => {
-        alert("جاري فتح استوديو التصميم...");
+    const openPalNovaaStudio = () => {
+        alert("🚀 جاري تشغيل استوديو التصميم الجديد من PalNovaa...");
         console.log("Opening Design Studio. Current state:", isDesignStudioOpen);
         setIsDesignStudioOpen(true);
     };
@@ -602,7 +602,7 @@ const onMouseLeave = (e) => {
                     </button>
                     
                     <div className="sidebar-bottom">
-                        <button className="tool" data-tip="تصدير الخريطة كتطبيق ويب" onClick={exportAsWebApp} style={{ color: '#10D9A0' }}>
+                        <button className="tool" data-tip="تصدير الخريطة كتطبيق ويب" onClick={openPalNovaaStudio} style={{ color: '#10D9A0' }}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                         </button>
                         <button className="tool" data-tip="الإعدادات">
