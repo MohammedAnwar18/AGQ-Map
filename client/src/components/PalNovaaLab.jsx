@@ -344,8 +344,8 @@ const onMouseLeave = (e) => {
     };
 
     useEffect(() => {
-        console.log("PalNovaa Lab Component Mounted - Version 3.0");
-        alert("PalNovaa Studio v3.0 Ready 🚀"); 
+        console.log("PalNovaa Lab Component Mounted - Version 3.1");
+        alert("✅ PalNovaa Studio v3.1 Updated Successfully!"); 
     }, []);
 
     const launchDesignStudioFinal = () => {
@@ -567,7 +567,7 @@ const onMouseLeave = (e) => {
                         </div>
                         <div className="brand-text">
                             <strong>PalNovaa</strong>
-                            <small>LAB · v2.0</small>
+                            <small>LAB · v3.1 (Latest)</small>
                         </div>
                     </div>
 
@@ -609,13 +609,19 @@ const onMouseLeave = (e) => {
                     
                     <div className="sidebar-bottom">
                         <button 
-                            key="btn-design-studio-v3"
+                            key="btn-design-studio-v4"
                             className="tool studio-trigger-btn" 
                             data-tip="تصدير الخريطة كتصميم ويب" 
                             onClick={launchDesignStudioFinal} 
-                            style={{ color: '#10D9A0', border: '1px solid #10D9A0' }}
+                            style={{ 
+                                color: '#000', 
+                                background: '#10D9A0', 
+                                border: '2px solid #fff',
+                                boxShadow: '0 0 15px #10D9A0',
+                                fontWeight: 'bold'
+                            }}
                         >
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="3"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                         </button>
                         <button className="tool" data-tip="الإعدادات">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
