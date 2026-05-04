@@ -378,7 +378,7 @@ const onMouseLeave = (e) => {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تطبيق الخريطة المخصص</title>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
-    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"><\\/script>
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; }
@@ -394,15 +394,15 @@ const onMouseLeave = (e) => {
     </div>
     <div id="map"></div>
     <script>
-        const layers = \${JSON.stringify(exportLayers)};
-        const mapStyle = \${JSON.stringify(mapStyle)};
+        const layers = ${JSON.stringify(exportLayers)};
+        const mapStyle = ${JSON.stringify(mapStyle)};
         const map = new maplibregl.Map({
             container: 'map',
             style: mapStyle,
-            center: [\${center.lng}, \${center.lat}],
-            zoom: \${zoom},
-            pitch: \${pitch},
-            bearing: \${bearing}
+            center: [${center.lng}, ${center.lat}],
+            zoom: ${zoom},
+            pitch: ${pitch},
+            bearing: ${bearing}
         });
 
         map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
@@ -472,7 +472,7 @@ const onMouseLeave = (e) => {
                 }
             });
         });
-    <\\/script>
+    </script>
 </body>
 </html>`;
 
