@@ -3,7 +3,6 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const helmet = require('helmet');
-const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -12,7 +11,7 @@ require('dotenv').config();
 
 // 1. إنشاء التطبيق
 const app = express();
-app.use(compression()); // Enable Gzip compression
+// Note: Gzip compression is handled automatically by Vercel's edge network
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
