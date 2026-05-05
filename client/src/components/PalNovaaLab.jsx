@@ -1413,26 +1413,66 @@ const PalNovaaLab = ({ onClose }) => {
                                     ].map(l => (
                                         <div key={l.id} className={`ds-pick ${designSelections.layout === l.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({ ...s, layout: l.id }))}>
                                             <div className={`layout-mockup ${l.type}`}>
-                                                {l.id === 'floating' ? (
-                                                    <>
-                                                        <div className="lm-block map" style={{ position: 'absolute', inset: 0 }}></div>
-                                                        <div className="lm-card" style={{ top: '10%', right: '8%', width: '25%', height: '30%' }}></div>
-                                                        <div className="lm-card" style={{ bottom: '10%', left: '8%', width: '30%', height: '25%' }}></div>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <div className="lm-block map"></div>
-                                                        {l.id === 'dashboard' ? (
-                                                            <div className="lm-bottom">
-                                                                <div className="lm-block alt"></div>
-                                                                <div className="lm-block alt"></div>
-                                                                <div className="lm-block alt"></div>
+                                                {/* Simulated Map Background */}
+                                                <div className="lm-map-bg">
+                                                    <div className="lm-road-h"></div>
+                                                    <div className="lm-road-v"></div>
+                                                    <div className="lm-marker" style={{ top: '30%', left: '40%' }}></div>
+                                                    <div className="lm-marker" style={{ top: '60%', left: '70%', background: 'var(--accent-cyan)' }}></div>
+                                                </div>
+
+                                                <div className="lm-content-container">
+                                                    {l.id === 'floating' ? (
+                                                        <>
+                                                            <div className="lm-floating-card" style={{ top: '10%', right: '10%', width: '30%', height: '25%' }}></div>
+                                                            <div className="lm-floating-card" style={{ bottom: '10%', left: '10%', width: '35%', height: '20%' }}></div>
+                                                        </>
+                                                    ) : l.id === 'dashboard' ? (
+                                                        <>
+                                                            <div className="lm-ui-header"></div>
+                                                            <div className="lm-map-area"></div>
+                                                            <div className="lm-ui-stats">
+                                                                <div className="lm-stat"></div>
+                                                                <div className="lm-stat"></div>
+                                                                <div className="lm-stat"></div>
                                                             </div>
-                                                        ) : (
-                                                            <div className="lm-block alt"></div>
-                                                        )}
-                                                    </>
-                                                )}
+                                                        </>
+                                                    ) : l.id === 'sidebar' ? (
+                                                        <>
+                                                            <div className="lm-ui-sidebar"></div>
+                                                            <div className="lm-map-area"></div>
+                                                        </>
+                                                    ) : l.id === 'three' ? (
+                                                        <>
+                                                            <div className="lm-ui-tool"></div>
+                                                            <div className="lm-map-area"></div>
+                                                            <div className="lm-ui-info"></div>
+                                                        </>
+                                                    ) : l.id === 'split' ? (
+                                                        <>
+                                                            <div className="lm-map-half"></div>
+                                                            <div className="lm-text-half">
+                                                                <div className="lm-line"></div>
+                                                                <div className="lm-line"></div>
+                                                                <div className="lm-line" style={{ width: '60%' }}></div>
+                                                            </div>
+                                                        </>
+                                                    ) : l.id === 'stacked' ? (
+                                                        <>
+                                                            <div className="lm-map-top"></div>
+                                                            <div className="lm-list-bottom">
+                                                                <div className="lm-item"></div>
+                                                                <div className="lm-item"></div>
+                                                            </div>
+                                                        </>
+                                                    ) : l.id === 'modal' ? (
+                                                        <div className="lm-modal-overlay">
+                                                            <div className="lm-modal-box"></div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="lm-map-full"></div>
+                                                    )}
+                                                </div>
                                             </div>
                                             <div className="ds-pick-title">{l.title}</div>
                                             <div className="ds-pick-sub">{l.sub}</div>
