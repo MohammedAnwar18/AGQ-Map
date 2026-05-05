@@ -583,37 +583,57 @@ const onMouseLeave = (e) => {
         .custom-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
         .custom-overlay > * { pointer-events: auto; }
         .cel { position: absolute; box-sizing: border-box; }
-        .cel-heading { color: var(--primary); font-family: var(--font-h); font-weight: 900; font-size: 2rem; margin: 0; }
-        .cel-sub { color: var(--text-color); font-family: var(--font-h); font-weight: 700; font-size: 1.3rem; margin: 0; }
-        .cel-para { color: var(--text-color); font-family: var(--font-b); opacity: 0.8; font-size: 1rem; margin: 0; }
-        .cel-btn-p { background: var(--primary); color: #000; border: none; border-radius: 10px; padding: 12px 24px; font-weight: bold; font-size: 1rem; cursor: pointer; font-family: var(--font-b); width: 100%; }
-        .cel-btn-o { background: transparent; color: var(--primary); border: 2px solid var(--primary); border-radius: 10px; padding: 12px 24px; font-weight: bold; font-size: 1rem; cursor: pointer; font-family: var(--font-b); width: 100%; }
-        .cel-search { background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 10px 20px; color: var(--text-color); font-family: var(--font-b); font-size: 0.95rem; width: 100%; box-sizing: border-box; }
-        .cel-layers { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; color: var(--text-color); font-family: var(--font-b); font-size: 0.9rem; }
+        .cel-heading { color: var(--primary); font-family: var(--font-h); font-weight: 900; margin: 0; }
+        .cel-sub { color: var(--text-color); font-family: var(--font-h); font-weight: 700; margin: 0; }
+        .cel-para { color: var(--text-color); font-family: var(--font-b); opacity: 0.85; margin: 0; line-height: 1.6; }
+        .cel-btn-p { background: var(--primary); color: #000; border: none; border-radius: 10px; padding: 12px 24px; font-weight: bold; cursor: pointer; font-family: var(--font-b); width: 100%; }
+        .cel-btn-o { background: transparent; color: var(--primary); border: 2px solid var(--primary); border-radius: 10px; padding: 12px 24px; font-weight: bold; cursor: pointer; font-family: var(--font-b); width: 100%; }
+        .cel-search-wrap { position: relative; width: 100%; }
+        .cel-search { background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 10px 20px 10px 40px; color: var(--text-color); font-family: var(--font-b); width: 100%; box-sizing: border-box; outline: none; }
+        .cel-search:focus { border-color: var(--primary); }
+        .cel-search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); opacity: 0.5; pointer-events: none; }
+        .cel-search-results { position: absolute; top: 100%; left: 0; right: 0; background: var(--surface-solid); border: 1px solid var(--border); border-radius: 10px; margin-top: 4px; overflow: hidden; display: none; z-index: 20; }
+        .cel-search-item { padding: 10px 16px; cursor: pointer; font-family: var(--font-b); font-size: 0.9rem; border-bottom: 1px solid var(--border); }
+        .cel-search-item:hover { background: rgba(255,255,255,0.08); color: var(--primary); }
+        .cel-layers-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
+        .cel-layer-row { display: flex; align-items: center; gap: 8px; padding: 6px 4px; font-family: var(--font-b); font-size: 0.88rem; border-bottom: 1px solid var(--border); cursor: pointer; }
+        .cel-layer-row:last-child { border-bottom: none; }
+        .cel-layer-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .cel-layer-row:hover { color: var(--primary); }
         .cel-stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; text-align: center; }
-        .cel-stat-num { color: var(--primary); font-weight: 800; font-size: 2rem; font-family: var(--font-h); }
+        .cel-stat-num { color: var(--primary); font-weight: 800; font-family: var(--font-h); }
         .cel-stat-lbl { opacity: 0.7; font-size: 0.85rem; }
-        .cel-hr { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
-        .cel-badge { background: var(--primary); color: #000; border-radius: 999px; padding: 4px 14px; font-size: 0.85rem; font-weight: bold; display: inline-block; font-family: var(--font-b); }
+        .cel-hr { border: none; border-top: 1px solid var(--border); margin: 4px 0; }
+        .cel-badge { background: var(--primary); color: #000; border-radius: 999px; padding: 4px 14px; font-weight: bold; display: inline-block; font-family: var(--font-b); }
         ` : '';
+
+        const layersListHTML = exportLayers.map(l =>
+            `<div class="cel-layer-row" onclick="map.fitBounds(${JSON.stringify(
+                l.data?.features?.length > 0
+                    ? (() => { try { const coords = l.data.features.flatMap(f => f.geometry?.type === 'Point' ? [f.geometry.coordinates] : f.geometry?.coordinates?.flat?.(5) || []); const lngs = coords.map(c=>c[0]); const lats = coords.map(c=>c[1]); return [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]]; } catch(e){ return null; } })()
+                    : null
+            )}, {padding:40})"><div class="cel-layer-dot" style="background:${l.color}"></div><span>${l.name}</span></div>`
+        ).join('');
+
         const customElsHTML = pageElements.length > 0 ? `
         <div class="custom-overlay">
             ${pageElements.map(el => {
+                const fs = el.fontSize ? `font-size:${el.fontSize}rem;` : '';
+                const wStyle = `left:${el.x}%;top:${el.y}%;width:${el.w}%;${fs}`;
                 let inner = '';
-                const wStyle = `left:${el.x}%;top:${el.y}%;width:${el.w}%;`;
-                if(el.type==='heading') inner = `<h1 class="cel-heading">${el.text}</h1>`;
-                else if(el.type==='subheading') inner = `<h2 class="cel-sub">${el.text}</h2>`;
-                else if(el.type==='paragraph') inner = `<p class="cel-para">${el.text}</p>`;
-                else if(el.type==='btn_primary') inner = `<button class="cel-btn-p">${el.text}</button>`;
-                else if(el.type==='btn_outline') inner = `<button class="cel-btn-o">${el.text}</button>`;
-                else if(el.type==='search') inner = `<input class="cel-search" placeholder="${el.text}" />`;
-                else if(el.type==='layers') inner = `<div class="cel-layers">${el.text}</div>`;
-                else if(el.type==='stat') inner = `<div class="cel-stat"><div class="cel-stat-num">${exportLayers.reduce((s,l)=>s+(l.data?.features?.length||0),0)}</div><div class="cel-stat-lbl">${el.text}</div></div>`;
+                if(el.type==='heading') inner = `<h1 class="cel-heading" style="font-size:${el.fontSize||2}rem">${el.text}</h1>`;
+                else if(el.type==='subheading') inner = `<h2 class="cel-sub" style="font-size:${el.fontSize||1.3}rem">${el.text}</h2>`;
+                else if(el.type==='paragraph') inner = `<p class="cel-para" style="font-size:${el.fontSize||1}rem">${el.text}</p>`;
+                else if(el.type==='btn_primary') inner = `<button class="cel-btn-p" style="font-size:${el.fontSize||1}rem">${el.text}</button>`;
+                else if(el.type==='btn_outline') inner = `<button class="cel-btn-o" style="font-size:${el.fontSize||1}rem">${el.text}</button>`;
+                else if(el.type==='search') inner = `<div class="cel-search-wrap"><svg class="cel-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input class="cel-search" placeholder="${el.text}" oninput="doSearch(this.value)" /><div class="cel-search-results" id="search-results"></div></div>`;
+                else if(el.type==='layers') inner = `<div class="cel-layers-box">${layersListHTML || '<div style="opacity:0.5;padding:8px;font-size:0.85rem">لا توجد طبقات</div>'}</div>`;
+                else if(el.type==='stat') inner = `<div class="cel-stat"><div class="cel-stat-num" style="font-size:${el.fontSize||2}rem">${exportLayers.reduce((s,l)=>s+(l.data?.features?.length||0),0)}</div><div class="cel-stat-lbl">${el.text}</div></div>`;
                 else if(el.type==='divider') inner = `<hr class="cel-hr"/>`;
-                else if(el.type==='badge') inner = `<span class="cel-badge">${el.text}</span>`;
+                else if(el.type==='badge') inner = `<span class="cel-badge" style="font-size:${el.fontSize||0.85}rem">${el.text}</span>`;
                 return `<div class="cel" style="${wStyle}">${inner}</div>`;
             }).join('\n            ')}
-        </div>` : '';
+        </div>` : '';;
 
         // 4. Generate HTML Template
         const htmlTemplate = `<!DOCTYPE html>
@@ -666,7 +686,6 @@ const onMouseLeave = (e) => {
         ${layoutHTML}
         ${customElsHTML}
     </div>
-    <div class="watermark">Designed in PalNovaa Studio</div>
 
     <script>
         const layers = ${JSON.stringify(exportLayers)};
@@ -681,6 +700,42 @@ const onMouseLeave = (e) => {
         });
 
         map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+
+        // Push navigation control above the browser status bar
+        const style = document.createElement('style');
+        style.textContent = '.maplibregl-ctrl-bottom-right { bottom: 30px !important; }';
+        document.head.appendChild(style);
+
+        // Search function for custom search element
+        function doSearch(query) {
+            const results = document.getElementById('search-results');
+            if (!results) return;
+            if (!query.trim()) { results.style.display = 'none'; return; }
+            const found = [];
+            layers.forEach(layer => {
+                if (!layer.data?.features) return;
+                layer.data.features.forEach(f => {
+                    const props = f.properties || {};
+                    const match = Object.values(props).some(v => String(v).toLowerCase().includes(query.toLowerCase()));
+                    if (match && f.geometry) found.push({ props, geom: f.geometry });
+                });
+            });
+            if (found.length === 0) { results.innerHTML = '<div class="cel-search-item" style="opacity:0.5">لا توجد نتائج</div>'; results.style.display = 'block'; return; }
+            results.innerHTML = found.slice(0, 8).map((r, i) => {
+                const label = Object.values(r.props)[0] || 'معلم ' + (i + 1);
+                return `<div class="cel-search-item" onclick="flyToFeature(${i})">${label}</div>`;
+            }).join('');
+            results.style.display = 'block';
+            window._searchResults = found;
+        }
+        function flyToFeature(i) {
+            const f = window._searchResults?.[i];
+            if (!f) return;
+            const coords = f.geom.type === 'Point' ? f.geom.coordinates : f.geom.coordinates?.[0]?.[0] || f.geom.coordinates?.[0];
+            if (coords) map.flyTo({ center: coords, zoom: 15 });
+            document.getElementById('search-results').style.display = 'none';
+        }
+        document.addEventListener('click', e => { const r = document.getElementById('search-results'); if(r && !e.target.closest('.cel-search-wrap')) r.style.display = 'none'; });
 
         map.on('load', () => {
             layers.forEach(layer => {
