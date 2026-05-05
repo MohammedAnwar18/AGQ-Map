@@ -90,6 +90,7 @@ const PalNovaaLab = ({ onClose }) => {
     const [activeTableLayerId, setActiveTableLayerId] = useState(null);
     const [isDesignStudioOpen, setIsDesignStudioOpen] = useState(false);
     const [activeDsCategory, setActiveDsCategory] = useState('layouts');
+    const [builderTab, setBuilderTab] = useState('basic'); // 'basic', 'components', 'icons'
     const [designSelections, setDesignSelections] = useState({
         layout: 'fullmap',
         palette: 'classic',
@@ -648,6 +649,9 @@ const PalNovaaLab = ({ onClose }) => {
         .cel-stat-lbl { opacity: 0.7; font-size: 0.85rem; }
         .cel-hr { border: none; border-top: 1px solid var(--border); margin: 4px 0; }
         .cel-badge { background: var(--primary); color: #000; border-radius: 999px; padding: 4px 14px; font-weight: bold; display: inline-block; font-family: var(--font-b); }
+        .cel-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; text-align: right; font-family: var(--font-b); }
+        .cel-icon-wrap { display: flex; justify-content: center; }
+        .cel-icon { width: 48px; height: 48px; }
         ` : '';
 
         const layersListHTML = exportLayers.map(l =>
@@ -678,6 +682,8 @@ const PalNovaaLab = ({ onClose }) => {
             else if (el.type === 'stat') inner = `<div class="cel-stat" style="${brClr}"><div class="cel-stat-num" style="font-size:${el.fontSize || 2}rem;${clr}">${exportLayers.reduce((s, l) => s + (l.data?.features?.length || 0), 0)}</div><div class="cel-stat-lbl">${el.text}</div></div>`;
             else if (el.type === 'divider') inner = `<hr class="cel-hr" style="${brClr}"/>`;
             else if (el.type === 'badge') inner = `<span class="cel-badge" style="font-size:${el.fontSize || 0.85}rem;${bgClr}">${el.text}</span>`;
+            else if (el.type === 'card') inner = `<div class="cel-card" style="${brClr}"><h4 style="margin:0 0 8px 0;${clr}">${el.text}</h4><p style="margin:0;font-size:0.85rem;opacity:0.7;">وصف المكون الجاهز...</p></div>`;
+            else if (el.type === 'icon') inner = `<div class="cel-icon-wrap" style="${clr}"><svg class="cel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${el.icon && (el.icon.includes('points') ? `<polygon points="${el.icon}" />` : `<path d="${el.icon}" />`)}</svg></div>`;
             return `<div class="cel" style="${wStyle}">${inner}</div>`;
         }).join('\n            ')}
         </div>` : '';
@@ -1379,10 +1385,7 @@ const PalNovaaLab = ({ onClose }) => {
                             { id: 'layouts', label: 'التخطيطات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="9" y1="3" x2="9" y2="21" /></svg>, count: 8 },
                             { id: 'palettes', label: 'لوحات الألوان', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" /></svg>, count: 8 },
                             { id: 'typography', label: 'الخطوط', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="4 7 4 4 20 4 20 7" /><line x1="9" y1="20" x2="15" y2="20" /><line x1="12" y1="4" x2="12" y2="20" /></svg>, count: 6 },
-                            { id: 'components', label: 'المكونات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5" /></svg>, count: 8 },
                             { id: 'basemaps', label: 'الخرائط', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" /></svg>, count: 6 },
-                            { id: 'markers', label: 'المعالم', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>, count: 6 },
-                            { id: 'icons', label: 'الأيقونات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="3" /></svg>, count: 24 },
                             { id: 'effects', label: 'التأثيرات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>, count: 9 },
                             { id: 'builder', label: 'منشئ الصفحة', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 3v18M3 9h6M3 15h6M15 9h6M15 15h6" /></svg>, count: pageElements.length || '+' }
                         ].map(cat => (
@@ -1617,32 +1620,6 @@ const PalNovaaLab = ({ onClose }) => {
                             </div>
                         )}
 
-                        {activeDsCategory === 'components' && (
-                            <div className="ds-section active">
-                                <div className="ds-section-head">
-                                    <h2>المكونات الجاهزة <span className="ds-tag">COMPONENTS</span></h2>
-                                    <p>عناصر واجهة جاهزة للنسخ والاستخدام في موقعك</p>
-                                </div>
-                                <div className="ds-grid">
-                                    {[
-                                        { id: 'primary', title: 'زر رئيسي', sub: 'زر متدرج مع توهج', node: <button className="comp-btn">زر رئيسي</button> },
-                                        { id: 'outline', title: 'زر محدد', sub: 'زر بحدود فقط', node: <button className="comp-btn outline">زر محدد</button> },
-                                        { id: 'ghost', title: 'زر شفاف', sub: 'خفيف ومنخفض', node: <button className="comp-btn ghost">زر شفاف</button> },
-                                        { id: 'pill', title: 'زر بيضاوي', sub: 'شكل بيضاوي ناعم', node: <button className="comp-btn pill">زر بيضاوي</button> },
-                                        { id: 'glow', title: 'زر متوهج', sub: 'تأثير ضوئي قوي', node: <button className="comp-btn glow">متوهج</button> },
-                                        { id: 'card', title: 'بطاقة معلومات', sub: 'بطاقة معلومات قياسية', node: <div className="comp-card"><div className="c-title">عنوان البطاقة</div><div className="c-text">نص قصير يصف محتوى البطاقة</div></div> },
-                                        { id: 'search', title: 'شريط البحث', sub: 'شريط بحث بيضاوي', node: <div className="comp-search"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg> ابحث عن مكان...</div> },
-                                        { id: 'toggle', title: 'مفتاح تبديل', sub: 'مفتاح تبديل', node: <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px' }}><div style={{ width: '36px', height: '20px', background: 'var(--primary)', borderRadius: '999px', position: 'relative' }}><div style={{ position: 'absolute', top: '2px', right: '2px', width: '16px', height: '16px', background: 'white', borderRadius: '50%' }}></div></div><span>مفعّل</span></div> }
-                                    ].map(c => (
-                                        <div key={c.id} className={`ds-pick ${designSelections.component === c.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({ ...s, component: c.id }))}>
-                                            <div className="comp-preview">{c.node}</div>
-                                            <div className="ds-pick-title">{c.title}</div>
-                                            <div className="ds-pick-sub">{c.sub}</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
 
                         {activeDsCategory === 'basemaps' && (
                             <div className="ds-section active">
@@ -1696,50 +1673,6 @@ const PalNovaaLab = ({ onClose }) => {
                             </div>
                         )}
 
-                        {activeDsCategory === 'icons' && (
-                            <div className="ds-section active">
-                                <div className="ds-section-head">
-                                    <h2>مكتبة الأيقونات <span className="ds-tag">ICONS</span></h2>
-                                    <p>أيقونات احترافية للخرائط والواجهات بنمط Lucide</p>
-                                </div>
-                                <div className="icon-tabs">
-                                    {['الكل', 'خرائط', 'واجهة', 'إجراءات', 'بيانات'].map((t, i) => (
-                                        <span key={i} className={`icon-tab ${i === 0 ? 'active' : ''}`}>{t}</span>
-                                    ))}
-                                </div>
-                                <div className="icons-grid">
-                                    {[
-                                        <><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></>,
-                                        <><circle cx="12" cy="12" r="10" /><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" /></>,
-                                        <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />,
-                                        <><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></>,
-                                        <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5" />,
-                                        <><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="3" /></>,
-                                        <><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /></>,
-                                        <rect x="3" y="3" width="18" height="18" rx="2" />,
-                                        <><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></>,
-                                        <polyline points="20 6 9 17 4 12" />,
-                                        <><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></>,
-                                        <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z" />,
-                                        <><path d="M3 3v18h18" /><path d="M18 17V9M13 17V5M8 17v-3" /></>,
-                                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />,
-                                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />,
-                                        <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></>,
-                                        <><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></>,
-                                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />,
-                                        <><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>,
-                                        <path d="M3 6h18M3 12h18M3 18h18" />,
-                                        <><polyline points="9 11 12 14 22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></>,
-                                        <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></>,
-                                        <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></>
-                                    ].map((icon, i) => (
-                                        <div key={i} className="icon-cell">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">{icon}</svg>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
 
                         {activeDsCategory === 'effects' && (
                             <div className="ds-section active">
@@ -1773,29 +1706,93 @@ const PalNovaaLab = ({ onClose }) => {
                             <div className="ds-section active" style={{ padding: 0, height: '100%', position: 'relative' }}>
                                 <div style={{ display: 'flex', height: '100%', gap: 0 }}>
                                     {/* Element Palette */}
-                                    <div className="ds-builder-sidebar" style={{ width: '180px', background: '#0A1628', borderRight: '1px solid var(--border)', padding: '20px 12px', overflowY: 'auto', flexShrink: 0 }}>
-                                        <div className="ds-sidebar-label" style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '16px', textAlign: 'center' }}>مكونات الواجهة</div>
-                                        {[
-                                            { type: 'heading', label: 'عنوان رئيسي', preview: 'H₁' },
-                                            { type: 'subheading', label: 'عنوان فرعي', preview: 'H₂' },
-                                            { type: 'paragraph', label: 'كتلة نصية', preview: '¶' },
-                                            { type: 'btn_primary', label: 'زر إجراء', preview: 'BTN' },
-                                            { type: 'search', label: 'حقل بحث', preview: '🔍' },
-                                            { type: 'layers', label: 'متحكم طبقات', preview: '⊞' },
-                                            { type: 'stat', label: 'بطاقة رقمية', preview: '42' },
-                                            { type: 'sidebar', label: 'لوحة جانبية', preview: '||' },
-                                            { type: 'card', label: 'بطاقة معلومات', preview: '▭' },
-                                        ].map(el => (
-                                            <div
-                                                key={el.type}
-                                                draggable
-                                                onDragStart={e => { e.dataTransfer.setData('elType', el.type); e.dataTransfer.setData('elLabel', el.label); }}
-                                                className="builder-el-card"
-                                            >
-                                                <div className="el-preview-box">{el.preview}</div>
-                                                <div className="el-label-text">{el.label}</div>
-                                            </div>
-                                        ))}
+                                    <div className="ds-builder-sidebar" style={{ width: '220px', background: '#0A1628', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
+                                        <div className="builder-tabs" style={{ display: 'flex', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border)' }}>
+                                            {[
+                                                { id: 'basic', label: 'أساسي' },
+                                                { id: 'comps', label: 'مكونات' },
+                                                { id: 'icons', label: 'أيقونات' }
+                                            ].map(t => (
+                                                <div 
+                                                    key={t.id} 
+                                                    onClick={() => setBuilderTab(t.id)}
+                                                    style={{ flex: 1, padding: '12px 5px', fontSize: '10px', fontWeight: '800', textAlign: 'center', cursor: 'pointer', borderBottom: builderTab === t.id ? '2px solid var(--primary)' : '2px solid transparent', color: builderTab === t.id ? 'var(--primary)' : 'var(--text-muted)', transition: 'all 0.2s' }}
+                                                >
+                                                    {t.label}
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 12px' }}>
+                                            {builderTab === 'basic' && (
+                                                <div className="builder-cat-section">
+                                                    {[
+                                                        { type: 'heading', label: 'عنوان رئيسي', preview: 'H₁' },
+                                                        { type: 'subheading', label: 'عنوان فرعي', preview: 'H₂' },
+                                                        { type: 'paragraph', label: 'كتلة نصية', preview: '¶' },
+                                                        { type: 'divider', label: 'خط فاصل', preview: '—' },
+                                                        { type: 'badge', label: 'شارة (Badge)', preview: '•' }
+                                                    ].map(el => (
+                                                        <div key={el.type} draggable onDragStart={e => { e.dataTransfer.setData('elType', el.type); e.dataTransfer.setData('elLabel', el.label); }} className="builder-el-card">
+                                                            <div className="el-preview-box">{el.preview}</div>
+                                                            <div className="el-label-text">{el.label}</div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {builderTab === 'comps' && (
+                                                <div className="builder-cat-section">
+                                                    {[
+                                                        { type: 'btn_primary', label: 'زر رئيسي', preview: 'BTN' },
+                                                        { type: 'btn_outline', label: 'زر محدد', preview: 'BTN' },
+                                                        { type: 'search', label: 'حقل بحث', preview: '🔍' },
+                                                        { type: 'stat', label: 'بطاقة رقمية', preview: '42' },
+                                                        { type: 'card', label: 'بطاقة معلومات', preview: '▭' },
+                                                        { type: 'layers', label: 'متحكم طبقات', preview: '⊞' }
+                                                    ].map(el => (
+                                                        <div key={el.type} draggable onDragStart={e => { e.dataTransfer.setData('elType', el.type); e.dataTransfer.setData('elLabel', el.label); }} className="builder-el-card">
+                                                            <div className="el-preview-box" style={{ fontSize: '1rem' }}>{el.preview}</div>
+                                                            <div className="el-label-text">{el.label}</div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {builderTab === 'icons' && (
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                                                    {[
+                                                        { type: 'icon', label: 'موقع', icon: <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /> },
+                                                        { type: 'icon', label: 'بوصلة', icon: <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" /> },
+                                                        { type: 'icon', label: 'خريطة', icon: <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" /> },
+                                                        { type: 'icon', label: 'بحث', icon: <circle cx="11" cy="11" r="8" /> },
+                                                        { type: 'icon', label: 'نجمة', icon: <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /> },
+                                                        { type: 'icon', label: 'بيت', icon: <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /> },
+                                                        { type: 'icon', label: 'مستخدم', icon: <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /> },
+                                                        { type: 'icon', label: 'قائمة', icon: <path d="M3 6h18M3 12h18M3 18h18" /> }
+                                                    ].map((el, i) => (
+                                                        <div 
+                                                            key={i} 
+                                                            draggable 
+                                                            onDragStart={e => { 
+                                                                e.dataTransfer.setData('elType', 'icon'); 
+                                                                e.dataTransfer.setData('elLabel', el.label);
+                                                                // Pass the icon path as a string
+                                                                const svgStr = React.isValidElement(el.icon) ? el.icon.props.d || el.icon.props.points : '';
+                                                                e.dataTransfer.setData('elIcon', svgStr);
+                                                            }} 
+                                                            className="builder-el-card" 
+                                                            style={{ padding: '8px' }}
+                                                        >
+                                                            <div style={{ color: 'var(--primary)', marginBottom: '4px' }}>
+                                                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">{el.icon}</svg>
+                                                            </div>
+                                                            <div className="el-label-text" style={{ fontSize: '0.6rem' }}>{el.label}</div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
 
                                         <div className="builder-helper-section" style={{ marginTop: '30px', borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
                                             <button className="ds-btn outline small w-100" onClick={() => {
@@ -1830,7 +1827,10 @@ const PalNovaaLab = ({ onClose }) => {
                                                 const rect = e.currentTarget.getBoundingClientRect();
                                                 const x = Math.max(0, Math.min(85, ((e.clientX - rect.left) / rect.width) * 100));
                                                 const y = Math.max(0, Math.min(85, ((e.clientY - rect.top) / rect.height) * 100));
-                                                const newEl = { id: Date.now(), type: e.dataTransfer.getData('elType'), label: e.dataTransfer.getData('elLabel'), x, y, w: 25, fontSize: 1, color: designSelections.customPrimary };
+                                                const type = e.dataTransfer.getData('elType');
+                                                const label = e.dataTransfer.getData('elLabel');
+                                                const icon = e.dataTransfer.getData('elIcon');
+                                                const newEl = { id: Date.now(), type, text: label, icon, x, y, w: type === 'icon' ? 10 : 25, fontSize: 1, color: designSelections.customPrimary };
                                                 setPageElements(prev => [...prev, newEl]);
                                                 setSelectedElId(newEl.id);
                                             }}
@@ -1878,6 +1878,14 @@ const PalNovaaLab = ({ onClose }) => {
                                                     {el.type === 'stat' && <div style={{ background: 'rgba(0,0,0,0.3)', border: `1px solid ${el.color || 'rgba(255,255,255,0.08)'}`, borderRadius: '8px', padding: '6px', textAlign: 'center', fontFamily: 'var(--font-b)' }}><div style={{ color: el.color || 'var(--primary)', fontWeight: '800', fontSize: '1.1rem', fontFamily: 'var(--font-h)' }}>0</div><div style={{ fontSize: '0.65rem', opacity: 0.7 }}>{el.text}</div></div>}
                                                     {el.type === 'divider' && <hr style={{ border: 'none', borderTop: `1px solid ${el.color || 'rgba(255,255,255,0.15)'}`, margin: '4px 0' }} />}
                                                     {el.type === 'badge' && <span style={{ background: el.color || 'var(--primary)', color: '#000', borderRadius: '999px', padding: '2px 10px', fontSize: '0.7rem', fontWeight: 'bold', display: 'inline-block', fontFamily: 'var(--font-b)' }}>{el.text}</span>}
+                                                    {el.type === 'card' && <div style={{ background: 'rgba(20,43,71,0.6)', border: `1px solid ${el.color || 'var(--border)'}`, borderRadius: '10px', padding: '10px', textAlign: 'right', fontFamily: 'var(--font-b)' }}><div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#fff', marginBottom: '4px' }}>{el.text}</div><div style={{ fontSize: '0.6rem', opacity: 0.6 }}>نص وصفي للبطاقة...</div></div>}
+                                                    {el.type === 'icon' && (
+                                                        <div style={{ color: el.color || 'var(--primary)', display: 'flex', justifyContent: 'center' }}>
+                                                            <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                {el.icon && (el.icon.includes('points') ? <polygon points={el.icon} /> : <path d={el.icon} />)}
+                                                            </svg>
+                                                        </div>
+                                                    )}
                                                     {selectedElId === el.id && (
                                                         <button onClick={e => { e.stopPropagation(); setPageElements(prev => prev.filter(i => i.id !== el.id)); setSelectedElId(null); }} style={{ position: 'absolute', top: '-8px', right: '-8px', width: '18px', height: '18px', borderRadius: '50%', background: '#EF4444', color: 'white', border: 'none', cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>×</button>
                                                     )}
