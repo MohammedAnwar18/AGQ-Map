@@ -1938,20 +1938,16 @@ const PalNovaaLab = ({ onClose }) => {
 
                         <div className="device-frame-container">
                             <div className={`${previewDevice === 'desktop' ? 'laptop-frame' : 'phone-frame'}`}>
-                                <div className={`preview-mock-content layout-mockup lm-${designSelections.layout}`}>
+                                <div className={`preview-mock-content layout-mockup lm-${designSelections.layout} ${designSelections.effect}`}>
                                     {designSelections.layout === 'modal' ? (
                                         <div className="lm-modal-frame">
                                             <div className="lm-modal-bar"></div>
                                             <div className="lm-map">
-                                                <div className="lm-pin" style={{ top: '40%', left: '50%' }}></div>
                                             </div>
                                         </div>
                                     ) : (
                                         <>
                                             <div className="lm-map">
-                                                <div className="lm-pin" style={{ top: '30%', left: '40%' }}></div>
-                                                <div className="lm-pin cy" style={{ top: '60%', left: '70%' }}></div>
-                                                <div className="lm-pin lg" style={{ top: '45%', left: '55%' }}></div>
                                             </div>
 
                                             {designSelections.layout === 'fullmap' && (

@@ -1435,14 +1435,34 @@
 .icon-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
 .icon-tab:hover:not(.active) { background: var(--surface-hover); }
 
-/* ===== 8. Effects ===== */
-.effect-preview {
-  aspect-ratio: 16/9;
-  background: linear-gradient(135deg, var(--bg-2), var(--bg-3));
-  border-radius: 12px;
-  margin-bottom: 10px;
-  display: grid; place-items: center;
-  position: relative; overflow: hidden;
+/* Studio Live Effects */
+.preview-mock-content.glow .lm-panel, 
+.preview-mock-content.glow .lm-search, 
+.preview-mock-content.glow .lm-item,
+.preview-mock-content.glow .lm-fc1,
+.preview-mock-content.glow .lm-fc2,
+.preview-mock-content.glow .lm-details,
+.preview-mock-content.glow .lm-modal-frame {
+  box-shadow: 0 0 20px var(--primary-glow) !important;
+  border-color: var(--primary) !important;
+}
+
+.preview-mock-content.glass .lm-panel,
+.preview-mock-content.glass .lm-search,
+.preview-mock-content.glass .lm-fc1,
+.preview-mock-content.glass .lm-fc2,
+.preview-mock-content.glass .lm-modal-frame {
+  background: rgba(255,255,255,0.05) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+}
+
+.preview-mock-content.shadow_lg .lm-panel,
+.preview-mock-content.shadow_lg .lm-search,
+.preview-mock-content.shadow_lg .lm-fc1,
+.preview-mock-content.shadow_lg .lm-fc2,
+.preview-mock-content.shadow_lg .lm-modal-frame {
+  box-shadow: 0 15px 35px rgba(0,0,0,0.5) !important;
 }
 .effect-box {
   width: 60%; aspect-ratio: 1;
