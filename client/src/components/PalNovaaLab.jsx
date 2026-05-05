@@ -4,6 +4,8 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import './PalNovaaLab.css';
 
 const PalNovaaLab = ({ onClose }) => {
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
     const [showIntro, setShowIntro] = useState(true);
     const [particles, setParticles] = useState([]);
     const [activeTab, setActiveTab] = useState('layers');
@@ -14,6 +16,44 @@ const PalNovaaLab = ({ onClose }) => {
         pitch: 0,
         bearing: 0
     });
+
+    if (isMobileDevice) {
+        return (
+            <div style={{
+                position: 'fixed', inset: 0, zIndex: 9999,
+                background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: '20px', fontFamily: "'Tajawal', sans-serif"
+            }}>
+                <div style={{
+                    textAlign: 'center', color: 'white', maxWidth: '350px',
+                    background: 'rgba(255,255,255,0.03)', padding: '40px 20px', borderRadius: '24px',
+                    border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)'
+                }}>
+                    <div style={{ marginBottom: '20px', color: '#fbab15' }}>
+                        <svg viewBox="0 0 24 24" width="80" height="80" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                    </div>
+                    <h2 style={{ fontSize: '1.5rem', marginBottom: '15px' }}>مختبر بالنوفا المتقدم</h2>
+                    <p style={{ fontSize: '1rem', color: '#94a3b8', lineHeight: '1.6', marginBottom: '25px' }}>
+                        عذراً، هذا القسم متاح فقط لمستخدمي أجهزة الحاسوب واللابتوب لضمان أفضل تجربة أداء وتحليل للبيانات.
+                    </p>
+                    <button 
+                        onClick={onClose}
+                        style={{
+                            background: '#fbab15', color: 'black', border: 'none',
+                            padding: '12px 30px', borderRadius: '12px', fontWeight: 'bold',
+                            cursor: 'pointer', transition: 'transform 0.2s'
+                        }}
+                    >
+                        الرجوع للخريطة
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     const mapRef = useRef(null);
 
     const mapStyle = useMemo(() => ({

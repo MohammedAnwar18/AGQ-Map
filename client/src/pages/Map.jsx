@@ -101,6 +101,8 @@ const haversineDistance = (coords1, coords2) => {
 
 const MapComponent = () => {
     const { user, logout, socket } = useAuth();
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
 
     // Mapbox Setup - Secure Triple Fallback
     const MAPBOX_TOKEN = useMemo(() => {
@@ -1196,21 +1198,50 @@ const MapComponent = () => {
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
 
-                        {/* PalNovaa Lab */}
-                        <button onClick={() => { setShowLabModal(true); setShowMoreMenu(false); }}>
+                        {/* PalNovaa Lab - Restricted to Desktop */}
+                        <button 
+                            onClick={() => { 
+                                if (isMobileDevice) {
+                                    alert("عذراً، مختبر بالنوفا متاح فقط على أجهزة الحاسوب واللابتوب لضمان أفضل تجربة أداء.");
+                                    return;
+                                }
+                                setShowLabModal(true); 
+                                setShowMoreMenu(false); 
+                            }}
+                            style={isMobileDevice ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
+                        >
                             <div className="menu-item-content">
-                                <div className="menu-icon-wrapper" style={{ color: '#fbab15' }}>
-                                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg">
-                                        <path d="M10 2v7.31"></path>
-                                        <path d="M14 9.3V1.99"></path>
-                                        <path d="M8.5 2h7"></path>
-                                        <path d="M14 9.3a6.5 6.5 0 1 1-4 0"></path>
-                                        <path d="M5.52 16h12.96"></path>
-                                    </svg>
+                                <div className="menu-icon-wrapper" style={{ color: isMobileDevice ? '#94a3b8' : '#fbab15' }}>
+                                    {isMobileDevice ? (
+                                        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg">
+                                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                        </svg>
+                                    ) : (
+                                        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg">
+                                            <path d="M10 2v7.31"></path>
+                                            <path d="M14 9.3V1.99"></path>
+                                            <path d="M8.5 2h7"></path>
+                                            <path d="M14 9.3a6.5 6.5 0 1 1-4 0"></path>
+                                            <path d="M5.52 16h12.96"></path>
+                                        </svg>
+                                    )}
                                 </div>
-                                <span>مختبر بالنوفا</span>
+                                <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                    <span>مختبر بالنوفا</span>
+                                    {isMobileDevice && <span style={{ fontSize: '10px', color: '#94a3b8' }}>متاح للحاسوب فقط</span>}
+                                </span>
                             </div>
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+                            {isMobileDevice ? (
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#94a3b8" strokeWidth="2.5">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                </svg>
+                            ) : (
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <polyline points="9 18 15 12 9 6" />
+                                </svg>
+                            )}
                         </button>
 
                         {/* PalNovaa Spatial Magazine */}
