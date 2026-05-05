@@ -6,7 +6,7 @@ const pool = require('../config/database');
 exports.savePage = async (req, res) => {
     try {
         const userId = req.user.id || req.user.userId;
-        const { name, slug, config } = req.body;
+        const { name, slug, config, status = 'published' } = req.body;
 
         if (!name || !slug || !config) {
             return res.status(400).json({ error: 'Name, Slug and Config are required' });
@@ -19,12 +19,12 @@ exports.savePage = async (req, res) => {
         }
 
         const result = await pool.query(
-            `INSERT INTO user_design_pages (user_id, name, slug, config, updated_at)
-             VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+            `INSERT INTO user_design_pages (user_id, name, slug, config, status, updated_at)
+             VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
              ON CONFLICT (slug) 
-             DO UPDATE SET name = $2, config = $4, updated_at = CURRENT_TIMESTAMP
+             DO UPDATE SET name = $2, config = $4, status = $5, updated_at = CURRENT_TIMESTAMP
              RETURNING *`,
-            [userId, name, slug, JSON.stringify(config)]
+            [userId, name, slug, JSON.stringify(config), status]
         );
 
         res.json({

@@ -486,8 +486,12 @@ const PalNovaaLab = ({ onClose }) => {
     };
 
     const handlePublishDesign = async () => {
+        await handleSaveDesign('published');
+    };
+
+    const handleSaveDesign = async (status = 'draft') => {
         if (!publishName || !publishSlug) {
-            alert('يرجى إدخال اسم المشروع والاسم البرمجي (الرابط).');
+            setIsPublishModalOpen(true);
             return;
         }
 
@@ -498,10 +502,11 @@ const PalNovaaLab = ({ onClose }) => {
             const response = await axios.post(`${apiUrl}/api/pages/save`, {
                 name: publishName,
                 slug: publishSlug,
+                status: status,
                 config: {
                     selections: designSelections,
                     elements: pageElements,
-                    geoLayers: geoLayers // Save all GeoJSON and Raster layers
+                    geoLayers: geoLayers
                 }
             }, {
                 headers: {
@@ -510,13 +515,17 @@ const PalNovaaLab = ({ onClose }) => {
             });
 
             if (response.data.success) {
-                alert(`مبروك! تم نشر صفحتك بنجاح.\nيمكنك الوصول إليها عبر الرابط: ${window.location.origin}/p/${publishSlug}`);
-                setIsPublishModalOpen(false);
+                if (status === 'published') {
+                    alert(`مبروك! تم نشر صفحتك بنجاح.\nيمكنك الوصول إليها عبر الرابط: ${window.location.origin}/p/${publishSlug}`);
+                    setIsPublishModalOpen(false);
+                } else {
+                    alert('تم حفظ المسودة بنجاح! يمكنك العودة إليها لاحقاً من ملفك الشخصي.');
+                }
             }
         } catch (err) {
-            console.error('Publish failed:', err);
+            console.error('Save failed:', err);
             const errMsg = err.response?.data?.error || err.message;
-            alert(`فشل النشر: ${errMsg}`);
+            alert(`فشل العملية: ${errMsg}`);
         } finally {
             setIsPublishing(false);
         }
@@ -1454,13 +1463,17 @@ const PalNovaaLab = ({ onClose }) => {
                                 <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>المساعد الذكي</span>
                             </button>
                         )}
+                        <button className="ds-btn secondary" onClick={() => handleSaveDesign('draft')} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)' }}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', height: '18px' }}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                            حفظ كمسودة
+                        </button>
                         <button className="ds-btn secondary" onClick={() => setIsPublishModalOpen(true)} style={{ background: '#10B981', color: 'white' }}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', height: '18px' }}><path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" /></svg>
                             نشر وتثبيت التطبيق
                         </button>
                         <button className="ds-btn primary" onClick={performActualExport}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', height: '18px' }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-                            حفظ وتصدير المشروع
+                            تصدير كملف HTML
                         </button>
                         <button className="ds-close" onClick={() => setIsDesignStudioOpen(false)}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '20px', height: '20px' }}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
