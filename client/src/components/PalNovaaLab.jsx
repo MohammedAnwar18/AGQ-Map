@@ -121,7 +121,7 @@ const PalNovaaLab = ({ onClose }) => {
 
     const fontData = {
         cairo_tajawal: { h: "'Cairo', sans-serif", b: "'Tajawal', sans-serif" },
-        tajawal_inter: { h: "'Tajawal', sans-serif", b: "system-ui, sans-serif" },
+        tajawal_inter: { h: "'Tajawal', sans-serif", b: "'Inter', sans-serif" },
         cairo_mono: { h: "'Cairo', sans-serif", b: "'JetBrains Mono', monospace" },
         tajawal_ed: { h: "'Tajawal', serif", b: "'Tajawal', sans-serif" },
         display: { h: "'Cairo', sans-serif", b: "'Tajawal', sans-serif" },
@@ -1585,7 +1585,7 @@ const PalNovaaLab = ({ onClose }) => {
                                 <div className="ds-grid">
                                     {[
                                         { id: 'cairo_tajawal', title: 'Cairo + Tajawal', sub: 'عربي حديث · موصى به', fontH: "'Cairo', sans-serif", fontB: "'Tajawal', sans-serif" },
-                                        { id: 'tajawal_inter', title: 'Tajawal + Inter', sub: 'مختلط · أنيق', fontH: "'Tajawal', sans-serif", fontB: "system-ui, sans-serif" },
+                                        { id: 'tajawal_inter', title: 'Tajawal + Inter', sub: 'مختلط · أنيق', fontH: "'Tajawal', sans-serif", fontB: "'Inter', sans-serif" },
                                         { id: 'cairo_mono', title: 'Cairo + JetBrains Mono', sub: 'تقني · للمطورين', fontH: "'Cairo', sans-serif", fontB: "'JetBrains Mono', monospace" },
                                         { id: 'tajawal_ed', title: 'Tajawal Editorial', sub: 'تحريري · رسمي', fontH: "'Tajawal', serif", fontB: "'Tajawal', sans-serif" },
                                         { id: 'display', title: 'Display Big', sub: 'عرض · بصري', fontH: "'Cairo', sans-serif", fontB: "'Tajawal', sans-serif", cls: 'preview-display' },
