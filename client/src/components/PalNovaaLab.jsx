@@ -97,7 +97,8 @@ const PalNovaaLab = ({ onClose }) => {
         basemap: 'satellite',
         marker: 'pin',
         component: 'pill',
-        effect: 'glow'
+        effect: 'glow',
+        customPrimary: '#F5A623'
     });
     const [pageElements, setPageElements] = useState([]);
     const [selectedElId, setSelectedElId] = useState(null);
@@ -114,7 +115,8 @@ const PalNovaaLab = ({ onClose }) => {
         forest: { primary: '#10D9A0', primaryDark: '#059669', bg: '#064E3B', surface: '#0D6E55' },
         earth: { primary: '#D4C49B', primaryDark: '#A0826D', bg: '#2C1810', surface: '#3D2B1F' },
         neon: { primary: '#EC4899', primaryDark: '#8B5CF6', bg: '#050B16', surface: '#0D1526' },
-        minimal: { primary: '#1A1A2E', primaryDark: '#4B5563', bg: '#F5F4ED', surface: '#FFFFFF' }
+        minimal: { primary: '#1A1A2E', primaryDark: '#4B5563', bg: '#F5F4ED', surface: '#FFFFFF' },
+        custom: { primary: designSelections.customPrimary, primaryDark: designSelections.customPrimary, bg: '#0A1628', surface: '#142B47' }
     };
 
     const fontData = {
@@ -475,7 +477,8 @@ const PalNovaaLab = ({ onClose }) => {
             forest: { primary: '#10D9A0', primaryDark: '#059669', bg: '#022C22', surface: 'rgba(6, 78, 59, 0.6)', surfaceSolid: '#064E3B', border: 'rgba(16, 217, 160, 0.2)', text: '#F5F4ED', primaryGlow: 'rgba(16, 217, 160, 0.3)' },
             earth: { primary: '#D4C49B', primaryDark: '#A0826D', bg: '#2C1810', surface: 'rgba(92, 64, 51, 0.6)', surfaceSolid: '#5C4033', border: 'rgba(212, 196, 155, 0.2)', text: '#F5F4ED', primaryGlow: 'rgba(212, 196, 155, 0.3)' },
             neon: { primary: '#06D6F2', primaryDark: '#EC4899', bg: '#050B16', surface: 'rgba(139, 92, 246, 0.3)', surfaceSolid: '#14002E', border: 'rgba(236, 72, 153, 0.3)', text: '#FFFFFF', primaryGlow: 'rgba(6, 214, 242, 0.4)' },
-            minimal: { primary: '#F5A623', primaryDark: '#D88B0E', bg: '#FFFFFF', surface: 'rgba(245, 244, 237, 0.9)', surfaceSolid: '#F5F4ED', border: 'rgba(0,0,0,0.1)', text: '#1A1A2E', primaryGlow: 'rgba(245, 166, 35, 0.3)' }
+            minimal: { primary: '#F5A623', primaryDark: '#D88B0E', bg: '#FFFFFF', surface: 'rgba(245, 244, 237, 0.9)', surfaceSolid: '#F5F4ED', border: 'rgba(0,0,0,0.1)', text: '#1A1A2E', primaryGlow: 'rgba(245, 166, 35, 0.3)' },
+            custom: { primary: designSelections.customPrimary, primaryDark: designSelections.customPrimary, bg: '#0A1628', surface: 'rgba(20, 43, 71, 0.7)', surfaceSolid: '#142B47', border: 'rgba(255,255,255,0.08)', text: '#FFFFFF', primaryGlow: `${designSelections.customPrimary}44` }
         };
         const theme = palettesData[designSelections.palette] || palettesData.classic;
 
@@ -659,16 +662,20 @@ const PalNovaaLab = ({ onClose }) => {
             const fs = el.fontSize ? `font-size:${el.fontSize}rem;` : '';
             const wStyle = `left:${el.x}%;top:${el.y}%;width:${el.w}%;${fs}`;
             let inner = '';
-            if (el.type === 'heading') inner = `<h1 class="cel-heading" style="font-size:${el.fontSize || 2}rem">${el.text}</h1>`;
-            else if (el.type === 'subheading') inner = `<h2 class="cel-sub" style="font-size:${el.fontSize || 1.3}rem">${el.text}</h2>`;
-            else if (el.type === 'paragraph') inner = `<p class="cel-para" style="font-size:${el.fontSize || 1}rem">${el.text}</p>`;
-            else if (el.type === 'btn_primary') inner = `<button class="cel-btn-p" style="font-size:${el.fontSize || 1}rem">${el.text}</button>`;
-            else if (el.type === 'btn_outline') inner = `<button class="cel-btn-o" style="font-size:${el.fontSize || 1}rem">${el.text}</button>`;
-            else if (el.type === 'search') inner = `<div class="cel-search-wrap"><svg class="cel-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input class="cel-search" placeholder="${el.text}" oninput="doSearch(this.value)" /><div class="cel-search-results" id="search-results"></div></div>`;
-            else if (el.type === 'layers') inner = `<div class="cel-layers-box">${layersListHTML || '<div style="opacity:0.5;padding:8px;font-size:0.85rem">لا توجد طبقات</div>'}</div>`;
-            else if (el.type === 'stat') inner = `<div class="cel-stat"><div class="cel-stat-num" style="font-size:${el.fontSize || 2}rem">${exportLayers.reduce((s, l) => s + (l.data?.features?.length || 0), 0)}</div><div class="cel-stat-lbl">${el.text}</div></div>`;
-            else if (el.type === 'divider') inner = `<hr class="cel-hr"/>`;
-            else if (el.type === 'badge') inner = `<span class="cel-badge" style="font-size:${el.fontSize || 0.85}rem">${el.text}</span>`;
+            const clr = el.color ? `color:${el.color};` : '';
+            const bgClr = el.color ? `background:${el.color};` : '';
+            const brClr = el.color ? `border-color:${el.color};` : '';
+
+            if (el.type === 'heading') inner = `<h1 class="cel-heading" style="font-size:${el.fontSize || 2}rem;${clr}">${el.text}</h1>`;
+            else if (el.type === 'subheading') inner = `<h2 class="cel-sub" style="font-size:${el.fontSize || 1.3}rem;${clr}">${el.text}</h2>`;
+            else if (el.type === 'paragraph') inner = `<p class="cel-para" style="font-size:${el.fontSize || 1}rem;${clr}">${el.text}</p>`;
+            else if (el.type === 'btn_primary') inner = `<button class="cel-btn-p" style="font-size:${el.fontSize || 1}rem;${bgClr}">${el.text}</button>`;
+            else if (el.type === 'btn_outline') inner = `<button class="cel-btn-o" style="font-size:${el.fontSize || 1}rem;${clr}${brClr}">${el.text}</button>`;
+            else if (el.type === 'search') inner = `<div class="cel-search-wrap" style="${clr}"><svg class="cel-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input class="cel-search" placeholder="${el.text}" oninput="doSearch(this.value)" style="${brClr}${clr}" /><div class="cel-search-results" id="search-results"></div></div>`;
+            else if (el.type === 'layers') inner = `<div class="cel-layers-box" style="${brClr}${clr}">${layersListHTML || '<div style="opacity:0.5;padding:8px;font-size:0.85rem">لا توجد طبقات</div>'}</div>`;
+            else if (el.type === 'stat') inner = `<div class="cel-stat" style="${brClr}"><div class="cel-stat-num" style="font-size:${el.fontSize || 2}rem;${clr}">${exportLayers.reduce((s, l) => s + (l.data?.features?.length || 0), 0)}</div><div class="cel-stat-lbl">${el.text}</div></div>`;
+            else if (el.type === 'divider') inner = `<hr class="cel-hr" style="${brClr}"/>`;
+            else if (el.type === 'badge') inner = `<span class="cel-badge" style="font-size:${el.fontSize || 0.85}rem;${bgClr}">${el.text}</span>`;
             return `<div class="cel" style="${wStyle}">${inner}</div>`;
         }).join('\n            ')}
         </div>` : '';
@@ -1546,6 +1553,23 @@ const PalNovaaLab = ({ onClose }) => {
                                             <div className="ds-pick-sub">{p.sub}</div>
                                         </div>
                                     ))}
+
+                                    {/* Custom Color Pick */}
+                                    <div className={`ds-pick ${designSelections.palette === 'custom' ? 'selected' : ''}`} style={{ borderStyle: 'dashed' }}>
+                                        <div className="palette-strip" style={{ position: 'relative' }}>
+                                            <input 
+                                                type="color" 
+                                                value={designSelections.customPrimary} 
+                                                onChange={e => setDesignSelections(s => ({ ...s, palette: 'custom', customPrimary: e.target.value }))}
+                                                style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
+                                            />
+                                            <span style={{ flex: 1, background: designSelections.customPrimary }}></span>
+                                            <span style={{ flex: 1, background: '#0A1628' }}></span>
+                                            <span style={{ flex: 1, background: '#142B47' }}></span>
+                                        </div>
+                                        <div className="ds-pick-title" style={{ color: 'var(--primary)' }}>لون مخصص</div>
+                                        <div className="ds-pick-sub">اختر لونك الخاص</div>
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -1791,7 +1815,7 @@ const PalNovaaLab = ({ onClose }) => {
                                                 const rect = e.currentTarget.getBoundingClientRect();
                                                 const x = Math.max(0, Math.min(85, ((e.clientX - rect.left) / rect.width) * 100));
                                                 const y = Math.max(0, Math.min(85, ((e.clientY - rect.top) / rect.height) * 100));
-                                                const newEl = { id: Date.now(), type: e.dataTransfer.getData('elType'), label: e.dataTransfer.getData('elLabel'), x, y, w: 25, fontSize: 1 };
+                                                const newEl = { id: Date.now(), type: e.dataTransfer.getData('elType'), label: e.dataTransfer.getData('elLabel'), x, y, w: 25, fontSize: 1, color: designSelections.customPrimary };
                                                 setPageElements(prev => [...prev, newEl]);
                                                 setSelectedElId(newEl.id);
                                             }}
@@ -1829,16 +1853,16 @@ const PalNovaaLab = ({ onClose }) => {
                                                         window.addEventListener('mouseup', mu);
                                                     }}
                                                 >
-                                                    {el.type === 'heading' && <div style={{ color: 'var(--primary)', fontWeight: '900', fontSize: '1.1rem', fontFamily: "'Cairo',sans-serif", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{el.text}</div>}
-                                                    {el.type === 'subheading' && <div style={{ color: 'rgba(255,255,255,0.9)', fontWeight: '700', fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden' }}>{el.text}</div>}
-                                                    {el.type === 'paragraph' && <div style={{ fontSize: '0.7rem', opacity: 0.75, lineHeight: '1.4' }}>{el.text}</div>}
-                                                    {el.type === 'btn_primary' && <button style={{ background: 'var(--primary)', color: '#000', border: 'none', borderRadius: '8px', padding: '5px 10px', fontSize: '0.72rem', fontWeight: 'bold', width: '100%', cursor: 'default', whiteSpace: 'nowrap' }}>{el.text}</button>}
-                                                    {el.type === 'btn_outline' && <button style={{ background: 'transparent', color: 'var(--primary)', border: '1px solid var(--primary)', borderRadius: '8px', padding: '5px 10px', fontSize: '0.72rem', fontWeight: 'bold', width: '100%', cursor: 'default', whiteSpace: 'nowrap' }}>{el.text}</button>}
-                                                    {el.type === 'search' && <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '999px', padding: '4px 10px', fontSize: '0.7rem', opacity: 0.85, display: 'flex', alignItems: 'center', gap: '5px' }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>{el.text}</div>}
-                                                    {el.type === 'layers' && <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', padding: '4px 8px', fontSize: '0.7rem', opacity: 0.8 }}>{el.text}</div>}
-                                                    {el.type === 'stat' && <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '6px', textAlign: 'center' }}><div style={{ color: 'var(--primary)', fontWeight: '800', fontSize: '1.1rem' }}>0</div><div style={{ fontSize: '0.65rem', opacity: 0.7 }}>{el.text}</div></div>}
-                                                    {el.type === 'divider' && <hr style={{ border: 'none', borderTop: '1px solid rgba(255,255,255,0.15)', margin: '4px 0' }} />}
-                                                    {el.type === 'badge' && <span style={{ background: 'var(--primary)', color: '#000', borderRadius: '999px', padding: '2px 10px', fontSize: '0.7rem', fontWeight: 'bold', display: 'inline-block' }}>{el.text}</span>}
+                                                    {el.type === 'heading' && <div style={{ color: el.color || 'var(--primary)', fontWeight: '900', fontSize: '1.1rem', fontFamily: "'Cairo',sans-serif", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{el.text}</div>}
+                                                    {el.type === 'subheading' && <div style={{ color: el.color || 'rgba(255,255,255,0.9)', fontWeight: '700', fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden' }}>{el.text}</div>}
+                                                    {el.type === 'paragraph' && <div style={{ color: el.color || 'inherit', fontSize: '0.7rem', opacity: 0.75, lineHeight: '1.4' }}>{el.text}</div>}
+                                                    {el.type === 'btn_primary' && <button style={{ background: el.color || 'var(--primary)', color: '#000', border: 'none', borderRadius: '8px', padding: '5px 10px', fontSize: '0.72rem', fontWeight: 'bold', width: '100%', cursor: 'default', whiteSpace: 'nowrap' }}>{el.text}</button>}
+                                                    {el.type === 'btn_outline' && <button style={{ background: 'transparent', color: el.color || 'var(--primary)', border: `1px solid ${el.color || 'var(--primary)'}`, borderRadius: '8px', padding: '5px 10px', fontSize: '0.72rem', fontWeight: 'bold', width: '100%', cursor: 'default', whiteSpace: 'nowrap' }}>{el.text}</button>}
+                                                    {el.type === 'search' && <div style={{ background: 'rgba(0,0,0,0.3)', border: `1px solid ${el.color || 'rgba(255,255,255,0.15)'}`, borderRadius: '999px', padding: '4px 10px', fontSize: '0.7rem', opacity: 0.85, display: 'flex', alignItems: 'center', gap: '5px', color: el.color || 'inherit' }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>{el.text}</div>}
+                                                    {el.type === 'layers' && <div style={{ background: 'rgba(0,0,0,0.2)', border: `1px solid ${el.color || 'rgba(255,255,255,0.08)'}`, borderRadius: '6px', padding: '4px 8px', fontSize: '0.7rem', opacity: 0.8, color: el.color || 'inherit' }}>{el.text}</div>}
+                                                    {el.type === 'stat' && <div style={{ background: 'rgba(0,0,0,0.3)', border: `1px solid ${el.color || 'rgba(255,255,255,0.08)'}`, borderRadius: '8px', padding: '6px', textAlign: 'center' }}><div style={{ color: el.color || 'var(--primary)', fontWeight: '800', fontSize: '1.1rem' }}>0</div><div style={{ fontSize: '0.65rem', opacity: 0.7 }}>{el.text}</div></div>}
+                                                    {el.type === 'divider' && <hr style={{ border: 'none', borderTop: `1px solid ${el.color || 'rgba(255,255,255,0.15)'}`, margin: '4px 0' }} />}
+                                                    {el.type === 'badge' && <span style={{ background: el.color || 'var(--primary)', color: '#000', borderRadius: '999px', padding: '2px 10px', fontSize: '0.7rem', fontWeight: 'bold', display: 'inline-block' }}>{el.text}</span>}
                                                     {selectedElId === el.id && (
                                                         <button onClick={e => { e.stopPropagation(); setPageElements(prev => prev.filter(i => i.id !== el.id)); setSelectedElId(null); }} style={{ position: 'absolute', top: '-8px', right: '-8px', width: '18px', height: '18px', borderRadius: '50%', background: '#EF4444', color: 'white', border: 'none', cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>×</button>
                                                     )}
@@ -1865,7 +1889,10 @@ const PalNovaaLab = ({ onClose }) => {
                                                         <div><label style={{ fontSize: '0.65rem', opacity: 0.5, display: 'block', marginBottom: '2px' }}>X%</label><input type="number" value={Math.round(el.x)} min="0" max="80" onChange={e => setPageElements(prev => prev.map(i => i.id === el.id ? { ...i, x: Number(e.target.value) } : i))} style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '4px 6px', color: 'white', fontSize: '0.72rem', boxSizing: 'border-box' }} /></div>
                                                         <div><label style={{ fontSize: '0.65rem', opacity: 0.5, display: 'block', marginBottom: '2px' }}>Y%</label><input type="number" value={Math.round(el.y)} min="0" max="85" onChange={e => setPageElements(prev => prev.map(i => i.id === el.id ? { ...i, y: Number(e.target.value) } : i))} style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '4px 6px', color: 'white', fontSize: '0.72rem', boxSizing: 'border-box' }} /></div>
                                                     </div>
-                                                    <div><label style={{ fontSize: '0.65rem', opacity: 0.5, display: 'block', marginBottom: '2px' }}>العرض %</label><input type="number" value={el.w} min="5" max="100" onChange={e => setPageElements(prev => prev.map(i => i.id === el.id ? { ...i, w: Number(e.target.value) } : i))} style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '4px 6px', color: 'white', fontSize: '0.72rem', boxSizing: 'border-box' }} /></div>
+                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                                                        <div><label style={{ fontSize: '0.65rem', opacity: 0.5, display: 'block', marginBottom: '2px' }}>العرض %</label><input type="number" value={el.w} min="5" max="100" onChange={e => setPageElements(prev => prev.map(i => i.id === el.id ? { ...i, w: Number(e.target.value) } : i))} style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '4px 6px', color: 'white', fontSize: '0.72rem', boxSizing: 'border-box' }} /></div>
+                                                        <div><label style={{ fontSize: '0.65rem', opacity: 0.5, display: 'block', marginBottom: '2px' }}>اللون</label><input type="color" value={el.color || designSelections.customPrimary} onChange={e => setPageElements(prev => prev.map(i => i.id === el.id ? { ...i, color: e.target.value } : i))} style={{ width: '100%', height: '26px', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }} /></div>
+                                                    </div>
                                                     <button onClick={() => { setPageElements(prev => prev.filter(i => i.id !== el.id)); setSelectedElId(null); }} style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', borderRadius: '6px', padding: '6px', fontSize: '0.75rem', cursor: 'pointer', width: '100%' }}>حذف العنصر</button>
                                                 </div>
                                             );
