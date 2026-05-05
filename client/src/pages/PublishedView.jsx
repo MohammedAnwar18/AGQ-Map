@@ -118,6 +118,19 @@ const PublishedView = () => {
         return `https://api.maptiler.com/maps/${bm === 'cyber' ? '019b8b76-e5e2-7f02-b5d1-74fd0cf725bb' : 'basic-v2'}/style.json?key=N6uNP3sTu25OIBUyi9G1`;
     }, [selections.basemap]);
 
+    const handleMapClick = (e) => {
+        const feature = e.features && e.features[0];
+        if (feature) {
+            setSelectedFeature({
+                lng: e.lngLat.lng,
+                lat: e.lngLat.lat,
+                properties: feature.properties
+            });
+        } else {
+            setSelectedFeature(null);
+        }
+    };
+
     if (loading) {
         return (
             <div style={{ 
