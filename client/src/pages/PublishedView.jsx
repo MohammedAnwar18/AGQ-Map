@@ -34,6 +34,36 @@ const PublishedView = () => {
     const config = useMemo(() => pageData?.config || {}, [pageData]);
     const selections = config.selections || {};
     const elements = config.elements || [];
+    const geoLayers = config.geoLayers || [];
+
+    // Auto-Focus on data
+    const mapRef = React.useRef(null);
+    useEffect(() => {
+        if (geoLayers.length > 0 && mapRef.current) {
+            try {
+                const coordinates = [];
+                const extract = (obj) => {
+                    if (obj.type === 'FeatureCollection') obj.features.forEach(extract);
+                    else if (obj.type === 'Feature') extract(obj.geometry);
+                    else if (obj.coordinates) {
+                        const flatten = (c) => {
+                            if (typeof c[0] === 'number') coordinates.push(c);
+                            else c.forEach(flatten);
+                        };
+                        flatten(obj.coordinates);
+                    }
+                };
+                geoLayers.forEach(l => extract(l.data));
+                
+                if (coordinates.length > 0) {
+                    const lons = coordinates.map(c => c[0]);
+                    const lats = coordinates.map(c => c[1]);
+                    const bounds = [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]];
+                    mapRef.current.fitBounds(bounds, { padding: 50, duration: 2000 });
+                }
+            } catch (e) { console.warn("Auto-focus failed", e); }
+        }
+    }, [geoLayers, loading]);
 
     // Inject Dynamic Styles
     const dynamicStyles = useMemo(() => {
@@ -113,6 +143,7 @@ const PublishedView = () => {
             {/* Main Map Area */}
             <main style={{ flex: 1, position: 'relative', height: '100%' }}>
                 <Map
+                    ref={mapRef}
                     initialViewState={{
                         longitude: 35.2034,
                         latitude: 31.9038,
@@ -133,35 +164,40 @@ const PublishedView = () => {
                             setSelectedFeature(null);
                         }
                     }}
-                    interactiveLayerIds={config.geoLayers?.filter(l => !l.type || l.type !== 'raster').map(l => `layer-${l.id}`)}
+                    interactiveLayerIds={geoLayers.filter(l => !l.type || l.type !== 'raster').map(l => `layer-${l.id}`)}
                 >
                     {selections.show_controls && <NavigationControl position="bottom-right" />}
                     
                     {/* Render Saved Layers */}
-                    {config.geoLayers?.map(layer => (
-                        <Source key={layer.id} id={`source-${layer.id}`} type={layer.type === 'raster' ? 'raster' : 'geojson'} data={layer.data} url={layer.url} coordinates={layer.coordinates}>
-                            {layer.type === 'raster' ? (
-                                <Layer
-                                    id={`layer-${layer.id}`}
-                                    type="raster"
-                                    paint={{ 'raster-opacity': 0.8 }}
-                                />
-                            ) : (
-                                <Layer
-                                    id={`layer-${layer.id}`}
-                                    type={
-                                        layer.data.features?.[0]?.geometry?.type === 'Point' ? 'circle' :
-                                        layer.data.features?.[0]?.geometry?.type === 'LineString' ? 'line' : 'fill'
-                                    }
-                                    paint={
-                                        layer.data.features?.[0]?.geometry?.type === 'Point' ? { 'circle-color': layer.color || '#var(--primary)', 'circle-radius': 6, 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } :
-                                        layer.data.features?.[0]?.geometry?.type === 'LineString' ? { 'line-color': layer.color || '#var(--primary)', 'line-width': 3 } :
-                                        { 'fill-color': layer.color || '#var(--primary)', 'fill-opacity': 0.5, 'fill-outline-color': '#fff' }
-                                    }
-                                />
-                            )}
-                        </Source>
-                    ))}
+                    {geoLayers.map(layer => {
+                        // Better geometry detection
+                        const firstFeature = layer.data.features?.[0] || (layer.data.type === 'Feature' ? layer.data : null);
+                        const geomType = firstFeature?.geometry?.type || 'Polygon';
+                        const isLine = geomType.includes('LineString');
+                        const isPoint = geomType.includes('Point');
+
+                        return (
+                            <Source key={layer.id} id={`source-${layer.id}`} type={layer.type === 'raster' ? 'raster' : 'geojson'} data={layer.data} url={layer.url} coordinates={layer.coordinates}>
+                                {layer.type === 'raster' ? (
+                                    <Layer
+                                        id={`layer-${layer.id}`}
+                                        type="raster"
+                                        paint={{ 'raster-opacity': 0.8 }}
+                                    />
+                                ) : (
+                                    <Layer
+                                        id={`layer-${layer.id}`}
+                                        type={isPoint ? 'circle' : isLine ? 'line' : 'fill'}
+                                        paint={
+                                            isPoint ? { 'circle-color': layer.color || '#F5A623', 'circle-radius': 6, 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } :
+                                            isLine ? { 'line-color': layer.color || '#F5A623', 'line-width': 3 } :
+                                            { 'fill-color': layer.color || '#F5A623', 'fill-opacity': 0.5, 'fill-outline-color': '#fff' }
+                                        }
+                                    />
+                                )}
+                            </Source>
+                        );
+                    })}
 
                     {/* Feature Popup */}
                     {selectedFeature && (
