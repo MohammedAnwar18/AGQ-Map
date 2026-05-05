@@ -1471,7 +1471,8 @@ const PalNovaaLab = ({ onClose }) => {
                             { id: 'typography', label: 'الخطوط', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="4 7 4 4 20 4 20 7" /><line x1="9" y1="20" x2="15" y2="20" /><line x1="12" y1="4" x2="12" y2="20" /></svg>, count: 6 },
                             { id: 'basemaps', label: 'الخرائط', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" /></svg>, count: 6 },
                             { id: 'effects', label: 'التأثيرات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>, count: 9 },
-                            { id: 'builder', label: 'منشئ الصفحة', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 3v18M3 9h6M3 15h6M15 9h6M15 15h6" /></svg>, count: pageElements.length || '+' }
+                            { id: 'builder', label: 'منشئ الصفحة', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 3v18M3 9h6M3 15h6M15 9h6M15 15h6" /></svg>, count: pageElements.length || '+' },
+                            { id: 'settings', label: 'الإعدادات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1V15a2 2 0 0 1-2-2 2 2 0 0 1 2-2v-.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2v.09a1.65 1.65 0 0 0-1.51 1z" /></svg>, count: 'Pro' }
                         ].map(cat => (
                             <div key={cat.id} className={`ds-cat ${activeDsCategory === cat.id ? 'active' : ''}`} onClick={() => setActiveDsCategory(cat.id)}>
                                 {cat.icon}
@@ -1761,7 +1762,41 @@ const PalNovaaLab = ({ onClose }) => {
                         )}
 
 
-                        {activeDsCategory === 'effects' && (
+                        {activeDsCategory === 'settings' && (
+                            <div className="ds-section active">
+                                <div className="ds-section-head">
+                                    <h2>إعدادات النظام <span className="ds-tag">SETTINGS</span></h2>
+                                    <p>تحكم في خصائص الخريطة وتفاعل المستخدم</p>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                    {[
+                                        { id: 'show_controls', label: 'إظهار أدوات التحكم (Zoom)', icon: '🧭' },
+                                        { id: 'show_attribution', label: 'إظهار حقوق الملكية', icon: 'ℹ️' },
+                                        { id: 'enable_popups', label: 'تفعيل النوافذ المنبثقة', icon: '💬' },
+                                        { id: 'auto_rotate', label: 'دوران تلقائي (Cinematic)', icon: '🔄' }
+                                    ].map(s => (
+                                        <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px', background: 'var(--bg-soft)', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                <span>{s.icon}</span>
+                                                <span style={{ fontSize: '0.9rem' }}>{s.label}</span>
+                                            </div>
+                                            <div 
+                                                onClick={() => setDesignSelections(prev => ({ ...prev, [s.id]: !prev[s.id] }))}
+                                                style={{ 
+                                                    width: '45px', height: '24px', background: designSelections[s.id] ? 'var(--primary)' : 'rgba(255,255,255,0.1)', 
+                                                    borderRadius: '20px', position: 'relative', cursor: 'pointer', transition: '0.3s' 
+                                                }}
+                                            >
+                                                <div style={{ 
+                                                    width: '18px', height: '18px', background: 'white', borderRadius: '50%', 
+                                                    position: 'absolute', top: '3px', left: designSelections[s.id] ? '24px' : '3px', transition: '0.3s' 
+                                                }}></div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                             <div className="ds-section active">
                                 <div className="ds-section-head">
                                     <h2>التأثيرات والظلال <span className="ds-tag">EFFECTS</span></h2>
