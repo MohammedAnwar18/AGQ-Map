@@ -1,4 +1,4 @@
-﻿import axios from 'axios';
+import axios from 'axios';
 
 // Improved: Use relative path by default for unified Vercel deployment
 const API_URL = import.meta.env.VITE_API_URL || '/api';
@@ -636,6 +636,21 @@ export const magazineService = {
     }
 };
 
+// Page Services (User-designed pages)
+export const pageService = {
+    savePage: async (data) => {
+        const response = await api.post('/pages/save', data);
+        return response.data;
+    },
+    viewPage: async (slug) => {
+        const response = await api.get(`/pages/view/${slug}`);
+        return response.data;
+    },
+    getMyPages: async (userId = null) => {
+        const url = userId ? `/pages/user/${userId}` : '/pages/my-pages';
+        const response = await api.get(url);
+        return response.data;
+    }
+};
+
 export default api;
-
-

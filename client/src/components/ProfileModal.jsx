@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { userService } from '../services/api';
+import { userService, pageService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import ImageCropper from './ImageCropper';
 import CustomCalendar from './CustomCalendar';
@@ -57,6 +57,8 @@ const ProfileModal = ({ userId, onClose }) => {
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [publishedPages, setPublishedPages] = useState([]);
+    const [loadingPages, setLoadingPages] = useState(false);
     const [showPrivacySettings, setShowPrivacySettings] = useState(false);
     const [privacySettings, setPrivacySettings] = useState({
         hide_username: false,
@@ -127,7 +129,20 @@ const ProfileModal = ({ userId, onClose }) => {
 
     useEffect(() => {
         loadProfile();
+        loadPublishedPages();
     }, [userId]);
+
+    const loadPublishedPages = async () => {
+        try {
+            setLoadingPages(true);
+            const data = await pageService.getMyPages(userId);
+            setPublishedPages(data.pages || []);
+        } catch (error) {
+            console.error('Failed to load published pages:', error);
+        } finally {
+            setLoadingPages(false);
+        }
+    };
 
     const loadProfile = async (showLoading = true) => {
         try {
@@ -681,13 +696,67 @@ const ProfileModal = ({ userId, onClose }) => {
 
                                 <div className="info-card" style={{ padding: '0.75rem' }}>
                                     <div style={{ fontSize: '1.25rem', fontWeight: '700', color: '#e91e63' }}>
-                                        {profile.likes_count || 0}
+                                        {publishedPages.length || 0}
                                     </div>
                                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                        إعجابات
+                                        تطبيقات
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Published Pages Section */}
+                            {(publishedPages.length > 0 || loadingPages) && (
+                                <div style={{ 
+                                    background: 'var(--bg-tertiary)', 
+                                    borderRadius: '16px', 
+                                    padding: '1.2rem', 
+                                    marginBottom: '1.5rem',
+                                    border: '1px solid var(--border)',
+                                    animation: 'slideUp 0.4s ease'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                                        <h3 style={{ fontSize: '0.95rem', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h6M3 15h6M15 9h6M15 15h6"/></svg>
+                                            تطبيقاتي المنشورة
+                                        </h3>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '10px' }}>{publishedPages.length}</span>
+                                    </div>
+                                    
+                                    {loadingPages ? (
+                                        <div style={{ padding: '10px', textAlign: 'center' }}><div className="spinner-small"></div></div>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            {publishedPages.map(page => (
+                                                <a 
+                                                    key={page.id} 
+                                                    href={`/p/${page.slug}`} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
+                                                    style={{ 
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
+                                                        padding: '12px 15px', background: 'rgba(255,255,255,0.03)', 
+                                                        borderRadius: '12px', textDecoration: 'none', color: 'inherit',
+                                                        transition: 'all 0.2s', border: '1px solid transparent'
+                                                    }}
+                                                    onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'var(--primary)'; }}
+                                                    onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'transparent'; }}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                        <div style={{ width: '32px', height: '32px', background: 'var(--primary)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'black', fontWeight: 'bold' }}>
+                                                            {page.name.charAt(0)}
+                                                        </div>
+                                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                            <span style={{ fontSize: '0.85rem', fontWeight: '700' }}>{page.name}</span>
+                                                            <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>/p/{page.slug}</span>
+                                                        </div>
+                                                    </div>
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
+                                                </a>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                 <div>انضم في {new Date(profile.created_at).toLocaleDateString('en-GB')}</div>
