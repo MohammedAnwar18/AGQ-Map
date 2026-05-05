@@ -54,11 +54,13 @@ const PalNovaaLab = ({ onClose }) => {
         layout: 'fullmap',
         palette: 'classic',
         font: 'cairo_tajawal',
-        basemap: 'dark',
+        basemap: 'satellite',
         marker: 'pin',
         component: 'pill',
         effect: 'glow'
     });
+    const [pageElements, setPageElements] = useState([]);
+    const [selectedElId, setSelectedElId] = useState(null);
 
     // Palette Mapping for Live Preview
     const paletteData = {
@@ -576,7 +578,44 @@ const onMouseLeave = (e) => {
                 break;
         }
 
-        // 3. Generate HTML Template
+        // 3. Build custom elements overlay
+        const customElsCSS = pageElements.length > 0 ? `
+        .custom-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+        .custom-overlay > * { pointer-events: auto; }
+        .cel { position: absolute; box-sizing: border-box; }
+        .cel-heading { color: var(--primary); font-family: var(--font-h); font-weight: 900; font-size: 2rem; margin: 0; }
+        .cel-sub { color: var(--text-color); font-family: var(--font-h); font-weight: 700; font-size: 1.3rem; margin: 0; }
+        .cel-para { color: var(--text-color); font-family: var(--font-b); opacity: 0.8; font-size: 1rem; margin: 0; }
+        .cel-btn-p { background: var(--primary); color: #000; border: none; border-radius: 10px; padding: 12px 24px; font-weight: bold; font-size: 1rem; cursor: pointer; font-family: var(--font-b); width: 100%; }
+        .cel-btn-o { background: transparent; color: var(--primary); border: 2px solid var(--primary); border-radius: 10px; padding: 12px 24px; font-weight: bold; font-size: 1rem; cursor: pointer; font-family: var(--font-b); width: 100%; }
+        .cel-search { background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 10px 20px; color: var(--text-color); font-family: var(--font-b); font-size: 0.95rem; width: 100%; box-sizing: border-box; }
+        .cel-layers { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; color: var(--text-color); font-family: var(--font-b); font-size: 0.9rem; }
+        .cel-stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; text-align: center; }
+        .cel-stat-num { color: var(--primary); font-weight: 800; font-size: 2rem; font-family: var(--font-h); }
+        .cel-stat-lbl { opacity: 0.7; font-size: 0.85rem; }
+        .cel-hr { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
+        .cel-badge { background: var(--primary); color: #000; border-radius: 999px; padding: 4px 14px; font-size: 0.85rem; font-weight: bold; display: inline-block; font-family: var(--font-b); }
+        ` : '';
+        const customElsHTML = pageElements.length > 0 ? `
+        <div class="custom-overlay">
+            ${pageElements.map(el => {
+                let inner = '';
+                const wStyle = `left:${el.x}%;top:${el.y}%;width:${el.w}%;`;
+                if(el.type==='heading') inner = `<h1 class="cel-heading">${el.text}</h1>`;
+                else if(el.type==='subheading') inner = `<h2 class="cel-sub">${el.text}</h2>`;
+                else if(el.type==='paragraph') inner = `<p class="cel-para">${el.text}</p>`;
+                else if(el.type==='btn_primary') inner = `<button class="cel-btn-p">${el.text}</button>`;
+                else if(el.type==='btn_outline') inner = `<button class="cel-btn-o">${el.text}</button>`;
+                else if(el.type==='search') inner = `<input class="cel-search" placeholder="${el.text}" />`;
+                else if(el.type==='layers') inner = `<div class="cel-layers">${el.text}</div>`;
+                else if(el.type==='stat') inner = `<div class="cel-stat"><div class="cel-stat-num">${exportLayers.reduce((s,l)=>s+(l.data?.features?.length||0),0)}</div><div class="cel-stat-lbl">${el.text}</div></div>`;
+                else if(el.type==='divider') inner = `<hr class="cel-hr"/>`;
+                else if(el.type==='badge') inner = `<span class="cel-badge">${el.text}</span>`;
+                return `<div class="cel" style="${wStyle}">${inner}</div>`;
+            }).join('\n            ')}
+        </div>` : '';
+
+        // 4. Generate HTML Template
         const htmlTemplate = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -619,11 +658,13 @@ const onMouseLeave = (e) => {
         
         .maplibregl-popup-content { background: var(--surface-solid); color: var(--text-color); border: 1px solid var(--primary); border-radius: 12px; font-family: var(--font-b); box-shadow: 0 10px 30px rgba(0,0,0,0.5); padding: 16px; }
         .maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: var(--primary); }
+        ${customElsCSS}
     </style>
 </head>
 <body>
     <div class="app-container" style="position:relative;">
         ${layoutHTML}
+        ${customElsHTML}
     </div>
     <div class="watermark">Designed in <b>PalNovaa Studio</b></div>
 
@@ -1206,7 +1247,8 @@ const onMouseLeave = (e) => {
                             { id: 'basemaps', label: 'الخرائط', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/></svg>, count: 6 },
                             { id: 'markers', label: 'المعالم', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>, count: 6 },
                             { id: 'icons', label: 'الأيقونات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>, count: 24 },
-                            { id: 'effects', label: 'التأثيرات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>, count: 9 }
+                            { id: 'effects', label: 'التأثيرات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>, count: 9 },
+                            { id: 'builder', label: 'منشئ الصفحة', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h6M3 15h6M15 9h6M15 15h6"/></svg>, count: pageElements.length || '+' }
                         ].map(cat => (
                             <div key={cat.id} className={`ds-cat ${activeDsCategory === cat.id ? 'active' : ''}`} onClick={() => setActiveDsCategory(cat.id)}>
                                 {cat.icon}
@@ -1470,6 +1512,132 @@ const onMouseLeave = (e) => {
                                             <div className="ds-pick-sub">{e.sub}</div>
                                         </div>
                                     ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeDsCategory === 'builder' && (
+                            <div className="ds-section active" style={{padding:0,height:'100%'}}>
+                                <div style={{display:'flex',height:'100%',gap:0}}>
+                                    {/* Element Palette */}
+                                    <div style={{width:'150px',background:'rgba(0,0,0,0.3)',borderRight:'1px solid rgba(255,255,255,0.06)',padding:'16px 10px',overflowY:'auto',flexShrink:0}}>
+                                        <div style={{fontSize:'0.7rem',color:'rgba(255,255,255,0.4)',letterSpacing:'2px',marginBottom:'12px',textAlign:'center'}}>العناصر</div>
+                                        {[
+                                            {type:'heading', label:'عنوان', preview:'H₁', text:'عنوان رئيسي'},
+                                            {type:'subheading', label:'عنوان فرعي', preview:'H₂', text:'عنوان فرعي'},
+                                            {type:'paragraph', label:'نص', preview:'¶', text:'أضف نصاً هنا...'},
+                                            {type:'btn_primary', label:'زر رئيسي', preview:'[زر]', text:'انقر هنا'},
+                                            {type:'btn_outline', label:'زر ثانوي', preview:'⎕زر', text:'مزيد'},
+                                            {type:'search', label:'بحث', preview:'🔍', text:'ابحث...'},
+                                            {type:'layers', label:'قائمة طبقات', preview:'⊞', text:'الطبقات'},
+                                            {type:'stat', label:'بطاقة إحصاء', preview:'42↑', text:'إجمالي'},
+                                            {type:'divider', label:'خط فاصل', preview:'───', text:''},
+                                            {type:'badge', label:'شارة', preview:'🏷', text:'جديد'},
+                                        ].map(el => (
+                                            <div
+                                                key={el.type}
+                                                draggable
+                                                onDragStart={e => { e.dataTransfer.setData('elType', el.type); e.dataTransfer.setData('elText', el.text); e.dataTransfer.setData('elLabel', el.label); }}
+                                                style={{background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'8px',padding:'8px',marginBottom:'8px',cursor:'grab',textAlign:'center',transition:'all 0.2s',userSelect:'none'}}
+                                                onMouseEnter={e=>e.currentTarget.style.borderColor='var(--primary)'}
+                                                onMouseLeave={e=>e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'}
+                                            >
+                                                <div style={{fontSize:'1.1rem',marginBottom:'4px'}}>{el.preview}</div>
+                                                <div style={{fontSize:'0.72rem',opacity:0.7}}>{el.label}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Canvas */}
+                                    <div style={{flex:1,display:'flex',flexDirection:'column',padding:'16px',gap:'8px'}}>
+                                        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                                            <span style={{fontSize:'0.75rem',opacity:0.5}}>اسحب العناصر وضعها على اللوحة</span>
+                                            <button onClick={()=>setPageElements([])} style={{background:'rgba(239,68,68,0.15)',border:'1px solid rgba(239,68,68,0.3)',color:'#EF4444',borderRadius:'6px',padding:'4px 10px',fontSize:'0.75rem',cursor:'pointer'}}>مسح الكل</button>
+                                        </div>
+                                        <div
+                                            style={{flex:1,position:'relative',background:'rgba(6,214,242,0.03)',border:'2px dashed rgba(6,214,242,0.15)',borderRadius:'12px',overflow:'hidden',minHeight:'350px'}}
+                                            onDragOver={e=>e.preventDefault()}
+                                            onDrop={e=>{
+                                                e.preventDefault();
+                                                const rect=e.currentTarget.getBoundingClientRect();
+                                                const x=Math.max(0,Math.min(80,((e.clientX-rect.left)/rect.width)*100));
+                                                const y=Math.max(0,Math.min(85,((e.clientY-rect.top)/rect.height)*100));
+                                                const newEl={id:Date.now(),type:e.dataTransfer.getData('elType'),label:e.dataTransfer.getData('elLabel'),text:e.dataTransfer.getData('elText'),x,y,w:22,fontSize:1};
+                                                setPageElements(prev=>[...prev,newEl]);
+                                                setSelectedElId(newEl.id);
+                                            }}
+                                            onClick={()=>setSelectedElId(null)}
+                                        >
+                                            {/* Map hint */}
+                                            <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:'8px',opacity:0.12,pointerEvents:'none'}}>
+                                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/></svg>
+                                                <span style={{fontSize:'0.85rem'}}>منطقة الخريطة</span>
+                                            </div>
+                                            {/* Placed Elements */}
+                                            {pageElements.map(el=>(
+                                                <div
+                                                    key={el.id}
+                                                    style={{position:'absolute',left:`${el.x}%`,top:`${el.y}%`,width:`${el.w}%`,cursor:'move',userSelect:'none',border:selectedElId===el.id?'2px solid rgba(6,214,242,0.8)':'2px solid transparent',borderRadius:'6px',padding:'4px 6px',background:selectedElId===el.id?'rgba(6,214,242,0.08)':'transparent',boxSizing:'border-box',minWidth:'60px',transition:'border-color 0.15s'}}
+                                                    onClick={e=>{e.stopPropagation();setSelectedElId(el.id);}}
+                                                    onMouseDown={e=>{
+                                                        e.stopPropagation();
+                                                        setSelectedElId(el.id);
+                                                        const startX=e.clientX,startY=e.clientY,startElX=el.x,startElY=el.y;
+                                                        const canvas=e.currentTarget.parentElement;
+                                                        const rect=canvas.getBoundingClientRect();
+                                                        const mm=me=>{
+                                                            const dx=((me.clientX-startX)/rect.width)*100;
+                                                            const dy=((me.clientY-startY)/rect.height)*100;
+                                                            setPageElements(prev=>prev.map(item=>item.id===el.id?{...item,x:Math.max(0,Math.min(80,startElX+dx)),y:Math.max(0,Math.min(85,startElY+dy))}:item));
+                                                        };
+                                                        const mu=()=>{window.removeEventListener('mousemove',mm);window.removeEventListener('mouseup',mu);};
+                                                        window.addEventListener('mousemove',mm);
+                                                        window.addEventListener('mouseup',mu);
+                                                    }}
+                                                >
+                                                    {el.type==='heading'&&<div style={{color:'var(--primary)',fontWeight:'900',fontSize:'1.1rem',fontFamily:"'Cairo',sans-serif",whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{el.text}</div>}
+                                                    {el.type==='subheading'&&<div style={{color:'rgba(255,255,255,0.9)',fontWeight:'700',fontSize:'0.9rem',whiteSpace:'nowrap',overflow:'hidden'}}>{el.text}</div>}
+                                                    {el.type==='paragraph'&&<div style={{fontSize:'0.7rem',opacity:0.75,lineHeight:'1.4'}}>{el.text}</div>}
+                                                    {el.type==='btn_primary'&&<button style={{background:'var(--primary)',color:'#000',border:'none',borderRadius:'8px',padding:'5px 10px',fontSize:'0.72rem',fontWeight:'bold',width:'100%',cursor:'default',whiteSpace:'nowrap'}}>{el.text}</button>}
+                                                    {el.type==='btn_outline'&&<button style={{background:'transparent',color:'var(--primary)',border:'1px solid var(--primary)',borderRadius:'8px',padding:'5px 10px',fontSize:'0.72rem',fontWeight:'bold',width:'100%',cursor:'default',whiteSpace:'nowrap'}}>{el.text}</button>}
+                                                    {el.type==='search'&&<div style={{background:'rgba(0,0,0,0.3)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:'999px',padding:'4px 10px',fontSize:'0.7rem',opacity:0.85,display:'flex',alignItems:'center',gap:'5px'}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>{el.text}</div>}
+                                                    {el.type==='layers'&&<div style={{background:'rgba(0,0,0,0.2)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'6px',padding:'4px 8px',fontSize:'0.7rem',opacity:0.8}}>{el.text}</div>}
+                                                    {el.type==='stat'&&<div style={{background:'rgba(0,0,0,0.3)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'8px',padding:'6px',textAlign:'center'}}><div style={{color:'var(--primary)',fontWeight:'800',fontSize:'1.1rem'}}>0</div><div style={{fontSize:'0.65rem',opacity:0.7}}>{el.text}</div></div>}
+                                                    {el.type==='divider'&&<hr style={{border:'none',borderTop:'1px solid rgba(255,255,255,0.15)',margin:'4px 0'}}/>}
+                                                    {el.type==='badge'&&<span style={{background:'var(--primary)',color:'#000',borderRadius:'999px',padding:'2px 10px',fontSize:'0.7rem',fontWeight:'bold',display:'inline-block'}}>{el.text}</span>}
+                                                    {selectedElId===el.id&&(
+                                                        <button onClick={e=>{e.stopPropagation();setPageElements(prev=>prev.filter(i=>i.id!==el.id));setSelectedElId(null);}} style={{position:'absolute',top:'-8px',right:'-8px',width:'18px',height:'18px',borderRadius:'50%',background:'#EF4444',color:'white',border:'none',cursor:'pointer',fontSize:'11px',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>×</button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div style={{fontSize:'0.7rem',opacity:0.4,textAlign:'center'}}>اسحب لتحريك العناصر · انقر لتحديد · × للحذف</div>
+                                    </div>
+
+                                    {/* Properties Panel */}
+                                    <div style={{width:'160px',background:'rgba(0,0,0,0.3)',borderLeft:'1px solid rgba(255,255,255,0.06)',padding:'16px 12px',flexShrink:0,overflowY:'auto'}}>
+                                        <div style={{fontSize:'0.7rem',color:'rgba(255,255,255,0.4)',letterSpacing:'2px',marginBottom:'12px'}}>الخصائص</div>
+                                        {selectedElId && (() => {
+                                            const el = pageElements.find(e=>e.id===selectedElId);
+                                            if(!el) return <div style={{fontSize:'0.75rem',opacity:0.4}}>لا يوجد تحديد</div>;
+                                            return (
+                                                <div style={{display:'flex',flexDirection:'column',gap:'10px'}}>
+                                                    <div style={{background:'rgba(6,214,242,0.1)',border:'1px solid rgba(6,214,242,0.2)',borderRadius:'6px',padding:'6px 8px',fontSize:'0.75rem',color:'var(--accent-cyan)'}}>{el.label}</div>
+                                                    <div>
+                                                        <label style={{fontSize:'0.7rem',opacity:0.6,display:'block',marginBottom:'4px'}}>النص</label>
+                                                        <input value={el.text||''} onChange={e=>setPageElements(prev=>prev.map(i=>i.id===el.id?{...i,text:e.target.value}:i))} style={{width:'100%',background:'rgba(0,0,0,0.3)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'6px',padding:'5px 8px',color:'white',fontSize:'0.75rem',boxSizing:'border-box'}}/>
+                                                    </div>
+                                                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px'}}>
+                                                        <div><label style={{fontSize:'0.65rem',opacity:0.5,display:'block',marginBottom:'2px'}}>X%</label><input type="number" value={Math.round(el.x)} min="0" max="80" onChange={e=>setPageElements(prev=>prev.map(i=>i.id===el.id?{...i,x:Number(e.target.value)}:i))} style={{width:'100%',background:'rgba(0,0,0,0.3)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'6px',padding:'4px 6px',color:'white',fontSize:'0.72rem',boxSizing:'border-box'}}/></div>
+                                                        <div><label style={{fontSize:'0.65rem',opacity:0.5,display:'block',marginBottom:'2px'}}>Y%</label><input type="number" value={Math.round(el.y)} min="0" max="85" onChange={e=>setPageElements(prev=>prev.map(i=>i.id===el.id?{...i,y:Number(e.target.value)}:i))} style={{width:'100%',background:'rgba(0,0,0,0.3)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'6px',padding:'4px 6px',color:'white',fontSize:'0.72rem',boxSizing:'border-box'}}/></div>
+                                                    </div>
+                                                    <div><label style={{fontSize:'0.65rem',opacity:0.5,display:'block',marginBottom:'2px'}}>العرض %</label><input type="number" value={el.w} min="5" max="100" onChange={e=>setPageElements(prev=>prev.map(i=>i.id===el.id?{...i,w:Number(e.target.value)}:i))} style={{width:'100%',background:'rgba(0,0,0,0.3)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'6px',padding:'4px 6px',color:'white',fontSize:'0.72rem',boxSizing:'border-box'}}/></div>
+                                                    <button onClick={()=>{setPageElements(prev=>prev.filter(i=>i.id!==el.id));setSelectedElId(null);}} style={{background:'rgba(239,68,68,0.15)',border:'1px solid rgba(239,68,68,0.3)',color:'#EF4444',borderRadius:'6px',padding:'6px',fontSize:'0.75rem',cursor:'pointer',width:'100%'}}>حذف العنصر</button>
+                                                </div>
+                                            );
+                                        })()}
+                                        {!selectedElId && <div style={{fontSize:'0.75rem',opacity:0.4,textAlign:'center',marginTop:'20px'}}>انقر على عنصر لتعديله</div>}
+                                    </div>
                                 </div>
                             </div>
                         )}
