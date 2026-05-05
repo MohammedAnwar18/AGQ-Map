@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import axios from 'axios';
 import Map, { Source, Layer, NavigationControl, Popup } from 'react-map-gl/maplibre';
+import { useAuth } from '../context/AuthContext';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './PalNovaaLab.css';
 
 const PalNovaaLab = ({ onClose }) => {
+    const { user } = useAuth();
     const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
     const [showIntro, setShowIntro] = useState(true);
@@ -1395,7 +1397,6 @@ const PalNovaaLab = ({ onClose }) => {
                             <svg viewBox="0 0 32 32" fill="none" stroke="none">
                                 <path fill="var(--primary)" d="M18.5,28h-5c-0.276,0-0.5-0.224-0.5-0.5v-1c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5v1 C19,27.776,18.776,28,18.5,28z M20,24.5v-1c0-0.276-0.224-0.5-0.5-0.5h-7c-0.276,0-0.5,0.224-0.5,0.5v1c0,0.276,0.224,0.5,0.5,0.5 h7C19.776,25,20,24.776,20,24.5z" />
                                 <path fill="white" opacity="0.9" d="M12.005,18.932C9.611,17.55,8,14.963,8,12c0-4.418,3.582-8,8-8s8,3.582,8,8 c0,2.963-1.606,5.55-4,6.932V21.5c0,0.276-0.224,0.5-0.5,0.5H18v-5.134c0.163-0.392,1.415-2.609,1.415-2.609 c0.271-0.457,0.275-1.033,0.01-1.499C19.158,12.29,18.658,12,18.12,12h-4.24c-0.538,0-1.038,0.29-1.305,0.758 c-0.266,0.466-0.261,1.043,0.013,1.505L14,16.866V22h-1.5c-0.276,0-0.5-0.224-0.5-0.5L12.005,18.932z M17,22v-5.271 c0-0.323,1.552-2.977,1.552-2.977C18.749,13.419,18.507,13,18.12,13h-4.24c-0.387,0-0.629,0.419-0.431,0.753 c0,0,1.552,2.652,1.552,2.977V22H17z" />
-                                {/* Additional lines at the bottom for more bulb-like appearance */}
                                 <rect x="14.5" y="29.5" width="3" height="1" rx="0.5" fill="var(--primary)" opacity="0.8" />
                                 <rect x="15" y="31" width="2" height="0.8" rx="0.4" fill="var(--primary)" opacity="0.6" />
                             </svg>
@@ -1405,13 +1406,13 @@ const PalNovaaLab = ({ onClose }) => {
                             <small>الإصدار 3.5 (دقة فائقة)</small>
                         </div>
                     </div>
-
-                    </div>
-                </header>
-                        <button className="ds-btn ghost" onClick={() => setIsMagicPromptOpen(true)} title="الإلهام الذكي (AI)">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', height: '18px', color: 'var(--primary)' }}><path d="M15 12l-8.5 8.5-2.5-2.5 8.5-8.5 2.5 2.5zM17.5 9.5l-2.5-2.5 1.5-1.5 2.5 2.5-1.5 1.5zM12 2l1 2 2 1-2 1-1 2-1-2-2-1 2-1 1-2zM20 14l.5 1 1 .5-1 .5-.5 1-.5-1-1-.5 1-.5.5-1z" /></svg>
-                            <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>المساعد الذكي</span>
-                        </button>
+                    <div className="ds-header-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                        {user?.role === 'admin' && (
+                            <button className="ds-btn ghost" onClick={() => setIsMagicPromptOpen(true)} title="الإلهام الذكي (AI)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', height: '18px', color: 'var(--primary)' }}><path d="M15 12l-8.5 8.5-2.5-2.5 8.5-8.5 2.5 2.5zM17.5 9.5l-2.5-2.5 1.5-1.5 2.5 2.5-1.5 1.5zM12 2l1 2 2 1-2 1-1 2-1-2-2-1 2-1 1-2zM20 14l.5 1 1 .5-1 .5-.5 1-.5-1-1-.5 1-.5.5-1z" /></svg>
+                                <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>المساعد الذكي</span>
+                            </button>
+                        )}
                         <button className="ds-btn primary" onClick={performActualExport}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', height: '18px' }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
                             حفظ وتصدير المشروع
