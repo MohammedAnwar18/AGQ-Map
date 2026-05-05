@@ -1904,7 +1904,7 @@ const PalNovaaLab = ({ onClose }) => {
                                             {designSelections.layout === 'fullmap' && (
                                                 <>
                                                     <div className="lm-search"></div>
-                                                    <div className="lm-panel" style={{ width: '40%', height: '60%', top: '25%' }}>
+                                                    <div className="lm-panel">
                                                         <div className="lm-row accent thick"></div>
                                                         <div className="lm-row short"></div>
                                                         <div className="lm-row tiny"></div>
@@ -1914,7 +1914,7 @@ const PalNovaaLab = ({ onClose }) => {
 
                                             {designSelections.layout === 'sidebar' && (
                                                 <div className="lm-panel lm-sidebar">
-                                                    <div className="lm-header" style={{ position: 'relative', height: '20px', marginBottom: '10px' }}></div>
+                                                    <div className="lm-header" style={{ position: 'relative', height: '15px', marginBottom: '8px' }}></div>
                                                     {[1, 2, 3, 4, 5].map(i => (
                                                         <div key={i} className="lm-item">
                                                             <div className="lm-thumb"></div>
@@ -1929,14 +1929,14 @@ const PalNovaaLab = ({ onClose }) => {
 
                                             {designSelections.layout === 'three' && (
                                                 <>
-                                                    <div className="lm-header" style={{ height: '15%' }}></div>
-                                                    <div className="lm-tools" style={{ width: '15%', top: '15%' }}>
+                                                    <div className="lm-header"></div>
+                                                    <div className="lm-tools">
                                                         <div className="lm-tool active"></div>
                                                         <div className="lm-tool"></div>
                                                         <div className="lm-tool"></div>
                                                         <div className="lm-tool"></div>
                                                     </div>
-                                                    <div className="lm-panel lm-details" style={{ width: '20%', top: '15%' }}>
+                                                    <div className="lm-panel lm-details">
                                                         <div className="lm-row thick accent"></div>
                                                         <div className="lm-row short"></div>
                                                         <div className="lm-row"></div>
@@ -1946,15 +1946,15 @@ const PalNovaaLab = ({ onClose }) => {
 
                                             {designSelections.layout === 'dashboard' && (
                                                 <>
-                                                    <div className="lm-header" style={{ height: '15%' }}>
+                                                    <div className="lm-header">
                                                         <div className="lm-spacer"></div>
                                                         <div className="lm-dot-row"><i></i></div>
                                                     </div>
-                                                    <div className="lm-stats" style={{ height: '25%', bottom: '5%' }}>
+                                                    <div className="lm-stats">
                                                         {[1, 2, 3].map(i => (
                                                             <div key={i} className="lm-stat">
                                                                 <div className="lm-row tiny" style={{ opacity: 0.5 }}></div>
-                                                                <div className="lm-stat-num" style={{ height: '8px' }}></div>
+                                                                <div className="lm-stat-num"></div>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -1962,30 +1962,30 @@ const PalNovaaLab = ({ onClose }) => {
                                             )}
 
                                             {designSelections.layout === 'split' && (
-                                                <div className="lm-panel" style={{ width: '50%', right: '50%' }}>
-                                                    <div className="lm-row thick accent" style={{ width: '80%', marginBottom: '15px' }}></div>
+                                                <div className="lm-panel">
+                                                    <div className="lm-row thick accent" style={{ width: '80%', marginBottom: '10px' }}></div>
                                                     <div className="lm-grid-2">
-                                                        {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="lm-card-ph" style={{ height: '30px' }}></div>)}
+                                                        {[1, 2, 3, 4].map(i => <div key={i} className="lm-card-ph" style={{ height: '25px' }}></div>)}
                                                     </div>
                                                 </div>
                                             )}
 
                                             {designSelections.layout === 'stacked' && (
-                                                <div className="lm-panel" style={{ top: '60%', bottom: 0, right: 0, left: 0, padding: '10px' }}>
-                                                    <div className="lm-row tiny accent" style={{ marginBottom: '8px' }}></div>
-                                                    <div style={{ display: 'flex', gap: '10px', flex: 1 }}>
-                                                        {[1, 2, 3].map(i => <div key={i} style={{ flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}></div>)}
+                                                <div className="lm-panel">
+                                                    <div className="lm-row tiny accent" style={{ marginBottom: '6px' }}></div>
+                                                    <div style={{ display: 'flex', gap: '8px', flex: 1 }}>
+                                                        {[1, 2, 3].map(i => <div key={i} style={{ flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}></div>)}
                                                     </div>
                                                 </div>
                                             )}
 
                                             {designSelections.layout === 'floating' && (
                                                 <>
-                                                    <div className="lm-panel lm-fc1" style={{ width: '40%', height: '30%', top: '10%', left: '10%' }}>
+                                                    <div className="lm-panel lm-fc1">
                                                         <div className="lm-row tiny accent"></div>
                                                         <div className="lm-row short"></div>
                                                     </div>
-                                                    <div className="lm-panel lm-fc2" style={{ width: '35%', height: '40%', bottom: '10%', right: '10%' }}>
+                                                    <div className="lm-panel lm-fc2">
                                                         <div className="lm-row thick accent"></div>
                                                         <div className="lm-row"></div>
                                                     </div>

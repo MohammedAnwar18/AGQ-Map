@@ -1151,11 +1151,48 @@
   background: rgba(255,255,255,0.15);
   border-radius: 2px;
 }
-.lm-modal-frame .lm-map {
-  position: absolute;
-  top: 22%; left: 4%; right: 4%; bottom: 4%;
-  border-radius: 4px;
+/* ===== Mobile-Specific Layout Adjustments (for Phone Frame) ===== */
+.phone-frame .lm-sidebar .lm-panel {
+  top: auto; bottom: 0; left: 0; right: 0;
+  width: 100%; height: 40%;
+  border-right: none; border-top: 1px solid var(--border);
+  border-radius: 20px 20px 0 0;
 }
+.phone-frame .lm-sidebar .lm-map { right: 0; bottom: 40%; }
+
+.phone-frame .lm-three .lm-tools {
+  top: auto; bottom: 0; left: 0; right: 0;
+  width: 100%; height: 12%;
+  flex-direction: row; justify-content: center;
+  border-top: 1px solid var(--border);
+}
+.phone-frame .lm-three .lm-panel {
+  top: 15%; bottom: 12%; left: 4%; width: 35%;
+  height: auto;
+}
+.phone-frame .lm-three .lm-map { top: 15%; right: 0; left: 0; bottom: 12%; }
+
+.phone-frame .lm-dashboard .lm-stats {
+  grid-template-columns: 1fr;
+  grid-template-rows: repeat(3, 1fr);
+  height: auto; top: 15%; right: 4%; width: 25%;
+  bottom: auto;
+}
+.phone-frame .lm-dashboard .lm-map { bottom: 0; }
+
+.phone-frame .lm-split { display: flex; flex-direction: column; }
+.phone-frame .lm-split .lm-map { position: relative; height: 50%; left: 0; top: 0; }
+.phone-frame .lm-split .lm-panel { position: relative; height: 50%; width: 100%; top: 0; }
+
+.phone-frame .lm-stacked .lm-map { height: 45%; }
+.phone-frame .lm-stacked .lm-panel { top: 45%; }
+
+.phone-frame .lm-floating .lm-fc1 { width: 60%; height: 20%; top: 5%; left: 5%; }
+.phone-frame .lm-floating .lm-fc2 { width: 70%; height: 25%; bottom: 5%; right: 5%; }
+
+.phone-frame .lm-fullmap .lm-panel { width: 60%; height: 40%; top: auto; bottom: 10%; left: 50%; transform: translateX(-50%); }
+
+.phone-frame .lm-modal-frame { top: 15%; bottom: 15%; left: 8%; right: 8%; }
 
 /* ===== 2. Color Palettes ===== */
 .palette-strip {
