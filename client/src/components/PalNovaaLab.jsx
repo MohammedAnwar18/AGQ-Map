@@ -418,20 +418,159 @@ const onMouseLeave = (e) => {
         }
 
         // 2. Map Selections to Themes
-        const palettes = {
-            classic: { primary: '#F5A623', bg: '#0A1628', accent: '#D88B0E' },
-            ocean: { primary: '#06D6F2', bg: '#050B16', accent: '#1A2980' },
-            heritage: { primary: '#CE1126', bg: '#000000', accent: '#007A3D' },
-            forest: { primary: '#10D9A0', bg: '#064E3B', accent: '#059669' }
+        const palettesData = {
+            classic: { primary: '#F5A623', primaryDark: '#D88B0E', bg: '#0A1628', surface: 'rgba(20, 43, 71, 0.7)', surfaceSolid: '#142B47', border: 'rgba(255,255,255,0.08)', text: '#FFFFFF', primaryGlow: 'rgba(245, 166, 35, 0.3)' },
+            heritage: { primary: '#CE1126', primaryDark: '#A00010', bg: '#000000', surface: 'rgba(20, 20, 20, 0.8)', surfaceSolid: '#111111', border: 'rgba(0,122,61,0.3)', text: '#FFFFFF', primaryGlow: 'rgba(206, 17, 38, 0.3)' },
+            ocean: { primary: '#06D6F2', primaryDark: '#04A0B5', bg: '#050B16', surface: 'rgba(26, 41, 128, 0.4)', surfaceSolid: '#1A2980', border: 'rgba(6, 214, 242, 0.2)', text: '#F0F8FF', primaryGlow: 'rgba(6, 214, 242, 0.3)' },
+            sunset: { primary: '#F5A623', primaryDark: '#FF6B6B', bg: '#1A0E1F', surface: 'rgba(139, 92, 246, 0.3)', surfaceSolid: '#3B1E4A', border: 'rgba(245, 166, 35, 0.2)', text: '#FFFFFF', primaryGlow: 'rgba(245, 166, 35, 0.3)' },
+            forest: { primary: '#10D9A0', primaryDark: '#059669', bg: '#022C22', surface: 'rgba(6, 78, 59, 0.6)', surfaceSolid: '#064E3B', border: 'rgba(16, 217, 160, 0.2)', text: '#F5F4ED', primaryGlow: 'rgba(16, 217, 160, 0.3)' },
+            earth: { primary: '#D4C49B', primaryDark: '#A0826D', bg: '#2C1810', surface: 'rgba(92, 64, 51, 0.6)', surfaceSolid: '#5C4033', border: 'rgba(212, 196, 155, 0.2)', text: '#F5F4ED', primaryGlow: 'rgba(212, 196, 155, 0.3)' },
+            neon: { primary: '#06D6F2', primaryDark: '#EC4899', bg: '#050B16', surface: 'rgba(139, 92, 246, 0.3)', surfaceSolid: '#14002E', border: 'rgba(236, 72, 153, 0.3)', text: '#FFFFFF', primaryGlow: 'rgba(6, 214, 242, 0.4)' },
+            minimal: { primary: '#F5A623', primaryDark: '#D88B0E', bg: '#FFFFFF', surface: 'rgba(245, 244, 237, 0.9)', surfaceSolid: '#F5F4ED', border: 'rgba(0,0,0,0.1)', text: '#1A1A2E', primaryGlow: 'rgba(245, 166, 35, 0.3)' }
         };
-        const theme = palettes[designSelections.palette] || palettes.classic;
+        const theme = palettesData[designSelections.palette] || palettesData.classic;
 
-        const fonts = {
-            cairo: "'Cairo', sans-serif",
-            tajawal: "'Tajawal', sans-serif",
-            mono: "'JetBrains Mono', monospace"
+        const fontsData = {
+            cairo_tajawal: { h: "'Cairo', sans-serif", b: "'Tajawal', sans-serif" },
+            tajawal_inter: { h: "'Tajawal', sans-serif", b: "system-ui, sans-serif" },
+            cairo_mono: { h: "'Cairo', sans-serif", b: "'JetBrains Mono', monospace" },
+            tajawal_ed: { h: "'Tajawal', serif", b: "'Tajawal', sans-serif" },
+            display: { h: "'Cairo', sans-serif", b: "'Tajawal', sans-serif" },
+            compact: { h: "'Cairo', sans-serif", b: "'Tajawal', sans-serif" }
         };
-        const selectedFontFamily = fonts[designSelections.font] || fonts.cairo;
+        const selectedFont = fontsData[designSelections.font] || fontsData.cairo_tajawal;
+
+        const matchKey = mapStyle?.match(/key=([^&]+)/);
+        const mapTilerKey = matchKey ? matchKey[1] : 'i8w3yP8ZfWc5b7K9839F';
+        
+        let targetBasemapUrl = mapStyle;
+        const bm = designSelections.basemap;
+        if(bm === 'dark') targetBasemapUrl = `https://api.maptiler.com/maps/darkmatter/style.json?key=${mapTilerKey}`;
+        else if(bm === 'light') targetBasemapUrl = `https://api.maptiler.com/maps/streets-v2/style.json?key=${mapTilerKey}`;
+        else if(bm === 'satellite') targetBasemapUrl = `https://api.maptiler.com/maps/satellite/style.json?key=${mapTilerKey}`;
+        else if(bm === 'terrain') targetBasemapUrl = `https://api.maptiler.com/maps/topo-v2/style.json?key=${mapTilerKey}`;
+        else if(bm === 'vintage') targetBasemapUrl = `https://api.maptiler.com/maps/toner-v2/style.json?key=${mapTilerKey}`;
+        else if(bm === 'cyber') targetBasemapUrl = `https://api.maptiler.com/maps/dataviz-dark/style.json?key=${mapTilerKey}`;
+
+        let effectCSS = '';
+        if(designSelections.effect === 'glow') effectCSS = '.card-panel { box-shadow: 0 0 30px var(--primary-glow) !important; border-color: var(--primary) !important; }';
+        else if(designSelections.effect === 'glass') effectCSS = '.card-panel { background: rgba(0,0,0,0.2) !important; backdrop-filter: blur(24px) !important; border: 1px solid rgba(255,255,255,0.2) !important; }';
+        else if(designSelections.effect === 'shadow_lg') effectCSS = '.card-panel { box-shadow: 0 20px 50px rgba(0,0,0,0.5) !important; }';
+
+        const layersHTML = exportLayers.map(l => `<div class="layer-item"><div style="display:flex;align-items:center;gap:10px;"><div style="width:14px;height:14px;border-radius:4px;background:${l.color}"></div><span>${l.name}</span></div></div>`).join('');
+
+        let layoutCSS = '';
+        let layoutHTML = '';
+
+        switch (designSelections.layout) {
+            case 'sidebar':
+                layoutCSS = `
+                    .app-container { display: flex; height: 100vh; width: 100vw; }
+                    .sidebar { width: 340px; background: var(--surface-solid); border-left: 1px solid var(--border); padding: 24px; display: flex; flex-direction: column; overflow-y: auto; z-index: 10; }
+                    #map { flex: 1; }
+                `;
+                layoutHTML = `
+                    <aside class="sidebar card-panel">
+                        <h2 style="color:var(--primary);margin-top:0;font-family:var(--font-h);">الطبقات المتاحة</h2>
+                        <div class="layers-list">${layersHTML}</div>
+                    </aside>
+                    <div id="map"></div>
+                `;
+                break;
+            case 'split':
+                layoutCSS = `
+                    .app-container { display: flex; height: 100vh; width: 100vw; }
+                    .side-content { flex: 1; background: var(--bg); padding: 40px; display: flex; flex-direction: column; justify-content: center; z-index: 10; }
+                    #map { flex: 1; border-right: 1px solid var(--border); }
+                `;
+                layoutHTML = `
+                    <div class="side-content card-panel">
+                        <h1 style="color:var(--primary);font-size:3rem;margin-bottom:10px;font-family:var(--font-h);">نظرة مكانية</h1>
+                        <p style="opacity:0.8;font-size:1.2rem;line-height:1.8;">استكشف البيانات الجغرافية بدقة من خلال هذه الخريطة التفاعلية المصممة خصيصاً لاحتياجاتك.</p>
+                        <div style="margin-top:40px;">${layersHTML}</div>
+                    </div>
+                    <div id="map"></div>
+                `;
+                break;
+            case 'dashboard':
+                layoutCSS = `
+                    .app-container { display: flex; flex-direction: column; height: 100vh; width: 100vw; background: var(--bg); }
+                    .dash-header { height: 70px; background: var(--surface-solid); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; z-index: 10; }
+                    .dash-body { flex: 1; display: flex; flex-direction: column; padding: 20px; gap: 20px; }
+                    #map { flex: 1; border-radius: 16px; border: 1px solid var(--border); overflow: hidden; }
+                    .dash-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; height: 120px; }
+                    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+                    .stat-num { font-size: 2rem; font-weight: 800; color: var(--primary); font-family:var(--font-h); }
+                    .stat-label { font-size: 1rem; opacity: 0.7; }
+                `;
+                layoutHTML = `
+                    <header class="dash-header card-panel">
+                        <h2 style="margin:0;color:var(--primary);font-family:var(--font-h);">لوحة القيادة المكانية</h2>
+                    </header>
+                    <div class="dash-body">
+                        <div id="map"></div>
+                        <div class="dash-stats">
+                            <div class="stat-card card-panel"><div class="stat-num">${exportLayers.length}</div><div class="stat-label">إجمالي الطبقات</div></div>
+                            <div class="stat-card card-panel"><div class="stat-num">${exportLayers.reduce((sum, l) => sum + (l.data?.features?.length || 0), 0)}</div><div class="stat-label">المعالم الجغرافية</div></div>
+                            <div class="stat-card card-panel"><div class="stat-num">100%</div><div class="stat-label">دقة البيانات</div></div>
+                            <div class="stat-card card-panel"><div class="stat-num">نشط</div><div class="stat-label">حالة النظام</div></div>
+                        </div>
+                    </div>
+                `;
+                break;
+            case 'modal':
+                layoutCSS = `
+                    .app-container { display: flex; height: 100vh; width: 100vw; background: var(--bg); justify-content: center; align-items: center; padding: 40px; }
+                    .modal-wrapper { width: 100%; max-width: 1200px; height: 80vh; background: var(--surface-solid); border-radius: 24px; border: 1px solid var(--border); overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 30px 80px rgba(0,0,0,0.6); }
+                    .modal-header { padding: 20px 30px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--surface); }
+                    #map { flex: 1; }
+                `;
+                layoutHTML = `
+                    <div class="modal-wrapper card-panel">
+                        <div class="modal-header">
+                            <h2 style="margin:0;color:var(--primary);font-family:var(--font-h);">عارض الخريطة</h2>
+                            <div style="display:flex;gap:10px;">${exportLayers.slice(0,3).map(l => `<span style="background:var(--bg);padding:5px 12px;border-radius:20px;font-size:0.8rem;border:1px solid ${l.color}">${l.name}</span>`).join('')}</div>
+                        </div>
+                        <div id="map"></div>
+                    </div>
+                `;
+                break;
+            case 'floating':
+                layoutCSS = `
+                    .app-container { display: flex; height: 100vh; width: 100vw; }
+                    #map { flex: 1; }
+                    .f-card { position: absolute; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; backdrop-filter: blur(15px); padding: 24px; z-index: 10; box-shadow: 0 15px 35px rgba(0,0,0,0.3); }
+                    .f-top-right { top: 30px; right: 30px; width: 340px; }
+                    .f-bottom-left { bottom: 40px; left: 30px; width: 400px; }
+                `;
+                layoutHTML = `
+                    <div id="map"></div>
+                    <div class="f-card f-top-right card-panel">
+                        <h2 style="margin-top:0;color:var(--primary);font-family:var(--font-h);">الطبقات النشطة</h2>
+                        <div class="layers-list">${layersHTML}</div>
+                    </div>
+                    <div class="f-card f-bottom-left card-panel">
+                        <h3 style="margin-top:0;font-family:var(--font-h);">إحصائيات الخريطة</h3>
+                        <p style="opacity:0.8;font-size:1rem;line-height:1.6;">تم تحميل <b>${exportLayers.length}</b> طبقات بنجاح، تحتوي على <b>${exportLayers.reduce((sum, l) => sum + (l.data?.features?.length || 0), 0)}</b> معلم جغرافي تفاعلي.</p>
+                        <button class="${designSelections.component || 'primary'}-btn" style="width:100%;padding:14px;background:var(--primary);color:#000;border:none;border-radius:10px;font-weight:bold;font-size:1rem;cursor:pointer;margin-top:16px;">عرض التفاصيل</button>
+                    </div>
+                `;
+                break;
+            default: // fullmap
+                layoutCSS = `
+                    .app-container { display: flex; height: 100vh; width: 100vw; }
+                    #map { flex: 1; }
+                    .floating-panel { position: absolute; top: 24px; right: 24px; width: 320px; background: var(--surface); border-radius: 16px; border: 1px solid var(--border); padding: 24px; z-index: 10; backdrop-filter: blur(15px); }
+                `;
+                layoutHTML = `
+                    <div class="floating-panel card-panel">
+                        <h2 style="color:var(--primary);margin-top:0;font-family:var(--font-h);">الطبقات</h2>
+                        <div class="layers-list">${layersHTML}</div>
+                    </div>
+                    <div id="map"></div>
+                `;
+                break;
+        }
 
         // 3. Generate HTML Template
         const htmlTemplate = `<!DOCTYPE html>
@@ -439,67 +578,51 @@ const onMouseLeave = (e) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PalNovaa Web Map</title>
+    <title>PalNovaa Web Map Design</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Tajawal:wght@300;500;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <style>
         :root {
             --primary: ${theme.primary};
+            --primary-dark: ${theme.primaryDark};
+            --primary-glow: ${theme.primaryGlow};
             --bg: ${theme.bg};
-            --accent: ${theme.accent};
-            --font: ${selectedFontFamily};
+            --surface: ${theme.surface};
+            --surface-solid: ${theme.surfaceSolid};
+            --border: ${theme.border};
+            --text-color: ${theme.text};
+            --font-h: ${selectedFont.h};
+            --font-b: ${selectedFont.b};
         }
-        body { margin: 0; padding: 0; font-family: var(--font); background: var(--bg); color: white; overflow: hidden; }
+        body { margin: 0; padding: 0; font-family: var(--font-b); background: var(--bg); color: var(--text-color); overflow: hidden; }
+        * { box-sizing: border-box; }
         
-        .app-container { display: flex; height: 100vh; width: 100vw; position: relative; }
-        
-        #map { flex: 1; position: relative; }
-        
-        ${designSelections.layout === 'sidebar' ? `
-        .sidebar { width: 320px; background: rgba(10, 22, 40, 0.95); border-left: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(15px); padding: 20px; display: flex; flex-direction: column; z-index: 10; }
-        .sidebar-header { border-bottom: 1px solid var(--primary); padding-bottom: 15px; margin-bottom: 20px; }
-        .sidebar-header h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
-        .layer-item { background: rgba(255,255,255,0.03); border-radius: 8px; padding: 12px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05); }
-        ` : `
-        .floating-panel { position: absolute; top: 20px; right: 20px; width: 280px; background: rgba(10, 22, 40, 0.9); backdrop-filter: blur(10px); border-radius: 12px; border: 1px solid var(--primary); padding: 15px; z-index: 100; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
-        `}
+        ${layoutCSS}
+        ${effectCSS}
+
+        .layer-item { background: rgba(0,0,0,0.1); border-radius: 10px; padding: 12px; margin-bottom: 10px; border: 1px solid var(--border); transition: all 0.2s; }
+        .layer-item:hover { border-color: var(--primary); background: rgba(0,0,0,0.2); }
 
         .watermark { 
             position: absolute; bottom: 25px; left: 10px; 
-            background: rgba(10, 22, 40, 0.6); color: rgba(255,255,255,0.7); 
-            padding: 5px 12px; border-radius: 6px; z-index: 10; 
-            font-size: 11px; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.1);
-            pointer-events: none; letter-spacing: 0.5px;
+            background: var(--surface-solid); color: var(--text-color); 
+            padding: 6px 14px; border-radius: 8px; z-index: 10; 
+            font-size: 11px; backdrop-filter: blur(8px); border: 1px solid var(--primary);
+            pointer-events: none; letter-spacing: 1px; font-family: var(--font-h); font-weight: bold;
         }
-        .maplibregl-popup-content { background: rgba(10, 22, 40, 0.95); color: #fff; border: 1px solid var(--primary); border-radius: 8px; font-family: var(--font); }
+        
+        .maplibregl-popup-content { background: var(--surface-solid); color: var(--text-color); border: 1px solid var(--primary); border-radius: 12px; font-family: var(--font-b); box-shadow: 0 10px 30px rgba(0,0,0,0.5); padding: 16px; }
         .maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: var(--primary); }
     </style>
 </head>
 <body>
-    <div class="app-container">
-        ${designSelections.layout === 'sidebar' ? `
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <h2>خريطة PalNovaa</h2>
-            </div>
-            <div class="layers-list">
-                \${layers.map(l => \`<div class="layer-item"><div style="display:flex;align-items:center;gap:10px;"><div style="width:12px;height:12px;border-radius:50%;background:\${l.color}"></div><span>\${l.name}</span></div></div>\`).join('')}
-            </div>
-        </aside>
-        ` : `
-        <div class="floating-panel">
-            <h3 style="margin:0 0 10px 0; color:var(--primary);">الطبقات المتاحة</h3>
-            <div style="font-size: 0.9rem; opacity: 0.8;">تم استيراد \${layers.length} طبقات مكانيّة.</div>
-        </div>
-        `}
-        <div id="map"></div>
-        <div class="watermark">Powered by <b>PalNovaa Lab</b></div>
-    </div>
+    ${layoutHTML}
+    <div class="watermark">Designed in <b>PalNovaa Studio</b></div>
 
     <script>
         const layers = ${JSON.stringify(exportLayers)};
-        const mapStyle = ${JSON.stringify(mapStyle)};
+        const mapStyle = '${targetBasemapUrl}';
         const map = new maplibregl.Map({
             container: 'map',
             style: mapStyle,
@@ -515,12 +638,38 @@ const onMouseLeave = (e) => {
             layers.forEach(layer => {
                 if (layer.type === 'raster') {
                     map.addSource('src-' + layer.id, { type: 'image', url: layer.url, coordinates: layer.coordinates });
-                    map.addLayer({ id: 'raster-' + layer.id, type: 'raster', source: 'src-' + layer.id, paint: { 'raster-opacity': 0.8 } });
+                    map.addLayer({ id: 'raster-' + layer.id, type: 'raster', source: 'src-' + layer.id, paint: { 'raster-opacity': 0.9 } });
                 } else {
                     map.addSource('src-' + layer.id, { type: 'geojson', data: layer.data });
-                    map.addLayer({ id: 'poly-' + layer.id, type: 'fill', source: 'src-' + layer.id, filter: ['==', '$type', 'Polygon'], paint: { 'fill-color': layer.color, 'fill-opacity': 0.4, 'fill-outline-color': layer.color } });
-                    map.addLayer({ id: 'line-' + layer.id, type: 'line', source: 'src-' + layer.id, filter: ['==', '$type', 'LineString'], paint: { 'line-color': layer.color, 'line-width': 3 } });
-                    map.addLayer({ id: 'point-' + layer.id, type: 'circle', source: 'src-' + layer.id, filter: ['==', '$type', 'Point'], paint: { 'circle-radius': 6, 'circle-color': layer.color, 'circle-stroke-width': 2, 'circle-stroke-color': '#0A1628' } });
+                    
+                    // Polygons
+                    map.addLayer({ id: 'poly-' + layer.id, type: 'fill', source: 'src-' + layer.id, filter: ['==', '$type', 'Polygon'], paint: { 'fill-color': layer.color, 'fill-opacity': 0.3, 'fill-outline-color': layer.color } });
+                    map.addLayer({ id: 'poly-line-' + layer.id, type: 'line', source: 'src-' + layer.id, filter: ['==', '$type', 'Polygon'], paint: { 'line-color': layer.color, 'line-width': 2 } });
+                    
+                    // Lines
+                    map.addLayer({ id: 'line-' + layer.id, type: 'line', source: 'src-' + layer.id, filter: ['==', '$type', 'LineString'], paint: { 'line-color': layer.color, 'line-width': 4 } });
+                    
+                    // Points (styled based on markers selection)
+                    let circleRadius = 7;
+                    let circleStroke = 2;
+                    let circleOpacity = 1;
+                    if ('${designSelections.marker}' === 'dot') { circleRadius = 5; circleStroke = 0; }
+                    if ('${designSelections.marker}' === 'pulse') { circleRadius = 10; circleOpacity = 0.8; }
+                    if ('${designSelections.marker}' === 'cluster') { circleRadius = 15; }
+                    
+                    map.addLayer({ 
+                        id: 'point-' + layer.id, 
+                        type: 'circle', 
+                        source: 'src-' + layer.id, 
+                        filter: ['==', '$type', 'Point'], 
+                        paint: { 
+                            'circle-radius': circleRadius, 
+                            'circle-color': layer.color, 
+                            'circle-stroke-width': circleStroke, 
+                            'circle-stroke-color': '${theme.bg}',
+                            'circle-opacity': circleOpacity
+                        } 
+                    });
 
                     const layerIds = ['poly-' + layer.id, 'line-' + layer.id, 'point-' + layer.id];
                     layerIds.forEach(lId => {
@@ -528,12 +677,12 @@ const onMouseLeave = (e) => {
                             if (!e.features.length) return;
                             let props = e.features[0].properties;
                             let html = '<div style="direction: rtl; text-align: right; max-height: 250px; overflow-y: auto; padding-right: 5px;">';
-                            html += '<h4 style="margin: 0 0 10px 0; color: var(--primary); border-bottom: 1px solid rgba(245, 166, 35, 0.3); padding-bottom: 5px;">البيانات</h4>';
+                            html += '<h4 style="margin: 0 0 12px 0; color: var(--primary); font-family: var(--font-h); font-size: 1.2rem;">تفاصيل المعلم</h4>';
                             for (let key in props) {
-                                html += '<div style="margin-bottom: 8px; font-size: 0.9rem;"><strong>' + key + ':</strong> ' + props[key] + '</div>';
+                                html += '<div style="margin-bottom: 8px; font-size: 0.95rem; border-bottom: 1px dashed var(--border); padding-bottom: 4px;"><strong>' + key + ':</strong> <span style="color: var(--primary);">' + props[key] + '</span></div>';
                             }
                             html += '</div>';
-                            new maplibregl.Popup().setLngLat(e.lngLat).setHTML(html).addTo(map);
+                            new maplibregl.Popup({closeButton: false, maxWidth: '300px'}).setLngLat(e.lngLat).setHTML(html).addTo(map);
                         });
                         map.on('mouseenter', lId, () => { map.getCanvas().style.cursor = 'pointer'; });
                         map.on('mouseleave', lId, () => { map.getCanvas().style.cursor = ''; });
@@ -549,7 +698,7 @@ const onMouseLeave = (e) => {
         const downloadUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = downloadUrl;
-        a.download = `PalNovaa_${designSelections.layout}_${Date.now()}.html`;
+        a.download = `PalNovaa_Design_${designSelections.layout}_${Date.now()}.html`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
