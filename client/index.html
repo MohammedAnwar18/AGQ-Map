@@ -45,7 +45,31 @@
       overflow: hidden;
       transition: all 0.8s cubic-bezier(0.65, 0, 0.35, 1);
     }
+  </style>
 
+  <!-- GUARANTEED Splash Screen Removal (runs before React) -->
+  <script>
+    // Force-hide the splash screen after 5 seconds NO MATTER WHAT
+    // This runs in pure HTML/JS, independent of React loading
+    (function() {
+      function hideSplash() {
+        var splash = document.getElementById('splash-screen');
+        if (splash) {
+          splash.style.transition = 'opacity 0.5s ease';
+          splash.style.opacity = '0';
+          splash.style.pointerEvents = 'none';
+          setTimeout(function() {
+            splash.style.display = 'none';
+            document.body.classList.remove('splash-active');
+          }, 500);
+        }
+      }
+      // Hard kill after 5 seconds
+      setTimeout(hideSplash, 5000);
+    })();
+  </script>
+
+  <style>
     /* Ambient Background Animated Glow */
     #splash-screen::before {
       content: '';
