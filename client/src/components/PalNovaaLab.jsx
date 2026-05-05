@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Map, { Source, Layer, NavigationControl, Popup } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './PalNovaaLab.css';
@@ -721,10 +721,10 @@ const onMouseLeave = (e) => {
                     if (match && f.geometry) found.push({ props, geom: f.geometry });
                 });
             });
-            if (found.length === 0) { results.innerHTML = '<div class="cel-search-item" style="opacity:0.5">Ù„Ø§ ØªÙˆØ¬Ø¯ Ù†ØªØ§Ø¦Ø¬</div>'; results.style.display = 'block'; return; }
+            if (found.length === 0) { results.innerHTML = '<div class="cel-search-item" style="opacity:0.5">لا توجد نتائج</div>'; results.style.display = 'block'; return; }
             results.innerHTML = found.slice(0, 8).map((r, i) => {
-                const label = Object.values(r.props)[0] || 'Ù…Ø¹Ù„Ù… ' + (i + 1);
-                return `<div class="cel-search-item" onclick="flyToFeature(${i})">${label}</div>`;
+                const label = Object.values(r.props)[0] || 'معلم ' + (i + 1);
+                return '<div class="cel-search-item" onclick="flyToFeature(' + i + ')">' + label + '</div>';
             }).join('');
             results.style.display = 'block';
             window._searchResults = found;
