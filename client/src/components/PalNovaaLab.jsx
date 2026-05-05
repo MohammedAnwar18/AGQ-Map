@@ -61,6 +61,8 @@ const PalNovaaLab = ({ onClose }) => {
     });
     const [pageElements, setPageElements] = useState([]);
     const [selectedElId, setSelectedElId] = useState(null);
+    const [editingLayerId, setEditingLayerId] = useState(null);
+    const [tempLayerName, setTempLayerName] = useState('');
 
     // Palette Mapping for Live Preview
     const paletteData = {
@@ -155,6 +157,11 @@ const PalNovaaLab = ({ onClose }) => {
         }
         setDraftCoordinates([]);
         setDrawingMode(null);
+    };
+
+    const handleRenameLayer = (id, newName) => {
+        setGeoLayers(prev => prev.map(l => l.id === id ? { ...l, name: newName } : l));
+        setEditingLayerId(null);
     };
 
     const handleMapClick = (e) => {
@@ -1156,15 +1163,42 @@ const onMouseLeave = (e) => {
                                         </div>
                                         {geoLayers.map(layer => (
                                             <div key={layer.id} className="layer-item active" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden', flex: 1 }}>
                                                     <div className="layer-color" style={{ background: layer.color, minWidth: '12px', width: '12px', height: '12px', borderRadius: '50%' }}></div>
                                                     <div className="layer-info" style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                        <h5 style={{ margin: 0, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>{layer.name}</h5>
+                                                        {editingLayerId === layer.id ? (
+                                                            <input 
+                                                                autoFocus
+                                                                className="rename-input"
+                                                                value={tempLayerName}
+                                                                onChange={(e) => setTempLayerName(e.target.value)}
+                                                                onBlur={() => handleRenameLayer(layer.id, tempLayerName)}
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') handleRenameLayer(layer.id, tempLayerName);
+                                                                    if (e.key === 'Escape') setEditingLayerId(null);
+                                                                }}
+                                                                style={{
+                                                                    background: 'rgba(0,0,0,0.3)',
+                                                                    border: '1px solid var(--accent-cyan)',
+                                                                    color: 'white',
+                                                                    fontSize: '0.85rem',
+                                                                    padding: '2px 5px',
+                                                                    borderRadius: '4px',
+                                                                    width: '100%',
+                                                                    outline: 'none'
+                                                                }}
+                                                            />
+                                                        ) : (
+                                                            <h5 style={{ margin: 0, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>{layer.name}</h5>
+                                                        )}
                                                         <small style={{ color: 'rgba(255,255,255,0.5)' }}>{layer.data.features?.length || 0} ميزة</small>
                                                         {layer.measurement && <small style={{ color: '#06D6F2', display: 'block', marginTop: '2px', fontWeight: 'bold' }}>القياس: {layer.measurement}</small>}
                                                     </div>
                                                 </div>
                                                 <div style={{ display: 'flex', gap: '5px' }}>
+                                                    <button onClick={() => { setEditingLayerId(layer.id); setTempLayerName(layer.name); }} style={{ background: 'transparent', border: 'none', color: '#F5A623', cursor: 'pointer', padding: '4px' }} title="إعادة تسمية">
+                                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                                    </button>
                                                     <button onClick={() => { setActiveTableLayerId(layer.id); setShowBottomTable(true); }} style={{ background: 'transparent', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer', padding: '4px' }} title="عرض البيانات الوصفية">
                                                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
                                                     </button>
