@@ -248,16 +248,47 @@
   <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
   <script type="module" src="/src/main.jsx"></script>
 
-  <!-- PWA Service Worker Registration -->
+  <!-- PWA Service Worker Registration & Smart Cache Clearer -->
   <script>
+    // 1. Auto-recovery from Chunk Load Errors (Stale Cache)
+    window.addEventListener('error', (e) => {
+      // Catch Vite dynamic import chunk errors
+      if (e.message && (e.message.includes('Failed to fetch dynamically imported module') || e.message.includes('Importing a module script failed'))) {
+        console.warn('⚠️ Stale cache detected. Clearing service worker and reloading...');
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then((registrations) => {
+            for (let registration of registrations) {
+              registration.unregister();
+            }
+            // Hard reload bypassing cache
+            window.location.reload(true);
+          });
+        } else {
+          window.location.reload(true);
+        }
+      }
+    });
+
+    // 2. Register Service Worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
           .then(registration => {
-            console.log('SW registered successfully:', registration);
+            console.log('✅ SW registered successfully');
+            
+            // Listen for updates to the service worker
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  // A new version is available, you can optionally notify the user here
+                  console.log('🔄 New app version available in the background.');
+                }
+              });
+            });
           })
           .catch(error => {
-            console.log('SW registration failed:', error);
+            console.log('❌ SW registration failed:', error);
           });
       });
     }
