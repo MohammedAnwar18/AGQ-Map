@@ -125,56 +125,35 @@ function App() {
     }
 
     return (
-        <AuthProvider>
-            <div className="bg-blob blob-primary"></div>
-            <div className="bg-blob blob-secondary"></div>
-            <PushNotificationManager />
-            <IosInstallPrompt />
-            <PwaInstallPrompt />
-            <BrowserRouter>
-                <Routes>
-                    <Route
-                        path="/login"
-                        element={
-                            <PublicRoute>
-                                <Login />
-                            </PublicRoute>
-                        }
-                    />
-                    <Route
-                        path="/map"
-                        element={
-                            <ProtectedRoute>
-                                <Map />
-                            </ProtectedRoute>
-                        }
-                    />
-                    <Route
-                        path="/streets"
-                        element={
-                            <ProtectedRoute>
-                                <StreetMap />
-                            </ProtectedRoute>
-                        }
-                    />
-                    <Route
-                        path="/admin"
-                        element={
-                            <AdminRoute>
-                                <AdminDashboard />
-                            </AdminRoute>
-                        }
-                    />
-                    <Route path="/admin/users/:userId" element={<AdminRoute><AdminUserDetails /></AdminRoute>} />
-                    <Route path="/terms" element={<LegalPages type="terms" />} />
-                    <Route path="/privacy" element={<LegalPages type="privacy" />} />
-                    <Route path="/support" element={<Support />} />
-            <Route path="/p/:slug" element={<PublishedView />} />
-                    <Route path="/" element={<Navigate to="/map" />} />
-                    <Route path="*" element={<OfflinePage />} />
-                </Routes>
-            </BrowserRouter>
-        </AuthProvider>
+        <BrowserRouter>
+            <Routes>
+                {/* 🌐 Public route - completely outside AuthProvider */}
+                <Route path="/p/:slug" element={<PublishedView />} />
+
+                {/* All other routes inside AuthProvider */}
+                <Route path="*" element={
+                    <AuthProvider>
+                        <div className="bg-blob blob-primary"></div>
+                        <div className="bg-blob blob-secondary"></div>
+                        <PushNotificationManager />
+                        <IosInstallPrompt />
+                        <PwaInstallPrompt />
+                        <Routes>
+                            <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+                            <Route path="/map" element={<ProtectedRoute><Map /></ProtectedRoute>} />
+                            <Route path="/streets" element={<ProtectedRoute><StreetMap /></ProtectedRoute>} />
+                            <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+                            <Route path="/admin/users/:userId" element={<AdminRoute><AdminUserDetails /></AdminRoute>} />
+                            <Route path="/terms" element={<LegalPages type="terms" />} />
+                            <Route path="/privacy" element={<LegalPages type="privacy" />} />
+                            <Route path="/support" element={<Support />} />
+                            <Route path="/" element={<Navigate to="/map" />} />
+                            <Route path="*" element={<OfflinePage />} />
+                        </Routes>
+                    </AuthProvider>
+                } />
+            </Routes>
+        </BrowserRouter>
     );
 }
 
