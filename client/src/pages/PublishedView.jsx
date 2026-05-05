@@ -103,20 +103,22 @@ const PublishedView = () => {
 
     const mapStyle = useMemo(() => {
         const bm = selections.basemap || 'satellite';
+        const maptilerKey = 'N6uNP3sTu25OIBUyi9G1';
+        
         if (bm === 'satellite') {
-            return {
-                version: 8,
-                sources: { 'raster-tiles': { type: 'raster', tiles: ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'], tileSize: 256 } },
-                layers: [{ id: 'simple-tiles', type: 'raster', source: 'raster-tiles' }]
-            };
+            return `https://api.maptiler.com/maps/satellite/style.json?key=${maptilerKey}`;
         }
+        
         const styleIds = {
             dark: 'dark-v10',
             light: 'light-v10',
             terrain: 'outdoors-v11',
-            vintage: 'streets-v11'
+            vintage: 'streets-v11',
+            cyber: '019b8b76-e5e2-7f02-b5d1-74fd0cf725bb'
         };
-        return `https://api.maptiler.com/maps/${bm === 'cyber' ? '019b8b76-e5e2-7f02-b5d1-74fd0cf725bb' : 'basic-v2'}/style.json?key=N6uNP3sTu25OIBUyi9G1`;
+
+        const styleId = styleIds[bm] || 'basic-v2';
+        return `https://api.maptiler.com/maps/${styleId}/style.json?key=${maptilerKey}`;
     }, [selections.basemap]);
 
     const handleMapClick = (e) => {
