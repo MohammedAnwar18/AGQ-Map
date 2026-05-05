@@ -118,12 +118,41 @@ const PublishedView = () => {
         return `https://api.maptiler.com/maps/${bm === 'cyber' ? '019b8b76-e5e2-7f02-b5d1-74fd0cf725bb' : 'basic-v2'}/style.json?key=N6uNP3sTu25OIBUyi9G1`;
     }, [selections.basemap]);
 
-    if (loading) return <div style={{ height: '100vh', background: '#050B16', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'Cairo, sans-serif' }}>
-        <div className="loader" style={{ width: '40px', height: '40px', border: '3px solid var(--primary)', borderRadius: '50%', borderTopColor: 'transparent', animation: 'spin 1s linear infinite', marginBottom: '20px' }}></div>
-        <span>جاري تحضير تجربتك الجغرافية...</span>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>;
-
+    if (loading) {
+        return (
+            <div style={{ 
+                height: '100vh', width: '100%', display: 'flex', flexDirection: 'column', 
+                alignItems: 'center', justifyContent: 'center', background: '#050B16', color: 'white',
+                fontFamily: 'Cairo, sans-serif'
+            }}>
+                <div className="loader-orbit" style={{ position: 'relative', width: '120px', height: '120px', marginBottom: '30px' }}>
+                    <div style={{ position: 'absolute', inset: 0, border: '2px solid rgba(6, 214, 242, 0.1)', borderRadius: '50%' }}></div>
+                    <div style={{ 
+                        position: 'absolute', inset: 0, border: '2px solid transparent', 
+                        borderTopColor: 'var(--primary, #06D6F2)', borderRadius: '50%',
+                        animation: 'spin 1.5s linear infinite'
+                    }}></div>
+                    <div style={{ 
+                        position: 'absolute', inset: '20px', border: '2px solid rgba(245, 166, 35, 0.2)', borderRadius: '50%',
+                        animation: 'spin 2s linear reverse infinite'
+                    }}></div>
+                    <div style={{ 
+                        position: 'absolute', inset: 0, display: 'grid', placeItems: 'center'
+                    }}>
+                        <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="var(--primary, #06D6F2)" strokeWidth="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                        </svg>
+                    </div>
+                </div>
+                <h2 style={{ margin: '0 0 10px 0', letterSpacing: '2px', fontWeight: 900 }}>PALNOVAA <span style={{ color: '#06D6F2' }}>STUDIO</span></h2>
+                <p style={{ opacity: 0.6, fontSize: '0.9rem', animation: 'pulse 2s infinite' }}>جاري تحضير التجربة المكانية... يرجى الانتظار</p>
+                <style>{`
+                    @keyframes spin { to { transform: rotate(360deg); } }
+                    @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.8; } }
+                `}</style>
+            </div>
+        );
+    }
     if (error) return <div style={{ height: '100vh', background: '#050B16', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FF6B6B', textAlign: 'center', padding: '20px' }}>
         <div>
             <h1 style={{ fontSize: '4rem', margin: 0 }}>404</h1>
