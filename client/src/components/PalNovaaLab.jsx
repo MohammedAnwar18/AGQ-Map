@@ -101,6 +101,7 @@ const PalNovaaLab = ({ onClose }) => {
     });
     const [pageElements, setPageElements] = useState([]);
     const [selectedElId, setSelectedElId] = useState(null);
+    const [previewDevice, setPreviewDevice] = useState('desktop'); // 'desktop' or 'mobile'
     const [editingLayerId, setEditingLayerId] = useState(null);
     const [tempLayerName, setTempLayerName] = useState('');
 
@@ -1780,26 +1781,43 @@ const PalNovaaLab = ({ onClose }) => {
                     <aside className="ds-preview" dir="rtl" style={{ fontFamily: 'var(--font-main)' }}>
                         <div className="ds-preview-head">
                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
-                            <span>معاينة التصميم الحية</span>
+                            <span>معاينة الاستجابة الحية</span>
                         </div>
-                        <div className="preview-mock">
-                            <div className={`preview-mock-content layout-mockup lm-${designSelections.layout}`}>
-                                <div className="pmc-header lm-block muted"></div>
-                                <div className="pmc-map lm-block map"></div>
-                                {designSelections.layout === 'dashboard' && (
-                                    <div className="lm-bottom" style={{ height: '30px', marginTop: '10px' }}>
-                                        <div className="lm-block alt"></div>
-                                        <div className="lm-block alt"></div>
-                                    </div>
-                                )}
-                                {designSelections.layout === 'sidebar' && <div className="lm-block alt" style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '30%' }}></div>}
-                                <div className="pmc-bar"></div>
+
+                        <div className="preview-device-toggle">
+                            <div className={`device-toggle-btn ${previewDevice === 'desktop' ? 'active' : ''}`} onClick={() => setPreviewDevice('desktop')}>
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>
+                                <span>حاسوب</span>
+                            </div>
+                            <div className={`device-toggle-btn ${previewDevice === 'mobile' ? 'active' : ''}`} onClick={() => setPreviewDevice('mobile')}>
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2" /><line x1="12" y1="18" x2="12.01" y2="18" /></svg>
+                                <span>هاتف</span>
                             </div>
                         </div>
-                        <div className="preview-info">
+
+                        <div className="device-frame-container">
+                            <div className={`${previewDevice === 'desktop' ? 'laptop-frame' : 'phone-frame'}`}>
+                                <div className={`preview-mock-content layout-mockup lm-${designSelections.layout}`}>
+                                    <div className="pmc-header lm-block muted"></div>
+                                    <div className="pmc-map lm-block map"></div>
+                                    {designSelections.layout === 'dashboard' && previewDevice === 'desktop' && (
+                                        <div className="lm-bottom" style={{ height: '30px', marginTop: '10px' }}>
+                                            <div className="lm-block alt"></div>
+                                            <div className="lm-block alt"></div>
+                                        </div>
+                                    )}
+                                    {designSelections.layout === 'sidebar' && previewDevice === 'desktop' && (
+                                        <div className="lm-block alt" style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '30%' }}></div>
+                                    )}
+                                    <div className="pmc-bar"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="preview-info" style={{ marginTop: '20px' }}>
                             <div className="preview-info-row"><span className="pi-label">التخطيط</span><span className="pi-value">{designSelections.layout}</span></div>
                             <div className="preview-info-row"><span className="pi-label">الهوية اللونية</span><span className="pi-value" style={{ color: 'var(--primary)' }}>{designSelections.palette}</span></div>
-                            <div className="preview-info-row"><span className="pi-label">الخط المستخدم</span><span className="pi-value">{designSelections.font}</span></div>
+                            <div className="preview-info-row"><span className="pi-label">العرض الحالي</span><span className="pi-value">{previewDevice === 'desktop' ? 'شاشة عريضة' : 'تطبيق محمول'}</span></div>
                         </div>
                     </aside>
                 </div>

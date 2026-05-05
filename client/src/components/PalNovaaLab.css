@@ -1277,12 +1277,101 @@
 .ds-preview-head { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 2px; padding-bottom: 14px; border-bottom: 1px solid var(--border); margin-bottom: 20px; flex-direction: row-reverse; }
 .ds-preview-head svg { width: 14px; height: 14px; color: var(--primary); }
 
-.preview-mock { aspect-ratio: 9/16; max-height: 400px; margin: 0 auto 20px; background: #0F1E33; border-radius: 24px; border: 6px solid #142B47; box-shadow: 0 30px 80px rgba(0,0,0,0.6); overflow: hidden; position: relative; }
-.preview-mock-content { width: 100%; height: 100%; background: radial-gradient(circle at 50% 30%, rgba(245,166,35,0.15), transparent 60%), linear-gradient(180deg, #0A1628, #0F1E33); padding: 24px 12px 12px; display: flex; flex-direction: column; }
-.pmc-header { height: 32px; background: rgba(255,255,255,0.06); border-radius: 10px; margin-bottom: 10px; }
-.pmc-map { flex: 1; background: radial-gradient(circle at 40% 50%, rgba(245,166,35,0.25), transparent 50%), linear-gradient(135deg, #142B47, #0F1E33); border-radius: 10px; margin-bottom: 10px; position: relative; }
-.pmc-map::after { content: ''; position: absolute; top: 50%; left: 50%; width: 14px; height: 14px; background: var(--primary); border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 0 8px rgba(245,166,35,0.3); }
-.pmc-bar { height: 40px; background: rgba(245, 166, 35, 0.15); border: 1.5px solid rgba(245, 166, 35, 0.3); border-radius: 999px; }
+/* ===== Preview & Device Frames ===== */
+.preview-device-toggle {
+  display: flex;
+  background: rgba(0,0,0,0.3);
+  padding: 4px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+}
+.device-toggle-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+.device-toggle-btn.active {
+  background: var(--primary);
+  color: #000;
+  box-shadow: 0 4px 12px var(--primary-glow);
+}
+.device-toggle-btn svg { width: 16px; height: 16px; }
+
+.device-frame-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 0;
+  min-height: 420px;
+}
+
+.laptop-frame {
+  width: 100%;
+  max-width: 380px;
+  aspect-ratio: 16/10;
+  background: #1A1A1A;
+  border-radius: 14px;
+  padding: 10px;
+  border: 6px solid #333;
+  box-shadow: 0 40px 100px rgba(0,0,0,0.8), inset 0 0 20px rgba(255,255,255,0.05);
+  position: relative;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.laptop-frame::after {
+  content: '';
+  position: absolute;
+  bottom: -15px; left: -10%;
+  width: 120%; height: 12px;
+  background: linear-gradient(to bottom, #444, #222);
+  border-radius: 0 0 20px 20px;
+}
+
+.phone-frame {
+  width: 190px;
+  aspect-ratio: 9/18.5;
+  background: #000;
+  border-radius: 36px;
+  padding: 12px;
+  border: 8px solid #222;
+  box-shadow: 0 40px 100px rgba(0,0,0,0.8), inset 0 0 20px rgba(255,255,255,0.1);
+  position: relative;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.phone-frame::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 45%; height: 22px;
+  background: #222;
+  border-radius: 0 0 14px 14px;
+  z-index: 10;
+}
+
+.preview-mock-content { 
+  width: 100%; height: 100%; 
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex; flex-direction: column; 
+  padding: 0 !important; /* Managed by device frames */
+}
+
+.phone-frame .preview-mock-content { border-radius: 24px; }
+
+.pmc-header { height: 15%; background: rgba(255,255,255,0.06); margin-bottom: 4px; }
+.pmc-map { flex: 1; position: relative; }
+.pmc-bar { height: 12%; background: rgba(245, 166, 35, 0.1); border-top: 1px solid rgba(245, 166, 35, 0.2); }
 
 .preview-info { background: rgba(255,255,255,0.03); border-radius: 14px; padding: 16px; font-size: 12px; }
 .preview-info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed var(--border); flex-direction: row-reverse; }
