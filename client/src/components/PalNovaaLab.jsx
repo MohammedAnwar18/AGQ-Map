@@ -448,7 +448,12 @@ const PalNovaaLab = ({ onClose }) => {
         if (!magicPromptText.trim()) return;
         setIsGenerating(true);
         try {
-            const response = await axios.post(`${process.env.REACT_APP_API_URL || ''}/api/ai/generate-design`, {
+            // Use absolute URL if possible, or fallback to relative for proxy
+            const apiUrl = window.location.origin === 'http://localhost:5173' 
+                ? 'http://localhost:5001' 
+                : '';
+            
+            const response = await axios.post(`${apiUrl}/api/ai/generate-design`, {
                 prompt: magicPromptText
             });
             

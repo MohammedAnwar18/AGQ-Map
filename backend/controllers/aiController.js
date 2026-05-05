@@ -299,12 +299,19 @@ exports.generateDesign = async (req, res) => {
         });
 
         const content = response.data.choices[0].message.content;
+        console.log('AI Design Raw Response:', content);
         const jsonMatch = content.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-            const result = JSON.parse(jsonMatch[0]);
-            res.json(result);
+            try {
+                const result = JSON.parse(jsonMatch[0]);
+                res.json(result);
+            } catch (parseErr) {
+                console.error('JSON Parse Error:', parseErr, 'Content:', jsonMatch[0]);
+                throw new Error("Failed to parse AI JSON");
+            }
         } else {
-            throw new Error("Invalid AI response");
+            console.error('No JSON found in AI response:', content);
+            throw new Error("Invalid AI response format");
         }
     } catch (error) {
         console.error('Design Generation Error:', error);
