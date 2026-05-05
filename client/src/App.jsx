@@ -8,6 +8,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminUserDetails from './pages/AdminUserDetails';
 import LegalPages from './pages/LegalPages';
 import Support from './pages/Support';
+import PublishedView from './pages/PublishedView';
 
 import OfflinePage from './components/OfflinePage';
 import PushNotificationManager from './components/PushNotificationManager';
@@ -168,6 +169,7 @@ function App() {
                     <Route path="/terms" element={<LegalPages type="terms" />} />
                     <Route path="/privacy" element={<LegalPages type="privacy" />} />
                     <Route path="/support" element={<Support />} />
+            <Route path="/p/:slug" element={<PublishedView />} />
                     <Route path="/" element={<Navigate to="/map" />} />
                     <Route path="*" element={<OfflinePage />} />
                 </Routes>

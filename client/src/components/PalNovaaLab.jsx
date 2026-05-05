@@ -97,6 +97,10 @@ const PalNovaaLab = ({ onClose }) => {
     const [isMagicPromptOpen, setIsMagicPromptOpen] = useState(false);
     const [magicPromptText, setMagicPromptText] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
+    const [publishName, setPublishName] = useState('');
+    const [publishSlug, setPublishSlug] = useState('');
+    const [isPublishing, setIsPublishing] = useState(false);
     const [designSelections, setDesignSelections] = useState({
         layout: 'fullmap',
         palette: 'classic',
@@ -478,6 +482,37 @@ const PalNovaaLab = ({ onClose }) => {
             alert(`عذراً، فشل المحرك في توليد التصميم.\nالسبب: ${errMsg}`);
         } finally {
             setIsGenerating(false);
+        }
+    };
+
+    const handlePublishDesign = async () => {
+        if (!publishName || !publishSlug) {
+            alert('يرجى إدخال اسم المشروع والاسم البرمجي (الرابط).');
+            return;
+        }
+
+        setIsPublishing(true);
+        try {
+            const apiUrl = window.location.origin === 'http://localhost:5173' ? 'http://localhost:5001' : '';
+            const response = await axios.post(`${apiUrl}/api/pages/save`, {
+                name: publishName,
+                slug: publishSlug,
+                config: {
+                    selections: designSelections,
+                    elements: pageElements
+                }
+            });
+
+            if (response.data.success) {
+                alert(`مبروك! تم نشر صفحتك بنجاح.\nيمكنك الوصول إليها عبر الرابط: ${window.location.origin}/p/${publishSlug}`);
+                setIsPublishModalOpen(false);
+            }
+        } catch (err) {
+            console.error('Publish failed:', err);
+            const errMsg = err.response?.data?.error || err.message;
+            alert(`فشل النشر: ${errMsg}`);
+        } finally {
+            setIsPublishing(false);
         }
     };
 
@@ -1413,6 +1448,10 @@ const PalNovaaLab = ({ onClose }) => {
                                 <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>المساعد الذكي</span>
                             </button>
                         )}
+                        <button className="ds-btn secondary" onClick={() => setIsPublishModalOpen(true)} style={{ background: '#10B981', color: 'white' }}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', height: '18px' }}><path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" /></svg>
+                            نشر وتثبيت التطبيق
+                        </button>
                         <button className="ds-btn primary" onClick={performActualExport}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', height: '18px' }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
                             حفظ وتصدير المشروع
@@ -2143,6 +2182,65 @@ const PalNovaaLab = ({ onClose }) => {
                                     className="ds-btn ghost" 
                                     style={{ flex: 1, height: '50px' }}
                                     onClick={() => setIsMagicPromptOpen(false)}
+                                >
+                                    إلغاء
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {isPublishModalOpen && (
+                    <div className="ds-overlay active" style={{ display: 'grid', placeItems: 'center', zIndex: 9999, position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)' }}>
+                        <div className="ds-modal" style={{ width: '450px', background: '#0A1628', borderRadius: '24px', border: '1px solid rgba(16,185,129,0.3)', padding: '30px', boxShadow: '0 30px 80px rgba(0,0,0,0.9)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px' }}>
+                                <div style={{ width: '45px', height: '45px', background: 'rgba(16,185,129,0.1)', borderRadius: '12px', display: 'grid', placeItems: 'center' }}>
+                                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#10B981" strokeWidth="2"><path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" /></svg>
+                                </div>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#10B981' }}>نشر المشروع على دومينك</h3>
+                                    <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.6 }}>اجعل تصميمك متاحاً للعالم برابط خاص</p>
+                                </div>
+                            </div>
+
+                            <div style={{ marginBottom: '20px' }}>
+                                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', opacity: 0.8 }}>اسم المشروع</label>
+                                <input 
+                                    type="text" 
+                                    value={publishName}
+                                    onChange={(e) => setPublishName(e.target.value)}
+                                    placeholder="مثلاً: خريطة مدارس بوسطن"
+                                    style={{ width: '100%', height: '45px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '0 15px', color: 'white', outline: 'none' }}
+                                />
+                            </div>
+
+                            <div style={{ marginBottom: '25px' }}>
+                                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', opacity: 0.8 }}>الرابط المخصص (Slug)</label>
+                                <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+                                    <span style={{ padding: '0 10px', fontSize: '0.8rem', opacity: 0.5, borderLeft: '1px solid rgba(255,255,255,0.1)' }}>palnovaa.com/p/</span>
+                                    <input 
+                                        type="text" 
+                                        value={publishSlug}
+                                        onChange={(e) => setPublishSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
+                                        placeholder="boston-schools"
+                                        style={{ flex: 1, height: '45px', background: 'transparent', border: 'none', padding: '0 10px', color: 'white', outline: 'none' }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '15px' }}>
+                                <button 
+                                    className={`ds-btn primary ${isPublishing ? 'loading' : ''}`} 
+                                    style={{ flex: 2, height: '50px', background: '#10B981', border: 'none' }}
+                                    onClick={handlePublishDesign}
+                                    disabled={isPublishing}
+                                >
+                                    {isPublishing ? 'جاري النشر...' : 'تأكيد النشر الآن'}
+                                </button>
+                                <button 
+                                    className="ds-btn ghost" 
+                                    style={{ flex: 1, height: '50px' }}
+                                    onClick={() => setIsPublishModalOpen(false)}
                                 >
                                     إلغاء
                                 </button>

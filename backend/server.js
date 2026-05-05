@@ -183,6 +183,7 @@ app.use('/api/reels', require('./routes/reels'));
 app.use('/api/magazines', require('./routes/magazine'));
 app.use('/api/push', require('./routes/push'));
 app.use('/api/radar', require('./routes/radar')); // <-- NEW RADAR MOUNT
+app.use('/api/pages', require('./routes/pages')); // <-- NEW PAGES MOUNT
 
 
 
