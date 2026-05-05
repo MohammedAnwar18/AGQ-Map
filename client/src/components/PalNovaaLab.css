@@ -1834,3 +1834,7 @@
   border-bottom: 1px solid rgba(255,255,255,0.1);
   padding-bottom: 5px;
 }
+
+.builder-cat-section { display: flex; flex-direction: column; gap: 12px; }
+.builder-tabs > div:hover { background: rgba(255,255,255,0.05); color: white !important; }
+

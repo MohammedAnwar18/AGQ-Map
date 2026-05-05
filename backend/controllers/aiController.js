@@ -246,3 +246,68 @@ exports.recognizeProducts = async (req, res) => {
         res.status(500).json({ error: 'Failed to recognize products' });
     }
 };
+
+/**
+ * Generate a complete UI design based on user prompt
+ */
+exports.generateDesign = async (req, res) => {
+    try {
+        const { prompt } = req.body;
+        if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
+
+        const groqApiKey = process.env.GROQ_API_KEY;
+        if (!groqApiKey) return res.status(500).json({ error: 'AI key missing' });
+
+        const systemPrompt = `You are a High-Fidelity UI/UX Designer for PalNovaa Lab.
+        Based on the user's project description, generate a design configuration in JSON.
+        
+        OPTIONS:
+        - Layouts: 'fullmap', 'sidebar', 'three', 'split', 'stacked', 'floating', 'modal'
+        - Palettes: 'classic', 'dark', 'midnight', 'sunset', 'ocean', 'forest', 'royal', 'neon'
+        - Fonts: 'cairo_tajawal', 'tajawal_inter', 'cairo_mono', 'tajawal_ed', 'display', 'compact'
+        - Effects: 'md', 'lg', 'glow', 'glass', 'sunset', 'ocean', 'forest', 'float', 'pulse'
+        
+        OUTPUT FORMAT (JSON):
+        {
+          "selections": {
+            "layout": "string",
+            "palette": "string",
+            "font": "string",
+            "effect": "string",
+            "customPrimary": "hex_color"
+          },
+          "elements": [
+            { "id": number, "type": "heading"|"subheading"|"paragraph"|"btn_primary"|"search"|"stat"|"card", "text": "string", "x": number, "y": number, "w": number }
+          ]
+        }
+        
+        Guidelines:
+        1. Keep coordinates (x, y) between 5-85.
+        2. Texts must be in Arabic.
+        3. Make it professional and high-fidelity.
+        4. Return ONLY the JSON.`;
+
+        const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
+            model: "llama-3.3-70b-versatile",
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: prompt }
+            ],
+            temperature: 0.2
+        }, {
+            headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' }
+        });
+
+        const content = response.data.choices[0].message.content;
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            const result = JSON.parse(jsonMatch[0]);
+            res.json(result);
+        } else {
+            throw new Error("Invalid AI response");
+        }
+    } catch (error) {
+        console.error('Design Generation Error:', error);
+        res.status(500).json({ error: 'Failed to generate design' });
+    }
+};

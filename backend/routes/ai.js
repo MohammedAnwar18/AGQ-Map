@@ -8,5 +8,6 @@ const auth = require('../middleware/auth'); // Optional: if you want to protect 
 // Let's assume protected properly since the rest of the app is.
 router.post('/chat', aiController.processQuery);
 router.post('/recognize-products', auth.authenticateToken, aiController.recognizeProducts);
+router.post('/generate-design', aiController.generateDesign);
 
 module.exports = router;

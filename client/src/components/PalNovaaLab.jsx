@@ -91,6 +91,9 @@ const PalNovaaLab = ({ onClose }) => {
     const [isDesignStudioOpen, setIsDesignStudioOpen] = useState(false);
     const [activeDsCategory, setActiveDsCategory] = useState('layouts');
     const [builderTab, setBuilderTab] = useState('basic'); // 'basic', 'components', 'icons'
+    const [isMagicPromptOpen, setIsMagicPromptOpen] = useState(false);
+    const [magicPromptText, setMagicPromptText] = useState('');
+    const [isGenerating, setIsGenerating] = useState(false);
     const [designSelections, setDesignSelections] = useState({
         layout: 'fullmap',
         palette: 'classic',
@@ -439,6 +442,34 @@ const PalNovaaLab = ({ onClose }) => {
     const launchDesignStudioFinal = () => {
         console.log("FORCE LAUNCH: Design Studio");
         setIsDesignStudioOpen(true);
+    };
+
+    const handleMagicGenerate = async () => {
+        if (!magicPromptText.trim()) return;
+        setIsGenerating(true);
+        try {
+            const response = await axios.post(`${process.env.REACT_APP_API_URL || ''}/api/ai/generate-design`, {
+                prompt: magicPromptText
+            });
+            
+            const data = response.data;
+            if (data.selections) {
+                setDesignSelections(prev => ({ ...prev, ...data.selections }));
+            }
+            if (data.elements) {
+                setPageElements(data.elements);
+            }
+            setIsMagicPromptOpen(false);
+            setMagicPromptText('');
+            
+            // Show a success notification or toast (mocked for now)
+            alert('تم توليد التصميم الإبداعي بنجاح!');
+        } catch (err) {
+            console.error('Magic generate failed:', err);
+            alert('عذراً، فشل المحرك في توليد التصميم. يرجى المحاولة بوصف آخر.');
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
     const performActualExport = async () => {
@@ -1348,6 +1379,47 @@ const PalNovaaLab = ({ onClose }) => {
                         <span>{new Date().toLocaleTimeString()}</span>
                     </div>
                 </footer>
+
+                {isMagicPromptOpen && (
+                    <div className="ds-overlay active" style={{ display: 'grid', placeItems: 'center', zIndex: 3000 }}>
+                        <div className="ds-modal magic-modal" style={{ width: '500px', background: '#0A1628', borderRadius: '24px', border: '1px solid rgba(6,214,242,0.3)', padding: '30px', boxShadow: '0 30px 60px rgba(0,0,0,0.8)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '20px' }}>
+                                <div style={{ width: '40px', height: '40px', background: 'rgba(6,214,242,0.1)', borderRadius: '12px', display: 'grid', placeItems: 'center' }}>
+                                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="var(--primary)" strokeWidth="2"><path d="M15 12l-8.5 8.5-2.5-2.5 8.5-8.5 2.5 2.5zM17.5 9.5l-2.5-2.5 1.5-1.5 2.5 2.5-1.5 1.5zM12 2l1 2 2 1-2 1-1 2-1-2-2-1 2-1 1-2zM20 14l.5 1 1 .5-1 .5-.5 1-.5-1-1-.5 1-.5.5-1z" /></svg>
+                                </div>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--primary)' }}>المحرك الإبداعي الذكي (AI)</h3>
+                                    <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.6 }}>صف رؤيتك للمشروع وسيقوم PalNovaa بتصميم الأساس لك</p>
+                                </div>
+                            </div>
+
+                            <textarea
+                                value={magicPromptText}
+                                onChange={(e) => setMagicPromptText(e.target.value)}
+                                placeholder="مثلاً: أريد واجهة لموقع توصيل طلبات بلمسة ذهبية وفخمة مع خريطة قمر صناعي..."
+                                style={{ width: '100%', height: '120px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border)', borderRadius: '12px', padding: '15px', color: 'white', fontFamily: 'var(--font-b)', fontSize: '0.9rem', marginBottom: '20px', outline: 'none', resize: 'none' }}
+                            />
+
+                            <div style={{ display: 'flex', gap: '12px' }}>
+                                <button 
+                                    className={`ds-btn primary ${isGenerating ? 'loading' : ''}`} 
+                                    style={{ flex: 2, height: '45px' }}
+                                    onClick={handleMagicGenerate}
+                                    disabled={isGenerating}
+                                >
+                                    {isGenerating ? 'جاري التحليل والتوليد...' : 'توليد التصميم السحري'}
+                                </button>
+                                <button 
+                                    className="ds-btn ghost" 
+                                    style={{ flex: 1 }}
+                                    onClick={() => setIsMagicPromptOpen(false)}
+                                >
+                                    إلغاء
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <div className={`design-studio ${isDesignStudioOpen ? 'active' : ''}`} id="designStudio" style={dynamicStyles}>
@@ -1367,7 +1439,11 @@ const PalNovaaLab = ({ onClose }) => {
                             <small>الإصدار 3.5 (دقة فائقة)</small>
                         </div>
                     </div>
-                    <div className="ds-header-actions" style={{ display: 'flex', gap: '12px' }}>
+                    <div className="ds-header-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                        <button className="ds-btn ghost" onClick={() => setIsMagicPromptOpen(true)} title="الإلهام الذكي (AI)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', height: '18px', color: 'var(--primary)' }}><path d="M15 12l-8.5 8.5-2.5-2.5 8.5-8.5 2.5 2.5zM17.5 9.5l-2.5-2.5 1.5-1.5 2.5 2.5-1.5 1.5zM12 2l1 2 2 1-2 1-1 2-1-2-2-1 2-1 1-2zM20 14l.5 1 1 .5-1 .5-.5 1-.5-1-1-.5 1-.5.5-1z" /></svg>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>المساعد الذكي</span>
+                        </button>
                         <button className="ds-btn primary" onClick={performActualExport}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', height: '18px' }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
                             حفظ وتصدير المشروع
