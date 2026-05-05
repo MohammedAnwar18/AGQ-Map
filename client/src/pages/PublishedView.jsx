@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import Map, { Source, Layer, NavigationControl, Popup } from 'react-map-gl/maplibre';
+import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 const PublishedView = () => {
@@ -204,6 +205,7 @@ const PublishedView = () => {
             <main style={{ flex: 1, position: 'relative', height: '100%' }}>
                 <Map
                     ref={mapRef}
+                    mapLib={maplibregl}
                     initialViewState={{
                         longitude: 35.2034,
                         latitude: 31.9038,
