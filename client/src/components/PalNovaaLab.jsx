@@ -388,11 +388,11 @@ const onMouseLeave = (e) => {
 
     const performActualExport = async () => {
         const map = mapRef.current?.getMap();
-        if (!map) return;
-        const center = map.getCenter();
-        const zoom = map.getZoom();
-        const pitch = map.getPitch();
-        const bearing = map.getBearing();
+        // Fallback to stored mapState when Design Studio is open (map may be hidden)
+        const center = map ? map.getCenter() : { lng: mapState.longitude, lat: mapState.latitude };
+        const zoom = map ? map.getZoom() : mapState.zoom;
+        const pitch = map ? map.getPitch() : mapState.pitch;
+        const bearing = map ? map.getBearing() : mapState.bearing;
 
         // 1. Prepare Layers
         const exportLayers = [];
