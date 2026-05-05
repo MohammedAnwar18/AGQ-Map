@@ -648,12 +648,12 @@ const onMouseLeave = (e) => {
         .layer-item:hover { border-color: var(--primary); }
         #map { flex: 1; min-height: 0; width: 100%; }
 
-        .watermark { 
-            position: fixed; bottom: 20px; left: 20px; 
-            background: var(--surface-solid); color: var(--text-color); 
-            padding: 6px 14px; border-radius: 8px; z-index: 10; 
-            font-size: 11px; backdrop-filter: blur(8px); border: 1px solid var(--primary);
-            pointer-events: none; letter-spacing: 1px; font-family: var(--font-h); font-weight: bold;
+        .watermark {
+            position: fixed; bottom: 5px; right: 8px;
+            color: rgba(255,255,255,0.6);
+            font-size: 11px; font-family: sans-serif; font-weight: normal;
+            pointer-events: none; z-index: 1000;
+            text-shadow: 0 0 3px rgba(0,0,0,0.5);
         }
         
         .maplibregl-popup-content { background: var(--surface-solid); color: var(--text-color); border: 1px solid var(--primary); border-radius: 12px; font-family: var(--font-b); box-shadow: 0 10px 30px rgba(0,0,0,0.5); padding: 16px; }
@@ -666,7 +666,7 @@ const onMouseLeave = (e) => {
         ${layoutHTML}
         ${customElsHTML}
     </div>
-    <div class="watermark">Designed in <b>PalNovaa Studio</b></div>
+    <div class="watermark">Designed in PalNovaa Studio</div>
 
     <script>
         const layers = ${JSON.stringify(exportLayers)};
