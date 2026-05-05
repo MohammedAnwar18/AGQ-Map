@@ -1551,7 +1551,18 @@ const PalNovaaLab = ({ onClose }) => {
                                     ].map(p => (
                                         <div key={p.id} className={`ds-pick ${designSelections.palette === p.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({ ...s, palette: p.id }))}>
                                             <div className="palette-strip">
-                                                {p.colors.map((c, i) => <span key={i} style={{ background: c }}></span>)}
+                                                {p.colors.map((c, i) => (
+                                                    <span 
+                                                        key={i} 
+                                                        style={{ background: c, cursor: 'pointer' }} 
+                                                        title={c}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setDesignSelections(s => ({ ...s, palette: 'custom', customPrimary: c }));
+                                                        }}
+                                                        className="palette-color-segment"
+                                                    ></span>
+                                                ))}
                                             </div>
                                             <div className="ds-pick-title">{p.title}</div>
                                             <div className="ds-pick-sub">{p.sub}</div>
