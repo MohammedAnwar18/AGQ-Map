@@ -129,7 +129,7 @@ const PalNovaaLab = ({ onClose }) => {
             if (geometryType === 'LineString' || drawingMode === 'measure') {
                 let dist = 0;
                 for (let i = 0; i < coords.length - 1; i++) dist += haversineDistance(coords[i], coords[i+1]);
-                metricText = dist > 1000 ? (dist / 1000).toFixed(2) + ' ÙƒÙ…' : dist.toFixed(1) + ' Ù…';
+                metricText = dist > 1000 ? (dist / 1000).toFixed(2) + ' كم' : dist.toFixed(1) + ' م';
             } else if (geometryType === 'Polygon') {
                 let area = 0;
                 const pts = coords[0];
@@ -139,13 +139,13 @@ const PalNovaaLab = ({ onClose }) => {
                     area += (p2[0] - p1[0]) * Math.PI/180 * (2 + Math.sin(p1[1]*Math.PI/180) + Math.sin(p2[1]*Math.PI/180));
                 }
                 area = Math.abs(area * 6378137 * 6378137 / 2.0);
-                metricText = area > 1000000 ? (area / 1000000).toFixed(2) + ' ÙƒÙ…Â²' : area.toFixed(1) + ' Ù…Â²';
+                metricText = area > 1000000 ? (area / 1000000).toFixed(2) + ' كم²' : area.toFixed(1) + ' م²';
             }
 
-            const newFeature = { type: 'Feature', geometry: { type: geometryType, coordinates: coords }, properties: { type: `drawn_${drawingMode}`, name: `Ø±Ø³Ù…Ø© (${drawingMode})`, Measurement: metricText } };
+            const newFeature = { type: 'Feature', geometry: { type: geometryType, coordinates: coords }, properties: { type: `drawn_${drawingMode}`, name: `رسمة (${drawingMode})`, Measurement: metricText } };
             setGeoLayers(prev => [...prev, {
                 id: Date.now().toString(),
-                name: `Ø±Ø³Ù… (${drawingMode === 'polygon' ? 'Ù…Ø³Ø§Ø­Ø©' : drawingMode === 'measure' ? 'Ù‚ÙŠØ§Ø³ Ù…Ø³Ø§ÙØ©' : 'Ù…Ø³Ø§Ø±'})`,
+                name: `رسم (${drawingMode === 'polygon' ? 'مساحة' : drawingMode === 'measure' ? 'قياس مسافة' : 'مسار'})`,
                 data: { type: 'FeatureCollection', features: [newFeature] },
                 color: ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899'][prev.length % 5],
                 measurement: metricText
@@ -160,10 +160,10 @@ const PalNovaaLab = ({ onClose }) => {
             const coord = [e.lngLat.lng, e.lngLat.lat];
             
             if (drawingMode === 'point') {
-                const newFeature = { type: 'Feature', geometry: { type: 'Point', coordinates: coord }, properties: { type: 'drawn_point', name: 'Ù†Ù‚Ø·Ø© Ù…Ø­Ø¯Ø¯Ø©' } };
+                const newFeature = { type: 'Feature', geometry: { type: 'Point', coordinates: coord }, properties: { type: 'drawn_point', name: 'نقطة محددة' } };
                 setGeoLayers(prev => [...prev, {
                     id: Date.now().toString(),
-                    name: 'Ø±Ø³Ù… (Ù†Ù‚Ø·Ø©)',
+                    name: 'رسم (نقطة)',
                     data: { type: 'FeatureCollection', features: [newFeature] },
                     color: ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899'][prev.length % 5]
                 }]);
@@ -368,10 +368,10 @@ const onMouseLeave = (e) => {
                         } catch(e) { console.error('Fit bounds error', e); }
                     }
                 } else {
-                    alert('Ø§Ù„Ù…Ù„Ù Ø§Ù„Ù…Ø±ÙÙ‚ Ù„ÙŠØ³ Ø¨ØµÙŠØºØ© GeoJSON ØµØ­ÙŠØ­Ø©.');
+                    alert('الملف المرفق ليس بصيغة GeoJSON صحيحة.');
                 }
             } catch (err) {
-                alert('Ø­Ø¯Ø« Ø®Ø·Ø£ Ø£Ø«Ù†Ø§Ø¡ Ù‚Ø±Ø§Ø¡Ø© Ø§Ù„Ù…Ù„Ù. ØªØ£ÙƒØ¯ Ù…Ù† Ø£Ù†Ù‡ Ù…Ù„Ù JSON/GeoJSON ØµØ§Ù„Ø­.');
+                alert('حدث خطأ أثناء قراءة الملف. تأكد من أنه ملف JSON/GeoJSON صالح.');
             }
         };
         reader.readAsText(file);
@@ -388,7 +388,6 @@ const onMouseLeave = (e) => {
 
     const performActualExport = async () => {
         const map = mapRef.current?.getMap();
-        // Fallback to stored mapState when Design Studio is open (map may be hidden)
         const center = map ? map.getCenter() : { lng: mapState.longitude, lat: mapState.latitude };
         const zoom = map ? map.getZoom() : mapState.zoom;
         const pitch = map ? map.getPitch() : mapState.pitch;
@@ -441,7 +440,7 @@ const onMouseLeave = (e) => {
         const selectedFont = fontsData[designSelections.font] || fontsData.cairo_tajawal;
 
         const bm = designSelections.basemap;
-        const bmTileUrls = {
+        const bmTiles = {
             dark:      'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
             light:     'https://mt1.google.com/vt/lyrs=r&x={x}&y={y}&z={z}',
             satellite: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
@@ -449,12 +448,13 @@ const onMouseLeave = (e) => {
             vintage:   'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
             cyber:     'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'
         };
-        const chosenTile = bmTileUrls[bm] || bmTileUrls.satellite;
+        const chosenTile = bmTiles[bm] || bmTiles.satellite;
         const targetBasemapStyleObj = {
             version: 8,
             sources: { 'base-tiles': { type: 'raster', tiles: [chosenTile], tileSize: 256 } },
             layers: [{ id: 'base-layer', type: 'raster', source: 'base-tiles', minzoom: 0, maxzoom: 22 }]
         };
+
 
         let effectCSS = '';
         if(designSelections.effect === 'glow') effectCSS = '.card-panel { box-shadow: 0 0 30px var(--primary-glow) !important; border-color: var(--primary) !important; }';
@@ -471,11 +471,11 @@ const onMouseLeave = (e) => {
                 layoutCSS = `
                     .app-container { display: flex; height: 100vh; width: 100vw; }
                     .sidebar { width: 340px; background: var(--surface-solid); border-left: 1px solid var(--border); padding: 24px; display: flex; flex-direction: column; overflow-y: auto; z-index: 10; }
-                    #map { flex: 1; min-height: 0; }
+                    #map { flex: 1; }
                 `;
                 layoutHTML = `
                     <aside class="sidebar card-panel">
-                        <h2 style="color:var(--primary);margin-top:0;font-family:var(--font-h);">Ø§Ù„Ø·Ø¨Ù‚Ø§Øª Ø§Ù„Ù…ØªØ§Ø­Ø©</h2>
+                        <h2 style="color:var(--primary);margin-top:0;font-family:var(--font-h);">الطبقات المتاحة</h2>
                         <div class="layers-list">${layersHTML}</div>
                     </aside>
                     <div id="map"></div>
@@ -489,8 +489,8 @@ const onMouseLeave = (e) => {
                 `;
                 layoutHTML = `
                     <div class="side-content card-panel">
-                        <h1 style="color:var(--primary);font-size:3rem;margin-bottom:10px;font-family:var(--font-h);">Ù†Ø¸Ø±Ø© Ù…ÙƒØ§Ù†ÙŠØ©</h1>
-                        <p style="opacity:0.8;font-size:1.2rem;line-height:1.8;">Ø§Ø³ØªÙƒØ´Ù Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø¬ØºØ±Ø§ÙÙŠØ© Ø¨Ø¯Ù‚Ø© Ù…Ù† Ø®Ù„Ø§Ù„ Ù‡Ø°Ù‡ Ø§Ù„Ø®Ø±ÙŠØ·Ø© Ø§Ù„ØªÙØ§Ø¹Ù„ÙŠØ© Ø§Ù„Ù…ØµÙ…Ù…Ø© Ø®ØµÙŠØµØ§Ù‹ Ù„Ø§Ø­ØªÙŠØ§Ø¬Ø§ØªÙƒ.</p>
+                        <h1 style="color:var(--primary);font-size:3rem;margin-bottom:10px;font-family:var(--font-h);">نظرة مكانية</h1>
+                        <p style="opacity:0.8;font-size:1.2rem;line-height:1.8;">استكشف البيانات الجغرافية بدقة من خلال هذه الخريطة التفاعلية المصممة خصيصاً لاحتياجاتك.</p>
                         <div style="margin-top:40px;">${layersHTML}</div>
                     </div>
                     <div id="map"></div>
@@ -501,7 +501,7 @@ const onMouseLeave = (e) => {
                     .app-container { display: flex; flex-direction: column; height: 100vh; width: 100vw; background: var(--bg); }
                     .dash-header { height: 70px; background: var(--surface-solid); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; z-index: 10; }
                     .dash-body { flex: 1; display: flex; flex-direction: column; padding: 20px; gap: 20px; }
-                    #map { flex: 1; min-height: 0; border-radius: 16px; border: 1px solid var(--border); overflow: hidden; }
+                    #map { flex: 1; border-radius: 16px; border: 1px solid var(--border); overflow: hidden; }
                     .dash-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; height: 120px; }
                     .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
                     .stat-num { font-size: 2rem; font-weight: 800; color: var(--primary); font-family:var(--font-h); }
@@ -509,15 +509,15 @@ const onMouseLeave = (e) => {
                 `;
                 layoutHTML = `
                     <header class="dash-header card-panel">
-                        <h2 style="margin:0;color:var(--primary);font-family:var(--font-h);">Ù„ÙˆØ­Ø© Ø§Ù„Ù‚ÙŠØ§Ø¯Ø© Ø§Ù„Ù…ÙƒØ§Ù†ÙŠØ©</h2>
+                        <h2 style="margin:0;color:var(--primary);font-family:var(--font-h);">لوحة القيادة المكانية</h2>
                     </header>
                     <div class="dash-body">
                         <div id="map"></div>
                         <div class="dash-stats">
-                            <div class="stat-card card-panel"><div class="stat-num">${exportLayers.length}</div><div class="stat-label">Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ø·Ø¨Ù‚Ø§Øª</div></div>
-                            <div class="stat-card card-panel"><div class="stat-num">${exportLayers.reduce((sum, l) => sum + (l.data?.features?.length || 0), 0)}</div><div class="stat-label">Ø§Ù„Ù…Ø¹Ø§Ù„Ù… Ø§Ù„Ø¬ØºØ±Ø§ÙÙŠØ©</div></div>
-                            <div class="stat-card card-panel"><div class="stat-num">100%</div><div class="stat-label">Ø¯Ù‚Ø© Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª</div></div>
-                            <div class="stat-card card-panel"><div class="stat-num">Ù†Ø´Ø·</div><div class="stat-label">Ø­Ø§Ù„Ø© Ø§Ù„Ù†Ø¸Ø§Ù…</div></div>
+                            <div class="stat-card card-panel"><div class="stat-num">${exportLayers.length}</div><div class="stat-label">إجمالي الطبقات</div></div>
+                            <div class="stat-card card-panel"><div class="stat-num">${exportLayers.reduce((sum, l) => sum + (l.data?.features?.length || 0), 0)}</div><div class="stat-label">المعالم الجغرافية</div></div>
+                            <div class="stat-card card-panel"><div class="stat-num">100%</div><div class="stat-label">دقة البيانات</div></div>
+                            <div class="stat-card card-panel"><div class="stat-num">نشط</div><div class="stat-label">حالة النظام</div></div>
                         </div>
                     </div>
                 `;
@@ -527,12 +527,12 @@ const onMouseLeave = (e) => {
                     .app-container { display: flex; height: 100vh; width: 100vw; background: var(--bg); justify-content: center; align-items: center; padding: 40px; }
                     .modal-wrapper { width: 100%; max-width: 1200px; height: 80vh; background: var(--surface-solid); border-radius: 24px; border: 1px solid var(--border); overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 30px 80px rgba(0,0,0,0.6); }
                     .modal-header { padding: 20px 30px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--surface); }
-                    #map { flex: 1; min-height: 0; }
+                    #map { flex: 1; }
                 `;
                 layoutHTML = `
                     <div class="modal-wrapper card-panel">
                         <div class="modal-header">
-                            <h2 style="margin:0;color:var(--primary);font-family:var(--font-h);">Ø¹Ø§Ø±Ø¶ Ø§Ù„Ø®Ø±ÙŠØ·Ø©</h2>
+                            <h2 style="margin:0;color:var(--primary);font-family:var(--font-h);">عارض الخريطة</h2>
                             <div style="display:flex;gap:10px;">${exportLayers.slice(0,3).map(l => `<span style="background:var(--bg);padding:5px 12px;border-radius:20px;font-size:0.8rem;border:1px solid ${l.color}">${l.name}</span>`).join('')}</div>
                         </div>
                         <div id="map"></div>
@@ -542,7 +542,7 @@ const onMouseLeave = (e) => {
             case 'floating':
                 layoutCSS = `
                     .app-container { display: flex; height: 100vh; width: 100vw; }
-                    #map { flex: 1; min-height: 0; }
+                    #map { flex: 1; }
                     .f-card { position: absolute; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; backdrop-filter: blur(15px); padding: 24px; z-index: 10; box-shadow: 0 15px 35px rgba(0,0,0,0.3); }
                     .f-top-right { top: 30px; right: 30px; width: 340px; }
                     .f-bottom-left { bottom: 40px; left: 30px; width: 400px; }
@@ -550,25 +550,25 @@ const onMouseLeave = (e) => {
                 layoutHTML = `
                     <div id="map"></div>
                     <div class="f-card f-top-right card-panel">
-                        <h2 style="margin-top:0;color:var(--primary);font-family:var(--font-h);">Ø§Ù„Ø·Ø¨Ù‚Ø§Øª Ø§Ù„Ù†Ø´Ø·Ø©</h2>
+                        <h2 style="margin-top:0;color:var(--primary);font-family:var(--font-h);">الطبقات النشطة</h2>
                         <div class="layers-list">${layersHTML}</div>
                     </div>
                     <div class="f-card f-bottom-left card-panel">
-                        <h3 style="margin-top:0;font-family:var(--font-h);">Ø¥Ø­ØµØ§Ø¦ÙŠØ§Øª Ø§Ù„Ø®Ø±ÙŠØ·Ø©</h3>
-                        <p style="opacity:0.8;font-size:1rem;line-height:1.6;">ØªÙ… ØªØ­Ù…ÙŠÙ„ <b>${exportLayers.length}</b> Ø·Ø¨Ù‚Ø§Øª Ø¨Ù†Ø¬Ø§Ø­ØŒ ØªØ­ØªÙˆÙŠ Ø¹Ù„Ù‰ <b>${exportLayers.reduce((sum, l) => sum + (l.data?.features?.length || 0), 0)}</b> Ù…Ø¹Ù„Ù… Ø¬ØºØ±Ø§ÙÙŠ ØªÙØ§Ø¹Ù„ÙŠ.</p>
-                        <button class="${designSelections.component || 'primary'}-btn" style="width:100%;padding:14px;background:var(--primary);color:#000;border:none;border-radius:10px;font-weight:bold;font-size:1rem;cursor:pointer;margin-top:16px;">Ø¹Ø±Ø¶ Ø§Ù„ØªÙØ§ØµÙŠÙ„</button>
+                        <h3 style="margin-top:0;font-family:var(--font-h);">إحصائيات الخريطة</h3>
+                        <p style="opacity:0.8;font-size:1rem;line-height:1.6;">تم تحميل <b>${exportLayers.length}</b> طبقات بنجاح، تحتوي على <b>${exportLayers.reduce((sum, l) => sum + (l.data?.features?.length || 0), 0)}</b> معلم جغرافي تفاعلي.</p>
+                        <button class="${designSelections.component || 'primary'}-btn" style="width:100%;padding:14px;background:var(--primary);color:#000;border:none;border-radius:10px;font-weight:bold;font-size:1rem;cursor:pointer;margin-top:16px;">عرض التفاصيل</button>
                     </div>
                 `;
                 break;
             default: // fullmap
                 layoutCSS = `
                     .app-container { display: flex; height: 100vh; width: 100vw; }
-                    #map { flex: 1; min-height: 0; }
+                    #map { flex: 1; }
                     .floating-panel { position: absolute; top: 24px; right: 24px; width: 320px; background: var(--surface); border-radius: 16px; border: 1px solid var(--border); padding: 24px; z-index: 10; backdrop-filter: blur(15px); }
                 `;
                 layoutHTML = `
                     <div class="floating-panel card-panel">
-                        <h2 style="color:var(--primary);margin-top:0;font-family:var(--font-h);">Ø§Ù„Ø·Ø¨Ù‚Ø§Øª</h2>
+                        <h2 style="color:var(--primary);margin-top:0;font-family:var(--font-h);">الطبقات</h2>
                         <div class="layers-list">${layersHTML}</div>
                     </div>
                     <div id="map"></div>
@@ -684,7 +684,7 @@ const onMouseLeave = (e) => {
                             if (!e.features.length) return;
                             let props = e.features[0].properties;
                             let html = '<div style="direction: rtl; text-align: right; max-height: 250px; overflow-y: auto; padding-right: 5px;">';
-                            html += '<h4 style="margin: 0 0 12px 0; color: var(--primary); font-family: var(--font-h); font-size: 1.2rem;">ØªÙØ§ØµÙŠÙ„ Ø§Ù„Ù…Ø¹Ù„Ù…</h4>';
+                            html += '<h4 style="margin: 0 0 12px 0; color: var(--primary); font-family: var(--font-h); font-size: 1.2rem;">تفاصيل المعلم</h4>';
                             for (let key in props) {
                                 html += '<div style="margin-bottom: 8px; font-size: 0.95rem; border-bottom: 1px dashed var(--border); padding-bottom: 4px;"><strong>' + key + ':</strong> <span style="color: var(--primary);">' + props[key] + '</span></div>';
                             }
@@ -756,7 +756,7 @@ const onMouseLeave = (e) => {
                         </div>
                         <div className="brand-text">
                             <strong>PalNovaa</strong>
-                            <small>LAB Â· v3.1 (Latest)</small>
+                            <small>LAB · v3.1 (Latest)</small>
                         </div>
                     </div>
 
@@ -765,34 +765,34 @@ const onMouseLeave = (e) => {
                     <div className="topbar-spacer"></div>
 
                     <div className="topbar-actions">
-                        <button className="top-btn" title="Ø¥ØºÙ„Ø§Ù‚ Ø§Ù„Ù…Ø®ØªØ¨Ø±" onClick={onClose}>
+                        <button className="top-btn" title="إغلاق المختبر" onClick={onClose}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                            <span>Ø®Ø±ÙˆØ¬</span>
+                            <span>خروج</span>
                         </button>
-                        <button className="top-btn primary" title="ØªØ´ØºÙŠÙ„ Ø§Ù„ØªØ­Ù„ÙŠÙ„">
+                        <button className="top-btn primary" title="تشغيل التحليل">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                            <span>ØªØ´ØºÙŠÙ„ Ø§Ù„ØªØ­Ù„ÙŠÙ„</span>
+                            <span>تشغيل التحليل</span>
                         </button>
                     </div>
                 </header>
 
                 <aside className="sidebar">
-                    <button className={`tool ${drawingMode === null ? 'active' : ''}`} data-tip="Ù…Ø¤Ø´Ø± Ø§Ù„ØªØ­Ø¯ÙŠØ¯" onClick={() => handleToolClick(null)}>
+                    <button className={`tool ${drawingMode === null ? 'active' : ''}`} data-tip="مؤشر التحديد" onClick={() => handleToolClick(null)}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 3l3.057-3 11.943 11.943-4.057.057L13 16.943l-3 3L5 3z"/></svg>
                     </button>
-                    <button className={`tool ${drawingMode === 'point' ? 'active' : ''}`} data-tip="Ø±Ø³Ù… Ù†Ù‚Ø·Ø©" onClick={() => handleToolClick('point')}>
+                    <button className={`tool ${drawingMode === 'point' ? 'active' : ''}`} data-tip="رسم نقطة" onClick={() => handleToolClick('point')}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/></svg>
                     </button>
-                    <button className={`tool ${drawingMode === 'line' ? 'active' : ''}`} data-tip="Ø±Ø³Ù… Ø®Ø· (ÙƒÙ„ÙŠÙƒ ÙŠÙ…ÙŠÙ† Ù„Ù„Ø¥Ù†Ù‡Ø§Ø¡)" onClick={() => handleToolClick('line')}>
+                    <button className={`tool ${drawingMode === 'line' ? 'active' : ''}`} data-tip="رسم خط (كليك يمين للإنهاء)" onClick={() => handleToolClick('line')}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="19" x2="19" y2="5"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/></svg>
                     </button>
-                    <button className={`tool ${drawingMode === 'polygon' ? 'active' : ''}`} data-tip="Ø±Ø³Ù… Ù…Ø¶Ù„Ø¹ (ÙƒÙ„ÙŠÙƒ ÙŠÙ…ÙŠÙ† Ù„Ù„Ø¥Ù†Ù‡Ø§Ø¡)" onClick={() => handleToolClick('polygon')}>
+                    <button className={`tool ${drawingMode === 'polygon' ? 'active' : ''}`} data-tip="رسم مضلع (كليك يمين للإنهاء)" onClick={() => handleToolClick('polygon')}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
                     </button>
 
                     <div className="sidebar-divider"></div>
 
-                    <button className={`tool ${drawingMode === 'measure' ? 'active' : ''}`} data-tip="Ù‚ÙŠØ§Ø³ Ø§Ù„Ù…Ø³Ø§ÙØ© (ÙƒÙ„ÙŠÙƒ ÙŠÙ…ÙŠÙ† Ù„Ù„Ø¥Ù†Ù‡Ø§Ø¡)" onClick={() => handleToolClick('measure')}>
+                    <button className={`tool ${drawingMode === 'measure' ? 'active' : ''}`} data-tip="قياس المسافة (كليك يمين للإنهاء)" onClick={() => handleToolClick('measure')}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.3 8.7L8.7 21.3a2.4 2.4 0 0 1-3.4 0L2.7 18.7a2.4 2.4 0 0 1 0-3.4L15.3 2.7a2.4 2.4 0 0 1 3.4 0l2.6 2.6a2.4 2.4 0 0 1 0 3.4z"/><path d="M7 17l-3-3M11 13l-3-3M15 9l-3-3"/></svg>
                     </button>
                     
@@ -800,7 +800,7 @@ const onMouseLeave = (e) => {
                         <button 
                             key="btn-design-studio-v4"
                             className="tool studio-trigger-btn" 
-                            data-tip="ØªØµØ¯ÙŠØ± Ø§Ù„Ø®Ø±ÙŠØ·Ø© ÙƒØªØµÙ…ÙŠÙ… ÙˆÙŠØ¨" 
+                            data-tip="تصدير الخريطة كتصميم ويب" 
                             onClick={launchDesignStudioFinal} 
                             style={{ 
                                 color: '#000', 
@@ -812,7 +812,7 @@ const onMouseLeave = (e) => {
                         >
                             <svg viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="3"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                         </button>
-                        <button className="tool" data-tip="Ø§Ù„Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª">
+                        <button className="tool" data-tip="الإعدادات">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                         </button>
                     </div>
@@ -905,11 +905,11 @@ const onMouseLeave = (e) => {
                                             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
                                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
                                             </svg>
-                                            ØªÙØ§ØµÙŠÙ„ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª
+                                            تفاصيل البيانات
                                         </h4>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.9rem' }}>
                                             {Object.keys(selectedFeatureInfo.properties).length === 0 ? (
-                                                <span style={{ color: 'rgba(255,255,255,0.5)' }}>Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¨ÙŠØ§Ù†Ø§Øª ÙˆØµÙÙŠØ©</span>
+                                                <span style={{ color: 'rgba(255,255,255,0.5)' }}>لا توجد بيانات وصفية</span>
                                             ) : (
                                                 Object.entries(selectedFeatureInfo.properties).map(([key, val]) => (
                                                     <div key={key} style={{ background: 'rgba(255,255,255,0.05)', padding: '6px 8px', borderRadius: '4px', wordBreak: 'break-word' }}>
@@ -953,13 +953,13 @@ const onMouseLeave = (e) => {
                         }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-                                Ø¬Ø¯ÙˆÙ„ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„ÙˆØµÙÙŠØ© (Attribute Table)
+                                جدول البيانات الوصفية (Attribute Table)
                                 <span style={{ background: 'rgba(6,214,242,0.2)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem', marginLeft: '10px' }}>
-                                    {activeTableLayer ? activeTableLayer.data.features?.length || 0 : 0} Ù…Ø¹Ù„Ù…
+                                    {activeTableLayer ? activeTableLayer.data.features?.length || 0 : 0} معلم
                                 </span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                <span style={{ fontSize: '0.85rem', opacity: 0.8, fontWeight: 'normal' }}>{showBottomTable ? 'Ø¥Ø®ÙØ§Ø¡' : 'Ø¥Ø¸Ù‡Ø§Ø±'}</span>
+                                <span style={{ fontSize: '0.85rem', opacity: 0.8, fontWeight: 'normal' }}>{showBottomTable ? 'إخفاء' : 'إظهار'}</span>
                                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: showBottomTable ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }}><polyline points="6 9 12 15 18 9"/></svg>
                             </div>
                         </div>
@@ -967,8 +967,8 @@ const onMouseLeave = (e) => {
                             {(!activeTableLayer || !activeTableLayer.data.features || activeTableLayer.data.features.length === 0) ? (
                                 <div style={{ padding: '40px', textAlign: 'center', color: 'rgba(255,255,255,0.4)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: '50px', height: '50px', marginBottom: '15px', opacity: '0.3' }}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-                                    <p style={{ fontSize: '1.1rem' }}>Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¨ÙŠØ§Ù†Ø§Øª ÙˆØµÙÙŠØ© Ù„Ø¹Ø±Ø¶Ù‡Ø§</p>
-                                    <p style={{ fontSize: '0.9rem', opacity: 0.7 }}>ÙŠØ±Ø¬Ù‰ Ø§Ø³ØªÙŠØ±Ø§Ø¯ Ù…Ù„Ù GeoJSON Ø«Ù… Ø§Ù„Ù†Ù‚Ø± Ø¹Ù„Ù‰ Ø²Ø± Ø¹Ø±Ø¶ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª</p>
+                                    <p style={{ fontSize: '1.1rem' }}>لا توجد بيانات وصفية لعرضها</p>
+                                    <p style={{ fontSize: '0.9rem', opacity: 0.7 }}>يرجى استيراد ملف GeoJSON ثم النقر على زر عرض البيانات</p>
                                 </div>
                             ) : (
                                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem', textAlign: 'right' }}>
@@ -1014,15 +1014,15 @@ const onMouseLeave = (e) => {
                     <div className="panel-tabs">
                         <button className={`panel-tab ${activeTab === 'layers' ? 'active' : ''}`} onClick={() => setActiveTab('layers')}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-                            Ø§Ù„Ø·Ø¨Ù‚Ø§Øª
+                            الطبقات
                         </button>
                         <button className={`panel-tab ${activeTab === 'analysis' ? 'active' : ''}`} onClick={() => setActiveTab('analysis')}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                            Ø§Ù„ØªØ­Ù„ÙŠÙ„
+                            التحليل
                         </button>
                         <button className={`panel-tab ${activeTab === 'inspector' ? 'active' : ''}`} onClick={() => setActiveTab('inspector')}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                            Ø§Ù„ØªÙØ§ØµÙŠÙ„
+                            التفاصيل
                         </button>
                     </div>
 
@@ -1031,7 +1031,7 @@ const onMouseLeave = (e) => {
                             <div className="tab-content">
                                 <div className="panel-section">
                                     <div className="panel-section-title">
-                                        <span>Ø§Ø³ØªÙŠØ±Ø§Ø¯ Ø¨ÙŠØ§Ù†Ø§Øª Ø£Ùˆ ØµÙˆØ±</span>
+                                        <span>استيراد بيانات أو صور</span>
                                     </div>
                                     <label className="upload-zone" style={{ display: 'block' }}>
                                         <input type="file" accept=".json,.geojson,image/*" onChange={handleFileUpload} style={{ display: 'none' }} />
@@ -1042,7 +1042,7 @@ const onMouseLeave = (e) => {
                                                 <line x1="12" y1="3" x2="12" y2="15"/>
                                             </svg>
                                         </div>
-                                        <h4 style={{ margin: '10px 0 5px 0' }}>Ø§Ø¶ØºØ· Ù„Ù„Ø§Ø®ØªÙŠØ§Ø± Ù…Ù† Ø¬Ù‡Ø§Ø²Ùƒ</h4>
+                                        <h4 style={{ margin: '10px 0 5px 0' }}>اضغط للاختيار من جهازك</h4>
                                         <div className="formats">
                                             <span className="format-pill">.geojson</span>
                                             <span className="format-pill">.json</span>
@@ -1054,8 +1054,8 @@ const onMouseLeave = (e) => {
                                 {geoLayers.length > 0 && (
                                     <div className="panel-section">
                                         <div className="panel-section-title">
-                                            <span>Ø§Ù„Ø·Ø¨Ù‚Ø§Øª Ø§Ù„Ù†Ø´Ø·Ø©</span>
-                                            <button onClick={() => setGeoLayers([])} style={{color: '#EF4444'}}>Ø¥Ø²Ø§Ù„Ø© Ø§Ù„ÙƒÙ„</button>
+                                            <span>الطبقات النشطة</span>
+                                            <button onClick={() => setGeoLayers([])} style={{color: '#EF4444'}}>إزالة الكل</button>
                                         </div>
                                         {geoLayers.map(layer => (
                                             <div key={layer.id} className="layer-item active" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}>
@@ -1063,15 +1063,15 @@ const onMouseLeave = (e) => {
                                                     <div className="layer-color" style={{ background: layer.color, minWidth: '12px', width: '12px', height: '12px', borderRadius: '50%' }}></div>
                                                     <div className="layer-info" style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                         <h5 style={{ margin: 0, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>{layer.name}</h5>
-                                                        <small style={{ color: 'rgba(255,255,255,0.5)' }}>{layer.data.features?.length || 0} Ù…ÙŠØ²Ø©</small>
-                                                        {layer.measurement && <small style={{ color: '#06D6F2', display: 'block', marginTop: '2px', fontWeight: 'bold' }}>Ø§Ù„Ù‚ÙŠØ§Ø³: {layer.measurement}</small>}
+                                                        <small style={{ color: 'rgba(255,255,255,0.5)' }}>{layer.data.features?.length || 0} ميزة</small>
+                                                        {layer.measurement && <small style={{ color: '#06D6F2', display: 'block', marginTop: '2px', fontWeight: 'bold' }}>القياس: {layer.measurement}</small>}
                                                     </div>
                                                 </div>
                                                 <div style={{ display: 'flex', gap: '5px' }}>
-                                                    <button onClick={() => { setActiveTableLayerId(layer.id); setShowBottomTable(true); }} style={{ background: 'transparent', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer', padding: '4px' }} title="Ø¹Ø±Ø¶ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„ÙˆØµÙÙŠØ©">
+                                                    <button onClick={() => { setActiveTableLayerId(layer.id); setShowBottomTable(true); }} style={{ background: 'transparent', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer', padding: '4px' }} title="عرض البيانات الوصفية">
                                                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
                                                     </button>
-                                                    <button onClick={() => { setGeoLayers(prev => prev.filter(l => l.id !== layer.id)); if (activeTableLayerId === layer.id) { setActiveTableLayerId(null); setShowBottomTable(false); } }} style={{ background: 'transparent', border: 'none', color: '#EF4444', cursor: 'pointer', padding: '4px' }} title="Ø­Ø°Ù Ø§Ù„Ø·Ø¨Ù‚Ø©">
+                                                    <button onClick={() => { setGeoLayers(prev => prev.filter(l => l.id !== layer.id)); if (activeTableLayerId === layer.id) { setActiveTableLayerId(null); setShowBottomTable(false); } }} style={{ background: 'transparent', border: 'none', color: '#EF4444', cursor: 'pointer', padding: '4px' }} title="حذف الطبقة">
                                                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                                                     </button>
                                                 </div>
@@ -1086,23 +1086,23 @@ const onMouseLeave = (e) => {
                             <div className="tab-content">
                                 <div className="panel-section">
                                     <div className="panel-section-title">
-                                        <span>Ø¹Ù…Ù„ÙŠØ§Øª Ø§Ù„ØªØ­Ù„ÙŠÙ„ Ø§Ù„Ù…ØªØ§Ø­Ø© Ù‚Ø±ÙŠØ¨Ø§Ù‹</span>
+                                        <span>عمليات التحليل المتاحة قريباً</span>
                                     </div>
                                     <div className="analysis-grid">
                                         <div className="analysis-card">
                                             <div className="analysis-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7" strokeDasharray="2 2"/></svg></div>
                                             <h6>Buffer</h6>
-                                            <p>Ù†Ø·Ø§Ù‚ Ø§Ø­ØªÙ…Ø§Ù„ÙŠ</p>
+                                            <p>نطاق احتمالي</p>
                                         </div>
                                         <div className="analysis-card">
                                             <div className="analysis-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/></svg></div>
                                             <h6>Intersection</h6>
-                                            <p>ØªÙ‚Ø§Ø·Ø¹ Ø§Ù„Ø·Ø¨Ù‚Ø§Øª</p>
+                                            <p>تقاطع الطبقات</p>
                                         </div>
                                         <div className="analysis-card">
                                             <div className="analysis-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12c0 5.5-4.5 10-10 10S2 17.5 2 12 6.5 2 12 2"/><path d="M22 12c0-5.5-4.5-10-10-10v10h10z"/></svg></div>
                                             <h6>Heatmap</h6>
-                                            <p>Ø®Ø±ÙŠØ·Ø© Ø­Ø±Ø§Ø±ÙŠØ©</p>
+                                            <p>خريطة حرارية</p>
                                         </div>
                                     </div>
                                 </div>
@@ -1114,12 +1114,12 @@ const onMouseLeave = (e) => {
                                 {selectedFeatureInfo ? (
                                     <div className="panel-section">
                                         <div className="panel-section-title">
-                                            <span style={{ color: 'var(--accent-cyan)' }}>ØªÙØ§ØµÙŠÙ„ Ø§Ù„Ù…Ø¹Ù„Ù… Ø§Ù„Ù…Ø­Ø¯Ø¯</span>
-                                            <button onClick={() => setSelectedFeatureInfo(null)} style={{ color: '#EF4444' }}>Ø¥ØºÙ„Ø§Ù‚</button>
+                                            <span style={{ color: 'var(--accent-cyan)' }}>تفاصيل المعلم المحدد</span>
+                                            <button onClick={() => setSelectedFeatureInfo(null)} style={{ color: '#EF4444' }}>إغلاق</button>
                                         </div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.9rem' }}>
                                             {Object.keys(selectedFeatureInfo.properties).length === 0 ? (
-                                                <span style={{ color: 'rgba(255,255,255,0.5)' }}>Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¨ÙŠØ§Ù†Ø§Øª ÙˆØµÙÙŠØ©</span>
+                                                <span style={{ color: 'rgba(255,255,255,0.5)' }}>لا توجد بيانات وصفية</span>
                                             ) : (
                                                 Object.entries(selectedFeatureInfo.properties).map(([key, val]) => (
                                                     <div key={key} style={{ background: 'rgba(255,255,255,0.05)', padding: '6px 8px', borderRadius: '4px', wordBreak: 'break-word', borderRight: '2px solid var(--accent-cyan)' }}>
@@ -1136,18 +1136,18 @@ const onMouseLeave = (e) => {
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: '40px', height: '40px', marginBottom: '10px', opacity: '0.5' }}>
                                                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                                             </svg>
-                                            <p>Ø§Ø¶ØºØ· Ø¹Ù„Ù‰ Ø£ÙŠ Ù†Ù‚Ø·Ø© Ø£Ùˆ Ø®Ø· Ø£Ùˆ Ù…Ø¶Ù„Ø¹ Ø¹Ù„Ù‰ Ø§Ù„Ø®Ø±ÙŠØ·Ø© Ù„Ø¹Ø±Ø¶ ØªÙØ§ØµÙŠÙ„Ù‡ Ù‡Ù†Ø§.</p>
+                                            <p>اضغط على أي نقطة أو خط أو مضلع على الخريطة لعرض تفاصيله هنا.</p>
                                         </div>
                                     </div>
                                 )}
 
                                 <div className="panel-section">
                                     <div className="panel-section-title">
-                                        <span>Ù…Ø¹Ù„ÙˆÙ…Ø§Øª Ø§Ù„Ø®Ø±ÙŠØ·Ø©</span>
+                                        <span>معلومات الخريطة</span>
                                     </div>
-                                    <div className="info-row"><span className="label">Ø®Ø· Ø§Ù„Ø¹Ø±Ø¶</span><span className="value mono">{mapState.latitude.toFixed(4)}</span></div>
-                                    <div className="info-row"><span className="label">Ø®Ø· Ø§Ù„Ø·ÙˆÙ„</span><span className="value mono">{mapState.longitude.toFixed(4)}</span></div>
-                                    <div className="info-row"><span className="label">Ù…Ø³ØªÙˆÙ‰ Ø§Ù„ØªÙƒØ¨ÙŠØ±</span><span className="value mono">{mapState.zoom.toFixed(1)}</span></div>
+                                    <div className="info-row"><span className="label">خط العرض</span><span className="value mono">{mapState.latitude.toFixed(4)}</span></div>
+                                    <div className="info-row"><span className="label">خط الطول</span><span className="value mono">{mapState.longitude.toFixed(4)}</span></div>
+                                    <div className="info-row"><span className="label">مستوى التكبير</span><span className="value mono">{mapState.zoom.toFixed(1)}</span></div>
                                 </div>
                             </div>
                         )}
@@ -1157,7 +1157,7 @@ const onMouseLeave = (e) => {
                 <footer className="statusbar">
                     <div className="status-item">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/></svg>
-                        <span>{mapState.latitude.toFixed(4)}Â°N, {mapState.longitude.toFixed(4)}Â°E</span>
+                        <span>{mapState.latitude.toFixed(4)}°N, {mapState.longitude.toFixed(4)}°E</span>
                     </div>
                     <div className="status-divider"></div>
                     <div className="status-item">
@@ -1187,7 +1187,7 @@ const onMouseLeave = (e) => {
                     <div className="ds-header-actions" style={{ display: 'flex', gap: '12px' }}>
                         <button className="ds-btn primary" onClick={performActualExport}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width:'18px',height:'18px'}}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                            Ø­ÙØ¸ ÙˆØªØµØ¯ÙŠØ± Ø§Ù„Ù…Ø´Ø±ÙˆØ¹
+                            حفظ وتصدير المشروع
                         </button>
                         <button className="ds-close" onClick={() => setIsDesignStudioOpen(false)}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width:'20px',height:'20px'}}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -1197,16 +1197,16 @@ const onMouseLeave = (e) => {
 
                 <div className="ds-body">
                     <aside className="ds-categories">
-                        <div className="ds-cat-title">Ø§Ù„Ø£Ù‚Ø³Ø§Ù… Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠØ©</div>
+                        <div className="ds-cat-title">الأقسام الرئيسية</div>
                         {[
-                            { id: 'layouts', label: 'Ø§Ù„ØªØ®Ø·ÙŠØ·Ø§Øª', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>, count: 8 },
-                            { id: 'palettes', label: 'Ù„ÙˆØ­Ø§Øª Ø§Ù„Ø£Ù„ÙˆØ§Ù†', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>, count: 8 },
-                            { id: 'typography', label: 'Ø§Ù„Ø®Ø·ÙˆØ·', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>, count: 6 },
-                            { id: 'components', label: 'Ø§Ù„Ù…ÙƒÙˆÙ†Ø§Øª', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>, count: 8 },
-                            { id: 'basemaps', label: 'Ø§Ù„Ø®Ø±Ø§Ø¦Ø·', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/></svg>, count: 6 },
-                            { id: 'markers', label: 'Ø§Ù„Ù…Ø¹Ø§Ù„Ù…', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>, count: 6 },
-                            { id: 'icons', label: 'Ø§Ù„Ø£ÙŠÙ‚ÙˆÙ†Ø§Øª', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>, count: 24 },
-                            { id: 'effects', label: 'Ø§Ù„ØªØ£Ø«ÙŠØ±Ø§Øª', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>, count: 9 }
+                            { id: 'layouts', label: 'التخطيطات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>, count: 8 },
+                            { id: 'palettes', label: 'لوحات الألوان', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>, count: 8 },
+                            { id: 'typography', label: 'الخطوط', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>, count: 6 },
+                            { id: 'components', label: 'المكونات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>, count: 8 },
+                            { id: 'basemaps', label: 'الخرائط', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/></svg>, count: 6 },
+                            { id: 'markers', label: 'المعالم', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>, count: 6 },
+                            { id: 'icons', label: 'الأيقونات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>, count: 24 },
+                            { id: 'effects', label: 'التأثيرات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>, count: 9 }
                         ].map(cat => (
                             <div key={cat.id} className={`ds-cat ${activeDsCategory === cat.id ? 'active' : ''}`} onClick={() => setActiveDsCategory(cat.id)}>
                                 {cat.icon}
@@ -1220,19 +1220,19 @@ const onMouseLeave = (e) => {
                         {activeDsCategory === 'layouts' && (
                             <div className="ds-section active">
                                 <div className="ds-section-head">
-                                    <h2>ØªØ®Ø·ÙŠØ·Ø§Øª Ø§Ù„ØµÙØ­Ø© <span className="ds-tag">LAYOUTS</span></h2>
-                                    <p>Ø§Ø®ØªØ± Ù‡ÙŠÙƒÙ„ Ø§Ù„ØµÙØ­Ø© Ø§Ù„Ø£Ù†Ø³Ø¨ Ù„Ø¹Ø±Ø¶ Ø§Ù„Ø®Ø±ÙŠØ·Ø© ÙÙŠ Ù…ÙˆÙ‚Ø¹Ùƒ</p>
+                                    <h2>تخطيطات الصفحة <span className="ds-tag">LAYOUTS</span></h2>
+                                    <p>اختر هيكل الصفحة الأنسب لعرض الخريطة في موقعك</p>
                                 </div>
                                 <div className="ds-grid">
                                     {[
-                                        { id: 'fullmap', title: 'Ø®Ø±ÙŠØ·Ø© ÙƒØ§Ù…Ù„Ø©', sub: 'Ø§Ù„Ø®Ø±ÙŠØ·Ø© ØªÙ…Ù„Ø£ Ø§Ù„Ø´Ø§Ø´Ø© + Ù„ÙˆØ­Ø© Ø¹Ø§Ø¦Ù…Ø©', type: 'lm-fullmap' },
-                                        { id: 'sidebar', title: 'Ø®Ø±ÙŠØ·Ø© + Ù„ÙˆØ­Ø© Ø¬Ø§Ù†Ø¨ÙŠØ©', sub: 'Ù„ÙˆØ­Ø© Ù…Ø¹Ù„ÙˆÙ…Ø§Øª + Ø®Ø±ÙŠØ·Ø©', type: 'lm-sidebar' },
-                                        { id: 'three', title: 'Ø«Ù„Ø§Ø« Ù„ÙˆØ­Ø§Øª', sub: 'Ø£Ø¯ÙˆØ§Øª + Ø®Ø±ÙŠØ·Ø© + ØªÙØ§ØµÙŠÙ„', type: 'lm-three' },
-                                        { id: 'dashboard', title: 'Ù„ÙˆØ­Ø© Ù‚ÙŠØ§Ø¯Ø©', sub: 'Ø±Ø£Ø³ + Ø®Ø±ÙŠØ·Ø© + Ø¥Ø­ØµØ§Ø¦ÙŠØ§Øª', type: 'lm-dashboard' },
-                                        { id: 'split', title: 'ØªÙ‚Ø³ÙŠÙ… 50/50', sub: 'Ø®Ø±ÙŠØ·Ø© + Ù…Ø­ØªÙˆÙ‰ Ù…ØªÙˆØ§Ø²ÙŠ', type: 'lm-split' },
-                                        { id: 'stacked', title: 'Ø®Ø±ÙŠØ·Ø© + Ù‚Ø§Ø¦Ù…Ø©', sub: 'Ø§Ù„Ø®Ø±ÙŠØ·Ø© ÙÙˆÙ‚ ÙˆÙ‚Ø§Ø¦Ù…Ø© Ø§Ù„Ù†ØªØ§Ø¦Ø¬ ØªØ­Øª', type: 'lm-stacked' },
-                                        { id: 'floating', title: 'Ø¨Ø·Ø§Ù‚Ø§Øª Ø¹Ø§Ø¦Ù…Ø©', sub: 'Ø®Ø±ÙŠØ·Ø© + ÙˆØ¯Ø¬ØªØ³ Ø¹Ù„Ù‰ Ø§Ù„Ø³Ø·Ø­', type: 'lm-floating' },
-                                        { id: 'modal', title: 'Ø®Ø±ÙŠØ·Ø© ÙÙŠ Ù…ÙˆØ¯Ø§Ù„', sub: 'Ù†Ø§ÙØ°Ø© Ø®Ø±ÙŠØ·Ø© ÙˆØ³Ø· Ø§Ù„ØµÙØ­Ø©', type: 'lm-modal' }
+                                        { id: 'fullmap', title: 'خريطة كاملة', sub: 'الخريطة تملأ الشاشة + لوحة عائمة', type: 'lm-fullmap' },
+                                        { id: 'sidebar', title: 'خريطة + لوحة جانبية', sub: 'لوحة معلومات + خريطة', type: 'lm-sidebar' },
+                                        { id: 'three', title: 'ثلاث لوحات', sub: 'أدوات + خريطة + تفاصيل', type: 'lm-three' },
+                                        { id: 'dashboard', title: 'لوحة قيادة', sub: 'رأس + خريطة + إحصائيات', type: 'lm-dashboard' },
+                                        { id: 'split', title: 'تقسيم 50/50', sub: 'خريطة + محتوى متوازي', type: 'lm-split' },
+                                        { id: 'stacked', title: 'خريطة + قائمة', sub: 'الخريطة فوق وقائمة النتائج تحت', type: 'lm-stacked' },
+                                        { id: 'floating', title: 'بطاقات عائمة', sub: 'خريطة + ودجتس على السطح', type: 'lm-floating' },
+                                        { id: 'modal', title: 'خريطة في مودال', sub: 'نافذة خريطة وسط الصفحة', type: 'lm-modal' }
                                     ].map(l => (
                                         <div key={l.id} className={`ds-pick ${designSelections.layout === l.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, layout: l.id}))}>
                                             <div className={`layout-mockup ${l.type}`}>
@@ -1268,19 +1268,19 @@ const onMouseLeave = (e) => {
                         {activeDsCategory === 'palettes' && (
                             <div className="ds-section active">
                                 <div className="ds-section-head">
-                                    <h2>Ù„ÙˆØ­Ø§Øª Ø§Ù„Ø£Ù„ÙˆØ§Ù† <span className="ds-tag">PALETTES</span></h2>
-                                    <p>Ù…Ø¬Ù…ÙˆØ¹Ø§Øª Ø£Ù„ÙˆØ§Ù† Ø§Ø­ØªØ±Ø§ÙÙŠØ© Ù…Ø¯Ø±ÙˆØ³Ø© Ù„ØªØ·Ø¨ÙŠÙ‚Ø§Øª Ø§Ù„Ø®Ø±Ø§Ø¦Ø·</p>
+                                    <h2>لوحات الألوان <span className="ds-tag">PALETTES</span></h2>
+                                    <p>مجموعات ألوان احترافية مدروسة لتطبيقات الخرائط</p>
                                 </div>
                                 <div className="ds-grid">
                                     {[
-                                        { id: 'classic', title: 'PalNovaa Classic', sub: 'Ø¨Ø±ØªÙ‚Ø§Ù„ÙŠ Ø¯Ø§ÙØ¦ + ÙƒØ­Ù„ÙŠ Ø¹Ù…ÙŠÙ‚', colors: ['#F5A623', '#D88B0E', '#0F1E33', '#142B47', '#FFFFFF'] },
-                                        { id: 'heritage', title: 'Heritage', sub: 'Ø£Ù„ÙˆØ§Ù† ÙÙ„Ø³Ø·ÙŠÙ†ÙŠØ© ØªØ±Ø§Ø«ÙŠØ©', colors: ['#CE1126', '#000000', '#FFFFFF', '#007A3D', '#F5A623'] },
-                                        { id: 'ocean', title: 'Ocean Deep', sub: 'Ø¨Ø­Ø± Ù‡Ø§Ø¯Ø¦ ÙˆÙ…Ø­ÙŠØ· Ù„Ø§Ù†Ù‡Ø§Ø¦ÙŠ', colors: ['#06D6F2', '#1A2980', '#0A1628', '#26D0CE', '#F0F8FF'] },
-                                        { id: 'sunset', title: 'Sunset', sub: 'ØºØ±ÙˆØ¨ Ø§Ù„ØµØ­Ø±Ø§Ø¡ Ø§Ù„Ø¯Ø§ÙØ¦', colors: ['#FF6B6B', '#F5A623', '#8B5CF6', '#FCD34D', '#1A0E1F'] },
-                                        { id: 'forest', title: 'Forest', sub: 'Ø·Ø¨ÙŠØ¹Ø© Ø®Ø¶Ø±Ø§Ø¡ Ù…Ù†Ø¹Ø´Ø©', colors: ['#10D9A0', '#059669', '#064E3B', '#A7F3D0', '#F5F4ED'] },
-                                        { id: 'earth', title: 'Earth Tones', sub: 'Ø£Ù„ÙˆØ§Ù† ØªØ±Ø§Ø¨ÙŠØ© ÙƒÙ„Ø§Ø³ÙŠÙƒÙŠØ©', colors: ['#D4C49B', '#A0826D', '#5C4033', '#F5F4ED', '#2C1810'] },
-                                        { id: 'neon', title: 'Cyber Neon', sub: 'Ù…Ø³ØªÙ‚Ø¨Ù„ÙŠ ÙˆØ¹ØµØ±ÙŠ', colors: ['#06D6F2', '#8B5CF6', '#EC4899', '#050B16', '#F5A623'] },
-                                        { id: 'minimal', title: 'Minimal', sub: 'Ø¨Ø³Ø§Ø·Ø© ÙˆØ£Ù†Ø§Ù‚Ø©', colors: ['#FFFFFF', '#F5F4ED', '#E5E5E5', '#1A1A2E', '#F5A623'] }
+                                        { id: 'classic', title: 'PalNovaa Classic', sub: 'برتقالي دافئ + كحلي عميق', colors: ['#F5A623', '#D88B0E', '#0F1E33', '#142B47', '#FFFFFF'] },
+                                        { id: 'heritage', title: 'Heritage', sub: 'ألوان فلسطينية تراثية', colors: ['#CE1126', '#000000', '#FFFFFF', '#007A3D', '#F5A623'] },
+                                        { id: 'ocean', title: 'Ocean Deep', sub: 'بحر هادئ ومحيط لانهائي', colors: ['#06D6F2', '#1A2980', '#0A1628', '#26D0CE', '#F0F8FF'] },
+                                        { id: 'sunset', title: 'Sunset', sub: 'غروب الصحراء الدافئ', colors: ['#FF6B6B', '#F5A623', '#8B5CF6', '#FCD34D', '#1A0E1F'] },
+                                        { id: 'forest', title: 'Forest', sub: 'طبيعة خضراء منعشة', colors: ['#10D9A0', '#059669', '#064E3B', '#A7F3D0', '#F5F4ED'] },
+                                        { id: 'earth', title: 'Earth Tones', sub: 'ألوان ترابية كلاسيكية', colors: ['#D4C49B', '#A0826D', '#5C4033', '#F5F4ED', '#2C1810'] },
+                                        { id: 'neon', title: 'Cyber Neon', sub: 'مستقبلي وعصري', colors: ['#06D6F2', '#8B5CF6', '#EC4899', '#050B16', '#F5A623'] },
+                                        { id: 'minimal', title: 'Minimal', sub: 'بساطة وأناقة', colors: ['#FFFFFF', '#F5F4ED', '#E5E5E5', '#1A1A2E', '#F5A623'] }
                                     ].map(p => (
                                         <div key={p.id} className={`ds-pick ${designSelections.palette === p.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, palette: p.id}))}>
                                             <div className="palette-strip">
@@ -1297,22 +1297,22 @@ const onMouseLeave = (e) => {
                         {activeDsCategory === 'typography' && (
                             <div className="ds-section active">
                                 <div className="ds-section-head">
-                                    <h2>Ø£Ø²ÙˆØ§Ø¬ Ø§Ù„Ø®Ø·ÙˆØ· <span className="ds-tag">TYPOGRAPHY</span></h2>
-                                    <p>Ø£Ø²ÙˆØ§Ø¬ Ø®Ø·ÙˆØ· Ù…ØªÙ†Ø§ØºÙ…Ø© Ù„Ù„Ø¹Ù†Ø§ÙˆÙŠÙ† ÙˆØ§Ù„Ù†ØµÙˆØµ Ø§Ù„Ø¹Ø±Ø¨ÙŠØ© ÙˆØ§Ù„Ø¥Ù†Ø¬Ù„ÙŠØ²ÙŠØ©</p>
+                                    <h2>أزواج الخطوط <span className="ds-tag">TYPOGRAPHY</span></h2>
+                                    <p>أزواج خطوط متناغمة للعناوين والنصوص العربية والإنجليزية</p>
                                 </div>
                                 <div className="ds-grid">
                                     {[
-                                        { id: 'cairo_tajawal', title: 'Cairo + Tajawal', sub: 'Ø¹Ø±Ø¨ÙŠ Ø­Ø¯ÙŠØ« Â· Ù…ÙˆØµÙ‰ Ø¨Ù‡', fontH: "'Cairo', sans-serif", fontB: "'Tajawal', sans-serif" },
-                                        { id: 'tajawal_inter', title: 'Tajawal + Inter', sub: 'Ù…Ø®ØªÙ„Ø· Â· Ø£Ù†ÙŠÙ‚', fontH: "'Tajawal', sans-serif", fontB: "system-ui" },
-                                        { id: 'cairo_mono', title: 'Cairo + JetBrains Mono', sub: 'ØªÙ‚Ù†ÙŠ Â· Ù„Ù„Ù…Ø·ÙˆØ±ÙŠÙ†', fontH: "'Cairo', sans-serif", fontB: "'JetBrains Mono', monospace" },
-                                        { id: 'tajawal_ed', title: 'Tajawal Editorial', sub: 'ØªØ­Ø±ÙŠØ±ÙŠ Â· Ø±Ø³Ù…ÙŠ', fontH: "'Tajawal', serif", fontB: "'Tajawal', sans-serif" },
-                                        { id: 'display', title: 'Display Big', sub: 'Ø¹Ø±Ø¶ Â· Ø¨ØµØ±ÙŠ', fontH: "'Cairo', sans-serif", fontB: "'Tajawal', sans-serif" },
-                                        { id: 'compact', title: 'Compact UI', sub: 'Ù…Ø¯Ù…Ø¬ Â· ÙˆØ§Ø¬Ù‡Ø§Øª', fontH: "'Cairo', sans-serif", fontB: "'Tajawal', sans-serif" }
+                                        { id: 'cairo_tajawal', title: 'Cairo + Tajawal', sub: 'عربي حديث · موصى به', fontH: "'Cairo', sans-serif", fontB: "'Tajawal', sans-serif" },
+                                        { id: 'tajawal_inter', title: 'Tajawal + Inter', sub: 'مختلط · أنيق', fontH: "'Tajawal', sans-serif", fontB: "system-ui" },
+                                        { id: 'cairo_mono', title: 'Cairo + JetBrains Mono', sub: 'تقني · للمطورين', fontH: "'Cairo', sans-serif", fontB: "'JetBrains Mono', monospace" },
+                                        { id: 'tajawal_ed', title: 'Tajawal Editorial', sub: 'تحريري · رسمي', fontH: "'Tajawal', serif", fontB: "'Tajawal', sans-serif" },
+                                        { id: 'display', title: 'Display Big', sub: 'عرض · بصري', fontH: "'Cairo', sans-serif", fontB: "'Tajawal', sans-serif" },
+                                        { id: 'compact', title: 'Compact UI', sub: 'مدمج · واجهات', fontH: "'Cairo', sans-serif", fontB: "'Tajawal', sans-serif" }
                                     ].map(f => (
                                         <div key={f.id} className={`ds-pick ${designSelections.font === f.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, font: f.id}))}>
                                             <div className="type-preview">
-                                                <div className="t-title" style={{ fontFamily: f.fontH }}>Ø§Ù„Ø¹Ù†ÙˆØ§Ù† Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠ</div>
-                                                <div className="t-body" style={{ fontFamily: f.fontB }}>Ù†Øµ ØªÙˆØ¶ÙŠØ­ÙŠ Ù„Ù„Ù‚Ø±Ø§Ø¡Ø© ÙÙŠ Ù…ÙˆÙ‚Ø¹Ùƒ. ÙŠØ¯Ø¹Ù… ÙƒÙ„ Ø§Ù„Ù„ØºØ§Øª Ø¨Ø³Ù„Ø§Ø³Ø© ÙˆØ£Ù†Ø§Ù‚Ø©.</div>
+                                                <div className="t-title" style={{ fontFamily: f.fontH }}>العنوان الرئيسي</div>
+                                                <div className="t-body" style={{ fontFamily: f.fontB }}>نص توضيحي للقراءة في موقعك. يدعم كل اللغات بسلاسة وأناقة.</div>
                                             </div>
                                             <div className="ds-pick-title">{f.title}</div>
                                             <div className="type-pair-name">{f.sub}</div>
@@ -1325,19 +1325,19 @@ const onMouseLeave = (e) => {
                         {activeDsCategory === 'components' && (
                             <div className="ds-section active">
                                 <div className="ds-section-head">
-                                    <h2>Ø§Ù„Ù…ÙƒÙˆÙ†Ø§Øª Ø§Ù„Ø¬Ø§Ù‡Ø²Ø© <span className="ds-tag">COMPONENTS</span></h2>
-                                    <p>Ø¹Ù†Ø§ØµØ± ÙˆØ§Ø¬Ù‡Ø© Ø¬Ø§Ù‡Ø²Ø© Ù„Ù„Ù†Ø³Ø® ÙˆØ§Ù„Ø§Ø³ØªØ®Ø¯Ø§Ù… ÙÙŠ Ù…ÙˆÙ‚Ø¹Ùƒ</p>
+                                    <h2>المكونات الجاهزة <span className="ds-tag">COMPONENTS</span></h2>
+                                    <p>عناصر واجهة جاهزة للنسخ والاستخدام في موقعك</p>
                                 </div>
                                 <div className="ds-grid">
                                     {[
-                                        { id: 'primary', title: 'Primary Button', sub: 'Ø²Ø± Ù…ØªØ¯Ø±Ø¬ Ù…Ø¹ ØªÙˆÙ‡Ø¬', node: <button className="comp-btn">Ø²Ø± Ø±Ø¦ÙŠØ³ÙŠ</button> },
-                                        { id: 'outline', title: 'Outline Button', sub: 'Ø²Ø± Ø¨Ø­Ø¯ÙˆØ¯ ÙÙ‚Ø·', node: <button className="comp-btn outline">Ø²Ø± Ù…Ø­Ø¯Ø¯</button> },
-                                        { id: 'ghost', title: 'Ghost Button', sub: 'Ø®ÙÙŠÙ ÙˆÙ…Ù†Ø®ÙØ¶', node: <button className="comp-btn ghost">Ø²Ø± Ø´ÙØ§Ù</button> },
-                                        { id: 'pill', title: 'Pill Button', sub: 'Ø´ÙƒÙ„ Ø¨ÙŠØ¶Ø§ÙˆÙŠ Ù†Ø§Ø¹Ù…', node: <button className="comp-btn pill">Ø²Ø± Ø¨ÙŠØ¶Ø§ÙˆÙŠ</button> },
-                                        { id: 'glow', title: 'Glow Button', sub: 'ØªØ£Ø«ÙŠØ± Ø¶ÙˆØ¦ÙŠ Ù‚ÙˆÙŠ', node: <button className="comp-btn glow">Ù…ØªÙˆÙ‡Ø¬</button> },
-                                        { id: 'card', title: 'Card Default', sub: 'Ø¨Ø·Ø§Ù‚Ø© Ù…Ø¹Ù„ÙˆÙ…Ø§Øª Ù‚ÙŠØ§Ø³ÙŠØ©', node: <div className="comp-card"><div className="c-title">Ø¹Ù†ÙˆØ§Ù† Ø§Ù„Ø¨Ø·Ø§Ù‚Ø©</div><div className="c-text">Ù†Øµ Ù‚ØµÙŠØ± ÙŠØµÙ Ù…Ø­ØªÙˆÙ‰ Ø§Ù„Ø¨Ø·Ø§Ù‚Ø©</div></div> },
-                                        { id: 'search', title: 'Search Bar', sub: 'Ø´Ø±ÙŠØ· Ø¨Ø­Ø« Ø¨ÙŠØ¶Ø§ÙˆÙŠ', node: <div className="comp-search"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Ø§Ø¨Ø­Ø« Ø¹Ù† Ù…ÙƒØ§Ù†...</div> },
-                                        { id: 'toggle', title: 'Toggle Switch', sub: 'Ù…ÙØªØ§Ø­ ØªØ¨Ø¯ÙŠÙ„', node: <div style={{display:'flex',alignItems:'center',gap:'10px',fontSize:'12px'}}><div style={{width:'36px',height:'20px',background:'var(--primary)',borderRadius:'999px',position:'relative'}}><div style={{position:'absolute',top:'2px',right:'2px',width:'16px',height:'16px',background:'white',borderRadius:'50%'}}></div></div><span>Ù…ÙØ¹Ù‘Ù„</span></div> }
+                                        { id: 'primary', title: 'Primary Button', sub: 'زر متدرج مع توهج', node: <button className="comp-btn">زر رئيسي</button> },
+                                        { id: 'outline', title: 'Outline Button', sub: 'زر بحدود فقط', node: <button className="comp-btn outline">زر محدد</button> },
+                                        { id: 'ghost', title: 'Ghost Button', sub: 'خفيف ومنخفض', node: <button className="comp-btn ghost">زر شفاف</button> },
+                                        { id: 'pill', title: 'Pill Button', sub: 'شكل بيضاوي ناعم', node: <button className="comp-btn pill">زر بيضاوي</button> },
+                                        { id: 'glow', title: 'Glow Button', sub: 'تأثير ضوئي قوي', node: <button className="comp-btn glow">متوهج</button> },
+                                        { id: 'card', title: 'Card Default', sub: 'بطاقة معلومات قياسية', node: <div className="comp-card"><div className="c-title">عنوان البطاقة</div><div className="c-text">نص قصير يصف محتوى البطاقة</div></div> },
+                                        { id: 'search', title: 'Search Bar', sub: 'شريط بحث بيضاوي', node: <div className="comp-search"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> ابحث عن مكان...</div> },
+                                        { id: 'toggle', title: 'Toggle Switch', sub: 'مفتاح تبديل', node: <div style={{display:'flex',alignItems:'center',gap:'10px',fontSize:'12px'}}><div style={{width:'36px',height:'20px',background:'var(--primary)',borderRadius:'999px',position:'relative'}}><div style={{position:'absolute',top:'2px',right:'2px',width:'16px',height:'16px',background:'white',borderRadius:'50%'}}></div></div><span>مفعّل</span></div> }
                                     ].map(c => (
                                         <div key={c.id} className={`ds-pick ${designSelections.component === c.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, component: c.id}))}>
                                             <div className="comp-preview">{c.node}</div>
@@ -1352,17 +1352,17 @@ const onMouseLeave = (e) => {
                         {activeDsCategory === 'basemaps' && (
                             <div className="ds-section active">
                                 <div className="ds-section-head">
-                                    <h2>Ø«ÙŠÙ…Ø§Øª Ø®Ù„ÙÙŠØ© Ø§Ù„Ø®Ø±ÙŠØ·Ø© <span className="ds-tag">BASEMAPS</span></h2>
-                                    <p>Ø§Ø®ØªØ± Ù…Ø¸Ù‡Ø± Ø§Ù„Ø®Ø±ÙŠØ·Ø© Ø§Ù„Ø£Ù†Ø³Ø¨ Ù„ØªØ·Ø¨ÙŠÙ‚Ùƒ</p>
+                                    <h2>ثيمات خلفية الخريطة <span className="ds-tag">BASEMAPS</span></h2>
+                                    <p>اختر مظهر الخريطة الأنسب لتطبيقك</p>
                                 </div>
                                 <div className="ds-grid">
                                     {[
-                                        { id: 'dark', title: 'Dark Matter', sub: 'Ø¯Ø§ÙƒÙ† Ø£Ù†ÙŠÙ‚ Â· Ù„Ù„ØªØ·Ø¨ÙŠÙ‚Ø§Øª Ø§Ù„Ø­Ø¯ÙŠØ«Ø©', type: 'bm-dark' },
-                                        { id: 'light', title: 'Light Streets', sub: 'ÙØ§ØªØ­ ÙˆÙ†Ø¸ÙŠÙ Â· Ù„Ù„Ù‚Ø±Ø§Ø¡Ø© Ø§Ù„ÙˆØ§Ø¶Ø­Ø©', type: 'bm-light' },
-                                        { id: 'satellite', title: 'Satellite', sub: 'ØµÙˆØ± Ø£Ù‚Ù…Ø§Ø± ØµÙ†Ø§Ø¹ÙŠØ©', type: 'bm-satellite' },
-                                        { id: 'terrain', title: 'Terrain', sub: 'ØªØ¶Ø§Ø±ÙŠØ³ ÙˆØ§Ø±ØªÙØ§Ø¹Ø§Øª', type: 'bm-terrain' },
-                                        { id: 'vintage', title: 'Vintage Map', sub: 'Ø®Ø±ÙŠØ·Ø© ØªØ§Ø±ÙŠØ®ÙŠØ© ÙƒÙ„Ø§Ø³ÙŠÙƒÙŠØ©', type: 'bm-vintage' },
-                                        { id: 'cyber', title: 'Cyber Grid', sub: 'Ø³Ø§ÙŠØ¨Ø± Ø¨Ø§Ù†Ùƒ Ù…Ø³ØªÙ‚Ø¨Ù„ÙŠ', type: 'bm-cyber' }
+                                        { id: 'dark', title: 'Dark Matter', sub: 'داكن أنيق · للتطبيقات الحديثة', type: 'bm-dark' },
+                                        { id: 'light', title: 'Light Streets', sub: 'فاتح ونظيف · للقراءة الواضحة', type: 'bm-light' },
+                                        { id: 'satellite', title: 'Satellite', sub: 'صور أقمار صناعية', type: 'bm-satellite' },
+                                        { id: 'terrain', title: 'Terrain', sub: 'تضاريس وارتفاعات', type: 'bm-terrain' },
+                                        { id: 'vintage', title: 'Vintage Map', sub: 'خريطة تاريخية كلاسيكية', type: 'bm-vintage' },
+                                        { id: 'cyber', title: 'Cyber Grid', sub: 'سايبر بانك مستقبلي', type: 'bm-cyber' }
                                     ].map(b => (
                                         <div key={b.id} className={`ds-pick ${designSelections.basemap === b.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, basemap: b.id}))}>
                                             <div className={`basemap-preview ${b.type}`}></div>
@@ -1377,17 +1377,17 @@ const onMouseLeave = (e) => {
                         {activeDsCategory === 'markers' && (
                             <div className="ds-section active">
                                 <div className="ds-section-head">
-                                    <h2>Ø§Ù„Ù…Ø¹Ø§Ù„Ù… ÙˆØ§Ù„Ù†ÙˆØ§ÙØ° Ø§Ù„Ù…Ù†Ø¨Ø«Ù‚Ø© <span className="ds-tag">MARKERS</span></h2>
-                                    <p>Ø£Ø´ÙƒØ§Ù„ Ù…Ø®ØªÙ„ÙØ© Ù„ØªÙ…ÙŠÙŠØ² Ø§Ù„Ù…ÙˆØ§Ù‚Ø¹ Ø¹Ù„Ù‰ Ø§Ù„Ø®Ø±ÙŠØ·Ø©</p>
+                                    <h2>المعالم والنوافذ المنبثقة <span className="ds-tag">MARKERS</span></h2>
+                                    <p>أشكال مختلفة لتمييز المواقع على الخريطة</p>
                                 </div>
                                 <div className="ds-grid">
                                     {[
-                                        { id: 'pin', title: 'Classic Pin', sub: 'Ø¯Ø¨ÙˆØ³ ØªÙ‚Ù„ÙŠØ¯ÙŠ', cls: 'mk-pin' },
-                                        { id: 'dot', title: 'Glow Dot', sub: 'Ù†Ù‚Ø·Ø© Ù…ØªÙˆÙ‡Ø¬Ø©', cls: 'mk-dot' },
-                                        { id: 'pulse', title: 'Pulse Marker', sub: 'Ù†Ø¨Ø¶ Ø­ÙŠ Ù…Ø¹ Ù…ÙˆØ¬Ø©', cls: 'mk-pulse' },
-                                        { id: 'cluster', title: 'Cluster', sub: 'ØªØ¬Ù…ÙŠØ¹ Ù†Ù‚Ø§Ø· Ù…Ø¹ Ø¹Ø¯Ø¯', cls: 'mk-cluster' },
-                                        { id: 'numbered', title: 'Numbered', sub: 'Ø±Ù‚Ù… Ø¯Ø§Ø®Ù„ Ø¯Ø§Ø¦Ø±Ø©', cls: 'mk-num' },
-                                        { id: 'square', title: 'Diamond', sub: 'Ù…Ø±Ø¨Ø¹ Ù…Ø§Ø¦Ù„ Ø¹ØµØ±ÙŠ', cls: 'mk-square' }
+                                        { id: 'pin', title: 'Classic Pin', sub: 'دبوس تقليدي', cls: 'mk-pin' },
+                                        { id: 'dot', title: 'Glow Dot', sub: 'نقطة متوهجة', cls: 'mk-dot' },
+                                        { id: 'pulse', title: 'Pulse Marker', sub: 'نبض حي مع موجة', cls: 'mk-pulse' },
+                                        { id: 'cluster', title: 'Cluster', sub: 'تجميع نقاط مع عدد', cls: 'mk-cluster' },
+                                        { id: 'numbered', title: 'Numbered', sub: 'رقم داخل دائرة', cls: 'mk-num' },
+                                        { id: 'square', title: 'Diamond', sub: 'مربع مائل عصري', cls: 'mk-square' }
                                     ].map(m => (
                                         <div key={m.id} className={`ds-pick ${designSelections.marker === m.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, marker: m.id}))}>
                                             <div className="marker-preview">
@@ -1404,11 +1404,11 @@ const onMouseLeave = (e) => {
                         {activeDsCategory === 'icons' && (
                             <div className="ds-section active">
                                 <div className="ds-section-head">
-                                    <h2>Ù…ÙƒØªØ¨Ø© Ø§Ù„Ø£ÙŠÙ‚ÙˆÙ†Ø§Øª <span className="ds-tag">ICONS</span></h2>
-                                    <p>Ø£ÙŠÙ‚ÙˆÙ†Ø§Øª Ø§Ø­ØªØ±Ø§ÙÙŠØ© Ù„Ù„Ø®Ø±Ø§Ø¦Ø· ÙˆØ§Ù„ÙˆØ§Ø¬Ù‡Ø§Øª Ø¨Ù†Ù…Ø· Lucide</p>
+                                    <h2>مكتبة الأيقونات <span className="ds-tag">ICONS</span></h2>
+                                    <p>أيقونات احترافية للخرائط والواجهات بنمط Lucide</p>
                                 </div>
                                 <div className="icon-tabs">
-                                    {['Ø§Ù„ÙƒÙ„', 'Ø®Ø±Ø§Ø¦Ø·', 'ÙˆØ§Ø¬Ù‡Ø©', 'Ø¥Ø¬Ø±Ø§Ø¡Ø§Øª', 'Ø¨ÙŠØ§Ù†Ø§Øª'].map((t, i) => (
+                                    {['الكل', 'خرائط', 'واجهة', 'إجراءات', 'بيانات'].map((t, i) => (
                                         <span key={i} className={`icon-tab ${i === 0 ? 'active' : ''}`}>{t}</span>
                                     ))}
                                 </div>
@@ -1449,20 +1449,20 @@ const onMouseLeave = (e) => {
                         {activeDsCategory === 'effects' && (
                             <div className="ds-section active">
                                 <div className="ds-section-head">
-                                    <h2>Ø§Ù„ØªØ£Ø«ÙŠØ±Ø§Øª ÙˆØ§Ù„Ø¸Ù„Ø§Ù„ <span className="ds-tag">EFFECTS</span></h2>
-                                    <p>Ø¸Ù„Ø§Ù„ ÙˆØªØ¯Ø±Ø¬Ø§Øª ÙˆØªØ£Ø«ÙŠØ±Ø§Øª Ø¨ØµØ±ÙŠØ© Ù„Ø¥Ø¶Ø§ÙØ© Ø§Ù„Ø¹Ù…Ù‚</p>
+                                    <h2>التأثيرات والظلال <span className="ds-tag">EFFECTS</span></h2>
+                                    <p>ظلال وتدرجات وتأثيرات بصرية لإضافة العمق</p>
                                 </div>
                                 <div className="ds-grid">
                                     {[
-                                        { id: 'md', title: 'Shadow Medium', sub: 'Ø¸Ù„ Ù…ØªÙˆØ³Ø· Ù…ØªÙˆØ§Ø²Ù†', cls: 'ef-shadow-md' },
-                                        { id: 'lg', title: 'Shadow Large', sub: 'Ø¸Ù„ Ø¹Ù…ÙŠÙ‚ Ø¯Ø±Ø§Ù…Ø§ØªÙŠÙƒÙŠ', cls: 'ef-shadow-lg' },
-                                        { id: 'glow', title: 'Glow Effect', sub: 'ØªÙˆÙ‡Ø¬ Ø¨Ø±ØªÙ‚Ø§Ù„ÙŠ Ù‚ÙˆÙŠ', cls: 'ef-glow' },
-                                        { id: 'glass', title: 'Glassmorphism', sub: 'Ø²Ø¬Ø§Ø¬ Ø¶Ø¨Ø§Ø¨ÙŠ Ø¹ØµØ±ÙŠ', cls: 'ef-glass' },
-                                        { id: 'sunset', title: 'Sunset Gradient', sub: 'ØªØ¯Ø±Ø¬ ØºØ±ÙˆØ¨ Ø§Ù„Ø´Ù…Ø³', cls: 'ef-grad-sunset' },
-                                        { id: 'ocean', title: 'Ocean Gradient', sub: 'ØªØ¯Ø±Ø¬ Ø§Ù„Ù…Ø­ÙŠØ· Ø§Ù„Ø¹Ù…ÙŠÙ‚', cls: 'ef-grad-ocean' },
-                                        { id: 'forest', title: 'Forest Gradient', sub: 'ØªØ¯Ø±Ø¬ Ø£Ø®Ø¶Ø± Ù…Ù†Ø¹Ø´', cls: 'ef-grad-forest' },
-                                        { id: 'float', title: 'Float Animation', sub: 'Ø­Ø±ÙƒØ© Ø·ÙÙˆ Ù†Ø§Ø¹Ù…Ø©', cls: 'ef-anim-float' },
-                                        { id: 'pulse', title: 'Pulse Animation', sub: 'Ù†Ø¨Ø¶Ø© Ø¯Ø§Ø¦Ø±ÙŠØ©', cls: 'ef-anim-pulse' }
+                                        { id: 'md', title: 'Shadow Medium', sub: 'ظل متوسط متوازن', cls: 'ef-shadow-md' },
+                                        { id: 'lg', title: 'Shadow Large', sub: 'ظل عميق دراماتيكي', cls: 'ef-shadow-lg' },
+                                        { id: 'glow', title: 'Glow Effect', sub: 'توهج برتقالي قوي', cls: 'ef-glow' },
+                                        { id: 'glass', title: 'Glassmorphism', sub: 'زجاج ضبابي عصري', cls: 'ef-glass' },
+                                        { id: 'sunset', title: 'Sunset Gradient', sub: 'تدرج غروب الشمس', cls: 'ef-grad-sunset' },
+                                        { id: 'ocean', title: 'Ocean Gradient', sub: 'تدرج المحيط العميق', cls: 'ef-grad-ocean' },
+                                        { id: 'forest', title: 'Forest Gradient', sub: 'تدرج أخضر منعش', cls: 'ef-grad-forest' },
+                                        { id: 'float', title: 'Float Animation', sub: 'حركة طفو ناعمة', cls: 'ef-anim-float' },
+                                        { id: 'pulse', title: 'Pulse Animation', sub: 'نبضة دائرية', cls: 'ef-anim-pulse' }
                                     ].map(e => (
                                         <div key={e.id} className={`ds-pick ${designSelections.effect === e.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, effect: e.id}))}>
                                             <div className={`effect-preview ${e.cls}`}><div className="effect-box"></div></div>
@@ -1478,7 +1478,7 @@ const onMouseLeave = (e) => {
                     <aside className="ds-preview" dir="rtl" style={{ fontFamily: 'var(--font-main)' }}>
                         <div className="ds-preview-head">
                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                            <span>Ù…Ø¹Ø§ÙŠÙ†Ø© Ø§Ù„ØªØµÙ…ÙŠÙ… Ø§Ù„Ø­ÙŠØ©</span>
+                            <span>معاينة التصميم الحية</span>
                         </div>
                         <div className="preview-mock">
                             <div className={`preview-mock-content layout-mockup lm-${designSelections.layout}`}>
@@ -1495,14 +1495,14 @@ const onMouseLeave = (e) => {
                             </div>
                         </div>
                         <div className="preview-info">
-                            <div className="preview-info-row"><span className="pi-label">Ø§Ù„ØªØ®Ø·ÙŠØ·</span><span className="pi-value">{designSelections.layout}</span></div>
-                            <div className="preview-info-row"><span className="pi-label">Ø§Ù„Ù‡ÙˆÙŠØ© Ø§Ù„Ù„ÙˆÙ†ÙŠØ©</span><span className="pi-value" style={{ color: 'var(--primary)' }}>{designSelections.palette}</span></div>
-                            <div className="preview-info-row"><span className="pi-label">Ø§Ù„Ø®Ø· Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…</span><span className="pi-value">{designSelections.font}</span></div>
+                            <div className="preview-info-row"><span className="pi-label">التخطيط</span><span className="pi-value">{designSelections.layout}</span></div>
+                            <div className="preview-info-row"><span className="pi-label">الهوية اللونية</span><span className="pi-value" style={{ color: 'var(--primary)' }}>{designSelections.palette}</span></div>
+                            <div className="preview-info-row"><span className="pi-label">الخط المستخدم</span><span className="pi-value">{designSelections.font}</span></div>
                         </div>
                         <div style={{marginTop:'20px'}}>
                             <button className="ds-btn primary" onClick={performActualExport} style={{width:'100%',justifyContent:'center', fontFamily: 'inherit'}}>
                                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" style={{marginLeft:'8px'}}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                                ØªÙ†Ø²ÙŠÙ„ Ø§Ù„Ù…ÙˆÙ‚Ø¹ Ø§Ù„Ù†Ù‡Ø§Ø¦ÙŠ
+                                تنزيل الموقع النهائي
                             </button>
                         </div>
                     </aside>
@@ -1513,4 +1513,3 @@ const onMouseLeave = (e) => {
 };
 
 export default PalNovaaLab;
-
