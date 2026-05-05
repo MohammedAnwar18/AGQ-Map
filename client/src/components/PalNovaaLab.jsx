@@ -1032,7 +1032,7 @@ const onMouseLeave = (e) => {
                     {/* Bottom Attribute Table - Integrated below map */}
                     <div style={{
                         height: showBottomTable ? '350px' : '45px',
-                        background: 'rgba(10, 22, 40, 0.95)',
+                        background: '#050B16',
                         borderTop: '2px solid var(--accent-cyan)',
                         zIndex: 10,
                         transition: 'height 0.4s cubic-bezier(0.16, 1, 0.3, 1)',

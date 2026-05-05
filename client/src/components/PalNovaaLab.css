@@ -1,4 +1,4 @@
-﻿/* ================================================================
+/* ================================================================
      PalNovaa Lab ΓÇö ┘à╪«╪¬╪¿╪▒ ╪º┘ä╪¬╪¡┘ä┘è┘ä ╪º┘ä┘à┘â╪º┘å┘è
      ================================================================ */
   :root {
@@ -17,9 +17,9 @@
     --bg-1: #0A1628;
     --bg-2: #0F1E33;
     --bg-3: #142B47;
-    --surface: rgba(20, 43, 71, 0.55);
+    --surface: #142B47;
     --surface-solid: #142B47;
-    --surface-hover: rgba(30, 58, 92, 0.85);
+    --surface-hover: #1e3a5c;
     --border: rgba(255, 255, 255, 0.08);
     --border-strong: rgba(245, 166, 35, 0.4);
     --grid-line: rgba(245, 166, 35, 0.08);
@@ -485,16 +485,17 @@
      ============================================================ */
   .panel {
     grid-area: panel;
-    background: var(--bg-1);
+    background: #0A1628;
     border-right: 1px solid var(--border);
     display: flex; flex-direction: column;
     overflow: hidden;
+    box-shadow: -5px 0 20px rgba(0,0,0,0.3);
   }
 
   .panel-tabs {
     display: flex;
     border-bottom: 1px solid var(--border);
-    background: var(--bg-2);
+    background: #050B16;
   }
   .panel-tab {
     flex: 1;
