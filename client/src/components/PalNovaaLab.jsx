@@ -1032,7 +1032,8 @@ const onMouseLeave = (e) => {
                     {/* Bottom Attribute Table - Integrated below map */}
                     <div style={{
                         height: showBottomTable ? '350px' : '45px',
-                        background: '#050B16',
+                        background: '#050B16 !important',
+                        backgroundColor: '#050B16 !important',
                         borderTop: '2px solid var(--accent-cyan)',
                         zIndex: 10,
                         transition: 'height 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -1048,7 +1049,8 @@ const onMouseLeave = (e) => {
                             alignItems: 'center',
                             justifyContent: 'space-between',
                             padding: '0 20px',
-                            background: '#0F1E33',
+                            background: '#0F1E33 !important',
+                            backgroundColor: '#0F1E33 !important',
                             cursor: 'pointer',
                             color: 'var(--accent-cyan)',
                             fontWeight: 'bold',
@@ -1075,7 +1077,7 @@ const onMouseLeave = (e) => {
                                     <p style={{ fontSize: '0.9rem', opacity: 0.7 }}>يرجى استيراد ملف GeoJSON ثم النقر على زر عرض البيانات</p>
                                 </div>
                             ) : (
-                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem', textAlign: 'right' }}>
+                                <table className="attr-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem', textAlign: 'right' }}>
                                     <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: '#0a1628', boxShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
                                         <tr>
                                             <th style={{ padding: '12px 15px', borderBottom: '1px solid var(--accent-cyan)', color: '#06D6F2', width: '50px' }}>#</th>

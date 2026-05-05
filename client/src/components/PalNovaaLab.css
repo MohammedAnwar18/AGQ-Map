@@ -1285,16 +1285,34 @@
 /* Opaque Popups */
 .maplibregl-popup-content {
   background: #0A1628 !important;
+  background-color: #0A1628 !important;
   color: white !important;
   border: 1px solid var(--accent-cyan) !important;
   border-radius: 12px !important;
   padding: 15px !important;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.6) !important;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important;
+  opacity: 1 !important;
 }
 
 .maplibregl-popup-tip {
   border-top-color: #0A1628 !important;
   border-bottom-color: #0A1628 !important;
+  opacity: 1 !important;
+}
+
+.attr-table {
+  background: #050B16 !important;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.attr-table tr {
+  background: #050B16 !important;
+}
+
+.attr-table td, .attr-table th {
+  background: #050B16 !important;
+  color: white !important;
 }
 
 .custom-popup .popup-content {
