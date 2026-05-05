@@ -471,7 +471,8 @@ const PalNovaaLab = ({ onClose }) => {
             alert('تم توليد التصميم الإبداعي بنجاح!');
         } catch (err) {
             console.error('Magic generate failed:', err);
-            alert('عذراً، فشل المحرك في توليد التصميم. يرجى المحاولة بوصف آخر.');
+            const errMsg = err.response?.data?.error || err.message;
+            alert(`عذراً، فشل المحرك في توليد التصميم.\nالسبب: ${errMsg}`);
         } finally {
             setIsGenerating(false);
         }
