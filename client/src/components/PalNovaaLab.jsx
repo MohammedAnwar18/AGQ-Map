@@ -1674,15 +1674,18 @@ const PalNovaaLab = ({ onClose }) => {
                                 </div>
                                 <div className="ds-grid">
                                     {[
-                                        { id: 'dark', title: 'النمط الداكن', sub: 'داكن أنيق · للتطبيقات الحديثة', type: 'bm-dark' },
-                                        { id: 'light', title: 'النمط الفاتح', sub: 'فاتح ونظيف · للقراءة الواضحة', type: 'bm-light' },
-                                        { id: 'satellite', title: 'قمر صناعي', sub: 'صور أقمار صناعية', type: 'bm-satellite' },
-                                        { id: 'terrain', title: 'تضاريس', sub: 'تضاريس وارتفاعات', type: 'bm-terrain' },
-                                        { id: 'vintage', title: 'خريطة عتيقة', sub: 'خريطة تاريخية كلاسيكية', type: 'bm-vintage' },
-                                        { id: 'cyber', title: 'خريطة رقمية', sub: 'سايبر بانك مستقبلي', type: 'bm-cyber' }
+                                        { id: 'dark', title: 'النمط الداكن', sub: 'داكن أنيق · للتطبيقات الحديثة', type: 'bm-dark', provider: 'MAPTILER' },
+                                        { id: 'light', title: 'النمط الفاتح', sub: 'فاتح ونظيف · للقراءة الواضحة', type: 'bm-light', provider: 'MAPTILER' },
+                                        { id: 'satellite', title: 'قمر صناعي', sub: 'صور أقمار صناعية', type: 'bm-satellite', provider: 'GOOGLE' },
+                                        { id: 'terrain', title: 'تضاريس', sub: 'تضاريس وارتفاعات', type: 'bm-terrain', provider: 'MAPTILER' },
+                                        { id: 'vintage', title: 'خريطة عتيقة', sub: 'خريطة تاريخية كلاسيكية', type: 'bm-vintage', provider: 'MAPTILER' },
+                                        { id: 'cyber', title: 'خريطة رقمية', sub: 'سايبر بانك مستقبلي', type: 'bm-cyber', provider: 'MAPTILER' }
                                     ].map(b => (
                                         <div key={b.id} className={`ds-pick ${designSelections.basemap === b.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({ ...s, basemap: b.id }))}>
-                                            <div className={`basemap-preview ${b.type}`}></div>
+                                            <div className={`basemap-preview ${b.type}`} style={{ display: 'grid', placeItems: 'center', background: 'rgba(0,0,0,0.5)', position: 'relative', overflow: 'hidden' }}>
+                                                <span style={{ fontSize: '0.65rem', fontWeight: 900, letterSpacing: '1px', color: 'var(--primary)', textTransform: 'uppercase', opacity: 0.9, zIndex: 2 }}>{b.provider}</span>
+                                                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(45deg, rgba(6,214,242,0.1), transparent)', zIndex: 1 }}></div>
+                                            </div>
                                             <div className="ds-pick-title">{b.title}</div>
                                             <div className="ds-pick-sub">{b.sub}</div>
                                         </div>
