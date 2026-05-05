@@ -594,15 +594,10 @@ const PalNovaaLab = ({ onClose }) => {
                     .app-container { display: flex; height: 100vh; width: 100vw; }
                     #map { flex: 1; }
                     .f-card { position: absolute; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; backdrop-filter: blur(15px); padding: 24px; z-index: 10; box-shadow: 0 15px 35px rgba(0,0,0,0.3); }
-                    .f-top-right { top: 30px; right: 30px; width: 340px; }
                     .f-bottom-left { bottom: 40px; left: 30px; width: 400px; }
                 `;
                 layoutHTML = `
                     <div id="map"></div>
-                    <div class="f-card f-top-right card-panel">
-                        <h2 style="margin-top:0;color:var(--primary);font-family:var(--font-h);">الطبقات النشطة</h2>
-                        <div class="layers-list">${layersHTML}</div>
-                    </div>
                     <div class="f-card f-bottom-left card-panel">
                         <h3 style="margin-top:0;font-family:var(--font-h);">إحصائيات الخريطة</h3>
                         <p style="opacity:0.8;font-size:1rem;line-height:1.6;">تم تحميل <b>${exportLayers.length}</b> طبقات بنجاح، تحتوي على <b>${exportLayers.reduce((sum, l) => sum + (l.data?.features?.length || 0), 0)}</b> معلم جغرافي تفاعلي.</p>
@@ -614,13 +609,8 @@ const PalNovaaLab = ({ onClose }) => {
                 layoutCSS = `
                     .app-container { display: flex; height: 100vh; width: 100vw; }
                     #map { flex: 1; }
-                    .floating-panel { position: absolute; top: 24px; right: 24px; width: 320px; background: var(--surface); border-radius: 16px; border: 1px solid var(--border); padding: 24px; z-index: 10; backdrop-filter: blur(15px); }
                 `;
                 layoutHTML = `
-                    <div class="floating-panel card-panel">
-                        <h2 style="color:var(--primary);margin-top:0;font-family:var(--font-h);">الطبقات</h2>
-                        <div class="layers-list">${layersHTML}</div>
-                    </div>
                     <div id="map"></div>
                 `;
                 break;
