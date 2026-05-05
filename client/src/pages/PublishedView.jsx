@@ -205,15 +205,14 @@ const PublishedView = () => {
                 >
                     {selections.show_controls && <NavigationControl position="bottom-right" />}
                     
-                    {/* Render Saved Layers */}
-                    {geoLayers.map((layer, idx) => {
+                    {/* Render Saved Layers (Memoized for Speed) */}
+                    {useMemo(() => geoLayers.map((layer, idx) => {
                         if (!layer || !layer.data) return null;
 
                         try {
                             // Enhanced geometry detection
                             let geomType = 'Polygon';
                             if (layer.data.features && layer.data.features.length > 0) {
-                                // Find first feature with geometry
                                 const firstWithGeom = layer.data.features.find(f => f.geometry && f.geometry.type);
                                 if (firstWithGeom) geomType = firstWithGeom.geometry.type;
                             } else if (layer.data.type === 'Feature' && layer.data.geometry) {
@@ -273,7 +272,7 @@ const PublishedView = () => {
                             console.error(`❌ Error rendering layer ${layer.name || idx}:`, err);
                             return null;
                         }
-                    })}
+                    }), [geoLayers, selections.customPrimary])}
 
                     {/* Feature Popup */}
                     {selectedFeature && (
