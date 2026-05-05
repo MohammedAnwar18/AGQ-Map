@@ -1174,22 +1174,15 @@ const onMouseLeave = (e) => {
                                                                 onChange={(e) => setTempLayerName(e.target.value)}
                                                                 onBlur={() => handleRenameLayer(layer.id, tempLayerName)}
                                                                 onKeyDown={(e) => {
-                                                                    if (e.key === 'Enter') handleRenameLayer(layer.id, tempLayerName);
+                                                                    if (e.key === 'Enter') {
+                                                                        e.preventDefault();
+                                                                        handleRenameLayer(layer.id, tempLayerName);
+                                                                    }
                                                                     if (e.key === 'Escape') setEditingLayerId(null);
-                                                                }}
-                                                                style={{
-                                                                    background: 'rgba(0,0,0,0.3)',
-                                                                    border: '1px solid var(--accent-cyan)',
-                                                                    color: 'white',
-                                                                    fontSize: '0.85rem',
-                                                                    padding: '2px 5px',
-                                                                    borderRadius: '4px',
-                                                                    width: '100%',
-                                                                    outline: 'none'
                                                                 }}
                                                             />
                                                         ) : (
-                                                            <h5 style={{ margin: 0, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>{layer.name}</h5>
+                                                            <h5 style={{ margin: 0, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', color: 'white' }}>{layer.name}</h5>
                                                         )}
                                                         <small style={{ color: 'rgba(255,255,255,0.5)' }}>{layer.data.features?.length || 0} ميزة</small>
                                                         {layer.measurement && <small style={{ color: '#06D6F2', display: 'block', marginTop: '2px', fontWeight: 'bold' }}>القياس: {layer.measurement}</small>}
