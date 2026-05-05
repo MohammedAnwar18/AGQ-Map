@@ -760,7 +760,14 @@ const ProfileModal = ({ userId, onClose }) => {
                                                             {page.name.charAt(0)}
                                                         </div>
                                                         <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                            <span style={{ fontSize: '0.85rem', fontWeight: '700' }}>{page.name}</span>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                <span style={{ fontSize: '0.85rem', fontWeight: '700' }}>{page.name}</span>
+                                                                {page.status === 'draft' ? (
+                                                                    <span style={{ fontSize: '0.65rem', background: 'rgba(245, 166, 35, 0.15)', color: '#F5A623', padding: '1px 5px', borderRadius: '4px', border: '1px solid rgba(245, 166, 35, 0.2)' }}>مسودة</span>
+                                                                ) : (
+                                                                    <span style={{ fontSize: '0.65rem', background: 'rgba(16, 185, 129, 0.15)', color: '#10B981', padding: '1px 5px', borderRadius: '4px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>منشور</span>
+                                                                )}
+                                                            </div>
                                                             <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>/p/{page.slug}</span>
                                                         </div>
                                                     </div>
