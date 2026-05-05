@@ -852,86 +852,310 @@
   font-weight: 500;
 }
 
-/* ===== 1. Layout Mockups (World Class Design) ===== */
+/* ===== 1. Layout Mockups (High Fidelity Simulation) ===== */
 .layout-mockup {
   aspect-ratio: 16/10;
-  background: #050B16;
-  border-radius: 12px;
+  border-radius: 10px;
   margin-bottom: 12px;
-  padding: 24px 8px 8px 8px; /* Extra top padding for browser header */
-  display: grid;
-  gap: 6px;
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.05);
-  box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+  background: #0A1628;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06), 0 4px 12px rgba(0,0,0,0.3);
   transition: all 0.3s ease;
 }
 
-/* Browser Window Simulation */
-.layout-mockup::before {
-  content: '';
+/* ===== Realistic Map ===== */
+.lm-map {
   position: absolute;
-  top: 8px; left: 10px;
-  width: 4px; height: 4px;
-  background: rgba(255,255,255,0.2);
-  border-radius: 50%;
-  box-shadow: 8px 0 rgba(255,255,255,0.2), 16px 0 rgba(255,255,255,0.2);
-}
-
-/* Realistic Map Simulation for Cards */
-.lm-map-bg {
-  position: absolute; inset: 0;
-  background: #0A1628;
-  z-index: 0;
+  background:
+    radial-gradient(circle at 35% 40%, rgba(245,166,35,0.22), transparent 35%),
+    radial-gradient(circle at 70% 65%, rgba(6,214,242,0.14), transparent 35%),
+    linear-gradient(135deg, #1A3458, #0F1E33);
   overflow: hidden;
 }
-.lm-road-h, .lm-road-v {
-  position: absolute; background: rgba(255,255,255,0.03);
+.lm-map::before {
+  content: ''; position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-size: 12px 12px;
+  opacity: 0.8;
 }
-.lm-road-h { width: 100%; height: 2px; top: 40%; }
-.lm-road-v { width: 2px; height: 100%; left: 30%; }
-.lm-marker {
-  position: absolute; width: 6px; height: 6px; 
-  background: var(--primary); border-radius: 50%;
-  box-shadow: 0 0 8px var(--primary);
+.lm-map::after {
+  content: ''; position: absolute; inset: 0;
+  background:
+    linear-gradient(110deg, transparent 47%, rgba(245,166,35,0.4) 48%, rgba(245,166,35,0.4) 49%, transparent 50%),
+    linear-gradient(-15deg, transparent 38%, rgba(6,214,242,0.3) 39%, rgba(6,214,242,0.3) 40%, transparent 41%),
+    linear-gradient(75deg, transparent 28%, rgba(245,166,35,0.18) 28.5%, transparent 29%);
 }
 
-.lm-content-container {
-  position: relative; z-index: 1;
-  width: 100%; height: 100%;
-  display: grid; gap: 4px;
+/* Map markers */
+.lm-pin {
+  position: absolute;
+  width: 5px; height: 5px;
+  background: #F5A623;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(245,166,35,0.3), 0 0 5px rgba(245,166,35,0.6);
+  z-index: 4;
+}
+.lm-pin.cy { background: #06D6F2; box-shadow: 0 0 0 2px rgba(6,214,242,0.3), 0 0 5px rgba(6,214,242,0.6); }
+.lm-pin.lg {
+  width: 9px; height: 9px;
+  box-shadow: 0 0 0 3px rgba(245,166,35,0.5), 0 0 10px rgba(245,166,35,0.8);
 }
 
-/* UI Elements */
-.lm-ui-header { grid-row: 1; background: rgba(255,255,255,0.08); border-radius: 4px; }
-.lm-map-area { background: transparent; }
-.lm-ui-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
-.lm-stat { background: rgba(6,214,242,0.15); border: 1px solid rgba(6,214,242,0.2); border-radius: 3px; }
+/* ===== UI Panels (sidebars, headers, cards) ===== */
+.lm-panel {
+  position: absolute;
+  background: rgba(10,22,40,0.95);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 4px;
+  z-index: 3;
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  backdrop-filter: blur(8px);
+}
+.lm-panel.flat { border-radius: 0; }
 
-.lm-ui-sidebar { position: absolute; left: 0; top: 0; bottom: 0; width: 35%; background: rgba(15,30,51,0.9); backdrop-filter: blur(2px); border-right: 1px solid var(--border); }
-.lm-ui-tool { position: absolute; left: 4px; top: 4px; bottom: 4px; width: 15%; background: rgba(15,30,51,0.8); border-radius: 4px; border: 1px solid var(--border); }
-.lm-ui-info { position: absolute; right: 4px; top: 4px; bottom: 4px; width: 20%; background: rgba(15,30,51,0.8); border-radius: 4px; border: 1px solid var(--border); }
+/* Inside panel content */
+.lm-row { height: 3px; background: rgba(255,255,255,0.18); border-radius: 2px; flex-shrink: 0; }
+.lm-row.short { width: 65%; }
+.lm-row.tiny { width: 35%; }
+.lm-row.thick { height: 5px; }
+.lm-row.accent { background: rgba(245,166,35,0.55); }
 
-.lm-map-half { background: transparent; }
-.lm-text-half { background: rgba(15,30,51,0.95); padding: 6px; display: flex; flex-direction: column; gap: 4px; }
-.lm-line { height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px; width: 100%; }
+/* Search pill */
+.lm-search {
+  position: absolute;
+  background: rgba(10,22,40,0.95);
+  border: 1px solid rgba(245,166,35,0.35);
+  border-radius: 99px;
+  display: flex; align-items: center; gap: 5px;
+  padding: 0 8px;
+  z-index: 5;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  backdrop-filter: blur(8px);
+}
+.lm-search::before {
+  content: '';
+  width: 5px; height: 5px;
+  border: 1.5px solid rgba(245,166,35,0.8);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.lm-search::after {
+  content: '';
+  flex: 1;
+  height: 3px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px;
+}
 
-.lm-map-top { background: transparent; }
-.lm-list-bottom { background: rgba(15,30,51,0.95); padding: 4px; display: flex; flex-direction: column; gap: 3px; }
-.lm-item { height: 10px; background: rgba(255,255,255,0.05); border-radius: 2px; }
+/* Header bar with logo + nav dots */
+.lm-header {
+  position: absolute;
+  background: rgba(10,22,40,0.98);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center;
+  padding: 0 6px;
+  gap: 4px;
+  z-index: 4;
+}
+.lm-header::before {
+  content: '';
+  width: 8px; height: 8px;
+  background: linear-gradient(135deg, #F5A623, #D88B0E);
+  border-radius: 3px;
+  box-shadow: 0 0 6px rgba(245,166,35,0.5);
+}
+.lm-header .lm-row { flex: 0 0 25px; }
+.lm-spacer { flex: 1; }
+.lm-btn-mini {
+  height: 6px; width: 20px;
+  background: linear-gradient(135deg, #F5A623, #D88B0E);
+  border-radius: 99px;
+  box-shadow: 0 2px 4px rgba(245,166,35,0.4);
+}
+.lm-dot-row { display: flex; gap: 3px; }
+.lm-dot-row::before, .lm-dot-row::after, .lm-dot-row > i {
+  content: '';
+  width: 4px; height: 4px;
+  background: rgba(255,255,255,0.25);
+  border-radius: 50%;
+}
 
-.lm-floating-card { background: rgba(15,30,51,0.9); border: 1px solid var(--primary); border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-.lm-modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: grid; place-items: center; }
-.lm-modal-box { width: 60%; height: 60%; background: #0A1628; border: 1px solid var(--primary); border-radius: 6px; box-shadow: 0 10px 20px rgba(0,0,0,0.6); }
+/* Tool sidebar (icon buttons) */
+.lm-tools {
+  position: absolute;
+  background: rgba(10,22,40,0.98);
+  display: flex; flex-direction: column;
+  align-items: center; padding: 6px 0;
+  gap: 5px;
+  z-index: 3;
+}
+.lm-tool {
+  width: 12px; height: 12px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+}
+.lm-tool.active {
+  background: linear-gradient(135deg, #F5A623, #D88B0E);
+  box-shadow: 0 0 6px rgba(245,166,35,0.5);
+}
 
-/* Layout Specific Grids */
-.lm-fullmap { display: block; }
-.lm-sidebar { grid-template-columns: 35% 1fr; position: relative; }
-.lm-three { grid-template-columns: 1fr; position: relative; }
-.lm-dashboard { grid-template-rows: 15% 1fr 25%; }
-.lm-split { grid-template-columns: 1fr 1fr; }
-.lm-stacked { grid-template-rows: 1fr 40%; }
+/* List item (for sidebars and content) */
+.lm-item {
+  display: flex; gap: 4px;
+  padding: 3px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 3px;
+  align-items: center;
+}
+.lm-item .lm-thumb {
+  width: 14px; height: 14px;
+  background: linear-gradient(135deg, rgba(245,166,35,0.4), rgba(245,166,35,0.15));
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.lm-item-content { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+
+/* Stat card content */
+.lm-stat-num {
+  height: 6px; width: 60%;
+  background: linear-gradient(90deg, #F5A623, #D88B0E);
+  border-radius: 2px;
+}
+
+/* ===== Layout 1: Full Map ===== */
+.lm-fullmap .lm-map { inset: 0; }
+.lm-fullmap .lm-search { top: 8%; left: 22%; right: 22%; height: 14%; }
+.lm-fullmap .lm-panel { top: 30%; left: 6%; width: 26%; height: 60%; }
+
+/* ===== Layout 2: Sidebar + Map ===== */
+.lm-sidebar .lm-map { top: 0; bottom: 0; left: 0; right: 36%; }
+.lm-sidebar .lm-panel {
+  top: 0; right: 0; bottom: 0;
+  width: 36%; padding: 5px; gap: 3px;
+}
+
+/* ===== Layout 3: Three Panels ===== */
+.lm-three .lm-header { top: 0; left: 0; right: 0; height: 13%; }
+.lm-three .lm-map { top: 13%; left: 16%; right: 18%; bottom: 0; }
+.lm-three .lm-tools { top: 13%; right: 0; bottom: 0; width: 18%; }
+.lm-three .lm-panel { top: 13%; left: 0; bottom: 0; width: 16%; padding: 4px; }
+
+/* ===== Layout 4: Dashboard ===== */
+.lm-dashboard .lm-header { top: 0; left: 0; right: 0; height: 14%; }
+.lm-dashboard .lm-map { top: 14%; left: 0; right: 0; bottom: 30%; }
+.lm-dashboard .lm-stats {
+  position: absolute;
+  bottom: 4%; left: 4%; right: 4%;
+  height: 22%;
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px; z-index: 3;
+}
+.lm-dashboard .lm-stat {
+  background: rgba(10,22,40,0.95);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 4px;
+  padding: 4px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+
+/* ===== Layout 5: Split 50/50 ===== */
+.lm-split .lm-map { top: 0; bottom: 0; left: 50%; right: 0; }
+.lm-split .lm-panel {
+  top: 0; left: 0; bottom: 0;
+  width: 50%; padding: 6px;
+}
+.lm-split .lm-grid-2 {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 4px; flex: 1;
+}
+.lm-split .lm-card-ph {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 3px;
+}
+
+/* ===== Layout 6: Map + List Stacked ===== */
+.lm-stacked .lm-map { top: 0; left: 0; right: 0; height: 58%; }
+.lm-stacked .lm-panel {
+  top: 58%; left: 0; right: 0; bottom: 0;
+  padding: 5px;
+}
+
+/* ===== Layout 7: Floating Cards ===== */
+.lm-floating .lm-map { inset: 0; }
+.lm-floating .lm-fc1 {
+  position: absolute;
+  top: 8%; left: 6%; width: 32%; height: 28%;
+  border: 1px solid rgba(245,166,35,0.25);
+}
+.lm-floating .lm-fc2 {
+  position: absolute;
+  bottom: 8%; right: 6%; width: 30%; height: 35%;
+  border: 1px solid rgba(245,166,35,0.25);
+}
+.lm-floating .lm-fc3 {
+  position: absolute;
+  top: 48%; left: 8%; width: 22%; height: 22%;
+  border: 1px solid rgba(245,166,35,0.25);
+}
+
+/* ===== Layout 8: Modal Map ===== */
+.lm-modal { background: #050B16; }
+.lm-modal::before {
+  content: ''; position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 14px 14px;
+  opacity: 0.6;
+}
+.lm-modal::after {
+  content: ''; position: absolute; inset: 0;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(2px);
+}
+.lm-modal-frame {
+  position: absolute;
+  top: 10%; left: 12%; right: 12%; bottom: 10%;
+  background: #0F1E33;
+  border: 1px solid rgba(245,166,35,0.4);
+  border-radius: 6px;
+  z-index: 5;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 30px rgba(245,166,35,0.15);
+}
+.lm-modal-frame .lm-modal-bar {
+  position: absolute;
+  top: 4%; left: 4%; right: 4%;
+  height: 13%;
+  background: rgba(255,255,255,0.04);
+  border-radius: 99px;
+  display: flex; align-items: center;
+  padding: 0 6px; gap: 5px;
+}
+.lm-modal-frame .lm-modal-bar::before {
+  content: '';
+  width: 5px; height: 5px;
+  border: 1.5px solid rgba(245,166,35,0.8);
+  border-radius: 50%;
+}
+.lm-modal-frame .lm-modal-bar::after {
+  content: '';
+  flex: 1; height: 3px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px;
+}
+.lm-modal-frame .lm-map {
+  position: absolute;
+  top: 22%; left: 4%; right: 4%; bottom: 4%;
+  border-radius: 4px;
+}
 
 /* ===== 2. Color Palettes ===== */
 .palette-strip {

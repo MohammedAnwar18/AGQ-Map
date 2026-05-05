@@ -1412,67 +1412,115 @@ const PalNovaaLab = ({ onClose }) => {
                                         { id: 'modal', title: 'الخريطة المنبثقة (Modal)', sub: 'حل سريع واحترافي لعرض المواقع الجغرافية داخل سياق الصفحة الحالية', type: 'lm-modal' }
                                     ].map(l => (
                                         <div key={l.id} className={`ds-pick ${designSelections.layout === l.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({ ...s, layout: l.id }))}>
-                                            <div className={`layout-mockup ${l.type}`}>
-                                                {/* Simulated Map Background */}
-                                                <div className="lm-map-bg">
-                                                    <div className="lm-road-h"></div>
-                                                    <div className="lm-road-v"></div>
-                                                    <div className="lm-marker" style={{ top: '30%', left: '40%' }}></div>
-                                                    <div className="lm-marker" style={{ top: '60%', left: '70%', background: 'var(--accent-cyan)' }}></div>
-                                                </div>
-
-                                                <div className="lm-content-container">
-                                                    {l.id === 'floating' ? (
-                                                        <>
-                                                            <div className="lm-floating-card" style={{ top: '10%', right: '10%', width: '30%', height: '25%' }}></div>
-                                                            <div className="lm-floating-card" style={{ bottom: '10%', left: '10%', width: '35%', height: '20%' }}></div>
-                                                        </>
-                                                    ) : l.id === 'dashboard' ? (
-                                                        <>
-                                                            <div className="lm-ui-header"></div>
-                                                            <div className="lm-map-area"></div>
-                                                            <div className="lm-ui-stats">
-                                                                <div className="lm-stat"></div>
-                                                                <div className="lm-stat"></div>
-                                                                <div className="lm-stat"></div>
-                                                            </div>
-                                                        </>
-                                                    ) : l.id === 'sidebar' ? (
-                                                        <>
-                                                            <div className="lm-ui-sidebar"></div>
-                                                            <div className="lm-map-area"></div>
-                                                        </>
-                                                    ) : l.id === 'three' ? (
-                                                        <>
-                                                            <div className="lm-ui-tool"></div>
-                                                            <div className="lm-map-area"></div>
-                                                            <div className="lm-ui-info"></div>
-                                                        </>
-                                                    ) : l.id === 'split' ? (
-                                                        <>
-                                                            <div className="lm-map-half"></div>
-                                                            <div className="lm-text-half">
-                                                                <div className="lm-line"></div>
-                                                                <div className="lm-line"></div>
-                                                                <div className="lm-line" style={{ width: '60%' }}></div>
-                                                            </div>
-                                                        </>
-                                                    ) : l.id === 'stacked' ? (
-                                                        <>
-                                                            <div className="lm-map-top"></div>
-                                                            <div className="lm-list-bottom">
-                                                                <div className="lm-item"></div>
-                                                                <div className="lm-item"></div>
-                                                            </div>
-                                                        </>
-                                                    ) : l.id === 'modal' ? (
-                                                        <div className="lm-modal-overlay">
-                                                            <div className="lm-modal-box"></div>
+                                            <div className={`layout-mockup lm-${l.id}`}>
+                                                {l.id === 'modal' ? (
+                                                    <div className="lm-modal-frame">
+                                                        <div className="lm-modal-bar"></div>
+                                                        <div className="lm-map">
+                                                            <div className="lm-pin" style={{ top: '40%', left: '50%' }}></div>
                                                         </div>
-                                                    ) : (
-                                                        <div className="lm-map-full"></div>
-                                                    )}
-                                                </div>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <div className="lm-map">
+                                                            <div className="lm-pin" style={{ top: '30%', left: '40%' }}></div>
+                                                            <div className="lm-pin cy" style={{ top: '60%', left: '70%' }}></div>
+                                                            <div className="lm-pin lg" style={{ top: '45%', left: '55%' }}></div>
+                                                        </div>
+
+                                                        {l.id === 'fullmap' && (
+                                                            <>
+                                                                <div className="lm-search"></div>
+                                                                <div className="lm-panel">
+                                                                    <div className="lm-row accent thick"></div>
+                                                                    <div className="lm-row short"></div>
+                                                                    <div className="lm-row tiny"></div>
+                                                                </div>
+                                                            </>
+                                                        )}
+
+                                                        {l.id === 'sidebar' && (
+                                                            <div className="lm-panel lm-sidebar">
+                                                                <div className="lm-header" style={{ position: 'relative', height: '15px', marginBottom: '8px' }}></div>
+                                                                {[1, 2, 3].map(i => (
+                                                                    <div key={i} className="lm-item">
+                                                                        <div className="lm-thumb"></div>
+                                                                        <div className="lm-item-content">
+                                                                            <div className="lm-row tiny"></div>
+                                                                            <div className="lm-row short" style={{ opacity: 0.5 }}></div>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+
+                                                        {l.id === 'three' && (
+                                                            <>
+                                                                <div className="lm-header"></div>
+                                                                <div className="lm-tools">
+                                                                    <div className="lm-tool active"></div>
+                                                                    <div className="lm-tool"></div>
+                                                                    <div className="lm-tool"></div>
+                                                                </div>
+                                                                <div className="lm-panel lm-details">
+                                                                    <div className="lm-row thick accent"></div>
+                                                                    <div className="lm-row short"></div>
+                                                                </div>
+                                                            </>
+                                                        )}
+
+                                                        {l.id === 'dashboard' && (
+                                                            <>
+                                                                <div className="lm-header">
+                                                                    <div className="lm-spacer"></div>
+                                                                    <div className="lm-dot-row"><i></i></div>
+                                                                </div>
+                                                                <div className="lm-stats">
+                                                                    {[1, 2, 3].map(i => (
+                                                                        <div key={i} className="lm-stat">
+                                                                            <div className="lm-row tiny" style={{ opacity: 0.5 }}></div>
+                                                                            <div className="lm-stat-num"></div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </>
+                                                        )}
+
+                                                        {l.id === 'split' && (
+                                                            <div className="lm-panel">
+                                                                <div className="lm-row thick accent" style={{ width: '80%', marginBottom: '10px' }}></div>
+                                                                <div className="lm-grid-2">
+                                                                    <div className="lm-card-ph"></div>
+                                                                    <div className="lm-card-ph"></div>
+                                                                    <div className="lm-card-ph"></div>
+                                                                    <div className="lm-card-ph"></div>
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {l.id === 'stacked' && (
+                                                            <div className="lm-panel" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                                <div className="lm-row tiny accent"></div>
+                                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                                    {[1, 2, 3].map(i => <div key={i} style={{ flex: 1, height: '20px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}></div>)}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {l.id === 'floating' && (
+                                                            <>
+                                                                <div className="lm-panel lm-fc1">
+                                                                    <div className="lm-row tiny accent"></div>
+                                                                    <div className="lm-row short"></div>
+                                                                </div>
+                                                                <div className="lm-panel lm-fc2">
+                                                                    <div className="lm-row thick accent"></div>
+                                                                    <div className="lm-row"></div>
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </>
+                                                )}
                                             </div>
                                             <div className="ds-pick-title">{l.title}</div>
                                             <div className="ds-pick-sub">{l.sub}</div>
