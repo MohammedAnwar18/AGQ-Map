@@ -1801,12 +1801,6 @@ const PalNovaaLab = ({ onClose }) => {
                             <div className="preview-info-row"><span className="pi-label">الهوية اللونية</span><span className="pi-value" style={{ color: 'var(--primary)' }}>{designSelections.palette}</span></div>
                             <div className="preview-info-row"><span className="pi-label">الخط المستخدم</span><span className="pi-value">{designSelections.font}</span></div>
                         </div>
-                        <div style={{ marginTop: '20px' }}>
-                            <button className="ds-btn primary" onClick={performActualExport} style={{ width: '100%', justifyContent: 'center', fontFamily: 'inherit' }}>
-                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: '8px' }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-                                تنزيل الموقع النهائي
-                            </button>
-                        </div>
                     </aside>
                 </div>
             </div>
