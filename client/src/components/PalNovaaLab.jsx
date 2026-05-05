@@ -1401,14 +1401,14 @@ const PalNovaaLab = ({ onClose }) => {
                                 </div>
                                 <div className="ds-grid">
                                     {[
-                                        { id: 'fullmap', title: 'خريطة كاملة', sub: 'الخريطة تملأ الشاشة + لوحة عائمة', type: 'lm-fullmap' },
-                                        { id: 'sidebar', title: 'خريطة + لوحة جانبية', sub: 'لوحة معلومات + خريطة', type: 'lm-sidebar' },
-                                        { id: 'three', title: 'ثلاث لوحات', sub: 'أدوات + خريطة + تفاصيل', type: 'lm-three' },
-                                        { id: 'dashboard', title: 'لوحة قيادة', sub: 'رأس + خريطة + إحصائيات', type: 'lm-dashboard' },
-                                        { id: 'split', title: 'تقسيم 50/50', sub: 'خريطة + محتوى متوازي', type: 'lm-split' },
-                                        { id: 'stacked', title: 'خريطة + قائمة', sub: 'الخريطة فوق وقائمة النتائج تحت', type: 'lm-stacked' },
-                                        { id: 'floating', title: 'بطاقات عائمة', sub: 'خريطة + ودجتس على السطح', type: 'lm-floating' },
-                                        { id: 'modal', title: 'خريطة في مودال', sub: 'نافذة خريطة وسط الصفحة', type: 'lm-modal' }
+                                        { id: 'fullmap', title: 'الخريطة الغامرة (Immersive)', sub: 'عرض ملء الشاشة يركز على التجربة البصرية للبيانات الجغرافية', type: 'lm-fullmap' },
+                                        { id: 'sidebar', title: 'التحليل المزدوج (Dual-Pane)', sub: 'لوحة جانبية تفاعلية للتحكم العميق بطبقات الخريطة والمعلومات', type: 'lm-sidebar' },
+                                        { id: 'three', title: 'تخطيط الأجزاء الثلاثة (Triple)', sub: 'نظام متكامل يجمع بين الأدوات، الخريطة، ومعلومات التفاصيل في آن واحد', type: 'lm-three' },
+                                        { id: 'dashboard', title: 'لوحة القيادة الجيومكانية', sub: 'واجهة احترافية تجمع الخريطة مع الإحصائيات والمؤشرات الحية بدقة عالية', type: 'lm-dashboard' },
+                                        { id: 'split', title: 'التقسيم المتوازن (50/50)', sub: 'مقارنة دقيقة وسهلة بين الخريطة والمحتوى النصي جنباً إلى جنب', type: 'lm-split' },
+                                        { id: 'stacked', title: 'الاستعراض العمودي (Vertical)', sub: 'خريطة في الأعلى متبوعة بقائمة بيانات مفصلة وسهلة التصفح في الأسفل', type: 'lm-stacked' },
+                                        { id: 'floating', title: 'الواجهة العائمة (Minimal)', sub: 'خرائط نظيفة مع أدوات تحكم عائمة ذكية توفر مساحة عرض قصوى', type: 'lm-floating' },
+                                        { id: 'modal', title: 'الخريطة المنبثقة (Modal)', sub: 'حل سريع واحترافي لعرض المواقع الجغرافية داخل سياق الصفحة الحالية', type: 'lm-modal' }
                                     ].map(l => (
                                         <div key={l.id} className={`ds-pick ${designSelections.layout === l.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({ ...s, layout: l.id }))}>
                                             <div className={`layout-mockup ${l.type}`}>
