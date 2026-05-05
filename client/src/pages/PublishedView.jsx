@@ -102,24 +102,9 @@ const PublishedView = () => {
     }, [selections]);
 
     const mapStyle = useMemo(() => {
-        const bm = selections.basemap || 'satellite';
-        const maptilerKey = 'N6uNP3sTu25OIBUyi9G1';
-        
-        if (bm === 'satellite') {
-            return `https://api.maptiler.com/maps/satellite/style.json?key=${maptilerKey}`;
-        }
-        
-        const styleIds = {
-            dark: 'dark-v10',
-            light: 'light-v10',
-            terrain: 'outdoors-v11',
-            vintage: 'streets-v11',
-            cyber: '019b8b76-e5e2-7f02-b5d1-74fd0cf725bb'
-        };
-
-        const styleId = styleIds[bm] || 'basic-v2';
-        return `https://api.maptiler.com/maps/${styleId}/style.json?key=${maptilerKey}`;
-    }, [selections.basemap]);
+        // Using Voyager (CartoDB) - High reliability, no key required, perfect for testing
+        return "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json";
+    }, []);
 
     const handleMapClick = (e) => {
         const feature = e.features && e.features[0];
@@ -380,14 +365,30 @@ const PublishedView = () => {
                 )}
             </main>
 
-            {/* Custom Branding Footer */}
+            {/* Custom Branding Footer with Version Stamp */}
             <div style={{ 
                 position: 'absolute', bottom: '15px', left: '20px', display: 'flex', alignItems: 'center', gap: '10px',
-                padding: '8px 15px', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(5px)', borderRadius: '100px',
-                fontSize: '0.7rem', opacity: 0.8, pointerEvents: 'none', border: '1px solid rgba(255,255,255,0.1)'
+                padding: '8px 15px', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(5px)', borderRadius: '100px',
+                fontSize: '0.7rem', opacity: 0.9, zIndex: 1000, border: '1px solid rgba(255,255,255,0.1)'
             }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--primary)', boxShadow: '0 0 10px var(--primary)' }}></div>
-                <span>Powered by <strong>PalNovaa Studio</strong></span>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981', boxShadow: '0 0 10px #10B981' }}></div>
+                <span style={{ color: 'white' }}>Live v1.0.8 | Powered by <strong>PalNovaa Studio</strong></span>
+                <button 
+                    onClick={() => {
+                        if ('serviceWorker' in navigator) {
+                            navigator.serviceWorker.getRegistrations().then(regs => {
+                                for(let r of regs) r.unregister();
+                                window.location.reload(true);
+                            });
+                        } else {
+                            window.location.reload(true);
+                        }
+                    }}
+                    style={{ 
+                        marginLeft: '10px', padding: '2px 8px', background: 'rgba(255,255,255,0.1)', 
+                        border: '1px solid rgba(255,255,255,0.2)', borderRadius: '4px', color: 'white', cursor: 'pointer' 
+                    }}
+                >تحديث المتصفح</button>
             </div>
 
             <style>{`
