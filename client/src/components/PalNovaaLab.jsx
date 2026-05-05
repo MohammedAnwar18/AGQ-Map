@@ -1409,7 +1409,8 @@ const PalNovaaLab = ({ onClose }) => {
                                         { id: 'split', title: 'التقسيم المتوازن (50/50)', sub: 'مقارنة دقيقة وسهلة بين الخريطة والمحتوى النصي جنباً إلى جنب', type: 'lm-split' },
                                         { id: 'stacked', title: 'الاستعراض العمودي (Vertical)', sub: 'خريطة في الأعلى متبوعة بقائمة بيانات مفصلة وسهلة التصفح في الأسفل', type: 'lm-stacked' },
                                         { id: 'floating', title: 'الواجهة العائمة (Minimal)', sub: 'خرائط نظيفة مع أدوات تحكم عائمة ذكية توفر مساحة عرض قصوى', type: 'lm-floating' },
-                                        { id: 'modal', title: 'الخريطة المنبثقة (Modal)', sub: 'حل سريع واحترافي لعرض المواقع الجغرافية داخل سياق الصفحة الحالية', type: 'lm-modal' }
+                                        { id: 'modal', title: 'الخريطة المنبثقة (Modal)', sub: 'حل سريع واحترافي لعرض المواقع الجغرافية داخل سياق الصفحة الحالية', type: 'lm-modal' },
+                                        { id: 'custom', title: 'تصميم مخصص (Free Design)', sub: 'ابدأ من الصفر وارسم تخطيطك الخاص بحرية كاملة باستخدام أدوات المنشئ الذكي', type: 'lm-custom' }
                                     ].map(l => (
                                         <div key={l.id} className={`ds-pick ${designSelections.layout === l.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({ ...s, layout: l.id }))}>
                                             <div className={`layout-mockup lm-${l.id}`}>
@@ -1740,62 +1741,82 @@ const PalNovaaLab = ({ onClose }) => {
                         )}
 
                         {activeDsCategory === 'builder' && (
-                            <div className="ds-section active" style={{ padding: 0, height: '100%' }}>
+                            <div className="ds-section active" style={{ padding: 0, height: '100%', position: 'relative' }}>
                                 <div style={{ display: 'flex', height: '100%', gap: 0 }}>
                                     {/* Element Palette */}
-                                    <div style={{ width: '150px', background: 'rgba(0,0,0,0.3)', borderRight: '1px solid rgba(255,255,255,0.06)', padding: '16px 10px', overflowY: 'auto', flexShrink: 0 }}>
-                                        <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', letterSpacing: '2px', marginBottom: '12px', textAlign: 'center' }}>العناصر</div>
+                                    <div className="ds-builder-sidebar" style={{ width: '180px', background: '#0A1628', borderRight: '1px solid var(--border)', padding: '20px 12px', overflowY: 'auto', flexShrink: 0 }}>
+                                        <div className="ds-sidebar-label" style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '16px', textAlign: 'center' }}>مكونات الواجهة</div>
                                         {[
-                                            { type: 'heading', label: 'عنوان', preview: 'H₁', text: 'عنوان رئيسي' },
-                                            { type: 'subheading', label: 'عنوان فرعي', preview: 'H₂', text: 'عنوان فرعي' },
-                                            { type: 'paragraph', label: 'نص', preview: '¶', text: 'أضف نصاً هنا...' },
-                                            { type: 'btn_primary', label: 'زر رئيسي', preview: '[زر]', text: 'انقر هنا' },
-                                            { type: 'btn_outline', label: 'زر ثانوي', preview: '⎕زر', text: 'مزيد' },
-                                            { type: 'search', label: 'بحث', preview: '🔍', text: 'ابحث...' },
-                                            { type: 'layers', label: 'قائمة طبقات', preview: '⊞', text: 'الطبقات' },
-                                            { type: 'stat', label: 'بطاقة إحصاء', preview: '42↑', text: 'إجمالي' },
-                                            { type: 'divider', label: 'خط فاصل', preview: '───', text: '' },
-                                            { type: 'badge', label: 'شارة', preview: '🏷', text: 'جديد' },
+                                            { type: 'heading', label: 'عنوان رئيسي', preview: 'H₁' },
+                                            { type: 'subheading', label: 'عنوان فرعي', preview: 'H₂' },
+                                            { type: 'paragraph', label: 'كتلة نصية', preview: '¶' },
+                                            { type: 'btn_primary', label: 'زر إجراء', preview: 'BTN' },
+                                            { type: 'search', label: 'حقل بحث', preview: '🔍' },
+                                            { type: 'layers', label: 'متحكم طبقات', preview: '⊞' },
+                                            { type: 'stat', label: 'بطاقة رقمية', preview: '42' },
+                                            { type: 'sidebar', label: 'لوحة جانبية', preview: '||' },
+                                            { type: 'card', label: 'بطاقة معلومات', preview: '▭' },
                                         ].map(el => (
                                             <div
                                                 key={el.type}
                                                 draggable
-                                                onDragStart={e => { e.dataTransfer.setData('elType', el.type); e.dataTransfer.setData('elText', el.text); e.dataTransfer.setData('elLabel', el.label); }}
-                                                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '8px', marginBottom: '8px', cursor: 'grab', textAlign: 'center', transition: 'all 0.2s', userSelect: 'none' }}
-                                                onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--primary)'}
-                                                onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'}
+                                                onDragStart={e => { e.dataTransfer.setData('elType', el.type); e.dataTransfer.setData('elLabel', el.label); }}
+                                                className="builder-el-card"
                                             >
-                                                <div style={{ fontSize: '1.1rem', marginBottom: '4px' }}>{el.preview}</div>
-                                                <div style={{ fontSize: '0.72rem', opacity: 0.7 }}>{el.label}</div>
+                                                <div className="el-preview-box">{el.preview}</div>
+                                                <div className="el-label-text">{el.label}</div>
                                             </div>
                                         ))}
+
+                                        <div className="builder-helper-section" style={{ marginTop: '30px', borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
+                                            <button className="ds-btn outline small w-100" onClick={() => {
+                                                const templates = [
+                                                    { id: 1, type: 'search', x: 25, y: 5, w: 50 },
+                                                    { id: 2, type: 'sidebar', x: 75, y: 0, w: 25, h: 100 },
+                                                    { id: 3, type: 'stat', x: 5, y: 80, w: 20 }
+                                                ];
+                                                setPageElements(templates);
+                                            }}>
+                                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg>
+                                                مساعد التوزيع
+                                            </button>
+                                        </div>
                                     </div>
 
-                                    {/* Canvas */}
-                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '16px', gap: '8px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                            <span style={{ fontSize: '0.75rem', opacity: 0.5 }}>اسحب العناصر وضعها على اللوحة</span>
-                                            <button onClick={() => setPageElements([])} style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', borderRadius: '6px', padding: '4px 10px', fontSize: '0.75rem', cursor: 'pointer' }}>مسح الكل</button>
+                                    {/* Canvas Workspace */}
+                                    <div className="ds-builder-canvas-area" style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                                        <div className="canvas-header" style={{ padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span className="pulse-dot"></span>
+                                                <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>مساحة التصميم الحر</span>
+                                            </div>
+                                            <button onClick={() => setPageElements([])} className="ds-btn ghost danger small">مسح المسودة</button>
                                         </div>
+
                                         <div
-                                            style={{ flex: 1, position: 'relative', background: 'rgba(6,214,242,0.03)', border: '2px dashed rgba(6,214,242,0.15)', borderRadius: '12px', overflow: 'hidden', minHeight: '350px' }}
+                                            className="builder-canvas-grid"
                                             onDragOver={e => e.preventDefault()}
                                             onDrop={e => {
                                                 e.preventDefault();
                                                 const rect = e.currentTarget.getBoundingClientRect();
-                                                const x = Math.max(0, Math.min(80, ((e.clientX - rect.left) / rect.width) * 100));
+                                                const x = Math.max(0, Math.min(85, ((e.clientX - rect.left) / rect.width) * 100));
                                                 const y = Math.max(0, Math.min(85, ((e.clientY - rect.top) / rect.height) * 100));
-                                                const newEl = { id: Date.now(), type: e.dataTransfer.getData('elType'), label: e.dataTransfer.getData('elLabel'), text: e.dataTransfer.getData('elText'), x, y, w: 22, fontSize: 1 };
+                                                const newEl = { id: Date.now(), type: e.dataTransfer.getData('elType'), label: e.dataTransfer.getData('elLabel'), x, y, w: 25, fontSize: 1 };
                                                 setPageElements(prev => [...prev, newEl]);
                                                 setSelectedElId(newEl.id);
                                             }}
                                             onClick={() => setSelectedElId(null)}
                                         >
-                                            {/* Map hint */}
-                                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '8px', opacity: 0.12, pointerEvents: 'none' }}>
-                                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" /></svg>
-                                                <span style={{ fontSize: '0.85rem' }}>منطقة الخريطة</span>
+                                            {/* Realistic Map Background Simulation */}
+                                            <div className="canvas-map-bg">
+                                                <div className="grid-overlay"></div>
+                                                <div className="map-markers-hint">
+                                                    <div className="hint-pin" style={{ top: '20%', left: '30%' }}></div>
+                                                    <div className="hint-pin" style={{ top: '50%', left: '60%' }}></div>
+                                                    <div className="hint-pin" style={{ top: '80%', left: '15%' }}></div>
+                                                </div>
                                             </div>
+
                                             {/* Placed Elements */}
                                             {pageElements.map(el => (
                                                 <div
