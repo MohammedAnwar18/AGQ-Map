@@ -197,7 +197,7 @@ const PublishedView = () => {
                         zoom: 12
                     }}
                     style={{ width: '100%', height: '100%' }}
-                    mapStyle={getBasemapStyle(selections.basemap)}
+                    mapStyle={mapStyle}
                     onClick={handleMapClick}
                     interactiveLayerIds={geoLayers
                         .filter(l => l && l.data && (l.type !== 'raster'))
