@@ -478,12 +478,12 @@ const ChatModal = ({ onClose }) => {
                                 disabled={!newMessage.trim()}
                                 style={{
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    width: '42px', height: '42px', padding: 0, borderRadius: '50%',
+                                    width: '42px', height: '42px', padding: 0, borderRadius: '12px',
                                     flexShrink: 0
                                 }}
                             >
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px', height: '20px' }}>
-                                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px', height: '20px' }}>
+                                    <path d="M22 2L11 13" />
                                     <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                                 </svg>
                             </button>

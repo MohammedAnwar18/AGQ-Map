@@ -1716,9 +1716,9 @@ const MapComponent = () => {
 
                 <button className={`nav-item ${showChat ? 'active' : ''}`} onClick={() => { setShowChat(true); setUnreadChatCount(0); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); setShowProfile(false); }}>
                     <div style={{ position: 'relative' }}>
-                        <svg viewBox="0 0 32 32" width="32" height="32" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
-                            <polygon points="19 31 13 19 1 13 31 1 19 31" />
-                            <line x1="13" x2="25" y1="19" y2="7" />
+                        <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M22 2L11 13" />
+                            <polygon points="22 2 15 22 11 13 2 9 22 2" />
                         </svg>
                         {unreadChatCount > 0 && <span className="notification-badge" style={{ top: '-6px', right: '-6px', transform: 'scale(0.9)' }}>{unreadChatCount}</span>}
                     </div>

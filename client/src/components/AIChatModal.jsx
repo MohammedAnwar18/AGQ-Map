@@ -248,8 +248,8 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                                         />
                                         <button className="ai-send-btn" onClick={() => handleSearch()}>
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                                                <line x1="22" y1="2" x2="11" y2="13" />
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M22 2L11 13" />
                                                 <polygon points="22 2 15 22 11 13 2 9 22 2" />
                                             </svg>
                                         </button>
@@ -267,9 +267,9 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                 <div className="ai-features">
                                     <div className="ai-feature-card" onClick={() => handleSearch('اكتشف حولي')}>
                                         <div className="ai-feature-icon">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                                 <circle cx="12" cy="12" r="10" />
-                                                <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+                                                <path d="M16.24 7.76L14.12 14.12L7.76 16.24L9.88 9.88L16.24 7.76Z" />
                                             </svg>
                                         </div>
                                         <h4>اكتشف حولي</h4>
@@ -461,8 +461,8 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                                 />
                                 <button className="ai-send-btn" onClick={() => handleSearch()}>
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                                        <line x1="22" y1="2" x2="11" y2="13" />
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M22 2L11 13" />
                                         <polygon points="22 2 15 22 11 13 2 9 22 2" />
                                     </svg>
                                 </button>
