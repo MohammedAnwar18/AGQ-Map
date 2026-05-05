@@ -167,22 +167,12 @@ const PublishedView = () => {
                         latitude: 31.9038,
                         zoom: 12
                     }}
-                    mapStyle={mapStyle}
                     style={{ width: '100%', height: '100%' }}
-                    attributionControl={selections.show_attribution}
-                    onClick={(e) => {
-                        const feature = e.features && e.features[0];
-                        if (feature) {
-                            setSelectedFeature({
-                                properties: feature.properties,
-                                lng: e.lngLat.lng,
-                                lat: e.lngLat.lat
-                            });
-                        } else {
-                            setSelectedFeature(null);
-                        }
-                    }}
-                    interactiveLayerIds={geoLayers.filter(l => !l.type || l.type !== 'raster').map(l => `layer-${l.id}`)}
+                    mapStyle={getBasemapStyle(selections.basemap)}
+                    onClick={handleMapClick}
+                    interactiveLayerIds={geoLayers
+                        .filter(l => l && l.data && (l.type !== 'raster'))
+                        .map((l, idx) => `layer-${l.id || idx}`)}
                 >
                     {selections.show_controls && <NavigationControl position="bottom-right" />}
                     

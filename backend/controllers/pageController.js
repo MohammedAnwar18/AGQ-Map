@@ -24,7 +24,7 @@ exports.savePage = async (req, res) => {
              ON CONFLICT (slug) 
              DO UPDATE SET name = $2, config = $4, status = $5, updated_at = CURRENT_TIMESTAMP
              RETURNING *`,
-            [userId, name, slug, JSON.stringify(config), status]
+            [userId, name, slug, config, status]
         );
 
         res.json({
