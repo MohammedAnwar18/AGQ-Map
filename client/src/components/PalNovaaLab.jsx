@@ -605,11 +605,12 @@ const onMouseLeave = (e) => {
         ${layoutCSS}
         ${effectCSS}
 
-        .layer-item { background: rgba(0,0,0,0.1); border-radius: 10px; padding: 12px; margin-bottom: 10px; border: 1px solid var(--border); transition: all 0.2s; }
-        .layer-item:hover { border-color: var(--primary); background: rgba(0,0,0,0.2); }
+        .layer-item { background: rgba(0,0,0,0.15); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; border: 1px solid var(--border); }
+        .layer-item:hover { border-color: var(--primary); }
+        #map { flex: 1; min-height: 0; width: 100%; }
 
         .watermark { 
-            position: absolute; bottom: 25px; left: 10px; 
+            position: fixed; bottom: 20px; left: 20px; 
             background: var(--surface-solid); color: var(--text-color); 
             padding: 6px 14px; border-radius: 8px; z-index: 10; 
             font-size: 11px; backdrop-filter: blur(8px); border: 1px solid var(--primary);
@@ -621,7 +622,9 @@ const onMouseLeave = (e) => {
     </style>
 </head>
 <body>
-    ${layoutHTML}
+    <div class="app-container" style="position:relative;">
+        ${layoutHTML}
+    </div>
     <div class="watermark">Designed in <b>PalNovaa Studio</b></div>
 
     <script>
