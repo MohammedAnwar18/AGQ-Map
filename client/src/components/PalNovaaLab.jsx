@@ -1048,7 +1048,7 @@ const onMouseLeave = (e) => {
                             alignItems: 'center',
                             justifyContent: 'space-between',
                             padding: '0 20px',
-                            background: 'rgba(6, 214, 242, 0.15)',
+                            background: '#0F1E33',
                             cursor: 'pointer',
                             color: 'var(--accent-cyan)',
                             fontWeight: 'bold',

@@ -1281,3 +1281,30 @@
   outline: none;
   font-size: 0.9rem;
 }
+
+/* Opaque Popups */
+.maplibregl-popup-content {
+  background: #0A1628 !important;
+  color: white !important;
+  border: 1px solid var(--accent-cyan) !important;
+  border-radius: 12px !important;
+  padding: 15px !important;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6) !important;
+}
+
+.maplibregl-popup-tip {
+  border-top-color: #0A1628 !important;
+  border-bottom-color: #0A1628 !important;
+}
+
+.custom-popup .popup-content {
+  direction: rtl;
+  text-align: right;
+}
+
+.custom-popup h4 {
+  color: var(--accent-cyan);
+  margin: 0 0 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  padding-bottom: 5px;
+}
