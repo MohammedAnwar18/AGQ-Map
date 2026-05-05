@@ -118,7 +118,7 @@ exports.getUserPages = async (req, res) => {
     try {
         const { userId } = req.params;
         const result = await pool.query(
-            'SELECT id, name, slug, created_at, views FROM user_design_pages WHERE user_id = $1 ORDER BY created_at DESC',
+            'SELECT id, name, slug, status, created_at, views FROM user_design_pages WHERE user_id = $1 ORDER BY created_at DESC',
             [userId]
         );
 
