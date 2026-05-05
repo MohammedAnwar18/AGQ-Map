@@ -1797,6 +1797,7 @@ const PalNovaaLab = ({ onClose }) => {
                                 </div>
                             </div>
                         )}
+                        {activeDsCategory === 'effects' && (
                             <div className="ds-section active">
                                 <div className="ds-section-head">
                                     <h2>التأثيرات والظلال <span className="ds-tag">EFFECTS</span></h2>
