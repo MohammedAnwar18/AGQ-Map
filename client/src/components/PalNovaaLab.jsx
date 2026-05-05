@@ -500,7 +500,8 @@ const PalNovaaLab = ({ onClose }) => {
                 slug: publishSlug,
                 config: {
                     selections: designSelections,
-                    elements: pageElements
+                    elements: pageElements,
+                    geoLayers: geoLayers // Save all GeoJSON and Raster layers
                 }
             }, {
                 headers: {

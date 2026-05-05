@@ -650,6 +650,10 @@ export const pageService = {
         const url = userId ? `/pages/user/${userId}` : '/pages/my-pages';
         const response = await api.get(url);
         return response.data;
+    },
+    deletePage: async (id) => {
+        const response = await api.delete(`/pages/${id}`);
+        return response.data;
     }
 };
 

@@ -88,6 +88,30 @@ exports.getMyPages = async (req, res) => {
 };
 
 /**
+ * حذف صفحة منشورة
+ */
+exports.deletePage = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id || req.user.userId;
+
+        // التأكد أن المستخدم هو صاحب الصفحة
+        const check = await pool.query('SELECT user_id FROM user_design_pages WHERE id = $1', [id]);
+        if (check.rows.length === 0) return res.status(404).json({ error: 'الصفحة غير موجودة' });
+        
+        if (check.rows[0].user_id !== userId) {
+            return res.status(403).json({ error: 'غير مسموح لك بحذف هذه الصفحة' });
+        }
+
+        await pool.query('DELETE FROM user_design_pages WHERE id = $1', [id]);
+        res.json({ success: true, message: 'تم حذف الصفحة بنجاح' });
+    } catch (error) {
+        console.error('Delete Page Error:', error);
+        res.status(500).json({ error: 'فشل حذف الصفحة' });
+    }
+};
+
+/**
  * جلب صفحات مستخدم معين (للعرض في البروفايل)
  */
 exports.getUserPages = async (req, res) => {

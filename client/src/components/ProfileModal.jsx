@@ -144,6 +144,20 @@ const ProfileModal = ({ userId, onClose }) => {
         }
     };
 
+    const handleDeletePage = async (e, pageId) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!window.confirm('هل أنت متأكد من رغبتك في حذف هذا التطبيق؟')) return;
+
+        try {
+            await pageService.deletePage(pageId);
+            setPublishedPages(prev => prev.filter(p => p.id !== pageId));
+        } catch (error) {
+            console.error('Delete Page Error:', error);
+            alert('فشل حذف التطبيق');
+        }
+    };
+
     const loadProfile = async (showLoading = true) => {
         try {
             if (showLoading) setLoading(true);
@@ -750,7 +764,31 @@ const ProfileModal = ({ userId, onClose }) => {
                                                             <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>/p/{page.slug}</span>
                                                         </div>
                                                     </div>
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
+                                                        {isOwnProfile && (
+                                                            <button 
+                                                                onClick={(e) => handleDeletePage(e, page.id)}
+                                                                style={{ 
+                                                                    background: 'rgba(239, 68, 68, 0.1)', 
+                                                                    border: 'none', 
+                                                                    borderRadius: '6px', 
+                                                                    padding: '4px',
+                                                                    color: '#ef4444',
+                                                                    cursor: 'pointer',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                    transition: 'all 0.2s'
+                                                                }}
+                                                                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'}
+                                                                onMouseOut={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
+                                                                title="حذف التطبيق"
+                                                            >
+                                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </a>
                                             ))}
                                         </div>

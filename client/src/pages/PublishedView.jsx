@@ -121,8 +121,70 @@ const PublishedView = () => {
                     mapStyle={mapStyle}
                     style={{ width: '100%', height: '100%' }}
                     attributionControl={selections.show_attribution}
+                    onClick={(e) => {
+                        const feature = e.features && e.features[0];
+                        if (feature) {
+                            setSelectedFeature({
+                                properties: feature.properties,
+                                lng: e.lngLat.lng,
+                                lat: e.lngLat.lat
+                            });
+                        } else {
+                            setSelectedFeature(null);
+                        }
+                    }}
+                    interactiveLayerIds={config.geoLayers?.filter(l => !l.type || l.type !== 'raster').map(l => `layer-${l.id}`)}
                 >
                     {selections.show_controls && <NavigationControl position="bottom-right" />}
+                    
+                    {/* Render Saved Layers */}
+                    {config.geoLayers?.map(layer => (
+                        <Source key={layer.id} id={`source-${layer.id}`} type={layer.type === 'raster' ? 'raster' : 'geojson'} data={layer.data} url={layer.url} coordinates={layer.coordinates}>
+                            {layer.type === 'raster' ? (
+                                <Layer
+                                    id={`layer-${layer.id}`}
+                                    type="raster"
+                                    paint={{ 'raster-opacity': 0.8 }}
+                                />
+                            ) : (
+                                <Layer
+                                    id={`layer-${layer.id}`}
+                                    type={
+                                        layer.data.features?.[0]?.geometry?.type === 'Point' ? 'circle' :
+                                        layer.data.features?.[0]?.geometry?.type === 'LineString' ? 'line' : 'fill'
+                                    }
+                                    paint={
+                                        layer.data.features?.[0]?.geometry?.type === 'Point' ? { 'circle-color': layer.color || '#var(--primary)', 'circle-radius': 6, 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } :
+                                        layer.data.features?.[0]?.geometry?.type === 'LineString' ? { 'line-color': layer.color || '#var(--primary)', 'line-width': 3 } :
+                                        { 'fill-color': layer.color || '#var(--primary)', 'fill-opacity': 0.5, 'fill-outline-color': '#fff' }
+                                    }
+                                />
+                            )}
+                        </Source>
+                    ))}
+
+                    {/* Feature Popup */}
+                    {selectedFeature && (
+                        <Popup
+                            longitude={selectedFeature.lng}
+                            latitude={selectedFeature.lat}
+                            onClose={() => setSelectedFeature(null)}
+                            closeButton={false}
+                            anchor="bottom"
+                            maxWidth="300px"
+                        >
+                            <div style={{ padding: '10px', color: 'black', fontFamily: 'Cairo, sans-serif' }}>
+                                <h4 style={{ margin: '0 0 10px 0', borderBottom: '1px solid #eee', paddingBottom: '5px' }}>تفاصيل المعلم</h4>
+                                <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                                    {Object.entries(selectedFeature.properties).map(([key, val]) => (
+                                        <div key={key} style={{ fontSize: '0.8rem', marginBottom: '4px' }}>
+                                            <strong style={{ color: '#666' }}>{key}:</strong> {String(val)}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </Popup>
+                    )}
                 </Map>
 
                 {/* Floating Elements (Builder elements) */}
