@@ -494,12 +494,17 @@ const PalNovaaLab = ({ onClose }) => {
         setIsPublishing(true);
         try {
             const apiUrl = window.location.origin === 'http://localhost:5173' ? 'http://localhost:5001' : '';
+            const token = localStorage.getItem('token');
             const response = await axios.post(`${apiUrl}/api/pages/save`, {
                 name: publishName,
                 slug: publishSlug,
                 config: {
                     selections: designSelections,
                     elements: pageElements
+                }
+            }, {
+                headers: {
+                    Authorization: `Bearer ${token}`
                 }
             });
 
