@@ -1244,7 +1244,7 @@ const MapComponent = () => {
                             )}
                         </button>
 
-                        {/* PalNovaa Spatial Magazine */}
+                        {/* PalNovaa Spatial Magazine - Hidden as requested
                         <button onClick={() => { setShowMagazine(true); setShowMoreMenu(false); }}>
                             <div className="menu-item-content">
                                 <div className="menu-icon-wrapper">
@@ -1257,6 +1257,7 @@ const MapComponent = () => {
                             </div>
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
+                        */}
                         {user?.role === 'admin' && (
                             <button onClick={() => window.location.href = '/admin'}>
                                 <div className="menu-item-content">
