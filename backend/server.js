@@ -1,3 +1,4 @@
+// PalNovaa Backend Server v3.6 - Production Ready
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
