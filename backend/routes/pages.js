@@ -9,5 +9,6 @@ router.get('/view/:slug', pageController.getPageBySlug);
 // Protected routes for management
 router.post('/save', authenticateToken, pageController.savePage);
 router.get('/my-pages', authenticateToken, pageController.getMyPages);
+router.get('/user/:userId', pageController.getUserPages);
 
 module.exports = router;

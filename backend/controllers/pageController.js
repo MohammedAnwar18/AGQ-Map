@@ -86,3 +86,24 @@ exports.getMyPages = async (req, res) => {
         res.status(500).json({ error: 'فشل في جلب صفحاتك' });
     }
 };
+
+/**
+ * جلب صفحات مستخدم معين (للعرض في البروفايل)
+ */
+exports.getUserPages = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const result = await pool.query(
+            'SELECT id, name, slug, created_at, views FROM user_design_pages WHERE user_id = $1 ORDER BY created_at DESC',
+            [userId]
+        );
+
+        res.json({
+            success: true,
+            pages: result.rows
+        });
+    } catch (error) {
+        console.error('Get User Pages Error:', error);
+        res.status(500).json({ error: 'فشل في جلب صفحات المستخدم' });
+    }
+};
