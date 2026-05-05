@@ -689,7 +689,9 @@ const PalNovaaLab = ({ onClose }) => {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PalNovaa Web Map Design</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Tajawal:wght@300;500;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@200..1000&family=Tajawal:wght@200;300;400;500;700;800;900&family=JetBrains+Mono:wght@100..800&family=Inter:wght@400;700&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <style>
@@ -1584,17 +1586,17 @@ const PalNovaaLab = ({ onClose }) => {
                                 </div>
                                 <div className="ds-grid">
                                     {[
-                                        { id: 'cairo_tajawal', title: 'Cairo + Tajawal', sub: 'عربي حديث · موصى به', fontH: "'Cairo', sans-serif", fontB: "'Tajawal', sans-serif" },
-                                        { id: 'tajawal_inter', title: 'Tajawal + Inter', sub: 'مختلط · أنيق', fontH: "'Tajawal', sans-serif", fontB: "'Inter', sans-serif" },
-                                        { id: 'cairo_mono', title: 'Cairo + JetBrains Mono', sub: 'تقني · للمطورين', fontH: "'Cairo', sans-serif", fontB: "'JetBrains Mono', monospace" },
-                                        { id: 'tajawal_ed', title: 'Tajawal Editorial', sub: 'تحريري · رسمي', fontH: "'Tajawal', serif", fontB: "'Tajawal', sans-serif" },
-                                        { id: 'display', title: 'Display Big', sub: 'عرض · بصري', fontH: "'Cairo', sans-serif", fontB: "'Tajawal', sans-serif", cls: 'preview-display' },
-                                        { id: 'compact', title: 'Compact UI', sub: 'مدمج · واجهات', fontH: "'Cairo', sans-serif", fontB: "'Tajawal', sans-serif", cls: 'preview-compact' }
+                                        { id: 'cairo_tajawal', title: 'Cairo + Tajawal', sub: 'عربي حديث · موصى به', fontH: "'Cairo', sans-serif", fontB: "'Tajawal', sans-serif", previewH: 'Cairo Bold', previewB: 'Tajawal Light Text', wH: 900, wB: 300 },
+                                        { id: 'tajawal_inter', title: 'Tajawal + Inter', sub: 'مختلط · أنيق', fontH: "'Tajawal', sans-serif", fontB: "'Inter', sans-serif", previewH: 'Tajawal Black', previewB: 'Inter Modern Regular', wH: 900, wB: 400 },
+                                        { id: 'cairo_mono', title: 'Cairo + JetBrains Mono', sub: 'تقني · للمطورين', fontH: "'Cairo', sans-serif", fontB: "'JetBrains Mono', monospace", previewH: 'Cairo Extra Bold', previewB: 'JetBrains Mono Technical', wH: 800, wB: 500 },
+                                        { id: 'tajawal_ed', title: 'Tajawal Editorial', sub: 'تحريري · رسمي', fontH: "'Tajawal', sans-serif", fontB: "'Tajawal', sans-serif", previewH: 'Tajawal Bold', previewB: 'Tajawal Regular Editorial', wH: 700, wB: 400 },
+                                        { id: 'display', title: 'Display Big', sub: 'عرض · بصري', fontH: "'Cairo', sans-serif", fontB: "'Tajawal', sans-serif", previewH: 'Display Cairo 1000', previewB: 'Tajawal Medium UI', wH: 1000, wB: 500, cls: 'preview-display' },
+                                        { id: 'compact', title: 'Compact UI', sub: 'مدمج · واجهات', fontH: "'Cairo', sans-serif", fontB: "'Tajawal', sans-serif", previewH: 'Compact Cairo', previewB: 'Tajawal Extra Light', wH: 700, wB: 200, cls: 'preview-compact' }
                                     ].map(f => (
                                         <div key={f.id} className={`ds-pick ${designSelections.font === f.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({ ...s, font: f.id }))}>
                                             <div className={`type-preview ${f.cls || ''}`}>
-                                                <div className="t-title" style={{ fontFamily: f.fontH, fontSize: f.id === 'display' ? '1.4rem' : '1.1rem' }}>PalNovaa Design</div>
-                                                <div className="t-body" style={{ fontFamily: f.fontB, fontSize: f.id === 'compact' ? '0.65rem' : '0.8rem' }}>التجربة البصرية المتميزة للخرائط التفاعلية.</div>
+                                                <div className="t-title" style={{ fontFamily: f.fontH, fontWeight: f.wH, fontSize: f.id === 'display' ? '1.4rem' : '1.1rem' }}>{f.previewH}</div>
+                                                <div className="t-body" style={{ fontFamily: f.fontB, fontWeight: f.wB, fontSize: f.id === 'compact' ? '0.65rem' : '0.8rem' }}>{f.previewB}</div>
                                             </div>
                                             <div className="ds-pick-title">{f.title}</div>
                                             <div className="type-pair-name">{f.sub}</div>
