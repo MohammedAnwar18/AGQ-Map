@@ -440,10 +440,13 @@ const onMouseLeave = (e) => {
         };
         const selectedFont = fontsData[designSelections.font] || fontsData.cairo_tajawal;
 
-        const matchKey = mapStyle?.match(/key=([^&]+)/);
-        const mapTilerKey = matchKey ? matchKey[1] : 'i8w3yP8ZfWc5b7K9839F';
+        let mapTilerKey = 'i8w3yP8ZfWc5b7K9839F';
+        if (typeof mapStyle === 'string') {
+            const matchKey = mapStyle.match(/key=([^&]+)/);
+            if (matchKey) mapTilerKey = matchKey[1];
+        }
         
-        let targetBasemapUrl = mapStyle;
+        let targetBasemapUrl = `https://api.maptiler.com/maps/darkmatter/style.json?key=${mapTilerKey}`;
         const bm = designSelections.basemap;
         if(bm === 'dark') targetBasemapUrl = `https://api.maptiler.com/maps/darkmatter/style.json?key=${mapTilerKey}`;
         else if(bm === 'light') targetBasemapUrl = `https://api.maptiler.com/maps/streets-v2/style.json?key=${mapTilerKey}`;
