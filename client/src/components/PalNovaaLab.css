@@ -12,6 +12,7 @@
   --accent-cyan: #06D6F2;
   --accent-purple: #8B5CF6;
   --bg-darker: #050B16;
+  --font-main: 'Cairo', sans-serif;
 }
 
 /* ===== General Grid & Layouts ===== */
@@ -398,6 +399,7 @@
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   transform: scale(1.05);
   color: #fff;
+  font-family: var(--font-main);
 }
 .design-studio.active {
   opacity: 1;

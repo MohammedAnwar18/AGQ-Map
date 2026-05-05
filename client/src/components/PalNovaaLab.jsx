@@ -60,6 +60,40 @@ const PalNovaaLab = ({ onClose }) => {
         effect: 'glow'
     });
 
+    // Palette Mapping for Live Preview
+    const paletteData = {
+        classic: { primary: '#F5A623', primaryDark: '#D88B0E', bg: '#0F1E33', surface: '#142B47' },
+        heritage: { primary: '#CE1126', primaryDark: '#007A3D', bg: '#000000', surface: '#1A1A1A' },
+        ocean: { primary: '#06D6F2', primaryDark: '#1A2980', bg: '#0A1628', surface: '#142B47' },
+        sunset: { primary: '#FF6B6B', primaryDark: '#F5A623', bg: '#1A0E1F', surface: '#2D1B36' },
+        forest: { primary: '#10D9A0', primaryDark: '#059669', bg: '#064E3B', surface: '#0D6E55' },
+        earth: { primary: '#D4C49B', primaryDark: '#A0826D', bg: '#2C1810', surface: '#3D2B1F' },
+        neon: { primary: '#EC4899', primaryDark: '#8B5CF6', bg: '#050B16', surface: '#0D1526' },
+        minimal: { primary: '#1A1A2E', primaryDark: '#4B5563', bg: '#F5F4ED', surface: '#FFFFFF' }
+    };
+
+    const fontData = {
+        cairo_tajawal: "'Cairo', sans-serif",
+        tajawal_inter: "'Tajawal', sans-serif",
+        cairo_mono: "'JetBrains Mono', monospace",
+        tajawal_ed: "'Tajawal', serif",
+        display: "'Cairo', sans-serif",
+        compact: "'Tajawal', sans-serif"
+    };
+
+    const dynamicStyles = useMemo(() => {
+        const p = paletteData[designSelections.palette] || paletteData.classic;
+        const f = fontData[designSelections.font] || fontData.cairo_tajawal;
+        return {
+            '--primary': p.primary,
+            '--primary-dark': p.primaryDark,
+            '--primary-glow': `${p.primary}44`,
+            '--bg-2': p.bg,
+            '--bg-3': p.surface,
+            '--font-main': f
+        };
+    }, [designSelections]);
+
     const activeTableLayer = useMemo(() => geoLayers.find(l => l.id === activeTableLayerId) || null, [geoLayers, activeTableLayerId]);
 
     const attributeKeys = useMemo(() => {
@@ -977,7 +1011,7 @@ const onMouseLeave = (e) => {
                 </footer>
             </div>
 
-            <div className={`design-studio ${isDesignStudioOpen ? 'active' : ''}`} id="designStudio">
+            <div className={`design-studio ${isDesignStudioOpen ? 'active' : ''}`} id="designStudio" style={dynamicStyles}>
                 <header className="ds-header">
                     <div className="ds-brand">
                         <div className="ds-brand-icon">
@@ -1026,7 +1060,7 @@ const onMouseLeave = (e) => {
                         ))}
                     </aside>
 
-                    <main className="ds-main" dir="rtl">
+                    <main className="ds-main" dir="rtl" style={{ fontFamily: 'var(--font-main)' }}>
                         {activeDsCategory === 'layouts' && (
                             <div className="ds-section active">
                                 <div className="ds-section-head">
@@ -1285,25 +1319,35 @@ const onMouseLeave = (e) => {
                         )}
                     </main>
 
-                    <aside className="ds-preview" dir="rtl">
+                    <aside className="ds-preview" dir="rtl" style={{ fontFamily: 'var(--font-main)' }}>
                         <div className="ds-preview-head">
                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                            <span>معاينة التصميم</span>
+                            <span>معاينة التصميم الحية</span>
                         </div>
                         <div className="preview-mock">
-                            <div className="preview-mock-content">
-                                <div className="pmc-header"></div>
-                                <div className="pmc-map"></div>
+                            <div className={`preview-mock-content layout-mockup lm-${designSelections.layout}`}>
+                                <div className="pmc-header lm-block muted"></div>
+                                <div className="pmc-map lm-block map"></div>
+                                {designSelections.layout === 'dashboard' && (
+                                    <div className="lm-bottom" style={{ height: '30px', marginTop: '10px' }}>
+                                        <div className="lm-block alt"></div>
+                                        <div className="lm-block alt"></div>
+                                    </div>
+                                )}
+                                {designSelections.layout === 'sidebar' && <div className="lm-block alt" style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '30%' }}></div>}
                                 <div className="pmc-bar"></div>
                             </div>
                         </div>
                         <div className="preview-info">
-                            <div className="preview-info-row"><span className="pi-label">التخطيط المختارة</span><span className="pi-value">{designSelections.layout}</span></div>
-                            <div className="preview-info-row"><span className="pi-label">الهوية اللونية</span><span className="pi-value">{designSelections.palette}</span></div>
-                            <div className="preview-info-row"><span className="pi-label">ثيم الخريطة</span><span className="pi-value">{designSelections.basemap}</span></div>
+                            <div className="preview-info-row"><span className="pi-label">التخطيط</span><span className="pi-value">{designSelections.layout}</span></div>
+                            <div className="preview-info-row"><span className="pi-label">الهوية اللونية</span><span className="pi-value" style={{ color: 'var(--primary)' }}>{designSelections.palette}</span></div>
+                            <div className="preview-info-row"><span className="pi-label">الخط المستخدم</span><span className="pi-value">{designSelections.font}</span></div>
                         </div>
                         <div style={{marginTop:'20px'}}>
-                            <button className="ds-btn primary" onClick={performActualExport} style={{width:'100%',justifyContent:'center'}}>تنزيل الموقع النهائي</button>
+                            <button className="ds-btn primary" onClick={performActualExport} style={{width:'100%',justifyContent:'center', fontFamily: 'inherit'}}>
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" style={{marginLeft:'8px'}}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                تنزيل الموقع النهائي
+                            </button>
                         </div>
                     </aside>
                 </div>
