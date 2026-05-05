@@ -31,10 +31,28 @@ const PublishedView = () => {
         fetchPage();
     }, [slug]);
 
-    const config = useMemo(() => pageData?.config || {}, [pageData]);
+    const config = useMemo(() => {
+        if (!pageData?.config) return {};
+        // Handle cases where DB might return config as a string instead of object
+        try {
+            const parsed = typeof pageData.config === 'string' ? JSON.parse(pageData.config) : pageData.config;
+            console.log("🛠️ Page Config Loaded:", parsed);
+            return parsed;
+        } catch (e) {
+            console.error("❌ Failed to parse config:", e);
+            return pageData.config || {};
+        }
+    }, [pageData]);
+
     const selections = config.selections || {};
     const elements = config.elements || [];
     const geoLayers = config.geoLayers || [];
+
+    useEffect(() => {
+        if (geoLayers.length > 0) {
+            console.log(`📍 Found ${geoLayers.length} layers to render:`, geoLayers);
+        }
+    }, [geoLayers]);
 
     // Auto-Focus on data
     const mapRef = React.useRef(null);
@@ -169,34 +187,73 @@ const PublishedView = () => {
                     {selections.show_controls && <NavigationControl position="bottom-right" />}
                     
                     {/* Render Saved Layers */}
-                    {geoLayers.map(layer => {
-                        // Better geometry detection
-                        const firstFeature = layer.data.features?.[0] || (layer.data.type === 'Feature' ? layer.data : null);
-                        const geomType = firstFeature?.geometry?.type || 'Polygon';
-                        const isLine = geomType.includes('LineString');
-                        const isPoint = geomType.includes('Point');
+                    {geoLayers.map((layer, idx) => {
+                        if (!layer || !layer.data) return null;
 
-                        return (
-                            <Source key={layer.id} id={`source-${layer.id}`} type={layer.type === 'raster' ? 'raster' : 'geojson'} data={layer.data} url={layer.url} coordinates={layer.coordinates}>
-                                {layer.type === 'raster' ? (
-                                    <Layer
-                                        id={`layer-${layer.id}`}
-                                        type="raster"
-                                        paint={{ 'raster-opacity': 0.8 }}
-                                    />
-                                ) : (
-                                    <Layer
-                                        id={`layer-${layer.id}`}
-                                        type={isPoint ? 'circle' : isLine ? 'line' : 'fill'}
-                                        paint={
-                                            isPoint ? { 'circle-color': layer.color || '#F5A623', 'circle-radius': 6, 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } :
-                                            isLine ? { 'line-color': layer.color || '#F5A623', 'line-width': 3 } :
-                                            { 'fill-color': layer.color || '#F5A623', 'fill-opacity': 0.5, 'fill-outline-color': '#fff' }
-                                        }
-                                    />
-                                )}
-                            </Source>
-                        );
+                        try {
+                            // Enhanced geometry detection
+                            let geomType = 'Polygon';
+                            if (layer.data.features && layer.data.features.length > 0) {
+                                // Find first feature with geometry
+                                const firstWithGeom = layer.data.features.find(f => f.geometry && f.geometry.type);
+                                if (firstWithGeom) geomType = firstWithGeom.geometry.type;
+                            } else if (layer.data.type === 'Feature' && layer.data.geometry) {
+                                geomType = layer.data.geometry.type;
+                            }
+
+                            const isLine = geomType.toLowerCase().includes('line');
+                            const isPoint = geomType.toLowerCase().includes('point');
+                            const layerId = `layer-${layer.id || idx}`;
+                            const sourceId = `source-${layer.id || idx}`;
+                            const layerColor = layer.color || selections.customPrimary || '#F5A623';
+
+                            return (
+                                <Source 
+                                    key={sourceId} 
+                                    id={sourceId} 
+                                    type={layer.type === 'raster' ? 'raster' : 'geojson'} 
+                                    data={layer.data} 
+                                    url={layer.url} 
+                                    coordinates={layer.coordinates}
+                                >
+                                    {layer.type === 'raster' ? (
+                                        <Layer
+                                            id={layerId}
+                                            type="raster"
+                                            paint={{ 'raster-opacity': 0.8 }}
+                                        />
+                                    ) : (
+                                        <Layer
+                                            id={layerId}
+                                            type={isPoint ? 'circle' : isLine ? 'line' : 'fill'}
+                                            paint={
+                                                isPoint ? { 
+                                                    'circle-color': layerColor, 
+                                                    'circle-radius': 8, 
+                                                    'circle-stroke-width': 2, 
+                                                    'circle-stroke-color': '#ffffff',
+                                                    'circle-opacity': 0.9
+                                                } :
+                                                isLine ? { 
+                                                    'line-color': layerColor, 
+                                                    'line-width': 4,
+                                                    'line-opacity': 0.9,
+                                                    'line-blur': 0.5
+                                                } :
+                                                { 
+                                                    'fill-color': layerColor, 
+                                                    'fill-opacity': 0.45, 
+                                                    'fill-outline-color': '#ffffff' 
+                                                }
+                                            }
+                                        />
+                                    )}
+                                </Source>
+                            );
+                        } catch (err) {
+                            console.error(`❌ Error rendering layer ${layer.name || idx}:`, err);
+                            return null;
+                        }
                     })}
 
                     {/* Feature Popup */}
