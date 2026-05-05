@@ -141,7 +141,7 @@ const PalNovaaLab = ({ onClose }) => {
                     area += (p2[0] - p1[0]) * Math.PI/180 * (2 + Math.sin(p1[1]*Math.PI/180) + Math.sin(p2[1]*Math.PI/180));
                 }
                 area = Math.abs(area * 6378137 * 6378137 / 2.0);
-                metricText = area > 1000000 ? (area / 1000000).toFixed(2) + ' ÙÙ²' : area.toFixed(1) + ' Ù²';
+                metricText = area > 1000000 ? (area / 1000000).toFixed(2) + ' كم²' : area.toFixed(1) + ' م²';
             }
 
             const newFeature = { type: 'Feature', geometry: { type: geometryType, coordinates: coords }, properties: { type: `drawn_${drawingMode}`, name: `رسمة (${drawingMode})`, Measurement: metricText } };
@@ -853,7 +853,7 @@ const onMouseLeave = (e) => {
                         </div>
                         <div className="brand-text">
                             <strong>PalNovaa</strong>
-                            <small>LAB · v3.1 (Latest)</small>
+                            <small>مختبر بال نوفا · إصدار 3.1</small>
                         </div>
                     </div>
 
@@ -1050,7 +1050,7 @@ const onMouseLeave = (e) => {
                         }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-                                جدول البيانات الوصفية (Attribute Table)
+                                جدول البيانات الوصفية
                                 <span style={{ background: 'rgba(6,214,242,0.2)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem', marginLeft: '10px' }}>
                                     {activeTableLayer ? activeTableLayer.data.features?.length || 0 : 0} معلم
                                 </span>
@@ -1278,7 +1278,7 @@ const onMouseLeave = (e) => {
                         </div>
                         <div className="ds-brand-text">
                             <strong>PalNovaa WebApp Design Studio</strong>
-                            <small>VERSION 3.5 (ULTRA HD)</small>
+                            <small>الإصدار 3.5 (دقة فائقة)</small>
                         </div>
                     </div>
                     <div className="ds-header-actions" style={{ display: 'flex', gap: '12px' }}>
@@ -1372,13 +1372,13 @@ const onMouseLeave = (e) => {
                                 <div className="ds-grid">
                                     {[
                                         { id: 'classic', title: 'PalNovaa Classic', sub: 'برتقالي دافئ + كحلي عميق', colors: ['#F5A623', '#D88B0E', '#0F1E33', '#142B47', '#FFFFFF'] },
-                                        { id: 'heritage', title: 'Heritage', sub: 'ألوان فلسطينية تراثية', colors: ['#CE1126', '#000000', '#FFFFFF', '#007A3D', '#F5A623'] },
-                                        { id: 'ocean', title: 'Ocean Deep', sub: 'بحر هادئ ومحيط لانهائي', colors: ['#06D6F2', '#1A2980', '#0A1628', '#26D0CE', '#F0F8FF'] },
-                                        { id: 'sunset', title: 'Sunset', sub: 'غروب الصحراء الدافئ', colors: ['#FF6B6B', '#F5A623', '#8B5CF6', '#FCD34D', '#1A0E1F'] },
-                                        { id: 'forest', title: 'Forest', sub: 'طبيعة خضراء منعشة', colors: ['#10D9A0', '#059669', '#064E3B', '#A7F3D0', '#F5F4ED'] },
-                                        { id: 'earth', title: 'Earth Tones', sub: 'ألوان ترابية كلاسيكية', colors: ['#D4C49B', '#A0826D', '#5C4033', '#F5F4ED', '#2C1810'] },
-                                        { id: 'neon', title: 'Cyber Neon', sub: 'مستقبلي وعصري', colors: ['#06D6F2', '#8B5CF6', '#EC4899', '#050B16', '#F5A623'] },
-                                        { id: 'minimal', title: 'Minimal', sub: 'بساطة وأناقة', colors: ['#FFFFFF', '#F5F4ED', '#E5E5E5', '#1A1A2E', '#F5A623'] }
+                                        { id: 'heritage', title: 'التراث', sub: 'ألوان فلسطينية تراثية', colors: ['#CE1126', '#000000', '#FFFFFF', '#007A3D', '#F5A623'] },
+                                        { id: 'ocean', title: 'أعماق المحيط', sub: 'بحر هادئ ومحيط لانهائي', colors: ['#06D6F2', '#1A2980', '#0A1628', '#26D0CE', '#F0F8FF'] },
+                                        { id: 'sunset', title: 'الغروب', sub: 'غروب الصحراء الدافئ', colors: ['#FF6B6B', '#F5A623', '#8B5CF6', '#FCD34D', '#1A0E1F'] },
+                                        { id: 'forest', title: 'الغابة', sub: 'طبيعة خضراء منعشة', colors: ['#10D9A0', '#059669', '#064E3B', '#A7F3D0', '#F5F4ED'] },
+                                        { id: 'earth', title: 'ألوان ترابية', sub: 'ألوان ترابية كلاسيكية', colors: ['#D4C49B', '#A0826D', '#5C4033', '#F5F4ED', '#2C1810'] },
+                                        { id: 'neon', title: 'نيون مستقبلي', sub: 'مستقبلي وعصري', colors: ['#06D6F2', '#8B5CF6', '#EC4899', '#050B16', '#F5A623'] },
+                                        { id: 'minimal', title: 'بسيط', sub: 'بساطة وأناقة', colors: ['#FFFFFF', '#F5F4ED', '#E5E5E5', '#1A1A2E', '#F5A623'] }
                                     ].map(p => (
                                         <div key={p.id} className={`ds-pick ${designSelections.palette === p.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, palette: p.id}))}>
                                             <div className="palette-strip">
@@ -1428,14 +1428,14 @@ const onMouseLeave = (e) => {
                                 </div>
                                 <div className="ds-grid">
                                     {[
-                                        { id: 'primary', title: 'Primary Button', sub: 'زر متدرج مع توهج', node: <button className="comp-btn">زر رئيسي</button> },
-                                        { id: 'outline', title: 'Outline Button', sub: 'زر بحدود فقط', node: <button className="comp-btn outline">زر محدد</button> },
-                                        { id: 'ghost', title: 'Ghost Button', sub: 'خفيف ومنخفض', node: <button className="comp-btn ghost">زر شفاف</button> },
-                                        { id: 'pill', title: 'Pill Button', sub: 'شكل بيضاوي ناعم', node: <button className="comp-btn pill">زر بيضاوي</button> },
-                                        { id: 'glow', title: 'Glow Button', sub: 'تأثير ضوئي قوي', node: <button className="comp-btn glow">متوهج</button> },
-                                        { id: 'card', title: 'Card Default', sub: 'بطاقة معلومات قياسية', node: <div className="comp-card"><div className="c-title">عنوان البطاقة</div><div className="c-text">نص قصير يصف محتوى البطاقة</div></div> },
-                                        { id: 'search', title: 'Search Bar', sub: 'شريط بحث بيضاوي', node: <div className="comp-search"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> ابحث عن مكان...</div> },
-                                        { id: 'toggle', title: 'Toggle Switch', sub: 'مفتاح تبديل', node: <div style={{display:'flex',alignItems:'center',gap:'10px',fontSize:'12px'}}><div style={{width:'36px',height:'20px',background:'var(--primary)',borderRadius:'999px',position:'relative'}}><div style={{position:'absolute',top:'2px',right:'2px',width:'16px',height:'16px',background:'white',borderRadius:'50%'}}></div></div><span>مفعّل</span></div> }
+                                        { id: 'primary', title: 'زر رئيسي', sub: 'زر متدرج مع توهج', node: <button className="comp-btn">زر رئيسي</button> },
+                                        { id: 'outline', title: 'زر محدد', sub: 'زر بحدود فقط', node: <button className="comp-btn outline">زر محدد</button> },
+                                        { id: 'ghost', title: 'زر شفاف', sub: 'خفيف ومنخفض', node: <button className="comp-btn ghost">زر شفاف</button> },
+                                        { id: 'pill', title: 'زر بيضاوي', sub: 'شكل بيضاوي ناعم', node: <button className="comp-btn pill">زر بيضاوي</button> },
+                                        { id: 'glow', title: 'زر متوهج', sub: 'تأثير ضوئي قوي', node: <button className="comp-btn glow">متوهج</button> },
+                                        { id: 'card', title: 'بطاقة معلومات', sub: 'بطاقة معلومات قياسية', node: <div className="comp-card"><div className="c-title">عنوان البطاقة</div><div className="c-text">نص قصير يصف محتوى البطاقة</div></div> },
+                                        { id: 'search', title: 'شريط البحث', sub: 'شريط بحث بيضاوي', node: <div className="comp-search"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> ابحث عن مكان...</div> },
+                                        { id: 'toggle', title: 'مفتاح تبديل', sub: 'مفتاح تبديل', node: <div style={{display:'flex',alignItems:'center',gap:'10px',fontSize:'12px'}}><div style={{width:'36px',height:'20px',background:'var(--primary)',borderRadius:'999px',position:'relative'}}><div style={{position:'absolute',top:'2px',right:'2px',width:'16px',height:'16px',background:'white',borderRadius:'50%'}}></div></div><span>مفعّل</span></div> }
                                     ].map(c => (
                                         <div key={c.id} className={`ds-pick ${designSelections.component === c.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, component: c.id}))}>
                                             <div className="comp-preview">{c.node}</div>
@@ -1455,12 +1455,12 @@ const onMouseLeave = (e) => {
                                 </div>
                                 <div className="ds-grid">
                                     {[
-                                        { id: 'dark', title: 'Dark Matter', sub: 'داكن أنيق · للتطبيقات الحديثة', type: 'bm-dark' },
-                                        { id: 'light', title: 'Light Streets', sub: 'فاتح ونظيف · للقراءة الواضحة', type: 'bm-light' },
-                                        { id: 'satellite', title: 'Satellite', sub: 'صور أقمار صناعية', type: 'bm-satellite' },
-                                        { id: 'terrain', title: 'Terrain', sub: 'تضاريس وارتفاعات', type: 'bm-terrain' },
-                                        { id: 'vintage', title: 'Vintage Map', sub: 'خريطة تاريخية كلاسيكية', type: 'bm-vintage' },
-                                        { id: 'cyber', title: 'Cyber Grid', sub: 'سايبر بانك مستقبلي', type: 'bm-cyber' }
+                                        { id: 'dark', title: 'النمط الداكن', sub: 'داكن أنيق · للتطبيقات الحديثة', type: 'bm-dark' },
+                                        { id: 'light', title: 'النمط الفاتح', sub: 'فاتح ونظيف · للقراءة الواضحة', type: 'bm-light' },
+                                        { id: 'satellite', title: 'قمر صناعي', sub: 'صور أقمار صناعية', type: 'bm-satellite' },
+                                        { id: 'terrain', title: 'تضاريس', sub: 'تضاريس وارتفاعات', type: 'bm-terrain' },
+                                        { id: 'vintage', title: 'خريطة عتيقة', sub: 'خريطة تاريخية كلاسيكية', type: 'bm-vintage' },
+                                        { id: 'cyber', title: 'خريطة رقمية', sub: 'سايبر بانك مستقبلي', type: 'bm-cyber' }
                                     ].map(b => (
                                         <div key={b.id} className={`ds-pick ${designSelections.basemap === b.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, basemap: b.id}))}>
                                             <div className={`basemap-preview ${b.type}`}></div>
@@ -1480,12 +1480,12 @@ const onMouseLeave = (e) => {
                                 </div>
                                 <div className="ds-grid">
                                     {[
-                                        { id: 'pin', title: 'Classic Pin', sub: 'دبوس تقليدي', cls: 'mk-pin' },
-                                        { id: 'dot', title: 'Glow Dot', sub: 'نقطة متوهجة', cls: 'mk-dot' },
-                                        { id: 'pulse', title: 'Pulse Marker', sub: 'نبض حي مع موجة', cls: 'mk-pulse' },
-                                        { id: 'cluster', title: 'Cluster', sub: 'تجميع نقاط مع عدد', cls: 'mk-cluster' },
-                                        { id: 'numbered', title: 'Numbered', sub: 'رقم داخل دائرة', cls: 'mk-num' },
-                                        { id: 'square', title: 'Diamond', sub: 'مربع مائل عصري', cls: 'mk-square' }
+                                        { id: 'pin', title: 'دبوس كلاسيكي', sub: 'دبوس تقليدي', cls: 'mk-pin' },
+                                        { id: 'dot', title: 'نقطة متوهجة', sub: 'نقطة متوهجة', cls: 'mk-dot' },
+                                        { id: 'pulse', title: 'علامة نابضة', sub: 'نبض حي مع موجة', cls: 'mk-pulse' },
+                                        { id: 'cluster', title: 'تجميع', sub: 'تجميع نقاط مع عدد', cls: 'mk-cluster' },
+                                        { id: 'numbered', title: 'مرقمة', sub: 'رقم داخل دائرة', cls: 'mk-num' },
+                                        { id: 'square', title: 'معين', sub: 'مربع مائل عصري', cls: 'mk-square' }
                                     ].map(m => (
                                         <div key={m.id} className={`ds-pick ${designSelections.marker === m.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, marker: m.id}))}>
                                             <div className="marker-preview">
@@ -1552,15 +1552,15 @@ const onMouseLeave = (e) => {
                                 </div>
                                 <div className="ds-grid">
                                     {[
-                                        { id: 'md', title: 'Shadow Medium', sub: 'ظل متوسط متوازن', cls: 'ef-shadow-md' },
-                                        { id: 'lg', title: 'Shadow Large', sub: 'ظل عميق دراماتيكي', cls: 'ef-shadow-lg' },
-                                        { id: 'glow', title: 'Glow Effect', sub: 'توهج برتقالي قوي', cls: 'ef-glow' },
-                                        { id: 'glass', title: 'Glassmorphism', sub: 'زجاج ضبابي عصري', cls: 'ef-glass' },
-                                        { id: 'sunset', title: 'Sunset Gradient', sub: 'تدرج غروب الشمس', cls: 'ef-grad-sunset' },
-                                        { id: 'ocean', title: 'Ocean Gradient', sub: 'تدرج المحيط العميق', cls: 'ef-grad-ocean' },
-                                        { id: 'forest', title: 'Forest Gradient', sub: 'تدرج أخضر منعش', cls: 'ef-grad-forest' },
-                                        { id: 'float', title: 'Float Animation', sub: 'حركة طفو ناعمة', cls: 'ef-anim-float' },
-                                        { id: 'pulse', title: 'Pulse Animation', sub: 'نبضة دائرية', cls: 'ef-anim-pulse' }
+                                        { id: 'md', title: 'ظل متوسط', sub: 'ظل متوسط متوازن', cls: 'ef-shadow-md' },
+                                        { id: 'lg', title: 'ظل كبير', sub: 'ظل عميق دراماتيكي', cls: 'ef-shadow-lg' },
+                                        { id: 'glow', title: 'تأثير التوهج', sub: 'توهج برتقالي قوي', cls: 'ef-glow' },
+                                        { id: 'glass', title: 'النمط الزجاجي', sub: 'زجاج ضبابي عصري', cls: 'ef-glass' },
+                                        { id: 'sunset', title: 'تدرج الغروب', sub: 'تدرج غروب الشمس', cls: 'ef-grad-sunset' },
+                                        { id: 'ocean', title: 'تدرج المحيط', sub: 'تدرج المحيط العميق', cls: 'ef-grad-ocean' },
+                                        { id: 'forest', title: 'تدرج الغابة', sub: 'تدرج أخضر منعش', cls: 'ef-grad-forest' },
+                                        { id: 'float', title: 'حركة الطفو', sub: 'حركة طفو ناعمة', cls: 'ef-anim-float' },
+                                        { id: 'pulse', title: 'حركة النبض', sub: 'نبضة دائرية', cls: 'ef-anim-pulse' }
                                     ].map(e => (
                                         <div key={e.id} className={`ds-pick ${designSelections.effect === e.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({...s, effect: e.id}))}>
                                             <div className={`effect-preview ${e.cls}`}><div className="effect-box"></div></div>
