@@ -207,74 +207,7 @@ const PublishedView = () => {
                 >
                     {selections.show_controls && <NavigationControl position="bottom-right" />}
                     
-                    {/* Render Saved Layers (Memoized for Speed) */}
-                    {useMemo(() => geoLayers.map((layer, idx) => {
-                        if (!layer || !layer.data) return null;
-
-                        try {
-                            // Enhanced geometry detection
-                            let geomType = 'Polygon';
-                            if (layer.data.features && layer.data.features.length > 0) {
-                                const firstWithGeom = layer.data.features.find(f => f.geometry && f.geometry.type);
-                                if (firstWithGeom) geomType = firstWithGeom.geometry.type;
-                            } else if (layer.data.type === 'Feature' && layer.data.geometry) {
-                                geomType = layer.data.geometry.type;
-                            }
-
-                            const isLine = geomType.toLowerCase().includes('line');
-                            const isPoint = geomType.toLowerCase().includes('point');
-                            const layerId = `layer-${layer.id || idx}`;
-                            const sourceId = `source-${layer.id || idx}`;
-                            const layerColor = layer.color || selections.customPrimary || '#F5A623';
-
-                            return (
-                                <Source 
-                                    key={sourceId} 
-                                    id={sourceId} 
-                                    type={layer.type === 'raster' ? 'raster' : 'geojson'} 
-                                    data={layer.data} 
-                                    url={layer.url} 
-                                    coordinates={layer.coordinates}
-                                >
-                                    {layer.type === 'raster' ? (
-                                        <Layer
-                                            id={layerId}
-                                            type="raster"
-                                            paint={{ 'raster-opacity': 0.8 }}
-                                        />
-                                    ) : (
-                                        <Layer
-                                            id={layerId}
-                                            type={isPoint ? 'circle' : isLine ? 'line' : 'fill'}
-                                            paint={
-                                                isPoint ? { 
-                                                    'circle-color': layerColor, 
-                                                    'circle-radius': 8, 
-                                                    'circle-stroke-width': 2, 
-                                                    'circle-stroke-color': '#ffffff',
-                                                    'circle-opacity': 0.9
-                                                } :
-                                                isLine ? { 
-                                                    'line-color': layerColor, 
-                                                    'line-width': 4,
-                                                    'line-opacity': 0.9,
-                                                    'line-blur': 0.5
-                                                } :
-                                                { 
-                                                    'fill-color': layerColor, 
-                                                    'fill-opacity': 0.45, 
-                                                    'fill-outline-color': '#ffffff' 
-                                                }
-                                            }
-                                        />
-                                    )}
-                                </Source>
-                            );
-                        } catch (err) {
-                            console.error(`❌ Error rendering layer ${layer.name || idx}:`, err);
-                            return null;
-                        }
-                    }), [geoLayers, selections.customPrimary])}
+                    {renderedLayers}
 
                     {/* Feature Popup */}
                     {selectedFeature && (
