@@ -121,6 +121,20 @@ ${posts}
         try {
             const text = replyContent.replace(/\`\`\`json/gi, '').replace(/\`\`\`/gi, '').trim();
             jsonResponse = JSON.parse(text);
+
+            // Enrich AI results with profile_picture from the database
+            if (jsonResponse.results && Array.isArray(jsonResponse.results) && jsonResponse.results.length > 0) {
+                const shopIds = jsonResponse.results.map(r => parseInt(r.id)).filter(id => !isNaN(id));
+                if (shopIds.length > 0) {
+                    const picsRes = await pool.query('SELECT id, profile_picture FROM shops WHERE id = ANY($1::int[])', [shopIds]);
+                    const picMap = {};
+                    picsRes.rows.forEach(r => { picMap[r.id] = r.profile_picture; });
+                    jsonResponse.results = jsonResponse.results.map(r => ({
+                        ...r,
+                        profile_picture: picMap[r.id] || null
+                    }));
+                }
+            }
         } catch (e) {
             console.error("Failed to parse AI response from Groq:", replyContent);
             jsonResponse = {
