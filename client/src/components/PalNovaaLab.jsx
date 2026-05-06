@@ -2300,6 +2300,27 @@ const PalNovaaLab = ({ onClose }) => {
                                     إلغاء
                                 </button>
                             </div>
+
+                            <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                                <button 
+                                    className="ds-btn secondary" 
+                                    style={{ width: '100%', height: '40px', background: 'rgba(255,255,255,0.05)', fontSize: '0.8rem', gap: '8px' }}
+                                    onClick={() => {
+                                        const config = {
+                                            selections: designSelections,
+                                            elements: pageElements,
+                                            geoLayers: geoLayers
+                                        };
+                                        const encoded = window.btoa(unescape(encodeURIComponent(JSON.stringify(config))));
+                                        const shareUrl = `${window.location.origin}/p/direct?data=${encoded}`;
+                                        navigator.clipboard.writeText(shareUrl);
+                                        alert('تم نسخ رابط البيانات المباشر! هذا الرابط يحتوي على كل بياناتك (GeoJSON + التصميم) ولا يحتاج لقاعدة بيانات.');
+                                    }}
+                                >
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
+                                    نسخ رابط البيانات المباشر (حل مضمون 100%)
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}

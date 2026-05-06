@@ -15,16 +15,38 @@ const PublishedView = () => {
     useEffect(() => {
         const fetchPage = async () => {
             try {
+                // Priority 1: Check for direct data in URL (?data=...)
+                const searchParams = new URLSearchParams(window.location.search);
+                const encodedData = searchParams.get('data');
+                
+                if (encodedData) {
+                    try {
+                        const decoded = JSON.parse(decodeURIComponent(escape(window.atob(encodedData))));
+                        setPageData({
+                            name: "معاينة مباشرة (بيانات URL)",
+                            config: decoded
+                        });
+                        setLoading(false);
+                        return;
+                    } catch (e) {
+                        console.error("Failed to decode URL data:", e);
+                    }
+                }
+
+                // Priority 2: Fetch from API
                 const apiUrl = window.location.origin === 'http://localhost:5173' ? 'http://localhost:5001' : '';
                 const response = await axios.get(`${apiUrl}/api/pages/view/${slug}`);
-                setPageData(response.data.page);
-                
-                // Update Page Title
-                if (response.data.page.name) {
-                    document.title = `${response.data.page.name} | PalNovaa`;
+                if (response.data.success) {
+                    setPageData(response.data.page);
+                    if (response.data.page.name) {
+                        document.title = `${response.data.page.name} | PalNovaa`;
+                    }
+                } else {
+                    setError('لم يتم العثور على الصفحة المطلوبة');
                 }
             } catch (err) {
-                setError(err.response?.data?.error || 'فشل تحميل الصفحة');
+                console.error('Fetch error:', err);
+                setError('حدث خطأ أثناء تحميل البيانات');
             } finally {
                 setLoading(false);
             }
