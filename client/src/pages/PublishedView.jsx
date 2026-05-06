@@ -124,8 +124,27 @@ const PublishedView = () => {
     }, [selections]);
 
     const mapStyle = useMemo(() => {
-        // Using Voyager (CartoDB) - High reliability, no key required, perfect for testing
-        return "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json";
+        // Local Style Object - Bypasses any CSP issues with external style.json files
+        return {
+            version: 8,
+            sources: {
+                'osm-raster': {
+                    type: 'raster',
+                    tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                    tileSize: 256,
+                    attribution: '&copy; OpenStreetMap contributors'
+                }
+            },
+            layers: [
+                {
+                    id: 'osm-layer',
+                    type: 'raster',
+                    source: 'osm-raster',
+                    minzoom: 0,
+                    maxzoom: 19
+                }
+            ]
+        };
     }, []);
 
     const handleMapClick = (e) => {
@@ -327,7 +346,7 @@ const PublishedView = () => {
                 fontSize: '0.7rem', opacity: 0.9, zIndex: 1000, border: '1px solid rgba(255,255,255,0.1)'
             }}>
                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981', boxShadow: '0 0 10px #10B981' }}></div>
-                <span style={{ color: 'white' }}>Live v1.0.8 | Powered by <strong>PalNovaa Studio</strong></span>
+                <span style={{ color: 'white' }}>Live v1.0.9 | Powered by <strong>PalNovaa Studio</strong></span>
                 <button 
                     onClick={() => {
                         if ('serviceWorker' in navigator) {

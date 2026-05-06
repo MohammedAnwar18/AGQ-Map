@@ -262,6 +262,10 @@
         <div class="dot"></div>
         <div class="dot"></div>
       </div>
+      <div style="margin-top: 20px; display: flex; align-items: center; gap: 8px;">
+        <div style="width: 8px; height: 8px; borderRadius: 50%; background: #10B981; boxShadow: 0 0 10px #10B981"></div>
+        <span style="color: white; font-family: sans-serif; font-size: 12px;">Live v1.0.9 | Powered by <strong>PalNovaa Studio</strong></span>
+      </div>
     </div>
 
     <div class="splash-footer">Built by Palnovaa</div>
@@ -274,26 +278,7 @@
 
   <!-- PWA Service Worker Registration & Smart Cache Clearer -->
   <script>
-    // 1. Auto-recovery from Chunk Load Errors (Stale Cache)
-    window.addEventListener('error', (e) => {
-      // Catch Vite dynamic import chunk errors
-      if (e.message && (e.message.includes('Failed to fetch dynamically imported module') || e.message.includes('Importing a module script failed'))) {
-        console.warn('⚠️ Stale cache detected. Clearing service worker and reloading...');
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations().then((registrations) => {
-            for (let registration of registrations) {
-              registration.unregister();
-            }
-            // Hard reload bypassing cache
-            window.location.reload(true);
-          });
-        } else {
-          window.location.reload(true);
-        }
-      }
-    });
-
-    // 2. Register Service Worker
+    // 🚀 AGGRESSIVE CACHE BREAKER - v1.0.9
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
