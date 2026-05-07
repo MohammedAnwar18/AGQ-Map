@@ -269,8 +269,8 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                                 onChange={(e) => setQuery(e.target.value)}
                                                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                                             />
-                                            <button className="ai-icon-btn" onClick={() => setNavMode(true)} title="تحديد مسار" style={{ background: 'none', border: 'none', color: 'var(--text-muted)' }}>
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '20px' }}>
+                                            <button className="ai-tool-btn" onClick={() => setNavMode(true)} title="تحديد مسار" style={{ background: 'rgba(245, 166, 35, 0.1)', border: '1px solid var(--primary)', color: 'var(--primary)' }}>
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '20px' }}>
                                                     <path d="M12 2L2 7l10 5 10-5-10-5z" />
                                                     <path d="M2 17l10 5 10-5" />
                                                     <path d="M2 12l10 5 10-5" />
