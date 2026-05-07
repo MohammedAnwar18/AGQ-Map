@@ -13,6 +13,10 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
     const [showCamera, setShowCamera] = useState(false);
     const [showResults, setShowResults] = useState(false);
     const [viewMode, setViewMode] = useState('grid');
+    const [navMode, setNavMode] = useState(false);
+    const [navFrom, setNavFrom] = useState('');
+    const [navTo, setNavTo] = useState('');
+    const [showNavSuggestions, setShowNavSuggestions] = useState(false);
 
     // Search & Chat State
     const [query, setQuery] = useState('');
@@ -186,6 +190,23 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
         }
     };
 
+    const handleNavigation = () => {
+        const from = navFrom.trim() || 'موقعي الحالي';
+        const to = navTo.trim();
+
+        if (!to) {
+            alert('يرجى تحديد الوجهة');
+            return;
+        }
+
+        const navQuery = `اريد الذهاب الى ${to}`;
+        setNavMode(false);
+        handleSearch(navQuery);
+    };
+
+    const navSuggestionsList = ['مطعم الواحة', 'صيدلية الحياة', 'كافيه السلام', 'سوبر ماركت النور', 'مستشفى الشفاء', 'مخبز الأمانة', 'مول فلسطين'];
+    const filteredNavSuggestions = navSuggestionsList.filter(s => s.includes(navTo) && navTo.trim() !== '');
+
     const handleFollow = async (shopId) => {
         try {
             await shopService.follow(shopId);
@@ -239,21 +260,66 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                 <p>أنا مساعدك الذكي في PalNovaa، اسألني عن أي مكان أو منتج وسأساعدك بكل سهولة وذكاء</p>
 
                                 <div className="ai-search-wrap">
-                                    <div className="ai-search-box">
-                                        <input
-                                            className="ai-search-input"
-                                            placeholder="ابحث عن أي مكان، خدمة، أو وجهة..."
-                                            value={query}
-                                            onChange={(e) => setQuery(e.target.value)}
-                                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                        />
-                                        <button className="ai-send-btn" onClick={() => handleSearch()}>
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                <path d="M22 2L11 13" />
-                                                <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                                            </svg>
-                                        </button>
-                                    </div>
+                                    {!navMode ? (
+                                        <div className="ai-search-box">
+                                            <input
+                                                className="ai-search-input"
+                                                placeholder="ابحث عن أي مكان، خدمة، أو وجهة..."
+                                                value={query}
+                                                onChange={(e) => setQuery(e.target.value)}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                            />
+                                            <button className="ai-icon-btn" onClick={() => setNavMode(true)} title="تحديد مسار" style={{ background: 'none', border: 'none', color: 'var(--text-muted)' }}>
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '20px' }}>
+                                                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                                                    <path d="M2 17l10 5 10-5" />
+                                                    <path d="M2 12l10 5 10-5" />
+                                                </svg>
+                                            </button>
+                                            <button className="ai-send-btn" onClick={() => handleSearch()}>
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M22 2L11 13" />
+                                                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="nav-box" style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'var(--surface)', padding: '16px', borderRadius: '24px', border: '1px solid var(--primary)', boxShadow: '0 8px 24px var(--primary-glow)' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                                <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--primary)' }}>تحديد المسار الذكي</span>
+                                                <button onClick={() => setNavMode(false)} style={{ color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '16px', height: '16px' }}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                                                </button>
+                                            </div>
+
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '16px', padding: '8px 12px', border: '1px solid var(--border)' }}>
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', color: 'var(--text-muted)' }}><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="3" /></svg>
+                                                <input type="text" value={navFrom} onChange={(e) => setNavFrom(e.target.value)} placeholder="من: موقعي الحالي" style={{ background: 'none', border: 'none', color: 'white', outline: 'none', flex: 1, fontSize: '14px' }} />
+                                            </div>
+
+                                            <div style={{ position: 'relative' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '16px', padding: '8px 12px', border: '1px solid var(--primary)' }}>
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', color: 'var(--primary)' }}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                                                    <input type="text" value={navTo} onChange={(e) => { setNavTo(e.target.value); setShowNavSuggestions(true); }} onFocus={() => setShowNavSuggestions(true)} onBlur={() => setTimeout(() => setShowNavSuggestions(false), 200)} placeholder="إلى: أين تريد الذهاب؟" style={{ background: 'none', border: 'none', color: 'white', outline: 'none', flex: 1, fontSize: '14px' }} />
+                                                </div>
+                                                {showNavSuggestions && filteredNavSuggestions.length > 0 && (
+                                                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface-solid)', border: '1px solid var(--primary)', borderRadius: '12px', marginTop: '4px', zIndex: 10, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
+                                                        {filteredNavSuggestions.map((s, i) => (
+                                                            <div key={i} onClick={() => { setNavTo(s); setShowNavSuggestions(false); }} style={{ padding: '10px 14px', cursor: 'pointer', fontSize: '14px', borderBottom: '1px solid var(--border)', display: 'flex', gap: '8px', alignItems: 'center' }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'} onMouseLeave={(e) => e.currentTarget.style.background = 'none'}>
+                                                                <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" style={{ width: '16px' }}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                                                                {s}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <button onClick={handleNavigation} style={{ background: 'linear-gradient(135deg, var(--primary), var(--primary-dark))', color: 'white', border: 'none', borderRadius: '24px', padding: '10px', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', boxShadow: '0 4px 15px var(--primary-glow)', marginTop: '4px' }}>
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '18px' }}><polyline points="9 18 15 12 9 6" /></svg>
+                                                ارسم المسار الآن
+                                            </button>
+                                        </div>
+                                    )}
 
                                     <div className="ai-suggestions">
                                         {['مطاعم قريبة', 'كافيهات هادئة', 'أقرب صيدلية', 'عروض اليوم'].map(tag => (
@@ -265,6 +331,15 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                 </div>
 
                                 <div className="ai-features">
+                                    <div className="ai-feature-card" onClick={() => setNavMode(true)} style={{ borderColor: 'var(--primary)', boxShadow: '0 4px 15px rgba(245, 166, 35, 0.15)' }}>
+                                        <div className="ai-feature-icon" style={{ background: 'linear-gradient(135deg, var(--primary), var(--primary-dark))', color: 'white' }}>
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <polygon points="3 11 22 2 13 21 11 13 3 11" />
+                                            </svg>
+                                        </div>
+                                        <h4>ارسم مسار</h4>
+                                        <p>تحديد وجهتك بدقة</p>
+                                    </div>
                                     <div className="ai-feature-card" onClick={() => handleSearch('اكتشف حولي')}>
                                         <div className="ai-feature-icon">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
