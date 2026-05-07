@@ -842,6 +842,164 @@
   @media (max-width: 360px) {
     .tool-btn:not(.priority) { display: none; }
   }
+
+  /* ===== Autocomplete ===== */
+  .autocomplete-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--surface-solid);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-top: 4px;
+    box-shadow: var(--shadow-lg);
+    z-index: 10;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+  }
+  .autocomplete-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.2s;
+  }
+  .autocomplete-item:hover {
+    background: var(--surface-hover);
+  }
+  .autocomplete-item:last-child {
+    border-bottom: none;
+  }
+  .autocomplete-item svg {
+    width: 16px; height: 16px; color: var(--primary);
+  }
+  .nav-input-group:focus-within .autocomplete-list.active {
+    display: block;
+  }
+
+  /* ===== Navigation Mode ===== */
+  .nav-box {
+    display: none;
+    flex-direction: column;
+    gap: 12px;
+    background: var(--surface);
+    backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+    border: 1.5px solid var(--border);
+    border-radius: 28px;
+    padding: 16px;
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s var(--transition);
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+  }
+  .nav-box.active { display: flex; animation: slideInNav 0.4s var(--transition); }
+  @keyframes slideInNav {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .nav-input-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 4px 12px;
+    transition: all 0.2s;
+  }
+  .nav-input-group:focus-within {
+    border-color: var(--primary);
+    background: rgba(255,255,255,0.08);
+  }
+  .nav-input-group svg { width: 18px; height: 18px; color: var(--text-muted); }
+  .nav-input-group input {
+    flex: 1;
+    padding: 10px 0;
+    font-size: 14px;
+    color: var(--text-primary);
+  }
+
+  .nav-connector {
+    position: absolute;
+    right: 25px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2px;
+    height: 30px;
+    background: linear-gradient(180deg, var(--primary), var(--primary-light));
+    opacity: 0.3;
+    z-index: 0;
+  }
+
+  .nav-btn-go {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    border-radius: var(--radius-full);
+    padding: 10px;
+    font-weight: 700;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 4px 15px var(--primary-glow);
+    margin-top: 4px;
+  }
+
+  .path-visual {
+    margin: 20px 0;
+    padding: 20px;
+    background: var(--surface-solid);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  .path-line {
+    height: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    position: relative;
+    margin: 30px 0;
+  }
+  .path-progress {
+    position: absolute;
+    top: 0; right: 0;
+    height: 100%;
+    background: var(--primary);
+    width: 0%;
+    transition: width 2s ease-in-out;
+    box-shadow: 0 0 10px var(--primary);
+  }
+  .path-node {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 14px;
+    background: var(--surface-solid);
+    border: 3px solid var(--primary);
+    border-radius: 50%;
+    z-index: 2;
+  }
+  .path-node.start { right: 0; }
+  .path-node.end { left: 0; }
+  .path-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .nav-mode-active .search-box { display: none; }
+  .nav-mode-active .nav-box { display: flex; }
 </style>
 </head>
 <body>
@@ -909,31 +1067,54 @@
 
       <!-- Centered Search -->
       <div class="search-wrap">
-        <div class="search-box">
-          <input class="search-input" id="searchInput" placeholder="ابحث عن مطاعم، أماكن، محلات..." autocomplete="off" />
-          <div class="search-tools">
-            <button class="tool-btn priority" onclick="openCamera()" title="ترجمة بالكاميرا">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                <circle cx="12" cy="13" r="4"/>
-              </svg>
-            </button>
-            <button class="tool-btn" id="micBtn" title="بحث صوتي">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                <line x1="12" y1="19" x2="12" y2="23"/>
-                <line x1="8" y1="23" x2="16" y2="23"/>
-              </svg>
-            </button>
-            <button class="send-btn priority" onclick="performSearch()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <line x1="22" y1="2" x2="11" y2="13"/>
-                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-              </svg>
+          <div class="search-box">
+            <input class="search-input" id="searchInput" placeholder="ابحث عن مطاعم، أماكن، محلات..." autocomplete="off" />
+            <div class="search-tools">
+              <button class="tool-btn" onclick="toggleNavMode()" title="التنقل والخرائط">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                  <path d="M2 17l10 5 10-5"/>
+                  <path d="M2 12l10 5 10-5"/>
+                </svg>
+              </button>
+              <button class="tool-btn priority" onclick="openCamera()" title="ترجمة بالكاميرا">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
+                </svg>
+              </button>
+              <button class="send-btn priority" onclick="performSearch()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <line x1="22" y1="2" x2="11" y2="13"/>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- From/To Navigation Box -->
+          <div class="nav-box" id="navBox">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <span style="font-size:13px; font-weight:700; color:var(--primary);">تحديد المسار الذكي</span>
+              <button onclick="toggleNavMode()" style="color:var(--text-muted);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            
+            <div class="nav-input-group">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+              <input type="text" id="navFrom" placeholder="من: موقعي الحالي" />
+            </div>
+
+            <div class="nav-input-group" style="position:relative;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <input type="text" id="navTo" placeholder="إلى: أين تريد الذهاب؟" autocomplete="off" />
+              <div id="autocompleteList" class="autocomplete-list"></div>
+            </div>
+
+            <button class="nav-btn-go" onclick="performNavigation()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              ارسم المسار الآن
             </button>
           </div>
-        </div>
 
         <!-- Suggestions -->
         <div class="suggestions">
@@ -1297,7 +1478,11 @@
     { name: 'مكتبة المعرفة', distance: '600 م', rating: 4.9, tags: ['مكتبة', 'دراسة'] },
     { name: 'صيدلية الحياة', distance: '200 م', rating: 4.7, tags: ['صيدلية', '24 ساعة'] },
     { name: 'بقالة المدينة', distance: '450 م', rating: 4.5, tags: ['بقالة', 'توصيل'] },
-    { name: 'صالون النخبة', distance: '800 م', rating: 4.8, tags: ['صالون', 'حجز مسبق'] }
+    { name: 'صالون النخبة', distance: '800 م', rating: 4.8, tags: ['صالون', 'حجز مسبق'] },
+    { name: 'مخبز الأمانة', distance: '100 م', rating: 4.9, tags: ['مخبز', 'طازج'] },
+    { name: 'سوبر ماركت النور', distance: '300 م', rating: 4.5, tags: ['تسوق', 'عروض'] },
+    { name: 'عيادة الشفاء', distance: '1.5 كم', rating: 4.8, tags: ['طبي', 'طوارئ'] },
+    { name: 'محل ورد جوري', distance: '900 م', rating: 4.7, tags: ['هدايا', 'ورد'] }
   ];
 
   function renderResults(query) {
@@ -1355,6 +1540,131 @@
     }
   });
 
+  // ===== Navigation =====
+  function toggleNavMode() {
+    const wrap = document.querySelector('.search-wrap');
+    wrap.classList.toggle('nav-mode-active');
+    if (wrap.classList.contains('nav-mode-active')) {
+      document.getElementById('navBox').classList.add('active');
+    } else {
+      document.getElementById('navBox').classList.remove('active');
+    }
+  }
+
+  function performNavigation() {
+    const from = document.getElementById('navFrom').value || 'موقعي الحالي';
+    const to = document.getElementById('navTo').value;
+
+    if (!to) {
+      alert('يرجى تحديد الوجهة');
+      return;
+    }
+
+    document.getElementById('hero').style.display = 'none';
+    document.getElementById('results').classList.add('active');
+    document.getElementById('queryText').textContent = `مسار من ${from} إلى ${to}`;
+    document.getElementById('loading').classList.add('active');
+    document.getElementById('resultsContent').innerHTML = '';
+
+    setTimeout(() => {
+      document.getElementById('loading').classList.remove('active');
+      renderNavigationResult(from, to);
+    }, 1500);
+  }
+
+  function renderNavigationResult(from, to) {
+    const aiResp = `
+      <div class="ai-response">
+        <div class="ai-header">
+          <span class="ai-badge">المساعد الذكي</span>
+        </div>
+        <div class="ai-text">
+          جاري رسم أفضل مسار من <strong>${from}</strong> إلى <strong>${to}</strong>. المسار المتوقع يستغرق حوالي <strong>12 دقيقة</strong> بالسيارة.
+        </div>
+      </div>
+
+      <div class="path-visual">
+        <div class="path-info">
+          <span>${from}</span>
+          <span>${to}</span>
+        </div>
+        <div class="path-line">
+          <div class="path-node start"></div>
+          <div class="path-progress" id="pathProgress"></div>
+          <div class="path-node end"></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--primary); font-weight:700; margin-top:5px;">
+          <span>بداية المسار</span>
+          <span id="distVal">4.2 كم</span>
+          <span>الوجهة</span>
+        </div>
+      </div>
+
+      <div class="features" style="margin-top:20px; grid-template-columns:1fr 1fr;">
+        <div class="feature-card" onclick="alert('جاري تشغيل نظام الملاحة...')">
+          <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg></div>
+          <h4>بدء الملاحة</h4>
+          <p>توجيه صوتي فوراً</p>
+        </div>
+        <div class="feature-card" onclick="alert('تمت المشاركة')">
+          <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></div>
+          <h4>مشاركة المسار</h4>
+          <p>أرسل الموقع لصديق</p>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('resultsContent').innerHTML = aiResp;
+    
+    // Animate path
+    setTimeout(() => {
+      document.getElementById('pathProgress').style.width = '100%';
+    }, 100);
+  }
+
+  // ===== Autocomplete Logic =====
+  const navToInput = document.getElementById('navTo');
+  const autocompleteList = document.getElementById('autocompleteList');
+
+  navToInput.addEventListener('input', function() {
+    const val = this.value.trim();
+    autocompleteList.innerHTML = '';
+    
+    if (!val) {
+      autocompleteList.classList.remove('active');
+      return;
+    }
+    
+    const matches = sampleResults.filter(r => r.name.includes(val) || r.tags.some(t => t.includes(val)));
+    
+    if (matches.length > 0) {
+      matches.forEach(match => {
+        const div = document.createElement('div');
+        div.className = 'autocomplete-item';
+        div.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> ${match.name}`;
+        div.addEventListener('mousedown', function(e) {
+          e.preventDefault(); // Prevent input from losing focus immediately
+          navToInput.value = match.name;
+          autocompleteList.classList.remove('active');
+        });
+        autocompleteList.appendChild(div);
+      });
+      autocompleteList.classList.add('active');
+    } else {
+      autocompleteList.classList.remove('active');
+    }
+  });
+
+  navToInput.addEventListener('blur', () => {
+    autocompleteList.classList.remove('active');
+  });
+  
+  navToInput.addEventListener('focus', function() {
+    if (this.value.trim() && autocompleteList.children.length > 0) {
+      autocompleteList.classList.add('active');
+    }
+  });
+
   // ===== Camera =====
   function openCamera() {
     document.getElementById('cameraModal').classList.add('active');
@@ -1391,6 +1701,11 @@
       document.getElementById('settings').classList.remove('active');
       document.getElementById('overlay').classList.remove('active');
       closeCamera();
+      
+      // Close nav mode
+      if(document.querySelector('.search-wrap').classList.contains('nav-mode-active')) {
+         toggleNavMode();
+      }
     }
   });
 </script>
