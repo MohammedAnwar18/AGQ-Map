@@ -1070,7 +1070,7 @@
           <div class="search-box">
             <input class="search-input" id="searchInput" placeholder="ابحث عن مطاعم، أماكن، محلات..." autocomplete="off" />
             <div class="search-tools">
-              <button class="tool-btn" onclick="toggleNavMode()" title="التنقل والخرائط">
+              <button class="tool-btn priority" onclick="toggleNavMode()" title="التنقل ورسم المسار" style="color: var(--primary);">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M12 2L2 7l10 5 10-5-10-5z"/>
                   <path d="M2 17l10 5 10-5"/>
@@ -1131,6 +1131,15 @@
 
       <!-- Quick Features -->
       <div class="features">
+        <div class="feature-card" onclick="toggleNavMode()" style="border-color: var(--primary); box-shadow: 0 4px 15px rgba(245, 166, 35, 0.15);">
+          <div class="feature-icon" style="background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+            </svg>
+          </div>
+          <h4>ارسم مسار</h4>
+          <p>تحديد وجهتك بدقة</p>
+        </div>
         <div class="feature-card" onclick="openCamera()">
           <div class="feature-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
