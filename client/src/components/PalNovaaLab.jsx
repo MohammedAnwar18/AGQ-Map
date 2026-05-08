@@ -1081,13 +1081,9 @@ const PalNovaaLab = ({ onClose }) => {
                     <div className="topbar-spacer"></div>
 
                     <div className="topbar-actions">
-                        <button className="top-btn" title="إغلاق المختبر" onClick={onClose}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        <button className="top-btn secondary" title="إغلاق المختبر" onClick={onClose} style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                             <span>خروج</span>
-                        </button>
-                        <button className="top-btn primary" title="تشغيل التحليل">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-                            <span>تشغيل التحليل</span>
                         </button>
                     </div>
                 </header>
