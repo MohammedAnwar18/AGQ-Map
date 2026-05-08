@@ -44,10 +44,15 @@
       --ring: rgba(251, 171, 21, .22);
     }
 
+    * { box-sizing: border-box; }
+
     /* ============ Splash Screen ============ */
     #splash-screen {
       position: fixed;
       inset: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
       background:
         radial-gradient(120% 80% at 50% 20%, #1a2554 0%, transparent 60%),
         radial-gradient(140% 100% at 50% 110%, rgba(251, 171, 21, .18) 0%, transparent 55%),
@@ -57,15 +62,14 @@
       align-items: center;
       justify-content: center;
       z-index: 999999;
-      overflow: hidden;
-      transition: all 0.8s cubic-bezier(0.65, 0, 0.35, 1);
       isolation: isolate;
+      transition: all 0.8s cubic-bezier(0.65, 0, 0.35, 1);
     }
 
     #splash-screen.fade-out {
       opacity: 0;
       transform: scale(1.05);
-      filter: blur(10px);
+      filter: blur(15px);
       pointer-events: none;
     }
 
@@ -318,8 +322,23 @@
 
     .splash-footer .amp { color: rgba(251, 171, 21, .7); margin: 0 2px; font-weight: 400; }
 
+    /* corner decor */
+    .corner {
+      position: absolute;
+      width: 80px;
+      height: 80px;
+      border: 1px solid rgba(251, 171, 21, .18);
+      z-index: 1;
+    }
+
+    .corner.tl { top: 24px; left: 24px; border-right: 0; border-bottom: 0; border-top-left-radius: 14px; }
+    .corner.tr { top: 24px; right: 24px; border-left: 0; border-bottom: 0; border-top-right-radius: 14px; }
+    .corner.bl { bottom: 24px; left: 24px; border-right: 0; border-top: 0; border-bottom-left-radius: 14px; }
+    .corner.br { bottom: 24px; right: 24px; border-left: 0; border-top: 0; border-bottom-right-radius: 14px; }
+
     /* tiny floating particles */
     .particles { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+
     .particle {
       position: absolute;
       width: 3px;
@@ -369,6 +388,12 @@
   <div id="splash-screen">
     <div class="map-grid"></div>
     <div class="ambient-glow"></div>
+
+    <div class="corner tl"></div>
+    <div class="corner tr"></div>
+    <div class="corner bl"></div>
+    <div class="corner br"></div>
+
     <div class="particles" id="particles"></div>
 
     <div class="ripples">
