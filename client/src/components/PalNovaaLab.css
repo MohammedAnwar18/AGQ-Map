@@ -2207,8 +2207,8 @@
 .bottom-attribute-panel {
   position: absolute;
   bottom: 40px;
-  left: 20px;
-  right: 360px; /* Leave space for sidebar */
+  left: 360px; /* Space for sidebar on the left */
+  right: 20px;
   height: 35vh;
   background: var(--bg-3);
   border: 1px solid var(--border);
@@ -2307,7 +2307,7 @@
 .sidebar {
   position: absolute;
   top: 20px;
-  right: 20px;
+  left: 20px; /* Moved to left */
   bottom: 20px;
   width: 320px;
   background: var(--bg-3);
