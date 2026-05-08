@@ -2312,7 +2312,7 @@
   width: var(--panel-w);
   background: var(--bg-1);
   border-right: 1px solid var(--border);
-  border-radius: 0 24px 24px 0;
+  border-radius: 0; /* Removed rounding */
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2329,7 +2329,7 @@
   width: 64px;
   background: var(--bg-1);
   border-left: 1px solid var(--border);
-  border-radius: 24px 0 0 24px;
+  border-radius: 0; /* Removed rounding */
   padding: 20px 0;
   display: flex;
   flex-direction: column;
@@ -2342,7 +2342,7 @@
 .tool-dock .tool {
   width: 44px;
   height: 44px;
-  border-radius: 12px;
+  border-radius: 8px; /* Slightly sharper tools */
   display: grid;
   place-items: center;
   transition: all 0.2s;
