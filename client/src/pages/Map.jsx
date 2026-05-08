@@ -336,6 +336,7 @@ const MapComponent = () => {
     const [activeCustomStart, setActiveCustomStart] = useState(null);
     const [friendsMap, setFriendsMap] = useState([]);
     const [followedShopsMap, setFollowedShopsMap] = useState([]);
+    const [allShopsMap, setAllShopsMap] = useState([]);
     const [visibleFriendName, setVisibleFriendName] = useState(null); // Track which friend's name is shown
     const [firstLabelLayerId, setFirstLabelLayerId] = useState(null); // For "built-in" route placement beneath labels
     const [searchResults, setSearchResults] = useState([]); // Added to prevent ReferenceError after revert
@@ -947,13 +948,15 @@ const MapComponent = () => {
         if (!user) return;
         const fetchFriendsLocs = async () => {
             try {
-                const [friendsData, shopsData, managedShopsData] = await Promise.all([
+                const [friendsData, shopsData, managedShopsData, allShopsData] = await Promise.all([
                     friendService.getFriends().catch(e => ({ friends: [] })),
                     shopService.getFollowing().catch(e => ({ shops: [] })),
-                    shopService.getManagedShops().catch(e => ({ shops: [] }))
+                    shopService.getManagedShops().catch(e => ({ shops: [] })),
+                    shopService.getAllForMap().catch(e => ({ shops: [] }))
                 ]);
                 setFriendsMap((friendsData?.friends || []).filter(f => f.last_latitude && f.last_longitude));
                 setFollowedShopsMap(shopsData?.shops || []);
+                setAllShopsMap(allShopsData?.shops || []);
 
                 if (managedShopsData?.shops) {
                     setManagedShopsMap(managedShopsData.shops);
@@ -1474,7 +1477,7 @@ const MapComponent = () => {
                     ))}
 
                     {/* Managed and Followed Shops/Universities Markers - Visibility based on Zoom */}
-                    {!currentCommunity && [...followedShopsMap, ...managedShopsMap.filter(m => !followedShopsMap.some(f => f.id === m.id))].filter(shop => {
+                    {!currentCommunity && allShopsMap.filter(shop => {
                         if (shop.latitude == null || shop.longitude == null || isNaN(parseFloat(shop.latitude))) return false;
 
                         // Educational Institutions & Municipalities: visible from mid zoom (13) to reveal town area

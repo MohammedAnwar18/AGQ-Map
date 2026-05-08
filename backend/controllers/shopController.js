@@ -1,4 +1,4 @@
-﻿const pool = require('../config/database');
+const pool = require('../config/database');
 
 // --- 1. Search Shops ---
 const searchShops = async (req, res) => {
@@ -1212,7 +1212,24 @@ const deleteShopPost = async (req, res) => {
     }
 };
 
+
+// --- 11. Get All Shops for Map (Global View) ---
+const getAllShopsMap = async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT id, name, category, profile_picture, latitude, longitude, floor, parent_shop_id
+            FROM shops
+            WHERE is_hidden = FALSE
+        `);
+        res.json({ shops: result.rows });
+    } catch (error) {
+        console.error('Get all shops map error:', error);
+        res.status(500).json({ error: 'Failed to get all shops' });
+    }
+};
+
 module.exports = {
+    getAllShopsMap,
     searchShops,
     smartSearch,
     followShop,

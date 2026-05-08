@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const { authenticateToken, optionalAuth, isAdmin } = require('../middleware/auth');
 const shopController = require('../controllers/shopController');
@@ -66,6 +66,9 @@ router.get('/smart-search', optionalAuth, shopController.smartSearch);
 
 // البحث عن محلات (عام)
 router.get('/search', optionalAuth, shopController.searchShops);
+
+// عرض جميع المحلات للخريطة (عام)
+router.get('/all-map', optionalAuth, shopController.getAllShopsMap);
 
 // ملف المحل (عام)
 router.get('/:id', optionalAuth, shopController.getShopProfile);
