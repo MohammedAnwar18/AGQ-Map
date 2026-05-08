@@ -32,11 +32,26 @@
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&family=Exo+2:wght@800;900&display=swap" rel="stylesheet">
 
   <style>
-    /* Premium Social Media Splash Screen */
+    :root {
+      --bg-0: #0a1226;
+      --bg-1: #0f172a;
+      --bg-2: #152043;
+      --amber: #fbab15;
+      --amber-soft: #ffd27a;
+      --ink: #f8fafc;
+      --ink-dim: rgba(248, 250, 252, .6);
+      --grid: rgba(251, 171, 21, .07);
+      --ring: rgba(251, 171, 21, .22);
+    }
+
+    /* ============ Splash Screen ============ */
     #splash-screen {
       position: fixed;
       inset: 0;
-      background: #0f172a;
+      background:
+        radial-gradient(120% 80% at 50% 20%, #1a2554 0%, transparent 60%),
+        radial-gradient(140% 100% at 50% 110%, rgba(251, 171, 21, .18) 0%, transparent 55%),
+        linear-gradient(180deg, var(--bg-0) 0%, var(--bg-1) 50%, #060a18 100%);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -44,13 +59,293 @@
       z-index: 999999;
       overflow: hidden;
       transition: all 0.8s cubic-bezier(0.65, 0, 0.35, 1);
+      isolation: isolate;
+    }
+
+    #splash-screen.fade-out {
+      opacity: 0;
+      transform: scale(1.05);
+      filter: blur(10px);
+      pointer-events: none;
+    }
+
+    /* subtle map grid */
+    .map-grid {
+      position: absolute;
+      inset: -10%;
+      background-image:
+        linear-gradient(var(--grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      background-size: 38px 38px, 38px 38px;
+      mask-image: radial-gradient(circle at 50% 45%, black 10%, transparent 70%);
+      -webkit-mask-image: radial-gradient(circle at 50% 45%, black 10%, transparent 70%);
+      transform: perspective(900px) rotateX(58deg) translateY(8%) scale(1.4);
+      transform-origin: 50% 60%;
+      opacity: .9;
+      animation: gridDrift 24s linear infinite;
+      z-index: 0;
+    }
+
+    @keyframes gridDrift {
+      from { background-position: 0 0, 0 0; }
+      to { background-position: 0 76px, 76px 0; }
+    }
+
+    /* ambient amber glow under pin */
+    .ambient-glow {
+      position: absolute;
+      left: 50%;
+      top: 46%;
+      width: 420px;
+      height: 420px;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(circle, rgba(251, 171, 21, .35) 0%, rgba(251, 171, 21, 0) 60%);
+      filter: blur(8px);
+      z-index: 0;
+      animation: ambientPulse 7s cubic-bezier(.45, .05, .55, .95) infinite;
+    }
+
+    @keyframes ambientPulse {
+      0%, 100% { opacity: .5; transform: translate(-50%, -50%) scale(1); }
+      50% { opacity: .85; transform: translate(-50%, -50%) scale(1.08); }
+    }
+
+    /* ripples emanating from pin landing */
+    .ripples {
+      position: absolute;
+      left: 50%;
+      top: 46%;
+      width: 0;
+      height: 0;
+      z-index: 1;
+    }
+
+    .ripple {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 60px;
+      height: 60px;
+      border: 1.5px solid var(--ring);
+      border-radius: 50%;
+      transform: translate(-50%, -50%) scale(.2);
+      opacity: 0;
+      animation: rippleOut 5s cubic-bezier(.22, .61, .36, 1) infinite;
+    }
+
+    .ripple:nth-child(2) { animation-delay: 1.66s; }
+    .ripple:nth-child(3) { animation-delay: 3.33s; }
+
+    @keyframes rippleOut {
+      0% { transform: translate(-50%, -50%) scale(.15); opacity: 0; }
+      8% { opacity: .9; }
+      100% { transform: translate(-50%, -50%) scale(7); opacity: 0; border-color: rgba(251, 171, 21, .0); }
+    }
+
+    /* logo content */
+    .splash-content {
+      position: relative;
+      z-index: 3;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transform: translateY(-2%);
+    }
+
+    .logo-box {
+      position: relative;
+      width: 128px;
+      height: 128px;
+      display: grid;
+      place-items: center;
+      animation: pinDrop 2.6s cubic-bezier(.34, 1.56, .64, 1) 0.2s both,
+        pinBob 6s cubic-bezier(.45, .05, .55, .95) 3s infinite;
+    }
+
+    @keyframes pinDrop {
+      0% { transform: translateY(-220px) scale(.6); opacity: 0; }
+      35% { opacity: 1; }
+      65% { transform: translateY(0) scale(1.05); }
+      78% { transform: translateY(-14px) scale(.98); }
+      90% { transform: translateY(0) scale(1.02); }
+      100% { transform: translateY(0) scale(1); }
+    }
+
+    @keyframes pinBob {
+      0%, 100% { transform: translateY(0) }
+      50% { transform: translateY(-5px) }
+    }
+
+    .logo-tile {
+      position: relative;
+      width: 104px;
+      height: 104px;
+      border-radius: 26px;
+      background:
+        radial-gradient(120% 100% at 30% 20%, #ffc857 0%, var(--amber) 55%, #e08e00 100%);
+      box-shadow:
+        0 18px 40px -10px rgba(251, 171, 21, .55),
+        inset 0 0 0 1px rgba(255, 255, 255, .18),
+        inset 0 -10px 20px rgba(0, 0, 0, .15);
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+
+    .logo-tile::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(160deg, rgba(255, 255, 255, .35) 0%, rgba(255, 255, 255, 0) 45%);
+      mix-blend-mode: overlay;
+    }
+
+    .logo-tile svg {
+      width: 54%;
+      height: 54%;
+      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, .18));
+    }
+
+    /* orbital ring around tile */
+    .orbit {
+      position: absolute;
+      inset: -14px;
+      border-radius: 34px;
+      border: 1.5px dashed rgba(251, 171, 21, .35);
+      animation: orbit 32s linear infinite;
+    }
+
+    @keyframes orbit { to { transform: rotate(360deg); } }
+
+    /* drop shadow ellipse beneath the pin */
+    .pin-shadow {
+      position: absolute;
+      left: 50%;
+      top: calc(46% + 84px);
+      width: 140px;
+      height: 18px;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(ellipse at center, rgba(0, 0, 0, .55), transparent 70%);
+      filter: blur(2px);
+      z-index: 2;
+      animation: shadowPulse 6s cubic-bezier(.45, .05, .55, .95) 3s infinite;
+    }
+
+    @keyframes shadowPulse {
+      0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: .7; }
+      50% { transform: translate(-50%, -50%) scale(.85); opacity: .5; }
+    }
+
+    /* text */
+    .splash-text-container {
+      margin-top: 38px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      opacity: 0;
+      animation: fadeUp .9s cubic-bezier(.2, .8, .2, 1) 1.4s forwards;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .splash-title {
+      margin: 0;
+      font-family: 'Tajawal', sans-serif;
+      font-weight: 900;
+      font-size: 42px;
+      letter-spacing: -.5px;
+      background: linear-gradient(135deg, #ffffff 0%, #ffe2a8 45%, #fbab15 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 2px 30px rgba(251, 171, 21, .25);
+    }
+
+    .splash-tagline {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--ink-dim);
+      letter-spacing: .2px;
+    }
+
+    .splash-tagline .accent { color: var(--amber-soft); }
+
+    .social-loader {
+      margin-top: 34px;
+      display: flex;
+      gap: 8px;
+      opacity: 0;
+      animation: fadeUp .8s ease 1.9s forwards;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--amber);
+      box-shadow: 0 0 10px rgba(251, 171, 21, .7);
+      animation: dotBounce 1.8s cubic-bezier(.45, .05, .55, .95) infinite;
+    }
+
+    .dot:nth-child(1) { animation-delay: -.32s }
+    .dot:nth-child(2) { animation-delay: -.16s }
+
+    @keyframes dotBounce {
+      0%, 80%, 100% { transform: scale(.5); opacity: .4 }
+      40% { transform: scale(1); opacity: 1 }
+    }
+
+    /* footer */
+    .splash-footer {
+      position: absolute;
+      bottom: 40px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-family: 'Tajawal', system-ui, sans-serif;
+      font-size: 11px;
+      font-weight: 300;
+      letter-spacing: .6px;
+      color: rgba(248, 250, 252, .32);
+      z-index: 3;
+      opacity: 0;
+      animation: fadeUp .8s ease 2.2s forwards;
+    }
+
+    .splash-footer .amp { color: rgba(251, 171, 21, .7); margin: 0 2px; font-weight: 400; }
+
+    /* tiny floating particles */
+    .particles { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+    .particle {
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: var(--amber);
+      opacity: 0;
+      box-shadow: 0 0 8px var(--amber);
+      animation: floatUp 9s cubic-bezier(.4, .0, .6, 1) infinite;
+    }
+
+    @keyframes floatUp {
+      0% { transform: translateY(20px) scale(.3); opacity: 0; }
+      25% { opacity: .85; }
+      75% { opacity: .7; }
+      100% { transform: translateY(-420px) scale(.9); opacity: 0; }
+    }
+
+    body.splash-active {
+      overflow: hidden;
+      background: var(--bg-0);
     }
   </style>
 
   <!-- GUARANTEED Splash Screen Removal (runs before React) -->
   <script>
-    // Force-hide the splash screen after 5 seconds NO MATTER WHAT
-    // This runs in pure HTML/JS, independent of React loading
     (function() {
       function hideSplash() {
         var splash = document.getElementById('splash-screen');
@@ -64,197 +359,41 @@
           }, 500);
         }
       }
-      // Hard kill after 5 seconds
-      setTimeout(hideSplash, 5000);
+      setTimeout(hideSplash, 6000); // 6s Safety Timeout
     })();
   </script>
-
-  <style>
-    /* Ambient Background Animated Glow */
-    #splash-screen::before {
-      content: '';
-      position: absolute;
-      width: 150%;
-      height: 150%;
-      background: radial-gradient(circle at center, rgba(251, 171, 21, 0.08) 0%, transparent 70%);
-      animation: ambient-pulse 8s infinite alternate ease-in-out;
-    }
-
-    #splash-screen.fade-out {
-      opacity: 0;
-      transform: scale(1.1);
-      filter: blur(20px);
-      pointer-events: none;
-    }
-
-    .splash-content {
-      position: relative;
-      z-index: 2;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 24px;
-    }
-
-    .logo-box {
-      position: relative;
-      animation: logo-entrance 1.2s cubic-bezier(0.19, 1, 0.22, 1) forwards;
-    }
-
-    .splash-logo {
-      width: 110px;
-      height: 110px;
-      object-fit: contain;
-      filter: drop-shadow(0 0 20px rgba(251, 171, 21, 0.4));
-    }
-
-    .logo-ring {
-      position: absolute;
-      inset: -15px;
-      border: 2px solid rgba(251, 171, 21, 0.2);
-      border-radius: 35% 65% 70% 30% / 30% 30% 70% 70%;
-      animation: ring-rotate 10s linear infinite;
-    }
-
-    .splash-text-container {
-      text-align: center;
-      animation: text-reveal 1s ease-out 0.4s both;
-    }
-
-    .splash-title {
-      font-family: 'Tajawal', sans-serif;
-      font-size: 32px;
-      font-weight: 900;
-      margin: 0;
-      background: linear-gradient(135deg, #ffffff 0%, #fbab15 100%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
-      letter-spacing: -0.5px;
-    }
-
-    .splash-tagline {
-      font-family: 'Tajawal', sans-serif;
-      font-size: 15px;
-      font-weight: 500;
-      color: rgba(255, 255, 255, 0.5);
-      margin-top: 8px;
-      letter-spacing: 0.5px;
-    }
-
-    /* Modern Minimal Loader */
-    .social-loader {
-      margin-top: 40px;
-      display: flex;
-      gap: 8px;
-    }
-
-    .dot {
-      width: 8px;
-      height: 8px;
-      background: #fbab15;
-      border-radius: 50%;
-      animation: dot-bounce 1.4s infinite ease-in-out both;
-    }
-
-    .dot:nth-child(1) {
-      animation-delay: -0.32s;
-    }
-
-    .dot:nth-child(2) {
-      animation-delay: -0.16s;
-    }
-
-    .splash-footer {
-      position: absolute;
-      bottom: 60px;
-      font-family: 'Tajawal', sans-serif;
-      font-size: 13px;
-      font-weight: 700;
-      color: rgba(255, 255, 255, 0.2);
-      text-transform: uppercase;
-      letter-spacing: 2px;
-    }
-
-    /* Keyframes */
-    @keyframes ambient-pulse {
-      0% {
-        transform: translate(-10%, -10%) scale(1);
-      }
-
-      100% {
-        transform: translate(10%, 10%) scale(1.2);
-      }
-    }
-
-    @keyframes logo-entrance {
-      0% {
-        transform: scale(0.5) translateY(20px);
-        opacity: 0;
-      }
-
-      100% {
-        transform: scale(1) translateY(0);
-        opacity: 1;
-      }
-    }
-
-    @keyframes ring-rotate {
-      from {
-        transform: rotate(0deg);
-      }
-
-      to {
-        transform: rotate(360deg);
-      }
-    }
-
-    @keyframes text-reveal {
-      from {
-        transform: translateY(15px);
-        opacity: 0;
-        filter: blur(10px);
-      }
-
-      to {
-        transform: translateY(0);
-        opacity: 1;
-        filter: blur(0);
-      }
-    }
-
-    @keyframes dot-bounce {
-
-      0%,
-      80%,
-      100% {
-        transform: scale(0);
-      }
-
-      40% {
-        transform: scale(1.0);
-      }
-    }
-
-    body.splash-active {
-      overflow: hidden;
-      background: #0f172a;
-    }
-  </style>
 </head>
 
 <body class="splash-active">
   <!-- Premium Social Gateway Splash -->
   <div id="splash-screen">
+    <div class="map-grid"></div>
+    <div class="ambient-glow"></div>
+    <div class="particles" id="particles"></div>
+
+    <div class="ripples">
+      <div class="ripple"></div>
+      <div class="ripple"></div>
+      <div class="ripple"></div>
+    </div>
+
+    <div class="pin-shadow"></div>
+
     <div class="splash-content">
       <div class="logo-box">
-        <div class="logo-ring"></div>
-        <img src="/logo.png" alt="PalNovaa" class="splash-logo" />
+        <div class="orbit"></div>
+        <div class="logo-tile">
+          <!-- Pin glyph (white on amber tile) -->
+          <svg viewBox="0 0 64 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="PalNovaa">
+            <path d="M32 2C16.536 2 4 14.536 4 30c0 19 22 44 26.2 48.2a2.55 2.55 0 0 0 3.6 0C38 74 60 49 60 30 60 14.536 47.464 2 32 2Z" fill="#fff"/>
+            <circle cx="32" cy="29" r="11" fill="#fbab15"/>
+          </svg>
+        </div>
       </div>
 
       <div class="splash-text-container">
         <h1 class="splash-title">PalNovaa</h1>
-        <div class="splash-tagline">اكتشف عالمك الاجتماعي الجديد</div>
+        <div class="splash-tagline">اكتشف عالمك <span class="accent">المكاني</span> الجديد</div>
       </div>
 
       <div class="social-loader">
@@ -264,27 +403,43 @@
       </div>
     </div>
 
-    <div class="splash-footer">Built by Palnovaa</div>
+    <div class="splash-footer">Built by Mohammed Housheya <span class="amp">&amp;</span> Momen Kalefh</div>
   </div>
 
   <div id="root"></div>
-  <!-- Tesseract OCR Engine for High Accuracy Product Scanning -->
+
+  <script>
+    /* Floating amber particles */
+    (function(){
+      const wrap = document.getElementById('particles');
+      function spawn(){
+        if(!wrap) return;
+        wrap.innerHTML = '';
+        for(let i=0; i<14; i++){
+          const p = document.createElement('div');
+          p.className = 'particle';
+          p.style.left = (10 + Math.random()*80) + '%';
+          p.style.top  = (50 + Math.random()*40) + '%';
+          p.style.animationDelay = (Math.random()*9) + 's';
+          p.style.animationDuration = (8 + Math.random()*4) + 's';
+          wrap.appendChild(p);
+        }
+      }
+      spawn();
+    })();
+  </script>
+
+  <!-- Tesseract OCR Engine -->
   <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
   <script type="module" src="/src/main.jsx"></script>
 
-  <!-- PWA Service Worker Registration & Smart Cache Clearer -->
   <script>
-    // 1. Auto-recovery from Chunk Load Errors (Stale Cache)
+    // 1. Auto-recovery from Chunk Load Errors
     window.addEventListener('error', (e) => {
-      // Catch Vite dynamic import chunk errors
       if (e.message && (e.message.includes('Failed to fetch dynamically imported module') || e.message.includes('Importing a module script failed'))) {
-        console.warn('⚠️ Stale cache detected. Clearing service worker and reloading...');
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistrations().then((registrations) => {
-            for (let registration of registrations) {
-              registration.unregister();
-            }
-            // Hard reload bypassing cache
+            for (let registration of registrations) { registration.unregister(); }
             window.location.reload(true);
           });
         } else {
@@ -297,23 +452,8 @@
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
-          .then(registration => {
-            console.log('✅ SW registered successfully');
-            
-            // Listen for updates to the service worker
-            registration.addEventListener('updatefound', () => {
-              const newWorker = registration.installing;
-              newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  // A new version is available, you can optionally notify the user here
-                  console.log('🔄 New app version available in the background.');
-                }
-              });
-            });
-          })
-          .catch(error => {
-            console.log('❌ SW registration failed:', error);
-          });
+          .then(registration => { console.log('✅ SW registered'); })
+          .catch(error => { console.log('❌ SW failed:', error); });
       });
     }
   </script>
