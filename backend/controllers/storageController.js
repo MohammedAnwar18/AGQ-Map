@@ -60,18 +60,22 @@ exports.importArcGIS = async (req, res) => {
             return res.status(400).json({ error: 'يرجى تزويد رابط ArcGIS صالح' });
         }
 
+        // تنظيف الرابط من أي متغيرات زائدة (مثل ?f=jsapi)
+        let baseUrl = arcgisUrl.split('?')[0];
+        
         // بناء رابط الاستعلام (Query)
-        // نضيف 1=1 لجلب كل البيانات، و f=geojson للحصول على الصيغة المطلوبة
-        let queryUrl = arcgisUrl;
-        if (!queryUrl.includes('/query')) {
-            queryUrl = queryUrl.replace(/\/+$/, '') + '/0/query'; // نفترض الطبقة 0 إذا لم يحدد
+        // إذا لم ينتهِ الرابط بـ /query، نضيف /0/query (الطبقة الأولى)
+        let queryUrl = baseUrl;
+        if (!queryUrl.toLowerCase().endsWith('/query')) {
+            queryUrl = queryUrl.replace(/\/+$/, '') + '/0/query';
         }
         
         const params = {
             where: '1=1',
             outFields: '*',
             f: 'geojson',
-            returnGeometry: true
+            returnGeometry: true,
+            outSR: 4326 // التأكد من أن الإحداثيات هي WGS84 المتوافقة مع Mapbox
         };
 
         const response = await axios.get(queryUrl, { params });
@@ -103,7 +107,13 @@ exports.importArcGIS = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('ArcGIS Import Error:', error);
-        res.status(500).json({ error: 'فشل استيراد البيانات من ArcGIS. تأكد من أن الرابط يدعم Query و f=geojson' });
+        console.error('ArcGIS Import Error:', error.message);
+        if (error.response) {
+            console.error('Data:', error.response.data);
+            return res.status(error.response.status).json({ 
+                error: 'الخادم البعيد رفض الطلب. قد يكون الرابط لا يدعم استخراج البيانات بصيغة GeoJSON.' 
+            });
+        }
+        res.status(500).json({ error: 'فشل الاتصال بخدمة ArcGIS. تأكد من أن الرابط متاح للعامة.' });
     }
 };
