@@ -97,6 +97,7 @@ exports.importArcGIS = async (req, res) => {
         res.status(200).json({
             success: true,
             url: publicUrl,
+            geojson: geojson, // Return data for fitBounds
             count: geojson.features.length,
             name: layerName || 'استيراد ArcGIS'
         });

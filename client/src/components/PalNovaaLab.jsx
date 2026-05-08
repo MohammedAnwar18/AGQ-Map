@@ -450,6 +450,35 @@ const PalNovaaLab = ({ onClose }) => {
                         }));
                         setActiveTableLayerId(newLayerId);
                         setShowBottomTable(true);
+
+                        // Fly to data
+                        if (mapRef.current) {
+                            try {
+                                const coordinates = [];
+                                const extractCoords = (obj) => {
+                                    if (obj.type === 'FeatureCollection') obj.features.forEach(extractCoords);
+                                    else if (obj.geometry) extractCoords(obj.geometry);
+                                    else if (obj.coordinates) {
+                                        if (typeof obj.coordinates[0] === 'number') coordinates.push(obj.coordinates);
+                                        else obj.coordinates.forEach(c => {
+                                            if (typeof c[0] === 'number') coordinates.push(c);
+                                            else c.forEach(sub => {
+                                                if (typeof sub[0] === 'number') coordinates.push(sub);
+                                            });
+                                        });
+                                    }
+                                };
+                                extractCoords(json);
+                                if (coordinates.length > 0) {
+                                    const lons = coordinates.map(c => c[0]);
+                                    const lats = coordinates.map(c => c[1]);
+                                    mapRef.current.fitBounds(
+                                        [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]],
+                                        { padding: 80, duration: 2000 }
+                                    );
+                                }
+                            } catch (e) { console.error('Fit bounds error', e); }
+                        }
                     }
                 }
             } catch (err) {
@@ -489,6 +518,35 @@ const PalNovaaLab = ({ onClose }) => {
                 }]);
                 setImportLink('');
                 alert('تم استيراد البيانات بنجاح!');
+
+                // Fly to data if available in response
+                if (response.data.geojson && mapRef.current) {
+                    try {
+                        const coordinates = [];
+                        const extractCoords = (obj) => {
+                            if (obj.type === 'FeatureCollection') obj.features.forEach(extractCoords);
+                            else if (obj.geometry) extractCoords(obj.geometry);
+                            else if (obj.coordinates) {
+                                if (typeof obj.coordinates[0] === 'number') coordinates.push(obj.coordinates);
+                                else obj.coordinates.forEach(c => {
+                                    if (typeof c[0] === 'number') coordinates.push(c);
+                                    else c.forEach(sub => {
+                                        if (typeof sub[0] === 'number') coordinates.push(sub);
+                                    });
+                                });
+                            }
+                        };
+                        extractCoords(response.data.geojson);
+                        if (coordinates.length > 0) {
+                            const lons = coordinates.map(c => c[0]);
+                            const lats = coordinates.map(c => c[1]);
+                            mapRef.current.fitBounds(
+                                [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]],
+                                { padding: 80, duration: 2000 }
+                            );
+                        }
+                    } catch (e) { console.error('Fit bounds error', e); }
+                }
             }
         } catch (err) {
             console.error("Import error:", err);
@@ -496,43 +554,6 @@ const PalNovaaLab = ({ onClose }) => {
         } finally {
             setIsImporting(false);
         }
-    };
-                    // Fly to data
-                    if (mapRef.current) {
-                        try {
-                            const coordinates = [];
-                            const extractCoords = (obj) => {
-                                if (obj.type === 'FeatureCollection') obj.features.forEach(extractCoords);
-                                else if (obj.geometry) extractCoords(obj.geometry);
-                                else if (obj.coordinates) {
-                                    if (typeof obj.coordinates[0] === 'number') coordinates.push(obj.coordinates);
-                                    else obj.coordinates.forEach(c => {
-                                        if (typeof c[0] === 'number') coordinates.push(c);
-                                        else c.forEach(sub => {
-                                            if (typeof sub[0] === 'number') coordinates.push(sub);
-                                        });
-                                    });
-                                }
-                            };
-                            extractCoords(json);
-                            if (coordinates.length > 0) {
-                                const lons = coordinates.map(c => c[0]);
-                                const lats = coordinates.map(c => c[1]);
-                                mapRef.current.fitBounds(
-                                    [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]],
-                                    { padding: 80, duration: 2000 }
-                                );
-                            }
-                        } catch (e) { console.error('Fit bounds error', e); }
-                    }
-                } else {
-                    alert('الملف المرفق ليس بصيغة GeoJSON صحيحة.');
-                }
-            } catch (err) {
-                alert('حدث خطأ أثناء قراءة الملف. تأكد من أنه ملف JSON/GeoJSON صالح.');
-            }
-        };
-        reader.readAsText(file);
     };
 
     useEffect(() => {
