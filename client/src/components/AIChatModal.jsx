@@ -406,13 +406,6 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                         </div>
                                     )}
 
-                                    <div className="ai-suggestions">
-                                        {['مطاعم قريبة', 'كافيهات هادئة', 'أقرب صيدلية', 'عروض اليوم'].map(tag => (
-                                            <button key={tag} className="ai-chip" onClick={() => { setQuery(tag); handleSearch(tag); }}>
-                                                {tag}
-                                            </button>
-                                        ))}
-                                    </div>
                                 </div>
 
                                 <div className="ai-features">
