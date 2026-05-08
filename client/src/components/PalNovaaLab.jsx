@@ -408,46 +408,6 @@ const PalNovaaLab = ({ onClose }) => {
     const handleFileUpload = (e) => {
         const file = e.target.files[0];
         if (!file) return;
-
-        if (file.type.startsWith('image/')) {
-            const imageUrl = URL.createObjectURL(file);
-            if (mapRef.current) {
-                const map = mapRef.current.getMap();
-                const bounds = map.getBounds();
-                const sw = bounds.getSouthWest();
-                const ne = bounds.getNorthEast();
-                const latDiff = ne.lat - sw.lat;
-                const lngDiff = ne.lng - sw.lng;
-
-                // Coordinates: [top-left, top-right, bottom-right, bottom-left]
-                const tl = [sw.lng + lngDiff * 0.2, ne.lat - latDiff * 0.2];
-                const tr = [ne.lng - lngDiff * 0.2, ne.lat - latDiff * 0.2];
-                const br = [ne.lng - lngDiff * 0.2, sw.lat + latDiff * 0.2];
-                const bl = [sw.lng + lngDiff * 0.2, sw.lat + latDiff * 0.2];
-
-                const newLayerId = Date.now().toString();
-                const newLayer = {
-                    id: newLayerId,
-                    name: file.name,
-                    type: 'raster',
-                    url: imageUrl,
-                    coordinates: [tl, tr, br, bl],
-                    color: '#06D6F2',
-                    data: { type: 'FeatureCollection', features: [] }
-                };
-                setGeoLayers(prev => [...prev, newLayer]);
-                
-                // Initialize default style
-                setLayerStyles(prev => ({
-                    ...prev,
-                    [newLayerId]: {
-                        opacity: 0.9
-                    }
-                }));
-            }
-            return;
-        }
-
         const reader = new FileReader();
         reader.onload = (event) => {
             try {
@@ -979,11 +939,7 @@ const PalNovaaLab = ({ onClose }) => {
                 const outClr = s.outlineColor || '#ffffff';
                 const outW = s.outlineWidth ?? 2;
 
-                if (layer.type === 'raster') {
-                    map.addSource('src-' + layer.id, { type: 'image', url: layer.url, coordinates: layer.coordinates });
-                    map.addLayer({ id: 'raster-' + layer.id, type: 'raster', source: 'src-' + layer.id, paint: { 'raster-opacity': lOp } });
-                } else {
-                    map.addSource('src-' + layer.id, { type: 'geojson', data: layer.data });
+                map.addSource('src-' + layer.id, { type: 'geojson', data: layer.data });
                     
                     // Polygons
                     map.addLayer({ 
@@ -1302,19 +1258,21 @@ const PalNovaaLab = ({ onClose }) => {
                         </div>
                     )}
 
+
                     {showBottomTable && activeTableLayer && (
-                        <div className="bottom-table-container slide-up">
-                            <div className="table-header">
+                        <div className="attribute-table-panel">
+                            <div className="table-panel-header">
                                 <div className="table-title">
                                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
                                     <span>جدول البيانات: {activeTableLayer.name}</span>
+                                    <small>{activeTableLayer.data.features.length} معلم</small>
                                 </div>
-                                <div className="table-actions">
-                                    <button onClick={() => setShowBottomTable(false)}>✕</button>
-                                </div>
+                                <button className="close-table-btn" onClick={() => setShowBottomTable(false)}>
+                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                                </button>
                             </div>
-                            <div className="table-body-wrapper">
-                                <table>
+                            <div className="table-panel-body">
+                                <table className="opaque-table">
                                     <thead>
                                         <tr>
                                             <th>#</th>
@@ -1324,7 +1282,7 @@ const PalNovaaLab = ({ onClose }) => {
                                     <tbody>
                                         {activeTableLayer.data.features.map((f, i) => (
                                             <tr key={i} onClick={() => {
-                                                const coords = f.geometry.type === 'Point' ? f.geometry.coordinates : f.geometry.coordinates[0][0] || f.geometry.coordinates[0];
+                                                const coords = f.geometry.type === 'Point' ? f.geometry.coordinates : (f.geometry.coordinates[0][0] || f.geometry.coordinates[0]);
                                                 if (coords && typeof coords[0] === 'number') {
                                                     mapRef.current.flyTo({ center: coords, zoom: 16 });
                                                     setSelectedFeatureInfo({ properties: f.properties || {}, longitude: coords[0], latitude: coords[1] });
@@ -1339,31 +1297,32 @@ const PalNovaaLab = ({ onClose }) => {
                             </div>
                         </div>
                     )}
-                </section>
+                    </section>
 
-                <aside className="sidebar-right">
-                    <div className="panel-tabs">
-                        <button className={activeTab === 'layers' ? 'active' : ''} onClick={() => setActiveTab('layers')}>الطبقات</button>
-                        <button className={activeTab === 'analysis' ? 'active' : ''} onClick={() => setActiveTab('analysis')}>تحليل</button>
-                        <button className={activeTab === 'inspector' ? 'active' : ''} onClick={() => setActiveTab('inspector')}>المفتش</button>
-                    </div>
 
-                    <div className="panel-content">
-                        {activeTab === 'layers' && (
+
+                    <aside className="sidebar">
+                        <div className="panel-tabs">
+                            <div className="panel-tab active">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg>
+                                <span>إدارة الطبقات</span>
+                            </div>
+                        </div>
+
+                        <div className="panel-content">
                             <div className="tab-content">
                                 <div className="panel-section">
                                     <div className="panel-section-title">إضافة بيانات</div>
 
                                     <div className="upload-box" onClick={() => document.getElementById('geo-upload').click()}>
-                                        <input id="geo-upload" type="file" accept=".geojson,.json,.png,.jpg,.jpeg" onChange={handleFileUpload} style={{ display: 'none' }} />
+                                        <input id="geo-upload" type="file" accept=".geojson,.json" onChange={handleFileUpload} style={{ display: 'none' }} />
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
                                         </svg>
-                                        <span>رفع ملف GeoJSON أو خريطة صورية</span>
+                                        <span>رفع ملف GeoJSON أو JSON</span>
                                         <div className="formats">
                                             <span className="format-pill">.geojson</span>
                                             <span className="format-pill">.json</span>
-                                            <span className="format-pill">.png/.jpg</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1380,7 +1339,6 @@ const PalNovaaLab = ({ onClose }) => {
                                             return (
                                                 <div key={layer.id} className="layer-item active">
                                                     <div className="layer-main-info">
-                                                        {/* Clickable Color Circle to open Style Popup */}
                                                         <div 
                                                             className="layer-color-btn" 
                                                             onClick={(e) => {
@@ -1435,80 +1393,16 @@ const PalNovaaLab = ({ onClose }) => {
                                         })}
                                     </div>
                                 )}
-                            </div>
-                        )}
-
-                        {activeTab === 'analysis' && (
-                            <div className="tab-content">
-                                <div className="panel-section">
-                                    <div className="panel-section-title">
-                                        <span>عمليات التحليل المتاحة قريباً</span>
-                                    </div>
-                                    <div className="analysis-grid">
-                                        <div className="analysis-card">
-                                            <div className="analysis-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><circle cx="12" cy="12" r="7" strokeDasharray="2 2" /></svg></div>
-                                            <h6>Buffer</h6>
-                                            <p>نطاق احتمالي</p>
-                                        </div>
-                                        <div className="analysis-card">
-                                            <div className="analysis-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="12" r="6" /><circle cx="15" cy="12" r="6" /></svg></div>
-                                            <h6>Intersection</h6>
-                                            <p>تقاطع الطبقات</p>
-                                        </div>
-                                        <div className="analysis-card">
-                                            <div className="analysis-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12c0 5.5-4.5 10-10 10S2 17.5 2 12 6.5 2 12 2" /><path d="M22 12c0-5.5-4.5-10-10-10v10h10z" /></svg></div>
-                                            <h6>Heatmap</h6>
-                                            <p>خريطة حرارية</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {activeTab === 'inspector' && (
-                            <div className="tab-content">
-                                {selectedFeatureInfo ? (
-                                    <div className="panel-section">
-                                        <div className="panel-section-title">
-                                            <span style={{ color: 'var(--accent-cyan)' }}>تفاصيل المعلم المحدد</span>
-                                            <button onClick={() => setSelectedFeatureInfo(null)} style={{ color: '#EF4444' }}>إغلاق</button>
-                                        </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.9rem' }}>
-                                            {Object.keys(selectedFeatureInfo.properties).length === 0 ? (
-                                                <span style={{ color: 'rgba(255,255,255,0.5)' }}>لا توجد بيانات وصفية</span>
-                                            ) : (
-                                                Object.entries(selectedFeatureInfo.properties).map(([key, val]) => (
-                                                    <div key={key} style={{ background: 'rgba(255,255,255,0.05)', padding: '6px 8px', borderRadius: '4px', wordBreak: 'break-word', borderRight: '2px solid var(--accent-cyan)' }}>
-                                                        <strong style={{ color: '#F5A623', display: 'block', fontSize: '0.8rem', marginBottom: '2px' }}>{key}</strong>
-                                                        <span style={{ fontFamily: 'var(--font-mono)' }}>{typeof val === 'object' ? JSON.stringify(val) : String(val)}</span>
-                                                    </div>
-                                                ))
-                                            )}
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="panel-section">
-                                        <div style={{ padding: '20px', textAlign: 'center', color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.02)', borderRadius: '8px' }}>
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: '40px', height: '40px', marginBottom: '10px', opacity: '0.5' }}>
-                                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                                            </svg>
-                                            <p>اضغط على أي نقطة أو خط أو مضلع على الخريطة لعرض تفاصيله هنا.</p>
-                                        </div>
-                                    </div>
-                                )}
 
                                 <div className="panel-section">
-                                    <div className="panel-section-title">
-                                        <span>معلومات الخريطة</span>
-                                    </div>
-                                    <div className="info-row"><span className="label">خط العرض</span><span className="value mono">{mapState.latitude.toFixed(4)}</span></div>
-                                    <div className="info-row"><span className="label">خط الطول</span><span className="value mono">{mapState.longitude.toFixed(4)}</span></div>
-                                    <div className="info-row"><span className="label">مستوى التكبير</span><span className="value mono">{mapState.zoom.toFixed(1)}</span></div>
+                                    <div className="panel-section-title"><span>معلومات الخريطة</span></div>
+                                    <div className="info-row"><span className="label">خط العرض</span><span className="value mono">{mapState.latitude.toFixed(4)}°N</span></div>
+                                    <div className="info-row"><span className="label">خط الطول</span><span className="value mono">{mapState.longitude.toFixed(4)}°E</span></div>
+                                    <div className="info-row"><span className="label">مستوى التكبير</span><span className="value mono">{mapState.zoom.toFixed(1)}x</span></div>
                                 </div>
                             </div>
-                        )}
-                    </div>
-                </aside>
+                        </div>
+                    </aside>
 
                 {/* ADVANCED STYLE POPUP */}
                 {stylePopup && (() => {
