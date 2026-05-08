@@ -12,6 +12,8 @@ const PalNovaaLab = ({ onClose }) => {
     const [showIntro, setShowIntro] = useState(true);
     const [particles, setParticles] = useState([]);
     const [activeTab, setActiveTab] = useState('layers');
+    const [importLink, setImportLink] = useState('');
+    const [isImporting, setIsImporting] = useState(false);
     const [mapState, setMapState] = useState({
         longitude: 35.2034,
         latitude: 31.9038,
@@ -405,39 +407,96 @@ const PalNovaaLab = ({ onClose }) => {
         return () => clearTimeout(timer);
     }, []);
 
-    const handleFileUpload = (e) => {
+    const handleFileUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
+
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = async (event) => {
             try {
                 const json = JSON.parse(event.target.result);
                 if (json.type === 'FeatureCollection' || json.type === 'Feature') {
-                    const newLayerId = Date.now().toString();
-                    const defaultColor = ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899'][geoLayers.length % 5];
-                    const newLayer = {
-                        id: newLayerId,
-                        name: file.name,
-                        data: json,
-                        color: defaultColor
-                    };
-                    setGeoLayers(prev => [...prev, newLayer]);
-                    
-                    // Initialize default style
-                    setLayerStyles(prev => ({
-                        ...prev,
-                        [newLayerId]: {
-                            color: defaultColor,
-                            outlineColor: '#ffffff',
-                            outlineWidth: 2,
-                            shape: 'circle',
-                            opacity: 1,
-                            fillOpacity: 0.3
-                        }
-                    }));
+                    // الرفع للسيرفر (Cloudflare R2)
+                    const apiUrl = window.location.origin === 'http://localhost:5173' ? 'http://localhost:5001' : '';
+                    const response = await axios.post(`${apiUrl}/api/storage/upload`, {
+                        geojson: json,
+                        layerName: file.name
+                    }, {
+                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                    });
 
-                    setActiveTableLayerId(newLayerId);
-                    setShowBottomTable(true); // Auto-open the bottom attribute table
+                    if (response.data.success) {
+                        const newLayerId = Date.now().toString();
+                        const defaultColor = ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899'][geoLayers.length % 5];
+                        const newLayer = {
+                            id: newLayerId,
+                            name: file.name,
+                            dataUrl: response.data.url, // نستخدم الرابط الآن
+                            data: json, // نحتفظ بالبيانات محلياً للعرض الفوري
+                            color: defaultColor
+                        };
+                        setGeoLayers(prev => [...prev, newLayer]);
+                        
+                        setLayerStyles(prev => ({
+                            ...prev,
+                            [newLayerId]: {
+                                color: defaultColor,
+                                outlineColor: '#ffffff',
+                                outlineWidth: 2,
+                                shape: 'circle',
+                                opacity: 1,
+                                fillOpacity: 0.3
+                            }
+                        }));
+                        setActiveTableLayerId(newLayerId);
+                        setShowBottomTable(true);
+                    }
+                }
+            } catch (err) {
+                console.error("Upload error:", err);
+                alert("حدث خطأ أثناء معالجة الملف");
+            }
+        };
+        reader.readAsText(file);
+    };
+
+    const handleImportLink = async () => {
+        if (!importLink) return;
+        setIsImporting(true);
+        try {
+            const apiUrl = window.location.origin === 'http://localhost:5173' ? 'http://localhost:5001' : '';
+            let endpoint = '/api/storage/upload';
+            let payload = { url: importLink };
+
+            // إذا كان الرابط من ArcGIS
+            if (importLink.includes('MapServer') || importLink.includes('FeatureServer')) {
+                endpoint = '/api/storage/import-arcgis';
+                payload = { arcgisUrl: importLink };
+            }
+
+            const response = await axios.post(`${apiUrl}${endpoint}`, payload, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+
+            if (response.data.success) {
+                const newLayerId = Date.now().toString();
+                const defaultColor = ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899'][geoLayers.length % 5];
+                setGeoLayers(prev => [...prev, {
+                    id: newLayerId,
+                    name: response.data.name || 'طبقة مستوردة',
+                    dataUrl: response.data.url,
+                    color: defaultColor
+                }]);
+                setImportLink('');
+                alert('تم استيراد البيانات بنجاح!');
+            }
+        } catch (err) {
+            console.error("Import error:", err);
+            alert("فشل استيراد الرابط. تأكد من صحة الرابط وصيغة البيانات.");
+        } finally {
+            setIsImporting(false);
+        }
+    };
                     // Fly to data
                     if (mapRef.current) {
                         try {
@@ -1293,35 +1352,67 @@ const PalNovaaLab = ({ onClose }) => {
                             </div>
                         </div>
                     )}
-                    </section>
+                </section>
 
-
-
-                    <aside className="sidebar">
-                        <div className="panel-tabs">
-                            <div className="panel-tab active">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg>
-                                <span>إدارة الطبقات</span>
-                            </div>
+                <aside className="sidebar">
+                    <div className="panel-tabs">
+                        <div className="panel-tab active">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg>
+                            <span>إدارة الطبقات</span>
                         </div>
+                    </div>
 
-                        <div className="panel-content">
-                            <div className="tab-content">
-                                <div className="panel-section">
-                                    <div className="panel-section-title">إضافة بيانات</div>
+                    <div className="panel-content">
+                        <div className="tab-content">
+                            <div className="panel-section">
+                                <div className="panel-section-title">إضافة بيانات</div>
 
-                                    <div className="upload-box" onClick={() => document.getElementById('geo-upload').click()}>
-                                        <input id="geo-upload" type="file" accept=".geojson,.json" onChange={handleFileUpload} style={{ display: 'none' }} />
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
-                                        </svg>
-                                        <span>رفع ملف GeoJSON أو JSON</span>
-                                        <div className="formats">
-                                            <span className="format-pill">.geojson</span>
-                                            <span className="format-pill">.json</span>
-                                        </div>
+                                <div className="upload-box" onClick={() => document.getElementById('geo-upload').click()}>
+                                    <input id="geo-upload" type="file" accept=".geojson,.json" onChange={handleFileUpload} style={{ display: 'none' }} />
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+                                    </svg>
+                                    <span>رفع ملف GeoJSON أو JSON</span>
+                                    <div className="formats">
+                                        <span className="format-pill">.geojson</span>
+                                        <span className="format-pill">.json</span>
                                     </div>
                                 </div>
+
+                                <div className="panel-divider" style={{ margin: '15px 0', opacity: 0.2 }}></div>
+
+                                <div className="link-import-section">
+                                    <div className="panel-section-title">استيراد من رابط (URL)</div>
+                                    <div className="link-input-group" style={{ display: 'flex', gap: '8px' }}>
+                                        <input 
+                                            type="text" 
+                                            placeholder="رابط ArcGIS أو GeoJSON..." 
+                                            value={importLink}
+                                            onChange={(e) => setImportLink(e.target.value)}
+                                            style={{ 
+                                                flex: 1, background: 'rgba(255,255,255,0.05)', 
+                                                border: '1px solid var(--border)', borderRadius: '8px',
+                                                padding: '8px 12px', color: 'white', fontSize: '0.8rem'
+                                            }}
+                                        />
+                                        <button 
+                                            onClick={handleImportLink}
+                                            disabled={isImporting}
+                                            style={{ 
+                                                background: 'var(--primary)', color: 'black', 
+                                                border: 'none', borderRadius: '8px', padding: '0 15px',
+                                                fontWeight: 'bold', cursor: 'pointer',
+                                                opacity: isImporting ? 0.5 : 1
+                                            }}
+                                        >
+                                            {isImporting ? '...' : 'جلب'}
+                                        </button>
+                                    </div>
+                                    <small style={{ display: 'block', marginTop: '8px', color: 'var(--text-muted)', fontSize: '0.7rem' }}>
+                                        يدعم MapServer و FeatureServer و GeoJSON مباشر.
+                                    </small>
+                                </div>
+                            </div>
 
                                 {geoLayers.length > 0 && (
                                     <div className="panel-section">
