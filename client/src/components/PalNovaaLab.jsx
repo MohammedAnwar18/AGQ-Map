@@ -1353,8 +1353,9 @@ const PalNovaaLab = ({ onClose }) => {
                             <div className="tab-content">
                                 <div className="panel-section">
                                     <div className="panel-section-title">إضافة بيانات</div>
-                                    <label className="upload-box">
-                                        <input type="file" accept=".geojson,.json,.png,.jpg,.jpeg" onChange={handleFileUpload} style={{ display: 'none' }} />
+
+                                    <div className="upload-box" onClick={() => document.getElementById('geo-upload').click()}>
+                                        <input id="geo-upload" type="file" accept=".geojson,.json,.png,.jpg,.jpeg" onChange={handleFileUpload} style={{ display: 'none' }} />
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
                                         </svg>
@@ -1364,7 +1365,7 @@ const PalNovaaLab = ({ onClose }) => {
                                             <span className="format-pill">.json</span>
                                             <span className="format-pill">.png/.jpg</span>
                                         </div>
-                                    </label>
+                                    </div>
                                 </div>
 
                                 {geoLayers.length > 0 && (
@@ -1373,11 +1374,12 @@ const PalNovaaLab = ({ onClose }) => {
                                             <span>الطبقات النشطة</span>
                                             <button onClick={() => { setGeoLayers([]); setLayerStyles({}); }} style={{ color: '#EF4444' }}>إزالة الكل</button>
                                         </div>
+
                                         {geoLayers.map(layer => {
                                             const currentStyle = layerStyles[layer.id] || { color: layer.color };
                                             return (
-                                                <div key={layer.id} className="layer-item active" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', position: 'relative' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden', flex: 1 }}>
+                                                <div key={layer.id} className="layer-item active">
+                                                    <div className="layer-main-info">
                                                         {/* Clickable Color Circle to open Style Popup */}
                                                         <div 
                                                             className="layer-color-btn" 
@@ -1389,16 +1391,10 @@ const PalNovaaLab = ({ onClose }) => {
                                                                     y: Math.min(window.innerHeight - 400, rect.top) 
                                                                 });
                                                             }}
-                                                            style={{ 
-                                                                background: currentStyle.color || layer.color, 
-                                                                minWidth: '16px', width: '16px', height: '16px', 
-                                                                borderRadius: '50%', cursor: 'pointer',
-                                                                border: '2px solid rgba(255,255,255,0.3)',
-                                                                boxShadow: '0 0 5px rgba(0,0,0,0.3)'
-                                                            }}
+                                                            style={{ background: currentStyle.color || layer.color }}
                                                             title="تعديل النمط والرموز"
                                                         ></div>
-                                                        <div className="layer-info" style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                        <div className="layer-text">
                                                             {editingLayerId === layer.id ? (
                                                                 <input
                                                                     autoFocus
@@ -1415,21 +1411,23 @@ const PalNovaaLab = ({ onClose }) => {
                                                                     }}
                                                                 />
                                                             ) : (
-                                                                <h5 style={{ margin: 0, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', color: 'white' }}>{layer.name}</h5>
+                                                                <h5 onDoubleClick={() => { setEditingLayerId(layer.id); setTempLayerName(layer.name); }}>
+                                                                    {layer.name}
+                                                                </h5>
                                                             )}
-                                                            <small style={{ color: 'rgba(255,255,255,0.5)' }}>{layer.data.features?.length || 0} ميزة</small>
-                                                            {layer.measurement && <small style={{ color: '#06D6F2', display: 'block', marginTop: '2px', fontWeight: 'bold' }}>القياس: {layer.measurement}</small>}
+                                                            <small>{layer.data.features?.length || 0} معلم</small>
+                                                            {layer.measurement && <small style={{ color: 'var(--accent-cyan)', fontWeight: 'bold' }}>القياس: {layer.measurement}</small>}
                                                         </div>
                                                     </div>
-                                                    <div style={{ display: 'flex', gap: '5px' }}>
-                                                        <button onClick={() => { setEditingLayerId(layer.id); setTempLayerName(layer.name); }} style={{ background: 'transparent', border: 'none', color: '#F5A623', cursor: 'pointer', padding: '4px' }} title="إعادة تسمية">
-                                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                                                    <div className="layer-actions">
+                                                        <button className="edit" onClick={() => { setEditingLayerId(layer.id); setTempLayerName(layer.name); }} title="إعادة تسمية">
+                                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                                                         </button>
-                                                        <button onClick={() => { setActiveTableLayerId(layer.id); setShowBottomTable(true); }} style={{ background: 'transparent', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer', padding: '4px' }} title="عرض البيانات الوصفية">
-                                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
+                                                        <button onClick={() => { setActiveTableLayerId(layer.id); setShowBottomTable(true); }} title="عرض البيانات الوصفية">
+                                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
                                                         </button>
-                                                        <button onClick={() => { setGeoLayers(prev => prev.filter(l => l.id !== layer.id)); setLayerStyles(prev => { const n = {...prev}; delete n[layer.id]; return n; }); if (activeTableLayerId === layer.id) { setActiveTableLayerId(null); setShowBottomTable(false); } }} style={{ background: 'transparent', border: 'none', color: '#EF4444', cursor: 'pointer', padding: '4px' }} title="حذف الطبقة">
-                                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                                                        <button className="delete" onClick={() => { setGeoLayers(prev => prev.filter(l => l.id !== layer.id)); setLayerStyles(prev => { const n = {...prev}; delete n[layer.id]; return n; }); if (activeTableLayerId === layer.id) { setActiveTableLayerId(null); setShowBottomTable(false); } }} title="حذف الطبقة">
+                                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
                                                         </button>
                                                     </div>
                                                 </div>
