@@ -1145,21 +1145,6 @@ const MapComponent = () => {
                         </svg>
                     </button>
 
-                    {/* Fullscreen Toggle Button - Optimized for Laptop/PC as requested */}
-                    <button className={`top-nav-icon ${isFullscreen ? 'active' : ''}`} onClick={toggleFullscreen} title={isFullscreen ? "تصغير الشاشة" : "ملء الشاشة"}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
-                            {isFullscreen ? (
-                                <>
-                                    <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
-                                </>
-                            ) : (
-                                <>
-                                    <path d="M15 3h6v6M9 21H3v-6M21 15v6h-6M3 9V3h6" />
-                                </>
-                            )}
-                        </svg>
-                    </button>
-
                     <button
                         className={`top-nav-icon ${activeMapType === 'geomolg' ? 'active' : ''}`}
                         onClick={() => setActiveMapType(prev => prev === 'satellite' ? 'geomolg' : 'satellite')}
@@ -1373,6 +1358,21 @@ const MapComponent = () => {
                         </button>
                     </div>
                 )}
+
+                {/* Floating Fullscreen Button - Positioned inside map for Laptop/PC experience */}
+                <button 
+                    className={`floating-fs-btn ${isFullscreen ? 'active' : ''}`} 
+                    onClick={toggleFullscreen} 
+                    title={isFullscreen ? "تصغير الشاشة" : "ملء الشاشة"}
+                >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="24" height="24">
+                        {isFullscreen ? (
+                            <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+                        ) : (
+                            <path d="M15 3h6v6M9 21H3v-6M21 15v6h-6M3 9V3h6" />
+                        )}
+                    </svg>
+                </button>
 
                 <Map
                     ref={mapRef}
