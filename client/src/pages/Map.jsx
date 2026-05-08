@@ -333,6 +333,7 @@ const MapComponent = () => {
     const [routePath, setRoutePath] = useState(null);
     const [routeStats, setRouteStats] = useState(null);
     const [destination, setDestination] = useState(null);
+    const [activeCustomStart, setActiveCustomStart] = useState(null);
     const [friendsMap, setFriendsMap] = useState([]);
     const [followedShopsMap, setFollowedShopsMap] = useState([]);
     const [visibleFriendName, setVisibleFriendName] = useState(null); // Track which friend's name is shown
@@ -575,6 +576,7 @@ const MapComponent = () => {
     const lastRecalcLocation = useRef(null);
     useEffect(() => {
         if (!routePath || !destination || !userLocation) return;
+        if (activeCustomStart) return; // SKIP GPS RECALCULATION IF THIS IS A CUSTOM A-to-B ROUTE
 
         const calculateDistance = (lat1, lon1, lat2, lon2) => {
             const R = 6371e3; // metres
@@ -1738,6 +1740,7 @@ const MapComponent = () => {
                     setRoutePath(null);
                     setRouteStats(null);
                     setDestination(null);
+                    setActiveCustomStart(null);
                     setAiResults([]); // Also clear the destination marker
                     setIsTracking(false); // Stop tracking when nav ends
                     setActiveMapType('satellite'); // REVERT TO SATELLITE
@@ -1879,9 +1882,15 @@ const MapComponent = () => {
                     userLocation={userLocation}
                     onNavigate={(shop, mode, customStartLoc) => {
                         const routeMode = mode === 'walking' ? 'foot-walking' : 'driving-car';
+                        if (customStartLoc) {
+                            setActiveCustomStart(customStartLoc);
+                            setIsTracking(false);
+                        } else {
+                            setActiveCustomStart(null);
+                            setIsTracking(true); // Enable live guidance mode
+                        }
                         fetchRoute(shop, routeMode, customStartLoc);
                         setShowAIChat(false);
-                        setIsTracking(true); // Enable live guidance mode
                     }}
                     onShopClick={(shop) => {
                         handleOpenShopProfile(shop);
