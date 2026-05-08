@@ -431,8 +431,8 @@ const PalNovaaLab = ({ onClose }) => {
                         const newLayer = {
                             id: newLayerId,
                             name: file.name,
-                            dataUrl: response.data.url, // نستخدم الرابط الآن
-                            data: json, // نحتفظ بالبيانات محلياً للعرض الفوري
+                            dataUrl: response.data.url, 
+                            data: response.data.geojson || json, // Use server-processed if available
                             color: defaultColor
                         };
                         setGeoLayers(prev => [...prev, newLayer]);
@@ -514,6 +514,7 @@ const PalNovaaLab = ({ onClose }) => {
                     id: newLayerId,
                     name: response.data.name || 'طبقة مستوردة',
                     dataUrl: response.data.url,
+                    data: response.data.geojson, // تخزين البيانات محلياً لمنع الأعطال
                     color: defaultColor
                 }]);
                 setImportLink('');
@@ -874,7 +875,7 @@ const PalNovaaLab = ({ onClose }) => {
         const layersListHTML = exportLayers.map(l =>
             `<div class="cel-layer-row" onclick="map.fitBounds(${JSON.stringify(
                 l.data?.features?.length > 0
-                    ? (() => { try { const coords = l.data.features.flatMap(f => f.geometry?.type === 'Point' ? [f.geometry.coordinates] : f.geometry?.coordinates?.flat?.(5) || []); const lngs = coords.map(c => c[0]); const lats = coords.map(c => c[1]); return [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]]; } catch (e) { return null; } })()
+                    ? (() => { try { const coords = (l.data?.features || []).flatMap(f => f.geometry?.type === 'Point' ? [f.geometry.coordinates] : f.geometry?.coordinates?.flat?.(5) || []); const lngs = coords.map(c => c[0]); const lats = coords.map(c => c[1]); return [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]]; } catch (e) { return null; } })()
                     : null
             )}, {padding:40})"><div class="cel-layer-dot" style="background:${l.style?.color || l.color}"></div><span>${l.name}</span></div>`
         ).join('');
@@ -987,7 +988,7 @@ const PalNovaaLab = ({ onClose }) => {
             const found = [];
             layers.forEach(layer => {
                 if (!layer.data?.features) return;
-                layer.data.features.forEach(f => {
+                layer.data?.features?.forEach(f => {
                     const props = f.properties || {};
                     const match = Object.values(props).some(v => String(v).toLowerCase().includes(query.toLowerCase()));
                     if (match && f.geometry) found.push({ props, geom: f.geometry });
@@ -1341,7 +1342,7 @@ const PalNovaaLab = ({ onClose }) => {
                                 <div className="table-title">
                                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
                                     <span>جدول البيانات: {activeTableLayer.name}</span>
-                                    <small>{activeTableLayer.data.features.length} معلم</small>
+                                    <small>{activeTableLayer.data?.features?.length || 0} معلم</small>
                                 </div>
                                 <button className="close-table-btn" onClick={() => setShowBottomTable(false)}>
                                     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
@@ -1356,9 +1357,9 @@ const PalNovaaLab = ({ onClose }) => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {activeTableLayer.data.features.map((f, i) => (
+                                        {activeTableLayer.data?.features?.map((f, i) => (
                                             <tr key={i} onClick={() => {
-                                                const coords = f.geometry.type === 'Point' ? f.geometry.coordinates : (f.geometry.coordinates[0][0] || f.geometry.coordinates[0]);
+                                                const coords = f.geometry?.type === 'Point' ? f.geometry.coordinates : (f.geometry?.coordinates?.[0]?.[0] || f.geometry?.coordinates?.[0]);
                                                 if (coords && typeof coords[0] === 'number') {
                                                     mapRef.current.flyTo({ center: coords, zoom: 16 });
                                                     setSelectedFeatureInfo({ properties: f.properties || {}, longitude: coords[0], latitude: coords[1] });
@@ -1481,7 +1482,7 @@ const PalNovaaLab = ({ onClose }) => {
                                                                     {layer.name}
                                                                 </h5>
                                                             )}
-                                                            <small>{layer.data.features?.length || 0} معلم</small>
+                                                            <small>{layer.data?.features?.length || 0} معلم</small>
                                                             {layer.measurement && <small style={{ color: 'var(--accent-cyan)', fontWeight: 'bold' }}>القياس: {layer.measurement}</small>}
                                                         </div>
                                                     </div>
