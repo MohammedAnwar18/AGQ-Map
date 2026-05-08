@@ -111,7 +111,7 @@ function App() {
                     splash.style.display = 'none';
                 }, 600);
             }
-        }, 1800);
+        }, 3500);
 
         return () => {
             window.removeEventListener('online', handleOnline);
