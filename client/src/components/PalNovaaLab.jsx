@@ -117,6 +117,19 @@ const PalNovaaLab = ({ onClose }) => {
     const [editingLayerId, setEditingLayerId] = useState(null);
     const [tempLayerName, setTempLayerName] = useState('');
 
+    // Advanced Styling State
+    const [layerStyles, setLayerStyles] = useState({}); // { layerId: { color, outlineColor, outlineWidth, shape, opacity, fillOpacity } }
+    const [stylePopup, setStylePopup] = useState(null); // { layerId, x, y }
+
+    const pointShapes = [
+        { id: 'circle', name: 'دائرة', icon: '●' },
+        { id: 'square', name: 'مربع', icon: '■' },
+        { id: 'diamond', name: 'معين', icon: '◆' },
+        { id: 'triangle', name: 'مثلث', icon: '▲' },
+        { id: 'star', name: 'نجمة', icon: '★' },
+        { id: 'cross', name: 'علامة +', icon: '✚' },
+    ];
+
     // Palette Mapping for Live Preview
     const paletteData = {
         classic: { primary: '#F5A623', primaryDark: '#D88B0E', bg: '#0F1E33', surface: '#142B47' },
@@ -203,13 +216,29 @@ const PalNovaaLab = ({ onClose }) => {
             }
 
             const newFeature = { type: 'Feature', geometry: { type: geometryType, coordinates: coords }, properties: { type: `drawn_${drawingMode}`, name: `رسمة (${drawingMode})`, Measurement: metricText } };
+            const newLayerId = Date.now().toString();
+            const defaultColor = ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899'][geoLayers.length % 5];
+            
             setGeoLayers(prev => [...prev, {
-                id: Date.now().toString(),
+                id: newLayerId,
                 name: `رسم (${drawingMode === 'polygon' ? 'مساحة' : drawingMode === 'measure' ? 'قياس مسافة' : 'مسار'})`,
                 data: { type: 'FeatureCollection', features: [newFeature] },
-                color: ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899'][prev.length % 5],
+                color: defaultColor,
                 measurement: metricText
             }]);
+
+            // Initialize default style
+            setLayerStyles(prev => ({
+                ...prev,
+                [newLayerId]: {
+                    color: defaultColor,
+                    outlineColor: '#ffffff',
+                    outlineWidth: 2,
+                    shape: 'circle',
+                    opacity: 1,
+                    fillOpacity: 0.3
+                }
+            }));
         }
         setDraftCoordinates([]);
         setDrawingMode(null);
@@ -226,12 +255,29 @@ const PalNovaaLab = ({ onClose }) => {
 
             if (drawingMode === 'point') {
                 const newFeature = { type: 'Feature', geometry: { type: 'Point', coordinates: coord }, properties: { type: 'drawn_point', name: 'نقطة محددة' } };
+                const newLayerId = Date.now().toString();
+                const defaultColor = ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899'][geoLayers.length % 5];
+                
                 setGeoLayers(prev => [...prev, {
-                    id: Date.now().toString(),
+                    id: newLayerId,
                     name: 'رسم (نقطة)',
                     data: { type: 'FeatureCollection', features: [newFeature] },
-                    color: ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899'][prev.length % 5]
+                    color: defaultColor
                 }]);
+
+                // Initialize default style
+                setLayerStyles(prev => ({
+                    ...prev,
+                    [newLayerId]: {
+                        color: defaultColor,
+                        outlineColor: '#ffffff',
+                        outlineWidth: 2,
+                        shape: 'circle',
+                        opacity: 1,
+                        fillOpacity: 0.3
+                    }
+                }));
+
                 setDrawingMode(null);
             } else if (drawingMode === 'line' || drawingMode === 'measure' || drawingMode === 'polygon') {
                 setDraftCoordinates(prev => {
@@ -245,6 +291,9 @@ const PalNovaaLab = ({ onClose }) => {
             }
             return;
         }
+
+        // Close style popup if open
+        if (stylePopup) setStylePopup(null);
 
         // If not drawing, check for feature clicks using a BBox for better click tolerance
         const map = mapRef.current?.getMap();
@@ -376,8 +425,9 @@ const PalNovaaLab = ({ onClose }) => {
                 const br = [ne.lng - lngDiff * 0.2, sw.lat + latDiff * 0.2];
                 const bl = [sw.lng + lngDiff * 0.2, sw.lat + latDiff * 0.2];
 
+                const newLayerId = Date.now().toString();
                 const newLayer = {
-                    id: Date.now().toString(),
+                    id: newLayerId,
                     name: file.name,
                     type: 'raster',
                     url: imageUrl,
@@ -386,6 +436,14 @@ const PalNovaaLab = ({ onClose }) => {
                     data: { type: 'FeatureCollection', features: [] }
                 };
                 setGeoLayers(prev => [...prev, newLayer]);
+                
+                // Initialize default style
+                setLayerStyles(prev => ({
+                    ...prev,
+                    [newLayerId]: {
+                        opacity: 0.9
+                    }
+                }));
             }
             return;
         }
@@ -395,14 +453,30 @@ const PalNovaaLab = ({ onClose }) => {
             try {
                 const json = JSON.parse(event.target.result);
                 if (json.type === 'FeatureCollection' || json.type === 'Feature') {
+                    const newLayerId = Date.now().toString();
+                    const defaultColor = ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899'][geoLayers.length % 5];
                     const newLayer = {
-                        id: Date.now().toString(),
+                        id: newLayerId,
                         name: file.name,
                         data: json,
-                        color: ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899'][geoLayers.length % 5]
+                        color: defaultColor
                     };
                     setGeoLayers(prev => [...prev, newLayer]);
-                    setActiveTableLayerId(newLayer.id);
+                    
+                    // Initialize default style
+                    setLayerStyles(prev => ({
+                        ...prev,
+                        [newLayerId]: {
+                            color: defaultColor,
+                            outlineColor: '#ffffff',
+                            outlineWidth: 2,
+                            shape: 'circle',
+                            opacity: 1,
+                            fillOpacity: 0.3
+                        }
+                    }));
+
+                    setActiveTableLayerId(newLayerId);
                     setShowBottomTable(true); // Auto-open the bottom attribute table
                     // Fly to data
                     if (mapRef.current) {
@@ -506,7 +580,8 @@ const PalNovaaLab = ({ onClose }) => {
                 config: {
                     selections: designSelections,
                     elements: pageElements,
-                    geoLayers: geoLayers
+                    geoLayers: geoLayers,
+                    layerStyles: layerStyles
                 }
             }, {
                 headers: {
@@ -555,9 +630,21 @@ const PalNovaaLab = ({ onClose }) => {
                     url = base64;
                 } catch (e) { console.error(e); }
             }
+            
+            // Get custom style or default
+            const style = layerStyles[layer.id] || { 
+                color: layer.color || '#F5A623', 
+                outlineColor: '#ffffff', 
+                outlineWidth: 2, 
+                shape: 'circle', 
+                opacity: 1, 
+                fillOpacity: 0.3 
+            };
+
             exportLayers.push({
                 id: layer.id, name: layer.name, type: layer.type || 'vector',
-                data: data, url: url, coordinates: layer.coordinates, color: layer.color
+                data: data, url: url, coordinates: layer.coordinates, color: layer.color,
+                style: style
             });
         }
 
@@ -607,7 +694,7 @@ const PalNovaaLab = ({ onClose }) => {
         else if (designSelections.effect === 'glass') effectCSS = '.card-panel { background: rgba(0,0,0,0.2) !important; backdrop-filter: blur(24px) !important; border: 1px solid rgba(255,255,255,0.2) !important; }';
         else if (designSelections.effect === 'shadow_lg') effectCSS = '.card-panel { box-shadow: 0 20px 50px rgba(0,0,0,0.5) !important; }';
 
-        const layersHTML = exportLayers.map(l => `<div class="layer-item"><div style="display:flex;align-items:center;gap:10px;"><div style="width:14px;height:14px;border-radius:4px;background:${l.color}"></div><span>${l.name}</span></div></div>`).join('');
+        const layersHTML = exportLayers.map(l => `<div class="layer-item"><div style="display:flex;align-items:center;gap:10px;"><div style="width:14px;height:14px;border-radius:4px;background:${l.style?.color || l.color}"></div><span>${l.name}</span></div></div>`).join('');
 
         let layoutCSS = '';
         let layoutHTML = '';
@@ -679,7 +766,7 @@ const PalNovaaLab = ({ onClose }) => {
                     <div class="modal-wrapper card-panel">
                         <div class="modal-header">
                             <h2 style="margin:0;color:var(--primary);font-family:var(--font-h);">عارض الخريطة</h2>
-                            <div style="display:flex;gap:10px;">${exportLayers.slice(0, 3).map(l => `<span style="background:var(--bg);padding:5px 12px;border-radius:20px;font-size:0.8rem;border:1px solid ${l.color}">${l.name}</span>`).join('')}</div>
+                            <div style="display:flex;gap:10px;">${exportLayers.slice(0, 3).map(l => `<span style="background:var(--bg);padding:5px 12px;border-radius:20px;font-size:0.8rem;border:1px solid ${l.style?.color || l.color}">${l.name}</span>`).join('')}</div>
                         </div>
                         <div id="map"></div>
                     </div>
@@ -696,7 +783,7 @@ const PalNovaaLab = ({ onClose }) => {
                     <div id="map"></div>
                     <div class="f-card f-bottom-left card-panel">
                         <h3 style="margin-top:0;font-family:var(--font-h);">إحصائيات الخريطة</h3>
-                        <p style="opacity:0.8;font-size:1rem;line-height:1.6;">تم تحميل <b>${exportLayers.length}</b> طبقات بنجاح، تحتوي على <b>${exportLayers.reduce((sum, l) => sum + (l.data?.features?.length || 0), 0)}</b> معلم جغرافي تفاعلي.</p>
+                        <p style="opacity:0.8;font-size:1rem;line-height:1.6;">تم تحميل <b>${exportLayers.length}</b> طبقات بنجاح، تحتوي على <b>${exportLayers.reduce((sum, l) => s + (l.data?.features?.length || 0), 0)}</b> معلم جغرافي تفاعلي.</p>
                         <button class="${designSelections.component || 'primary'}-btn" style="width:100%;padding:14px;background:var(--primary);color:#000;border:none;border-radius:10px;font-weight:bold;font-size:1rem;cursor:pointer;margin-top:16px;">عرض التفاصيل</button>
                     </div>
                 `;
@@ -749,7 +836,7 @@ const PalNovaaLab = ({ onClose }) => {
                 l.data?.features?.length > 0
                     ? (() => { try { const coords = l.data.features.flatMap(f => f.geometry?.type === 'Point' ? [f.geometry.coordinates] : f.geometry?.coordinates?.flat?.(5) || []); const lngs = coords.map(c => c[0]); const lats = coords.map(c => c[1]); return [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]]; } catch (e) { return null; } })()
                     : null
-            )}, {padding:40})"><div class="cel-layer-dot" style="background:${l.color}"></div><span>${l.name}</span></div>`
+            )}, {padding:40})"><div class="cel-layer-dot" style="background:${l.style?.color || l.color}"></div><span>${l.name}</span></div>`
         ).join('');
 
         const customElsHTML = pageElements.length > 0 ? `
@@ -885,38 +972,69 @@ const PalNovaaLab = ({ onClose }) => {
 
         map.on('load', () => {
             layers.forEach(layer => {
+                const s = layer.style || {};
+                const lColor = s.color || layer.color || '#fbab15';
+                const lOp = s.opacity ?? 1;
+                const fOp = s.fillOpacity ?? 0.3;
+                const outClr = s.outlineColor || '#ffffff';
+                const outW = s.outlineWidth ?? 2;
+
                 if (layer.type === 'raster') {
                     map.addSource('src-' + layer.id, { type: 'image', url: layer.url, coordinates: layer.coordinates });
-                    map.addLayer({ id: 'raster-' + layer.id, type: 'raster', source: 'src-' + layer.id, paint: { 'raster-opacity': 0.9 } });
+                    map.addLayer({ id: 'raster-' + layer.id, type: 'raster', source: 'src-' + layer.id, paint: { 'raster-opacity': lOp } });
                 } else {
                     map.addSource('src-' + layer.id, { type: 'geojson', data: layer.data });
                     
                     // Polygons
-                    map.addLayer({ id: 'poly-' + layer.id, type: 'fill', source: 'src-' + layer.id, filter: ['==', '$type', 'Polygon'], paint: { 'fill-color': layer.color, 'fill-opacity': 0.3, 'fill-outline-color': layer.color } });
-                    map.addLayer({ id: 'poly-line-' + layer.id, type: 'line', source: 'src-' + layer.id, filter: ['==', '$type', 'Polygon'], paint: { 'line-color': layer.color, 'line-width': 2 } });
+                    map.addLayer({ 
+                        id: 'poly-' + layer.id, 
+                        type: 'fill', 
+                        source: 'src-' + layer.id, 
+                        filter: ['==', '$type', 'Polygon'], 
+                        paint: { 
+                            'fill-color': lColor, 
+                            'fill-opacity': fOp * lOp, 
+                            'fill-outline-color': outClr 
+                        } 
+                    });
+                    map.addLayer({ 
+                        id: 'poly-line-' + layer.id, 
+                        type: 'line', 
+                        source: 'src-' + layer.id, 
+                        filter: ['==', '$type', 'Polygon'], 
+                        paint: { 
+                            'line-color': outClr, 
+                            'line-width': outW,
+                            'line-opacity': lOp
+                        } 
+                    });
                     
                     // Lines
-                    map.addLayer({ id: 'line-' + layer.id, type: 'line', source: 'src-' + layer.id, filter: ['==', '$type', 'LineString'], paint: { 'line-color': layer.color, 'line-width': 4 } });
+                    map.addLayer({ 
+                        id: 'line-' + layer.id, 
+                        type: 'line', 
+                        source: 'src-' + layer.id, 
+                        filter: ['==', '$type', 'LineString'], 
+                        paint: { 
+                            'line-color': lColor, 
+                            'line-width': outW * 2,
+                            'line-opacity': lOp
+                        } 
+                    });
                     
-                    // Points (styled based on markers selection)
-                    let circleRadius = 7;
-                    let circleStroke = 2;
-                    let circleOpacity = 1;
-                    if ('${designSelections.marker}' === 'dot') { circleRadius = 5; circleStroke = 0; }
-                    if ('${designSelections.marker}' === 'pulse') { circleRadius = 10; circleOpacity = 0.8; }
-                    if ('${designSelections.marker}' === 'cluster') { circleRadius = 15; }
-                    
+                    // Points
                     map.addLayer({ 
                         id: 'point-' + layer.id, 
                         type: 'circle', 
                         source: 'src-' + layer.id, 
                         filter: ['==', '$type', 'Point'], 
                         paint: { 
-                            'circle-radius': circleRadius, 
-                            'circle-color': layer.color, 
-                            'circle-stroke-width': circleStroke, 
-                            'circle-stroke-color': '${theme.bg}',
-                            'circle-opacity': circleOpacity
+                            'circle-radius': 7, 
+                            'circle-color': lColor, 
+                            'circle-stroke-width': outW, 
+                            'circle-stroke-color': outClr,
+                            'circle-opacity': lOp,
+                            'circle-stroke-opacity': lOp
                         } 
                     });
 
@@ -1092,210 +1210,155 @@ const PalNovaaLab = ({ onClose }) => {
                             <NavigationControl position="bottom-right" />
 
                             {geoLayers.map(layer => {
+                                const style = layerStyles[layer.id] || { 
+                                    color: layer.color || '#F5A623', 
+                                    outlineColor: '#ffffff', 
+                                    outlineWidth: 2, 
+                                    shape: 'circle', 
+                                    opacity: 1, 
+                                    fillOpacity: 0.3 
+                                };
+
                                 if (layer.type === 'raster') {
                                     return (
                                         <Source key={layer.id} id={`src-${layer.id}`} type="image" url={layer.url} coordinates={layer.coordinates}>
                                             <Layer
                                                 id={`raster-${layer.id}`}
                                                 type="raster"
-                                                paint={{ 'raster-opacity': 0.8 }}
+                                                source={`src-${layer.id}`}
+                                                paint={{ 'raster-opacity': style.opacity ?? 0.9 }}
                                             />
                                         </Source>
                                     );
                                 }
+
                                 return (
                                     <Source key={layer.id} id={`src-${layer.id}`} type="geojson" data={layer.data}>
+                                        {/* Polygons */}
                                         <Layer
                                             id={`poly-${layer.id}`}
                                             type="fill"
                                             filter={['==', '$type', 'Polygon']}
-                                            paint={{ 'fill-color': layer.color, 'fill-opacity': 0.4, 'fill-outline-color': layer.color }}
+                                            paint={{
+                                                'fill-color': style.color,
+                                                'fill-opacity': (style.fillOpacity ?? 0.3) * (style.opacity ?? 1),
+                                                'fill-outline-color': style.outlineColor
+                                            }}
                                         />
+                                        <Layer
+                                            id={`poly-line-${layer.id}`}
+                                            type="line"
+                                            filter={['==', '$type', 'Polygon']}
+                                            paint={{
+                                                'line-color': style.outlineColor,
+                                                'line-width': style.outlineWidth,
+                                                'line-opacity': style.opacity ?? 1
+                                            }}
+                                        />
+                                        
+                                        {/* Lines */}
                                         <Layer
                                             id={`line-${layer.id}`}
                                             type="line"
                                             filter={['==', '$type', 'LineString']}
-                                            paint={{ 'line-color': layer.color, 'line-width': 3 }}
+                                            paint={{
+                                                'line-color': style.color,
+                                                'line-width': (style.outlineWidth ?? 2) * 2,
+                                                'line-opacity': style.opacity ?? 1
+                                            }}
                                         />
+                                        
+                                        {/* Points */}
                                         <Layer
                                             id={`point-${layer.id}`}
                                             type="circle"
                                             filter={['==', '$type', 'Point']}
-                                            paint={{ 'circle-radius': 6, 'circle-color': layer.color, 'circle-stroke-width': 2, 'circle-stroke-color': '#0A1628' }}
+                                            paint={{
+                                                'circle-radius': 7,
+                                                'circle-color': style.color,
+                                                'circle-stroke-width': style.outlineWidth,
+                                                'circle-stroke-color': style.outlineColor,
+                                                'circle-opacity': style.opacity ?? 1,
+                                                'circle-stroke-opacity': style.opacity ?? 1
+                                            }}
                                         />
                                     </Source>
                                 );
                             })}
 
-                            {/* Draft Drawing Layer */}
+                            {/* Draft Layers */}
                             {draftGeoJson && (
                                 <Source id="draft-source" type="geojson" data={draftGeoJson}>
-                                    <Layer id="draft-line" type="line" filter={['==', '$type', 'LineString']} paint={{ 'line-color': '#EF4444', 'line-width': 3, 'line-dasharray': [2, 2] }} />
-                                    <Layer id="draft-point" type="circle" filter={['==', '$type', 'Point']} paint={{ 'circle-radius': 5, 'circle-color': '#EF4444' }} />
+                                    <Layer id="draft-line" type="line" paint={{ 'line-color': '#fbab15', 'line-width': 3, 'line-dasharray': [2, 2] }} />
+                                    <Layer id="draft-point" type="circle" paint={{ 'circle-radius': 6, 'circle-color': '#fbab15', 'circle-stroke-width': 2, 'circle-stroke-color': 'white' }} />
                                 </Source>
-                            )}
-
-                            {/* Finished Drawings Layer */}
-                            {drawnFeatures.features.length > 0 && (
-                                <Source id="drawn-source" type="geojson" data={drawnFeatures}>
-                                    <Layer id="drawn-polygon" type="fill" filter={['==', '$type', 'Polygon']} paint={{ 'fill-color': '#8B5CF6', 'fill-opacity': 0.3 }} />
-                                    <Layer id="drawn-line" type="line" filter={['==', '$type', 'LineString']} paint={{ 'line-color': '#8B5CF6', 'line-width': 3 }} />
-                                    <Layer id="drawn-point" type="circle" filter={['==', '$type', 'Point']} paint={{ 'circle-radius': 6, 'circle-color': '#8B5CF6', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' }} />
-                                </Source>
-                            )}
-
-                            {selectedFeatureInfo && (
-                                <Popup
-                                    longitude={selectedFeatureInfo.longitude}
-                                    latitude={selectedFeatureInfo.latitude}
-                                    anchor="bottom"
-                                    onClose={() => setSelectedFeatureInfo(null)}
-                                    closeOnClick={false}
-                                    offset={10}
-                                    className="lab-feature-popup"
-                                >
-                                    <div className="lab-solid-bg" style={{ padding: '15px', maxWidth: '300px', maxHeight: '350px', overflowY: 'auto', backgroundColor: '#050B16', color: 'white', borderRadius: '12px', border: '1px solid #06D6F2' }}>
-                                        <h4 style={{ margin: '0 0 10px 0', borderBottom: '1px solid rgba(6, 214, 242, 0.3)', paddingBottom: '8px', color: '#06D6F2', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" />
-                                            </svg>
-                                            تفاصيل البيانات
-                                        </h4>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.9rem' }}>
-                                            {Object.keys(selectedFeatureInfo.properties).length === 0 ? (
-                                                <span style={{ color: 'rgba(255,255,255,0.5)' }}>لا توجد بيانات وصفية</span>
-                                            ) : (
-                                                Object.entries(selectedFeatureInfo.properties).map(([key, val]) => (
-                                                    <div key={key} style={{ background: 'rgba(255,255,255,0.05)', padding: '6px 8px', borderRadius: '4px', wordBreak: 'break-word' }}>
-                                                        <strong style={{ color: '#F5A623', display: 'block', fontSize: '0.8rem', marginBottom: '2px' }}>{key}</strong>
-                                                        <span style={{ fontFamily: 'var(--font-mono)' }}>{typeof val === 'object' ? JSON.stringify(val) : String(val)}</span>
-                                                    </div>
-                                                ))
-                                            )}
-                                        </div>
-                                    </div>
-                                </Popup>
                             )}
                         </Map>
                     </div>
 
-                    <div className="lab-solid-bg" style={{
-                        height: showBottomTable ? '350px' : '45px',
-                        backgroundColor: '#050B16',
-                        background: '#050B16',
-                        opacity: 1,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        overflow: 'hidden',
-                        flexShrink: 0,
-                        boxShadow: '0 -4px 20px rgba(0,0,0,0.3)'
-                    }}>
-                        <div className="lab-solid-bg" onClick={() => setShowBottomTable(!showBottomTable)} style={{
-                            height: '45px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '0 20px',
-                            backgroundColor: '#0A1628',
-                            background: '#0A1628',
-                            cursor: 'pointer',
-                            color: 'var(--accent-cyan)',
-                            fontWeight: 'bold',
-                            borderBottom: '1px solid rgba(6, 214, 242, 0.3)',
-                            userSelect: 'none'
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
-                                جدول البيانات الوصفية
-                                <span style={{ background: 'rgba(6,214,242,0.2)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem', marginLeft: '10px' }}>
-                                    {activeTableLayer ? activeTableLayer.data.features?.length || 0 : 0} معلم
-                                </span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                <span style={{ fontSize: '0.85rem', opacity: 0.8, fontWeight: 'normal' }}>{showBottomTable ? 'إخفاء' : 'إظهار'}</span>
-                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: showBottomTable ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }}><polyline points="6 9 12 15 18 9" /></svg>
-                            </div>
+                    {measurement && (
+                        <div className="measurement-overlay">
+                            <span>المسافة: <strong>{measurement > 1000 ? (measurement / 1000).toFixed(2) + ' كم' : measurement.toFixed(1) + ' م'}</strong></span>
                         </div>
-                        <div className="table-scroll-area" style={{ flex: 1, overflow: 'auto', padding: '0', position: 'relative', scrollBehavior: 'smooth' }}>
-                            {(!activeTableLayer || !activeTableLayer.data.features || activeTableLayer.data.features.length === 0) ? (
-                                <div style={{ padding: '40px', textAlign: 'center', color: 'rgba(255,255,255,0.4)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: '50px', height: '50px', marginBottom: '15px', opacity: '0.3' }}><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
-                                    <p style={{ fontSize: '1.1rem' }}>لا توجد بيانات وصفية لعرضها</p>
-                                    <p style={{ fontSize: '0.9rem', opacity: 0.7 }}>يرجى استيراد ملف GeoJSON ثم النقر على زر عرض البيانات</p>
+                    )}
+
+                    {showBottomTable && activeTableLayer && (
+                        <div className="bottom-table-container slide-up">
+                            <div className="table-header">
+                                <div className="table-title">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
+                                    <span>جدول البيانات: {activeTableLayer.name}</span>
                                 </div>
-                            ) : (
-                                <table className="opaque-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem', textAlign: 'right' }}>
-                                    <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: '#0a1628', boxShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
+                                <div className="table-actions">
+                                    <button onClick={() => setShowBottomTable(false)}>✕</button>
+                                </div>
+                            </div>
+                            <div className="table-body-wrapper">
+                                <table>
+                                    <thead>
                                         <tr>
-                                            <th style={{ padding: '12px 15px', borderBottom: '1px solid var(--accent-cyan)', color: '#06D6F2', width: '50px' }}>#</th>
-                                            {attributeKeys.map(key => (
-                                                <th key={key} style={{ padding: '12px 15px', borderBottom: '1px solid var(--accent-cyan)', color: '#06D6F2', whiteSpace: 'nowrap' }}>{key}</th>
-                                            ))}
+                                            <th>#</th>
+                                            {attributeKeys.map(k => <th key={k}>{k}</th>)}
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {activeTableLayer.data.features.map((feature, i) => (
-                                            <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent', cursor: 'pointer', transition: 'background 0.2s' }}
-                                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(6, 214, 242, 0.15)'}
-                                                onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent'}
-                                                onClick={() => {
-                                                    setSelectedFeatureInfo({
-                                                        properties: feature.properties,
-                                                        longitude: mapState.longitude,
-                                                        latitude: mapState.latitude
-                                                    });
-                                                }}>
-                                                <td style={{ padding: '10px 15px', color: '#F5A623', borderLeft: '1px solid rgba(255,255,255,0.05)' }}>{i + 1}</td>
-                                                {attributeKeys.map(key => {
-                                                    const val = feature.properties?.[key];
-                                                    return (
-                                                        <td key={key} style={{ padding: '10px 15px', whiteSpace: 'nowrap', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', borderLeft: '1px solid rgba(255,255,255,0.05)' }} title={val !== undefined && val !== null ? String(val) : ''}>
-                                                            {val !== undefined && val !== null ? (typeof val === 'object' ? JSON.stringify(val) : String(val)) : <span style={{ color: 'rgba(255,255,255,0.2)' }}>-</span>}
-                                                        </td>
-                                                    );
-                                                })}
+                                        {activeTableLayer.data.features.map((f, i) => (
+                                            <tr key={i} onClick={() => {
+                                                const coords = f.geometry.type === 'Point' ? f.geometry.coordinates : f.geometry.coordinates[0][0] || f.geometry.coordinates[0];
+                                                if (coords && typeof coords[0] === 'number') {
+                                                    mapRef.current.flyTo({ center: coords, zoom: 16 });
+                                                    setSelectedFeatureInfo({ properties: f.properties || {}, longitude: coords[0], latitude: coords[1] });
+                                                }
+                                            }}>
+                                                <td>{i + 1}</td>
+                                                {attributeKeys.map(k => <td key={k}>{String(f.properties?.[k] || '-')}</td>)}
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
-                            )}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </section>
 
-                <aside className="panel">
+                <aside className="sidebar-right">
                     <div className="panel-tabs">
-                        <button className={`panel-tab ${activeTab === 'layers' ? 'active' : ''}`} onClick={() => setActiveTab('layers')}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></svg>
-                            الطبقات
-                        </button>
-                        <button className={`panel-tab ${activeTab === 'analysis' ? 'active' : ''}`} onClick={() => setActiveTab('analysis')}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
-                            التحليل
-                        </button>
-                        <button className={`panel-tab ${activeTab === 'inspector' ? 'active' : ''}`} onClick={() => setActiveTab('inspector')}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>
-                            التفاصيل
-                        </button>
+                        <button className={activeTab === 'layers' ? 'active' : ''} onClick={() => setActiveTab('layers')}>الطبقات</button>
+                        <button className={activeTab === 'analysis' ? 'active' : ''} onClick={() => setActiveTab('analysis')}>تحليل</button>
+                        <button className={activeTab === 'inspector' ? 'active' : ''} onClick={() => setActiveTab('inspector')}>المفتش</button>
                     </div>
 
-                    <div className="panel-body">
+                    <div className="panel-content">
                         {activeTab === 'layers' && (
                             <div className="tab-content">
                                 <div className="panel-section">
-                                    <div className="panel-section-title">
-                                        <span>استيراد بيانات أو صور</span>
-                                    </div>
-                                    <label className="upload-zone" style={{ display: 'block' }}>
-                                        <input type="file" accept=".json,.geojson,image/*" onChange={handleFileUpload} style={{ display: 'none' }} />
-                                        <div className="upload-icon">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                                <polyline points="17 8 12 3 7 8" />
-                                                <line x1="12" y1="3" x2="12" y2="15" />
-                                            </svg>
-                                        </div>
-                                        <h4 style={{ margin: '10px 0 5px 0' }}>اضغط للاختيار من جهازك</h4>
+                                    <div className="panel-section-title">إضافة بيانات</div>
+                                    <label className="upload-box">
+                                        <input type="file" accept=".geojson,.json,.png,.jpg,.jpeg" onChange={handleFileUpload} style={{ display: 'none' }} />
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+                                        </svg>
+                                        <span>رفع ملف GeoJSON أو خريطة صورية</span>
                                         <div className="formats">
                                             <span className="format-pill">.geojson</span>
                                             <span className="format-pill">.json</span>
@@ -1308,48 +1371,70 @@ const PalNovaaLab = ({ onClose }) => {
                                     <div className="panel-section">
                                         <div className="panel-section-title">
                                             <span>الطبقات النشطة</span>
-                                            <button onClick={() => setGeoLayers([])} style={{ color: '#EF4444' }}>إزالة الكل</button>
+                                            <button onClick={() => { setGeoLayers([]); setLayerStyles({}); }} style={{ color: '#EF4444' }}>إزالة الكل</button>
                                         </div>
-                                        {geoLayers.map(layer => (
-                                            <div key={layer.id} className="layer-item active" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden', flex: 1 }}>
-                                                    <div className="layer-color" style={{ background: layer.color, minWidth: '12px', width: '12px', height: '12px', borderRadius: '50%' }}></div>
-                                                    <div className="layer-info" style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                        {editingLayerId === layer.id ? (
-                                                            <input
-                                                                autoFocus
-                                                                className="rename-input"
-                                                                value={tempLayerName}
-                                                                onChange={(e) => setTempLayerName(e.target.value)}
-                                                                onBlur={() => handleRenameLayer(layer.id, tempLayerName)}
-                                                                onKeyDown={(e) => {
-                                                                    if (e.key === 'Enter') {
-                                                                        e.preventDefault();
-                                                                        handleRenameLayer(layer.id, tempLayerName);
-                                                                    }
-                                                                    if (e.key === 'Escape') setEditingLayerId(null);
-                                                                }}
-                                                            />
-                                                        ) : (
-                                                            <h5 style={{ margin: 0, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', color: 'white' }}>{layer.name}</h5>
-                                                        )}
-                                                        <small style={{ color: 'rgba(255,255,255,0.5)' }}>{layer.data.features?.length || 0} ميزة</small>
-                                                        {layer.measurement && <small style={{ color: '#06D6F2', display: 'block', marginTop: '2px', fontWeight: 'bold' }}>القياس: {layer.measurement}</small>}
+                                        {geoLayers.map(layer => {
+                                            const currentStyle = layerStyles[layer.id] || { color: layer.color };
+                                            return (
+                                                <div key={layer.id} className="layer-item active" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', position: 'relative' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden', flex: 1 }}>
+                                                        {/* Clickable Color Circle to open Style Popup */}
+                                                        <div 
+                                                            className="layer-color-btn" 
+                                                            onClick={(e) => {
+                                                                const rect = e.currentTarget.getBoundingClientRect();
+                                                                setStylePopup({ 
+                                                                    layerId: layer.id, 
+                                                                    x: rect.right + 10, 
+                                                                    y: Math.min(window.innerHeight - 400, rect.top) 
+                                                                });
+                                                            }}
+                                                            style={{ 
+                                                                background: currentStyle.color || layer.color, 
+                                                                minWidth: '16px', width: '16px', height: '16px', 
+                                                                borderRadius: '50%', cursor: 'pointer',
+                                                                border: '2px solid rgba(255,255,255,0.3)',
+                                                                boxShadow: '0 0 5px rgba(0,0,0,0.3)'
+                                                            }}
+                                                            title="تعديل النمط والرموز"
+                                                        ></div>
+                                                        <div className="layer-info" style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                            {editingLayerId === layer.id ? (
+                                                                <input
+                                                                    autoFocus
+                                                                    className="rename-input"
+                                                                    value={tempLayerName}
+                                                                    onChange={(e) => setTempLayerName(e.target.value)}
+                                                                    onBlur={() => handleRenameLayer(layer.id, tempLayerName)}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === 'Enter') {
+                                                                            e.preventDefault();
+                                                                            handleRenameLayer(layer.id, tempLayerName);
+                                                                        }
+                                                                        if (e.key === 'Escape') setEditingLayerId(null);
+                                                                    }}
+                                                                />
+                                                            ) : (
+                                                                <h5 style={{ margin: 0, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', color: 'white' }}>{layer.name}</h5>
+                                                            )}
+                                                            <small style={{ color: 'rgba(255,255,255,0.5)' }}>{layer.data.features?.length || 0} ميزة</small>
+                                                            {layer.measurement && <small style={{ color: '#06D6F2', display: 'block', marginTop: '2px', fontWeight: 'bold' }}>القياس: {layer.measurement}</small>}
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: '5px' }}>
+                                                        <button onClick={() => { setEditingLayerId(layer.id); setTempLayerName(layer.name); }} style={{ background: 'transparent', border: 'none', color: '#F5A623', cursor: 'pointer', padding: '4px' }} title="إعادة تسمية">
+                                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                                                        </button>
+                                                        <button onClick={() => { setActiveTableLayerId(layer.id); setShowBottomTable(true); }} style={{ background: 'transparent', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer', padding: '4px' }} title="عرض البيانات الوصفية">
+                                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
+                                                        </button>
+                                                        <button onClick={() => { setGeoLayers(prev => prev.filter(l => l.id !== layer.id)); setLayerStyles(prev => { const n = {...prev}; delete n[layer.id]; return n; }); if (activeTableLayerId === layer.id) { setActiveTableLayerId(null); setShowBottomTable(false); } }} style={{ background: 'transparent', border: 'none', color: '#EF4444', cursor: 'pointer', padding: '4px' }} title="حذف الطبقة">
+                                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                                                        </button>
                                                     </div>
                                                 </div>
-                                                <div style={{ display: 'flex', gap: '5px' }}>
-                                                    <button onClick={() => { setEditingLayerId(layer.id); setTempLayerName(layer.name); }} style={{ background: 'transparent', border: 'none', color: '#F5A623', cursor: 'pointer', padding: '4px' }} title="إعادة تسمية">
-                                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
-                                                    </button>
-                                                    <button onClick={() => { setActiveTableLayerId(layer.id); setShowBottomTable(true); }} style={{ background: 'transparent', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer', padding: '4px' }} title="عرض البيانات الوصفية">
-                                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
-                                                    </button>
-                                                    <button onClick={() => { setGeoLayers(prev => prev.filter(l => l.id !== layer.id)); if (activeTableLayerId === layer.id) { setActiveTableLayerId(null); setShowBottomTable(false); } }} style={{ background: 'transparent', border: 'none', color: '#EF4444', cursor: 'pointer', padding: '4px' }} title="حذف الطبقة">
-                                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>
@@ -1426,6 +1511,91 @@ const PalNovaaLab = ({ onClose }) => {
                         )}
                     </div>
                 </aside>
+
+                {/* ADVANCED STYLE POPUP */}
+                {stylePopup && (() => {
+                    const layerId = stylePopup.layerId;
+                    const layer = geoLayers.find(l => l.id === layerId);
+                    const style = layerStyles[layerId] || { color: layer?.color || '#fbab15', outlineColor: '#ffffff', outlineWidth: 2, shape: 'circle', opacity: 1, fillOpacity: 0.3 };
+                    
+                    const updateStyle = (key, val) => {
+                        setLayerStyles(prev => ({
+                            ...prev,
+                            [layerId]: { ...style, [key]: val }
+                        }));
+                    };
+
+                    return (
+                        <div className="style-editor-popup" style={{ position: 'fixed', left: stylePopup.x, top: stylePopup.y, zIndex: 5000 }}>
+                            <div className="style-editor-header">
+                                <span>تنسيق الطبقة: {layer?.name}</span>
+                                <button onClick={() => setStylePopup(null)}>✕</button>
+                            </div>
+                            <div className="style-editor-body">
+                                <div className="style-section">
+                                    <label>لون التعبئة / الأساس</label>
+                                    <div className="color-row">
+                                        <input type="color" value={style.color} onChange={(e) => updateStyle('color', e.target.value)} />
+                                        <input type="text" value={style.color} onChange={(e) => updateStyle('color', e.target.value)} className="mono-input" />
+                                    </div>
+                                </div>
+
+                                <div className="style-section">
+                                    <label>لون الإطار (Outline)</label>
+                                    <div className="color-row">
+                                        <input type="color" value={style.outlineColor} onChange={(e) => updateStyle('outlineColor', e.target.value)} />
+                                        <input type="text" value={style.outlineColor} onChange={(e) => updateStyle('outlineColor', e.target.value)} className="mono-input" />
+                                    </div>
+                                </div>
+
+                                <div className="style-section">
+                                    <div className="label-row">
+                                        <label>سمك الإطار / الخط</label>
+                                        <span>{style.outlineWidth}px</span>
+                                    </div>
+                                    <input type="range" min="0" max="10" step="0.5" value={style.outlineWidth} onChange={(e) => updateStyle('outlineWidth', parseFloat(e.target.value))} />
+                                </div>
+
+                                <div className="style-section">
+                                    <div className="label-row">
+                                        <label>الشفافية الكلية</label>
+                                        <span>{Math.round(style.opacity * 100)}%</span>
+                                    </div>
+                                    <input type="range" min="0" max="1" step="0.05" value={style.opacity} onChange={(e) => updateStyle('opacity', parseFloat(e.target.value))} />
+                                </div>
+
+                                <div className="style-section">
+                                    <div className="label-row">
+                                        <label>شفافية التعبئة</label>
+                                        <span>{Math.round(style.fillOpacity * 100)}%</span>
+                                    </div>
+                                    <input type="range" min="0" max="1" step="0.05" value={style.fillOpacity} onChange={(e) => updateStyle('fillOpacity', parseFloat(e.target.value))} />
+                                </div>
+
+                                {/* Symbol Picker for Points */}
+                                <div className="style-section">
+                                    <label>شكل المعلم (الرموز)</label>
+                                    <div className="symbol-grid">
+                                        {pointShapes.map(shape => (
+                                            <div 
+                                                key={shape.id} 
+                                                className={`symbol-item ${style.shape === shape.id ? 'active' : ''}`}
+                                                onClick={() => updateStyle('shape', shape.id)}
+                                                title={shape.name}
+                                            >
+                                                {shape.icon}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                                
+                                <div className="style-footer">
+                                    <button className="ds-btn primary small w-100" onClick={() => setStylePopup(null)}>تطبيق التنسيق</button>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()}
 
                 <footer className="statusbar">
                     <div className="status-item">
