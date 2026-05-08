@@ -114,7 +114,7 @@
       50% { opacity: .85; transform: translate(-50%, -50%) scale(1.08); }
     }
 
-    /* ripples emanating from pin landing */
+    /* ripples */
     .ripples {
       position: absolute;
       left: 50%;
@@ -162,17 +162,8 @@
       height: 128px;
       display: grid;
       place-items: center;
-      animation: pinDrop 2.6s cubic-bezier(.34, 1.56, .64, 1) 0.2s both,
-        pinBob 6s cubic-bezier(.45, .05, .55, .95) 3s infinite;
-    }
-
-    @keyframes pinDrop {
-      0% { transform: translateY(-220px) scale(.6); opacity: 0; }
-      35% { opacity: 1; }
-      65% { transform: translateY(0) scale(1.05); }
-      78% { transform: translateY(-14px) scale(.98); }
-      90% { transform: translateY(0) scale(1.02); }
-      100% { transform: translateY(0) scale(1); }
+      /* Entrace animation removed as requested - elements appear immediately */
+      animation: pinBob 6s cubic-bezier(.45, .05, .55, .95) infinite;
     }
 
     @keyframes pinBob {
@@ -210,7 +201,7 @@
       filter: drop-shadow(0 4px 8px rgba(0, 0, 0, .18));
     }
 
-    /* orbital ring around tile */
+    /* orbital ring */
     .orbit {
       position: absolute;
       inset: -14px;
@@ -221,7 +212,7 @@
 
     @keyframes orbit { to { transform: rotate(360deg); } }
 
-    /* drop shadow ellipse beneath the pin */
+    /* pin shadow */
     .pin-shadow {
       position: absolute;
       left: 50%;
@@ -232,7 +223,7 @@
       background: radial-gradient(ellipse at center, rgba(0, 0, 0, .55), transparent 70%);
       filter: blur(2px);
       z-index: 2;
-      animation: shadowPulse 6s cubic-bezier(.45, .05, .55, .95) 3s infinite;
+      animation: shadowPulse 6s cubic-bezier(.45, .05, .55, .95) infinite;
     }
 
     @keyframes shadowPulse {
@@ -242,26 +233,20 @@
 
     /* text */
     .splash-text-container {
-      margin-top: 5vh; /* Flexible margin based on viewport height */
+      margin-top: 5vh;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 12px;
       padding: 0 20px;
-      opacity: 0;
-      animation: fadeUp .9s cubic-bezier(.2, .8, .2, 1) 1.4s forwards;
-    }
-
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(14px); }
-      to { opacity: 1; transform: translateY(0); }
+      /* Entrace animation removed - appears immediately */
     }
 
     .splash-title {
       margin: 0;
       font-family: 'Tajawal', sans-serif;
       font-weight: 900;
-      font-size: clamp(32px, 8vw, 48px); /* Dynamic font size */
+      font-size: clamp(32px, 8vw, 48px);
       letter-spacing: -.5px;
       background: linear-gradient(135deg, #ffffff 0%, #ffe2a8 45%, #fbab15 100%);
       -webkit-background-clip: text;
@@ -284,8 +269,6 @@
       margin-top: 34px;
       display: flex;
       gap: 8px;
-      opacity: 0;
-      animation: fadeUp .8s ease 1.9s forwards;
     }
 
     .dot {
@@ -318,29 +301,12 @@
       letter-spacing: .6px;
       color: rgba(248, 250, 252, .32);
       z-index: 3;
-      opacity: 0;
-      animation: fadeUp .8s ease 2.2s forwards;
     }
 
     .splash-footer .amp { color: rgba(251, 171, 21, .7); margin: 0 2px; font-weight: 400; }
 
-    /* corner decor */
-    .corner {
-      position: absolute;
-      width: 80px;
-      height: 80px;
-      border: 1px solid rgba(251, 171, 21, .18);
-      z-index: 1;
-    }
-
-    .corner.tl { top: 24px; left: 24px; border-right: 0; border-bottom: 0; border-top-left-radius: 14px; }
-    .corner.tr { top: 24px; right: 24px; border-left: 0; border-bottom: 0; border-top-right-radius: 14px; }
-    .corner.bl { bottom: 24px; left: 24px; border-right: 0; border-top: 0; border-bottom-left-radius: 14px; }
-    .corner.br { bottom: 24px; right: 24px; border-left: 0; border-top: 0; border-bottom-right-radius: 14px; }
-
     /* tiny floating particles */
     .particles { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
-
     .particle {
       position: absolute;
       width: 3px;
@@ -380,22 +346,15 @@
           }, 500);
         }
       }
-      setTimeout(hideSplash, 8000); // 8s Safety Timeout
+      setTimeout(hideSplash, 10000); // 10s Safety Timeout
     })();
   </script>
 </head>
 
 <body class="splash-active">
-  <!-- Premium Social Gateway Splash -->
   <div id="splash-screen">
     <div class="map-grid"></div>
     <div class="ambient-glow"></div>
-
-    <div class="corner tl"></div>
-    <div class="corner tr"></div>
-    <div class="corner bl"></div>
-    <div class="corner br"></div>
-
     <div class="particles" id="particles"></div>
 
     <div class="ripples">
@@ -410,7 +369,6 @@
       <div class="logo-box">
         <div class="orbit"></div>
         <div class="logo-tile">
-          <!-- Pin glyph (white on amber tile) -->
           <svg viewBox="0 0 64 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="PalNovaa">
             <path d="M32 2C16.536 2 4 14.536 4 30c0 19 22 44 26.2 48.2a2.55 2.55 0 0 0 3.6 0C38 74 60 49 60 30 60 14.536 47.464 2 32 2Z" fill="#fff"/>
             <circle cx="32" cy="29" r="11" fill="#fbab15"/>
@@ -436,7 +394,6 @@
   <div id="root"></div>
 
   <script>
-    /* Floating amber particles */
     (function(){
       const wrap = document.getElementById('particles');
       function spawn(){
@@ -456,12 +413,10 @@
     })();
   </script>
 
-  <!-- Tesseract OCR Engine -->
   <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
   <script type="module" src="/src/main.jsx"></script>
 
   <script>
-    // 1. Auto-recovery from Chunk Load Errors
     window.addEventListener('error', (e) => {
       if (e.message && (e.message.includes('Failed to fetch dynamically imported module') || e.message.includes('Importing a module script failed'))) {
         if ('serviceWorker' in navigator) {
@@ -475,7 +430,6 @@
       }
     });
 
-    // 2. Register Service Worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
