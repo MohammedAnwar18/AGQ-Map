@@ -1876,9 +1876,9 @@ const MapComponent = () => {
                 <AIChatModal 
                     onClose={() => setShowAIChat(false)} 
                     userLocation={userLocation}
-                    onNavigate={(shop, mode) => {
+                    onNavigate={(shop, mode, customStartLoc) => {
                         const routeMode = mode === 'walking' ? 'foot-walking' : 'driving-car';
-                        fetchRoute(shop, routeMode);
+                        fetchRoute(shop, routeMode, customStartLoc);
                         setShowAIChat(false);
                         setIsTracking(true); // Enable live guidance mode
                     }}

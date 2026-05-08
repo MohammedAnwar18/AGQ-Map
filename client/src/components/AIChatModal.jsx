@@ -16,6 +16,8 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
     const [navMode, setNavMode] = useState(false);
     const [navFrom, setNavFrom] = useState('');
     const [navTo, setNavTo] = useState('');
+    const [fromSuggestions, setFromSuggestions] = useState([]);
+    const [toSuggestions, setToSuggestions] = useState([]);
     const [showNavSuggestions, setShowNavSuggestions] = useState(false);
 
     // Search & Chat State
@@ -190,27 +192,84 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
         }
     };
 
-    const handleNavigation = () => {
-        const from = navFrom.trim();
-        const to = navTo.trim();
+    const handleNavigation = async () => {
+        const fromStr = navFrom.trim();
+        const toStr = navTo.trim();
 
-        if (!from) {
+        if (!fromStr) {
             alert('يرجى تحديد نقطة الانطلاق (من)');
             return;
         }
 
-        if (!to) {
+        if (!toStr) {
             alert('يرجى تحديد الوجهة (إلى)');
             return;
         }
 
-        const navQuery = `اريد الذهاب من ${from} الى ${to}`;
-        setNavMode(false);
-        handleSearch(navQuery);
+        setLoading(true);
+        try {
+            // Search for the "from" location
+            const fromData = await smartSearchService.search({ query: fromStr });
+            let fromLocation = null;
+            if (fromData.results && fromData.results.length > 0) {
+                fromLocation = fromData.results[0];
+                fromLocation.latitude = fromLocation.latitude || fromLocation.location?.lat;
+                fromLocation.longitude = fromLocation.longitude || fromLocation.location?.lon;
+            } else {
+                alert(`لم نتمكن من العثور على موقع "${fromStr}" كـ نقطة انطلاق.`);
+                setLoading(false);
+                return;
+            }
+
+            // Search for the "to" location
+            const toData = await smartSearchService.search({ query: toStr });
+            let toLocation = null;
+            if (toData.results && toData.results.length > 0) {
+                toLocation = toData.results[0];
+                toLocation.latitude = toLocation.latitude || toLocation.location?.lat;
+                toLocation.longitude = toLocation.longitude || toLocation.location?.lon;
+            } else {
+                alert(`لم نتمكن من العثور على موقع "${toStr}" كـ وجهة.`);
+                setLoading(false);
+                return;
+            }
+
+            setNavMode(false);
+            if (onNavigate) {
+                // onNavigate expects (target, mode, startLoc)
+                onNavigate(toLocation, 'driving', fromLocation);
+            }
+        } catch (error) {
+            console.error(error);
+            alert('حدث خطأ أثناء البحث عن المسار.');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const navSuggestionsList = ['مطعم الواحة', 'صيدلية الحياة', 'كافيه السلام', 'سوبر ماركت النور', 'مستشفى الشفاء', 'مخبز الأمانة', 'مول فلسطين'];
-    const filteredNavSuggestions = navSuggestionsList.filter(s => s.includes(navTo) && navTo.trim() !== '');
+    const handleFromChange = async (val) => {
+        setNavFrom(val);
+        if (val.trim().length > 1) {
+            try {
+                const data = await smartSearchService.search({ query: val });
+                setFromSuggestions(data.results ? data.results.slice(0, 4) : []);
+            } catch(e) {}
+        } else {
+            setFromSuggestions([]);
+        }
+    };
+
+    const handleToChange = async (val) => {
+        setNavTo(val);
+        if (val.trim().length > 1) {
+            try {
+                const data = await smartSearchService.search({ query: val });
+                setToSuggestions(data.results ? data.results.slice(0, 4) : []);
+            } catch(e) {}
+        } else {
+            setToSuggestions([]);
+        }
+    };
 
     const handleFollow = async (shopId) => {
         try {
@@ -297,22 +356,31 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                                 </button>
                                             </div>
 
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '16px', padding: '8px 12px', border: '1px solid var(--border)' }}>
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', color: 'var(--text-muted)' }}><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="3" /></svg>
-                                                <input type="text" value={navFrom} onChange={(e) => setNavFrom(e.target.value)} placeholder="من: نقطة الانطلاق" style={{ background: 'none', border: 'none', color: 'white', outline: 'none', flex: 1, fontSize: '14px' }} />
+                                            <div style={{ position: 'relative' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '16px', padding: '8px 12px', border: '1px solid var(--border)' }}>
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', color: 'var(--text-muted)' }}><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="3" /></svg>
+                                                    <input type="text" value={navFrom} onChange={(e) => handleFromChange(e.target.value)} placeholder="من: نقطة الانطلاق" style={{ background: 'none', border: 'none', color: 'white', outline: 'none', flex: 1, fontSize: '14px' }} />
+                                                </div>
+                                                {fromSuggestions.length > 0 && (
+                                                    <div className="ai-suggestions" style={{ marginTop: '8px', marginBottom: '8px', justifyContent: 'flex-start' }}>
+                                                        {fromSuggestions.map((s, idx) => (
+                                                            <span key={idx} className="ai-chip" onClick={() => { setNavFrom(s.name); setFromSuggestions([]); }}>{s.name}</span>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
 
                                             <div style={{ position: 'relative' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '16px', padding: '8px 12px', border: '1px solid var(--primary)' }}>
                                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', color: 'var(--primary)' }}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-                                                    <input type="text" value={navTo} onChange={(e) => { setNavTo(e.target.value); setShowNavSuggestions(true); }} onFocus={() => setShowNavSuggestions(true)} onBlur={() => setTimeout(() => setShowNavSuggestions(false), 200)} placeholder="إلى: أين تريد الذهاب؟" style={{ background: 'none', border: 'none', color: 'white', outline: 'none', flex: 1, fontSize: '14px' }} />
+                                                    <input type="text" value={navTo} onChange={(e) => handleToChange(e.target.value)} onFocus={() => setShowNavSuggestions(true)} onBlur={() => setTimeout(() => setShowNavSuggestions(false), 200)} placeholder="إلى: أين تريد الذهاب؟" style={{ background: 'none', border: 'none', color: 'white', outline: 'none', flex: 1, fontSize: '14px' }} />
                                                 </div>
-                                                {showNavSuggestions && filteredNavSuggestions.length > 0 && (
+                                                {showNavSuggestions && toSuggestions.length > 0 && (
                                                     <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface-solid)', border: '1px solid var(--primary)', borderRadius: '12px', marginTop: '4px', zIndex: 10, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
-                                                        {filteredNavSuggestions.map((s, i) => (
-                                                            <div key={i} onClick={() => { setNavTo(s); setShowNavSuggestions(false); }} style={{ padding: '10px 14px', cursor: 'pointer', fontSize: '14px', borderBottom: '1px solid var(--border)', display: 'flex', gap: '8px', alignItems: 'center' }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'} onMouseLeave={(e) => e.currentTarget.style.background = 'none'}>
+                                                        {toSuggestions.map((s, i) => (
+                                                            <div key={i} onClick={() => { setNavTo(s.name); setShowNavSuggestions(false); setToSuggestions([]); }} style={{ padding: '10px 14px', cursor: 'pointer', fontSize: '14px', borderBottom: '1px solid var(--border)', display: 'flex', gap: '8px', alignItems: 'center' }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'} onMouseLeave={(e) => e.currentTarget.style.background = 'none'}>
                                                                 <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" style={{ width: '16px' }}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-                                                                {s}
+                                                                {s.name}
                                                             </div>
                                                         ))}
                                                     </div>
