@@ -191,15 +191,20 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
     };
 
     const handleNavigation = () => {
-        const from = navFrom.trim() || 'موقعي الحالي';
+        const from = navFrom.trim();
         const to = navTo.trim();
 
-        if (!to) {
-            alert('يرجى تحديد الوجهة');
+        if (!from) {
+            alert('يرجى تحديد نقطة الانطلاق (من)');
             return;
         }
 
-        const navQuery = `اريد الذهاب الى ${to}`;
+        if (!to) {
+            alert('يرجى تحديد الوجهة (إلى)');
+            return;
+        }
+
+        const navQuery = `اريد الذهاب من ${from} الى ${to}`;
         setNavMode(false);
         handleSearch(navQuery);
     };
@@ -294,7 +299,7 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
 
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '16px', padding: '8px 12px', border: '1px solid var(--border)' }}>
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', color: 'var(--text-muted)' }}><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="3" /></svg>
-                                                <input type="text" value={navFrom} onChange={(e) => setNavFrom(e.target.value)} placeholder="من: موقعي الحالي" style={{ background: 'none', border: 'none', color: 'white', outline: 'none', flex: 1, fontSize: '14px' }} />
+                                                <input type="text" value={navFrom} onChange={(e) => setNavFrom(e.target.value)} placeholder="من: نقطة الانطلاق (مثال: القدس، بيتي...)" style={{ background: 'none', border: 'none', color: 'white', outline: 'none', flex: 1, fontSize: '14px' }} />
                                             </div>
 
                                             <div style={{ position: 'relative' }}>
