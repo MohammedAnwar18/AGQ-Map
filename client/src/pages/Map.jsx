@@ -440,8 +440,8 @@ const MapComponent = () => {
     }, [routePath, activeMapType]);
 
     // Routing
-    // Updated to accept explicit start/end for recalculations
-    const fetchRoute = async (endLoc, mode = 'driving', startLoc = null) => {
+    // Updated to accept explicit start/end for recalculations and a flag for silent recalc
+    const fetchRoute = async (endLoc, mode = 'driving', startLoc = null, isRecalc = false) => {
         const currentLoc = startLoc || userLocation;
 
         if (!currentLoc) {
@@ -539,8 +539,9 @@ const MapComponent = () => {
                     }
                 });
 
-                if (!startLoc) {
-                    setDestination(endLoc);
+                setDestination(endLoc);
+
+                if (!isRecalc) {
                     // Ensure we are viewing the MapLibre map (not Geomolg) before routing
                     if (activeMapType === 'geomolg') setActiveMapType('satellite');
 
@@ -598,7 +599,7 @@ const MapComponent = () => {
             // For now default to driving or we can add a mode state.
             // Let's assume driving for simplicity or infer from speed later.
             // A better way is to store `navigationMode` in state.
-            fetchRoute(destination, 'driving', userLocation);
+            fetchRoute(destination, 'driving', userLocation, true);
             lastRecalcLocation.current = userLocation;
         }
     }, [userLocation, routePath, destination]);
