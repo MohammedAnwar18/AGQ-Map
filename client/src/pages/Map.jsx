@@ -340,6 +340,26 @@ const MapComponent = () => {
     const [visibleFriendName, setVisibleFriendName] = useState(null); // Track which friend's name is shown
     const [firstLabelLayerId, setFirstLabelLayerId] = useState(null); // For "built-in" route placement beneath labels
     const [searchResults, setSearchResults] = useState([]); // Added to prevent ReferenceError after revert
+    
+    // --- Fullscreen Management ---
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const mapPageRef = useRef(null);
+
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            mapPageRef.current?.requestFullscreen().catch(err => {
+                console.error("Fullscreen error:", err);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    };
+
+    useEffect(() => {
+        const handleFsChange = () => setIsFullscreen(!!document.fullscreenElement);
+        document.addEventListener('fullscreenchange', handleFsChange);
+        return () => document.removeEventListener('fullscreenchange', handleFsChange);
+    }, []);
 
     // --- EFFECT: Pro-Grade Label Management ---
     // Automatically cleans the map of all text/labels when a route is active
@@ -1070,7 +1090,7 @@ const MapComponent = () => {
     if (!user) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading...</div>;
 
     return (
-        <div className="map-page" style={{ position: 'relative', height: '100dvh', width: '100vw', overflow: 'hidden' }}>
+        <div className="map-page" ref={mapPageRef} style={{ position: 'relative', height: '100dvh', width: '100vw', overflow: 'hidden' }}>
 
             {/* Top Bar - Clean & Minimalist */}
             <div className="top-bar">
@@ -1122,6 +1142,21 @@ const MapComponent = () => {
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </button>
+
+                    {/* Fullscreen Toggle Button - Optimized for Laptop/PC as requested */}
+                    <button className={`top-nav-icon ${isFullscreen ? 'active' : ''}`} onClick={toggleFullscreen} title={isFullscreen ? "تصغير الشاشة" : "ملء الشاشة"}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
+                            {isFullscreen ? (
+                                <>
+                                    <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+                                </>
+                            ) : (
+                                <>
+                                    <path d="M15 3h6v6M9 21H3v-6M21 15v6h-6M3 9V3h6" />
+                                </>
+                            )}
                         </svg>
                     </button>
 
