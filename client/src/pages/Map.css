@@ -506,16 +506,17 @@
 */
 .more-menu-dropdown {
     position: fixed;
-    top: 15px;
-    right: 15px;
-    bottom: 15px;
+    top: 0;
+    right: 0;
+    bottom: 0;
     width: 320px;
     max-width: 85%;
     background: var(--glass-bg);
     backdrop-filter: blur(var(--blur-high)) saturate(180%);
     -webkit-backdrop-filter: blur(var(--blur-high)) saturate(180%);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius-xl);
+    border: none;
+    border-left: 1px solid var(--glass-border);
+    border-radius: 0;
     z-index: 9999;
     box-shadow: var(--glass-shadow);
     display: flex;
