@@ -7,15 +7,33 @@ const GAZA_URL = "https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophot
 
 const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops, onShopClick, onPostClick }) => {
     const mapDiv = useRef(null);
+    const containerRef = useRef(null);
     const viewRef = useRef(null);
     const mapRef = useRef(null);
     const graphicsLayerRef = useRef(null);
     const esriModules = useRef(null);
     const TileLayerClassRef = useRef(null);
 
-    // State to track loading and current region
+    // State to track loading, current region, and fullscreen
     const [currentRegion, setCurrentRegion] = useState('wb');
     const [isMapReady, setIsMapReady] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            containerRef.current?.requestFullscreen().catch(err => {
+                console.error("Fullscreen error:", err);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    };
+
+    useEffect(() => {
+        const handleFsChange = () => setIsFullscreen(!!document.fullscreenElement);
+        document.addEventListener('fullscreenchange', handleFsChange);
+        return () => document.removeEventListener('fullscreenchange', handleFsChange);
+    }, []);
 
     useEffect(() => {
         let view;
@@ -199,10 +217,29 @@ const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops, onShopCli
 
     return (
         <div className="modal-overlay" onClick={onClose} style={{ zIndex: 3000 }}>
-            <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-container" ref={containerRef} onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
                     <h2>الصورة الجوية</h2>
-                    <button className="btn-close" onClick={onClose}>✕</button>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        {/* Fullscreen Toggle for Laptop/PC experience */}
+                        <button 
+                            className="btn-fullscreen" 
+                            onClick={toggleFullscreen}
+                            style={{ 
+                                background: 'transparent', border: 'none', color: '#94a3b8', 
+                                cursor: 'pointer', display: 'flex', alignItems: 'center' 
+                            }}
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="22" height="22">
+                                {isFullscreen ? (
+                                    <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+                                ) : (
+                                    <path d="M15 3h6v6M9 21H3v-6M21 15v6h-6M3 9V3h6" />
+                                )}
+                            </svg>
+                        </button>
+                        <button className="btn-close" onClick={onClose}>✕</button>
+                    </div>
                 </div>
                 
                 <div className="modal-body" style={{ padding: 0, position: 'relative', height: '100%', overflow: 'hidden' }}>
