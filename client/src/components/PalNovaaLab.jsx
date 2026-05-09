@@ -932,11 +932,21 @@ const PalNovaaLab = ({ onClose }) => {
             }
         } catch (e) { console.error("Bounds calc error", e); }
 
-        // 5. Create a clean version of layers to save file size
+        // 5. Create a clean version of layers with absolute URLs
         const cleanLayers = exportLayers.map(l => {
             const clean = { ...l };
-            // If we have a URL, we don't need to embed the full data in the JSON string
-            if (clean.dataUrl) {
+            // Ensure dataUrl is an absolute URL for standalone portability
+            let finalUrl = clean.dataUrl || clean.url;
+            if (finalUrl && finalUrl.startsWith('/')) {
+                finalUrl = window.location.origin + finalUrl;
+            } else if (finalUrl && !finalUrl.startsWith('http') && !finalUrl.startsWith('blob:')) {
+                finalUrl = window.location.origin + '/' + finalUrl;
+            }
+            
+            clean.dataUrl = finalUrl;
+
+            // If we have a valid external URL, we can strip the heavy data
+            if (clean.dataUrl && !clean.dataUrl.startsWith('blob:')) {
                 delete clean.data; 
             }
             return clean;
