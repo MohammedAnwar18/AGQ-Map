@@ -575,7 +575,7 @@ const PalNovaaLab = ({ onClose }) => {
     };
 
     const toggleInjectLayer = (id) => {
-        setSelectedInjectLayers(prev => 
+        setSelectedInjectLayers(prev =>
             prev.includes(id) ? prev.filter(lid => lid !== id) : [...prev, id]
         );
     };
@@ -595,14 +595,14 @@ const PalNovaaLab = ({ onClose }) => {
 
     const performInjection = async () => {
         if (!uploadedHtmlContent) return;
-        
+
         setIsGenerating(true);
         const layersToInject = [];
-        
+
         for (const layerId of selectedInjectLayers) {
             const layer = geoLayers.find(l => l.id === layerId);
             if (!layer) continue;
-            
+
             // If layer is large, upload to cloud for "Professional Space Saving"
             let finalDataUrl = layer.dataUrl;
             if (!finalDataUrl && JSON.stringify(layer.data).length > 50000) {
@@ -623,21 +623,95 @@ const PalNovaaLab = ({ onClose }) => {
             return;
         }
 
-        // SMART INJECTION LOGIC...
-        const layersPattern = /const layers = (\[[\s\S]*?\]);/;
-        const match = uploadedHtmlContent.match(layersPattern);
+        // Build a robust self-contained injection script that works with ANY map HTML file
+        const injectionScript = `
+<script id="palnovaa-injected-layers">
+(function() {
+    var INJECTED_LAYERS = ${JSON.stringify(layersToInject)};
+
+    function renderLayers(map) {
+        INJECTED_LAYERS.forEach(function(layer, idx) {
+            var sourceId = 'pn-inject-' + (layer.id || idx);
+            var style = layer.style || {};
+            var color = style.color || layer.color || '#F5A623';
+            var outlineColor = style.outlineColor || '#ffffff';
+            var outlineWidth = style.outlineWidth || 2;
+            var opacity = style.opacity !== undefined ? style.opacity : 1;
+            var fillOpacity = style.fillOpacity !== undefined ? style.fillOpacity : 0.4;
+
+            function addToMap(geojson) {
+                if (!geojson || !geojson.features) return;
+                if (map.getSource(sourceId)) {
+                    map.getSource(sourceId).setData(geojson);
+                    return;
+                }
+                map.addSource(sourceId, { type: 'geojson', data: geojson });
+
+                var gtype = geojson.features[0] && geojson.features[0].geometry && geojson.features[0].geometry.type;
+                var isPolygon = gtype && (gtype.indexOf('Polygon') !== -1);
+                var isLine = gtype && (gtype.indexOf('LineString') !== -1);
+
+                if (isPolygon) {
+                    map.addLayer({ id: sourceId+'-fill', type: 'fill', source: sourceId,
+                        paint: { 'fill-color': color, 'fill-opacity': fillOpacity } });
+                    map.addLayer({ id: sourceId+'-line', type: 'line', source: sourceId,
+                        paint: { 'line-color': outlineColor, 'line-width': outlineWidth, 'line-opacity': opacity } });
+                } else if (isLine) {
+                    map.addLayer({ id: sourceId+'-line', type: 'line', source: sourceId,
+                        paint: { 'line-color': color, 'line-width': outlineWidth + 1, 'line-opacity': opacity } });
+                } else {
+                    map.addLayer({ id: sourceId+'-point', type: 'circle', source: sourceId,
+                        paint: { 'circle-radius': 7, 'circle-color': color, 'circle-stroke-width': outlineWidth, 'circle-stroke-color': outlineColor, 'circle-opacity': opacity } });
+                }
+
+                var clickLayer = sourceId + (isPolygon ? '-fill' : isLine ? '-line' : '-point');
+                var GL = window.maplibregl || window.mapboxgl;
+                if (map.getLayer(clickLayer) && GL) {
+                    map.on('click', clickLayer, function(e) {
+                        var props = e.features[0].properties;
+                        var html = '<div style="direction:rtl;text-align:right;font-family:Cairo,sans-serif;padding:4px"><h4 style="margin:0 0 8px;color:#06D6F2">' + (layer.name || 'طبقة محقونة') + '</h4>';
+                        Object.keys(props).forEach(function(k){ if(props[k]) html += '<div style="font-size:0.85rem;margin-bottom:4px"><b>' + k + ':</b> ' + props[k] + '</div>'; });
+                        html += '</div>';
+                        new GL.Popup({ closeButton: false, maxWidth: '280px' }).setLngLat(e.lngLat).setHTML(html).addTo(map);
+                    });
+                    map.on('mouseenter', clickLayer, function(){ map.getCanvas().style.cursor = 'pointer'; });
+                    map.on('mouseleave', clickLayer, function(){ map.getCanvas().style.cursor = ''; });
+                }
+            }
+
+            if (layer.dataUrl) {
+                fetch(layer.dataUrl).then(function(r){ return r.json(); }).then(addToMap).catch(function(e){ console.error('PalNovaa Inject fetch error:', e); });
+            } else if (layer.data) {
+                addToMap(layer.data);
+            }
+        });
+    }
+
+    function tryInject() {
+        var map = window.map;
+        if (!map) { setTimeout(tryInject, 300); return; }
+        if (typeof map.loaded === 'function' && map.loaded()) {
+            renderLayers(map);
+        } else {
+            map.on('load', function(){ renderLayers(map); });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', tryInject);
+    } else {
+        tryInject();
+    }
+})();
+<\/script>`;
 
         let newHtml = uploadedHtmlContent;
-        if (match) {
-            try {
-                const existingLayers = JSON.parse(match[1]);
-                const combinedLayers = [...existingLayers, ...layersToInject];
-                newHtml = uploadedHtmlContent.replace(layersPattern, `const layers = ${JSON.stringify(combinedLayers)};`);
-            } catch (err) {
-                newHtml = uploadedHtmlContent.replace('</script>', `\nlayers.push(...${JSON.stringify(layersToInject)});\n</script>`);
-            }
+        if (newHtml.includes('</body>')) {
+            newHtml = newHtml.replace('</body>', injectionScript + '\n</body>');
+        } else if (newHtml.includes('</html>')) {
+            newHtml = newHtml.replace('</html>', injectionScript + '\n</html>');
         } else {
-            newHtml = uploadedHtmlContent.replace('</script>', `\nif(window.layers) window.layers.push(...${JSON.stringify(layersToInject)});\n</script>`);
+            newHtml += injectionScript;
         }
 
         const blob = new Blob([newHtml], { type: 'text/html' });
@@ -811,7 +885,7 @@ const PalNovaaLab = ({ onClose }) => {
         const bmTiles = {
             dark: 'https://cartodb-basemaps-a.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png',
             light: 'https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
-            satellite: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', 
+            satellite: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
             terrain: 'https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.jpg',
             vintage: 'https://stamen-tiles.a.ssl.fastly.net/toner/{z}/{x}/{y}.png',
             cyber: 'https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}'
@@ -1673,8 +1747,8 @@ const PalNovaaLab = ({ onClose }) => {
                                 </div>
                                 <div style={{ display: 'flex', gap: '10px' }}>
                                     {highlightFeature && (
-                                        <button 
-                                            className="ds-btn secondary small" 
+                                        <button
+                                            className="ds-btn secondary small"
                                             onClick={() => setHighlightFeature(null)}
                                             style={{ padding: '4px 12px', fontSize: '0.7rem' }}
                                         >
@@ -1698,7 +1772,7 @@ const PalNovaaLab = ({ onClose }) => {
                                         {(() => {
                                             const allFeatures = activeTableLayer.data?.features || [];
                                             // If a feature is highlighted on map, show only that one in the table
-                                            const displayFeatures = highlightFeature ? 
+                                            const displayFeatures = highlightFeature ?
                                                 allFeatures.filter(f => {
                                                     // Simple heuristic: compare properties or ID if available
                                                     if (f.id && highlightFeature.id) return f.id === highlightFeature.id;
@@ -1817,43 +1891,43 @@ const PalNovaaLab = ({ onClose }) => {
                                                         ></div>
                                                         <div className="layer-text">
                                                             {editingLayerId === layer.id ? (
-                                                            <input
-                                                                autoFocus
-                                                                className="rename-input"
-                                                                value={tempLayerName}
-                                                                onChange={(e) => setTempLayerName(e.target.value)}
-                                                                onBlur={() => handleRenameLayer(layer.id, tempLayerName)}
-                                                                onKeyDown={(e) => {
-                                                                    if (e.key === 'Enter') {
-                                                                        e.preventDefault();
-                                                                        handleRenameLayer(layer.id, tempLayerName);
-                                                                    }
-                                                                    if (e.key === 'Escape') setEditingLayerId(null);
-                                                                }}
-                                                            />
-                                                        ) : (
-                                                            <h5 onDoubleClick={() => { setEditingLayerId(layer.id); setTempLayerName(layer.name); }}>
-                                                                {layer.name}
-                                                            </h5>
-                                                        )}
-                                                        <small>{layer.data?.features?.length || 0} معلم</small>
-                                                        {layer.measurement && <small style={{ color: 'var(--accent-cyan)', fontWeight: 'bold' }}>القياس: {layer.measurement}</small>}
+                                                                <input
+                                                                    autoFocus
+                                                                    className="rename-input"
+                                                                    value={tempLayerName}
+                                                                    onChange={(e) => setTempLayerName(e.target.value)}
+                                                                    onBlur={() => handleRenameLayer(layer.id, tempLayerName)}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === 'Enter') {
+                                                                            e.preventDefault();
+                                                                            handleRenameLayer(layer.id, tempLayerName);
+                                                                        }
+                                                                        if (e.key === 'Escape') setEditingLayerId(null);
+                                                                    }}
+                                                                />
+                                                            ) : (
+                                                                <h5 onDoubleClick={() => { setEditingLayerId(layer.id); setTempLayerName(layer.name); }}>
+                                                                    {layer.name}
+                                                                </h5>
+                                                            )}
+                                                            <small>{layer.data?.features?.length || 0} معلم</small>
+                                                            {layer.measurement && <small style={{ color: 'var(--accent-cyan)', fontWeight: 'bold' }}>القياس: {layer.measurement}</small>}
+                                                        </div>
+                                                    </div>
+                                                    <div className="layer-actions">
+                                                        <button className="edit" onClick={() => { setEditingLayerId(layer.id); setTempLayerName(layer.name); }} title="إعادة تسمية">
+                                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                                                        </button>
+                                                        <button onClick={() => { setActiveTableLayerId(layer.id); setShowBottomTable(true); }} title="عرض البيانات الوصفية">
+                                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
+                                                        </button>
+                                                        <button className="delete" onClick={() => { setGeoLayers(prev => prev.filter(l => l.id !== layer.id)); setLayerStyles(prev => { const n = { ...prev }; delete n[layer.id]; return n; }); if (activeTableLayerId === layer.id) { setActiveTableLayerId(null); setShowBottomTable(false); } }} title="حذف الطبقة">
+                                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                                                        </button>
                                                     </div>
                                                 </div>
-                                                <div className="layer-actions">
-                                                    <button className="edit" onClick={() => { setEditingLayerId(layer.id); setTempLayerName(layer.name); }} title="إعادة تسمية">
-                                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
-                                                    </button>
-                                                    <button onClick={() => { setActiveTableLayerId(layer.id); setShowBottomTable(true); }} title="عرض البيانات الوصفية">
-                                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
-                                                    </button>
-                                                    <button className="delete" onClick={() => { setGeoLayers(prev => prev.filter(l => l.id !== layer.id)); setLayerStyles(prev => { const n = { ...prev }; delete n[layer.id]; return n; }); if (activeTableLayerId === layer.id) { setActiveTableLayerId(null); setShowBottomTable(false); } }} title="حذف الطبقة">
-                                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>
@@ -1861,77 +1935,77 @@ const PalNovaaLab = ({ onClose }) => {
 
                         {activeTab === 'injection' && (
                             <div className="tab-content">
-                                    <div className="panel-section">
-                                        <div className="panel-section-title">رفع ملف HTML المستهدف</div>
-                                        <div 
-                                            className="upload-box" 
-                                            onClick={() => document.getElementById('html-upload').click()} 
-                                            style={{ 
-                                                borderColor: uploadedHtmlContent ? 'var(--primary)' : 'var(--border)',
-                                                background: uploadedHtmlContent ? 'rgba(6, 214, 242, 0.03)' : ''
-                                            }}
-                                        >
-                                            <input id="html-upload" type="file" accept=".html" onChange={handleHtmlFileUpload} style={{ display: 'none' }} />
-                                            <svg viewBox="0 0 24 24" fill="none" stroke={uploadedHtmlContent ? 'var(--primary)' : 'currentColor'} strokeWidth="1.5">
-                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
-                                            </svg>
-                                            <span>{uploadedHtmlContent ? `تم تحميل: ${uploadedHtmlName}` : 'اختر ملف خريطة HTML'}</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="panel-section">
-                                        <div className="panel-section-title">اختيار طبقات للحقن</div>
-                                        {geoLayers.length === 0 ? (
-                                            <div style={{ padding: '20px', textAlign: 'center', opacity: 0.5, fontSize: '0.8rem' }}>
-                                                لا توجد طبقات نشطة حالياً للحقن. قم بإضافة طبقات أولاً.
-                                            </div>
-                                        ) : (
-                                            <div className="injection-layer-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
-                                                {geoLayers.map(layer => (
-                                                    <div 
-                                                        key={layer.id} 
-                                                        className={`inject-item ${selectedInjectLayers.includes(layer.id) ? 'active' : ''}`} 
-                                                        onClick={() => toggleInjectLayer(layer.id)}
-                                                        style={{
-                                                            display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px',
-                                                            background: selectedInjectLayers.includes(layer.id) ? 'rgba(6, 214, 242, 0.1)' : 'rgba(255,255,255,0.03)',
-                                                            borderRadius: '10px', border: '1px solid',
-                                                            borderColor: selectedInjectLayers.includes(layer.id) ? 'var(--primary)' : 'transparent',
-                                                            cursor: 'pointer', transition: '0.2s'
-                                                        }}
-                                                    >
-                                                        <div style={{
-                                                            width: '18px', height: '18px', borderRadius: '4px', border: '2px solid var(--primary)',
-                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                            background: selectedInjectLayers.includes(layer.id) ? 'var(--primary)' : 'transparent'
-                                                        }}>
-                                                            {selectedInjectLayers.includes(layer.id) && <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="black" strokeWidth="4"><polyline points="20 6 9 17 4 12" /></svg>}
-                                                        </div>
-                                                        <span style={{ fontSize: '0.85rem', flex: 1 }}>{layer.name}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="panel-section" style={{ marginTop: 'auto', paddingTop: '20px' }}>
-                                        <button 
-                                            className="ds-btn primary w-100" 
-                                            disabled={!uploadedHtmlContent || selectedInjectLayers.length === 0}
-                                            onClick={performInjection}
-                                            style={{ padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
-                                        >
-                                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-                                            تنفيذ حقن البيانات
-                                        </button>
-                                        <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '12px', textAlign: 'center', lineHeight: '1.4' }}>
-                                            سيتم دمج الطبقات المختارة داخل ملف الـ HTML المرفوع مع الحفاظ على تصميمه الأصلي وتحديث بياناته برمجياً.
-                                        </p>
+                                <div className="panel-section">
+                                    <div className="panel-section-title">رفع ملف HTML المستهدف</div>
+                                    <div
+                                        className="upload-box"
+                                        onClick={() => document.getElementById('html-upload').click()}
+                                        style={{
+                                            borderColor: uploadedHtmlContent ? 'var(--primary)' : 'var(--border)',
+                                            background: uploadedHtmlContent ? 'rgba(6, 214, 242, 0.03)' : ''
+                                        }}
+                                    >
+                                        <input id="html-upload" type="file" accept=".html" onChange={handleHtmlFileUpload} style={{ display: 'none' }} />
+                                        <svg viewBox="0 0 24 24" fill="none" stroke={uploadedHtmlContent ? 'var(--primary)' : 'currentColor'} strokeWidth="1.5">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+                                        </svg>
+                                        <span>{uploadedHtmlContent ? `تم تحميل: ${uploadedHtmlName}` : 'اختر ملف خريطة HTML'}</span>
                                     </div>
                                 </div>
-                            )}
-                        </div>
-                    </aside>
+
+                                <div className="panel-section">
+                                    <div className="panel-section-title">اختيار طبقات للحقن</div>
+                                    {geoLayers.length === 0 ? (
+                                        <div style={{ padding: '20px', textAlign: 'center', opacity: 0.5, fontSize: '0.8rem' }}>
+                                            لا توجد طبقات نشطة حالياً للحقن. قم بإضافة طبقات أولاً.
+                                        </div>
+                                    ) : (
+                                        <div className="injection-layer-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
+                                            {geoLayers.map(layer => (
+                                                <div
+                                                    key={layer.id}
+                                                    className={`inject-item ${selectedInjectLayers.includes(layer.id) ? 'active' : ''}`}
+                                                    onClick={() => toggleInjectLayer(layer.id)}
+                                                    style={{
+                                                        display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px',
+                                                        background: selectedInjectLayers.includes(layer.id) ? 'rgba(6, 214, 242, 0.1)' : 'rgba(255,255,255,0.03)',
+                                                        borderRadius: '10px', border: '1px solid',
+                                                        borderColor: selectedInjectLayers.includes(layer.id) ? 'var(--primary)' : 'transparent',
+                                                        cursor: 'pointer', transition: '0.2s'
+                                                    }}
+                                                >
+                                                    <div style={{
+                                                        width: '18px', height: '18px', borderRadius: '4px', border: '2px solid var(--primary)',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        background: selectedInjectLayers.includes(layer.id) ? 'var(--primary)' : 'transparent'
+                                                    }}>
+                                                        {selectedInjectLayers.includes(layer.id) && <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="black" strokeWidth="4"><polyline points="20 6 9 17 4 12" /></svg>}
+                                                    </div>
+                                                    <span style={{ fontSize: '0.85rem', flex: 1 }}>{layer.name}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="panel-section" style={{ marginTop: 'auto', paddingTop: '20px' }}>
+                                    <button
+                                        className="ds-btn primary w-100"
+                                        disabled={!uploadedHtmlContent || selectedInjectLayers.length === 0}
+                                        onClick={performInjection}
+                                        style={{ padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+                                    >
+                                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                                        تنفيذ حقن البيانات
+                                    </button>
+                                    <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '12px', textAlign: 'center', lineHeight: '1.4' }}>
+                                        سيتم دمج الطبقات المختارة داخل ملف الـ HTML المرفوع مع الحفاظ على تصميمه الأصلي وتحديث بياناته برمجياً.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </aside>
 
                 {/* ADVANCED STYLE POPUP */}
                 {stylePopup && (() => {
