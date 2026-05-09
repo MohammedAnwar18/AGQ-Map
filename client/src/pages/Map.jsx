@@ -757,13 +757,18 @@ const MapComponent = () => {
                     setPosts(postsResponse.posts || []);
                 }
 
-                // Fetch unread notifications count
-                const [notifData, msgData] = await Promise.all([
+                // Fetch unread notifications count, followed shops and friends
+                const [notifData, msgData, shopsData, friendsData] = await Promise.all([
                     notificationService.getUnreadCount(),
-                    notificationService.getUnreadMessagesCount()
+                    notificationService.getUnreadMessagesCount(),
+                    shopService.getFollowing(),
+                    friendService.getFriends()
                 ]);
+                
                 setUnreadCount(notifData.count || 0);
                 setUnreadChatCount(msgData.count || 0);
+                setFollowedShopsMap(shopsData.shops || []);
+                setFriendsMap(friendsData.friends.filter(f => f.last_latitude && f.last_longitude));
 
             } catch (error) {
                 console.error("Error fetching data:", error);
@@ -787,6 +792,46 @@ const MapComponent = () => {
 
         return () => clearInterval(interval);
     }, [user, currentCommunity]);
+
+    // Fetch followed university facilities
+    useEffect(() => {
+        const fetchFollowedFacilities = async () => {
+            if (!user || followedShopsMap.length === 0) {
+                setFollowedFacilitiesMap([]);
+                return;
+            }
+            
+            const universities = followedShopsMap.filter(shop => {
+                const cat = String(shop.category || '').toLowerCase();
+                const name = String(shop.name || '').toLowerCase();
+                return cat.includes('university') || cat.includes('جامعة') || name.includes('جامعة') || name.includes('university');
+            });
+
+            if (universities.length === 0) {
+                setFollowedFacilitiesMap([]);
+                return;
+            }
+
+            try {
+                const allFacilities = [];
+                for (const uni of universities) {
+                    const data = await shopService.getFacilities(uni.id);
+                    if (data.list) {
+                        allFacilities.push(...data.list);
+                    }
+                }
+                setFollowedFacilitiesMap(allFacilities);
+            } catch (e) {
+                console.error("Failed to fetch followed uni facilities", e);
+            }
+        };
+
+        fetchFollowedFacilities();
+        
+        // Refresh every 10 seconds to catch new additions
+        const interval = setInterval(fetchFollowedFacilities, 10000);
+        return () => clearInterval(interval);
+    }, [user, followedShopsMap]);
 
     const [searchParams] = useSearchParams();
 
