@@ -707,29 +707,27 @@ const PalNovaaLab = ({ onClose }) => {
     }
 
     function startProcessing(map, type) {
+        // نكتشف رابط السيرفر تلقائياً من الصفحة الحالية أو نستخدم PalNovaa الافتراضي
+        var serverOrigin = (window.location.protocol === 'file:')
+            ? 'https://agq-map.onrender.com'
+            : window.location.origin;
+
         INJECTED_LAYERS.forEach(function(layer) {
             if (layer.dataUrl) {
-                console.log('[PalNovaa] Fetching:', layer.dataUrl);
-                fetch(layer.dataUrl)
-                    .then(function(r) { 
-                        if (!r.ok) throw new Error('Fetch failed');
-                        return r.json(); 
+                // نجلب عبر بروكسي سيرفرنا لتجاوز CORS في أي بيئة
+                var proxyUrl = serverOrigin + '/api/storage/proxy?url=' + encodeURIComponent(layer.dataUrl);
+                console.log('[PalNovaa] Fetching via proxy:', proxyUrl);
+                fetch(proxyUrl)
+                    .then(function(r) {
+                        if (!r.ok) throw new Error('Proxy fetch failed: ' + r.status);
+                        return r.json();
                     })
-                    .then(function(data) { 
+                    .then(function(data) {
                         if (type === 'leaflet') injectIntoLeaflet(map, layer, data);
                         else injectIntoMapLibre(map, layer, data);
                     })
-                    .catch(function(err) { 
-                        console.warn('[PalNovaa] Direct fetch blocked by CORS, trying proxy fallback...');
-                        // Fallback to CORS proxy for local file execution
-                        var proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(layer.dataUrl);
-                        fetch(proxyUrl)
-                            .then(function(r){ return r.json(); })
-                            .then(function(data){
-                                if (type === 'leaflet') injectIntoLeaflet(map, layer, data);
-                                else injectIntoMapLibre(map, layer, data);
-                            })
-                            .catch(function(e){ console.error('[PalNovaa] All fetch attempts failed:', e); });
+                    .catch(function(err) {
+                        console.error('[PalNovaa] Proxy fetch failed:', err);
                     });
             } else if (layer.data) {
                 if (type === 'leaflet') injectIntoLeaflet(map, layer, layer.data);

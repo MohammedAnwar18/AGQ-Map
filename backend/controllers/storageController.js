@@ -142,3 +142,31 @@ exports.importArcGIS = async (req, res) => {
         res.status(500).json({ error: 'فشل الاتصال بخدمة ArcGIS. تأكد من أن الرابط متاح للعامة.' });
     }
 };
+
+/**
+ * بروكسي GeoJSON: يجلب البيانات من R2 ويعيدها مع CORS headers صحيحة
+ * يحل مشكلة CORS عند فتح الملفات محلياً أو من أي مصدر
+ */
+exports.proxyGeoJSON = async (req, res) => {
+    try {
+        const { url } = req.query;
+        if (!url) return res.status(400).json({ error: 'URL parameter required' });
+
+        // أمان: تأكد أن الرابط ينتمي لبكت R2 الخاص بنا فقط
+        const allowedDomain = process.env.R2_PUBLIC_URL || 'r2.dev';
+        if (!url.includes('r2.dev') && !url.includes(allowedDomain)) {
+            return res.status(403).json({ error: 'Only R2 URLs are allowed' });
+        }
+
+        const response = await axios.get(url, { responseType: 'json', timeout: 15000 });
+
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET');
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.status(200).json(response.data);
+    } catch (error) {
+        console.error('GeoJSON Proxy Error:', error.message);
+        res.status(500).json({ error: 'Failed to fetch GeoJSON from storage' });
+    }
+};
