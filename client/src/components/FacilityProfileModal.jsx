@@ -152,7 +152,7 @@ const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
     );
 
     const { facility, posts = [], specialties = [], is_admin: backendIsAdmin } = data;
-    const is_admin = backendIsAdmin || (currentUser && (currentUser.role === 'admin' || String(currentUser.id) === String(facility.owner_id)));
+    const is_admin = backendIsAdmin || (currentUser && (currentUser.role === 'admin' || String(currentUser.userId || currentUser.id) === String(facility.owner_id)));
 
 
     return (
@@ -205,7 +205,7 @@ const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
                 </div>
 
                 {isEditing ? (
-                    <div className="fac-edit-form" style={{ padding: '20px', background: 'var(--bg-secondary)', borderRadius: '16px' }}>
+                    <div className="fac-edit-form" style={{ padding: '25px', background: 'var(--bg-secondary)', height: '100%', overflowY: 'auto' }}>
                         <h2 style={{ marginBottom: '20px', color: '#fbab15' }}>تعديل بيانات المرفق</h2>
                         <form onSubmit={handleUpdateFacility}>
                             <div className="form-group" style={{ marginBottom: '15px' }}>
