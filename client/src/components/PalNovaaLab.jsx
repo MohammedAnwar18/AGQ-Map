@@ -598,22 +598,25 @@ const PalNovaaLab = ({ onClose }) => {
         
         setIsGenerating(true);
         const layersToInject = [];
+        
         try {
             for (const layerId of selectedInjectLayers) {
                 const layer = geoLayers.find(l => l.id === layerId);
                 if (!layer) continue;
                 
+                let finalDataUrl = layer.dataUrl || layer.url;
                 let rawData = layer.data;
-                // Fetch from cloud if data is missing locally
-                if (!rawData && (layer.dataUrl || layer.url)) {
-                    const res = await axios.get(layer.dataUrl || layer.url);
-                    rawData = res.data;
+
+                // If data is local and large, upload it to get a professional URL
+                if (!finalDataUrl && rawData && JSON.stringify(rawData).length > 30000) {
+                    finalDataUrl = await uploadLayerToCloud(rawData, layer.name);
+                    rawData = null; // No need to embed if we have a URL
                 }
 
                 layersToInject.push({
                     ...layer,
                     data: rawData,
-                    dataUrl: null, // Avoid fetch in the injected script
+                    dataUrl: finalDataUrl,
                     style: layerStyles[layer.id] || {}
                 });
             }
@@ -706,13 +709,28 @@ const PalNovaaLab = ({ onClose }) => {
     function startProcessing(map, type) {
         INJECTED_LAYERS.forEach(function(layer) {
             if (layer.dataUrl) {
-                fetch(layer.dataUrl, { mode: 'cors' })
-                    .then(function(r){ return r.json(); })
-                    .then(function(data){ 
+                console.log('[PalNovaa] Fetching:', layer.dataUrl);
+                fetch(layer.dataUrl)
+                    .then(function(r) { 
+                        if (!r.ok) throw new Error('Fetch failed');
+                        return r.json(); 
+                    })
+                    .then(function(data) { 
                         if (type === 'leaflet') injectIntoLeaflet(map, layer, data);
                         else injectIntoMapLibre(map, layer, data);
                     })
-                    .catch(function(err){ console.error('[PalNovaa] Data fetch failed:', err); });
+                    .catch(function(err) { 
+                        console.warn('[PalNovaa] Direct fetch blocked by CORS, trying proxy fallback...');
+                        // Fallback to CORS proxy for local file execution
+                        var proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(layer.dataUrl);
+                        fetch(proxyUrl)
+                            .then(function(r){ return r.json(); })
+                            .then(function(data){
+                                if (type === 'leaflet') injectIntoLeaflet(map, layer, data);
+                                else injectIntoMapLibre(map, layer, data);
+                            })
+                            .catch(function(e){ console.error('[PalNovaa] All fetch attempts failed:', e); });
+                    });
             } else if (layer.data) {
                 if (type === 'leaflet') injectIntoLeaflet(map, layer, layer.data);
                 else injectIntoMapLibre(map, layer, layer.data);
