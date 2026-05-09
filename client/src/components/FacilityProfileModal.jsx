@@ -158,289 +158,318 @@ const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
     return (
         <div className="facility-modal-overlay" onClick={onClose}>
             <div className="facility-modal-container slide-up" onClick={e => e.stopPropagation()}>
-                <div style={{ 
-                    position: 'absolute', 
-                    top: 'calc(15px + env(safe-area-inset-top))', 
-                    right: '15px', 
+                {/* Standard Modal Header (Sticky) */}
+                <div className="modal-header" style={{ 
+                    position: 'sticky', 
+                    top: 0, 
+                    zIndex: 1000, 
+                    background: 'var(--bg-secondary)', 
                     display: 'flex', 
-                    gap: '10px', 
-                    zIndex: 100 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    padding: 'calc(env(safe-area-inset-top, 0px) + 12px) 15px 12px',
+                    borderBottom: '1px solid var(--bg-tertiary)',
+                    backdropFilter: 'blur(10px)'
                 }}>
-                    {is_admin && !isEditing && (
+                    <div style={{ display: 'flex', gap: '8px' }}>
                         <button 
-                            onClick={() => setIsEditing(true)}
+                            onClick={handleShare} 
                             style={{ 
-                                background: 'rgba(251, 171, 21, 0.2)', 
-                                border: '1px solid rgba(251, 171, 21, 0.4)', 
-                                color: '#fbab15', 
-                                width: '40px',
-                                height: '40px',
-                                borderRadius: '50%', 
+                                background: 'rgba(251, 171, 21, 0.1)', 
+                                border: 'none', 
+                                color: 'var(--primary)', 
                                 cursor: 'pointer',
+                                padding: '10px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                transition: 'all 0.2s',
-                                backdropFilter: 'blur(5px)'
+                                borderRadius: '50%',
+                                transition: 'background 0.2s'
                             }}
-                            title="تعديل المرفق"
+                            onMouseOver={e => e.currentTarget.style.background = 'rgba(251, 171, 21, 0.2)'}
+                            onMouseOut={e => e.currentTarget.style.background = 'rgba(251, 171, 21, 0.1)'}
+                            title="مشاركة"
                         >
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                            <ShareIcon />
                         </button>
-                    )}
+                        
+                        {is_admin && !isEditing && (
+                            <button 
+                                onClick={() => setIsEditing(true)}
+                                style={{ 
+                                    background: 'rgba(251, 171, 21, 0.1)', 
+                                    border: 'none', 
+                                    color: '#fbab15', 
+                                    width: '40px',
+                                    height: '40px',
+                                    borderRadius: '50%', 
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'all 0.2s'
+                                }}
+                                title="تعديل المرفق"
+                            >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                            </button>
+                        )}
+                    </div>
+                    
+                    <h2 style={{ 
+                        margin: 0, 
+                        fontSize: '1rem', 
+                        fontWeight: '900', 
+                        color: 'var(--text-primary)', 
+                        flex: 1, 
+                        textAlign: 'center',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        padding: '0 10px'
+                    }}>
+                        {facility?.name || 'تفاصيل المرفق'}
+                    </h2>
+
                     <button 
-                        onClick={handleShare} 
+                        className="btn-close" 
+                        onClick={onClose} 
                         style={{ 
-                            background: 'rgba(0,0,0,0.5)', 
-                            border: '1px solid rgba(255,255,255,0.2)', 
-                            color: 'white', 
+                            fontSize: '1.2rem', 
+                            position: 'static', 
+                            background: 'rgba(255,255,255,0.1)',
                             width: '40px',
                             height: '40px',
-                            borderRadius: '50%', 
-                            cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            transition: 'background 0.2s',
-                            backdropFilter: 'blur(5px)'
-                        }}
-                        onMouseOver={e => e.currentTarget.style.background = 'rgba(0,0,0,0.7)'}
-                        onMouseOut={e => e.currentTarget.style.background = 'rgba(0,0,0,0.5)'}
-                        title="مشاركة"
-                    >
-                        <ShareIcon />
-                    </button>
-                    <button 
-                        className="fac-close-btn" 
-                        onClick={onClose} 
-                        style={{ 
-                            position: 'static', 
-                            width: '40px', 
-                            height: '40px', 
-                            background: 'rgba(255,255,255,0.1)',
-                            backdropFilter: 'blur(5px)'
+                            borderRadius: '50%',
+                            border: 'none',
+                            color: 'var(--text-primary)'
                         }}
                     >✕</button>
                 </div>
 
-                {isEditing ? (
-                    <div className="fac-edit-form" style={{ padding: '25px', background: 'var(--bg-secondary)', height: '100%', overflowY: 'auto' }}>
-                        <h2 style={{ marginBottom: '20px', color: '#fbab15' }}>تعديل بيانات المرفق</h2>
-                        <form onSubmit={handleUpdateFacility}>
-                            <div className="form-group" style={{ marginBottom: '15px' }}>
-                                <label style={{ display: 'block', marginBottom: '8px', opacity: 0.8 }}>اسم المرفق</label>
-                                <input 
-                                    className="input" 
-                                    value={editData.name} 
-                                    onChange={e => setEditData({...editData, name: e.target.value})} 
-                                    required 
-                                    style={{ width: '100%' }}
-                                />
-                            </div>
-                            <div className="form-group" style={{ marginBottom: '15px' }}>
-                                <label style={{ display: 'block', marginBottom: '8px', opacity: 0.8 }}>وصف المرفق</label>
-                                <textarea 
-                                    className="textarea" 
-                                    value={editData.description} 
-                                    onChange={e => setEditData({...editData, description: e.target.value})} 
-                                    style={{ width: '100%', minHeight: '100px' }}
-                                />
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                                <div className="edit-image-preview-container">
-                                    <label style={{ display: 'block', marginBottom: '8px', opacity: 0.8, fontSize: '0.9rem' }}>الشعار (Profile/Logo)</label>
-                                    <div style={{ 
-                                        width: '100px', height: '100px', borderRadius: '12px', background: 'var(--bg-tertiary)', 
-                                        marginBottom: '10px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        border: '2px dashed #fbab15'
-                                    }}>
-                                        {editFiles.icon_file ? (
-                                            <img src={URL.createObjectURL(editFiles.icon_file)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                        ) : (
-                                            facility.icon && facility.icon.startsWith('http') ? (
-                                                <img src={getImageUrl(facility.icon)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                            ) : (
-                                                <span style={{ fontSize: '2rem' }}>{editData.icon || '🏛️'}</span>
-                                            )
-                                        )}
-                                    </div>
+                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+                    {isEditing ? (
+                        <div className="fac-edit-form" style={{ padding: '25px', background: 'var(--bg-secondary)', height: 'auto' }}>
+                            <h2 style={{ marginBottom: '20px', color: '#fbab15' }}>تعديل بيانات المرفق</h2>
+                            <form onSubmit={handleUpdateFacility}>
+                                <div className="form-group" style={{ marginBottom: '15px' }}>
+                                    <label style={{ display: 'block', marginBottom: '8px', opacity: 0.8 }}>اسم المرفق</label>
                                     <input 
-                                        type="file" 
-                                        accept="image/*"
-                                        onChange={e => setEditFiles({...editFiles, icon_file: e.target.files[0]})} 
-                                        style={{ fontSize: '0.8rem', width: '100%' }}
-                                    />
-                                    <input 
-                                        placeholder="أو اكتب إيموجي هنا"
                                         className="input" 
-                                        value={editData.icon} 
-                                        onChange={e => setEditData({...editData, icon: e.target.value})} 
-                                        style={{ width: '100%', marginTop: '5px', fontSize: '0.8rem' }}
+                                        value={editData.name} 
+                                        onChange={e => setEditData({...editData, name: e.target.value})} 
+                                        required 
+                                        style={{ width: '100%' }}
                                     />
                                 </div>
-                                <div className="edit-image-preview-container">
-                                    <label style={{ display: 'block', marginBottom: '8px', opacity: 0.8, fontSize: '0.9rem' }}>صورة الغلاف (Cover Image)</label>
-                                    <div style={{ 
-                                        width: '100%', height: '100px', borderRadius: '12px', background: 'var(--bg-tertiary)', 
-                                        marginBottom: '10px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        border: '2px dashed #fbab15'
-                                    }}>
-                                        {editFiles.cover_file ? (
-                                            <img src={URL.createObjectURL(editFiles.cover_file)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                <div className="form-group" style={{ marginBottom: '15px' }}>
+                                    <label style={{ display: 'block', marginBottom: '8px', opacity: 0.8 }}>وصف المرفق</label>
+                                    <textarea 
+                                        className="textarea" 
+                                        value={editData.description} 
+                                        onChange={e => setEditData({...editData, description: e.target.value})} 
+                                        style={{ width: '100%', minHeight: '100px' }}
+                                    />
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                                    <div className="edit-image-preview-container">
+                                        <label style={{ display: 'block', marginBottom: '8px', opacity: 0.8, fontSize: '0.9rem' }}>الشعار (Profile/Logo)</label>
+                                        <div style={{ 
+                                            width: '100px', height: '100px', borderRadius: '12px', background: 'var(--bg-tertiary)', 
+                                            marginBottom: '10px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            border: '2px dashed #fbab15'
+                                        }}>
+                                            {editFiles.icon_file ? (
+                                                <img src={URL.createObjectURL(editFiles.icon_file)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            ) : (
+                                                facility.icon && facility.icon.startsWith('http') ? (
+                                                    <img src={getImageUrl(facility.icon)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                ) : (
+                                                    <span style={{ fontSize: '2rem' }}>{editData.icon || '🏛️'}</span>
+                                                )
+                                            )}
+                                        </div>
+                                        <input 
+                                            type="file" 
+                                            accept="image/*"
+                                            onChange={e => setEditFiles({...editFiles, icon_file: e.target.files[0]})} 
+                                            style={{ fontSize: '0.8rem', width: '100%' }}
+                                        />
+                                        <input 
+                                            placeholder="أو اكتب إيموجي هنا"
+                                            className="input" 
+                                            value={editData.icon} 
+                                            onChange={e => setEditData({...editData, icon: e.target.value})} 
+                                            style={{ width: '100%', marginTop: '5px', fontSize: '0.8rem' }}
+                                        />
+                                    </div>
+                                    <div className="edit-image-preview-container">
+                                        <label style={{ display: 'block', marginBottom: '8px', opacity: 0.8, fontSize: '0.9rem' }}>صورة الغلاف (Cover Image)</label>
+                                        <div style={{ 
+                                            width: '100%', height: '100px', borderRadius: '12px', background: 'var(--bg-tertiary)', 
+                                            marginBottom: '10px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            border: '2px dashed #fbab15'
+                                        }}>
+                                            {editFiles.cover_file ? (
+                                                <img src={URL.createObjectURL(editFiles.cover_file)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            ) : (
+                                                <img src={getImageUrl(facility.cover_background) || 'https://images.unsplash.com/photo-1562774053-701939374585?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            )}
+                                        </div>
+                                        <input 
+                                            type="file" 
+                                            accept="image/*"
+                                            onChange={e => setEditFiles({...editFiles, cover_file: e.target.files[0]})} 
+                                            style={{ fontSize: '0.8rem', width: '100%' }}
+                                        />
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: '15px', marginTop: '30px' }}>
+                                    <button type="submit" className="btn-primary" style={{ flex: 2, padding: '12px', fontWeight: 'bold' }}>حفظ التغييرات</button>
+                                    <button type="button" className="btn-secondary" onClick={() => setIsEditing(false)} style={{ flex: 1, padding: '12px' }}>إلغاء</button>
+                                </div>
+                            </form>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="fac-header">
+                                <img 
+                                    src={getImageUrl(facility.cover_background) || 'https://images.unsplash.com/photo-1562774053-701939374585?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'} 
+                                    className="fac-cover" 
+                                    alt="Facility Cover" 
+                                />
+                                <div className="fac-header-content">
+                                    <div className="fac-icon-large">
+                                        {facility.icon && facility.icon.startsWith('http') ? (
+                                            <img src={getImageUrl(facility.icon)} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }} />
                                         ) : (
-                                            <img src={getImageUrl(facility.cover_background) || 'https://images.unsplash.com/photo-1562774053-701939374585?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            facility.icon || '🏛️'
                                         )}
                                     </div>
-                                    <input 
-                                        type="file" 
-                                        accept="image/*"
-                                        onChange={e => setEditFiles({...editFiles, cover_file: e.target.files[0]})} 
-                                        style={{ fontSize: '0.8rem', width: '100%' }}
-                                    />
+                                    <div className="fac-title-info">
+                                        <h2>{facility.name}</h2>
+                                        <p>{facility.category} - {facility.university_name}</p>
+                                    </div>
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '15px', marginTop: '30px' }}>
-                                <button type="submit" className="btn-primary" style={{ flex: 2, padding: '12px', fontWeight: 'bold' }}>حفظ التغييرات</button>
-                                <button type="button" className="btn-secondary" onClick={() => setIsEditing(false)} style={{ flex: 1, padding: '12px' }}>إلغاء</button>
-                            </div>
-                        </form>
+
+                    <div className="fac-tabs">
+                        <button className={`fac-tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>نظرة عامة</button>
+                        {facility.category === 'الكليات' && (
+                            <button className={`fac-tab ${activeTab === 'specialties' ? 'active' : ''}`} onClick={() => setActiveTab('specialties')}>التخصصات والبرامج</button>
+                        )}
+                        <button className={`fac-tab ${activeTab === 'news' ? 'active' : ''}`} onClick={() => setActiveTab('news')}>الأخبار والفعاليات</button>
                     </div>
-                ) : (
-                    <>
-                        <div className="fac-header">
-                            <img 
-                                src={getImageUrl(facility.cover_background) || 'https://images.unsplash.com/photo-1562774053-701939374585?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'} 
-                                className="fac-cover" 
-                                alt="Facility Cover" 
-                            />
-                            <div className="fac-header-content">
-                                <div className="fac-icon-large">
-                                    {facility.icon && facility.icon.startsWith('http') ? (
-                                        <img src={getImageUrl(facility.icon)} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }} />
-                                    ) : (
-                                        facility.icon || '🏛️'
+
+                    <div className="fac-content">
+                        {activeTab === 'overview' && (
+                            <div className="fac-overview">
+                                <div className="desc-card" style={{ background: 'var(--bg-secondary)', padding: '25px', borderRadius: '16px', border: '1px solid var(--bg-tertiary)' }}>
+                                    <h3 style={{ marginTop: 0 }}>عن {facility.name}</h3>
+                                    <p style={{ lineHeight: 1.8 }}>{facility.description || 'لا يوجد وصف متاح لهذا المرفق حالياً، سيتم تحديث المعلومات قريباً من قبل إدارة الجامعة.'}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'specialties' && (
+                            <div className="fac-specs">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                    <h3 style={{ margin: 0 }}>الأقسام والتخصصات الدراسية</h3>
+                                    {is_admin && (
+                                        <button className="btn-small is-primary" onClick={() => setShowAddSpec(true)}>+ إضافة تخصص</button>
                                     )}
                                 </div>
-                                <div className="fac-title-info">
-                                    <h2>{facility.name}</h2>
-                                    <p>{facility.category} - {facility.university_name}</p>
+
+                                {showAddSpec && (
+                                    <form onSubmit={handleAddSpec} style={{ background: 'var(--bg-tertiary)', padding: '20px', borderRadius: '12px', marginBottom: '20px' }}>
+                                        <input placeholder="اسم التخصص" className="input" value={newSpec.name} onChange={e => setNewSpec({...newSpec, name: e.target.value})} style={{ width: '100%', marginBottom: '10px' }} required />
+                                        <textarea placeholder="وصف التخصص" className="textarea" value={newSpec.description} onChange={e => setNewSpec({...newSpec, description: e.target.value})} style={{ width: '100%', marginBottom: '10px' }} />
+                                        <select className="select" value={newSpec.degree_level} onChange={e => setNewSpec({...newSpec, degree_level: e.target.value})} style={{ width: '100%', marginBottom: '10px' }}>
+                                            <option value="البكالوريوس">دبلوم / بكالوريوس</option>
+                                            <option value="الماجستير">ماجستير</option>
+                                            <option value="الدكتوراة">دكتوراة</option>
+                                        </select>
+                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                            <button type="submit" className="btn-small is-accept">حفظ</button>
+                                            <button type="button" className="btn-small" onClick={() => setShowAddSpec(false)}>إلغاء</button>
+                                        </div>
+                                    </form>
+                                )}
+
+                                <div className="specs-grid">
+                                    {specialties.length === 0 ? (
+                                        <p style={{ color: 'var(--text-muted)' }}>لا توجد تخصصات مضافة بعد.</p>
+                                    ) : (
+                                        specialties.map(spec => (
+                                            <div key={spec.id} className="spec-card">
+                                                <span className="spec-degree">{spec.degree_level || 'البكالوريوس'}</span>
+                                                <h4 style={{ margin: '5px 0' }}>{spec.name}</h4>
+                                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 0 }}>{spec.description}</p>
+                                            </div>
+                                        ))
+                                    )}
                                 </div>
                             </div>
-                        </div>
+                        )}
 
-                <div className="fac-tabs">
-                    <button className={`fac-tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>نظرة عامة</button>
-                    {facility.category === 'الكليات' && (
-                        <button className={`fac-tab ${activeTab === 'specialties' ? 'active' : ''}`} onClick={() => setActiveTab('specialties')}>التخصصات والبرامج</button>
-                    )}
-                    <button className={`fac-tab ${activeTab === 'news' ? 'active' : ''}`} onClick={() => setActiveTab('news')}>الأخبار والفعاليات</button>
-                </div>
+                        {activeTab === 'news' && (
+                            <div className="fac-news">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                    <h3 style={{ margin: 0 }}>حائط الأخبار والفعاليات</h3>
+                                    {is_admin && (
+                                        <button className="btn-small is-primary" onClick={() => setShowAddPost(true)}>+ نشر خبر/فعالية</button>
+                                    )}
+                                </div>
 
-                <div className="fac-content">
-                    {activeTab === 'overview' && (
-                        <div className="fac-overview">
-                            <div className="desc-card" style={{ background: 'var(--bg-secondary)', padding: '25px', borderRadius: '16px', border: '1px solid var(--bg-tertiary)' }}>
-                                <h3 style={{ marginTop: 0 }}>عن {facility.name}</h3>
-                                <p style={{ lineHeight: 1.8 }}>{facility.description || 'لا يوجد وصف متاح لهذا المرفق حالياً، سيتم تحديث المعلومات قريباً م قبل إدارة الجامعة.'}</p>
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'specialties' && (
-                        <div className="fac-specs">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                                <h3 style={{ margin: 0 }}>الأقسام والتخصصات الدراسية</h3>
-                                {is_admin && (
-                                    <button className="btn-small is-primary" onClick={() => setShowAddSpec(true)}>+ إضافة تخصص</button>
-                                )}
-                            </div>
-
-                            {showAddSpec && (
-                                <form onSubmit={handleAddSpec} style={{ background: 'var(--bg-tertiary)', padding: '20px', borderRadius: '12px', marginBottom: '20px' }}>
-                                    <input placeholder="اسم التخصص" className="input" value={newSpec.name} onChange={e => setNewSpec({...newSpec, name: e.target.value})} style={{ width: '100%', marginBottom: '10px' }} required />
-                                    <textarea placeholder="وصف التخصص" className="textarea" value={newSpec.description} onChange={e => setNewSpec({...newSpec, description: e.target.value})} style={{ width: '100%', marginBottom: '10px' }} />
-                                    <select className="select" value={newSpec.degree_level} onChange={e => setNewSpec({...newSpec, degree_level: e.target.value})} style={{ width: '100%', marginBottom: '10px' }}>
-                                        <option value="البكالوريوس">دبلوم / بكالوريوس</option>
-                                        <option value="الماجستير">ماجستير</option>
-                                        <option value="الدكتوراة">دكتوراة</option>
-                                    </select>
-                                    <div style={{ display: 'flex', gap: '10px' }}>
-                                        <button type="submit" className="btn-small is-accept">حفظ</button>
-                                        <button type="button" className="btn-small" onClick={() => setShowAddSpec(false)}>إلغاء</button>
-                                    </div>
-                                </form>
-                            )}
-
-                            <div className="specs-grid">
-                                {specialties.length === 0 ? (
-                                    <p style={{ color: 'var(--text-muted)' }}>لا توجد تخصصات مضافة بعد.</p>
-                                ) : (
-                                    specialties.map(spec => (
-                                        <div key={spec.id} className="spec-card">
-                                            <span className="spec-degree">{spec.degree_level || 'البكالوريوس'}</span>
-                                            <h4 style={{ margin: '5px 0' }}>{spec.name}</h4>
-                                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 0 }}>{spec.description}</p>
+                                {showAddPost && (
+                                    <form onSubmit={handleAddPost} style={{ background: 'var(--bg-tertiary)', padding: '20px', borderRadius: '12px', marginBottom: '20px' }}>
+                                        <input placeholder="عنوان الخبر" className="input" value={newPost.title} onChange={e => setNewPost({...newPost, title: e.target.value})} style={{ width: '100%', marginBottom: '10px' }} required />
+                                        <textarea placeholder="تفاصيل الخبر..." className="textarea" value={newPost.content} onChange={e => setNewPost({...newPost, content: e.target.value})} style={{ width: '100%', marginBottom: '10px' }} required />
+                                        <select className="select" value={newPost.post_type} onChange={e => setNewPost({...newPost, post_type: e.target.value})} style={{ width: '100%', marginBottom: '10px' }}>
+                                            <option value="news">خبر عادي 📢</option>
+                                            <option value="event">فعالية قادمة 🎭</option>
+                                            <option value="achievement">إنجاز جديد 🏆</option>
+                                        </select>
+                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                            <button type="submit" className="btn-small is-accept">نشر الآن</button>
+                                            <button type="button" className="btn-small" onClick={() => setShowAddPost(false)}>إلغاء</button>
                                         </div>
-                                    ))
+                                    </form>
                                 )}
-                            </div>
-                        </div>
-                    )}
 
-                    {activeTab === 'news' && (
-                        <div className="fac-news">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                                <h3 style={{ margin: 0 }}>حائط الأخبار والفعاليات</h3>
-                                {is_admin && (
-                                    <button className="btn-small is-primary" onClick={() => setShowAddPost(true)}>+ نشر خبر/فعالية</button>
-                                )}
-                            </div>
-
-                            {showAddPost && (
-                                <form onSubmit={handleAddPost} style={{ background: 'var(--bg-tertiary)', padding: '20px', borderRadius: '12px', marginBottom: '20px' }}>
-                                    <input placeholder="عنوان الخبر" className="input" value={newPost.title} onChange={e => setNewPost({...newPost, title: e.target.value})} style={{ width: '100%', marginBottom: '10px' }} required />
-                                    <textarea placeholder="تفاصيل الخبر..." className="textarea" value={newPost.content} onChange={e => setNewPost({...newPost, content: e.target.value})} style={{ width: '100%', marginBottom: '10px' }} required />
-                                    <select className="select" value={newPost.post_type} onChange={e => setNewPost({...newPost, post_type: e.target.value})} style={{ width: '100%', marginBottom: '10px' }}>
-                                        <option value="news">خبر عادي 📢</option>
-                                        <option value="event">فعالية قادمة 🎭</option>
-                                        <option value="achievement">إنجاز جديد 🏆</option>
-                                    </select>
-                                    <div style={{ display: 'flex', gap: '10px' }}>
-                                        <button type="submit" className="btn-small is-accept">نشر الآن</button>
-                                        <button type="button" className="btn-small" onClick={() => setShowAddPost(false)}>إلغاء</button>
-                                    </div>
-                                </form>
-                            )}
-
-                            <div className="posts-wall">
-                                {posts.length === 0 ? (
-                                    <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>لا توجد أخبار مضافة لهذا المرفق بعد.</p>
-                                ) : (
-                                    posts.map(post => (
-                                        <div key={post.id} className="fac-post-card">
-                                            <div className="post-meta">
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                    <img src={getImageUrl(post.user_avatar) || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} style={{ width: 30, height: 30, borderRadius: '50%' }} />
-                                                    <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{post.username}</span>
+                                <div className="posts-wall">
+                                    {posts.length === 0 ? (
+                                        <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>لا توجد أخبار مضافة لهذا المرفق بعد.</p>
+                                    ) : (
+                                        posts.map(post => (
+                                            <div key={post.id} className="fac-post-card">
+                                                <div className="post-meta">
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                        <img src={getImageUrl(post.user_avatar) || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} style={{ width: 30, height: 30, borderRadius: '50%' }} />
+                                                        <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{post.username}</span>
+                                                    </div>
+                                                    <span className={`post-tag tag-${post.post_type}`}>
+                                                        {post.post_type === 'news' ? '📢 خبر' : post.post_type === 'event' ? '🎭 فعالية' : '🏆 إنجاز'}
+                                                    </span>
                                                 </div>
-                                                <span className={`post-tag tag-${post.post_type}`}>
-                                                    {post.post_type === 'news' ? '📢 خبر' : post.post_type === 'event' ? '🎭 فعالية' : '🏆 إنجاز'}
-                                                </span>
+                                                <h4 style={{ margin: '10px 0' }}>{post.title}</h4>
+                                                <p style={{ fontSize: '0.95rem', color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>{post.content}</p>
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '15px' }}>
+                                                    {new Date(post.created_at).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                                </div>
                                             </div>
-                                            <h4 style={{ margin: '10px 0' }}>{post.title}</h4>
-                                            <p style={{ fontSize: '0.95rem', color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>{post.content}</p>
-                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '15px' }}>
-                                                {new Date(post.created_at).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
+                                        ))
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    )}
-                </div>
-            </>
-        )}
+                        )}
+                    </div>
+                </>
+            )}
+        </div>
             </div>
         </div>
     );
