@@ -623,133 +623,120 @@ const PalNovaaLab = ({ onClose }) => {
             return;
         }
 
-        // Build a super-robust self-contained injection script
+        // Build a hyper-resilient injection script
         const injectionScript = `
 <script id="palnovaa-injected-layers">
 (function() {
     var INJECTED_LAYERS = ${JSON.stringify(layersToInject)};
-    console.log('PalNovaa: Injection starting...', INJECTED_LAYERS.length, 'layers');
+    console.log('[PalNovaa] Starting injection for', INJECTED_LAYERS.length, 'layers');
 
-    function renderLayers(map, libraryType) {
-        var allBounds = libraryType === 'leaflet' ? new window.L.LatLngBounds() : null;
-        var featuresCount = 0;
-
-        INJECTED_LAYERS.forEach(function(layer, idx) {
-            var style = layer.style || {};
-            var color = style.color || layer.color || '#F5A623';
-            var outlineColor = style.outlineColor || '#ffffff';
-            var outlineWidth = style.outlineWidth || 2;
-            var opacity = style.opacity !== undefined ? style.opacity : 1;
-            var fillOpacity = style.fillOpacity !== undefined ? style.fillOpacity : 0.4;
-
-            function addToMap(geojson) {
-                if (!geojson || !geojson.features || geojson.features.length === 0) return;
-                featuresCount += geojson.features.length;
-
-                if (libraryType === 'leaflet') {
-                    var lLayer = window.L.geoJSON(geojson, {
-                        style: function() {
-                            return { color: color, weight: outlineWidth, opacity: opacity, fillOpacity: fillOpacity, fillColor: color };
-                        },
-                        pointToLayer: function(feature, latlng) {
-                            return window.L.circleMarker(latlng, { radius: 7, fillColor: color, color: outlineColor, weight: outlineWidth, opacity: opacity, fillOpacity: fillOpacity });
-                        }
-                    }).addTo(map);
-
-                    lLayer.bindPopup(function(l) {
-                        var props = l.feature.properties;
-                        var html = '<div style="direction:rtl;text-align:right;font-family:sans-serif;padding:4px"><h4 style="margin:0 0 8px;color:#06D6F2">' + (layer.name || 'طبقة محقونة') + '</h4>';
-                        Object.keys(props).forEach(function(k){ if(props[k]) html += '<div style="font-size:0.85rem;margin-bottom:4px"><b>' + k + ':</b> ' + props[k] + '</div>'; });
-                        return html + '</div>';
-                    });
-                    
-                    var layerBounds = window.L.geoJSON(geojson).getBounds();
-                    if (layerBounds.isValid()) allBounds.extend(layerBounds);
-                    if (allBounds.isValid()) map.fitBounds(allBounds, { padding: [50, 50] });
-
-                } else {
-                    // MapLibre / Mapbox Logic
-                    var sourceId = 'pn-inject-' + (layer.id || idx);
-                    if (map.getSource(sourceId)) { map.getSource(sourceId).setData(geojson); return; }
-                    map.addSource(sourceId, { type: 'geojson', data: geojson });
-
-                    var gtype = geojson.features[0] && geojson.features[0].geometry && geojson.features[0].geometry.type;
-                    var isPolygon = gtype && (gtype.indexOf('Polygon') !== -1);
-                    var isLine = gtype && (gtype.indexOf('LineString') !== -1);
-
-                    if (isPolygon) {
-                        map.addLayer({ id: sourceId+'-fill', type: 'fill', source: sourceId, paint: { 'fill-color': color, 'fill-opacity': fillOpacity } });
-                        map.addLayer({ id: sourceId+'-line', type: 'line', source: sourceId, paint: { 'line-color': outlineColor, 'line-width': outlineWidth, 'line-opacity': opacity } });
-                    } else if (isLine) {
-                        map.addLayer({ id: sourceId+'-line', type: 'line', source: sourceId, paint: { 'line-color': color, 'line-width': outlineWidth + 1, 'line-opacity': opacity } });
-                    } else {
-                        map.addLayer({ id: sourceId+'-point', type: 'circle', source: sourceId, paint: { 'circle-radius': 7, 'circle-color': color, 'circle-stroke-width': outlineWidth, 'circle-stroke-color': outlineColor, 'circle-opacity': opacity } });
-                    }
-
-                    // Fit bounds for Mapbox/MapLibre
-                    try {
-                        var coords = geojson.features.flatMap(function(f) { 
-                            return f.geometry.type === 'Point' ? [f.geometry.coordinates] : (f.geometry.coordinates.flat(5) || []);
-                        });
-                        if (coords.length > 0) {
-                            var lngs = coords.map(function(c){return c[0]}), lats = coords.map(function(c){return c[1]});
-                            map.fitBounds([[Math.min.apply(null,lngs), Math.min.apply(null,lats)], [Math.max.apply(null,lngs), Math.max.apply(null,lats)]], {padding: 50});
-                        }
-                    } catch(e){}
-
-                    var clickLayer = sourceId + (isPolygon ? '-fill' : isLine ? '-line' : '-point');
-                    var GL = window.maplibregl || window.mapboxgl;
-                    if (map.getLayer(clickLayer) && GL) {
-                        map.on('click', clickLayer, function(e) {
-                            var props = e.features[0].properties;
-                            var html = '<div style="direction:rtl;text-align:right;font-family:sans-serif;padding:4px"><h4 style="margin:0 0 8px;color:#06D6F2">' + (layer.name || 'طبقة محقونة') + '</h4>';
-                            Object.keys(props).forEach(function(k){ if(props[k]) html += '<div style="font-size:0.85rem;margin-bottom:4px"><b>' + k + ':</b> ' + props[k] + '</div>'; });
-                            html += '</div>';
-                            new GL.Popup({ closeButton: false, maxWidth: '280px' }).setLngLat(e.lngLat).setHTML(html).addTo(map);
-                        });
-                        map.on('mouseenter', clickLayer, function(){ map.getCanvas().style.cursor = 'pointer'; });
-                        map.on('mouseleave', clickLayer, function(){ map.getCanvas().style.cursor = ''; });
-                    }
-                }
+    function injectIntoLeaflet(map, layer, geojson) {
+        var style = layer.style || {};
+        var color = style.color || layer.color || '#F5A623';
+        console.log('[PalNovaa] Adding Leaflet layer:', layer.name);
+        
+        var lLayer = window.L.geoJSON(geojson, {
+            style: function() {
+                return { 
+                    color: style.outlineColor || '#ffffff', 
+                    weight: style.outlineWidth || 2, 
+                    opacity: style.opacity || 1, 
+                    fillOpacity: style.fillOpacity || 0.4, 
+                    fillColor: color 
+                };
+            },
+            pointToLayer: function(feature, latlng) {
+                return window.L.circleMarker(latlng, { 
+                    radius: 7, 
+                    fillColor: color, 
+                    color: style.outlineColor || '#ffffff', 
+                    weight: style.outlineWidth || 2, 
+                    opacity: style.opacity || 1, 
+                    fillOpacity: style.fillOpacity || 0.4 
+                });
             }
+        }).addTo(map);
 
-            if (layer.dataUrl) { fetch(layer.dataUrl).then(function(r){ return r.json(); }).then(addToMap).catch(function(e){ console.error('PalNovaa fetch error:', e); }); }
-            else if (layer.data) { addToMap(layer.data); }
+        var props = geojson.features[0] ? geojson.features[0].properties : {};
+        if (Object.keys(props).length > 0) {
+            lLayer.bindPopup(function(l) {
+                var p = l.feature.properties;
+                var h = '<div style="direction:rtl;text-align:right;font-family:sans-serif;padding:4px"><h4 style="margin:0 0 8px;color:#06D6F2">' + (layer.name || 'طبقة محقونة') + '</h4>';
+                Object.keys(p).forEach(function(k){ if(p[k]) h += '<div style="font-size:0.85rem;margin-bottom:4px"><b>'+k+':</b> '+p[k]+'</div>'; });
+                return h + '</div>';
+            });
+        }
+        
+        try {
+            var bounds = lLayer.getBounds();
+            if (bounds.isValid()) map.fitBounds(bounds, { padding: [50, 50] });
+        } catch(e) { console.error('[PalNovaa] Bounds error:', e); }
+    }
+
+    function injectIntoMapLibre(map, layer, geojson) {
+        console.log('[PalNovaa] Adding MapLibre layer:', layer.name);
+        var sourceId = 'pn-' + Date.now() + '-' + Math.floor(Math.random()*1000);
+        var style = layer.style || {};
+        var color = style.color || layer.color || '#F5A623';
+
+        map.addSource(sourceId, { type: 'geojson', data: geojson });
+        var gtype = geojson.features[0].geometry.type;
+        
+        if (gtype.includes('Polygon')) {
+            map.addLayer({ id: sourceId+'-f', type: 'fill', source: sourceId, paint: { 'fill-color': color, 'fill-opacity': style.fillOpacity || 0.4 } });
+            map.addLayer({ id: sourceId+'-l', type: 'line', source: sourceId, paint: { 'line-color': style.outlineColor || '#fff', 'line-width': style.outlineWidth || 2 } });
+        } else if (gtype.includes('Line')) {
+            map.addLayer({ id: sourceId+'-l', type: 'line', source: sourceId, paint: { 'line-color': color, 'line-width': (style.outlineWidth || 2) + 1 } });
+        } else {
+            map.addLayer({ id: sourceId+'-p', type: 'circle', source: sourceId, paint: { 'circle-radius': 7, 'circle-color': color, 'circle-stroke-width': style.outlineWidth || 2, 'circle-stroke-color': style.outlineColor || '#fff' } });
+        }
+
+        try {
+            var coords = geojson.features.flatMap(function(f){ return f.geometry.type==='Point'?[f.geometry.coordinates]:f.geometry.coordinates.flat(5); });
+            var lngs = coords.map(function(c){return c[0]}), lats = coords.map(function(c){return c[1]});
+            map.fitBounds([[Math.min.apply(null,lngs),Math.min.apply(null,lats)],[Math.max.apply(null,lngs),Math.max.apply(null,lats)]], {padding:50});
+        } catch(e){}
+    }
+
+    function startProcessing(map, type) {
+        INJECTED_LAYERS.forEach(function(layer) {
+            if (layer.dataUrl) {
+                fetch(layer.dataUrl, { mode: 'cors' })
+                    .then(function(r){ return r.json(); })
+                    .then(function(data){ 
+                        if (type === 'leaflet') injectIntoLeaflet(map, layer, data);
+                        else injectIntoMapLibre(map, layer, data);
+                    })
+                    .catch(function(err){ console.error('[PalNovaa] Data fetch failed:', err); });
+            } else if (layer.data) {
+                if (type === 'leaflet') injectIntoLeaflet(map, layer, layer.data);
+                else injectIntoMapLibre(map, layer, layer.data);
+            }
         });
     }
 
-    function tryInject(attempts) {
-        if (attempts > 20) { console.warn('PalNovaa: Map not found after 20 attempts.'); return; }
-        
+    function findMap(attempts) {
         var map = window.map;
         if (!map && window.L) {
-             for (var k in window) { 
-                 if (window[k] && window[k] instanceof window.L.Map) { map = window[k]; break; } 
-             }
+            for (var k in window) { if (window[k] instanceof window.L.Map) { map = window[k]; break; } }
         }
         
-        if (!map) { 
-            // Try searching by ID
-            var mapEl = document.getElementById('map') || document.querySelector('.leaflet-container') || document.querySelector('.mapboxgl-map');
-            if (mapEl && mapEl._leaflet_id && window.L) {
-                // Leaflet usually stores the map instance on the element in some internal way
-                // But the most common way is the window search above
+        if (map) {
+            console.log('[PalNovaa] Map found!');
+            if (window.L && map instanceof window.L.Map) startProcessing(map, 'leaflet');
+            else {
+                if (map.loaded && map.loaded()) startProcessing(map, 'mapbox');
+                else map.on('load', function(){ startProcessing(map, 'mapbox'); });
             }
-        }
-
-        if (!map) { setTimeout(function(){ tryInject(attempts + 1); }, 500); return; }
-
-        console.log('PalNovaa: Map found! Injecting layers...');
-        if (window.L && map instanceof window.L.Map) {
-            renderLayers(map, 'leaflet');
-        } else if (typeof map.addLayer === 'function') {
-            if (map.loaded && map.loaded()) renderLayers(map, 'maplibre');
-            else map.on('load', function(){ renderLayers(map, 'maplibre'); });
+        } else if (attempts < 15) {
+            setTimeout(function(){ findMap(attempts + 1); }, 600);
+        } else {
+            console.error('[PalNovaa] Map object not found. Please ensure your map is global (window.map).');
         }
     }
 
-    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', function(){ tryInject(0); }); }
-    else { tryInject(0); }
+    if (document.readyState === 'complete') findMap(0);
+    else window.addEventListener('load', function(){ findMap(0); });
 })();
 <\/script>`;
 
