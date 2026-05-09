@@ -707,31 +707,54 @@ const PalNovaaLab = ({ onClose }) => {
     }
 
     function startProcessing(map, type) {
-        // نكتشف رابط السيرفر تلقائياً من الصفحة الحالية أو نستخدم PalNovaa الافتراضي
-        var serverOrigin = (window.location.protocol === 'file:')
-            ? 'https://agq-map.onrender.com'
-            : window.location.origin;
+        // إنشاء لوحة حالة مرئية للمستخدم
+        var statusId = 'palnovaa-status-' + Date.now();
+        var statusEl = document.createElement('div');
+        statusEl.id = statusId;
+        statusEl.style = 'position:fixed;bottom:20px;right:20px;background:rgba(30,41,59,0.9);color:white;padding:10px 15px;border-radius:8px;z-index:9999;font-family:sans-serif;font-size:12px;box-shadow:0 4px 12px rgba(0,0,0,0.2);display:flex;align-items:center;gap:10px;border:1px solid #06D6F2;';
+        statusEl.innerHTML = '<div style="width:10px;height:10px;background:#06D6F2;border-radius:50%;animation:pulse 1s infinite"></div> جاري فحص الطبقات...';
+        document.body.appendChild(statusEl);
 
-        INJECTED_LAYERS.forEach(function(layer) {
+        var styleSheet = document.createElement("style");
+        styleSheet.innerText = "@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }";
+        document.head.appendChild(styleSheet);
+
+        var serverOrigins = ['http://localhost:5001', 'https://agq-map.onrender.com'];
+
+        function updateStatus(msg, success) {
+            statusEl.innerHTML = '<div style="width:10px;height:10px;background:'+(success?'#10b981':'#ef4444')+';border-radius:50%;"></div> ' + msg;
+            if (success) setTimeout(function(){ statusEl.style.opacity = '0'; setTimeout(function(){ statusEl.remove(); }, 1000); }, 3000);
+        }
+
+        INJECTED_LAYERS.forEach(function(layer, idx) {
             if (layer.dataUrl) {
-                // نجلب عبر بروكسي سيرفرنا لتجاوز CORS في أي بيئة
-                var proxyUrl = serverOrigin + '/api/storage/proxy?url=' + encodeURIComponent(layer.dataUrl);
-                console.log('[PalNovaa] Fetching via proxy:', proxyUrl);
-                fetch(proxyUrl)
-                    .then(function(r) {
-                        if (!r.ok) throw new Error('Proxy fetch failed: ' + r.status);
-                        return r.json();
-                    })
-                    .then(function(data) {
-                        if (type === 'leaflet') injectIntoLeaflet(map, layer, data);
-                        else injectIntoMapLibre(map, layer, data);
-                    })
-                    .catch(function(err) {
-                        console.error('[PalNovaa] Proxy fetch failed:', err);
-                    });
+                function tryFetch(originIdx) {
+                    var proxyUrl = serverOrigins[originIdx] + '/api/storage/proxy?url=' + encodeURIComponent(layer.dataUrl);
+                    console.log('[PalNovaa] Trying Proxy:', proxyUrl);
+                    fetch(proxyUrl)
+                        .then(function(r) {
+                            if (!r.ok) throw new Error('Proxy failed');
+                            return r.json();
+                        })
+                        .then(function(data) {
+                            if (type === 'leaflet') injectIntoLeaflet(map, layer, data);
+                            else injectIntoMapLibre(map, layer, data);
+                            updateStatus('تم حقن ' + (layer.name || 'طبقة'), true);
+                        })
+                        .catch(function(err) {
+                            if (originIdx < serverOrigins.length - 1) tryFetch(originIdx + 1);
+                            else {
+                                console.error('[PalNovaa] All proxies failed for:', layer.name);
+                                updateStatus('فشل تحميل: ' + layer.name, false);
+                            }
+                        });
+                }
+                tryFetch(0);
             } else if (layer.data) {
+                console.log('[PalNovaa] Using embedded data for:', layer.name);
                 if (type === 'leaflet') injectIntoLeaflet(map, layer, layer.data);
                 else injectIntoMapLibre(map, layer, layer.data);
+                updateStatus('تم حقن ' + (layer.name || 'طبقة') + ' (مدمجة)', true);
             }
         });
     }
