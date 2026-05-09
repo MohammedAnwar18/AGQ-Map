@@ -1084,9 +1084,12 @@ const PalNovaaLab = ({ onClose }) => {
                     const outClr = s.outlineColor || '#ffffff';
                     const outW = s.outlineWidth ?? 2;
 
-                    // Use dataUrl if available to save file size, otherwise fallback to embedded data
-                    const sourceData = layer.dataUrl || layer.data;
-                    if (!sourceData) return;
+                    // PRIORITIZE EMBEDDED DATA: Use embedded data if available (best for portability)
+                    const sourceData = layer.data || layer.dataUrl;
+                    if (!sourceData) {
+                        console.warn("No data for layer:", layer.name);
+                        return;
+                    }
 
                     map.addSource('src-' + layer.id, { type: 'geojson', data: sourceData });
                         
