@@ -595,27 +595,32 @@ const PalNovaaLab = ({ onClose }) => {
 
     const performInjection = async () => {
         if (!uploadedHtmlContent) return;
-
+        
         setIsGenerating(true);
         const layersToInject = [];
+        try {
+            for (const layerId of selectedInjectLayers) {
+                const layer = geoLayers.find(l => l.id === layerId);
+                if (!layer) continue;
+                
+                let rawData = layer.data;
+                // Fetch from cloud if data is missing locally
+                if (!rawData && (layer.dataUrl || layer.url)) {
+                    const res = await axios.get(layer.dataUrl || layer.url);
+                    rawData = res.data;
+                }
 
-        for (const layerId of selectedInjectLayers) {
-            const layer = geoLayers.find(l => l.id === layerId);
-            if (!layer) continue;
-
-            // If layer is large, upload to cloud for "Professional Space Saving"
-            let finalDataUrl = layer.dataUrl;
-            if (!finalDataUrl && JSON.stringify(layer.data).length > 50000) {
-                finalDataUrl = await uploadLayerToCloud(layer.data, layer.name);
+                layersToInject.push({
+                    ...layer,
+                    data: rawData,
+                    dataUrl: null, // Avoid fetch in the injected script
+                    style: layerStyles[layer.id] || {}
+                });
             }
-
-            layersToInject.push({
-                ...layer,
-                data: finalDataUrl ? null : layer.data, // Strip data if we have a URL
-                dataUrl: finalDataUrl,
-                style: layerStyles[layer.id] || {}
-            });
+        } catch (err) {
+            console.error("Injection preparation failed:", err);
         }
+
 
         if (layersToInject.length === 0) {
             alert('الرجاء اختيار طبقة واحدة على الأقل للحقن');
