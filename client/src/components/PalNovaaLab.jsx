@@ -98,6 +98,7 @@ const PalNovaaLab = ({ onClose }) => {
     const [builderTab, setBuilderTab] = useState('basic'); // 'basic', 'components', 'icons'
     const [isMagicPromptOpen, setIsMagicPromptOpen] = useState(false);
     const [magicPromptText, setMagicPromptText] = useState('');
+    const [highlightFeature, setHighlightFeature] = useState(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
     const [publishName, setPublishName] = useState('');
@@ -324,6 +325,9 @@ const PalNovaaLab = ({ onClose }) => {
                         longitude: e.lngLat.lng,
                         latitude: e.lngLat.lat
                     });
+                    
+                    // HIGHLIGHT FEATURE: Set the clicked feature for the highlight layer
+                    setHighlightFeature(clickedFeature.toJSON());
 
                     // Auto-open attribute table for the clicked layer
                     const layerId = clickedFeature.layer.id;
@@ -338,6 +342,7 @@ const PalNovaaLab = ({ onClose }) => {
                     }
                 } else {
                     setSelectedFeatureInfo(null);
+                    setHighlightFeature(null);
                 }
             } catch (err) {
                 console.error("Map click query error:", err);
@@ -1146,22 +1151,51 @@ const PalNovaaLab = ({ onClose }) => {
                         } 
                     });
 
-                    const layerIds = ['poly-' + layer.id, 'line-' + layer.id, 'point-' + layer.id];
-                    layerIds.forEach(lId => {
-                        map.on('click', lId, (e) => {
-                            if (!e.features.length) return;
-                            let props = e.features[0].properties;
-                            let html = '<div style="direction: rtl; text-align: right; max-height: 250px; overflow-y: auto; padding-right: 5px;">';
-                            html += '<h4 style="margin: 0 0 12px 0; color: var(--primary); font-family: var(--font-h); font-size: 1.2rem;">تفاصيل المعلم</h4>';
-                            for (let key in props) {
-                                html += '<div style="margin-bottom: 8px; font-size: 0.95rem; border-bottom: 1px dashed var(--border); padding-bottom: 4px;"><strong>' + key + ':</strong> <span style="color: var(--primary);">' + props[key] + '</span></div>';
-                            }
-                            html += '</div>';
-                            new maplibregl.Popup({closeButton: false, maxWidth: '300px'}).setLngLat(e.lngLat).setHTML(html).addTo(map);
-                        });
-                        map.on('mouseenter', lId, () => { map.getCanvas().style.cursor = 'pointer'; });
-                        map.on('mouseleave', lId, () => { map.getCanvas().style.cursor = ''; });
+                    // Cursor pointers
+                    ['poly-' + layer.id, 'line-' + layer.id, 'point-' + layer.id].forEach(id => {
+                        map.on('mouseenter', id, () => { map.getCanvas().style.cursor = 'pointer'; });
+                        map.on('mouseleave', id, () => { map.getCanvas().style.cursor = ''; });
                     });
+                });
+
+                // Add Highlight Source and Layer
+                map.addSource('highlight-src', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+                map.addLayer({
+                    id: 'highlight-line', type: 'line', source: 'highlight-src',
+                    paint: { 'line-color': '#06D6F2', 'line-width': 4, 'line-blur': 2 }
+                });
+                map.addLayer({
+                    id: 'highlight-point', type: 'circle', source: 'highlight-src',
+                    filter: ['==', '$type', 'Point'],
+                    paint: { 'circle-radius': 10, 'circle-color': 'transparent', 'circle-stroke-width': 3, 'circle-stroke-color': '#06D6F2' }
+                });
+
+                map.on('click', (e) => {
+                    const features = map.queryRenderedFeatures(e.point);
+                    const myFeatures = features.filter(f => f.layer.id.startsWith('poly-') || f.layer.id.startsWith('line-') || f.layer.id.startsWith('point-'));
+                    
+                    if (myFeatures.length > 0) {
+                        const f = myFeatures[0];
+                        map.getSource('highlight-src').setData(f.toJSON());
+                        
+                        let html = '<div style="direction:rtl; text-align:right; font-family: Cairo, sans-serif; padding:5px;">';
+                        html += '<h3 style="margin:0 0 12px 0; color:#06D6F2; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px; font-size:1.1rem;">تفاصيل المعلم</h3>';
+                        const props = f.properties;
+                        let hasProps = false;
+                        for (let key in props) {
+                            hasProps = true;
+                            html += '<div style="margin-bottom:10px; font-size:0.9rem; line-height:1.4;">';
+                            html += '<strong style="color:var(--primary);">' + key + ':</strong> ';
+                            html += '<span style="color:#eee; word-break:break-word;">' + props[key] + '</span>';
+                            html += '</div>';
+                        }
+                        if(!hasProps) html += '<div style="opacity:0.6; font-size:0.85rem;">لا توجد بيانات وصفية متاحة.</div>';
+                        html += '</div>';
+                        
+                        new maplibregl.Popup({closeButton: false, maxWidth: '320px'}).setLngLat(e.lngLat).setHTML(html).addTo(map);
+                    } else {
+                        map.getSource('highlight-src').setData({ type: 'FeatureCollection', features: [] });
+                    }
                 });
             });
         } catch (e) {
@@ -1393,7 +1427,32 @@ const PalNovaaLab = ({ onClose }) => {
                                 );
                             })}
 
-                            {/* Draft Layers */}
+                            {/* Highlight Layer */}
+                            {highlightFeature && (
+                                <Source id="highlight-source" type="geojson" data={highlightFeature}>
+                                    <Layer 
+                                        id="highlight-outline" 
+                                        type="line" 
+                                        paint={{ 
+                                            'line-color': '#06D6F2', 
+                                            'line-width': 4,
+                                            'line-blur': 2
+                                        }} 
+                                    />
+                                    <Layer 
+                                        id="highlight-point" 
+                                        type="circle" 
+                                        filter={['==', '$type', 'Point']}
+                                        paint={{ 
+                                            'circle-radius': 10, 
+                                            'circle-color': 'transparent',
+                                            'circle-stroke-width': 3, 
+                                            'circle-stroke-color': '#06D6F2' 
+                                        }} 
+                                    />
+                                </Source>
+                            )}
+
                             {draftGeoJson && (
                                 <Source id="draft-source" type="geojson" data={draftGeoJson}>
                                     <Layer id="draft-line" type="line" paint={{ 'line-color': '#fbab15', 'line-width': 3, 'line-dasharray': [2, 2] }} />
@@ -1528,7 +1587,7 @@ const PalNovaaLab = ({ onClose }) => {
                                                             const rect = e.currentTarget.getBoundingClientRect();
                                                             setStylePopup({
                                                                 layerId: layer.id,
-                                                                x: rect.left - 335, // 320px width + gap
+                                                                x: window.innerWidth - 360, // Right side position
                                                                 y: Math.max(20, Math.min(window.innerHeight - 600, rect.top - 40))
                                                             });
                                                         }}
