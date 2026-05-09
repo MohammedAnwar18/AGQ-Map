@@ -580,48 +580,74 @@ const PalNovaaLab = ({ onClose }) => {
         );
     };
 
-    const performInjection = () => {
+    const uploadLayerToCloud = async (geojson, layerName) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.post('/api/storage/upload', { geojson, layerName }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            return response.data.url;
+        } catch (err) {
+            console.error("Cloud Upload Failed:", err);
+            return null;
+        }
+    };
+
+    const performInjection = async () => {
         if (!uploadedHtmlContent) return;
         
-        const layersToInject = geoLayers.filter(l => selectedInjectLayers.includes(l.id)).map(l => ({
-            ...l,
-            style: layerStyles[l.id] || {}
-        }));
+        setIsGenerating(true);
+        const layersToInject = [];
+        
+        for (const layerId of selectedInjectLayers) {
+            const layer = geoLayers.find(l => l.id === layerId);
+            if (!layer) continue;
+            
+            // If layer is large, upload to cloud for "Professional Space Saving"
+            let finalDataUrl = layer.dataUrl;
+            if (!finalDataUrl && JSON.stringify(layer.data).length > 50000) {
+                finalDataUrl = await uploadLayerToCloud(layer.data, layer.name);
+            }
+
+            layersToInject.push({
+                ...layer,
+                data: finalDataUrl ? null : layer.data, // Strip data if we have a URL
+                dataUrl: finalDataUrl,
+                style: layerStyles[layer.id] || {}
+            });
+        }
 
         if (layersToInject.length === 0) {
             alert('الرجاء اختيار طبقة واحدة على الأقل للحقن');
+            setIsGenerating(false);
             return;
         }
 
-        // SMART INJECTION LOGIC:
-        // We look for the "const layers = [...];" pattern in the HTML
+        // SMART INJECTION LOGIC...
         const layersPattern = /const layers = (\[[\s\S]*?\]);/;
         const match = uploadedHtmlContent.match(layersPattern);
 
         let newHtml = uploadedHtmlContent;
-
         if (match) {
             try {
                 const existingLayers = JSON.parse(match[1]);
                 const combinedLayers = [...existingLayers, ...layersToInject];
                 newHtml = uploadedHtmlContent.replace(layersPattern, `const layers = ${JSON.stringify(combinedLayers)};`);
             } catch (err) {
-                console.error("Injection Error - could not parse existing layers:", err);
-                // Fallback: Just append to the end of script if parsing fails
-                newHtml = uploadedHtmlContent.replace('</script>', `\n// Injected Layers\nlayers.push(...${JSON.stringify(layersToInject)});\n</script>`);
+                newHtml = uploadedHtmlContent.replace('</script>', `\nlayers.push(...${JSON.stringify(layersToInject)});\n</script>`);
             }
         } else {
-            // If pattern not found, try a generic injection before the closing script tag
-            newHtml = uploadedHtmlContent.replace('</script>', `\n// Injected Data\nif(window.layers) window.layers.push(...${JSON.stringify(layersToInject)});\nelse const injectedLayers = ${JSON.stringify(layersToInject)};\n</script>`);
+            newHtml = uploadedHtmlContent.replace('</script>', `\nif(window.layers) window.layers.push(...${JSON.stringify(layersToInject)});\n</script>`);
         }
 
         const blob = new Blob([newHtml], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `Injected_${uploadedHtmlName}`;
+        a.download = `CloudInjected_${uploadedHtmlName}`;
         a.click();
         URL.revokeObjectURL(url);
+        setIsGenerating(false);
     };
 
     const launchDesignStudioFinal = () => {
@@ -756,15 +782,18 @@ const PalNovaaLab = ({ onClose }) => {
 
         // 2. Map Selections to Themes
         const palettesData = {
-            classic: { primary: '#F5A623', primaryDark: '#D88B0E', bg: '#0A1628', surface: 'rgba(20, 43, 71, 0.7)', surfaceSolid: '#142B47', border: 'rgba(255,255,255,0.08)', text: '#FFFFFF', primaryGlow: 'rgba(245, 166, 35, 0.3)' },
-            heritage: { primary: '#CE1126', primaryDark: '#A00010', bg: '#000000', surface: 'rgba(20, 20, 20, 0.8)', surfaceSolid: '#111111', border: 'rgba(0,122,61,0.3)', text: '#FFFFFF', primaryGlow: 'rgba(206, 17, 38, 0.3)' },
+            classic: { primary: '#F5A623', primaryDark: '#D88B0E', bg: '#0A1628', surface: 'rgba(20, 43, 71, 0.7)', surfaceSolid: '#142B47', border: 'rgba(255, 255, 255, 0.08)', text: '#FFFFFF', primaryGlow: 'rgba(245, 166, 35, 0.3)' },
+            dark: { primary: '#06D6F2', primaryDark: '#04A0B5', bg: '#000000', surface: 'rgba(30, 30, 30, 0.7)', surfaceSolid: '#111111', border: 'rgba(255, 255, 255, 0.1)', text: '#FFFFFF', primaryGlow: 'rgba(6, 214, 242, 0.3)' },
+            midnight: { primary: '#8B5CF6', primaryDark: '#6D28D9', bg: '#050505', surface: 'rgba(20, 10, 40, 0.7)', surfaceSolid: '#120525', border: 'rgba(139, 92, 246, 0.2)', text: '#FFFFFF', primaryGlow: 'rgba(139, 92, 246, 0.3)' },
+            heritage: { primary: '#CE1126', primaryDark: '#A00010', bg: '#000000', surface: 'rgba(20, 20, 20, 0.8)', surfaceSolid: '#111111', border: 'rgba(0, 122, 61, 0.3)', text: '#FFFFFF', primaryGlow: 'rgba(206, 17, 38, 0.3)' },
             ocean: { primary: '#06D6F2', primaryDark: '#04A0B5', bg: '#050B16', surface: 'rgba(26, 41, 128, 0.4)', surfaceSolid: '#1A2980', border: 'rgba(6, 214, 242, 0.2)', text: '#F0F8FF', primaryGlow: 'rgba(6, 214, 242, 0.3)' },
             sunset: { primary: '#F5A623', primaryDark: '#FF6B6B', bg: '#1A0E1F', surface: 'rgba(139, 92, 246, 0.3)', surfaceSolid: '#3B1E4A', border: 'rgba(245, 166, 35, 0.2)', text: '#FFFFFF', primaryGlow: 'rgba(245, 166, 35, 0.3)' },
             forest: { primary: '#10D9A0', primaryDark: '#059669', bg: '#022C22', surface: 'rgba(6, 78, 59, 0.6)', surfaceSolid: '#064E3B', border: 'rgba(16, 217, 160, 0.2)', text: '#F5F4ED', primaryGlow: 'rgba(16, 217, 160, 0.3)' },
             earth: { primary: '#D4C49B', primaryDark: '#A0826D', bg: '#2C1810', surface: 'rgba(92, 64, 51, 0.6)', surfaceSolid: '#5C4033', border: 'rgba(212, 196, 155, 0.2)', text: '#F5F4ED', primaryGlow: 'rgba(212, 196, 155, 0.3)' },
+            royal: { primary: '#F5A623', primaryDark: '#7C3AED', bg: '#1E1B4B', surface: 'rgba(49, 46, 129, 0.7)', surfaceSolid: '#312E81', border: 'rgba(245, 166, 35, 0.2)', text: '#FFFFFF', primaryGlow: 'rgba(245, 166, 35, 0.3)' },
             neon: { primary: '#06D6F2', primaryDark: '#EC4899', bg: '#050B16', surface: 'rgba(139, 92, 246, 0.3)', surfaceSolid: '#14002E', border: 'rgba(236, 72, 153, 0.3)', text: '#FFFFFF', primaryGlow: 'rgba(6, 214, 242, 0.4)' },
-            minimal: { primary: '#F5A623', primaryDark: '#D88B0E', bg: '#FFFFFF', surface: 'rgba(245, 244, 237, 0.9)', surfaceSolid: '#F5F4ED', border: 'rgba(0,0,0,0.1)', text: '#1A1A2E', primaryGlow: 'rgba(245, 166, 35, 0.3)' },
-            custom: { primary: designSelections.customPrimary, primaryDark: designSelections.customPrimary, bg: '#0A1628', surface: 'rgba(20, 43, 71, 0.7)', surfaceSolid: '#142B47', border: 'rgba(255,255,255,0.08)', text: '#FFFFFF', primaryGlow: `${designSelections.customPrimary}44` }
+            minimal: { primary: '#F5A623', primaryDark: '#D88B0E', bg: '#FFFFFF', surface: 'rgba(245, 244, 237, 0.9)', surfaceSolid: '#F5F4ED', border: 'rgba(0, 0, 0, 0.1)', text: '#1A1A2E', primaryGlow: 'rgba(245, 166, 35, 0.3)' },
+            custom: { primary: designSelections.customPrimary, primaryDark: designSelections.customPrimary, bg: '#0A1628', surface: 'rgba(20, 43, 71, 0.7)', surfaceSolid: '#142B47', border: 'rgba(255, 255, 255, 0.08)', text: '#FFFFFF', primaryGlow: `${designSelections.customPrimary}44` }
         };
         const theme = palettesData[designSelections.palette] || palettesData.classic;
 
@@ -780,12 +809,12 @@ const PalNovaaLab = ({ onClose }) => {
 
         const bm = designSelections.basemap;
         const bmTiles = {
-            dark: 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
-            light: 'https://mt1.google.com/vt/lyrs=r&x={x}&y={y}&z={z}',
-            satellite: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-            terrain: 'https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}',
-            vintage: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            cyber: 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'
+            dark: 'https://cartodb-basemaps-a.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png',
+            light: 'https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
+            satellite: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', 
+            terrain: 'https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.jpg',
+            vintage: 'https://stamen-tiles.a.ssl.fastly.net/toner/{z}/{x}/{y}.png',
+            cyber: 'https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}'
         };
         const chosenTile = bmTiles[bm] || bmTiles.satellite;
         const targetBasemapStyleObj = {
@@ -818,6 +847,33 @@ const PalNovaaLab = ({ onClose }) => {
                         <div class="layers-list">${layersHTML}</div>
                     </aside>
                     <div id="map"></div>
+                `;
+                break;
+            case 'three':
+                layoutCSS = `
+                    .app-container { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
+                    .top-nav { height: 60px; background: var(--surface-solid); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; z-index: 10; }
+                    .main-content { flex: 1; display: flex; overflow: hidden; }
+                    .left-panel { width: 300px; background: var(--surface-solid); border-left: 1px solid var(--border); padding: 20px; overflow-y: auto; }
+                    #map { flex: 1; }
+                    .right-panel { width: 350px; background: var(--bg); border-right: 1px solid var(--border); padding: 20px; overflow-y: auto; }
+                `;
+                layoutHTML = `
+                    <nav class="top-nav card-panel">
+                        <h2 style="margin:0;color:var(--primary);font-family:var(--font-h);font-size:1.4rem;">مختبر التحليل الذكي</h2>
+                    </nav>
+                    <div class="main-content">
+                        <aside class="left-panel">
+                            <h3 style="color:var(--primary);margin-top:0;font-family:var(--font-h);">الطبقات</h3>
+                            <div class="layers-list">${layersHTML}</div>
+                        </aside>
+                        <div id="map"></div>
+                        <aside class="right-panel card-panel">
+                            <h3 style="color:var(--primary);margin-top:0;font-family:var(--font-h);">إحصائيات فورية</h3>
+                            <div class="stat-card card-panel" style="margin-bottom:15px;"><div class="stat-num">${exportLayers.length}</div><div class="stat-label">طبقة نشطة</div></div>
+                            <div class="stat-card card-panel"><div class="stat-num">${exportLayers.reduce((sum, l) => sum + (l.data?.features?.length || 0), 0)}</div><div class="stat-label">معلم جغرافي</div></div>
+                        </aside>
+                    </div>
                 `;
                 break;
             case 'split':
@@ -892,6 +948,37 @@ const PalNovaaLab = ({ onClose }) => {
                         <p style="opacity:0.8;font-size:1rem;line-height:1.6;">تم تحميل <b>${exportLayers.length}</b> طبقات بنجاح، تحتوي على <b>${exportLayers.reduce((sum, l) => sum + (l.data?.features?.length || 0), 0)}</b> معلم جغرافي تفاعلي.</p>
                         <button class="${designSelections.component || 'primary'}-btn" style="width:100%;padding:14px;background:var(--primary);color:#000;border:none;border-radius:10px;font-weight:bold;font-size:1rem;cursor:pointer;margin-top:16px;">عرض التفاصيل</button>
                     </div>
+                `;
+                break;
+            case 'stacked':
+                layoutCSS = `
+                    .app-container { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
+                    #map { height: 60%; width: 100%; border-bottom: 1px solid var(--border); }
+                    .bottom-content { height: 40%; background: var(--surface-solid); padding: 24px; overflow-y: auto; }
+                    .grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+                `;
+                layoutHTML = `
+                    <div id="map"></div>
+                    <div class="bottom-content card-panel">
+                        <h2 style="color:var(--primary);margin-top:0;font-family:var(--font-h);">استعراض البيانات</h2>
+                        <div class="grid-view">
+                            ${exportLayers.map(l => `
+                                <div class="layer-item" style="margin:0;">
+                                    <h4 style="margin:0 0 8px 0;color:var(--primary);">${l.name}</h4>
+                                    <div style="font-size:0.9rem;opacity:0.7;">يحتوي على ${l.data?.features?.length || 0} معلم</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                break;
+            case 'custom':
+                layoutCSS = `
+                    .app-container { position: relative; height: 100vh; width: 100vw; overflow: hidden; }
+                    #map { position: absolute; inset: 0; }
+                `;
+                layoutHTML = `
+                    <div id="map"></div>
                 `;
                 break;
             default: // fullmap
@@ -1138,7 +1225,34 @@ const PalNovaaLab = ({ onClose }) => {
             });
 
             map.on('load', () => {
-                console.log("Map loaded, adding sources...");
+                console.log("Map loaded, generating icons...");
+                
+                // Function to generate and add shape icons to the map
+                const addShapeIcon = (name, svgPath) => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 64; canvas.height = 64;
+                    const ctx = canvas.getContext('2d');
+                    const path = new Path2D(svgPath);
+                    ctx.translate(32, 32);
+                    ctx.scale(2, 2);
+                    ctx.translate(-12, -12); // Center a 24x24 path
+                    ctx.fillStyle = '#ffffff'; // We use white and 'icon-color' paint property
+                    ctx.fill(path);
+                    const imageData = ctx.getImageData(0, 0, 64, 64);
+                    map.addImage('shape-' + name, imageData, { sdf: true });
+                };
+
+                // Add our custom shapes
+                const shapes = {
+                    square: 'M3 3h18v18H3z',
+                    diamond: 'M12 2l9 10-9 10-9-10z',
+                    triangle: 'M12 2l10 18H2z',
+                    star: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
+                    cross: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'
+                };
+                Object.entries(shapes).forEach(([k, v]) => addShapeIcon(k, v));
+
+                console.log("Adding sources and layers...");
                 layers.forEach(layer => {
                     const s = layer.style || {};
                     const lColor = s.color || layer.color || '#fbab15';
@@ -1194,20 +1308,40 @@ const PalNovaaLab = ({ onClose }) => {
                     });
                     
                     // Points
-                    map.addLayer({ 
-                        id: 'point-' + layer.id, 
-                        type: 'circle', 
-                        source: 'src-' + layer.id, 
-                        filter: ['==', '$type', 'Point'], 
-                        paint: { 
-                            'circle-radius': 7, 
-                            'circle-color': lColor, 
-                            'circle-stroke-width': outW, 
-                            'circle-stroke-color': outClr,
-                            'circle-opacity': lOp,
-                            'circle-stroke-opacity': lOp
-                        } 
-                    });
+                    const pShape = s.shape || 'circle';
+                    if (pShape === 'circle') {
+                        map.addLayer({ 
+                            id: 'point-' + layer.id, 
+                            type: 'circle', 
+                            source: 'src-' + layer.id, 
+                            filter: ['==', '$type', 'Point'], 
+                            paint: { 
+                                'circle-radius': 7, 
+                                'circle-color': lColor, 
+                                'circle-stroke-width': outW, 
+                                'circle-stroke-color': outClr,
+                                'circle-opacity': lOp,
+                                'circle-stroke-opacity': lOp
+                            } 
+                        });
+                    } else {
+                        // For non-circle shapes, we use the symbol layer with our generated icons
+                        map.addLayer({
+                            id: 'point-' + layer.id,
+                            type: 'symbol',
+                            source: 'src-' + layer.id,
+                            filter: ['==', '$type', 'Point'],
+                            layout: {
+                                'icon-image': 'shape-' + pShape,
+                                'icon-size': 0.8,
+                                'icon-allow-overlap': true
+                            },
+                            paint: {
+                                'icon-color': lColor,
+                                'icon-opacity': lOp
+                            }
+                        });
+                    }
 
                     // Cursor pointers
                     ['poly-' + layer.id, 'line-' + layer.id, 'point-' + layer.id].forEach(id => {
@@ -1720,11 +1854,13 @@ const PalNovaaLab = ({ onClose }) => {
                                             </div>
                                         );
                                     })}
-                                </div>
-                            )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
-                            {activeTab === 'injection' && (
-                                <div className="tab-content">
+                        {activeTab === 'injection' && (
+                            <div className="tab-content">
                                     <div className="panel-section">
                                         <div className="panel-section-title">رفع ملف HTML المستهدف</div>
                                         <div 
@@ -1794,16 +1930,8 @@ const PalNovaaLab = ({ onClose }) => {
                                     </div>
                                 </div>
                             )}
-
-                            <div className="panel-section">
-                                <div className="panel-section-title"><span>معلومات الخريطة</span></div>
-                                <div className="info-row"><span className="label">خط العرض</span><span className="value mono">{mapState.latitude.toFixed(4)}°N</span></div>
-                                <div className="info-row"><span className="label">خط الطول</span><span className="value mono">{mapState.longitude.toFixed(4)}°E</span></div>
-                                <div className="info-row"><span className="label">مستوى التكبير</span><span className="value mono">{mapState.zoom.toFixed(1)}x</span></div>
-                            </div>
                         </div>
-                    </div>
-                </aside>
+                    </aside>
 
                 {/* ADVANCED STYLE POPUP */}
                 {stylePopup && (() => {
