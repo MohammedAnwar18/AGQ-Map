@@ -54,7 +54,7 @@ router.post('/facilities/:facilityId/posts', authenticateToken, upload.array('im
 router.post('/facilities/:facilityId/specialties', authenticateToken, shopController.addCollegeSpecialty);
 // المرافق الجامعية (حذف وتعديل - للأدمن والمسؤول)
 router.delete('/facilities/:facilityId', authenticateToken, shopController.deleteUniversityFacility);
-router.put('/facilities/:facilityId', authenticateToken, shopController.renameUniversityFacility);
+router.put('/facilities/:facilityId', authenticateToken, upload.fields([{ name: 'icon_file', maxCount: 1 }, { name: 'cover_file', maxCount: 1 }]), shopController.updateUniversityFacility);
 
 // عناصر البلدية (إضافة / حذف)
 router.post('/:id/municipality-items', authenticateToken, upload.single('image'), shopController.addMunicipalityItem);

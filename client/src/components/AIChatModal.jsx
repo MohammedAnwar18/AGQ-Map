@@ -510,82 +510,108 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                                     onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
                                                     onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                                                 >
-                                                    {/* Top Section - Image or Orange Gradient */}
-                                                    <div style={{ height: '140px', position: 'relative', background: shop.profile_picture ? '#1e293b' : 'linear-gradient(135deg, #f59e0b 0%, #fbab15 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                        {/* Rating Badge */}
-                                                        <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.5)', padding: '4px 10px', borderRadius: '14px', fontSize: '13px', color: 'white', fontWeight: 'bold', display: 'flex', gap: '4px', alignItems: 'center', backdropFilter: 'blur(4px)', zIndex: 2 }}>
-                                                            <span style={{ color: '#fbab15' }}>⭐</span> {shop.rating || '4.8'}
-                                                        </div>
+                                                     {/* Top Section - Image or Orange Gradient */}
+                                                     <div style={{ 
+                                                         height: '140px', 
+                                                         position: 'relative', 
+                                                         background: (shop.profile_picture || shop.result_type === 'facility') ? '#1e293b' : 'linear-gradient(135deg, #f59e0b 0%, #fbab15 100%)', 
+                                                         display: 'flex', 
+                                                         alignItems: 'center', 
+                                                         justifyContent: 'center' 
+                                                     }}>
+                                                         {/* Rating Badge - Hide for facilities */}
+                                                         {shop.result_type !== 'facility' && (
+                                                             <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.5)', padding: '4px 10px', borderRadius: '14px', fontSize: '13px', color: 'white', fontWeight: 'bold', display: 'flex', gap: '4px', alignItems: 'center', backdropFilter: 'blur(4px)', zIndex: 2 }}>
+                                                                 <span style={{ color: '#fbab15' }}>⭐</span> {shop.rating || '4.8'}
+                                                             </div>
+                                                         )}
 
-                                                        {/* Follow Button / Status */}
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); handleFollow(shop.id); }}
-                                                            disabled={shop.is_followed}
-                                                            style={{
-                                                                position: 'absolute', top: '10px', left: '10px',
-                                                                background: shop.is_followed ? 'rgba(251, 171, 21, 0.9)' : 'rgba(0,0,0,0.5)',
-                                                                padding: '4px 10px', borderRadius: '14px', fontSize: '11px', color: 'white', fontWeight: 'bold', border: 'none', cursor: shop.is_followed ? 'default' : 'pointer', backdropFilter: 'blur(4px)', zIndex: 2
-                                                            }}
-                                                        >
-                                                            {shop.is_followed ? 'متابع ✓' : 'متابعة +'}
-                                                        </button>
+                                                         {/* Follow Button / Status */}
+                                                         <button
+                                                             onClick={(e) => { 
+                                                                 e.stopPropagation(); 
+                                                                 if (shop.result_type === 'facility') {
+                                                                     alert('هذا مرفق جامعي، يمكنك متابعة الجامعة التابع لها من ملفها الشخصي.');
+                                                                 } else {
+                                                                     handleFollow(shop.id); 
+                                                                 }
+                                                             }}
+                                                             disabled={shop.is_followed && shop.result_type !== 'facility'}
+                                                             style={{
+                                                                 position: 'absolute', top: '10px', left: '10px',
+                                                                 background: shop.is_followed ? 'rgba(251, 171, 21, 0.9)' : 'rgba(0,0,0,0.5)',
+                                                                 padding: '4px 10px', borderRadius: '14px', fontSize: '11px', color: 'white', fontWeight: 'bold', border: 'none', cursor: (shop.is_followed && shop.result_type !== 'facility') ? 'default' : 'pointer', backdropFilter: 'blur(4px)', zIndex: 2
+                                                             }}
+                                                         >
+                                                             {shop.is_followed ? 'متابع ✓' : (shop.result_type === 'facility' ? 'مرفق 🏛️' : 'متابعة +')}
+                                                         </button>
 
-                                                        {shop.profile_picture ? (
-                                                            <img src={getImageUrl(shop.profile_picture)} alt={shop.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                        ) : (
-                                                            <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="1.5" style={{ width: '60px', height: '60px' }}>
-                                                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
-                                                            </svg>
-                                                        )}
-                                                    </div>
+                                                         {shop.result_type === 'facility' ? (
+                                                             <div style={{ fontSize: '60px' }}>🏛️</div>
+                                                         ) : (
+                                                             shop.profile_picture ? (
+                                                                 <img src={getImageUrl(shop.profile_picture)} alt={shop.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                             ) : (
+                                                                 <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="1.5" style={{ width: '60px', height: '60px' }}>
+                                                                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
+                                                                 </svg>
+                                                             )
+                                                         )}
+                                                     </div>
 
-                                                    {/* Bottom Section - Info */}
-                                                    <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                                                        <h3 style={{ fontSize: '17px', fontWeight: 'bold', margin: '0 0 6px 0', color: 'white', textAlign: 'right' }}>{shop.name}</h3>
+                                                     {/* Bottom Section - Info */}
+                                                     <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                                                         <h3 style={{ fontSize: '17px', fontWeight: 'bold', margin: '0 0 6px 0', color: 'white', textAlign: 'right' }}>{shop.name}</h3>
 
-                                                        <div style={{ fontSize: '13px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '16px', justifyContent: 'flex-start' }}>
-                                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '15px', height: '15px' }}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-                                                            {shop.distance ? `${Math.round(shop.distance)} م عنك` : (shop.parent_shop_name || 'محل')}
-                                                        </div>
+                                                         <div style={{ fontSize: '13px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '16px', justifyContent: 'flex-start' }}>
+                                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '15px', height: '15px' }}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                                                             {shop.distance ? `${Math.round(shop.distance)} م عنك` : (shop.parent_shop_name || (shop.result_type === 'facility' ? 'مبنى جامعي' : 'محل'))}
+                                                         </div>
 
-                                                        {shop.products && shop.products.length > 0 && (
-                                                            <div className="ai-place-products" style={{ marginBottom: '16px', paddingTop: '0', borderTop: 'none' }}>
-                                                                {shop.products.slice(0, 3).map(p => (
-                                                                    <div
-                                                                        key={p.id}
-                                                                        className="ai-prod-item"
-                                                                        onClick={(e) => { e.stopPropagation(); onNavigate(shop, 'driving'); }}
-                                                                        style={{
-                                                                            display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', marginBottom: '8px', padding: '6px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', transition: 'all 0.2s ease'
-                                                                        }}
-                                                                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(251, 171, 21, 0.1)'; e.currentTarget.style.borderColor = 'rgba(251, 171, 21, 0.3)'; }}
-                                                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'; }}
-                                                                        title="انقر للحصول على مسار لهذا المنتج"
-                                                                    >
-                                                                        {p.image_url && viewMode === 'grid' && (
-                                                                            <img src={getImageUrl(p.image_url)} alt={p.name} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px' }} />
-                                                                        )}
-                                                                        <div style={{ flex: 1, display: 'flex', flexDirection: viewMode === 'grid' ? 'column' : 'row', justifyContent: viewMode === 'list' ? 'space-between' : 'center', alignItems: viewMode === 'list' ? 'center' : 'flex-start', gap: '4px' }}>
-                                                                            <span className="ai-prod-name" style={{ color: 'white', fontWeight: '500' }}>{p.name}</span>
-                                                                            <span className="ai-prod-price" style={{ color: '#fbab15', fontWeight: 'bold' }}>{p.price} ₪</span>
-                                                                        </div>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        )}
+                                                         {shop.result_type === 'facility' && (
+                                                             <div style={{ fontSize: '13px', color: '#fbab15', marginBottom: '10px' }}>
+                                                                 📍 {shop.parent_shop_name || 'الحرم الجامعي'}
+                                                             </div>
+                                                         )}
 
-                                                        {/* Tags Array */}
-                                                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: 'auto', justifyContent: 'flex-start' }}>
-                                                            {shop.category && (
-                                                                <span style={{ padding: '6px 12px', background: 'rgba(251, 171, 21, 0.15)', color: '#fbab15', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' }}>
-                                                                    {shop.category}
-                                                                </span>
-                                                            )}
-                                                            <span style={{ padding: '6px 12px', background: 'rgba(251, 171, 21, 0.15)', color: '#fbab15', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' }}>
-                                                                {shop.is_open !== false ? 'مفتوح الآن' : 'مغلق'}
-                                                            </span>
-                                                        </div>
-                                                    </div>
+                                                         {shop.products && shop.products.length > 0 && (
+                                                             <div className="ai-place-products" style={{ marginBottom: '16px', paddingTop: '0', borderTop: 'none' }}>
+                                                                 {shop.products.slice(0, 3).map(p => (
+                                                                     <div
+                                                                         key={p.id}
+                                                                         className="ai-prod-item"
+                                                                         onClick={(e) => { e.stopPropagation(); onNavigate(shop, 'driving'); }}
+                                                                         style={{
+                                                                             display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', marginBottom: '8px', padding: '6px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', transition: 'all 0.2s ease'
+                                                                         }}
+                                                                         onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(251, 171, 21, 0.1)'; e.currentTarget.style.borderColor = 'rgba(251, 171, 21, 0.3)'; }}
+                                                                         onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'; }}
+                                                                         title="انقر للحصول على مسار لهذا المنتج"
+                                                                     >
+                                                                         {p.image_url && viewMode === 'grid' && (
+                                                                             <img src={getImageUrl(p.image_url)} alt={p.name} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px' }} />
+                                                                         )}
+                                                                         <div style={{ flex: 1, display: 'flex', flexDirection: viewMode === 'grid' ? 'column' : 'row', justifyContent: viewMode === 'list' ? 'space-between' : 'center', alignItems: viewMode === 'list' ? 'center' : 'flex-start', gap: '4px' }}>
+                                                                             <span className="ai-prod-name" style={{ color: 'white', fontWeight: '500' }}>{p.name}</span>
+                                                                             <span className="ai-prod-price" style={{ color: '#fbab15', fontWeight: 'bold' }}>{p.price} ₪</span>
+                                                                         </div>
+                                                                     </div>
+                                                                 ))}
+                                                             </div>
+                                                         )}
+
+                                                         {/* Tags Array */}
+                                                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: 'auto', justifyContent: 'flex-start' }}>
+                                                             <span style={{ padding: '6px 12px', background: 'rgba(251, 171, 21, 0.15)', color: '#fbab15', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' }}>
+                                                                 {shop.category || (shop.result_type === 'facility' ? 'مرفق جامعي' : 'عام')}
+                                                             </span>
+                                                             {shop.result_type !== 'facility' && (
+                                                                 <span style={{ padding: '6px 12px', background: 'rgba(251, 171, 21, 0.15)', color: '#fbab15', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' }}>
+                                                                     {shop.is_open !== false ? 'مفتوح الآن' : 'مغلق'}
+                                                                 </span>
+                                                             )}
+                                                         </div>
+                                                     </div>
                                                 </div>
                                             ))}
                                         </div>

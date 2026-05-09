@@ -642,19 +642,26 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                 <div className="user-list">
                                                     <h4 style={{ padding: '10px 15px', fontSize: '0.9rem', color: 'var(--primary)' }}>نتائج البحث</h4>
                                                     {shopSearchResults.map(shop => (
-                                                        <div key={shop.id} className="user-item" onClick={() => onShopClick && onShopClick(shop)} style={{ cursor: 'pointer' }}>
+                                                        <div key={`${shop.type}-${shop.id}`} className="user-item" onClick={() => onShopClick && onShopClick(shop)} style={{ cursor: 'pointer' }}>
                                                             <div className="chat-avatar" style={{
-                                                                background: 'linear-gradient(135deg, #fbab15, #f59e0b)',
+                                                                background: shop.type === 'facility' ? '#1e293b' : 'linear-gradient(135deg, #fbab15, #f59e0b)',
                                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                                 borderRadius: '12px', overflow: 'hidden', flexShrink: 0,
-                                                                width: '50px', height: '50px'
+                                                                width: '50px', height: '50px', border: shop.type === 'facility' ? '1px solid #fbab15' : 'none'
                                                             }}>
-                                                                <ShopAvatar shop={shop} />
+                                                                {shop.type === 'facility' ? (
+                                                                    <span style={{ fontSize: '1.4rem' }}>🏛️</span>
+                                                                ) : (
+                                                                    <ShopAvatar shop={shop} />
+                                                                )}
                                                             </div>
                                                             <div className="chat-info" style={{ flex: 1, minWidth: 0 }}>
-                                                                <div className="chat-name" style={{ fontWeight: '700' }}>{shop.name}</div>
+                                                                <div className="chat-name" style={{ fontWeight: '700' }}>
+                                                                    {shop.name}
+                                                                    {shop.type === 'facility' && <span style={{ fontSize: '0.7rem', color: '#fbab15', marginRight: '8px', border: '1px solid #fbab15', padding: '1px 5px', borderRadius: '4px' }}>مرفق</span>}
+                                                                </div>
                                                                 <div className="chat-last-message" style={{ display: 'flex', alignItems: 'center', gap: '4.5px', flexWrap: 'wrap' }}>
-                                                                    <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{shop.category}</span>
+                                                                    <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{shop.category || (shop.type === 'facility' ? 'مبنى تعليمي' : 'عام')}</span>
                                                                     {shop.parent_shop_name && (
                                                                         <span style={{ 
                                                                             fontSize: '0.75rem', 
@@ -664,16 +671,20 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                                             borderRadius: '10px',
                                                                             marginLeft: '5px'
                                                                         }}>
-                                                                            في: {shop.parent_shop_name}
+                                                                            {shop.type === 'facility' ? `في: ${shop.parent_shop_name}` : `في: ${shop.parent_shop_name}`}
                                                                         </span>
                                                                     )}
                                                                 </div>
                                                             </div>
                                                             <div className="user-item-actions">
-                                                                {isFollowingShop(shop.id) ? (
-                                                                    <span style={{ color: 'var(--success)', fontSize: '0.85rem', fontWeight: 'bold' }}>متابع ✓</span>
+                                                                {shop.type === 'facility' ? (
+                                                                    <span style={{ color: '#fbab15', fontSize: '0.85rem' }}>عرض الموقع 📍</span>
                                                                 ) : (
-                                                                    <button className="btn-small btn-accept" onClick={(e) => { e.stopPropagation(); handleFollowShop(shop); }}>متابعة</button>
+                                                                    isFollowingShop(shop.id) ? (
+                                                                        <span style={{ color: 'var(--success)', fontSize: '0.85rem', fontWeight: 'bold' }}>متابع ✓</span>
+                                                                    ) : (
+                                                                        <button className="btn-small btn-accept" onClick={(e) => { e.stopPropagation(); handleFollowShop(shop); }}>متابعة</button>
+                                                                    )
                                                                 )}
                                                             </div>
                                                         </div>

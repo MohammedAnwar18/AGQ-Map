@@ -8,41 +8,71 @@ const searchShops = async (req, res) => {
 
         if (!query) return res.json({ shops: [] });
 
-        let result;
+        const q = `%${query}%`;
+        const limit = 20;
+
+        let sql;
+        let params;
+
         if (userId) {
-            result = await pool.query(`
-                SELECT s.id, s.name, s.category, s.profile_picture, 
-                       s.latitude, s.longitude, s.floor,
-                       s.parent_shop_id,
-                       parent.name AS parent_shop_name,
-                       parent.category AS parent_shop_category,
-                       EXISTS(SELECT 1 FROM shop_followers WHERE shop_id = s.id AND user_id = $2::int) as is_followed
-                FROM shops s
-                LEFT JOIN shops parent ON s.parent_shop_id = parent.id
-                WHERE s.name ILIKE $1 AND s.is_hidden = FALSE
-                ORDER BY 
-                    CASE WHEN s.parent_shop_id IS NULL THEN 0 ELSE 1 END,
-                    s.name ASC
-                LIMIT 15
-            `, [`%${query}%`, parseInt(userId)]);
+            sql = `
+                SELECT id, name, category, profile_picture, latitude, longitude, floor, 
+                       parent_shop_id, parent_shop_name, is_followed, 'shop' as type
+                FROM (
+                    SELECT s.id, s.name, s.category, s.profile_picture, 
+                           s.latitude, s.longitude, s.floor, s.parent_shop_id,
+                           parent.name AS parent_shop_name,
+                           EXISTS(SELECT 1 FROM shop_followers WHERE shop_id = s.id AND user_id = $2::int) as is_followed
+                    FROM shops s
+                    LEFT JOIN shops parent ON s.parent_shop_id = parent.id
+                    WHERE s.name ILIKE $1 AND s.is_hidden = FALSE
+                    LIMIT $3
+                ) s
+                UNION ALL
+                SELECT id, name, category, NULL as profile_picture, latitude, longitude, NULL as floor,
+                       university_id as parent_shop_id, university_name as parent_shop_name, is_followed, 'facility' as type
+                FROM (
+                    SELECT f.id, f.name, f.category, f.latitude, f.longitude, f.university_id,
+                           s.name as university_name,
+                           EXISTS(SELECT 1 FROM shop_followers WHERE shop_id = f.university_id AND user_id = $2::int) as is_followed
+                    FROM university_facilities f
+                    JOIN shops s ON f.university_id = s.id
+                    WHERE f.name ILIKE $1
+                    LIMIT $3
+                ) f
+                ORDER BY type DESC, name ASC
+            `;
+            params = [q, parseInt(userId), limit];
         } else {
-            result = await pool.query(`
-                SELECT s.id, s.name, s.category, s.profile_picture, 
-                       s.latitude, s.longitude, s.floor,
-                       s.parent_shop_id,
-                       parent.name AS parent_shop_name,
-                       parent.category AS parent_shop_category,
-                       FALSE as is_followed
-                FROM shops s
-                LEFT JOIN shops parent ON s.parent_shop_id = parent.id
-                WHERE s.name ILIKE $1 AND s.is_hidden = FALSE
-                ORDER BY 
-                    CASE WHEN s.parent_shop_id IS NULL THEN 0 ELSE 1 END,
-                    s.name ASC
-                LIMIT 15
-            `, [`%${query}%`]);
+            sql = `
+                SELECT id, name, category, profile_picture, latitude, longitude, floor, 
+                       parent_shop_id, parent_shop_name, FALSE as is_followed, 'shop' as type
+                FROM (
+                    SELECT s.id, s.name, s.category, s.profile_picture, 
+                           s.latitude, s.longitude, s.floor, s.parent_shop_id,
+                           parent.name AS parent_shop_name
+                    FROM shops s
+                    LEFT JOIN shops parent ON s.parent_shop_id = parent.id
+                    WHERE s.name ILIKE $1 AND s.is_hidden = FALSE
+                    LIMIT $2
+                ) s
+                UNION ALL
+                SELECT id, name, category, NULL as profile_picture, latitude, longitude, NULL as floor,
+                       university_id as parent_shop_id, university_name as parent_shop_name, FALSE as is_followed, 'facility' as type
+                FROM (
+                    SELECT f.id, f.name, f.category, f.latitude, f.longitude, f.university_id,
+                           s.name as university_name
+                    FROM university_facilities f
+                    JOIN shops s ON f.university_id = s.id
+                    WHERE f.name ILIKE $1
+                    LIMIT $2
+                ) f
+                ORDER BY type DESC, name ASC
+            `;
+            params = [q, limit];
         }
 
+        result = await pool.query(sql, params);
         res.json({ shops: result.rows });
     } catch (error) {
         console.error('Search shops error:', error);
@@ -144,7 +174,16 @@ const smartSearch = async (req, res) => {
 
         result.rows.forEach(row => {
             if (row.result_type === 'facility') {
-                facilities.push(row);
+                facilities.push({
+                    id: row.id, 
+                    name: row.name, 
+                    category: row.category,
+                    latitude: row.latitude, 
+                    longitude: row.longitude,
+                    parent_shop_name: row.parent_shop_name,
+                    is_followed: row.is_followed,
+                    result_type: 'facility'
+                });
                 return;
             }
 
@@ -155,7 +194,8 @@ const smartSearch = async (req, res) => {
                     longitude: row.longitude, floor: row.floor,
                     parent_shop_id: row.parent_shop_id,
                     parent_shop_name: row.parent_shop_name,
-                    is_followed: row.is_followed, products: []
+                    is_followed: row.is_followed, products: [],
+                    result_type: 'shop'
                 };
             }
             if (row.result_type === 'product' && row.product_id) {
@@ -167,9 +207,13 @@ const smartSearch = async (req, res) => {
             }
         });
 
+        const mergedResults = [
+            ...Object.values(shopsMap),
+            ...facilities
+        ];
+
         res.json({ 
-            results: Object.values(shopsMap),
-            facilities: facilities
+            results: mergedResults
         });
     } catch (error) {
         console.error('Smart search error:', error);
@@ -751,17 +795,55 @@ const deleteUniversityFacility = async (req, res) => {
     }
 };
 
-const renameUniversityFacility = async (req, res) => {
+const updateUniversityFacility = async (req, res) => {
     try {
         const { facilityId } = req.params;
-        const { name } = req.body;
-        const checkRes = await pool.query(`SELECT s.owner_id FROM university_facilities f JOIN shops s ON f.university_id = s.id WHERE f.id = $1`, [facilityId]);
-        if (req.user.role !== 'admin' && checkRes.rows[0].owner_id !== req.user.userId) return res.status(403).json({ error: 'Unauthorized' });
+        const { name, description, icon } = req.body;
+        const userId = req.user.userId || req.user.id;
+        const userRole = req.user.role;
 
-        const result = await pool.query('UPDATE university_facilities SET name = $1 WHERE id = $2 RETURNING *', [name, facilityId]);
+        const checkRes = await pool.query(`
+            SELECT f.*, s.owner_id 
+            FROM university_facilities f 
+            JOIN shops s ON f.university_id = s.id 
+            WHERE f.id = $1
+        `, [facilityId]);
+
+        if (checkRes.rows.length === 0) return res.status(404).json({ error: 'Facility not found' });
+        if (userRole !== 'admin' && checkRes.rows[0].owner_id !== userId) return res.status(403).json({ error: 'Unauthorized' });
+
+        let queryParts = [];
+        let vals = [];
+        let idx = 1;
+
+        if (name !== undefined) { queryParts.push(`name = $${idx++}`); vals.push(name); }
+        if (description !== undefined) { queryParts.push(`description = $${idx++}`); vals.push(description); }
+        if (icon !== undefined) { queryParts.push(`icon = $${idx++}`); vals.push(icon); }
+
+        const { uploadToCloud } = require('../utils/storage');
+        
+        if (req.files) {
+            if (req.files.icon_file) {
+                const url = await uploadToCloud(req.files.icon_file[0].buffer, req.files.icon_file[0].originalname, req.files.icon_file[0].mimetype);
+                queryParts.push(`icon = $${idx++}`);
+                vals.push(url);
+            }
+            if (req.files.cover_file) {
+                const url = await uploadToCloud(req.files.cover_file[0].buffer, req.files.cover_file[0].originalname, req.files.cover_file[0].mimetype);
+                // Assume cover_image or cover_background column exists or we add it
+                queryParts.push(`cover_background = $${idx++}`);
+                vals.push(url);
+            }
+        }
+
+        if (queryParts.length === 0) return res.json(checkRes.rows[0]);
+
+        vals.push(facilityId);
+        const result = await pool.query(`UPDATE university_facilities SET ${queryParts.join(', ')} WHERE id = $${idx} RETURNING *`, vals);
         res.json(result.rows[0]);
     } catch (e) {
-        res.status(500).json({ error: 'Failed' });
+        console.error('Update facility error:', e);
+        res.status(500).json({ error: 'Failed to update facility' });
     }
 };
 
@@ -887,7 +969,7 @@ module.exports = {
     addFacilityPost,
     addCollegeSpecialty,
     deleteUniversityFacility,
-    renameUniversityFacility,
+    updateUniversityFacility,
     addMunicipalityItem,
     deleteMunicipalityItem,
     getShopProfile,

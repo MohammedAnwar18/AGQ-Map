@@ -81,9 +81,47 @@ const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
         });
     };
 
+    const [isEditing, setIsEditing] = useState(false);
+    const [editData, setEditData] = useState({ name: '', description: '', icon: '' });
+    const [editFiles, setEditFiles] = useState({ icon_file: null, cover_file: null });
+
+    useEffect(() => {
+        if (data && data.facility) {
+            setEditData({
+                name: data.facility.name || '',
+                description: data.facility.description || '',
+                icon: data.facility.icon || '🏛️'
+            });
+        }
+    }, [data]);
+
+    const handleUpdateFacility = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            const formData = new FormData();
+            formData.append('name', editData.name);
+            formData.append('description', editData.description);
+            formData.append('icon', editData.icon);
+            if (editFiles.icon_file) formData.append('icon_file', editFiles.icon_file);
+            if (editFiles.cover_file) formData.append('cover_file', editFiles.cover_file);
+
+            await shopService.updateUniversityFacility(facilityId, formData);
+            alert('تم تحديث بيانات المرفق بنجاح! ✅');
+            setIsEditing(false);
+            loadData();
+        } catch (error) {
+            console.error('Update facility error', error);
+            alert('فشل تحديث البيانات');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     if (loading) return (
         <div className="facility-modal-overlay">
             <div className="facility-modal-container" style={{ padding: '50px', textAlign: 'center' }}>
+                <div className="spinner" style={{ margin: '0 auto 20px' }}></div>
                 جاري التحميل...
             </div>
         </div>
@@ -97,6 +135,27 @@ const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
         <div className="facility-modal-overlay" onClick={onClose}>
             <div className="facility-modal-container slide-up" onClick={e => e.stopPropagation()}>
                 <div style={{ position: 'absolute', top: '15px', left: '15px', display: 'flex', gap: '10px', zIndex: 100 }}>
+                    {is_admin && !isEditing && (
+                        <button 
+                            onClick={() => setIsEditing(true)}
+                            style={{ 
+                                background: 'rgba(251, 171, 21, 0.2)', 
+                                border: '1px solid rgba(251, 171, 21, 0.4)', 
+                                color: '#fbab15', 
+                                width: '35px',
+                                height: '35px',
+                                borderRadius: '50%', 
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'all 0.2s'
+                            }}
+                            title="تعديل المرفق"
+                        >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        </button>
+                    )}
                     <button 
                         onClick={handleShare} 
                         style={{ 
@@ -121,22 +180,88 @@ const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
                     <button className="fac-close-btn" onClick={onClose} style={{ position: 'static' }}>✕</button>
                 </div>
 
-                <div className="fac-header">
-                    <img 
-                        src={facility.cover_background || 'https://images.unsplash.com/photo-1562774053-701939374585?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'} 
-                        className="fac-cover" 
-                        alt="Facility Cover" 
-                    />
-                    <div className="fac-header-content">
-                        <div className="fac-icon-large">
-                            {facility.icon || '🏛️'}
-                        </div>
-                        <div className="fac-title-info">
-                            <h2>{facility.name}</h2>
-                            <p>{facility.category} - {facility.university_name}</p>
-                        </div>
+                {isEditing ? (
+                    <div className="fac-edit-form" style={{ padding: '20px', background: 'var(--bg-secondary)', borderRadius: '16px' }}>
+                        <h2 style={{ marginBottom: '20px', color: '#fbab15' }}>تعديل بيانات المرفق</h2>
+                        <form onSubmit={handleUpdateFacility}>
+                            <div className="form-group" style={{ marginBottom: '15px' }}>
+                                <label style={{ display: 'block', marginBottom: '8px', opacity: 0.8 }}>اسم المرفق</label>
+                                <input 
+                                    className="input" 
+                                    value={editData.name} 
+                                    onChange={e => setEditData({...editData, name: e.target.value})} 
+                                    required 
+                                    style={{ width: '100%' }}
+                                />
+                            </div>
+                            <div className="form-group" style={{ marginBottom: '15px' }}>
+                                <label style={{ display: 'block', marginBottom: '8px', opacity: 0.8 }}>وصف المرفق</label>
+                                <textarea 
+                                    className="textarea" 
+                                    value={editData.description} 
+                                    onChange={e => setEditData({...editData, description: e.target.value})} 
+                                    style={{ width: '100%', minHeight: '100px' }}
+                                />
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '8px', opacity: 0.8 }}>الأيقونة (إيموجي)</label>
+                                    <input 
+                                        className="input" 
+                                        value={editData.icon} 
+                                        onChange={e => setEditData({...editData, icon: e.target.value})} 
+                                        style={{ width: '100%' }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '8px', opacity: 0.8 }}>أو رفع شعار (Logo)</label>
+                                    <input 
+                                        type="file" 
+                                        className="input" 
+                                        accept="image/*"
+                                        onChange={e => setEditFiles({...editFiles, icon_file: e.target.files[0]})} 
+                                        style={{ width: '100%' }}
+                                    />
+                                </div>
+                            </div>
+                            <div className="form-group" style={{ marginBottom: '25px' }}>
+                                <label style={{ display: 'block', marginBottom: '8px', opacity: 0.8 }}>صورة الغلاف (Cover)</label>
+                                <input 
+                                    type="file" 
+                                    className="input" 
+                                    accept="image/*"
+                                    onChange={e => setEditFiles({...editFiles, cover_file: e.target.files[0]})} 
+                                    style={{ width: '100%' }}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', gap: '15px' }}>
+                                <button type="submit" className="btn-primary" style={{ flex: 2, padding: '12px' }}>حفظ التغييرات</button>
+                                <button type="button" className="btn-secondary" onClick={() => setIsEditing(false)} style={{ flex: 1, padding: '12px' }}>إلغاء</button>
+                            </div>
+                        </form>
                     </div>
-                </div>
+                ) : (
+                    <>
+                        <div className="fac-header">
+                            <img 
+                                src={getImageUrl(facility.cover_background) || 'https://images.unsplash.com/photo-1562774053-701939374585?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'} 
+                                className="fac-cover" 
+                                alt="Facility Cover" 
+                            />
+                            <div className="fac-header-content">
+                                <div className="fac-icon-large">
+                                    {facility.icon && facility.icon.startsWith('http') ? (
+                                        <img src={getImageUrl(facility.icon)} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }} />
+                                    ) : (
+                                        facility.icon || '🏛️'
+                                    )}
+                                </div>
+                                <div className="fac-title-info">
+                                    <h2>{facility.name}</h2>
+                                    <p>{facility.category} - {facility.university_name}</p>
+                                </div>
+                            </div>
+                        </div>
 
                 <div className="fac-tabs">
                     <button className={`fac-tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>نظرة عامة</button>
