@@ -39,7 +39,7 @@ const ShareIcon = () => (
     </svg>
 );
 
-const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChange, onFacilityClick }) => {
+const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChange, onFacilityClick, onShopClick }) => {
     const [activeTab, setActiveTab] = useState('overview');
     const [selectedFacilityCategory, setSelectedFacilityCategory] = useState(null);
     const [facilities, setFacilities] = useState({});
@@ -72,6 +72,7 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
 
     // Local University State (for bio, cover, etc. not in initial search)
     const [uniData, setUniData] = useState(university);
+    const [internalShops, setInternalShops] = useState([]); // Shops/Colleges inside this university
     const [localProfilePic, setLocalProfilePic] = useState(university.profile_picture);
     const [localCoverPic, setLocalCoverPic] = useState(university.cover_picture || university.cover_image); // accommodate both
     const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -97,6 +98,7 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
         try {
             const data = await shopService.getProfile(university.id);
             setUniData(data.shop);
+            setInternalShops(data.internal_shops || []);
             setLocalProfilePic(data.shop.profile_picture);
             setLocalCoverPic(data.shop.cover_picture);
             setUniNews(data.posts || []);
@@ -234,8 +236,32 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
     const loadFacilities = async () => {
         setIsLoadingFacs(true);
         try {
-            const data = await shopService.getFacilities(university.id);
-            setFacilities(data.facilities || {});
+            // Get both facilities (university_facilities table) and internal shops (shops table)
+            const [facData, profileData] = await Promise.all([
+                shopService.getFacilities(university.id),
+                shopService.getProfile(university.id)
+            ]);
+
+            const merged = { ...facData.facilities };
+            
+            // Add internal shops to categories (especially 'الكليات')
+            (profileData.internal_shops || []).forEach(shop => {
+                const cat = shop.category || 'أخرى';
+                if (!merged[cat]) merged[cat] = [];
+                
+                // Avoid duplicates
+                if (!merged[cat].some(item => item.id === shop.id && item.is_shop)) {
+                    merged[cat].push({
+                        ...shop,
+                        is_shop: true,
+                        // Set icon based on category if shop doesn't have one
+                        icon: shop.category === 'الكليات' ? '🏛️' : (shop.category === 'مبنى' ? '🏢' : '🏪')
+                    });
+                }
+            });
+
+            setFacilities(merged);
+            setInternalShops(profileData.internal_shops || []);
         } catch (error) {
             console.error('Failed to load facilities', error);
         } finally {
@@ -328,33 +354,48 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
     const categories = Object.keys(facilities);
 
     const handleFeatureClick = (feature) => {
-        if (onFacilityClick) {
+        if (feature.is_shop) {
+            if (onShopClick) {
+                onShopClick(feature);
+            } else {
+                // Fallback to facility click logic or just alert
+                alert(`هذه كلية: ${feature.name}`);
+            }
+        } else if (onFacilityClick) {
             onFacilityClick(feature);
         } else {
             alert(`تم النقر على: ${feature.name}.`);
         }
     };
 
-    const handleDeleteFacility = async (facilityId, facilityName) => {
-        if (!confirm(`هل أنت متأكد من حذف "${facilityName}" بشكل نهائي؟`)) return;
+    const handleDeleteFacility = async (item) => {
+        const isShop = item.is_shop;
+        if (!confirm(`هل أنت متأكد من حذف "${item.name}" بشكل نهائي؟`)) return;
         try {
-            await shopService.deleteFacility(facilityId);
-            alert('تم حذف المرفق بنجاح.');
+            if (isShop) {
+                await shopService.deleteShop(item.id);
+            } else {
+                await shopService.deleteFacility(item.id);
+            }
+            alert('تم الحذف بنجاح.');
             loadFacilities();
-            // Reset category view if all deleted
         } catch (e) {
             alert(e.response?.data?.error || 'حدث خطأ أثناء الحذف');
         }
     };
 
-    const [editingFacilityId, setEditingFacilityId] = useState(null);
+    const [editingFacility, setEditingFacility] = useState(null); // Full item
     const [editingFacilityName, setEditingFacilityName] = useState('');
 
-    const handleRenameFacility = async (facilityId) => {
-        if (!editingFacilityName.trim()) return;
+    const handleRenameFacility = async () => {
+        if (!editingFacilityName.trim() || !editingFacility) return;
         try {
-            await shopService.renameFacility(facilityId, editingFacilityName);
-            setEditingFacilityId(null);
+            if (editingFacility.is_shop) {
+                await shopService.updateProfile(editingFacility.id, { name: editingFacilityName });
+            } else {
+                await shopService.renameFacility(editingFacility.id, editingFacilityName);
+            }
+            setEditingFacility(null);
             setEditingFacilityName('');
             loadFacilities();
         } catch (e) {
@@ -747,8 +788,8 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                                     
                                     <div className="uni-items-list">
                                         {facilities[selectedFacilityCategory]?.map(item => (
-                                            <div key={item.id} className="uni-list-item">
-                                                {editingFacilityId === item.id ? (
+                                            <div key={`${item.is_shop ? 'shop' : 'fac'}-${item.id}`} className="uni-list-item">
+                                                {editingFacility?.id === item.id && editingFacility?.is_shop === item.is_shop ? (
                                                     // Inline rename form
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 0' }}>
                                                         <div className="item-icon">{item.icon}</div>
@@ -759,27 +800,27 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                                                             autoFocus
                                                             style={{ flex: 1, padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--primary)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                                                         />
-                                                        <button onClick={() => handleRenameFacility(item.id)} style={{ background: '#10b981', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem' }}>حفظ</button>
-                                                        <button onClick={() => setEditingFacilityId(null)} style={{ background: 'transparent', color: 'var(--text-muted)', border: 'none', padding: '6px', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
+                                                        <button onClick={() => handleRenameFacility()} style={{ background: '#10b981', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem' }}>حفظ</button>
+                                                        <button onClick={() => setEditingFacility(null)} style={{ background: 'transparent', color: 'var(--text-muted)', border: 'none', padding: '6px', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
                                                     </div>
                                                 ) : (
                                                     <>
                                                         <div className="item-icon" onClick={() => handleFeatureClick(item)} style={{ cursor: 'pointer' }}>{item.icon}</div>
                                                         <div className="item-details" onClick={() => handleFeatureClick(item)} style={{ cursor: 'pointer', flex: 1 }}>
                                                             <h4>{item.name}</h4>
-                                                            <p>انقر لعرض التفاصيل على الخريطة</p>
+                                                            <p>{item.is_shop ? 'محل/كلية - انقر للعرض' : 'انقر لعرض التفاصيل على الخريطة'}</p>
                                                         </div>
                                                         {isAdminOrOwner && (
                                                             <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                                                                 <button
-                                                                    onClick={() => { setEditingFacilityId(item.id); setEditingFacilityName(item.name); }}
+                                                                    onClick={() => { setEditingFacility(item); setEditingFacilityName(item.name); }}
                                                                     title="تعديل الاسم"
                                                                     style={{ background: 'rgba(251,171,21,0.15)', border: 'none', color: '#fbab15', padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                                                                 >
                                                                     <EditIcon />
                                                                 </button>
                                                                 <button
-                                                                    onClick={() => handleDeleteFacility(item.id, item.name)}
+                                                                    onClick={() => handleDeleteFacility(item)}
                                                                     title="حذف المرفق"
                                                                     style={{ background: 'rgba(239,68,68,0.1)', border: 'none', color: '#ef4444', padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                                                                 >

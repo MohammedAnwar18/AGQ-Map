@@ -175,10 +175,10 @@ const smartSearch = async (req, res) => {
         result.rows.forEach(row => {
             if (row.result_type === 'facility') {
                 facilities.push({
-                    id: row.id, 
-                    name: row.name, 
+                    id: row.id,
+                    name: row.name,
                     category: row.category,
-                    latitude: row.latitude, 
+                    latitude: row.latitude,
                     longitude: row.longitude,
                     parent_shop_name: row.parent_shop_name,
                     is_followed: row.is_followed,
@@ -212,7 +212,7 @@ const smartSearch = async (req, res) => {
             ...facilities
         ];
 
-        res.json({ 
+        res.json({
             results: mergedResults
         });
     } catch (error) {
@@ -382,7 +382,7 @@ const getShopProfile = async (req, res) => {
         if (shopResult.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
 
         const shop = shopResult.rows[0];
-        
+
         let userRole = null;
         if (currentUserId) {
             const userRes = await pool.query('SELECT role FROM users WHERE id = $1', [parseInt(currentUserId)]);
@@ -406,7 +406,7 @@ const getShopProfile = async (req, res) => {
         `, currentUserId ? [shopId, currentUserId] : [shopId]);
 
         const productsResult = await pool.query('SELECT * FROM shop_products WHERE shop_id = $1 ORDER BY created_at DESC', [shopId]);
-        
+
         const internalShopsResult = await pool.query(`
             SELECT id, name, category, profile_picture, floor, is_verified 
             FROM shops 
@@ -499,14 +499,14 @@ const updateShopImages = async (req, res) => {
                 const url = await uploadToCloud(file.buffer, file.originalname, file.mimetype);
                 queryParts.push(`profile_picture = $${index++}`);
                 params.push(url);
-                if (shopCheck.rows[0].profile_picture) try { deleteFileFromCloud(shopCheck.rows[0].profile_picture); } catch (e) {}
+                if (shopCheck.rows[0].profile_picture) try { deleteFileFromCloud(shopCheck.rows[0].profile_picture); } catch (e) { }
             }
             if (req.files.cover_picture) {
                 const file = req.files.cover_picture[0];
                 const url = await uploadToCloud(file.buffer, file.originalname, file.mimetype);
                 queryParts.push(`cover_picture = $${index++}`);
                 params.push(url);
-                if (shopCheck.rows[0].cover_picture) try { deleteFileFromCloud(shopCheck.rows[0].cover_picture); } catch (e) {}
+                if (shopCheck.rows[0].cover_picture) try { deleteFileFromCloud(shopCheck.rows[0].cover_picture); } catch (e) { }
             }
         }
 
@@ -567,7 +567,7 @@ const deleteShopPost = async (req, res) => {
         if (postRes.rows.length === 0) return res.status(404).json({ error: 'Post not found' });
 
         await pool.query('DELETE FROM posts WHERE id = $1', [postId]);
-        if (postRes.rows[0].image_url) try { deleteFileFromCloud(postRes.rows[0].image_url); } catch (e) {}
+        if (postRes.rows[0].image_url) try { deleteFileFromCloud(postRes.rows[0].image_url); } catch (e) { }
 
         res.json({ message: 'Post deleted' });
     } catch (e) {
@@ -687,7 +687,7 @@ const sendNotificationToFollowers = async (req, res) => {
         if (req.user.role !== 'admin' && shopRes.rows[0].owner_id !== req.user.userId) return res.status(403).json({ error: 'Unauthorized' });
 
         const payload = JSON.stringify({ shopId, shopName: shopRes.rows[0].name, shopImage: shopRes.rows[0].profile_picture, text: message, location: { latitude: shopRes.rows[0].latitude, longitude: shopRes.rows[0].longitude } });
-        
+
         let sql = `INSERT INTO notifications (user_id, sender_id, type, message) SELECT sf.user_id, $1, 'shop_alert', $2 FROM shop_followers sf JOIN users u ON sf.user_id = u.id WHERE sf.shop_id = $3`;
         let params = [req.user.userId, payload, shopId];
 
@@ -736,14 +736,15 @@ const getFacilityProfile = async (req, res) => {
         if (facilityRes.rows.length === 0) return res.status(404).json({ error: 'Not found' });
 
         const postsRes = await pool.query(`SELECT fp.*, u.username, u.profile_picture as user_avatar FROM facility_posts fp LEFT JOIN users u ON fp.user_id = u.id WHERE fp.facility_id = $1 ORDER BY fp.created_at DESC`, [facilityId]);
-        
+
         let specialties = [];
         if (facilityRes.rows[0].category === 'الكليات') {
             const specRes = await pool.query('SELECT * FROM university_specialties WHERE facility_id = $1 ORDER BY name', [facilityId]);
             specialties = specRes.rows;
         }
 
-        const is_admin = req.user && (req.user.role === 'admin' || String(facilityRes.rows[0].uni_owner_id) === String(req.user.userId));
+        const userId = req.user?.userId || req.user?.id;
+        const is_admin = req.user && (req.user.role === 'admin' || (userId && String(facilityRes.rows[0].uni_owner_id) === String(userId)));
         res.json({ facility: facilityRes.rows[0], posts: postsRes.rows, specialties, is_admin });
     } catch (e) {
         console.error('getFacilityProfile error:', e);
@@ -776,7 +777,7 @@ const addCollegeSpecialty = async (req, res) => {
         const { name, description, degree_level } = req.body;
         const checkRes = await pool.query(`SELECT s.owner_id, f.category FROM university_facilities f JOIN shops s ON f.university_id = s.id WHERE f.id = $1`, [facilityId]);
         if (checkRes.rows[0].category !== 'الكليات') return res.status(400).json({ error: 'Not a College' });
-        
+
         const isAuthorized = req.user.role === 'admin' || String(checkRes.rows[0].owner_id) === String(req.user.userId);
         if (!isAuthorized) return res.status(403).json({ error: 'Unauthorized' });
 
@@ -818,7 +819,7 @@ const updateUniversityFacility = async (req, res) => {
         `, [facilityId]);
 
         if (checkRes.rows.length === 0) return res.status(404).json({ error: 'Facility not found' });
-        
+
         const isAuthorized = userRole === 'admin' || String(checkRes.rows[0].owner_id) === String(userId);
         if (!isAuthorized) {
             console.warn(`Unauthorized update attempt by user ${userId} for facility ${facilityId}`);
@@ -831,7 +832,7 @@ const updateUniversityFacility = async (req, res) => {
 
         if (name !== undefined) { queryParts.push(`name = $${idx++}`); vals.push(name); }
         if (description !== undefined) { queryParts.push(`description = $${idx++}`); vals.push(description); }
-        
+
         const { uploadToCloud } = require('../utils/storage');
         let finalIcon = icon;
 
@@ -912,8 +913,8 @@ const getAllShopsMap = async (req, res) => {
     try {
         const shopsRes = await pool.query('SELECT id, name, category, profile_picture, latitude, longitude, floor, parent_shop_id, \'shop\' as type FROM shops WHERE is_hidden = FALSE');
         const facilitiesRes = await pool.query('SELECT id, name, category, icon, latitude, longitude, university_id as parent_shop_id, \'facility\' as type FROM university_facilities');
-        
-        res.json({ 
+
+        res.json({
             shops: shopsRes.rows,
             facilities: facilitiesRes.rows,
             all: [...shopsRes.rows, ...facilitiesRes.rows]
@@ -930,7 +931,7 @@ const getMunicipalityItems = async (req, res) => {
         const grouped = {};
         const sections = ['live_streams', 'public_squares', 'public_parks', 'services', 'tourism', 'culture'];
         sections.forEach(s => grouped[s] = []);
-        result.rows.forEach(item => { if(grouped[item.section]) grouped[item.section].push(item); });
+        result.rows.forEach(item => { if (grouped[item.section]) grouped[item.section].push(item); });
         res.json({ items: result.rows, grouped });
     } catch (e) {
         res.status(500).json({ error: 'Failed' });

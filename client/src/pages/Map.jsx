@@ -349,6 +349,11 @@ const MapComponent = () => {
     const [followedShopsMap, setFollowedShopsMap] = useState([]);
     const [allShopsMap, setAllShopsMap] = useState([]);
     const [allFacilitiesMap, setAllFacilitiesMap] = useState([]);
+    
+    useEffect(() => {
+        console.log("Map State - Zoom:", viewState.zoom);
+        console.log("Map State - Facilities Count:", allFacilitiesMap.length);
+    }, [viewState.zoom, allFacilitiesMap]);
     const [visibleFriendName, setVisibleFriendName] = useState(null); // Track which friend's name is shown
     const [firstLabelLayerId, setFirstLabelLayerId] = useState(null); // For "built-in" route placement beneath labels
     const [searchResults, setSearchResults] = useState([]); // Added to prevent ReferenceError after revert
@@ -1541,7 +1546,7 @@ const MapComponent = () => {
 
                         // Educational Institutions & Municipalities: visible from mid zoom (13) to reveal town area
                         if (shop.category === 'University' || shop.category === 'مؤسسة تعليمية') {
-                            return viewState.zoom >= 13 && viewState.zoom < 16.5;
+                            return viewState.zoom >= 13 && viewState.zoom < 16.0;
                         }
                         // Medical centers visible from zoom 13+
                         if (['مستشفى', 'مركز طبي'].includes(shop.category)) {
@@ -1682,7 +1687,7 @@ const MapComponent = () => {
                     ))}
 
                     {/* University Facilities Markers - Visible when zoomed in close */}
-                    {viewState.zoom >= 17 && allFacilitiesMap.map(fac => {
+                    {!currentCommunity && viewState.zoom >= 16.0 && allFacilitiesMap.map(fac => {
                         const isFollowedUni = followedShopsMap.some(s => s.id === fac.parent_shop_id);
                         return (
                             <Marker
@@ -1914,6 +1919,10 @@ const MapComponent = () => {
                         setSelectedUniFacilities([]);
                     }}
                     onFollowChange={handleShopFollowed}
+                    onShopClick={(shop) => {
+                        handleOpenShopProfile(shop);
+                        setShowUniversityProfile(false);
+                    }}
                     onFacilityClick={(facility) => {
                         setSelectedFacilityId(facility.id);
                         setShowFacilityProfile(true);

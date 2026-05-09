@@ -479,6 +479,11 @@ export const shopService = {
         return response.data;
     },
 
+    getAllForMap: async () => {
+        const response = await api.get('/shops/map/all');
+        return response.data;
+    },
+
 
 
     getFacilities: async (shopId) => {
@@ -537,6 +542,11 @@ export const shopService = {
         const response = await api.put(`/shops/facilities/${facilityId}`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
+        return response.data;
+    },
+    
+    renameFacility: async (facilityId, name) => {
+        const response = await api.put(`/shops/facilities/${facilityId}`, { name });
         return response.data;
     }
 };

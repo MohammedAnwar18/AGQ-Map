@@ -129,12 +129,18 @@ const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
 
     if (!data) return null;
 
-    const { facility, posts, specialties, is_admin } = data;
+    const { facility, posts, specialties, is_admin: backendIsAdmin } = data;
+    const is_admin = backendIsAdmin || (currentUser && currentUser.role === 'admin');
+
+    useEffect(() => {
+        console.log("Facility Modal Debug - currentUser:", currentUser);
+        console.log("Facility Modal Debug - is_admin:", is_admin);
+    }, [currentUser, is_admin]);
 
     return (
         <div className="facility-modal-overlay" onClick={onClose}>
             <div className="facility-modal-container slide-up" onClick={e => e.stopPropagation()}>
-                <div style={{ position: 'absolute', top: '15px', left: '15px', display: 'flex', gap: '10px', zIndex: 100 }}>
+                <div style={{ position: 'absolute', top: '15px', right: '15px', display: 'flex', gap: '10px', zIndex: 100 }}>
                     {is_admin && !isEditing && (
                         <button 
                             onClick={() => setIsEditing(true)}
