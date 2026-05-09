@@ -12,7 +12,7 @@ const ShareIcon = () => (
 
 const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
     const [data, setData] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!!facilityId);
     const [activeTab, setActiveTab] = useState('overview');
 
     // For Adding Content (Admin/Owner only)
@@ -125,9 +125,10 @@ const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
 
     if (loading) return (
         <div className="facility-modal-overlay">
-            <div className="facility-modal-container" style={{ padding: '50px', textAlign: 'center' }}>
+            <div className="facility-modal-container" style={{ padding: '50px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <button className="fac-close-btn" onClick={onClose}>✕</button>
                 <div className="spinner" style={{ margin: '0 auto 20px' }}></div>
-                جاري التحميل...
+                <p style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>جاري تحميل بيانات المرفق...</p>
             </div>
         </div>
     );

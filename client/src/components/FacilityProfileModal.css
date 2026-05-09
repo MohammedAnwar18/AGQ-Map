@@ -97,8 +97,23 @@
     left: 0;
     right: 0;
     height: 3px;
-    background: #3b82f6;
+    background: #fbab15;
     border-radius: 3px 3px 0 0;
+}
+
+.slide-up {
+    animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
 .fac-content {
