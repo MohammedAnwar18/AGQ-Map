@@ -908,11 +908,34 @@ const PalNovaaLab = ({ onClose }) => {
         }).join('\n            ')}
         </div>` : '';
 
-        // 4. Calculate final bounds before stripping data
+        // 4. Helper to round coordinates to 6 decimal places (saves ~50% space)
+        const roundCoords = (coords) => {
+            if (typeof coords === 'number') return Math.round(coords * 1000000) / 1000000;
+            if (Array.isArray(coords)) return coords.map(roundCoords);
+            return coords;
+        };
+
+        // 5. Prepare optimized layers with full embedding for portability
+        const optimizedLayers = exportLayers.map(l => {
+            const clean = { ...l };
+            if (clean.data && clean.data.features) {
+                // Optimize each feature
+                clean.data.features = clean.data.features.map(f => ({
+                    ...f,
+                    geometry: f.geometry ? {
+                        ...f.geometry,
+                        coordinates: roundCoords(f.geometry.coordinates)
+                    } : null
+                }));
+            }
+            return clean;
+        });
+
+        // 6. Calculate final bounds from optimized data
         let finalBounds = null;
         try {
             const allCoords = [];
-            exportLayers.forEach(l => {
+            optimizedLayers.forEach(l => {
                 if (l.data?.features) {
                     l.data.features.forEach(f => {
                         if (f.geometry?.type === 'Point') allCoords.push(f.geometry.coordinates);
@@ -932,33 +955,7 @@ const PalNovaaLab = ({ onClose }) => {
             }
         } catch (e) { console.error("Bounds calc error", e); }
 
-        // 5. Create a clean version of layers with smart embedding
-        const cleanLayers = exportLayers.map(l => {
-            const clean = { ...l };
-            const apiUrl = window.location.origin === 'http://localhost:5173' ? 'http://localhost:5001' : window.location.origin;
-            
-            let finalUrl = clean.dataUrl || clean.url;
-            if (finalUrl && finalUrl.startsWith('/')) {
-                finalUrl = apiUrl + finalUrl;
-            } else if (finalUrl && !finalUrl.startsWith('http') && !finalUrl.startsWith('blob:')) {
-                finalUrl = apiUrl + '/' + finalUrl;
-            }
-            
-            clean.dataUrl = finalUrl;
-
-            // SMART EMBEDDING: If data is small (under 2MB) OR no URL, embed it.
-            // If data is huge AND we have a URL, strip it to save size.
-            const dataSize = clean.data ? JSON.stringify(clean.data).length : 0;
-            if (clean.dataUrl && dataSize > 2 * 1024 * 1024) {
-                delete clean.data; 
-                console.log(`Layer ${clean.name} is large (${(dataSize/1024/1024).toFixed(2)}MB), using remote URL.`);
-            } else {
-                console.log(`Layer ${clean.name} is small or has no URL, embedding directly.`);
-            }
-            return clean;
-        });
-
-        // 6. Generate HTML Template
+        // 7. Generate HTML Template
         const htmlTemplate = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -1015,7 +1012,7 @@ const PalNovaaLab = ({ onClose }) => {
 
     <script>
         console.log("Initializing PalNovaa Map...");
-        const layers = ${JSON.stringify(cleanLayers)};
+        const layers = ${JSON.stringify(optimizedLayers)};
         const mapStyle = ${JSON.stringify(targetBasemapStyleObj)};
         const initialBounds = ${JSON.stringify(finalBounds)};
 
