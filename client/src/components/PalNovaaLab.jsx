@@ -899,14 +899,41 @@ const PalNovaaLab = ({ onClose }) => {
             else if (el.type === 'layers') inner = `<div class="cel-layers-box" style="${brClr}${clr}">${layersListHTML || '<div style="opacity:0.5;padding:8px;font-size:0.85rem">لا توجد طبقات</div>'}</div>`;
             else if (el.type === 'stat') inner = `<div class="cel-stat" style="${brClr}"><div class="cel-stat-num" style="font-size:${el.fontSize || 2}rem;${clr}">${exportLayers.reduce((s, l) => s + (l.data?.features?.length || 0), 0)}</div><div class="cel-stat-lbl">${el.text}</div></div>`;
             else if (el.type === 'divider') inner = `<hr class="cel-hr" style="${brClr}"/>`;
-            else if (el.type === 'badge') inner = `<span class="cel-badge" style="font-size:${el.fontSize || 0.85}rem;${bgClr}">${el.text}</span>`;
-            else if (el.type === 'card') inner = `<div class="cel-card" style="${brClr}"><h4 style="margin:0 0 8px 0;${clr}">${el.text}</h4><p style="margin:0;font-size:0.85rem;opacity:0.7;">وصف المكون الجاهز...</p></div>`;
-            else if (el.type === 'icon') inner = `<div class="cel-icon-wrap" style="${clr}"><svg class="cel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${el.icon && (el.icon.includes('points') ? `<polygon points="${el.icon}" />` : `<path d="${el.icon}" />`)}</svg></div>`;
-            return `<div class="cel" style="${wStyle}">${inner}</div>`;
-        }).join('\n            ')}
-        </div>` : '';
+            else if (el.        // 4. Calculate final bounds before stripping data
+        let finalBounds = null;
+        try {
+            const allCoords = [];
+            exportLayers.forEach(l => {
+                if (l.data?.features) {
+                    l.data.features.forEach(f => {
+                        if (f.geometry?.type === 'Point') allCoords.push(f.geometry.coordinates);
+                        else if (f.geometry?.coordinates) {
+                            const flat = f.geometry.coordinates.flat(5).filter(c => typeof c === 'number' && !isNaN(c));
+                            for(let i=0; i<flat.length; i+=2) {
+                                if (flat[i] && flat[i+1]) allCoords.push([flat[i], flat[i+1]]);
+                            }
+                        }
+                    });
+                }
+            });
+            if (allCoords.length > 0) {
+                const lngs = allCoords.map(c => c[0]);
+                const lats = allCoords.map(c => c[1]);
+                finalBounds = [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]];
+            }
+        } catch (e) { console.error("Bounds calc error", e); }
 
-        // 4. Generate HTML Template
+        // 5. Create a clean version of layers to save file size
+        const cleanLayers = exportLayers.map(l => {
+            const clean = { ...l };
+            // If we have a URL, we don't need to embed the full data in the JSON string
+            if (clean.dataUrl) {
+                delete clean.data; 
+            }
+            return clean;
+        });
+
+        // 6. Generate HTML Template
         const htmlTemplate = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -931,7 +958,7 @@ const PalNovaaLab = ({ onClose }) => {
             --font-h: ${selectedFont.h};
             --font-b: ${selectedFont.b};
         }
-        body { margin: 0; padding: 0; font-family: var(--font-b); background: var(--bg); color: var(--text-color); overflow: hidden; }
+        html, body { margin: 0; padding: 0; height: 100%; width: 100%; font-family: var(--font-b); background: var(--bg); color: var(--text-color); overflow: hidden; }
         * { box-sizing: border-box; }
         
         ${layoutCSS}
@@ -939,7 +966,7 @@ const PalNovaaLab = ({ onClose }) => {
 
         .layer-item { background: rgba(0,0,0,0.15); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; border: 1px solid var(--border); }
         .layer-item:hover { border-color: var(--primary); }
-        #map { flex: 1; min-height: 0; width: 100%; }
+        #map { flex: 1; min-height: 400px; height: 100%; width: 100%; background: #000; }
 
         .watermark {
             position: fixed; bottom: 5px; right: 8px;
@@ -955,95 +982,92 @@ const PalNovaaLab = ({ onClose }) => {
     </style>
 </head>
 <body>
-    <div class="app-container" style="position:relative;">
+    <div class="app-container" style="position:relative; height: 100vh; width: 100vw; display: flex; flex-direction: column;">
         ${layoutHTML}
         ${customElsHTML}
     </div>
     <div style="position:fixed;bottom:5px;right:8px;z-index:1000;font-size:11px;color:rgba(255,255,255,0.65);text-shadow:0 0 3px rgba(0,0,0,0.6);pointer-events:none;font-family:sans-serif;">Designed in PalNovaa Studio</div>
 
     <script>
-        const layers = ${JSON.stringify(exportLayers)};
+        console.log("Initializing PalNovaa Map...");
+        const layers = ${JSON.stringify(cleanLayers)};
         const mapStyle = ${JSON.stringify(targetBasemapStyleObj)};
-        const map = new maplibregl.Map({
-            container: 'map',
-            style: mapStyle,
-            center: [${center.lng}, ${center.lat}],
-            zoom: ${zoom},
-            pitch: ${pitch},
-            bearing: ${bearing}
-        });
+        const initialBounds = ${JSON.stringify(finalBounds)};
 
-        // Auto-fit bounds if features exist
-        const allCoords = [];
-        layers.forEach(l => {
-            if (l.data?.features) {
-                l.data.features.forEach(f => {
-                    if (f.geometry?.type === 'Point') allCoords.push(f.geometry.coordinates);
-                    else if (f.geometry?.coordinates) allCoords.push(...(f.geometry.coordinates.flat(5).filter(c => typeof c === 'number' && !isNaN(c))));
-                });
-            }
-        });
-        
-        if (allCoords.length > 0) {
-            const lngs = allCoords.filter((_, i) => i % 2 === 0);
-            const lats = allCoords.filter((_, i) => i % 2 !== 0);
-            if (lngs.length && lats.length) {
-                const bounds = [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]];
-                map.fitBounds(bounds, { padding: 50, animate: false });
-            }
-        }
-
-        map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
-
-        // Push navigation control above the browser status bar
-        const style = document.createElement('style');
-        style.textContent = '.maplibregl-ctrl-bottom-right { bottom: 30px !important; }';
-        document.head.appendChild(style);
-
-        // Search function for custom search element
-        function doSearch(query) {
-            const results = document.getElementById('search-results');
-            if (!results) return;
-            if (!query.trim()) { results.style.display = 'none'; return; }
-            const found = [];
-            layers.forEach(layer => {
-                if (!layer.data?.features) return;
-                layer.data?.features?.forEach(f => {
-                    const props = f.properties || {};
-                    const match = Object.values(props).some(v => String(v).toLowerCase().includes(query.toLowerCase()));
-                    if (match && f.geometry) found.push({ props, geom: f.geometry });
-                });
+        try {
+            const map = new maplibregl.Map({
+                container: 'map',
+                style: mapStyle,
+                center: [${center.lng}, ${center.lat}],
+                zoom: ${zoom},
+                pitch: ${pitch},
+                bearing: ${bearing}
             });
-            if (found.length === 0) { results.innerHTML = '<div class="cel-search-item" style="opacity:0.5">لا توجد نتائج</div>'; results.style.display = 'block'; return; }
-            results.innerHTML = found.slice(0, 8).map((r, i) => {
-                const label = Object.values(r.props)[0] || 'معلم ' + (i + 1);
-                return '<div class="cel-search-item" onclick="flyToFeature(' + i + ')">' + label + '</div>';
-            }).join('');
-            results.style.display = 'block';
-            window._searchResults = found;
-        }
-        function flyToFeature(i) {
-            const f = window._searchResults?.[i];
-            if (!f) return;
-            const coords = f.geom.type === 'Point' ? f.geom.coordinates : f.geom.coordinates?.[0]?.[0] || f.geom.coordinates?.[0];
-            if (coords) map.flyTo({ center: coords, zoom: 15 });
-            document.getElementById('search-results').style.display = 'none';
-        }
-        document.addEventListener('click', e => { const r = document.getElementById('search-results'); if(r && !e.target.closest('.cel-search-wrap')) r.style.display = 'none'; });
 
-        map.on('load', () => {
-            layers.forEach(layer => {
-                const s = layer.style || {};
-                const lColor = s.color || layer.color || '#fbab15';
-                const lOp = s.opacity ?? 1;
-                const fOp = s.fillOpacity ?? 0.3;
-                const outClr = s.outlineColor || '#ffffff';
-                const outW = s.outlineWidth ?? 2;
+            if (initialBounds) {
+                map.fitBounds(initialBounds, { padding: 50, animate: false });
+            }
 
-                // Use dataUrl if available to save file size, otherwise fallback to embedded data
-                const sourceData = layer.dataUrl || layer.data;
-                map.addSource('src-' + layer.id, { type: 'geojson', data: sourceData });
-                    
+            map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+
+            // Push navigation control above the browser status bar
+            const style = document.createElement('style');
+            style.textContent = '.maplibregl-ctrl-bottom-right { bottom: 30px !important; }';
+            document.head.appendChild(style);
+
+            // Search function for custom search element
+            window.doSearch = function(query) {
+                const results = document.getElementById('search-results');
+                if (!results) return;
+                if (!query.trim()) { results.style.display = 'none'; return; }
+                const found = [];
+                // Search only works if data is embedded or after loading
+                layers.forEach(layer => {
+                    if (!layer.data?.features) return;
+                    layer.data.features.forEach(f => {
+                        const props = f.properties || {};
+                        const match = Object.values(props).some(v => String(v).toLowerCase().includes(query.toLowerCase()));
+                        if (match && f.geometry) found.push({ props, geom: f.geometry });
+                    });
+                });
+                if (found.length === 0) { results.innerHTML = '<div class="cel-search-item" style="opacity:0.5">لا توجد نتائج</div>'; results.style.display = 'block'; return; }
+                results.innerHTML = found.slice(0, 8).map((r, i) => {
+                    const label = Object.values(r.props)[0] || 'معلم ' + (i + 1);
+                    return '<div class="cel-search-item" onclick="flyToFeature(' + i + ')">' + label + '</div>';
+                }).join('');
+                results.style.display = 'block';
+                window._searchResults = found;
+            };
+
+            window.flyToFeature = function(i) {
+                const f = window._searchResults?.[i];
+                if (!f) return;
+                const coords = f.geom.type === 'Point' ? f.geom.coordinates : f.geom.coordinates?.[0]?.[0] || f.geom.coordinates?.[0];
+                if (coords) map.flyTo({ center: coords, zoom: 15 });
+                document.getElementById('search-results').style.display = 'none';
+            };
+
+            document.addEventListener('click', e => { 
+                const r = document.getElementById('search-results'); 
+                if(r && !e.target.closest('.cel-search-wrap')) r.style.display = 'none'; 
+            });
+
+            map.on('load', () => {
+                console.log("Map loaded, adding sources...");
+                layers.forEach(layer => {
+                    const s = layer.style || {};
+                    const lColor = s.color || layer.color || '#fbab15';
+                    const lOp = s.opacity ?? 1;
+                    const fOp = s.fillOpacity ?? 0.3;
+                    const outClr = s.outlineColor || '#ffffff';
+                    const outW = s.outlineWidth ?? 2;
+
+                    // Use dataUrl if available to save file size, otherwise fallback to embedded data
+                    const sourceData = layer.dataUrl || layer.data;
+                    if (!sourceData) return;
+
+                    map.addSource('src-' + layer.id, { type: 'geojson', data: sourceData });
+                        
                     // Polygons
                     map.addLayer({ 
                         id: 'poly-' + layer.id, 
@@ -1113,9 +1137,12 @@ const PalNovaaLab = ({ onClose }) => {
                         map.on('mouseenter', lId, () => { map.getCanvas().style.cursor = 'pointer'; });
                         map.on('mouseleave', lId, () => { map.getCanvas().style.cursor = ''; });
                     });
-                }
+                });
             });
-        });
+        } catch (e) {
+            console.error("Critical Map Error:", e);
+            document.body.innerHTML += '<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(239,68,68,0.9);color:white;padding:30px;border-radius:20px;text-align:center;z-index:9999;box-shadow:0 20px 50px rgba(0,0,0,0.5);"><h2>عذراً، حدث خطأ في تحميل الخريطة</h2><p>' + e.message + '</p></div>';
+        }
     </script>
 </body>
 </html>`;
