@@ -623,15 +623,14 @@ const PalNovaaLab = ({ onClose }) => {
             return;
         }
 
-        // Build a robust self-contained injection script that works with ANY map HTML file
+        // Build a universal self-contained injection script that works with MapLibre, Mapbox, and Leaflet
         const injectionScript = `
 <script id="palnovaa-injected-layers">
 (function() {
     var INJECTED_LAYERS = ${JSON.stringify(layersToInject)};
 
-    function renderLayers(map) {
+    function renderLayers(map, libraryType) {
         INJECTED_LAYERS.forEach(function(layer, idx) {
-            var sourceId = 'pn-inject-' + (layer.id || idx);
             var style = layer.style || {};
             var color = style.color || layer.color || '#F5A623';
             var outlineColor = style.outlineColor || '#ffffff';
@@ -641,67 +640,82 @@ const PalNovaaLab = ({ onClose }) => {
 
             function addToMap(geojson) {
                 if (!geojson || !geojson.features) return;
-                if (map.getSource(sourceId)) {
-                    map.getSource(sourceId).setData(geojson);
-                    return;
-                }
-                map.addSource(sourceId, { type: 'geojson', data: geojson });
 
-                var gtype = geojson.features[0] && geojson.features[0].geometry && geojson.features[0].geometry.type;
-                var isPolygon = gtype && (gtype.indexOf('Polygon') !== -1);
-                var isLine = gtype && (gtype.indexOf('LineString') !== -1);
+                if (libraryType === 'leaflet') {
+                    var lLayer = window.L.geoJSON(geojson, {
+                        style: function() {
+                            return { color: color, weight: outlineWidth, opacity: opacity, fillOpacity: fillOpacity, fillColor: color };
+                        },
+                        pointToLayer: function(feature, latlng) {
+                            return window.L.circleMarker(latlng, { radius: 7, fillColor: color, color: outlineColor, weight: outlineWidth, opacity: opacity, fillOpacity: fillOpacity });
+                        }
+                    }).addTo(map);
 
-                if (isPolygon) {
-                    map.addLayer({ id: sourceId+'-fill', type: 'fill', source: sourceId,
-                        paint: { 'fill-color': color, 'fill-opacity': fillOpacity } });
-                    map.addLayer({ id: sourceId+'-line', type: 'line', source: sourceId,
-                        paint: { 'line-color': outlineColor, 'line-width': outlineWidth, 'line-opacity': opacity } });
-                } else if (isLine) {
-                    map.addLayer({ id: sourceId+'-line', type: 'line', source: sourceId,
-                        paint: { 'line-color': color, 'line-width': outlineWidth + 1, 'line-opacity': opacity } });
-                } else {
-                    map.addLayer({ id: sourceId+'-point', type: 'circle', source: sourceId,
-                        paint: { 'circle-radius': 7, 'circle-color': color, 'circle-stroke-width': outlineWidth, 'circle-stroke-color': outlineColor, 'circle-opacity': opacity } });
-                }
-
-                var clickLayer = sourceId + (isPolygon ? '-fill' : isLine ? '-line' : '-point');
-                var GL = window.maplibregl || window.mapboxgl;
-                if (map.getLayer(clickLayer) && GL) {
-                    map.on('click', clickLayer, function(e) {
-                        var props = e.features[0].properties;
-                        var html = '<div style="direction:rtl;text-align:right;font-family:Cairo,sans-serif;padding:4px"><h4 style="margin:0 0 8px;color:#06D6F2">' + (layer.name || 'طبقة محقونة') + '</h4>';
+                    lLayer.bindPopup(function(l) {
+                        var props = l.feature.properties;
+                        var html = '<div style="direction:rtl;text-align:right;font-family:sans-serif;padding:4px"><h4 style="margin:0 0 8px;color:#06D6F2">' + (layer.name || 'طبقة محقونة') + '</h4>';
                         Object.keys(props).forEach(function(k){ if(props[k]) html += '<div style="font-size:0.85rem;margin-bottom:4px"><b>' + k + ':</b> ' + props[k] + '</div>'; });
-                        html += '</div>';
-                        new GL.Popup({ closeButton: false, maxWidth: '280px' }).setLngLat(e.lngLat).setHTML(html).addTo(map);
+                        return html + '</div>';
                     });
-                    map.on('mouseenter', clickLayer, function(){ map.getCanvas().style.cursor = 'pointer'; });
-                    map.on('mouseleave', clickLayer, function(){ map.getCanvas().style.cursor = ''; });
+                } else {
+                    // MapLibre / Mapbox Logic
+                    var sourceId = 'pn-inject-' + (layer.id || idx);
+                    if (map.getSource(sourceId)) { map.getSource(sourceId).setData(geojson); return; }
+                    map.addSource(sourceId, { type: 'geojson', data: geojson });
+
+                    var gtype = geojson.features[0] && geojson.features[0].geometry && geojson.features[0].geometry.type;
+                    var isPolygon = gtype && (gtype.indexOf('Polygon') !== -1);
+                    var isLine = gtype && (gtype.indexOf('LineString') !== -1);
+
+                    if (isPolygon) {
+                        map.addLayer({ id: sourceId+'-fill', type: 'fill', source: sourceId, paint: { 'fill-color': color, 'fill-opacity': fillOpacity } });
+                        map.addLayer({ id: sourceId+'-line', type: 'line', source: sourceId, paint: { 'line-color': outlineColor, 'line-width': outlineWidth, 'line-opacity': opacity } });
+                    } else if (isLine) {
+                        map.addLayer({ id: sourceId+'-line', type: 'line', source: sourceId, paint: { 'line-color': color, 'line-width': outlineWidth + 1, 'line-opacity': opacity } });
+                    } else {
+                        map.addLayer({ id: sourceId+'-point', type: 'circle', source: sourceId, paint: { 'circle-radius': 7, 'circle-color': color, 'circle-stroke-width': outlineWidth, 'circle-stroke-color': outlineColor, 'circle-opacity': opacity } });
+                    }
+
+                    var clickLayer = sourceId + (isPolygon ? '-fill' : isLine ? '-line' : '-point');
+                    var GL = window.maplibregl || window.mapboxgl;
+                    if (map.getLayer(clickLayer) && GL) {
+                        map.on('click', clickLayer, function(e) {
+                            var props = e.features[0].properties;
+                            var html = '<div style="direction:rtl;text-align:right;font-family:sans-serif;padding:4px"><h4 style="margin:0 0 8px;color:#06D6F2">' + (layer.name || 'طبقة محقونة') + '</h4>';
+                            Object.keys(props).forEach(function(k){ if(props[k]) html += '<div style="font-size:0.85rem;margin-bottom:4px"><b>' + k + ':</b> ' + props[k] + '</div>'; });
+                            html += '</div>';
+                            new GL.Popup({ closeButton: false, maxWidth: '280px' }).setLngLat(e.lngLat).setHTML(html).addTo(map);
+                        });
+                        map.on('mouseenter', clickLayer, function(){ map.getCanvas().style.cursor = 'pointer'; });
+                        map.on('mouseleave', clickLayer, function(){ map.getCanvas().style.cursor = ''; });
+                    }
                 }
             }
 
-            if (layer.dataUrl) {
-                fetch(layer.dataUrl).then(function(r){ return r.json(); }).then(addToMap).catch(function(e){ console.error('PalNovaa Inject fetch error:', e); });
-            } else if (layer.data) {
-                addToMap(layer.data);
-            }
+            if (layer.dataUrl) { fetch(layer.dataUrl).then(function(r){ return r.json(); }).then(addToMap); }
+            else if (layer.data) { addToMap(layer.data); }
         });
     }
 
     function tryInject() {
         var map = window.map;
-        if (!map) { setTimeout(tryInject, 300); return; }
-        if (typeof map.loaded === 'function' && map.loaded()) {
-            renderLayers(map);
-        } else {
-            map.on('load', function(){ renderLayers(map); });
+        // Search for map object if not in window.map
+        if (!map && window.L) {
+             for (var k in window) { if (window[k] instanceof window.L.Map) { map = window[k]; break; } }
+        }
+
+        if (!map) { setTimeout(tryInject, 500); return; }
+
+        if (window.L && map instanceof window.L.Map) {
+            renderLayers(map, 'leaflet');
+        } else if (typeof map.addLayer === 'function') {
+            if (map.loaded && map.loaded()) renderLayers(map, 'maplibre');
+            else map.on('load', function(){ renderLayers(map, 'maplibre'); });
         }
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', tryInject);
-    } else {
-        tryInject();
-    }
+    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', tryInject); }
+    else { tryInject(); }
 })();
 <\/script>`;
 
