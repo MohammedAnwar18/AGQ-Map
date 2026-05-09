@@ -402,6 +402,8 @@ const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
                         </div>
                     )}
                 </div>
+            </>
+        )}
             </div>
         </div>
     );
