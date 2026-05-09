@@ -26,12 +26,17 @@ const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
     }, [facilityId]);
 
     const loadData = async () => {
+        if (!facilityId) return;
         setLoading(true);
         try {
             const res = await shopService.getFacilityProfile(facilityId);
-            setData(res);
-            if (res.facility.category === 'الكليات') {
-                setActiveTab('specialties');
+            if (res && res.facility) {
+                setData(res);
+                if (res.facility.category === 'الكليات') {
+                    setActiveTab('specialties');
+                }
+            } else {
+                console.error('Facility data is missing or invalid');
             }
         } catch (error) {
             console.error('Fetch facility error', error);
@@ -127,10 +132,19 @@ const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
         </div>
     );
 
-    if (!data) return null;
+    if (!data || !data.facility) return (
+        <div className="facility-modal-overlay" onClick={onClose}>
+            <div className="facility-modal-container" style={{ padding: '40px', textAlign: 'center', background: 'var(--bg-primary)' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '20px' }}>⚠️</div>
+                <h3 style={{ color: 'var(--text-primary)' }}>عذراً، لم يتم العثور على بيانات هذا المرفق</h3>
+                <p style={{ color: 'var(--text-muted)', marginBottom: '30px' }}>قد يكون المرفق تم حذفه أو أن هناك مشكلة في الاتصال.</p>
+                <button className="btn-primary" onClick={onClose} style={{ padding: '10px 30px' }}>إغلاق</button>
+            </div>
+        </div>
+    );
 
-    const { facility, posts, specialties, is_admin: backendIsAdmin } = data;
-    const is_admin = backendIsAdmin || (currentUser && currentUser.role === 'admin');
+    const { facility, posts = [], specialties = [], is_admin: backendIsAdmin } = data;
+    const is_admin = backendIsAdmin || (currentUser && (currentUser.role === 'admin' || String(currentUser.id) === String(facility.owner_id)));
 
     useEffect(() => {
         console.log("Facility Modal Debug - currentUser:", currentUser);
