@@ -684,7 +684,9 @@ const PalNovaaLab = ({ onClose }) => {
 
             exportLayers.push({
                 id: layer.id, name: layer.name, type: layer.type || 'vector',
-                data: data, url: url, coordinates: layer.coordinates, color: layer.color,
+                data: data, 
+                dataUrl: layer.dataUrl || layer.url, // Ensure we pass the URL for optimization
+                coordinates: layer.coordinates, color: layer.color,
                 style: style
             });
         }
