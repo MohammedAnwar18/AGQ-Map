@@ -824,7 +824,7 @@ const PalNovaaLab = ({ onClose }) => {
                     <div id="map"></div>
                     <div class="f-card f-bottom-left card-panel">
                         <h3 style="margin-top:0;font-family:var(--font-h);">إحصائيات الخريطة</h3>
-                        <p style="opacity:0.8;font-size:1rem;line-height:1.6;">تم تحميل <b>${exportLayers.length}</b> طبقات بنجاح، تحتوي على <b>${exportLayers.reduce((sum, l) => s + (l.data?.features?.length || 0), 0)}</b> معلم جغرافي تفاعلي.</p>
+                        <p style="opacity:0.8;font-size:1rem;line-height:1.6;">تم تحميل <b>${exportLayers.length}</b> طبقات بنجاح، تحتوي على <b>${exportLayers.reduce((sum, l) => sum + (l.data?.features?.length || 0), 0)}</b> معلم جغرافي تفاعلي.</p>
                         <button class="${designSelections.component || 'primary'}-btn" style="width:100%;padding:14px;background:var(--primary);color:#000;border:none;border-radius:10px;font-weight:bold;font-size:1rem;cursor:pointer;margin-top:16px;">عرض التفاصيل</button>
                     </div>
                 `;
@@ -973,6 +973,26 @@ const PalNovaaLab = ({ onClose }) => {
             bearing: ${bearing}
         });
 
+        // Auto-fit bounds if features exist
+        const allCoords = [];
+        layers.forEach(l => {
+            if (l.data?.features) {
+                l.data.features.forEach(f => {
+                    if (f.geometry?.type === 'Point') allCoords.push(f.geometry.coordinates);
+                    else if (f.geometry?.coordinates) allCoords.push(...(f.geometry.coordinates.flat(5).filter(c => typeof c === 'number' && !isNaN(c))));
+                });
+            }
+        });
+        
+        if (allCoords.length > 0) {
+            const lngs = allCoords.filter((_, i) => i % 2 === 0);
+            const lats = allCoords.filter((_, i) => i % 2 !== 0);
+            if (lngs.length && lats.length) {
+                const bounds = [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]];
+                map.fitBounds(bounds, { padding: 50, animate: false });
+            }
+        }
+
         map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
 
         // Push navigation control above the browser status bar
@@ -1020,7 +1040,9 @@ const PalNovaaLab = ({ onClose }) => {
                 const outClr = s.outlineColor || '#ffffff';
                 const outW = s.outlineWidth ?? 2;
 
-                map.addSource('src-' + layer.id, { type: 'geojson', data: layer.data });
+                // Use dataUrl if available to save file size, otherwise fallback to embedded data
+                const sourceData = layer.dataUrl || layer.data;
+                map.addSource('src-' + layer.id, { type: 'geojson', data: sourceData });
                     
                     // Polygons
                     map.addLayer({ 
