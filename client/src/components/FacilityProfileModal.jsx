@@ -203,39 +203,61 @@ const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
                                     style={{ width: '100%', minHeight: '100px' }}
                                 />
                             </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '8px', opacity: 0.8 }}>الأيقونة (إيموجي)</label>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                                <div className="edit-image-preview-container">
+                                    <label style={{ display: 'block', marginBottom: '8px', opacity: 0.8, fontSize: '0.9rem' }}>الشعار (Profile/Logo)</label>
+                                    <div style={{ 
+                                        width: '100px', height: '100px', borderRadius: '12px', background: 'var(--bg-tertiary)', 
+                                        marginBottom: '10px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        border: '2px dashed #fbab15'
+                                    }}>
+                                        {editFiles.icon_file ? (
+                                            <img src={URL.createObjectURL(editFiles.icon_file)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        ) : (
+                                            facility.icon && facility.icon.startsWith('http') ? (
+                                                <img src={getImageUrl(facility.icon)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            ) : (
+                                                <span style={{ fontSize: '2rem' }}>{editData.icon || '🏛️'}</span>
+                                            )
+                                        )}
+                                    </div>
                                     <input 
+                                        type="file" 
+                                        accept="image/*"
+                                        onChange={e => setEditFiles({...editFiles, icon_file: e.target.files[0]})} 
+                                        style={{ fontSize: '0.8rem', width: '100%' }}
+                                    />
+                                    <input 
+                                        placeholder="أو اكتب إيموجي هنا"
                                         className="input" 
                                         value={editData.icon} 
                                         onChange={e => setEditData({...editData, icon: e.target.value})} 
-                                        style={{ width: '100%' }}
+                                        style={{ width: '100%', marginTop: '5px', fontSize: '0.8rem' }}
                                     />
                                 </div>
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '8px', opacity: 0.8 }}>أو رفع شعار (Logo)</label>
+                                <div className="edit-image-preview-container">
+                                    <label style={{ display: 'block', marginBottom: '8px', opacity: 0.8, fontSize: '0.9rem' }}>صورة الغلاف (Cover Image)</label>
+                                    <div style={{ 
+                                        width: '100%', height: '100px', borderRadius: '12px', background: 'var(--bg-tertiary)', 
+                                        marginBottom: '10px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        border: '2px dashed #fbab15'
+                                    }}>
+                                        {editFiles.cover_file ? (
+                                            <img src={URL.createObjectURL(editFiles.cover_file)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        ) : (
+                                            <img src={getImageUrl(facility.cover_background) || 'https://images.unsplash.com/photo-1562774053-701939374585?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        )}
+                                    </div>
                                     <input 
                                         type="file" 
-                                        className="input" 
                                         accept="image/*"
-                                        onChange={e => setEditFiles({...editFiles, icon_file: e.target.files[0]})} 
-                                        style={{ width: '100%' }}
+                                        onChange={e => setEditFiles({...editFiles, cover_file: e.target.files[0]})} 
+                                        style={{ fontSize: '0.8rem', width: '100%' }}
                                     />
                                 </div>
                             </div>
-                            <div className="form-group" style={{ marginBottom: '25px' }}>
-                                <label style={{ display: 'block', marginBottom: '8px', opacity: 0.8 }}>صورة الغلاف (Cover)</label>
-                                <input 
-                                    type="file" 
-                                    className="input" 
-                                    accept="image/*"
-                                    onChange={e => setEditFiles({...editFiles, cover_file: e.target.files[0]})} 
-                                    style={{ width: '100%' }}
-                                />
-                            </div>
-                            <div style={{ display: 'flex', gap: '15px' }}>
-                                <button type="submit" className="btn-primary" style={{ flex: 2, padding: '12px' }}>حفظ التغييرات</button>
+                            <div style={{ display: 'flex', gap: '15px', marginTop: '30px' }}>
+                                <button type="submit" className="btn-primary" style={{ flex: 2, padding: '12px', fontWeight: 'bold' }}>حفظ التغييرات</button>
                                 <button type="button" className="btn-secondary" onClick={() => setIsEditing(false)} style={{ flex: 1, padding: '12px' }}>إلغاء</button>
                             </div>
                         </form>
