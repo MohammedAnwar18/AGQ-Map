@@ -25,6 +25,13 @@ const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
         loadData();
     }, [facilityId]);
 
+    useEffect(() => {
+        if (data && data.facility) {
+            console.log("Facility Modal Debug - currentUser:", currentUser);
+            // We'll calculate is_admin here or just log what we have
+        }
+    }, [currentUser, data]);
+
     const loadData = async () => {
         if (!facilityId) return;
         setLoading(true);
@@ -147,10 +154,6 @@ const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
     const { facility, posts = [], specialties = [], is_admin: backendIsAdmin } = data;
     const is_admin = backendIsAdmin || (currentUser && (currentUser.role === 'admin' || String(currentUser.id) === String(facility.owner_id)));
 
-    useEffect(() => {
-        console.log("Facility Modal Debug - currentUser:", currentUser);
-        console.log("Facility Modal Debug - is_admin:", is_admin);
-    }, [currentUser, is_admin]);
 
     return (
         <div className="facility-modal-overlay" onClick={onClose}>
