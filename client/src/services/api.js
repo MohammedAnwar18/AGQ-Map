@@ -373,10 +373,6 @@ export const shopService = {
         return response.data;
     },
 
-    getAllForMap: async () => {
-        const response = await api.get('/shops/all-map');
-        return response.data;
-    },
 
     follow: async (shopId) => {
         const response = await api.post(`/shops/${shopId}/follow`);

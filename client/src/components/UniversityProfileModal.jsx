@@ -246,16 +246,27 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
             
             // Add internal shops to categories (especially 'الكليات')
             (profileData.internal_shops || []).forEach(shop => {
-                const cat = shop.category || 'أخرى';
+                let cat = shop.category || 'أخرى';
+                
+                // Normalize category names for consistent grouping
+                const lowerCat = cat.toLowerCase();
+                if (lowerCat.includes('college') || lowerCat.includes('كلية') || lowerCat.includes('كليات')) {
+                    cat = 'الكليات';
+                } else if (lowerCat.includes('building') || lowerCat.includes('مبنى')) {
+                    cat = 'المباني';
+                } else if (lowerCat.includes('restaurant') || lowerCat.includes('food') || lowerCat.includes('مطعم') || lowerCat.includes('كافتيريا')) {
+                    cat = 'الكافتيريات';
+                }
+
                 if (!merged[cat]) merged[cat] = [];
                 
                 // Avoid duplicates
-                if (!merged[cat].some(item => item.id === shop.id && item.is_shop)) {
+                if (!merged[cat].some(item => String(item.id) === String(shop.id) && item.is_shop)) {
                     merged[cat].push({
                         ...shop,
                         is_shop: true,
                         // Set icon based on category if shop doesn't have one
-                        icon: shop.category === 'الكليات' ? '🏛️' : (shop.category === 'مبنى' ? '🏢' : '🏪')
+                        icon: cat === 'الكليات' ? '🏛️' : (cat === 'المباني' ? '🏢' : '🏪')
                     });
                 }
             });
@@ -302,8 +313,7 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
     };
 
     const isAdminOrOwner = currentUser?.role === 'admin' || 
-                         currentUser?.userId === uniData.owner_id || 
-                         currentUser?.id === uniData.owner_id;
+                         String(currentUser?.userId || currentUser?.id) === String(uniData.owner_id);
 
     const handleImageUpload = async (file, type) => {
         if (!file) return;

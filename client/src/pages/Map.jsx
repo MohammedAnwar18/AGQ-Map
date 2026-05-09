@@ -987,10 +987,17 @@ const MapComponent = () => {
         return () => clearInterval(interval);
     }, []);
 
-    // Initial Center on User (Multiple times to catch first stable lock)
-    const hasCenteredRef = useRef(0); // Counter for centering
+    // Initial Center on User (Only ONCE on startup to avoid jump-backs during search)
+    const hasCenteredRef = useRef(false);
     useEffect(() => {
-        if (userLocation && hasCenteredRef.current < 2 && mapRef.current) {
+        // Only trigger initial centering if:
+        // 1. We have a valid user location
+        // 2. We haven't centered yet (ref is false)
+        // 3. The map reference is ready
+        // 4. We are NOT currently viewing a specific destination or profile (avoids interrupting search)
+        const isInteractingWithPlace = destination || showShopProfile || showUniversityProfile || showFacilityProfile || showMedicalProfile;
+        
+        if (userLocation && !hasCenteredRef.current && mapRef.current && !isInteractingWithPlace) {
             mapRef.current.flyTo({
                 center: [userLocation.longitude, userLocation.latitude],
                 zoom: 17,
@@ -998,38 +1005,71 @@ const MapComponent = () => {
                 bearing: 0,
                 duration: 2000
             });
-            hasCenteredRef.current += 1;
+            hasCenteredRef.current = true;
         }
-    }, [userLocation]);
+    }, [userLocation, destination, showShopProfile, showUniversityProfile, showFacilityProfile, showMedicalProfile]);
 
-    // Live Follow Mode (Removed continuous follow per user request)
-    // Map will now move only when user explicitly clicks the center button
-
-    // Friends Location & Map Data
+    // Live Follow Mode: Follow the user as they move ONLY if tracking is explicitly enabled
     useEffect(() => {
-        if (!user) return;
-        const fetchFriendsLocs = async () => {
+        if (isTracking && userLocation && mapRef.current) {
+            mapRef.current.flyTo({
+                center: [userLocation.longitude, userLocation.latitude],
+                // Preserve current zoom/pitch if possible or use default navigation view
+                zoom: mapRef.current.getZoom() > 17 ? mapRef.current.getZoom() : 18,
+                duration: 1500,
+                essential: true
+            });
+        }
+    }, [userLocation, isTracking]);
+
+    // Public Map Data (Shops & University Facilities) - Always Fetch for everyone
+    useEffect(() => {
+        const fetchPublicMapData = async () => {
             try {
-                const [friendsData, shopsData, managedShopsData, allMapData] = await Promise.all([
+                const allMapData = await shopService.getAllForMap();
+                setAllShopsMap(allMapData?.shops || []);
+                setAllFacilitiesMap(allMapData?.facilities || []);
+            } catch (e) {
+                console.error("Error fetching public map data:", e);
+            }
+        };
+        fetchPublicMapData();
+        // Refresh public data every 30 seconds
+        const interval = setInterval(fetchPublicMapData, 30000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Private User Data (Friends, Managed Shops, Following) - Authenticated Only
+    useEffect(() => {
+        if (!user) {
+            setFriendsMap([]);
+            setFollowedShopsMap([]);
+            setManagedShopsMap([]);
+            setHasManagedShops(false);
+            return;
+        }
+
+        const fetchPrivateData = async () => {
+            try {
+                const [friendsData, shopsData, managedShopsData] = await Promise.all([
                     friendService.getFriends().catch(e => ({ friends: [] })),
                     shopService.getFollowing().catch(e => ({ shops: [] })),
-                    shopService.getManagedShops().catch(e => ({ shops: [] })),
-                    shopService.getAllForMap().catch(e => ({ shops: [], facilities: [] }))
+                    shopService.getManagedShops().catch(e => ({ shops: [] }))
                 ]);
                 
                 setFriendsMap((friendsData?.friends || []).filter(f => f.last_latitude && f.last_longitude));
                 setFollowedShopsMap(shopsData?.shops || []);
-                setAllShopsMap(allMapData?.shops || []);
-                setAllFacilitiesMap(allMapData?.facilities || []);
 
                 if (managedShopsData?.shops) {
                     setManagedShopsMap(managedShopsData.shops);
-                    if (managedShopsData.shops.length > 0) setHasManagedShops(true);
+                    setHasManagedShops(managedShopsData.shops.length > 0);
                 }
-            } catch (e) { console.error("Error in fetchFriendsLocs:", e); }
+            } catch (e) { console.error("Error in fetchPrivateData:", e); }
         };
-        fetchFriendsLocs();
-        const interval = setInterval(fetchFriendsLocs, 10000);
+
+        fetchPrivateData();
+        // Refresh private data every 10 seconds for real-time tracking
+        const interval = setInterval(fetchPrivateData, 10000);
         return () => clearInterval(interval);
     }, [user]);
 
@@ -1544,9 +1584,11 @@ const MapComponent = () => {
                     {!currentCommunity && allShopsMap.filter(shop => {
                         if (shop.latitude == null || shop.longitude == null || isNaN(parseFloat(shop.latitude))) return false;
 
-                        // Educational Institutions & Municipalities: visible from mid zoom (13) to reveal town area
-                        if (shop.category === 'University' || shop.category === 'مؤسسة تعليمية') {
-                            return viewState.zoom >= 13 && viewState.zoom < 16.0;
+                        // Educational Institutions & Municipalities: visible from mid zoom (12) to reveal town area
+                        const shopCat = (shop.category || '').toLowerCase();
+                        if (shopCat.includes('university') || shopCat.includes('جامعة') || shopCat.includes('مؤسسة تعليمية')) {
+                            // Hide university icon as we zoom in closer (>= 15.5) to show detailed facilities
+                            return viewState.zoom >= 12 && viewState.zoom < 15.5;
                         }
                         // Medical centers visible from zoom 13+
                         if (['مستشفى', 'مركز طبي'].includes(shop.category)) {
@@ -1686,8 +1728,8 @@ const MapComponent = () => {
                         </Marker>
                     ))}
 
-                    {/* University Facilities Markers - Visible when zoomed in close */}
-                    {!currentCommunity && viewState.zoom >= 16.0 && allFacilitiesMap.map(fac => {
+                    {/* University Facilities Markers - Visible when zoomed in close (>= 15.5) */}
+                    {!currentCommunity && viewState.zoom >= 15.5 && allFacilitiesMap.map(fac => {
                         const isFollowedUni = followedShopsMap.some(s => s.id === fac.parent_shop_id);
                         return (
                             <Marker
