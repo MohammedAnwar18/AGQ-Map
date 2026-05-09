@@ -100,6 +100,9 @@ const PalNovaaLab = ({ onClose }) => {
     const [magicPromptText, setMagicPromptText] = useState('');
     const [highlightFeature, setHighlightFeature] = useState(null);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [uploadedHtmlContent, setUploadedHtmlContent] = useState(null);
+    const [uploadedHtmlName, setUploadedHtmlName] = useState('');
+    const [selectedInjectLayers, setSelectedInjectLayers] = useState([]);
     const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
     const [publishName, setPublishName] = useState('');
     const [publishSlug, setPublishSlug] = useState('');
@@ -562,9 +565,64 @@ const PalNovaaLab = ({ onClose }) => {
         }
     };
 
-    useEffect(() => {
-        console.log("PalNovaa Lab Component Mounted - Version 3.5");
-    }, []);
+    const handleHtmlFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setUploadedHtmlName(file.name);
+        const reader = new FileReader();
+        reader.onload = (event) => setUploadedHtmlContent(event.target.result);
+        reader.readAsText(file);
+    };
+
+    const toggleInjectLayer = (id) => {
+        setSelectedInjectLayers(prev => 
+            prev.includes(id) ? prev.filter(lid => lid !== id) : [...prev, id]
+        );
+    };
+
+    const performInjection = () => {
+        if (!uploadedHtmlContent) return;
+        
+        const layersToInject = geoLayers.filter(l => selectedInjectLayers.includes(l.id)).map(l => ({
+            ...l,
+            style: layerStyles[l.id] || {}
+        }));
+
+        if (layersToInject.length === 0) {
+            alert('الرجاء اختيار طبقة واحدة على الأقل للحقن');
+            return;
+        }
+
+        // SMART INJECTION LOGIC:
+        // We look for the "const layers = [...];" pattern in the HTML
+        const layersPattern = /const layers = (\[[\s\S]*?\]);/;
+        const match = uploadedHtmlContent.match(layersPattern);
+
+        let newHtml = uploadedHtmlContent;
+
+        if (match) {
+            try {
+                const existingLayers = JSON.parse(match[1]);
+                const combinedLayers = [...existingLayers, ...layersToInject];
+                newHtml = uploadedHtmlContent.replace(layersPattern, `const layers = ${JSON.stringify(combinedLayers)};`);
+            } catch (err) {
+                console.error("Injection Error - could not parse existing layers:", err);
+                // Fallback: Just append to the end of script if parsing fails
+                newHtml = uploadedHtmlContent.replace('</script>', `\n// Injected Layers\nlayers.push(...${JSON.stringify(layersToInject)});\n</script>`);
+            }
+        } else {
+            // If pattern not found, try a generic injection before the closing script tag
+            newHtml = uploadedHtmlContent.replace('</script>', `\n// Injected Data\nif(window.layers) window.layers.push(...${JSON.stringify(layersToInject)});\nelse const injectedLayers = ${JSON.stringify(layersToInject)};\n</script>`);
+        }
+
+        const blob = new Blob([newHtml], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Injected_${uploadedHtmlName}`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
 
     const launchDesignStudioFinal = () => {
         console.log("FORCE LAUNCH: Design Studio");
@@ -1535,91 +1593,96 @@ const PalNovaaLab = ({ onClose }) => {
 
                 <aside className="sidebar">
                     <div className="panel-tabs">
-                        <div className="panel-tab active">
+                        <div className={`panel-tab ${activeTab === 'layers' ? 'active' : ''}`} onClick={() => setActiveTab('layers')}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg>
                             <span>إدارة الطبقات</span>
+                        </div>
+                        <div className={`panel-tab ${activeTab === 'injection' ? 'active' : ''}`} onClick={() => setActiveTab('injection')}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                            <span>حقن البيانات</span>
                         </div>
                     </div>
 
                     <div className="panel-content">
-                        <div className="tab-content">
-                            <div className="panel-section">
-                                <div className="panel-section-title">إضافة بيانات</div>
-
-                                <div className="upload-box" onClick={() => document.getElementById('geo-upload').click()}>
-                                    <input id="geo-upload" type="file" accept=".geojson,.json" onChange={handleFileUpload} style={{ display: 'none' }} />
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
-                                    </svg>
-                                    <span>رفع ملف GeoJSON أو JSON</span>
-                                    <div className="formats">
-                                        <span className="format-pill">.geojson</span>
-                                        <span className="format-pill">.json</span>
-                                    </div>
-                                </div>
-
-                                <div className="panel-divider" style={{ margin: '15px 0', opacity: 0.2 }}></div>
-
-                                <div className="link-import-section">
-                                    <div className="panel-section-title">استيراد من رابط (URL)</div>
-                                    <div className="link-input-group" style={{ display: 'flex', gap: '8px' }}>
-                                        <input
-                                            type="text"
-                                            placeholder="رابط ArcGIS أو GeoJSON..."
-                                            value={importLink}
-                                            onChange={(e) => setImportLink(e.target.value)}
-                                            style={{
-                                                flex: 1, background: 'rgba(255,255,255,0.05)',
-                                                border: '1px solid var(--border)', borderRadius: '8px',
-                                                padding: '8px 12px', color: 'white', fontSize: '0.8rem'
-                                            }}
-                                        />
-                                        <button
-                                            onClick={handleImportLink}
-                                            disabled={isImporting}
-                                            style={{
-                                                background: 'var(--primary)', color: 'black',
-                                                border: 'none', borderRadius: '8px', padding: '0 15px',
-                                                fontWeight: 'bold', cursor: 'pointer',
-                                                opacity: isImporting ? 0.5 : 1
-                                            }}
-                                        >
-                                            {isImporting ? '...' : 'جلب'}
-                                        </button>
-                                    </div>
-                                    <small style={{ display: 'block', marginTop: '8px', color: 'var(--text-muted)', fontSize: '0.7rem' }}>
-                                        يدعم MapServer و FeatureServer و GeoJSON مباشر.
-                                    </small>
-                                </div>
-                            </div>
-
-                            {geoLayers.length > 0 && (
+                        {activeTab === 'layers' && (
+                            <div className="tab-content">
                                 <div className="panel-section">
-                                    <div className="panel-section-title">
-                                        <span>الطبقات النشطة</span>
-                                        <button onClick={() => { setGeoLayers([]); setLayerStyles({}); }} style={{ color: '#EF4444' }}>إزالة الكل</button>
+                                    <div className="panel-section-title">إضافة بيانات</div>
+
+                                    <div className="upload-box" onClick={() => document.getElementById('geo-upload').click()}>
+                                        <input id="geo-upload" type="file" accept=".geojson,.json" onChange={handleFileUpload} style={{ display: 'none' }} />
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+                                        </svg>
+                                        <span>رفع ملف GeoJSON أو JSON</span>
+                                        <div className="formats">
+                                            <span className="format-pill">.geojson</span>
+                                            <span className="format-pill">.json</span>
+                                        </div>
                                     </div>
 
-                                    {geoLayers.map(layer => {
-                                        const currentStyle = layerStyles[layer.id] || { color: layer.color };
-                                        return (
-                                            <div key={layer.id} className="layer-item active">
-                                                <div className="layer-main-info">
-                                                    <div
-                                                        className="layer-color-btn"
-                                                        onClick={(e) => {
-                                                            const rect = e.currentTarget.getBoundingClientRect();
-                                                            setStylePopup({
-                                                                layerId: layer.id,
-                                                                x: window.innerWidth - 360, // Right side position
-                                                                y: Math.max(20, Math.min(window.innerHeight - 600, rect.top - 40))
-                                                            });
-                                                        }}
-                                                        style={{ background: currentStyle.color || layer.color }}
-                                                        title="تعديل النمط والرموز"
-                                                    ></div>
-                                                    <div className="layer-text">
-                                                        {editingLayerId === layer.id ? (
+                                    <div className="panel-divider" style={{ margin: '15px 0', opacity: 0.2 }}></div>
+
+                                    <div className="link-import-section">
+                                        <div className="panel-section-title">استيراد من رابط (URL)</div>
+                                        <div className="link-input-group" style={{ display: 'flex', gap: '8px' }}>
+                                            <input
+                                                type="text"
+                                                placeholder="رابط ArcGIS أو GeoJSON..."
+                                                value={importLink}
+                                                onChange={(e) => setImportLink(e.target.value)}
+                                                style={{
+                                                    flex: 1, background: 'rgba(255,255,255,0.05)',
+                                                    border: '1px solid var(--border)', borderRadius: '8px',
+                                                    padding: '8px 12px', color: 'white', fontSize: '0.8rem'
+                                                }}
+                                            />
+                                            <button
+                                                onClick={handleImportLink}
+                                                disabled={isImporting}
+                                                style={{
+                                                    background: 'var(--primary)', color: 'black',
+                                                    border: 'none', borderRadius: '8px', padding: '0 15px',
+                                                    fontWeight: 'bold', cursor: 'pointer',
+                                                    opacity: isImporting ? 0.5 : 1
+                                                }}
+                                            >
+                                                {isImporting ? '...' : 'جلب'}
+                                            </button>
+                                        </div>
+                                        <small style={{ display: 'block', marginTop: '8px', color: 'var(--text-muted)', fontSize: '0.7rem' }}>
+                                            يدعم MapServer و FeatureServer و GeoJSON مباشر.
+                                        </small>
+                                    </div>
+                                </div>
+
+                                {geoLayers.length > 0 && (
+                                    <div className="panel-section">
+                                        <div className="panel-section-title">
+                                            <span>الطبقات النشطة</span>
+                                            <button onClick={() => { setGeoLayers([]); setLayerStyles({}); }} style={{ color: '#EF4444' }}>إزالة الكل</button>
+                                        </div>
+
+                                        {geoLayers.map(layer => {
+                                            const currentStyle = layerStyles[layer.id] || { color: layer.color };
+                                            return (
+                                                <div key={layer.id} className="layer-item active">
+                                                    <div className="layer-main-info">
+                                                        <div
+                                                            className="layer-color-btn"
+                                                            onClick={(e) => {
+                                                                const rect = e.currentTarget.getBoundingClientRect();
+                                                                setStylePopup({
+                                                                    layerId: layer.id,
+                                                                    x: window.innerWidth - 360, // Right side position
+                                                                    y: Math.max(20, Math.min(window.innerHeight - 600, rect.top - 40))
+                                                                });
+                                                            }}
+                                                            style={{ background: currentStyle.color || layer.color }}
+                                                            title="تعديل النمط والرموز"
+                                                        ></div>
+                                                        <div className="layer-text">
+                                                            {editingLayerId === layer.id ? (
                                                             <input
                                                                 autoFocus
                                                                 className="rename-input"
@@ -1657,6 +1720,78 @@ const PalNovaaLab = ({ onClose }) => {
                                             </div>
                                         );
                                     })}
+                                </div>
+                            )}
+
+                            {activeTab === 'injection' && (
+                                <div className="tab-content">
+                                    <div className="panel-section">
+                                        <div className="panel-section-title">رفع ملف HTML المستهدف</div>
+                                        <div 
+                                            className="upload-box" 
+                                            onClick={() => document.getElementById('html-upload').click()} 
+                                            style={{ 
+                                                borderColor: uploadedHtmlContent ? 'var(--primary)' : 'var(--border)',
+                                                background: uploadedHtmlContent ? 'rgba(6, 214, 242, 0.03)' : ''
+                                            }}
+                                        >
+                                            <input id="html-upload" type="file" accept=".html" onChange={handleHtmlFileUpload} style={{ display: 'none' }} />
+                                            <svg viewBox="0 0 24 24" fill="none" stroke={uploadedHtmlContent ? 'var(--primary)' : 'currentColor'} strokeWidth="1.5">
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+                                            </svg>
+                                            <span>{uploadedHtmlContent ? `تم تحميل: ${uploadedHtmlName}` : 'اختر ملف خريطة HTML'}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="panel-section">
+                                        <div className="panel-section-title">اختيار طبقات للحقن</div>
+                                        {geoLayers.length === 0 ? (
+                                            <div style={{ padding: '20px', textAlign: 'center', opacity: 0.5, fontSize: '0.8rem' }}>
+                                                لا توجد طبقات نشطة حالياً للحقن. قم بإضافة طبقات أولاً.
+                                            </div>
+                                        ) : (
+                                            <div className="injection-layer-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
+                                                {geoLayers.map(layer => (
+                                                    <div 
+                                                        key={layer.id} 
+                                                        className={`inject-item ${selectedInjectLayers.includes(layer.id) ? 'active' : ''}`} 
+                                                        onClick={() => toggleInjectLayer(layer.id)}
+                                                        style={{
+                                                            display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px',
+                                                            background: selectedInjectLayers.includes(layer.id) ? 'rgba(6, 214, 242, 0.1)' : 'rgba(255,255,255,0.03)',
+                                                            borderRadius: '10px', border: '1px solid',
+                                                            borderColor: selectedInjectLayers.includes(layer.id) ? 'var(--primary)' : 'transparent',
+                                                            cursor: 'pointer', transition: '0.2s'
+                                                        }}
+                                                    >
+                                                        <div style={{
+                                                            width: '18px', height: '18px', borderRadius: '4px', border: '2px solid var(--primary)',
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                            background: selectedInjectLayers.includes(layer.id) ? 'var(--primary)' : 'transparent'
+                                                        }}>
+                                                            {selectedInjectLayers.includes(layer.id) && <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="black" strokeWidth="4"><polyline points="20 6 9 17 4 12" /></svg>}
+                                                        </div>
+                                                        <span style={{ fontSize: '0.85rem', flex: 1 }}>{layer.name}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="panel-section" style={{ marginTop: 'auto', paddingTop: '20px' }}>
+                                        <button 
+                                            className="ds-btn primary w-100" 
+                                            disabled={!uploadedHtmlContent || selectedInjectLayers.length === 0}
+                                            onClick={performInjection}
+                                            style={{ padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+                                        >
+                                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                                            تنفيذ حقن البيانات
+                                        </button>
+                                        <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '12px', textAlign: 'center', lineHeight: '1.4' }}>
+                                            سيتم دمج الطبقات المختارة داخل ملف الـ HTML المرفوع مع الحفاظ على تصميمه الأصلي وتحديث بياناته برمجياً.
+                                        </p>
+                                    </div>
                                 </div>
                             )}
 
