@@ -932,22 +932,28 @@ const PalNovaaLab = ({ onClose }) => {
             }
         } catch (e) { console.error("Bounds calc error", e); }
 
-        // 5. Create a clean version of layers with absolute URLs
+        // 5. Create a clean version of layers with smart embedding
         const cleanLayers = exportLayers.map(l => {
             const clean = { ...l };
-            // Ensure dataUrl is an absolute URL for standalone portability
+            const apiUrl = window.location.origin === 'http://localhost:5173' ? 'http://localhost:5001' : window.location.origin;
+            
             let finalUrl = clean.dataUrl || clean.url;
             if (finalUrl && finalUrl.startsWith('/')) {
-                finalUrl = window.location.origin + finalUrl;
+                finalUrl = apiUrl + finalUrl;
             } else if (finalUrl && !finalUrl.startsWith('http') && !finalUrl.startsWith('blob:')) {
-                finalUrl = window.location.origin + '/' + finalUrl;
+                finalUrl = apiUrl + '/' + finalUrl;
             }
             
             clean.dataUrl = finalUrl;
 
-            // If we have a valid external URL, we can strip the heavy data
-            if (clean.dataUrl && !clean.dataUrl.startsWith('blob:')) {
+            // SMART EMBEDDING: If data is small (under 2MB) OR no URL, embed it.
+            // If data is huge AND we have a URL, strip it to save size.
+            const dataSize = clean.data ? JSON.stringify(clean.data).length : 0;
+            if (clean.dataUrl && dataSize > 2 * 1024 * 1024) {
                 delete clean.data; 
+                console.log(`Layer ${clean.name} is large (${(dataSize/1024/1024).toFixed(2)}MB), using remote URL.`);
+            } else {
+                console.log(`Layer ${clean.name} is small or has no URL, embedding directly.`);
             }
             return clean;
         });
