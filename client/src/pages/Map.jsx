@@ -348,6 +348,7 @@ const MapComponent = () => {
     const [friendsMap, setFriendsMap] = useState([]);
     const [followedShopsMap, setFollowedShopsMap] = useState([]);
     const [allShopsMap, setAllShopsMap] = useState([]);
+    const [allFacilitiesMap, setAllFacilitiesMap] = useState([]);
     const [visibleFriendName, setVisibleFriendName] = useState(null); // Track which friend's name is shown
     const [firstLabelLayerId, setFirstLabelLayerId] = useState(null); // For "built-in" route placement beneath labels
     const [searchResults, setSearchResults] = useState([]); // Added to prevent ReferenceError after revert
@@ -999,22 +1000,22 @@ const MapComponent = () => {
     // Live Follow Mode (Removed continuous follow per user request)
     // Map will now move only when user explicitly clicks the center button
 
-    // Friends Location
+    // Friends Location & Map Data
     useEffect(() => {
         if (!user) return;
         const fetchFriendsLocs = async () => {
             try {
-                const [friendsData, shopsData, managedShopsData, allShopsData, facilitiesData] = await Promise.all([
+                const [friendsData, shopsData, managedShopsData, allMapData] = await Promise.all([
                     friendService.getFriends().catch(e => ({ friends: [] })),
                     shopService.getFollowing().catch(e => ({ shops: [] })),
                     shopService.getManagedShops().catch(e => ({ shops: [] })),
-                    shopService.getAllForMap().catch(e => ({ shops: [] })),
-                    shopService.getFollowedUniversitiesFacilities().catch(e => ({ facilities: [] }))
+                    shopService.getAllForMap().catch(e => ({ shops: [], facilities: [] }))
                 ]);
+                
                 setFriendsMap((friendsData?.friends || []).filter(f => f.last_latitude && f.last_longitude));
                 setFollowedShopsMap(shopsData?.shops || []);
-                setAllShopsMap(allShopsData?.shops || []);
-                setFollowedFacilitiesMap(facilitiesData?.facilities || []);
+                setAllShopsMap(allMapData?.shops || []);
+                setAllFacilitiesMap(allMapData?.facilities || []);
 
                 if (managedShopsData?.shops) {
                     setManagedShopsMap(managedShopsData.shops);
@@ -1681,79 +1682,52 @@ const MapComponent = () => {
                     ))}
 
                     {/* University Facilities Markers - Visible when zoomed in close */}
-                    {viewState.zoom >= 17 && followedFacilitiesMap.map(fac => (
-                        <Marker
-                            key={`followed-fac-${fac.id}`}
-                            longitude={parseFloat(fac.longitude)}
-                            latitude={parseFloat(fac.latitude)}
-                            anchor="bottom"
-                            onClick={e => {
-                                e.originalEvent.stopPropagation();
-                                setSelectedFacilityId(fac.id);
-                                setShowFacilityProfile(true);
-                            }}
-                        >
-                            <div className="facility-map-marker" style={{
-                                display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer',
-                                transition: 'transform 0.2s', zIndex: 50
-                            }}
-                            onMouseOver={e => e.currentTarget.style.transform = 'scale(1.15)'}
-                            onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+                    {viewState.zoom >= 17 && allFacilitiesMap.map(fac => {
+                        const isFollowedUni = followedShopsMap.some(s => s.id === fac.parent_shop_id);
+                        return (
+                            <Marker
+                                key={`fac-${fac.id}`}
+                                longitude={parseFloat(fac.longitude)}
+                                latitude={parseFloat(fac.latitude)}
+                                anchor="bottom"
+                                onClick={e => {
+                                    e.originalEvent.stopPropagation();
+                                    setSelectedFacilityId(fac.id);
+                                    setShowFacilityProfile(true);
+                                }}
                             >
-                                <div style={{
-                                    width: '38px', height: '38px', background: 'white', borderRadius: '50%', 
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    boxShadow: '0 4px 12px rgba(0,0,0,0.4)', border: '2px solid #3b82f6',
-                                    fontSize: '20px', overflow: 'hidden'
-                                }}>
-                                    {fac.icon && fac.icon.startsWith('http') ? (
-                                        <img src={getImageUrl(fac.icon)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    ) : (
-                                        fac.icon || '🏛️'
-                                    )}
+                                <div className="facility-map-marker" style={{
+                                    display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer',
+                                    transition: 'transform 0.2s', zIndex: 50
+                                }}
+                                onMouseOver={e => e.currentTarget.style.transform = 'scale(1.15)'}
+                                onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+                                >
+                                    <div style={{
+                                        width: '38px', height: '38px', background: 'white', borderRadius: '50%', 
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        boxShadow: '0 4px 12px rgba(0,0,0,0.4)', 
+                                        border: isFollowedUni ? '3px solid #3b82f6' : '2px solid #94a3b8',
+                                        fontSize: '20px', overflow: 'hidden'
+                                    }}>
+                                        {fac.icon && fac.icon.startsWith('http') ? (
+                                            <img src={getImageUrl(fac.icon)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        ) : (
+                                            fac.icon || '🏛️'
+                                        )}
+                                    </div>
+                                    <div style={{
+                                        marginTop: '4px', background: 'rgba(0,0,0,0.65)', color: 'white',
+                                        fontSize: '10px', padding: '2px 8px', borderRadius: '10px',
+                                        backdropFilter: 'blur(4px)', fontWeight: 'bold', whiteSpace: 'nowrap',
+                                        border: isFollowedUni ? '1px solid #3b82f6' : 'none'
+                                    }}>
+                                        {fac.name}
+                                    </div>
                                 </div>
-                                <div style={{
-                                    marginTop: '4px', background: 'rgba(0,0,0,0.65)', color: 'white',
-                                    fontSize: '10px', padding: '2px 8px', borderRadius: '10px',
-                                    backdropFilter: 'blur(4px)', fontWeight: 'bold', whiteSpace: 'nowrap'
-                                }}>
-                                    {fac.name}
-                                </div>
-                            </div>
-                        </Marker>
-                    ))}
-
-                    {/* Temp markers for selected profile (if not already followed) */}
-                    {viewState.zoom >= 17.5 && selectedUniFacilities.filter(f => !followedFacilitiesMap.some(ff => ff.id === f.id)).map(fac => (
-                        <Marker
-                            key={`fac-${fac.id}`}
-                            longitude={parseFloat(fac.longitude)}
-                            latitude={parseFloat(fac.latitude)}
-                            anchor="bottom"
-                            onClick={e => {
-                                e.originalEvent.stopPropagation();
-                                setSelectedFacilityId(fac.id);
-                                setShowFacilityProfile(true);
-                            }}
-                        >
-                            <div className="facility-map-marker" style={{
-                                display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer'
-                            }}>
-                                <div style={{
-                                    width: '32px', height: '32px', background: 'white', borderRadius: '50%', 
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    boxShadow: '0 4px 12px rgba(0,0,0,0.4)', border: '2px solid #fbab15',
-                                    fontSize: '18px', overflow: 'hidden'
-                                }}>
-                                    {fac.icon && fac.icon.startsWith('http') ? (
-                                        <img src={getImageUrl(fac.icon)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    ) : (
-                                        fac.icon || '🏛️'
-                                    )}
-                                </div>
-                            </div>
-                        </Marker>
-                    ))}
+                            </Marker>
+                        );
+                    })}
 
                 </Map>
             </div>

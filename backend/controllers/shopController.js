@@ -382,13 +382,14 @@ const getShopProfile = async (req, res) => {
         if (shopResult.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
 
         const shop = shopResult.rows[0];
-        const isOwner = currentUserId && shop.owner_id === currentUserId;
-
+        
         let userRole = null;
         if (currentUserId) {
             const userRes = await pool.query('SELECT role FROM users WHERE id = $1', [parseInt(currentUserId)]);
             userRole = userRes.rows[0]?.role;
         }
+
+        const isOwner = currentUserId && (String(shop.owner_id) === String(currentUserId) || userRole === 'admin');
 
         if (shop.is_hidden && !isOwner && userRole !== 'admin') {
             return res.status(404).json({ error: 'Shop hidden' });
@@ -438,9 +439,8 @@ const updateShopProfile = async (req, res) => {
         const shopCheck = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [shopId]);
         if (shopCheck.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
 
-        if (userRole !== 'admin' && shopCheck.rows[0].owner_id !== userId) {
-            return res.status(403).json({ error: 'Not authorized' });
-        }
+        const isAuthorized = userRole === 'admin' || String(shopCheck.rows[0].owner_id) === String(userId);
+        if (!isAuthorized) return res.status(403).json({ error: 'Unauthorized' });
 
         let queryParts = [];
         let values = [];
@@ -486,7 +486,8 @@ const updateShopImages = async (req, res) => {
         const shopCheck = await pool.query('SELECT owner_id, profile_picture, cover_picture FROM shops WHERE id = $1', [shopId]);
         if (shopCheck.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
 
-        if (userRole !== 'admin' && shopCheck.rows[0].owner_id !== userId) return res.status(403).json({ error: 'Unauthorized' });
+        const isAuthorized = userRole === 'admin' || String(shopCheck.rows[0].owner_id) === String(userId);
+        if (!isAuthorized) return res.status(403).json({ error: 'Unauthorized' });
 
         let queryParts = [];
         let params = [];
@@ -528,7 +529,8 @@ const createShopPost = async (req, res) => {
         const shopRes = await pool.query('SELECT owner_id, latitude, longitude FROM shops WHERE id = $1', [shopId]);
         if (shopRes.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
 
-        if (req.user.role !== 'admin' && shopRes.rows[0].owner_id !== userId) return res.status(403).json({ error: 'Unauthorized' });
+        const isAuthorized = req.user.role === 'admin' || String(shopRes.rows[0].owner_id) === String(userId);
+        if (!isAuthorized) return res.status(403).json({ error: 'Unauthorized' });
 
         const { uploadToSupabase } = require('../utils/storage');
         let image_url = null, media_urls = [], media_type = 'text';
@@ -741,8 +743,10 @@ const getFacilityProfile = async (req, res) => {
             specialties = specRes.rows;
         }
 
-        res.json({ facility: facilityRes.rows[0], posts: postsRes.rows, specialties, is_admin: req.user.role === 'admin' || facilityRes.rows[0].uni_owner_id === req.user.userId });
+        const is_admin = req.user && (req.user.role === 'admin' || String(facilityRes.rows[0].uni_owner_id) === String(req.user.userId));
+        res.json({ facility: facilityRes.rows[0], posts: postsRes.rows, specialties, is_admin });
     } catch (e) {
+        console.error('getFacilityProfile error:', e);
         res.status(500).json({ error: 'Failed' });
     }
 };
@@ -752,7 +756,8 @@ const addFacilityPost = async (req, res) => {
         const { facilityId } = req.params;
         const { title, content, post_type, event_date } = req.body;
         const checkRes = await pool.query(`SELECT s.owner_id FROM university_facilities f JOIN shops s ON f.university_id = s.id WHERE f.id = $1`, [facilityId]);
-        if (req.user.role !== 'admin' && checkRes.rows[0].owner_id !== req.user.userId) return res.status(403).json({ error: 'Unauthorized' });
+        const isAuthorized = req.user.role === 'admin' || String(checkRes.rows[0].owner_id) === String(req.user.userId);
+        if (!isAuthorized) return res.status(403).json({ error: 'Unauthorized' });
 
         const { uploadToSupabase } = require('../utils/storage');
         let urls = [];
@@ -771,7 +776,9 @@ const addCollegeSpecialty = async (req, res) => {
         const { name, description, degree_level } = req.body;
         const checkRes = await pool.query(`SELECT s.owner_id, f.category FROM university_facilities f JOIN shops s ON f.university_id = s.id WHERE f.id = $1`, [facilityId]);
         if (checkRes.rows[0].category !== 'الكليات') return res.status(400).json({ error: 'Not a College' });
-        if (req.user.role !== 'admin' && checkRes.rows[0].owner_id !== req.user.userId) return res.status(403).json({ error: 'Unauthorized' });
+        
+        const isAuthorized = req.user.role === 'admin' || String(checkRes.rows[0].owner_id) === String(req.user.userId);
+        if (!isAuthorized) return res.status(403).json({ error: 'Unauthorized' });
 
         const result = await pool.query(`INSERT INTO university_specialties (facility_id, name, description, degree_level) VALUES ($1, $2, $3, $4) RETURNING *`, [facilityId, name, description, degree_level]);
         res.status(201).json(result.rows[0]);
@@ -784,7 +791,8 @@ const deleteUniversityFacility = async (req, res) => {
     try {
         const { facilityId } = req.params;
         const checkRes = await pool.query(`SELECT s.owner_id FROM university_facilities f JOIN shops s ON f.university_id = s.id WHERE f.id = $1`, [facilityId]);
-        if (req.user.role !== 'admin' && checkRes.rows[0].owner_id !== req.user.userId) return res.status(403).json({ error: 'Unauthorized' });
+        const isAuthorized = req.user.role === 'admin' || String(checkRes.rows[0].owner_id) === String(req.user.userId);
+        if (!isAuthorized) return res.status(403).json({ error: 'Unauthorized' });
 
         await pool.query('DELETE FROM facility_posts WHERE facility_id = $1', [facilityId]);
         await pool.query('DELETE FROM university_specialties WHERE facility_id = $1', [facilityId]);
@@ -810,7 +818,12 @@ const updateUniversityFacility = async (req, res) => {
         `, [facilityId]);
 
         if (checkRes.rows.length === 0) return res.status(404).json({ error: 'Facility not found' });
-        if (userRole !== 'admin' && checkRes.rows[0].owner_id !== userId) return res.status(403).json({ error: 'Unauthorized' });
+        
+        const isAuthorized = userRole === 'admin' || String(checkRes.rows[0].owner_id) === String(userId);
+        if (!isAuthorized) {
+            console.warn(`Unauthorized update attempt by user ${userId} for facility ${facilityId}`);
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
 
         let queryParts = [];
         let vals = [];
@@ -818,22 +831,23 @@ const updateUniversityFacility = async (req, res) => {
 
         if (name !== undefined) { queryParts.push(`name = $${idx++}`); vals.push(name); }
         if (description !== undefined) { queryParts.push(`description = $${idx++}`); vals.push(description); }
-        if (icon !== undefined) { queryParts.push(`icon = $${idx++}`); vals.push(icon); }
-
-        const { uploadToCloud } = require('../utils/storage');
         
-        if (req.files) {
-            if (req.files.icon_file) {
-                const url = await uploadToCloud(req.files.icon_file[0].buffer, req.files.icon_file[0].originalname, req.files.icon_file[0].mimetype);
-                queryParts.push(`icon = $${idx++}`);
-                vals.push(url);
-            }
-            if (req.files.cover_file) {
-                const url = await uploadToCloud(req.files.cover_file[0].buffer, req.files.cover_file[0].originalname, req.files.cover_file[0].mimetype);
-                // Assume cover_image or cover_background column exists or we add it
-                queryParts.push(`cover_background = $${idx++}`);
-                vals.push(url);
-            }
+        const { uploadToCloud } = require('../utils/storage');
+        let finalIcon = icon;
+
+        if (req.files && req.files.icon_file) {
+            finalIcon = await uploadToCloud(req.files.icon_file[0].buffer, req.files.icon_file[0].originalname, req.files.icon_file[0].mimetype);
+        }
+
+        if (finalIcon !== undefined) {
+            queryParts.push(`icon = $${idx++}`);
+            vals.push(finalIcon);
+        }
+
+        if (req.files && req.files.cover_file) {
+            const url = await uploadToCloud(req.files.cover_file[0].buffer, req.files.cover_file[0].originalname, req.files.cover_file[0].mimetype);
+            queryParts.push(`cover_background = $${idx++}`);
+            vals.push(url);
         }
 
         if (queryParts.length === 0) return res.json(checkRes.rows[0]);
@@ -896,9 +910,16 @@ const getFollowedUniversitiesFacilities = async (req, res) => {
 
 const getAllShopsMap = async (req, res) => {
     try {
-        const result = await pool.query('SELECT id, name, category, profile_picture, latitude, longitude, floor, parent_shop_id FROM shops WHERE is_hidden = FALSE');
-        res.json({ shops: result.rows });
+        const shopsRes = await pool.query('SELECT id, name, category, profile_picture, latitude, longitude, floor, parent_shop_id, \'shop\' as type FROM shops WHERE is_hidden = FALSE');
+        const facilitiesRes = await pool.query('SELECT id, name, category, icon, latitude, longitude, university_id as parent_shop_id, \'facility\' as type FROM university_facilities');
+        
+        res.json({ 
+            shops: shopsRes.rows,
+            facilities: facilitiesRes.rows,
+            all: [...shopsRes.rows, ...facilitiesRes.rows]
+        });
     } catch (e) {
+        console.error('getAllShopsMap error:', e);
         res.status(500).json({ error: 'Failed' });
     }
 };
