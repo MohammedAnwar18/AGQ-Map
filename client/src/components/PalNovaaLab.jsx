@@ -1476,8 +1476,8 @@ const PalNovaaLab = ({ onClose }) => {
                                                                 const rect = e.currentTarget.getBoundingClientRect();
                                                                 setStylePopup({ 
                                                                     layerId: layer.id, 
-                                                                    x: rect.left - 300, 
-                                                                    y: Math.max(70, Math.min(window.innerHeight - 580, rect.top)) 
+                                                                    x: rect.left - 295, 
+                                                                    y: Math.max(70, Math.min(window.innerHeight - 580, rect.top - 50)) 
                                                                 });
                                                             }}
                                                             style={{ background: currentStyle.color || layer.color }}
