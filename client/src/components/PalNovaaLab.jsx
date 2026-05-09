@@ -44,7 +44,7 @@ const PalNovaaLab = ({ onClose }) => {
                     <p style={{ fontSize: '1rem', color: '#94a3b8', lineHeight: '1.6', marginBottom: '25px' }}>
                         عذراً، هذا القسم متاح فقط لمستخدمي أجهزة الحاسوب واللابتوب لضمان أفضل تجربة أداء وتحليل للبيانات.
                     </p>
-                    <button 
+                    <button
                         onClick={onClose}
                         style={{
                             background: '#fbab15', color: 'black', border: 'none',
@@ -220,7 +220,7 @@ const PalNovaaLab = ({ onClose }) => {
             const newFeature = { type: 'Feature', geometry: { type: geometryType, coordinates: coords }, properties: { type: `drawn_${drawingMode}`, name: `رسمة (${drawingMode})`, Measurement: metricText } };
             const newLayerId = Date.now().toString();
             const defaultColor = ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899'][geoLayers.length % 5];
-            
+
             setGeoLayers(prev => [...prev, {
                 id: newLayerId,
                 name: `رسم (${drawingMode === 'polygon' ? 'مساحة' : drawingMode === 'measure' ? 'قياس مسافة' : 'مسار'})`,
@@ -259,7 +259,7 @@ const PalNovaaLab = ({ onClose }) => {
                 const newFeature = { type: 'Feature', geometry: { type: 'Point', coordinates: coord }, properties: { type: 'drawn_point', name: 'نقطة محددة' } };
                 const newLayerId = Date.now().toString();
                 const defaultColor = ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899'][geoLayers.length % 5];
-                
+
                 setGeoLayers(prev => [...prev, {
                     id: newLayerId,
                     name: 'رسم (نقطة)',
@@ -431,12 +431,12 @@ const PalNovaaLab = ({ onClose }) => {
                         const newLayer = {
                             id: newLayerId,
                             name: file.name,
-                            dataUrl: response.data.url, 
+                            dataUrl: response.data.url,
                             data: response.data.geojson || json, // Use server-processed if available
                             color: defaultColor
                         };
                         setGeoLayers(prev => [...prev, newLayer]);
-                        
+
                         setLayerStyles(prev => ({
                             ...prev,
                             [newLayerId]: {
@@ -571,14 +571,14 @@ const PalNovaaLab = ({ onClose }) => {
         setIsGenerating(true);
         try {
             // Use absolute URL if possible, or fallback to relative for proxy
-            const apiUrl = window.location.origin === 'http://localhost:5173' 
-                ? 'http://localhost:5001' 
+            const apiUrl = window.location.origin === 'http://localhost:5173'
+                ? 'http://localhost:5001'
                 : '';
-            
+
             const response = await axios.post(`${apiUrl}/api/ai/generate-design`, {
                 prompt: magicPromptText
             });
-            
+
             const data = response.data;
             if (data.selections) {
                 setDesignSelections(prev => ({ ...prev, ...data.selections }));
@@ -588,7 +588,7 @@ const PalNovaaLab = ({ onClose }) => {
             }
             setIsMagicPromptOpen(false);
             setMagicPromptText('');
-            
+
             // Show a success notification or toast (mocked for now)
             alert('تم توليد التصميم الإبداعي بنجاح!');
         } catch (err) {
@@ -671,20 +671,20 @@ const PalNovaaLab = ({ onClose }) => {
                     url = base64;
                 } catch (e) { console.error(e); }
             }
-            
+
             // Get custom style or default
-            const style = layerStyles[layer.id] || { 
-                color: layer.color || '#F5A623', 
-                outlineColor: '#ffffff', 
-                outlineWidth: 2, 
-                shape: 'circle', 
-                opacity: 1, 
-                fillOpacity: 0.3 
+            const style = layerStyles[layer.id] || {
+                color: layer.color || '#F5A623',
+                outlineColor: '#ffffff',
+                outlineWidth: 2,
+                shape: 'circle',
+                opacity: 1,
+                fillOpacity: 0.3
             };
 
             exportLayers.push({
                 id: layer.id, name: layer.name, type: layer.type || 'vector',
-                data: data, 
+                data: data,
                 dataUrl: layer.dataUrl || layer.url, // Ensure we pass the URL for optimization
                 coordinates: layer.coordinates, color: layer.color,
                 style: style
@@ -941,8 +941,8 @@ const PalNovaaLab = ({ onClose }) => {
                         if (f.geometry?.type === 'Point') allCoords.push(f.geometry.coordinates);
                         else if (f.geometry?.coordinates) {
                             const flat = f.geometry.coordinates.flat(5).filter(c => typeof c === 'number' && !isNaN(c));
-                            for(let i=0; i<flat.length; i+=2) {
-                                if (flat[i] && flat[i+1]) allCoords.push([flat[i], flat[i+1]]);
+                            for (let i = 0; i < flat.length; i += 2) {
+                                if (flat[i] && flat[i + 1]) allCoords.push([flat[i], flat[i + 1]]);
                             }
                         }
                     });
@@ -1317,13 +1317,13 @@ const PalNovaaLab = ({ onClose }) => {
                             <NavigationControl position="bottom-right" />
 
                             {geoLayers.map(layer => {
-                                const style = layerStyles[layer.id] || { 
-                                    color: layer.color || '#F5A623', 
-                                    outlineColor: '#ffffff', 
-                                    outlineWidth: 2, 
-                                    shape: 'circle', 
-                                    opacity: 1, 
-                                    fillOpacity: 0.3 
+                                const style = layerStyles[layer.id] || {
+                                    color: layer.color || '#F5A623',
+                                    outlineColor: '#ffffff',
+                                    outlineWidth: 2,
+                                    shape: 'circle',
+                                    opacity: 1,
+                                    fillOpacity: 0.3
                                 };
 
                                 if (layer.type === 'raster') {
@@ -1362,7 +1362,7 @@ const PalNovaaLab = ({ onClose }) => {
                                                 'line-opacity': style.opacity ?? 1
                                             }}
                                         />
-                                        
+
                                         {/* Lines */}
                                         <Layer
                                             id={`line-${layer.id}`}
@@ -1374,7 +1374,7 @@ const PalNovaaLab = ({ onClose }) => {
                                                 'line-opacity': style.opacity ?? 1
                                             }}
                                         />
-                                        
+
                                         {/* Points */}
                                         <Layer
                                             id={`point-${layer.id}`}
@@ -1480,22 +1480,22 @@ const PalNovaaLab = ({ onClose }) => {
                                 <div className="link-import-section">
                                     <div className="panel-section-title">استيراد من رابط (URL)</div>
                                     <div className="link-input-group" style={{ display: 'flex', gap: '8px' }}>
-                                        <input 
-                                            type="text" 
-                                            placeholder="رابط ArcGIS أو GeoJSON..." 
+                                        <input
+                                            type="text"
+                                            placeholder="رابط ArcGIS أو GeoJSON..."
                                             value={importLink}
                                             onChange={(e) => setImportLink(e.target.value)}
-                                            style={{ 
-                                                flex: 1, background: 'rgba(255,255,255,0.05)', 
+                                            style={{
+                                                flex: 1, background: 'rgba(255,255,255,0.05)',
                                                 border: '1px solid var(--border)', borderRadius: '8px',
                                                 padding: '8px 12px', color: 'white', fontSize: '0.8rem'
                                             }}
                                         />
-                                        <button 
+                                        <button
                                             onClick={handleImportLink}
                                             disabled={isImporting}
-                                            style={{ 
-                                                background: 'var(--primary)', color: 'black', 
+                                            style={{
+                                                background: 'var(--primary)', color: 'black',
                                                 border: 'none', borderRadius: '8px', padding: '0 15px',
                                                 fontWeight: 'bold', cursor: 'pointer',
                                                 opacity: isImporting ? 0.5 : 1
@@ -1510,89 +1510,89 @@ const PalNovaaLab = ({ onClose }) => {
                                 </div>
                             </div>
 
-                                {geoLayers.length > 0 && (
-                                    <div className="panel-section">
-                                        <div className="panel-section-title">
-                                            <span>الطبقات النشطة</span>
-                                            <button onClick={() => { setGeoLayers([]); setLayerStyles({}); }} style={{ color: '#EF4444' }}>إزالة الكل</button>
-                                        </div>
+                            {geoLayers.length > 0 && (
+                                <div className="panel-section">
+                                    <div className="panel-section-title">
+                                        <span>الطبقات النشطة</span>
+                                        <button onClick={() => { setGeoLayers([]); setLayerStyles({}); }} style={{ color: '#EF4444' }}>إزالة الكل</button>
+                                    </div>
 
-                                        {geoLayers.map(layer => {
-                                            const currentStyle = layerStyles[layer.id] || { color: layer.color };
-                                            return (
-                                                <div key={layer.id} className="layer-item active">
-                                                    <div className="layer-main-info">
-                                                        <div 
-                                                            className="layer-color-btn" 
-                                                            onClick={(e) => {
-                                                                const rect = e.currentTarget.getBoundingClientRect();
-                                                                setStylePopup({ 
-                                                                    layerId: layer.id, 
-                                                                    x: rect.left - 295, 
-                                                                    y: Math.max(70, Math.min(window.innerHeight - 580, rect.top - 50)) 
-                                                                });
-                                                            }}
-                                                            style={{ background: currentStyle.color || layer.color }}
-                                                            title="تعديل النمط والرموز"
-                                                        ></div>
-                                                        <div className="layer-text">
-                                                            {editingLayerId === layer.id ? (
-                                                                <input
-                                                                    autoFocus
-                                                                    className="rename-input"
-                                                                    value={tempLayerName}
-                                                                    onChange={(e) => setTempLayerName(e.target.value)}
-                                                                    onBlur={() => handleRenameLayer(layer.id, tempLayerName)}
-                                                                    onKeyDown={(e) => {
-                                                                        if (e.key === 'Enter') {
-                                                                            e.preventDefault();
-                                                                            handleRenameLayer(layer.id, tempLayerName);
-                                                                        }
-                                                                        if (e.key === 'Escape') setEditingLayerId(null);
-                                                                    }}
-                                                                />
-                                                            ) : (
-                                                                <h5 onDoubleClick={() => { setEditingLayerId(layer.id); setTempLayerName(layer.name); }}>
-                                                                    {layer.name}
-                                                                </h5>
-                                                            )}
-                                                            <small>{layer.data?.features?.length || 0} معلم</small>
-                                                            {layer.measurement && <small style={{ color: 'var(--accent-cyan)', fontWeight: 'bold' }}>القياس: {layer.measurement}</small>}
-                                                        </div>
-                                                    </div>
-                                                    <div className="layer-actions">
-                                                        <button className="edit" onClick={() => { setEditingLayerId(layer.id); setTempLayerName(layer.name); }} title="إعادة تسمية">
-                                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
-                                                        </button>
-                                                        <button onClick={() => { setActiveTableLayerId(layer.id); setShowBottomTable(true); }} title="عرض البيانات الوصفية">
-                                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
-                                                        </button>
-                                                        <button className="delete" onClick={() => { setGeoLayers(prev => prev.filter(l => l.id !== layer.id)); setLayerStyles(prev => { const n = {...prev}; delete n[layer.id]; return n; }); if (activeTableLayerId === layer.id) { setActiveTableLayerId(null); setShowBottomTable(false); } }} title="حذف الطبقة">
-                                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
-                                                        </button>
+                                    {geoLayers.map(layer => {
+                                        const currentStyle = layerStyles[layer.id] || { color: layer.color };
+                                        return (
+                                            <div key={layer.id} className="layer-item active">
+                                                <div className="layer-main-info">
+                                                    <div
+                                                        className="layer-color-btn"
+                                                        onClick={(e) => {
+                                                            const rect = e.currentTarget.getBoundingClientRect();
+                                                            setStylePopup({
+                                                                layerId: layer.id,
+                                                                x: rect.left - 335, // 320px width + gap
+                                                                y: Math.max(20, Math.min(window.innerHeight - 600, rect.top - 40))
+                                                            });
+                                                        }}
+                                                        style={{ background: currentStyle.color || layer.color }}
+                                                        title="تعديل النمط والرموز"
+                                                    ></div>
+                                                    <div className="layer-text">
+                                                        {editingLayerId === layer.id ? (
+                                                            <input
+                                                                autoFocus
+                                                                className="rename-input"
+                                                                value={tempLayerName}
+                                                                onChange={(e) => setTempLayerName(e.target.value)}
+                                                                onBlur={() => handleRenameLayer(layer.id, tempLayerName)}
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') {
+                                                                        e.preventDefault();
+                                                                        handleRenameLayer(layer.id, tempLayerName);
+                                                                    }
+                                                                    if (e.key === 'Escape') setEditingLayerId(null);
+                                                                }}
+                                                            />
+                                                        ) : (
+                                                            <h5 onDoubleClick={() => { setEditingLayerId(layer.id); setTempLayerName(layer.name); }}>
+                                                                {layer.name}
+                                                            </h5>
+                                                        )}
+                                                        <small>{layer.data?.features?.length || 0} معلم</small>
+                                                        {layer.measurement && <small style={{ color: 'var(--accent-cyan)', fontWeight: 'bold' }}>القياس: {layer.measurement}</small>}
                                                     </div>
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-
-                                <div className="panel-section">
-                                    <div className="panel-section-title"><span>معلومات الخريطة</span></div>
-                                    <div className="info-row"><span className="label">خط العرض</span><span className="value mono">{mapState.latitude.toFixed(4)}°N</span></div>
-                                    <div className="info-row"><span className="label">خط الطول</span><span className="value mono">{mapState.longitude.toFixed(4)}°E</span></div>
-                                    <div className="info-row"><span className="label">مستوى التكبير</span><span className="value mono">{mapState.zoom.toFixed(1)}x</span></div>
+                                                <div className="layer-actions">
+                                                    <button className="edit" onClick={() => { setEditingLayerId(layer.id); setTempLayerName(layer.name); }} title="إعادة تسمية">
+                                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                                                    </button>
+                                                    <button onClick={() => { setActiveTableLayerId(layer.id); setShowBottomTable(true); }} title="عرض البيانات الوصفية">
+                                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
+                                                    </button>
+                                                    <button className="delete" onClick={() => { setGeoLayers(prev => prev.filter(l => l.id !== layer.id)); setLayerStyles(prev => { const n = { ...prev }; delete n[layer.id]; return n; }); if (activeTableLayerId === layer.id) { setActiveTableLayerId(null); setShowBottomTable(false); } }} title="حذف الطبقة">
+                                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
+                            )}
+
+                            <div className="panel-section">
+                                <div className="panel-section-title"><span>معلومات الخريطة</span></div>
+                                <div className="info-row"><span className="label">خط العرض</span><span className="value mono">{mapState.latitude.toFixed(4)}°N</span></div>
+                                <div className="info-row"><span className="label">خط الطول</span><span className="value mono">{mapState.longitude.toFixed(4)}°E</span></div>
+                                <div className="info-row"><span className="label">مستوى التكبير</span><span className="value mono">{mapState.zoom.toFixed(1)}x</span></div>
                             </div>
                         </div>
-                    </aside>
+                    </div>
+                </aside>
 
                 {/* ADVANCED STYLE POPUP */}
                 {stylePopup && (() => {
                     const layerId = stylePopup.layerId;
                     const layer = geoLayers.find(l => l.id === layerId);
                     const style = layerStyles[layerId] || { color: layer?.color || '#fbab15', outlineColor: '#ffffff', outlineWidth: 2, shape: 'circle', opacity: 1, fillOpacity: 0.3 };
-                    
+
                     const updateStyle = (key, val) => {
                         setLayerStyles(prev => ({
                             ...prev,
@@ -1652,8 +1652,8 @@ const PalNovaaLab = ({ onClose }) => {
                                     <label>شكل المعلم (الرموز)</label>
                                     <div className="symbol-grid">
                                         {pointShapes.map(shape => (
-                                            <div 
-                                                key={shape.id} 
+                                            <div
+                                                key={shape.id}
                                                 className={`symbol-item ${style.shape === shape.id ? 'active' : ''}`}
                                                 onClick={() => updateStyle('shape', shape.id)}
                                                 title={shape.name}
@@ -1663,7 +1663,7 @@ const PalNovaaLab = ({ onClose }) => {
                                         ))}
                                     </div>
                                 </div>
-                                
+
                                 <div className="style-footer">
                                     <button className="ds-btn primary small w-100" onClick={() => setStylePopup(null)}>تطبيق التنسيق</button>
                                 </div>
@@ -1709,7 +1709,7 @@ const PalNovaaLab = ({ onClose }) => {
                             </button>
                         )}
                         <button className="ds-btn secondary" onClick={() => handleSaveDesign('draft')} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)' }}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', height: '18px' }}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', height: '18px' }}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></svg>
                             حفظ كمسودة
                         </button>
                         <button className="ds-btn secondary" onClick={() => setIsPublishModalOpen(true)} style={{ background: '#10B981', color: 'white' }}>
@@ -1904,9 +1904,9 @@ const PalNovaaLab = ({ onClose }) => {
                                         <div key={p.id} className={`ds-pick ${designSelections.palette === p.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({ ...s, palette: p.id }))}>
                                             <div className="palette-strip">
                                                 {p.colors.map((c, i) => (
-                                                    <span 
-                                                        key={i} 
-                                                        style={{ background: c, cursor: 'pointer' }} 
+                                                    <span
+                                                        key={i}
+                                                        style={{ background: c, cursor: 'pointer' }}
                                                         title={c}
                                                         onClick={(e) => {
                                                             e.stopPropagation();
@@ -1924,9 +1924,9 @@ const PalNovaaLab = ({ onClose }) => {
                                     {/* Custom Color Pick */}
                                     <div className={`ds-pick ${designSelections.palette === 'custom' ? 'selected' : ''}`} style={{ borderStyle: 'dashed' }}>
                                         <div className="palette-strip" style={{ position: 'relative' }}>
-                                            <input 
-                                                type="color" 
-                                                value={designSelections.customPrimary} 
+                                            <input
+                                                type="color"
+                                                value={designSelections.customPrimary}
                                                 onChange={e => setDesignSelections(s => ({ ...s, palette: 'custom', customPrimary: e.target.value }))}
                                                 style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
                                             />
@@ -2044,16 +2044,16 @@ const PalNovaaLab = ({ onClose }) => {
                                                 <span>{s.icon}</span>
                                                 <span style={{ fontSize: '0.9rem' }}>{s.label}</span>
                                             </div>
-                                            <div 
+                                            <div
                                                 onClick={() => setDesignSelections(prev => ({ ...prev, [s.id]: !prev[s.id] }))}
-                                                style={{ 
-                                                    width: '45px', height: '24px', background: designSelections[s.id] ? 'var(--primary)' : 'rgba(255,255,255,0.1)', 
-                                                    borderRadius: '20px', position: 'relative', cursor: 'pointer', transition: '0.3s' 
+                                                style={{
+                                                    width: '45px', height: '24px', background: designSelections[s.id] ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
+                                                    borderRadius: '20px', position: 'relative', cursor: 'pointer', transition: '0.3s'
                                                 }}
                                             >
-                                                <div style={{ 
-                                                    width: '18px', height: '18px', background: 'white', borderRadius: '50%', 
-                                                    position: 'absolute', top: '3px', left: designSelections[s.id] ? '24px' : '3px', transition: '0.3s' 
+                                                <div style={{
+                                                    width: '18px', height: '18px', background: 'white', borderRadius: '50%',
+                                                    position: 'absolute', top: '3px', left: designSelections[s.id] ? '24px' : '3px', transition: '0.3s'
                                                 }}></div>
                                             </div>
                                         </div>
@@ -2100,8 +2100,8 @@ const PalNovaaLab = ({ onClose }) => {
                                                 { id: 'comps', label: 'مكونات' },
                                                 { id: 'icons', label: 'أيقونات' }
                                             ].map(t => (
-                                                <div 
-                                                    key={t.id} 
+                                                <div
+                                                    key={t.id}
                                                     onClick={() => setBuilderTab(t.id)}
                                                     style={{ flex: 1, padding: '12px 5px', fontSize: '10px', fontWeight: '800', textAlign: 'center', cursor: 'pointer', borderBottom: builderTab === t.id ? '2px solid var(--primary)' : '2px solid transparent', color: builderTab === t.id ? 'var(--primary)' : 'var(--text-muted)', transition: 'all 0.2s' }}
                                                 >
@@ -2158,17 +2158,17 @@ const PalNovaaLab = ({ onClose }) => {
                                                         { type: 'icon', label: 'مستخدم', icon: <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /> },
                                                         { type: 'icon', label: 'قائمة', icon: <path d="M3 6h18M3 12h18M3 18h18" /> }
                                                     ].map((el, i) => (
-                                                        <div 
-                                                            key={i} 
-                                                            draggable 
-                                                            onDragStart={e => { 
-                                                                e.dataTransfer.setData('elType', 'icon'); 
+                                                        <div
+                                                            key={i}
+                                                            draggable
+                                                            onDragStart={e => {
+                                                                e.dataTransfer.setData('elType', 'icon');
                                                                 e.dataTransfer.setData('elLabel', el.label);
                                                                 // Pass the icon path as a string
                                                                 const svgStr = React.isValidElement(el.icon) ? el.icon.props.d || el.icon.props.points : '';
                                                                 e.dataTransfer.setData('elIcon', svgStr);
-                                                            }} 
-                                                            className="builder-el-card" 
+                                                            }}
+                                                            className="builder-el-card"
                                                             style={{ padding: '8px' }}
                                                         >
                                                             <div style={{ color: 'var(--primary)', marginBottom: '4px' }}>
@@ -2470,16 +2470,16 @@ const PalNovaaLab = ({ onClose }) => {
                             />
 
                             <div style={{ display: 'flex', gap: '15px' }}>
-                                <button 
-                                    className={`ds-btn primary ${isGenerating ? 'loading' : ''}`} 
+                                <button
+                                    className={`ds-btn primary ${isGenerating ? 'loading' : ''}`}
                                     style={{ flex: 2, height: '50px', fontSize: '1rem' }}
                                     onClick={handleMagicGenerate}
                                     disabled={isGenerating}
                                 >
                                     {isGenerating ? 'جاري التحليل والتوليد...' : 'توليد التصميم السحري'}
                                 </button>
-                                <button 
-                                    className="ds-btn ghost" 
+                                <button
+                                    className="ds-btn ghost"
                                     style={{ flex: 1, height: '50px' }}
                                     onClick={() => setIsMagicPromptOpen(false)}
                                 >
@@ -2505,8 +2505,8 @@ const PalNovaaLab = ({ onClose }) => {
 
                             <div style={{ marginBottom: '20px' }}>
                                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', opacity: 0.8 }}>اسم المشروع</label>
-                                <input 
-                                    type="text" 
+                                <input
+                                    type="text"
                                     value={publishName}
                                     onChange={(e) => setPublishName(e.target.value)}
                                     placeholder="مثلاً: خريطة مدارس بوسطن"
@@ -2518,8 +2518,8 @@ const PalNovaaLab = ({ onClose }) => {
                                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', opacity: 0.8 }}>الرابط المخصص (Slug)</label>
                                 <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden' }}>
                                     <span style={{ padding: '0 10px', fontSize: '0.8rem', opacity: 0.5, borderLeft: '1px solid rgba(255,255,255,0.1)' }}>palnovaa.com/p/</span>
-                                    <input 
-                                        type="text" 
+                                    <input
+                                        type="text"
                                         value={publishSlug}
                                         onChange={(e) => setPublishSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
                                         placeholder="boston-schools"
@@ -2529,16 +2529,16 @@ const PalNovaaLab = ({ onClose }) => {
                             </div>
 
                             <div style={{ display: 'flex', gap: '15px' }}>
-                                <button 
-                                    className={`ds-btn primary ${isPublishing ? 'loading' : ''}`} 
+                                <button
+                                    className={`ds-btn primary ${isPublishing ? 'loading' : ''}`}
                                     style={{ flex: 2, height: '50px', background: '#10B981', border: 'none' }}
                                     onClick={handlePublishDesign}
                                     disabled={isPublishing}
                                 >
                                     {isPublishing ? 'جاري النشر...' : 'تأكيد النشر الآن'}
                                 </button>
-                                <button 
-                                    className="ds-btn ghost" 
+                                <button
+                                    className="ds-btn ghost"
                                     style={{ flex: 1, height: '50px' }}
                                     onClick={() => setIsPublishModalOpen(false)}
                                 >
