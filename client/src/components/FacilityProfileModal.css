@@ -237,7 +237,7 @@
     }
 
     .fac-header-content {
-        padding: 15px;
+        padding: calc(15px + env(safe-area-inset-top)) 15px 15px 15px;
         gap: 12px;
     }
     

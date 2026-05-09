@@ -158,7 +158,14 @@ const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
     return (
         <div className="facility-modal-overlay" onClick={onClose}>
             <div className="facility-modal-container slide-up" onClick={e => e.stopPropagation()}>
-                <div style={{ position: 'absolute', top: '15px', right: '15px', display: 'flex', gap: '10px', zIndex: 100 }}>
+                <div style={{ 
+                    position: 'absolute', 
+                    top: 'calc(15px + env(safe-area-inset-top))', 
+                    right: '15px', 
+                    display: 'flex', 
+                    gap: '10px', 
+                    zIndex: 100 
+                }}>
                     {is_admin && !isEditing && (
                         <button 
                             onClick={() => setIsEditing(true)}
@@ -166,18 +173,19 @@ const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
                                 background: 'rgba(251, 171, 21, 0.2)', 
                                 border: '1px solid rgba(251, 171, 21, 0.4)', 
                                 color: '#fbab15', 
-                                width: '35px',
-                                height: '35px',
+                                width: '40px',
+                                height: '40px',
                                 borderRadius: '50%', 
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                transition: 'all 0.2s'
+                                transition: 'all 0.2s',
+                                backdropFilter: 'blur(5px)'
                             }}
                             title="تعديل المرفق"
                         >
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                         </button>
                     )}
                     <button 
@@ -186,14 +194,15 @@ const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
                             background: 'rgba(0,0,0,0.5)', 
                             border: '1px solid rgba(255,255,255,0.2)', 
                             color: 'white', 
-                            width: '35px',
-                            height: '35px',
+                            width: '40px',
+                            height: '40px',
                             borderRadius: '50%', 
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            transition: 'background 0.2s'
+                            transition: 'background 0.2s',
+                            backdropFilter: 'blur(5px)'
                         }}
                         onMouseOver={e => e.currentTarget.style.background = 'rgba(0,0,0,0.7)'}
                         onMouseOut={e => e.currentTarget.style.background = 'rgba(0,0,0,0.5)'}
@@ -201,7 +210,17 @@ const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
                     >
                         <ShareIcon />
                     </button>
-                    <button className="fac-close-btn" onClick={onClose} style={{ position: 'static' }}>✕</button>
+                    <button 
+                        className="fac-close-btn" 
+                        onClick={onClose} 
+                        style={{ 
+                            position: 'static', 
+                            width: '40px', 
+                            height: '40px', 
+                            background: 'rgba(255,255,255,0.1)',
+                            backdropFilter: 'blur(5px)'
+                        }}
+                    >✕</button>
                 </div>
 
                 {isEditing ? (

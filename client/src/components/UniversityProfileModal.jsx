@@ -422,33 +422,71 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
             }}>
                 
                 {/* Standard Modal Header */}
-                <div className="modal-header" style={{ position: 'sticky', top: 0, zIndex: 1000, background: 'var(--bg-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 15px' }}>
+                <div className="modal-header" style={{ 
+                    position: 'sticky', 
+                    top: 0, 
+                    zIndex: 1000, 
+                    background: 'var(--bg-secondary)', 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    padding: 'calc(env(safe-area-inset-top, 0px) + 12px) 15px 12px',
+                    borderBottom: '1px solid var(--bg-tertiary)',
+                    backdropFilter: 'blur(10px)'
+                }}>
                     <button 
                         onClick={handleShare} 
                         style={{ 
-                            background: 'none', 
+                            background: 'rgba(251, 171, 21, 0.1)', 
                             border: 'none', 
                             color: 'var(--primary)', 
                             cursor: 'pointer',
-                            padding: '8px',
+                            padding: '10px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             borderRadius: '50%',
                             transition: 'background 0.2s'
                         }}
-                        onMouseOver={e => e.currentTarget.style.background = 'rgba(251, 171, 21, 0.1)'}
-                        onMouseOut={e => e.currentTarget.style.background = 'none'}
+                        onMouseOver={e => e.currentTarget.style.background = 'rgba(251, 171, 21, 0.2)'}
+                        onMouseOut={e => e.currentTarget.style.background = 'rgba(251, 171, 21, 0.1)'}
                         title="مشاركة"
                     >
                         <ShareIcon />
                     </button>
                     
-                    <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '900', color: 'var(--text-primary)', flex: 1, textAlign: 'center' }}>
+                    <h2 style={{ 
+                        margin: 0, 
+                        fontSize: '1rem', 
+                        fontWeight: '900', 
+                        color: 'var(--text-primary)', 
+                        flex: 1, 
+                        textAlign: 'center',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        padding: '0 10px'
+                    }}>
                         {uniData?.name || 'الملف الشخصي'}
                     </h2>
 
-                    <button className="btn-close" onClick={onClose} style={{ fontSize: '1.2rem', position: 'static' }}>✕</button>
+                    <button 
+                        className="btn-close" 
+                        onClick={onClose} 
+                        style={{ 
+                            fontSize: '1.2rem', 
+                            position: 'static', 
+                            background: 'rgba(255,255,255,0.1)',
+                            width: '38px',
+                            height: '38px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: '50%',
+                            border: 'none',
+                            color: 'var(--text-primary)'
+                        }}
+                    >✕</button>
                 </div>
 
                 <div style={{ flex: 1, padding: 0, display: 'block', overflowY: 'auto' }}>
