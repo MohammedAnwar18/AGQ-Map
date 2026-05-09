@@ -203,7 +203,7 @@ const Login = () => {
                             PALNOVAA
                         </h1>
                     </div>
-                    <p className="tagline">اكتشف العالم من حولك، شارك لحظاتك المكانية</p>
+                    <p className="tagline">اكتشف العالم من حولك، شارك لحظاتك الاجتماعية</p>
                 </div>
 
                 <div className="login-card glass">
