@@ -1,4 +1,4 @@
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, PutBucketCorsCommand } = require('@aws-sdk/client-s3');
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 
@@ -14,6 +14,31 @@ const s3Client = new S3Client({
 
 const bucketName = process.env.R2_BUCKET_NAME;
 const publicUrlBase = process.env.R2_PUBLIC_URL;
+
+/**
+ * تهيئة CORS على بكت R2 تلقائياً عند تشغيل السيرفر
+ * يسمح لأي موقع (حتى الملفات المحلية) بجلب البيانات منه
+ */
+const configureBucketCors = async () => {
+    try {
+        await s3Client.send(new PutBucketCorsCommand({
+            Bucket: bucketName,
+            CORSConfiguration: {
+                CORSRules: [{
+                    AllowedHeaders: ['*'],
+                    AllowedMethods: ['GET', 'HEAD'],
+                    AllowedOrigins: ['*'],
+                    ExposeHeaders: ['Content-Length', 'Content-Type'],
+                    MaxAgeSeconds: 86400
+                }]
+            }
+        }));
+        console.log('✅ R2 CORS configured: all origins allowed for GET requests');
+    } catch (err) {
+        console.warn('⚠️ R2 CORS config failed (may not be supported on this plan):', err.message);
+    }
+};
+configureBucketCors();
 
 /**
  * رفع بيانات GeoJSON مباشرة إلى R2
