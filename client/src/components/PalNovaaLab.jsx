@@ -623,13 +623,17 @@ const PalNovaaLab = ({ onClose }) => {
             return;
         }
 
-        // Build a universal self-contained injection script that works with MapLibre, Mapbox, and Leaflet
+        // Build a super-robust self-contained injection script
         const injectionScript = `
 <script id="palnovaa-injected-layers">
 (function() {
     var INJECTED_LAYERS = ${JSON.stringify(layersToInject)};
+    console.log('PalNovaa: Injection starting...', INJECTED_LAYERS.length, 'layers');
 
     function renderLayers(map, libraryType) {
+        var allBounds = libraryType === 'leaflet' ? new window.L.LatLngBounds() : null;
+        var featuresCount = 0;
+
         INJECTED_LAYERS.forEach(function(layer, idx) {
             var style = layer.style || {};
             var color = style.color || layer.color || '#F5A623';
@@ -639,7 +643,8 @@ const PalNovaaLab = ({ onClose }) => {
             var fillOpacity = style.fillOpacity !== undefined ? style.fillOpacity : 0.4;
 
             function addToMap(geojson) {
-                if (!geojson || !geojson.features) return;
+                if (!geojson || !geojson.features || geojson.features.length === 0) return;
+                featuresCount += geojson.features.length;
 
                 if (libraryType === 'leaflet') {
                     var lLayer = window.L.geoJSON(geojson, {
@@ -657,6 +662,11 @@ const PalNovaaLab = ({ onClose }) => {
                         Object.keys(props).forEach(function(k){ if(props[k]) html += '<div style="font-size:0.85rem;margin-bottom:4px"><b>' + k + ':</b> ' + props[k] + '</div>'; });
                         return html + '</div>';
                     });
+                    
+                    var layerBounds = window.L.geoJSON(geojson).getBounds();
+                    if (layerBounds.isValid()) allBounds.extend(layerBounds);
+                    if (allBounds.isValid()) map.fitBounds(allBounds, { padding: [50, 50] });
+
                 } else {
                     // MapLibre / Mapbox Logic
                     var sourceId = 'pn-inject-' + (layer.id || idx);
@@ -676,6 +686,17 @@ const PalNovaaLab = ({ onClose }) => {
                         map.addLayer({ id: sourceId+'-point', type: 'circle', source: sourceId, paint: { 'circle-radius': 7, 'circle-color': color, 'circle-stroke-width': outlineWidth, 'circle-stroke-color': outlineColor, 'circle-opacity': opacity } });
                     }
 
+                    // Fit bounds for Mapbox/MapLibre
+                    try {
+                        var coords = geojson.features.flatMap(function(f) { 
+                            return f.geometry.type === 'Point' ? [f.geometry.coordinates] : (f.geometry.coordinates.flat(5) || []);
+                        });
+                        if (coords.length > 0) {
+                            var lngs = coords.map(function(c){return c[0]}), lats = coords.map(function(c){return c[1]});
+                            map.fitBounds([[Math.min.apply(null,lngs), Math.min.apply(null,lats)], [Math.max.apply(null,lngs), Math.max.apply(null,lats)]], {padding: 50});
+                        }
+                    } catch(e){}
+
                     var clickLayer = sourceId + (isPolygon ? '-fill' : isLine ? '-line' : '-point');
                     var GL = window.maplibregl || window.mapboxgl;
                     if (map.getLayer(clickLayer) && GL) {
@@ -692,20 +713,33 @@ const PalNovaaLab = ({ onClose }) => {
                 }
             }
 
-            if (layer.dataUrl) { fetch(layer.dataUrl).then(function(r){ return r.json(); }).then(addToMap); }
+            if (layer.dataUrl) { fetch(layer.dataUrl).then(function(r){ return r.json(); }).then(addToMap).catch(function(e){ console.error('PalNovaa fetch error:', e); }); }
             else if (layer.data) { addToMap(layer.data); }
         });
     }
 
-    function tryInject() {
+    function tryInject(attempts) {
+        if (attempts > 20) { console.warn('PalNovaa: Map not found after 20 attempts.'); return; }
+        
         var map = window.map;
-        // Search for map object if not in window.map
         if (!map && window.L) {
-             for (var k in window) { if (window[k] instanceof window.L.Map) { map = window[k]; break; } }
+             for (var k in window) { 
+                 if (window[k] && window[k] instanceof window.L.Map) { map = window[k]; break; } 
+             }
+        }
+        
+        if (!map) { 
+            // Try searching by ID
+            var mapEl = document.getElementById('map') || document.querySelector('.leaflet-container') || document.querySelector('.mapboxgl-map');
+            if (mapEl && mapEl._leaflet_id && window.L) {
+                // Leaflet usually stores the map instance on the element in some internal way
+                // But the most common way is the window search above
+            }
         }
 
-        if (!map) { setTimeout(tryInject, 500); return; }
+        if (!map) { setTimeout(function(){ tryInject(attempts + 1); }, 500); return; }
 
+        console.log('PalNovaa: Map found! Injecting layers...');
         if (window.L && map instanceof window.L.Map) {
             renderLayers(map, 'leaflet');
         } else if (typeof map.addLayer === 'function') {
@@ -714,8 +748,8 @@ const PalNovaaLab = ({ onClose }) => {
         }
     }
 
-    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', tryInject); }
-    else { tryInject(); }
+    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', function(){ tryInject(0); }); }
+    else { tryInject(0); }
 })();
 <\/script>`;
 
