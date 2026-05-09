@@ -899,7 +899,14 @@ const PalNovaaLab = ({ onClose }) => {
             else if (el.type === 'layers') inner = `<div class="cel-layers-box" style="${brClr}${clr}">${layersListHTML || '<div style="opacity:0.5;padding:8px;font-size:0.85rem">لا توجد طبقات</div>'}</div>`;
             else if (el.type === 'stat') inner = `<div class="cel-stat" style="${brClr}"><div class="cel-stat-num" style="font-size:${el.fontSize || 2}rem;${clr}">${exportLayers.reduce((s, l) => s + (l.data?.features?.length || 0), 0)}</div><div class="cel-stat-lbl">${el.text}</div></div>`;
             else if (el.type === 'divider') inner = `<hr class="cel-hr" style="${brClr}"/>`;
-            else if (el.        // 4. Calculate final bounds before stripping data
+            else if (el.type === 'badge') inner = `<span class="cel-badge" style="font-size:${el.fontSize || 0.85}rem;${bgClr}">${el.text}</span>`;
+            else if (el.type === 'card') inner = `<div class="cel-card" style="${brClr}"><h4 style="margin:0 0 8px 0;${clr}">${el.text}</h4><p style="margin:0;font-size:0.85rem;opacity:0.7;">وصف المكون الجاهز...</p></div>`;
+            else if (el.type === 'icon') inner = `<div class="cel-icon-wrap" style="${clr}"><svg class="cel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${el.icon && (el.icon.includes('points') ? `<polygon points="${el.icon}" />` : `<path d="${el.icon}" />`)}</svg></div>`;
+            return `<div class="cel" style="${wStyle}">${inner}</div>`;
+        }).join('\n            ')}
+        </div>` : '';
+
+        // 4. Calculate final bounds before stripping data
         let finalBounds = null;
         try {
             const allCoords = [];
