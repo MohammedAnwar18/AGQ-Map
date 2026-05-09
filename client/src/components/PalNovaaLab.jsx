@@ -325,7 +325,7 @@ const PalNovaaLab = ({ onClose }) => {
                         longitude: e.lngLat.lng,
                         latitude: e.lngLat.lat
                     });
-                    
+
                     // HIGHLIGHT FEATURE: Set the clicked feature for the highlight layer
                     setHighlightFeature(clickedFeature.toJSON());
 
@@ -1430,25 +1430,25 @@ const PalNovaaLab = ({ onClose }) => {
                             {/* Highlight Layer */}
                             {highlightFeature && (
                                 <Source id="highlight-source" type="geojson" data={highlightFeature}>
-                                    <Layer 
-                                        id="highlight-outline" 
-                                        type="line" 
-                                        paint={{ 
-                                            'line-color': '#06D6F2', 
+                                    <Layer
+                                        id="highlight-outline"
+                                        type="line"
+                                        paint={{
+                                            'line-color': '#06D6F2',
                                             'line-width': 4,
                                             'line-blur': 2
-                                        }} 
+                                        }}
                                     />
-                                    <Layer 
-                                        id="highlight-point" 
-                                        type="circle" 
+                                    <Layer
+                                        id="highlight-point"
+                                        type="circle"
                                         filter={['==', '$type', 'Point']}
-                                        paint={{ 
-                                            'circle-radius': 10, 
+                                        paint={{
+                                            'circle-radius': 10,
                                             'circle-color': 'transparent',
-                                            'circle-stroke-width': 3, 
-                                            'circle-stroke-color': '#06D6F2' 
-                                        }} 
+                                            'circle-stroke-width': 3,
+                                            'circle-stroke-color': '#06D6F2'
+                                        }}
                                     />
                                 </Source>
                             )}
@@ -1475,11 +1475,24 @@ const PalNovaaLab = ({ onClose }) => {
                                 <div className="table-title">
                                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
                                     <span>جدول البيانات: {activeTableLayer.name}</span>
-                                    <small>{activeTableLayer.data?.features?.length || 0} معلم</small>
+                                    <small>
+                                        {highlightFeature ? 'معلم واحد محدد' : `${activeTableLayer.data?.features?.length || 0} معلم`}
+                                    </small>
                                 </div>
-                                <button className="close-table-btn" onClick={() => setShowBottomTable(false)}>
-                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                                </button>
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    {highlightFeature && (
+                                        <button 
+                                            className="ds-btn secondary small" 
+                                            onClick={() => setHighlightFeature(null)}
+                                            style={{ padding: '4px 12px', fontSize: '0.7rem' }}
+                                        >
+                                            عرض الكل
+                                        </button>
+                                    )}
+                                    <button className="close-table-btn" onClick={() => setShowBottomTable(false)}>
+                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                                    </button>
+                                </div>
                             </div>
                             <div className="table-panel-body">
                                 <table className="opaque-table">
@@ -1490,18 +1503,29 @@ const PalNovaaLab = ({ onClose }) => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {activeTableLayer.data?.features?.map((f, i) => (
-                                            <tr key={i} onClick={() => {
-                                                const coords = f.geometry?.type === 'Point' ? f.geometry.coordinates : (f.geometry?.coordinates?.[0]?.[0] || f.geometry?.coordinates?.[0]);
-                                                if (coords && typeof coords[0] === 'number') {
-                                                    mapRef.current.flyTo({ center: coords, zoom: 16 });
-                                                    setSelectedFeatureInfo({ properties: f.properties || {}, longitude: coords[0], latitude: coords[1] });
-                                                }
-                                            }}>
-                                                <td>{i + 1}</td>
-                                                {attributeKeys.map(k => <td key={k}>{String(f.properties?.[k] || '-')}</td>)}
-                                            </tr>
-                                        ))}
+                                        {(() => {
+                                            const allFeatures = activeTableLayer.data?.features || [];
+                                            // If a feature is highlighted on map, show only that one in the table
+                                            const displayFeatures = highlightFeature ? 
+                                                allFeatures.filter(f => {
+                                                    // Simple heuristic: compare properties or ID if available
+                                                    if (f.id && highlightFeature.id) return f.id === highlightFeature.id;
+                                                    return JSON.stringify(f.properties) === JSON.stringify(highlightFeature.properties);
+                                                }) : allFeatures;
+
+                                            return displayFeatures.map((f, i) => (
+                                                <tr key={i} className={highlightFeature ? 'highlighted-row' : ''} onClick={() => {
+                                                    const coords = f.geometry?.type === 'Point' ? f.geometry.coordinates : (f.geometry?.coordinates?.[0]?.[0] || f.geometry?.coordinates?.[0]);
+                                                    if (coords && typeof coords[0] === 'number') {
+                                                        mapRef.current.flyTo({ center: coords, zoom: 16 });
+                                                        setSelectedFeatureInfo({ properties: f.properties || {}, longitude: coords[0], latitude: coords[1] });
+                                                    }
+                                                }}>
+                                                    <td>{i + 1}</td>
+                                                    {attributeKeys.map(k => <td key={k}>{String(f.properties?.[k] || '-')}</td>)}
+                                                </tr>
+                                            ));
+                                        })()}
                                     </tbody>
                                 </table>
                             </div>
