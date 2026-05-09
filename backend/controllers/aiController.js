@@ -22,6 +22,16 @@ exports.processQuery = async (req, res) => {
             return `SHOP - ID: ${s.id} | NAME: "${s.name}" | CATEGORY: "${s.category || 'General'}" | PRODUCTS: [${productsStr}] | LOC: [{"lat":${s.latitude}, "lon":${s.longitude}}]`;
         }).join('\n');
 
+        // 1b. Fetch University Facilities context
+        const facilitiesRes = await pool.query(`
+            SELECT f.id, f.name, f.category, f.latitude, f.longitude, s.name as university_name
+            FROM university_facilities f
+            JOIN shops s ON f.university_id = s.id
+        `);
+        const facilities = facilitiesRes.rows.map(f => 
+            `FACILITY - ID: ${f.id} | NAME: "${f.name}" | CATEGORY: "${f.category}" | UNI: "${f.university_name}" | LOC: [{"lat":${f.latitude}, "lon":${f.longitude}}]`
+        ).join('\n');
+
         // 2. Fetch Users Context
         const usersRes = await pool.query('SELECT id, full_name, username, bio FROM users LIMIT 100');
         const systemUsers = usersRes.rows.map(u =>
@@ -38,7 +48,7 @@ exports.processQuery = async (req, res) => {
             `POST - ID: ${p.id} | BY: "${p.full_name}" | CONTENT: "${p.content}" | LOC: [{"lat":${p.latitude}, "lon":${p.longitude}}]`
         ).join('\n');
 
-        console.log(`AI Context Loaded: ${shopsRes.rows.length} shops, ${usersRes.rows.length} users, ${postsRes.rows.length} posts.`);
+        console.log(`AI Context Loaded: ${shopsRes.rows.length} shops, ${facilitiesRes.rows.length} facilities, ${usersRes.rows.length} users, ${postsRes.rows.length} posts.`);
 
         const systemPrompt = `أنت PalNovaa، دليل محلي ذكي ومساعد ملاحي.
 
@@ -48,6 +58,8 @@ exports.processQuery = async (req, res) => {
 البيانات المتاحة:
 --- المحلات (SHOPS) ---
 ${shops}
+--- مرافق ومباني الجامعة (UNIVERSITY FACILITIES) ---
+${facilities}
 --- المستخدمين (USERS) ---
 ${systemUsers}
 --- المنشورات (POSTS) ---

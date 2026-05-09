@@ -50,8 +50,6 @@ const searchShops = async (req, res) => {
     }
 };
 
-
-
 // --- 1b. Smart Search: Shops + Products + Price Filter ---
 const smartSearch = async (req, res) => {
     try {
@@ -116,19 +114,40 @@ const smartSearch = async (req, res) => {
                 JOIN shops s ON p.shop_id = s.id
                 LEFT JOIN shops parent ON s.parent_shop_id = parent.id
                 WHERE p.name ILIKE $2 ${priceCondition} AND s.is_hidden = FALSE
-                ORDER BY p.price ASC
                 LIMIT 30
+            ),
+            matching_facilities AS (
+                SELECT f.id, f.name, f.category, NULL::text as profile_picture,
+                       f.latitude, f.longitude, NULL::text as floor, f.university_id as parent_shop_id,
+                       s.name AS parent_shop_name,
+                       ${isFollowedExpr.replace('s.id', 'f.university_id')} as is_followed,
+                       NULL::numeric as product_price, NULL::text as product_name,
+                       NULL::text as product_description, NULL::text as product_image_url,
+                       NULL::int as product_id, 'facility' as result_type
+                FROM university_facilities f
+                JOIN shops s ON f.university_id = s.id
+                WHERE (f.name ILIKE $1 OR f.category ILIKE $1) AND s.is_hidden = FALSE
+                LIMIT 20
             )
             SELECT * FROM matching_shops
             UNION ALL
             SELECT * FROM matching_products
-            ORDER BY result_type, product_price ASC NULLS LAST
+            UNION ALL
+            SELECT * FROM matching_facilities
+            ORDER BY result_type ASC, product_price ASC NULLS LAST
         `;
 
         const result = await pool.query(sql, params);
 
         const shopsMap = {};
+        const facilities = [];
+
         result.rows.forEach(row => {
+            if (row.result_type === 'facility') {
+                facilities.push(row);
+                return;
+            }
+
             if (!shopsMap[row.id]) {
                 shopsMap[row.id] = {
                     id: row.id, name: row.name, category: row.category,
@@ -148,12 +167,16 @@ const smartSearch = async (req, res) => {
             }
         });
 
-        res.json({ results: Object.values(shopsMap) });
+        res.json({ 
+            results: Object.values(shopsMap),
+            facilities: facilities
+        });
     } catch (error) {
         console.error('Smart search error:', error);
         res.status(500).json({ error: 'Smart search failed: ' + error.message });
     }
 };
+
 // --- 2. Follow Shop ---
 const followShop = async (req, res) => {
     try {
@@ -164,19 +187,16 @@ const followShop = async (req, res) => {
             return res.status(400).json({ error: 'Invalid shop ID' });
         }
 
-        console.log(`User ${userId} attempting to follow shop ${shopId}`);
-
         await pool.query(`
             INSERT INTO shop_followers (user_id, shop_id)
             VALUES ($1::int, $2::int)
             ON CONFLICT (user_id, shop_id) DO NOTHING
         `, [parseInt(userId), shopId]);
 
-        console.log(`âœ… User ${userId} successfully followed shop ${shopId}`);
         res.json({ message: 'Shop followed successfully', shopId });
     } catch (error) {
-        console.error('âŒ Follow shop error:', error);
-        res.status(500).json({ error: 'Failed to follow shop: ' + error.message });
+        console.error('Follow shop error:', error);
+        res.status(500).json({ error: 'Failed to follow shop' });
     }
 };
 
@@ -216,7 +236,7 @@ const getFollowedShops = async (req, res) => {
                 FROM shops child
                 JOIN shops parent ON child.parent_shop_id = parent.id
                 WHERE parent.id IN (SELECT id FROM FollowedShops) 
-                  AND parent.category = 'Ø¨Ù†Ùƒ'
+                  AND parent.category = 'بنك'
                   AND child.is_hidden = FALSE
             ),
             AllRelevantShopIds AS (
@@ -231,10 +251,9 @@ const getFollowedShops = async (req, res) => {
             ORDER BY s.name ASC
         `, [userId]);
 
-        console.log(`ðŸ“‹ User ${userId} has ${result.rows.length} followed shops in DB`);
         res.json({ shops: result.rows });
     } catch (error) {
-        console.error('âŒ Get followed shops error:', error);
+        console.error('Get followed shops error:', error);
         res.status(500).json({ error: 'Failed to get followed shops' });
     }
 };
@@ -245,9 +264,6 @@ const createShop = async (req, res) => {
         const { name, latitude, longitude, category, parent_shop_id, floor } = req.body;
         const ownerId = req.user.id || req.user.userId;
 
-        console.log('Creating shop with data:', { name, latitude, longitude, category, ownerId, parent_shop_id, floor });
-
-        // Ensure lat/long are valid numbers
         const lat = parseFloat(latitude);
         const lon = parseFloat(longitude);
 
@@ -255,35 +271,25 @@ const createShop = async (req, res) => {
             return res.status(400).json({ error: 'Invalid coordinates provided' });
         }
 
-        try {
-            const result = await pool.query(`
-                INSERT INTO shops (name, latitude, longitude, category, owner_id, parent_shop_id, floor, location)
-                VALUES ($1, $2::numeric, $3::numeric, $4, $5, $6, $7, ST_SetSRID(ST_MakePoint($3::double precision, $2::double precision), 4326)::geography)
-                RETURNING *
-            `, [name, lat, lon, category || 'General', ownerId, parent_shop_id || null, floor || null]);
+        const result = await pool.query(`
+            INSERT INTO shops (name, latitude, longitude, category, owner_id, parent_shop_id, floor, location)
+            VALUES ($1, $2::numeric, $3::numeric, $4, $5, $6, $7, ST_SetSRID(ST_MakePoint($3::double precision, $2::double precision), 4326)::geography)
+            RETURNING *
+        `, [name, lat, lon, category || 'General', ownerId, parent_shop_id || null, floor || null]);
 
-            const newShop = result.rows[0];
-            console.log('Shop created successfully:', newShop.id);
+        const newShop = result.rows[0];
 
-            // Auto-follow for the creator
-            try {
-                await pool.query(`
-                    INSERT INTO shop_followers (user_id, shop_id)
-                    VALUES ($1, $2)
-                    ON CONFLICT DO NOTHING
-                `, [ownerId, newShop.id]);
-            } catch (followError) {
-                console.error('Auto-follow failed but shop was created:', followError);
-            }
+        // Auto-follow for the creator
+        await pool.query(`
+            INSERT INTO shop_followers (user_id, shop_id)
+            VALUES ($1, $2)
+            ON CONFLICT DO NOTHING
+        `, [ownerId, newShop.id]);
 
-            res.json(newShop);
-        } catch (dbError) {
-            console.error('Create shop database error details:', dbError.message, dbError.stack);
-            res.status(500).json({ error: 'Database error: ' + dbError.message });
-        }
+        res.json(newShop);
     } catch (e) {
-        console.error('Create shop error system level:', e);
-        res.status(500).json({ error: 'Failed to create shop: ' + (e.message || 'Server error') });
+        console.error('Create shop error:', e);
+        res.status(500).json({ error: 'Failed to create shop' });
     }
 };
 
@@ -291,13 +297,8 @@ const createShop = async (req, res) => {
 const deleteShop = async (req, res) => {
     try {
         const shopId = req.params.id;
-
         const result = await pool.query('DELETE FROM shops WHERE id = $1 RETURNING id', [shopId]);
-
-        if (result.rowCount === 0) {
-            return res.status(404).json({ error: 'Shop not found' });
-        }
-
+        if (result.rowCount === 0) return res.status(404).json({ error: 'Shop not found' });
         res.json({ message: 'Shop deleted successfully' });
     } catch (e) {
         console.error('Delete shop error:', e);
@@ -305,7 +306,7 @@ const deleteShop = async (req, res) => {
     }
 };
 
-// --- 6. Get Shop Profile (Info + Posts + Products) ---
+// --- 6. Get Shop Profile ---
 const getShopProfile = async (req, res) => {
     try {
         const shopId = parseInt(req.params.id);
@@ -334,9 +335,7 @@ const getShopProfile = async (req, res) => {
             `, [shopId]);
         }
 
-        if (shopResult.rows.length === 0) {
-            return res.status(404).json({ error: 'Shop not found' });
-        }
+        if (shopResult.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
 
         const shop = shopResult.rows[0];
         const isOwner = currentUserId && shop.owner_id === currentUserId;
@@ -348,39 +347,21 @@ const getShopProfile = async (req, res) => {
         }
 
         if (shop.is_hidden && !isOwner && userRole !== 'admin') {
-            return res.status(404).json({ error: 'Shop not found or is hidden' });
+            return res.status(404).json({ error: 'Shop hidden' });
         }
 
-        // 2. Get Shop Posts
-        let postsResult;
-        if (currentUserId) {
-            postsResult = await pool.query(`
-                SELECT p.*,
-                       (SELECT COUNT(*)::int FROM likes WHERE post_id = p.id) as likes_count,
-                       (SELECT COUNT(*)::int FROM comments WHERE post_id = p.id) as comments_count,
-                       EXISTS(SELECT 1 FROM likes WHERE post_id = p.id AND user_id = $2) as is_liked
-                FROM posts p
-                WHERE p.shop_id = $1
-                ORDER BY p.created_at DESC
-            `, [shopId, currentUserId]);
-        } else {
-            postsResult = await pool.query(`
-                SELECT p.*,
-                       (SELECT COUNT(*)::int FROM likes WHERE post_id = p.id) as likes_count,
-                       (SELECT COUNT(*)::int FROM comments WHERE post_id = p.id) as comments_count,
-                       FALSE as is_liked
-                FROM posts p
-                WHERE p.shop_id = $1
-                ORDER BY p.created_at DESC
-            `, [shopId]);
-        }
+        const postsResult = await pool.query(`
+            SELECT p.*,
+                   (SELECT COUNT(*)::int FROM likes WHERE post_id = p.id) as likes_count,
+                   (SELECT COUNT(*)::int FROM comments WHERE post_id = p.id) as comments_count,
+                   ${currentUserId ? 'EXISTS(SELECT 1 FROM likes WHERE post_id = p.id AND user_id = $2)' : 'FALSE'} as is_liked
+            FROM posts p
+            WHERE p.shop_id = $1
+            ORDER BY p.created_at DESC
+        `, currentUserId ? [shopId, currentUserId] : [shopId]);
 
-        // 3. Get Shop Products
-        const productsResult = await pool.query(`
-            SELECT * FROM shop_products WHERE shop_id = $1 ORDER BY created_at DESC
-        `, [shopId]);
-
-        // 4. Get Internal Shops (If this is a Mall/Complex)
+        const productsResult = await pool.query('SELECT * FROM shop_products WHERE shop_id = $1 ORDER BY created_at DESC', [shopId]);
+        
         const internalShopsResult = await pool.query(`
             SELECT id, name, category, profile_picture, floor, is_verified 
             FROM shops 
@@ -396,106 +377,54 @@ const getShopProfile = async (req, res) => {
         });
     } catch (error) {
         console.error('Get shop profile error:', error);
-        res.status(500).json({ error: 'Failed to get shop profile' });
+        res.status(500).json({ error: 'Failed to get profile' });
     }
 };
 
-// --- 7. Update Shop Profile (Text) ---
+// --- 7. Update Shop Profile ---
 const updateShopProfile = async (req, res) => {
     try {
         const shopId = req.params.id;
         const { bio, opening_hours, contact_info, name, latitude, longitude, category } = req.body;
         const userId = req.user.userId;
 
-        // Fetch fresh user role
         const userRes = await pool.query('SELECT role FROM users WHERE id = $1', [userId]);
         const userRole = userRes.rows[0]?.role;
 
-        // Check Permissions
         const shopCheck = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [shopId]);
         if (shopCheck.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
 
-        const ownerId = shopCheck.rows[0].owner_id;
-
-        if (userRole !== 'admin' && ownerId !== userId) {
+        if (userRole !== 'admin' && shopCheck.rows[0].owner_id !== userId) {
             return res.status(403).json({ error: 'Not authorized' });
         }
 
-        // Dynamic Query Construction
         let queryParts = [];
         let values = [];
         let index = 1;
 
-        if (name !== undefined) {
-            queryParts.push(`name = $${index++}`);
-            values.push(name);
-        }
-        if (bio !== undefined) {
-            queryParts.push(`bio = $${index++}`);
-            values.push(bio);
-        }
-        if (opening_hours !== undefined) {
-            queryParts.push(`opening_hours = $${index++}`);
-            values.push(opening_hours);
-        }
-        if (contact_info !== undefined) {
-            queryParts.push(`contact_info = $${index++}`);
-            values.push(contact_info);
-        }
-        if (category !== undefined) {
-            queryParts.push(`category = $${index++}`);
-            values.push(category);
-        }
-        if (req.body.parent_shop_id !== undefined) {
-            queryParts.push(`parent_shop_id = $${index++}`);
-            values.push(req.body.parent_shop_id || null);
-        }
-        if (req.body.floor !== undefined) {
-            queryParts.push(`floor = $${index++}`);
-            values.push(req.body.floor || null);
-        }
-        if (req.body.enable_proximity_notifications !== undefined) {
-            queryParts.push(`enable_proximity_notifications = $${index++}`);
-            values.push(req.body.enable_proximity_notifications);
-        }
-        if (req.body.is_hidden !== undefined) {
-            queryParts.push(`is_hidden = $${index++}`);
-            values.push(req.body.is_hidden);
-        }
-        if (req.body.hidden_sections !== undefined && userRole === 'admin') {
-            queryParts.push(`hidden_sections = $${index++}`);
-            values.push(req.body.hidden_sections);
-        }
-        if (req.body.proximity_radius !== undefined) {
-            queryParts.push(`proximity_radius = $${index++}`);
-            values.push(parseInt(req.body.proximity_radius) || 500);
-        }
+        const fields = ['name', 'bio', 'opening_hours', 'contact_info', 'category', 'parent_shop_id', 'floor', 'enable_proximity_notifications', 'is_hidden', 'proximity_radius'];
+        fields.forEach(field => {
+            if (req.body[field] !== undefined) {
+                queryParts.push(`${field} = $${index++}`);
+                values.push(req.body[field] === '' ? null : req.body[field]);
+            }
+        });
 
-        // Handle Coordinates
-        let latVal = parseFloat(latitude);
-        let lonVal = parseFloat(longitude);
-        if (!isNaN(latVal) && !isNaN(lonVal)) {
-            // Use separate parameters for columns and point to avoid type deduction ambiguity in Postgres
+        if (latitude !== undefined && longitude !== undefined) {
+            const lat = parseFloat(latitude);
+            const lon = parseFloat(longitude);
             queryParts.push(`latitude = $${index++}`);
-            values.push(latVal);
-
+            values.push(lat);
             queryParts.push(`longitude = $${index++}`);
-            values.push(lonVal);
-
-            // ST_MakePoint(longitude, latitude) -> (x, y)
+            values.push(lon);
             queryParts.push(`location = ST_SetSRID(ST_MakePoint($${index++}, $${index++}), 4326)::geography`);
-            values.push(lonVal); // For ST_MakePoint first arg
-            values.push(latVal); // For ST_MakePoint second arg
+            values.push(lon, lat);
         }
 
-        if (queryParts.length === 0) {
-            return res.json({ message: 'No changes provided' });
-        }
+        if (queryParts.length === 0) return res.json({ message: 'No changes' });
 
         values.push(shopId);
-        const queryStr = `UPDATE shops SET ${queryParts.join(', ')} WHERE id = $${index++} RETURNING *`;
-        const result = await pool.query(queryStr, values);
-
+        const result = await pool.query(`UPDATE shops SET ${queryParts.join(', ')} WHERE id = $${index} RETURNING *`, values);
         res.json(result.rows[0]);
     } catch (e) {
         console.error('Update profile error:', e);
@@ -503,9 +432,6 @@ const updateShopProfile = async (req, res) => {
     }
 };
 
-/**
- * Update shop images (profile_picture, cover_picture)
- */
 const updateShopImages = async (req, res) => {
     try {
         const shopId = req.params.id;
@@ -513,17 +439,12 @@ const updateShopImages = async (req, res) => {
         const userRole = req.user.role;
         const { uploadToCloud, deleteFileFromCloud } = require('../utils/storage');
 
-        // Check Permissions & Get old images
         const shopCheck = await pool.query('SELECT owner_id, profile_picture, cover_picture FROM shops WHERE id = $1', [shopId]);
         if (shopCheck.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
 
-        const { owner_id: ownerId, profile_picture: oldProfilePic, cover_picture: oldCoverPic } = shopCheck.rows[0];
+        if (userRole !== 'admin' && shopCheck.rows[0].owner_id !== userId) return res.status(403).json({ error: 'Unauthorized' });
 
-        if (userRole !== 'admin' && ownerId !== userId) {
-            return res.status(403).json({ error: 'Not authorized' });
-        }
-
-        let updateQueryPart = [];
+        let queryParts = [];
         let params = [];
         let index = 1;
 
@@ -531,592 +452,316 @@ const updateShopImages = async (req, res) => {
             if (req.files.profile_picture) {
                 const file = req.files.profile_picture[0];
                 const url = await uploadToCloud(file.buffer, file.originalname, file.mimetype);
-                updateQueryPart.push(`profile_picture = $${index++}`);
+                queryParts.push(`profile_picture = $${index++}`);
                 params.push(url);
-                if (oldProfilePic) try { deleteFileFromCloud(oldProfilePic); } catch (e) { }
+                if (shopCheck.rows[0].profile_picture) try { deleteFileFromCloud(shopCheck.rows[0].profile_picture); } catch (e) {}
             }
-
             if (req.files.cover_picture) {
                 const file = req.files.cover_picture[0];
                 const url = await uploadToCloud(file.buffer, file.originalname, file.mimetype);
-                updateQueryPart.push(`cover_picture = $${index++}`);
+                queryParts.push(`cover_picture = $${index++}`);
                 params.push(url);
-                if (oldCoverPic) try { deleteFileFromCloud(oldCoverPic); } catch (e) { }
+                if (shopCheck.rows[0].cover_picture) try { deleteFileFromCloud(shopCheck.rows[0].cover_picture); } catch (e) {}
             }
         }
 
-        if (updateQueryPart.length === 0) {
-            return res.status(400).json({ error: 'No images uploaded' });
-        }
+        if (queryParts.length === 0) return res.status(400).json({ error: 'No images' });
 
         params.push(shopId);
-        const query = `UPDATE shops SET ${updateQueryPart.join(', ')} WHERE id = $${index} RETURNING *`;
-        const updateRes = await pool.query(query, params);
-
-        res.json({
-            message: 'Shop updated successfully',
-            shop: updateRes.rows[0]
-        });
-
+        const result = await pool.query(`UPDATE shops SET ${queryParts.join(', ')} WHERE id = $${index} RETURNING *`, params);
+        res.json(result.rows[0]);
     } catch (e) {
-        console.error('Update shop images error:', e);
-        res.status(500).json({
-            error: 'Failed to update images',
-            details: e.message
-        });
+        res.status(500).json({ error: 'Failed to update images' });
     }
 };
 
-// --- 8. Create Shop Post ---
 const createShopPost = async (req, res) => {
     try {
         const shopId = req.params.id;
-        const { content } = req.body;
+        const { content, title, external_link, post_type } = req.body;
         const userId = req.user.id || req.user.userId;
-        const userRole = req.user.role;
-        const { uploadToCloud } = require('../utils/storage');
 
-        // Check Permissions
-        const shopCheck = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [shopId]);
-        if (shopCheck.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
+        const shopRes = await pool.query('SELECT owner_id, latitude, longitude FROM shops WHERE id = $1', [shopId]);
+        if (shopRes.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
 
-        const ownerId = shopCheck.rows[0].owner_id;
-        if (userRole !== 'admin' && ownerId !== userId) {
-            return res.status(403).json({ error: 'Not authorized' });
-        }
+        if (req.user.role !== 'admin' && shopRes.rows[0].owner_id !== userId) return res.status(403).json({ error: 'Unauthorized' });
 
-        // Handle images
-        let media_urls = [];
-        let image_url = null;
-        let media_type = 'text';
-        const { title, external_link, post_type } = req.body;
-
-        // 1. Get Shop Location
-        const shopRes = await pool.query('SELECT latitude, longitude FROM shops WHERE id = $1', [shopId]);
-        const { latitude, longitude } = shopRes.rows[0];
+        const { uploadToSupabase } = require('../utils/storage');
+        let image_url = null, media_urls = [], media_type = 'text';
 
         if (req.files && req.files.length > 0) {
-            const uploadPromises = req.files.map(file =>
-                uploadToSupabase(file.buffer, file.originalname, file.mimetype)
-            );
-            media_urls = await Promise.all(uploadPromises);
+            media_urls = await Promise.all(req.files.map(f => uploadToSupabase(f.buffer, f.originalname, f.mimetype)));
             image_url = media_urls[0];
             media_type = req.files[0].mimetype.startsWith('video/') ? 'video' : 'image';
         }
 
         const result = await pool.query(`
-            INSERT INTO posts (
-                shop_id, content, image_url, media_urls, media_type,
-                location, address, title, external_link, post_type, created_at
-            )
-            VALUES (
-                $1, $2, $3, $4, $5, 
-                ST_SetSRID(ST_MakePoint($6, $7), 4326)::geography, 
-                'Shop Location', $8, $9, $10,
-                NOW()
-            )
-            RETURNING *, ST_X(location::geometry) as longitude, ST_Y(location::geometry) as latitude
-        `, [shopId, content, image_url, media_urls, media_type, longitude, latitude, title || null, external_link || null, post_type || 'news']);
+            INSERT INTO posts (shop_id, content, image_url, media_urls, media_type, location, title, external_link, post_type)
+            VALUES ($1, $2, $3, $4, $5, ST_SetSRID(ST_MakePoint($6, $7), 4326)::geography, $8, $9, $10)
+            RETURNING *
+        `, [shopId, content, image_url, media_urls, media_type, shopRes.rows[0].longitude, shopRes.rows[0].latitude, title, external_link, post_type || 'news']);
 
-        res.json({
-            ...result.rows[0],
-            location: { latitude, longitude }
-        });
-    } catch (error) {
-        console.error('Create shop post error:', error);
-        res.status(500).json({
-            error: 'Failed to create post',
-            details: error.message,
-            stack: error.stack.split('\n')[0]
-        });
+        res.json(result.rows[0]);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to create post' });
     }
 };
 
-// --- 8.5 Add Product ---
+const deleteShopPost = async (req, res) => {
+    try {
+        const { id, postId } = req.params;
+        const userId = req.user.userId;
+        const { deleteFileFromCloud } = require('../utils/storage');
+
+        const shopRes = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [id]);
+        if (shopRes.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
+        if (req.user.role !== 'admin' && shopRes.rows[0].owner_id !== userId) return res.status(403).json({ error: 'Unauthorized' });
+
+        const postRes = await pool.query('SELECT image_url FROM posts WHERE id = $1 AND shop_id = $2', [postId, id]);
+        if (postRes.rows.length === 0) return res.status(404).json({ error: 'Post not found' });
+
+        await pool.query('DELETE FROM posts WHERE id = $1', [postId]);
+        if (postRes.rows[0].image_url) try { deleteFileFromCloud(postRes.rows[0].image_url); } catch (e) {}
+
+        res.json({ message: 'Post deleted' });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
+    }
+};
+
 const addProduct = async (req, res) => {
     try {
         const shopId = req.params.id;
         const { name, price, description, old_price, category } = req.body;
-        const userId = req.user.userId;
-        const userRole = req.user.role;
         const { uploadToSupabase } = require('../utils/storage');
 
-        // Permissions
-        const shopCheck = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [shopId]);
-        if (!shopCheck.rows.length) return res.status(404).json({ error: 'Shop not found' });
-        if (userRole !== 'admin' && shopCheck.rows[0].owner_id !== userId) return res.status(403).json({ error: 'Unauthorized' });
+        const shopRes = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [shopId]);
+        if (req.user.role !== 'admin' && shopRes.rows[0].owner_id !== req.user.userId) return res.status(403).json({ error: 'Unauthorized' });
 
-        let image_urls = [];
-        let image_url = null;
-        if (req.files && req.files.length > 0) {
-            const uploadPromises = req.files.map(file =>
-                uploadToSupabase(file.buffer, file.originalname, file.mimetype)
-            );
-            image_urls = await Promise.all(uploadPromises);
-            image_url = image_urls[0];
-        }
+        let media_urls = [];
+        if (req.files) media_urls = await Promise.all(req.files.map(f => uploadToSupabase(f.buffer, f.originalname, f.mimetype)));
 
         const result = await pool.query(`
             INSERT INTO shop_products (shop_id, name, price, description, image_url, image_urls, old_price, category)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING *
-        `, [shopId, name, price, description, image_url, image_urls, old_price || null, category || null]);
-
+        `, [shopId, name, price, description, media_urls[0] || null, media_urls, old_price, category]);
         res.json(result.rows[0]);
     } catch (e) {
-        console.error('Add product error:', e);
-        res.status(500).json({
-            error: 'Failed to add product',
-            details: e.message,
-            stack: e.stack.split('\n')[0]
-        });
-    }
-};
-
-// --- 8.6 Update Product ---
-const updateProduct = async (req, res) => {
-    try {
-        const { id, productId } = req.params; // id is shopId
-        const { name, price, description, old_price, category } = req.body;
-        const userId = req.user.userId;
-        const userRole = req.user.role;
-        const { uploadToSupabase } = require('../utils/storage');
-
-        // Permissions
-        const shopCheck = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [id]);
-        if (!shopCheck.rows.length) return res.status(404).json({ error: 'Shop not found' });
-        if (userRole !== 'admin' && shopCheck.rows[0].owner_id !== userId) return res.status(403).json({ error: 'Unauthorized' });
-
-        let queryParts = [];
-        let values = [];
-        let index = 1;
-
-        if (name !== undefined) { queryParts.push(`name = $${index++}`); values.push(name); }
-        if (price !== undefined) { queryParts.push(`price = $${index++}`); values.push(price); }
-        if (description !== undefined) { queryParts.push(`description = $${index++}`); values.push(description); }
-        if (old_price !== undefined) { queryParts.push(`old_price = $${index++}`); values.push(old_price || null); }
-        if (category !== undefined) { queryParts.push(`category = $${index++}`); values.push(category || null); }
-
-        if (req.files && req.files.length > 0) {
-            const uploadPromises = req.files.map(file =>
-                uploadToSupabase(file.buffer, file.originalname, file.mimetype)
-            );
-            const urls = await Promise.all(uploadPromises);
-
-            queryParts.push(`image_url = $${index++}`);
-            values.push(urls[0]);
-
-            queryParts.push(`image_urls = $${index++}`);
-            values.push(urls);
-        }
-
-        if (queryParts.length === 0) return res.json({ message: 'No changes provided' });
-
-        values.push(productId);
-        values.push(id);
-
-        const queryStr = `UPDATE shop_products SET ${queryParts.join(', ')} WHERE id = $${index++} AND shop_id = $${index} RETURNING *`;
-        const result = await pool.query(queryStr, values);
-
-        if (result.rows.length === 0) return res.status(404).json({ error: 'Product not found' });
-
-        res.json(result.rows[0]);
-    } catch (e) {
-        console.error('Update product error:', e);
-        res.status(500).json({
-            error: 'Failed to update product',
-            details: e.message,
-            stack: e.stack.split('\n')[0]
-        });
-    }
-};
-
-// --- 8.7 Delete Product ---
-const deleteProduct = async (req, res) => {
-    try {
-        const { id, productId } = req.params; // id is shopId
-        const userId = req.user.userId;
-        const userRole = req.user.role;
-        const { deleteFileFromCloud } = require('../utils/storage');
-
-        // Permissions
-        const shopCheck = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [id]);
-        if (!shopCheck.rows.length) return res.status(404).json({ error: 'Shop not found' });
-        if (userRole !== 'admin' && shopCheck.rows[0].owner_id !== userId) return res.status(403).json({ error: 'Unauthorized' });
-
-        // Get product image before delete
-        const prodData = await pool.query('SELECT image_url FROM shop_products WHERE id = $1 AND shop_id = $2', [productId, id]);
-        const imageUrl = prodData.rows[0]?.image_url;
-
-        await pool.query('DELETE FROM shop_products WHERE id = $1 AND shop_id = $2', [productId, id]);
-
-        if (imageUrl) deleteFileFromCloud(imageUrl);
-
-        res.json({ message: 'Product deleted' });
-    } catch (e) {
-        console.error('Delete product error:', e);
-        res.status(500).json({ error: 'Failed to delete product' });
-    }
-};
-
-// --- 9. Assign Shop Owner (Admin Only) ---
-const assignShopOwner = async (req, res) => {
-    try {
-        if (req.user.role !== 'admin') {
-            return res.status(403).json({ error: 'Only admins can assign owners' });
-        }
-        const shopId = req.params.id;
-        const { username } = req.body; // Assign by username
-
-        // 1. Find User ID
-        const userRes = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
-        if (userRes.rows.length === 0) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-        const newOwnerId = userRes.rows[0].id;
-
-        // 2. Update Shop
-        await pool.query('UPDATE shops SET owner_id = $1 WHERE id = $2', [newOwnerId, shopId]);
-
-        res.json({ message: `Shop ownership assigned to ${username}` });
-    } catch (error) {
-        console.error('Assign owner error:', error);
-        res.status(500).json({ error: 'Failed to assign owner' });
-    }
-};
-
-// --- 9.5 Remove Shop Owner (Admin Only) ---
-const removeShopOwner = async (req, res) => {
-    try {
-        if (req.user.role !== 'admin') {
-            return res.status(403).json({ error: 'Only admins can remove owners' });
-        }
-        const shopId = req.params.id;
-
-        await pool.query('UPDATE shops SET owner_id = NULL WHERE id = $1', [shopId]);
-
-        res.json({ message: 'Shop owner removed successfully' });
-    } catch (error) {
-        console.error('Remove owner error:', error);
-        res.status(500).json({ error: 'Failed to remove owner' });
-    }
-};
-
-// --- 10. Get My Managed Shops ---
-const getManagedShops = async (req, res) => {
-    try {
-        const userId = req.user.userId;
-        const result = await pool.query('SELECT * FROM shops WHERE owner_id = $1', [userId]);
-        res.json({ shops: result.rows });
-    } catch (error) {
-        console.error('Get managed shops error:', error);
         res.status(500).json({ error: 'Failed' });
     }
 };
 
-// --- 11. Send Notification to Followers ---
+const updateProduct = async (req, res) => {
+    try {
+        const { id: shopId, productId } = req.params;
+        const { name, price, description, old_price, category } = req.body;
+        const { uploadToSupabase } = require('../utils/storage');
+
+        const shopRes = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [shopId]);
+        if (req.user.role !== 'admin' && shopRes.rows[0].owner_id !== req.user.userId) return res.status(403).json({ error: 'Unauthorized' });
+
+        let queryParts = [];
+        let vals = [];
+        let idx = 1;
+
+        const fields = ['name', 'price', 'description', 'old_price', 'category'];
+        fields.forEach(f => {
+            if (req.body[f] !== undefined) {
+                queryParts.push(`${f} = $${idx++}`);
+                vals.push(req.body[f]);
+            }
+        });
+
+        if (req.files && req.files.length > 0) {
+            const urls = await Promise.all(req.files.map(f => uploadToSupabase(f.buffer, f.originalname, f.mimetype)));
+            queryParts.push(`image_url = $${idx++}`, `image_urls = $${idx++}`);
+            vals.push(urls[0], urls);
+        }
+
+        if (queryParts.length === 0) return res.json({ message: 'No changes' });
+
+        vals.push(productId, shopId);
+        const result = await pool.query(`UPDATE shop_products SET ${queryParts.join(', ')} WHERE id = $${idx++} AND shop_id = $${idx} RETURNING *`, vals);
+        res.json(result.rows[0]);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
+    }
+};
+
+const deleteProduct = async (req, res) => {
+    try {
+        const { id: shopId, productId } = req.params;
+        const shopRes = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [shopId]);
+        if (req.user.role !== 'admin' && shopRes.rows[0].owner_id !== req.user.userId) return res.status(403).json({ error: 'Unauthorized' });
+
+        await pool.query('DELETE FROM shop_products WHERE id = $1 AND shop_id = $2', [productId, shopId]);
+        res.json({ message: 'Product deleted' });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
+    }
+};
+
+const assignShopOwner = async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+        const userRes = await pool.query('SELECT id FROM users WHERE username = $1', [req.body.username]);
+        if (userRes.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+        await pool.query('UPDATE shops SET owner_id = $1 WHERE id = $2', [userRes.rows[0].id, req.params.id]);
+        res.json({ message: 'Owner assigned' });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
+    }
+};
+
+const removeShopOwner = async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+        await pool.query('UPDATE shops SET owner_id = NULL WHERE id = $1', [req.params.id]);
+        res.json({ message: 'Owner removed' });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
+    }
+};
+
+const getManagedShops = async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM shops WHERE owner_id = $1', [req.user.userId]);
+        res.json({ shops: result.rows });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
+    }
+};
+
 const sendNotificationToFollowers = async (req, res) => {
     try {
         const shopId = req.params.id;
-        const { message } = req.body;
-        const userId = req.user.userId;
-        const userRole = req.user.role;
-
-        if (!message) return res.status(400).json({ error: 'Message is required' });
-
-        // 1. Verify Ownership & Get Shop Details
+        const { message, lat, lon, radius } = req.body;
         const shopRes = await pool.query('SELECT owner_id, name, latitude, longitude, profile_picture FROM shops WHERE id = $1', [shopId]);
-        if (shopRes.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
+        if (req.user.role !== 'admin' && shopRes.rows[0].owner_id !== req.user.userId) return res.status(403).json({ error: 'Unauthorized' });
 
-        const shop = shopRes.rows[0];
-        if (userRole !== 'admin' && shop.owner_id !== userId) {
-            return res.status(403).json({ error: 'Not authorized' });
-        }
-
-        // 2. Prepare Payload (JSON)
-        // We store JSON in the text message field to handle the structured data
-        const payload = JSON.stringify({
-            shopId: shopId,
-            shopName: shop.name,
-            shopImage: shop.profile_picture, // Store current image
-            text: message,
-            location: { latitude: shop.latitude, longitude: shop.longitude }
-        });
-
-        // 3. Geographic Targeting Check
-        const { lat, lon, radius } = req.body;
-        let whereClause = 'WHERE sf.shop_id = $3';
-        let queryParams = [userId, payload, shopId];
+        const payload = JSON.stringify({ shopId, shopName: shopRes.rows[0].name, shopImage: shopRes.rows[0].profile_picture, text: message, location: { latitude: shopRes.rows[0].latitude, longitude: shopRes.rows[0].longitude } });
+        
+        let sql = `INSERT INTO notifications (user_id, sender_id, type, message) SELECT sf.user_id, $1, 'shop_alert', $2 FROM shop_followers sf JOIN users u ON sf.user_id = u.id WHERE sf.shop_id = $3`;
+        let params = [req.user.userId, payload, shopId];
 
         if (lat && lon && radius) {
-            // Target followers within specific area
-            // We use ST_DWithin to check if user's last known location is within 'radius' meters of (lon, lat)
-            whereClause += ` AND ST_DWithin(
-                ST_SetSRID(ST_MakePoint(u.last_longitude, u.last_latitude), 4326)::geography,
-                ST_SetSRID(ST_MakePoint($4, $5), 4326)::geography,
-                $6
-            )`;
-            queryParams.push(parseFloat(lon), parseFloat(lat), parseFloat(radius));
+            sql += ` AND ST_DWithin(ST_SetSRID(ST_MakePoint(u.last_longitude, u.last_latitude), 4326)::geography, ST_SetSRID(ST_MakePoint($4, $5), 4326)::geography, $6)`;
+            params.push(lon, lat, radius);
         }
 
-        // 4. Insert Notifications for all followers (filtered if area provided)
-        await pool.query(`
-            INSERT INTO notifications (user_id, sender_id, type, message)
-            SELECT sf.user_id, $1, 'shop_alert', $2
-            FROM shop_followers sf
-            JOIN users u ON sf.user_id = u.id
-            ${whereClause}
-        `, queryParams);
-
-        res.json({ message: 'Notification sent successfully' });
-    } catch (error) {
-        console.error('Send notification error:', error);
-        res.status(500).json({ error: 'Failed to send notification' });
+        await pool.query(sql, params);
+        res.json({ message: 'Sent' });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
     }
 };
 
-
-// --- 18. Add University Facility ---
 const addUniversityFacility = async (req, res) => {
     try {
-        const { id } = req.params; // Shop/University ID
-        const userId = req.user.userId;
-        const userRole = req.user.role;
+        const { id } = req.params;
         const { name, category, icon, latitude, longitude, description } = req.body;
-
-        // Permissions: Only Owner or Admin can add
         const shopRes = await pool.query('SELECT owner_id, category FROM shops WHERE id = $1', [id]);
-        if (shopRes.rows.length === 0) return res.status(404).json({ error: 'University not found' });
         if (shopRes.rows[0].category !== 'University') return res.status(400).json({ error: 'Not a University' });
-        if (userRole !== 'admin' && shopRes.rows[0].owner_id !== userId) return res.status(403).json({ error: 'Unauthorized to add facilities' });
+        if (req.user.role !== 'admin' && shopRes.rows[0].owner_id !== req.user.userId) return res.status(403).json({ error: 'Unauthorized' });
 
-        const result = await pool.query(`
-            INSERT INTO university_facilities (university_id, name, category, icon, latitude, longitude, description)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-            RETURNING *
-        `, [id, name, category, icon || 'ðŸ“', latitude, longitude, description || '']);
-
-        res.status(201).json({ message: 'Facility added', facility: result.rows[0] });
-    } catch (error) {
-        console.error('Add facility error:', error);
-        res.status(500).json({ error: 'Failed to add facility' });
+        const result = await pool.query(`INSERT INTO university_facilities (university_id, name, category, icon, latitude, longitude, description) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`, [id, name, category, icon || '📍', latitude, longitude, description || '']);
+        res.status(201).json(result.rows[0]);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
     }
 };
 
-// --- 19. Get University Facilities ---
 const getUniversityFacilities = async (req, res) => {
     try {
-        const { id } = req.params;
-
-        const result = await pool.query(`
-            SELECT * FROM university_facilities WHERE university_id = $1 ORDER BY category, name
-        `, [id]);
-
-        // Group by category for easier frontend rendering
-        const facilitiesByCategory = {};
-        result.rows.forEach(fac => {
-            if (!facilitiesByCategory[fac.category]) {
-                facilitiesByCategory[fac.category] = [];
-            }
-            facilitiesByCategory[fac.category].push(fac);
-        });
-
-        res.json({ facilities: facilitiesByCategory, list: result.rows });
-    } catch (error) {
-        console.error('Get facilities error:', error);
-        res.status(500).json({ error: 'Failed to get facilities' });
+        const result = await pool.query('SELECT * FROM university_facilities WHERE university_id = $1 ORDER BY category, name', [req.params.id]);
+        const grouped = {};
+        result.rows.forEach(f => { (grouped[f.category] = grouped[f.category] || []).push(f); });
+        res.json({ facilities: grouped, list: result.rows });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
     }
 };
 
-// --- 20. Get Single Facility Profile (Info + Posts + Specialties) ---
 const getFacilityProfile = async (req, res) => {
     try {
         const { facilityId } = req.params;
-        const userId = req.user.userId;
+        const facilityRes = await pool.query(`SELECT f.*, s.name as university_name, s.owner_id as uni_owner_id FROM university_facilities f JOIN shops s ON f.university_id = s.id WHERE f.id = $1`, [facilityId]);
+        if (facilityRes.rows.length === 0) return res.status(404).json({ error: 'Not found' });
 
-        // 1. Get Facility Details
-        const facilityRes = await pool.query(`
-            SELECT f.*, s.name as university_name, s.owner_id as uni_owner_id
-            FROM university_facilities f
-            JOIN shops s ON f.university_id = s.id
-            WHERE f.id = $1
-        `, [facilityId]);
-
-        if (facilityRes.rows.length === 0) return res.status(404).json({ error: 'Facility not found' });
-        const facility = facilityRes.rows[0];
-
-        // 2. Get Posts (Events, News, etc.)
-        const postsRes = await pool.query(`
-            SELECT fp.*, u.username, u.profile_picture as user_avatar
-            FROM facility_posts fp
-            LEFT JOIN users u ON fp.user_id = u.id
-            WHERE fp.facility_id = $1
-            ORDER BY fp.created_at DESC
-        `, [facilityId]);
-
-        // 3. Get Specialties (Colleges only)
+        const postsRes = await pool.query(`SELECT fp.*, u.username, u.profile_picture as user_avatar FROM facility_posts fp LEFT JOIN users u ON fp.user_id = u.id WHERE fp.facility_id = $1 ORDER BY fp.created_at DESC`, [facilityId]);
+        
         let specialties = [];
-        if (facility.category === 'Ø§Ù„ÙƒÙ„ÙŠØ§Øª') {
-            const specRes = await pool.query(`
-                SELECT * FROM university_specialties WHERE facility_id = $1 ORDER BY name
-            `, [facilityId]);
+        if (facilityRes.rows[0].category === 'الكليات') {
+            const specRes = await pool.query('SELECT * FROM university_specialties WHERE facility_id = $1 ORDER BY name', [facilityId]);
             specialties = specRes.rows;
         }
 
-        res.json({
-            facility,
-            posts: postsRes.rows,
-            specialties,
-            is_admin: req.user.role === 'admin' || facility.uni_owner_id === userId
-        });
-    } catch (error) {
-        console.error('Get facility profile error:', error);
-        res.status(500).json({ error: 'Failed to get facility details' });
+        res.json({ facility: facilityRes.rows[0], posts: postsRes.rows, specialties, is_admin: req.user.role === 'admin' || facilityRes.rows[0].uni_owner_id === req.user.userId });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
     }
 };
 
-// --- 21. Add Post to Facility ---
 const addFacilityPost = async (req, res) => {
     try {
         const { facilityId } = req.params;
         const { title, content, post_type, event_date } = req.body;
-        const userId = req.user.userId;
-
-        // Check permission (Uni owner or Admin)
-        const checkRes = await pool.query(`
-            SELECT s.owner_id FROM university_facilities f 
-            JOIN shops s ON f.university_id = s.id 
-            WHERE f.id = $1
-        `, [facilityId]);
-
-        if (checkRes.rows.length === 0) return res.status(404).json({ error: 'Facility not found' });
-        if (req.user.role !== 'admin' && checkRes.rows[0].owner_id !== userId) {
-            return res.status(403).json({ error: 'Unauthorized' });
-        }
+        const checkRes = await pool.query(`SELECT s.owner_id FROM university_facilities f JOIN shops s ON f.university_id = s.id WHERE f.id = $1`, [facilityId]);
+        if (req.user.role !== 'admin' && checkRes.rows[0].owner_id !== req.user.userId) return res.status(403).json({ error: 'Unauthorized' });
 
         const { uploadToSupabase } = require('../utils/storage');
-        let media_urls = [];
-        if (req.files && req.files.length > 0) {
-            for (const file of req.files) {
-                const url = await uploadToSupabase(file.buffer, file.originalname, file.mimetype);
-                media_urls.push(url);
-            }
-        }
+        let urls = [];
+        if (req.files) urls = await Promise.all(req.files.map(f => uploadToSupabase(f.buffer, f.originalname, f.mimetype)));
 
-        const result = await pool.query(`
-            INSERT INTO facility_posts (facility_id, user_id, title, content, post_type, event_date, media_urls, media_type)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            RETURNING *
-        `, [facilityId, userId, title, content, post_type || 'news', event_date || null, media_urls, media_urls.length > 0 ? 'image' : 'text']);
-
+        const result = await pool.query(`INSERT INTO facility_posts (facility_id, user_id, title, content, post_type, event_date, media_urls, media_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`, [facilityId, req.user.userId, title, content, post_type || 'news', event_date || null, urls, urls.length > 0 ? 'image' : 'text']);
         res.status(201).json(result.rows[0]);
-    } catch (error) {
-        console.error('Add facility post error:', error);
+    } catch (e) {
         res.status(500).json({ error: 'Failed' });
     }
 };
 
-// --- 22. Add Specialty to College ---
 const addCollegeSpecialty = async (req, res) => {
     try {
         const { facilityId } = req.params;
         const { name, description, degree_level } = req.body;
-        const userId = req.user.userId;
+        const checkRes = await pool.query(`SELECT s.owner_id, f.category FROM university_facilities f JOIN shops s ON f.university_id = s.id WHERE f.id = $1`, [facilityId]);
+        if (checkRes.rows[0].category !== 'الكليات') return res.status(400).json({ error: 'Not a College' });
+        if (req.user.role !== 'admin' && checkRes.rows[0].owner_id !== req.user.userId) return res.status(403).json({ error: 'Unauthorized' });
 
-        // Permission check
-        const checkRes = await pool.query(`
-            SELECT s.owner_id, f.category FROM university_facilities f 
-            JOIN shops s ON f.university_id = s.id 
-            WHERE f.id = $1
-        `, [facilityId]);
-
-        if (checkRes.rows.length === 0) return res.status(404).json({ error: 'College not found' });
-        if (checkRes.rows[0].category !== 'Ø§Ù„ÙƒÙ„ÙŠØ§Øª') return res.status(400).json({ error: 'Not a College' });
-        if (req.user.role !== 'admin' && checkRes.rows[0].owner_id !== userId) return res.status(403).json({ error: 'Unauthorized' });
-
-        const result = await pool.query(`
-            INSERT INTO university_specialties (facility_id, name, description, degree_level)
-            VALUES ($1, $2, $3, $4)
-            RETURNING *
-        `, [facilityId, name, description, degree_level]);
-
+        const result = await pool.query(`INSERT INTO university_specialties (facility_id, name, description, degree_level) VALUES ($1, $2, $3, $4) RETURNING *`, [facilityId, name, description, degree_level]);
         res.status(201).json(result.rows[0]);
-    } catch (error) {
-        console.error('Add specialty error:', error);
+    } catch (e) {
         res.status(500).json({ error: 'Failed' });
     }
 };
 
-// --- 23. Post Interactions (Like/Comment) ---
-
-// --- 22-A. Delete University Facility (Admin or University Owner) ---
 const deleteUniversityFacility = async (req, res) => {
     try {
         const { facilityId } = req.params;
-        const userId = req.user.userId || req.user.id;
-        const userRole = req.user.role;
+        const checkRes = await pool.query(`SELECT s.owner_id FROM university_facilities f JOIN shops s ON f.university_id = s.id WHERE f.id = $1`, [facilityId]);
+        if (req.user.role !== 'admin' && checkRes.rows[0].owner_id !== req.user.userId) return res.status(403).json({ error: 'Unauthorized' });
 
-        // Check facility and get university owner
-        const facilityCheck = await pool.query(`
-            SELECT f.id, s.owner_id 
-            FROM university_facilities f
-            JOIN shops s ON f.university_id = s.id
-            WHERE f.id = $1
-        `, [facilityId]);
-
-        if (facilityCheck.rows.length === 0) {
-            return res.status(404).json({ error: 'Facility not found' });
-        }
-
-        const uniOwnerId = facilityCheck.rows[0].owner_id;
-
-        // Permission: Admin OR University Owner
-        if (userRole !== 'admin' && uniOwnerId !== userId) {
-            return res.status(403).json({ error: 'Unauthorized: You do not own this university' });
-        }
-
-        // Delete dependencies first
         await pool.query('DELETE FROM facility_posts WHERE facility_id = $1', [facilityId]);
         await pool.query('DELETE FROM university_specialties WHERE facility_id = $1', [facilityId]);
         await pool.query('DELETE FROM university_facilities WHERE id = $1', [facilityId]);
-
-        res.json({ message: 'Facility deleted successfully' });
-    } catch (error) {
-        console.error('Delete facility error:', error);
-        res.status(500).json({ error: 'حدث خطأ أثناء حذف المرفق. يرجى المحاولة لاحقاً.' });
+        res.json({ message: 'Deleted' });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
     }
 };
 
-
-// --- 22-B. Rename University Facility (Admin or Owner) ---
 const renameUniversityFacility = async (req, res) => {
     try {
         const { facilityId } = req.params;
         const { name } = req.body;
-        const userId = req.user.userId;
+        const checkRes = await pool.query(`SELECT s.owner_id FROM university_facilities f JOIN shops s ON f.university_id = s.id WHERE f.id = $1`, [facilityId]);
+        if (req.user.role !== 'admin' && checkRes.rows[0].owner_id !== req.user.userId) return res.status(403).json({ error: 'Unauthorized' });
 
-        if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
-
-        const checkRes = await pool.query(`
-            SELECT f.id, s.owner_id FROM university_facilities f
-            JOIN shops s ON f.university_id = s.id
-            WHERE f.id = $1
-        `, [facilityId]);
-
-        if (checkRes.rows.length === 0) return res.status(404).json({ error: 'Facility not found' });
-        if (req.user.role !== 'admin' && checkRes.rows[0].owner_id !== userId) {
-            return res.status(403).json({ error: 'Unauthorized' });
-        }
-
-        const result = await pool.query(
-            'UPDATE university_facilities SET name = $1 WHERE id = $2 RETURNING *',
-            [name.trim(), facilityId]
-        );
-
-        res.json({ message: 'Facility renamed', facility: result.rows[0] });
-    } catch (error) {
-        console.error('Rename facility error:', error);
-        res.status(500).json({ error: 'Failed to rename facility' });
+        const result = await pool.query('UPDATE university_facilities SET name = $1 WHERE id = $2 RETURNING *', [name, facilityId]);
+        res.json(result.rows[0]);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
     }
 };
 
@@ -1124,18 +769,16 @@ const togglePostLike = async (req, res) => {
     try {
         const { postId } = req.params;
         const userId = req.user.userId;
-
-        const checkRes = await pool.query('SELECT 1 FROM likes WHERE user_id = $1 AND post_id = $2', [userId, postId]);
-
-        if (checkRes.rows.length > 0) {
+        const check = await pool.query('SELECT 1 FROM likes WHERE user_id = $1 AND post_id = $2', [userId, postId]);
+        if (check.rows.length > 0) {
             await pool.query('DELETE FROM likes WHERE user_id = $1 AND post_id = $2', [userId, postId]);
             res.json({ liked: false });
         } else {
             await pool.query('INSERT INTO likes (user_id, post_id) VALUES ($1, $2)', [userId, postId]);
             res.json({ liked: true });
         }
-    } catch (error) {
-        res.status(500).json({ error: 'Like failed' });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
     }
 };
 
@@ -1143,93 +786,83 @@ const addPostComment = async (req, res) => {
     try {
         const { postId } = req.params;
         const { content } = req.body;
-        const userId = req.user.userId;
-
-        const result = await pool.query(`
-            INSERT INTO comments (user_id, post_id, content)
-            VALUES ($1, $2, $3)
-            RETURNING *, (SELECT username FROM users WHERE id = $1) as username, (SELECT profile_picture FROM users WHERE id = $1) as profile_picture
-        `, [userId, postId, content]);
-
+        const result = await pool.query(`INSERT INTO comments (user_id, post_id, content) VALUES ($1, $2, $3) RETURNING *, (SELECT username FROM users WHERE id = $1), (SELECT profile_picture FROM users WHERE id = $1)`, [req.user.userId, postId, content]);
         res.status(201).json(result.rows[0]);
-    } catch (error) {
-        res.status(500).json({ error: 'Comment failed' });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
     }
 };
 
 const getPostComments = async (req, res) => {
     try {
-        const { postId } = req.params;
-        const result = await pool.query(`
-            SELECT c.*, u.username, u.profile_picture
-            FROM comments c
-            JOIN users u ON c.user_id = u.id
-            WHERE c.post_id = $1
-            ORDER BY c.created_at ASC
-        `, [postId]);
+        const result = await pool.query(`SELECT c.*, u.username, u.profile_picture FROM comments c JOIN users u ON c.user_id = u.id WHERE c.post_id = $1 ORDER BY c.created_at ASC`, [req.params.postId]);
         res.json(result.rows);
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to get comments' });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
     }
 };
 
-const deleteShopPost = async (req, res) => {
+const getFollowedUniversitiesFacilities = async (req, res) => {
     try {
-        const { id, postId } = req.params; // id is shopId
-        const userId = req.user.userId;
-        const userRole = req.user.role;
-        const { deleteFileFromCloud } = require('../utils/storage');
-
-        // Check Permissions
-        const shopCheck = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [id]);
-        if (shopCheck.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
-
-        const ownerId = shopCheck.rows[0].owner_id;
-        if (userRole !== 'admin' && ownerId !== userId) {
-            return res.status(403).json({ error: 'Not authorized' });
-        }
-
-        // Get post image before delete
-        const postData = await pool.query('SELECT image_url FROM posts WHERE id = $1 AND shop_id = $2', [postId, id]);
-        if (postData.rows.length === 0) return res.status(404).json({ error: 'Post not found' });
-
-        const imageUrl = postData.rows[0]?.image_url;
-
-        await pool.query('DELETE FROM posts WHERE id = $1 AND shop_id = $2', [postId, id]);
-
-        if (imageUrl) {
-            try {
-                await deleteFileFromCloud(imageUrl);
-            } catch (e) {
-                console.error('Failed to delete image from cloud', e);
-            }
-        }
-
-        res.json({ message: 'Post deleted successfully' });
-    } catch (error) {
-        console.error('Delete shop post error:', error);
-        res.status(500).json({ error: 'Failed to delete post' });
+        const userId = req.user.id || req.user.userId;
+        const result = await pool.query(`SELECT f.*, s.name as university_name FROM university_facilities f JOIN shops s ON f.university_id = s.id JOIN shop_followers sf ON s.id = sf.shop_id WHERE sf.user_id = $1 AND s.is_hidden = FALSE ORDER BY f.category, f.name`, [userId]);
+        res.json({ facilities: result.rows });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
     }
 };
 
-
-// --- 11. Get All Shops for Map (Global View) ---
 const getAllShopsMap = async (req, res) => {
     try {
-        const result = await pool.query(`
-            SELECT id, name, category, profile_picture, latitude, longitude, floor, parent_shop_id
-            FROM shops
-            WHERE is_hidden = FALSE
-        `);
+        const result = await pool.query('SELECT id, name, category, profile_picture, latitude, longitude, floor, parent_shop_id FROM shops WHERE is_hidden = FALSE');
         res.json({ shops: result.rows });
-    } catch (error) {
-        console.error('Get all shops map error:', error);
-        res.status(500).json({ error: 'Failed to get all shops' });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
+    }
+};
+
+const getMunicipalityItems = async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM municipality_items WHERE municipality_id = $1 AND is_active = TRUE ORDER BY section, created_at DESC', [req.params.id]);
+        const grouped = {};
+        const sections = ['live_streams', 'public_squares', 'public_parks', 'services', 'tourism', 'culture'];
+        sections.forEach(s => grouped[s] = []);
+        result.rows.forEach(item => { if(grouped[item.section]) grouped[item.section].push(item); });
+        res.json({ items: result.rows, grouped });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
+    }
+};
+
+const addMunicipalityItem = async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+        const { name, section, latitude, longitude, description } = req.body;
+        let image_url = null;
+        if (req.file) {
+            const { uploadToCloud } = require('../utils/storage');
+            image_url = await uploadToCloud(req.file.buffer, req.file.originalname, req.file.mimetype);
+        }
+        const result = await pool.query(`INSERT INTO municipality_items (municipality_id, name, section, latitude, longitude, image_url, description, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`, [req.params.id, name, section, latitude, longitude, image_url, description, req.user.userId]);
+        res.json(result.rows[0]);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
+    }
+};
+
+const deleteMunicipalityItem = async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+        await pool.query('DELETE FROM municipality_items WHERE id = $1', [req.params.itemId]);
+        res.json({ message: 'Deleted' });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
     }
 };
 
 module.exports = {
     getAllShopsMap,
+    getFollowedUniversitiesFacilities,
     searchShops,
     smartSearch,
     followShop,
@@ -1263,115 +896,3 @@ module.exports = {
     getPostComments,
     getMunicipalityItems
 };
-
-// ====================================================================
-// --- MUNICIPALITY ITEMS (البلديات) ---
-// ====================================================================
-
-/**
- * GET /shops/:id/municipality-items
- * Get all items grouped by section for a municipality
- */
-async function getMunicipalityItems(req, res) {
-    try {
-        const municipalityId = parseInt(req.params.id);
-
-        const result = await pool.query(`
-            SELECT id, name, section, latitude, longitude, image_url, description, is_active, created_at
-            FROM municipality_items
-            WHERE municipality_id = $1 AND is_active = TRUE
-            ORDER BY section ASC, created_at DESC
-        `, [municipalityId]);
-
-        // Group by section
-        const grouped = {};
-        const sectionOrder = ['live_streams', 'public_squares', 'public_parks', 'services', 'tourism', 'culture'];
-        sectionOrder.forEach(s => { grouped[s] = []; });
-
-        result.rows.forEach(item => {
-            if (!grouped[item.section]) grouped[item.section] = [];
-            grouped[item.section].push(item);
-        });
-
-        res.json({ items: result.rows, grouped });
-    } catch (error) {
-        console.error('getMunicipalityItems error:', error);
-        res.status(500).json({ error: 'Failed to get municipality items' });
-    }
-}
-
-/**
- * POST /shops/:id/municipality-items
- * Add a new item to a municipality section (Admin only)
- */
-async function addMunicipalityItem(req, res) {
-    try {
-        const municipalityId = parseInt(req.params.id);
-        const userId = req.user.userId || req.user.id;
-        const userRole = req.user.role;
-
-        if (userRole !== 'admin') {
-            return res.status(403).json({ error: 'Admin only' });
-        }
-
-        const { name, section, latitude, longitude, description } = req.body;
-
-        if (!name || !section || !latitude || !longitude) {
-            return res.status(400).json({ error: 'name, section, latitude, longitude are required' });
-        }
-
-        const validSections = ['live_streams', 'public_squares', 'public_parks', 'services', 'tourism', 'culture'];
-        if (!validSections.includes(section)) {
-            return res.status(400).json({ error: `Invalid section. Must be one of: ${validSections.join(', ')}` });
-        }
-
-        let image_url = null;
-        if (req.file) {
-            const { uploadToCloud } = require('../utils/storage');
-            image_url = await uploadToCloud(req.file.buffer, req.file.originalname, req.file.mimetype);
-        }
-
-        const result = await pool.query(`
-            INSERT INTO municipality_items (municipality_id, name, section, latitude, longitude, image_url, description, created_by)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            RETURNING *
-        `, [municipalityId, name, section, parseFloat(latitude), parseFloat(longitude), image_url, description || null, userId]);
-
-        res.json({ item: result.rows[0] });
-    } catch (error) {
-        console.error('addMunicipalityItem error:', error);
-        res.status(500).json({ error: 'Failed to add municipality item', details: error.message });
-    }
-}
-
-/**
- * DELETE /shops/municipality-items/:itemId
- * Delete a municipality item (Admin only)
- */
-async function deleteMunicipalityItem(req, res) {
-    try {
-        const itemId = parseInt(req.params.itemId);
-        const userRole = req.user.role;
-
-        if (userRole !== 'admin') {
-            return res.status(403).json({ error: 'Admin only' });
-        }
-
-        const result = await pool.query(
-            'DELETE FROM municipality_items WHERE id = $1 RETURNING id',
-            [itemId]
-        );
-
-        if (result.rowCount === 0) {
-            return res.status(404).json({ error: 'Item not found' });
-        }
-
-        res.json({ message: 'Item deleted successfully' });
-    } catch (error) {
-        console.error('deleteMunicipalityItem error:', error);
-        res.status(500).json({ error: 'Failed to delete item' });
-    }
-}
-
-
-

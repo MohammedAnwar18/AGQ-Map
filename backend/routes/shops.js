@@ -15,6 +15,9 @@ router.delete('/:id/follow', authenticateToken, shopController.unfollowShop);
 // المحلات المتابَعة (خاصة بالمستخدم)
 router.get('/following', authenticateToken, shopController.getFollowedShops);
 
+// مرافق الجامعات المتابَعة (خاصة بالمستخدم)
+router.get('/following/facilities', authenticateToken, shopController.getFollowedUniversitiesFacilities);
+
 // المحلات المُدارة (خاصة بالمستخدم)
 router.get('/managed/mine', authenticateToken, shopController.getManagedShops);
 
