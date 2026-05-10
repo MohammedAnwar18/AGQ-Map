@@ -544,6 +544,21 @@ export const shopService = {
     renameFacility: async (facilityId, name) => {
         const response = await api.put(`/shops/facilities/${facilityId}`, { name });
         return response.data;
+    },
+
+    getPanoramas: async (shopId) => {
+        const response = await api.get(`/shops/${shopId}/panoramas?t=${Date.now()}`);
+        return response.data;
+    },
+
+    addPanorama: async (shopId, data) => {
+        const response = await api.post(`/shops/${shopId}/panoramas`, data);
+        return response.data;
+    },
+
+    deletePanorama: async (panoramaId) => {
+        const response = await api.delete(`/shops/panoramas/${panoramaId}`);
+        return response.data;
     }
 };
 

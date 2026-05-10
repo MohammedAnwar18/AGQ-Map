@@ -964,7 +964,64 @@ const deleteMunicipalityItem = async (req, res) => {
     }
 };
 
+
+const getShopPanoramas = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query('SELECT * FROM university_panoramas WHERE shop_id = $1 ORDER BY created_at ASC', [id]);
+        res.json({ panoramas: result.rows });
+    } catch (e) {
+        console.error('getShopPanoramas error:', e);
+        res.status(500).json({ error: 'Failed to get panoramas' });
+    }
+};
+
+const addShopPanorama = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, thumbnail_url, equirect_url } = req.body;
+        
+        const shopRes = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [id]);
+        if (shopRes.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
+        
+        const isAuthorized = req.user.role === 'admin' || String(shopRes.rows[0].owner_id) === String(req.user.userId || req.user.id);
+        if (!isAuthorized) return res.status(403).json({ error: 'Unauthorized' });
+
+        const result = await pool.query(
+            `INSERT INTO university_panoramas (shop_id, title, thumbnail_url, equirect_url) 
+             VALUES ($1, $2, $3, $4) RETURNING *`,
+            [id, title, thumbnail_url, equirect_url]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (e) {
+        console.error('addShopPanorama error:', e);
+        res.status(500).json({ error: 'Failed to add panorama' });
+    }
+};
+
+const deleteShopPanorama = async (req, res) => {
+    try {
+        const { panoramaId } = req.params;
+        
+        const panoRes = await pool.query('SELECT shop_id FROM university_panoramas WHERE id = $1', [panoramaId]);
+        if (panoRes.rows.length === 0) return res.status(404).json({ error: 'Panorama not found' });
+        
+        const shopId = panoRes.rows[0].shop_id;
+        const shopRes = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [shopId]);
+        
+        const isAuthorized = req.user.role === 'admin' || String(shopRes.rows[0].owner_id) === String(req.user.userId || req.user.id);
+        if (!isAuthorized) return res.status(403).json({ error: 'Unauthorized' });
+
+        await pool.query('DELETE FROM university_panoramas WHERE id = $1', [panoramaId]);
+        res.json({ message: 'Panorama deleted successfully' });
+    } catch (e) {
+        console.error('deleteShopPanorama error:', e);
+        res.status(500).json({ error: 'Failed to delete panorama' });
+    }
+};
+
 module.exports = {
+
     getAllShopsMap,
     getFollowedUniversitiesFacilities,
     searchShops,
@@ -998,5 +1055,8 @@ module.exports = {
     getUniversityFacilities,
     getFacilityProfile,
     getPostComments,
-    getMunicipalityItems
+    getMunicipalityItems,
+    getShopPanoramas,
+    addShopPanorama,
+    deleteShopPanorama
 };

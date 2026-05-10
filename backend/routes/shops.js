@@ -60,6 +60,11 @@ router.put('/facilities/:facilityId', authenticateToken, upload.fields([{ name: 
 router.post('/:id/municipality-items', authenticateToken, upload.single('image'), shopController.addMunicipalityItem);
 router.delete('/municipality-items/:itemId', authenticateToken, shopController.deleteMunicipalityItem);
 
+// البانوراما (إضافة / حذف)
+router.post('/:id/panoramas', authenticateToken, shopController.addShopPanorama);
+router.delete('/panoramas/:panoramaId', authenticateToken, shopController.deleteShopPanorama);
+
+
 // ============================================================
 // المسارات العامة (قراءة فقط - auth اختياري)
 // ============================================================
@@ -86,6 +91,10 @@ router.get('/posts/:postId/comments', optionalAuth, shopController.getPostCommen
 
 // عناصر البلدية (عرض - عام)
 router.get('/:id/municipality-items', optionalAuth, shopController.getMunicipalityItems);
+
+// البانوراما (عرض)
+router.get('/:id/panoramas', optionalAuth, shopController.getShopPanoramas);
+
 
 module.exports = router;
 

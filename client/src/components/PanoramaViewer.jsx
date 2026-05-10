@@ -30,7 +30,11 @@ const PanoramaViewer = ({ imageSrc, onClose }) => {
 
         // Texture
         const loader = new THREE.TextureLoader();
+        loader.setCrossOrigin('anonymous');
         const texture = loader.load(imageSrc, () => {
+            setLoading(false);
+        }, undefined, (err) => {
+            console.error('Error loading texture:', err);
             setLoading(false);
         });
         

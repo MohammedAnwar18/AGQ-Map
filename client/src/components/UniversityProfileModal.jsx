@@ -40,19 +40,9 @@ const ShareIcon = () => (
     </svg>
 );
 
-const R2_BASE_URL = 'https://pub-6e55680fed9e448b82ffe80f9d92b020.r2.dev/Bzu/birzeit_drone_images';
-
-const CAMPUS_PANORAMAS = [
-    { id: 'DJI_0395', title: 'البوابة الرئيسية والمدخل', thumbnail: `${R2_BASE_URL}/drone_DJI_0395/thumbnail.jpg`, equirect: `${R2_BASE_URL}/drone_DJI_0395/equirectangular.jpg` },
-    { id: 'DJI_0396', title: 'ساحة العلوم والهندسة', thumbnail: `${R2_BASE_URL}/drone_DJI_0396/thumbnail.jpg`, equirect: `${R2_BASE_URL}/drone_DJI_0396/equirectangular.jpg` },
-    { id: 'DJI_0397', title: 'مبنى الإدارة والخدمات', thumbnail: `${R2_BASE_URL}/drone_DJI_0397/thumbnail.jpg`, equirect: `${R2_BASE_URL}/drone_DJI_0397/equirectangular.jpg` },
-    { id: 'DJI_0398', title: 'كلية الفنون والتصميم', thumbnail: `${R2_BASE_URL}/drone_DJI_0398/thumbnail.jpg`, equirect: `${R2_BASE_URL}/drone_DJI_0398/equirectangular.jpg` },
-    { id: 'DJI_0399', title: 'المكتبة والمجمع الثقافي', thumbnail: `${R2_BASE_URL}/drone_DJI_0399/thumbnail.jpg`, equirect: `${R2_BASE_URL}/drone_DJI_0401/equirectangular.jpg` }, // DJI_0401 as placeholder if missing
-    { id: 'DJI_0400', title: 'إطلالة جوية شاملة للحرم', thumbnail: `${R2_BASE_URL}/drone_DJI_0400/thumbnail.jpg`, equirect: `${R2_BASE_URL}/drone_DJI_0400/equirectangular.jpg` },
-    { id: 'DJI_0401', title: 'المرافق الرياضية والساحات', thumbnail: `${R2_BASE_URL}/drone_DJI_0401/thumbnail.jpg`, equirect: `${R2_BASE_URL}/drone_DJI_0401/equirectangular.jpg` },
-];
 
 const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChange, onFacilityClick, onShopClick }) => {
+
     const [activeTab, setActiveTab] = useState('overview');
     const [selectedFacilityCategory, setSelectedFacilityCategory] = useState(null);
     const [facilities, setFacilities] = useState({});
@@ -91,6 +81,9 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
     const [isUploadingImage, setIsUploadingImage] = useState(false);
     const [cropState, setCropState] = useState({ isOpen: false, file: null, type: null, aspect: 1 });
     const [selectedPanorama, setSelectedPanorama] = useState(null);
+    const [dynamicPanoramas, setDynamicPanoramas] = useState([]);
+    const [isAddingPanorama, setIsAddingPanorama] = useState(false);
+    const [newPanorama, setNewPanorama] = useState({ title: '', thumbnail_url: '', equirect_url: '' });
 
     const predefinedCategories = [
         { name: 'الكليات', defaultIcon: '🏛️' },
@@ -106,7 +99,41 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
     useEffect(() => {
         loadUniversityData();
         loadFacilities();
+        loadPanoramas();
     }, [university.id]);
+
+    const loadPanoramas = async () => {
+        try {
+            const data = await shopService.getPanoramas(university.id);
+            setDynamicPanoramas(data.panoramas || []);
+        } catch (error) {
+            console.error('Failed to load panoramas', error);
+        }
+    };
+
+    const handleAddPanorama = async (e) => {
+        e.preventDefault();
+        try {
+            await shopService.addPanorama(university.id, newPanorama);
+            alert('تم إضافة البانوراما بنجاح!');
+            setIsAddingPanorama(false);
+            setNewPanorama({ title: '', thumbnail_url: '', equirect_url: '' });
+            loadPanoramas();
+        } catch (error) {
+            alert('فشل إضافة البانوراما');
+        }
+    };
+
+    const handleDeletePanorama = async (id) => {
+        if (!confirm('هل أنت متأكد من حذف هذه البانوراما؟')) return;
+        try {
+            await shopService.deletePanorama(id);
+            alert('تم حذف البانوراما');
+            loadPanoramas();
+        } catch (error) {
+            alert('فشل الحذف');
+        }
+    };
 
     const loadUniversityData = async () => {
         try {
@@ -1040,6 +1067,59 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                             <div style={{ marginBottom: '25px', textAlign: 'center' }}>
                                 <h3 className="section-title" style={{ marginBottom: '10px' }}>استكشف الحرم من الجو</h3>
                                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>اختر موقعاً لبدء الجولة الافتراضية بزاوية 360 درجة</p>
+                                
+                                {isAdminOrOwner && (
+                                    <div style={{ marginTop: '15px' }}>
+                                        {!isAddingPanorama ? (
+                                            <button 
+                                                className="btn-small is-primary" 
+                                                onClick={() => setIsAddingPanorama(true)}
+                                                style={{ padding: '8px 20px', borderRadius: '12px' }}
+                                            >
+                                                + إضافة بانوراما يدوياً
+                                            </button>
+                                        ) : (
+                                            <form onSubmit={handleAddPanorama} style={{ 
+                                                background: 'var(--bg-tertiary)', 
+                                                padding: '20px', 
+                                                borderRadius: '16px',
+                                                marginTop: '15px',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: '12px',
+                                                maxWidth: '500px',
+                                                margin: '15px auto'
+                                            }}>
+                                                <h4 style={{ margin: 0 }}>إضافة بانوراما جديدة</h4>
+                                                <input 
+                                                    placeholder="العنوان (مثلاً: بوابة الجامعة)" 
+                                                    className="input" 
+                                                    value={newPanorama.title}
+                                                    onChange={e => setNewPanorama({...newPanorama, title: e.target.value})}
+                                                    required 
+                                                />
+                                                <input 
+                                                    placeholder="رابط الصورة المصغرة (Thumbnail URL)" 
+                                                    className="input" 
+                                                    value={newPanorama.thumbnail_url}
+                                                    onChange={e => setNewPanorama({...newPanorama, thumbnail_url: e.target.value})}
+                                                    required 
+                                                />
+                                                <input 
+                                                    placeholder="رابط الصورة البانورامية (Equirectangular URL)" 
+                                                    className="input" 
+                                                    value={newPanorama.equirect_url}
+                                                    onChange={e => setNewPanorama({...newPanorama, equirect_url: e.target.value})}
+                                                    required 
+                                                />
+                                                <div style={{ display: 'flex', gap: '10px' }}>
+                                                    <button type="submit" className="btn-small is-accept">حفظ</button>
+                                                    <button type="button" className="btn-small" onClick={() => setIsAddingPanorama(false)}>إلغاء</button>
+                                                </div>
+                                            </form>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             <div style={{ 
@@ -1048,11 +1128,16 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                                 gap: '20px',
                                 padding: '10px'
                             }}>
-                                {CAMPUS_PANORAMAS.map((pano) => (
+                                {dynamicPanoramas.length === 0 && (
+                                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                                        لا توجد جولات افتراضية متاحة حالياً.
+                                    </div>
+                                )}
+                                {dynamicPanoramas.map((pano) => (
                                     <div 
                                         key={pano.id} 
                                         className="pano-card"
-                                        onClick={() => setSelectedPanorama(pano)}
+                                        onClick={() => setSelectedPanorama({ equirect: pano.equirect_url })}
                                         style={{ 
                                             position: 'relative', 
                                             borderRadius: '20px', 
@@ -1069,8 +1154,23 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                                         <div style={{ 
                                             width: '100%', 
                                             height: '100%', 
-                                            background: `url(${pano.thumbnail}) center/cover` 
+                                            background: `url(${pano.thumbnail_url}) center/cover` 
                                         }} />
+                                        
+                                        {isAdminOrOwner && (
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); handleDeletePanorama(pano.id); }}
+                                                style={{ 
+                                                    position: 'absolute', top: '10px', right: '10px', 
+                                                    background: 'rgba(239, 68, 68, 0.8)', border: 'none', 
+                                                    color: 'white', padding: '5px', borderRadius: '50%',
+                                                    zIndex: 10, cursor: 'pointer'
+                                                }}
+                                            >
+                                                <TrashIcon />
+                                            </button>
+                                        )}
+
                                         <div style={{ 
                                             position: 'absolute', inset: 0, 
                                             background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)',
