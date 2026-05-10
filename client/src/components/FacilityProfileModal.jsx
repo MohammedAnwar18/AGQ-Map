@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { shopService, getImageUrl } from '../services/api';
+import ImageCropperModal from './ImageCropperModal';
 import './FacilityProfileModal.css';
 
 const ShareIcon = () => (
@@ -96,6 +97,14 @@ const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editData, setEditData] = useState({ name: '', description: '', icon: '' });
     const [editFiles, setEditFiles] = useState({ icon_file: null, cover_file: null });
+    
+    // Image Cropper State
+    const [croppingState, setCroppingState] = useState({
+        isOpen: false,
+        file: null,
+        aspect: 1,
+        targetField: null // 'icon' or 'cover'
+    });
 
     useEffect(() => {
         if (data && data.facility) {
@@ -128,6 +137,27 @@ const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleFileSelect = (e, targetField) => {
+        const file = e.target.files[0];
+        if (file) {
+            setCroppingState({
+                isOpen: true,
+                file: file,
+                aspect: targetField === 'icon' ? 1 : 2.5, // 1:1 for logo, wider for cover
+                targetField: targetField
+            });
+        }
+    };
+
+    const handleCropDone = (croppedFile) => {
+        if (croppingState.targetField === 'icon') {
+            setEditFiles({ ...editFiles, icon_file: croppedFile });
+        } else {
+            setEditFiles({ ...editFiles, cover_file: croppedFile });
+        }
+        setCroppingState({ isOpen: false, file: null, aspect: 1, targetField: null });
     };
 
     if (loading) return (
@@ -295,7 +325,7 @@ const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
                                         <input 
                                             type="file" 
                                             accept="image/*"
-                                            onChange={e => setEditFiles({...editFiles, icon_file: e.target.files[0]})} 
+                                            onChange={e => handleFileSelect(e, 'icon')} 
                                             style={{ fontSize: '0.8rem', width: '100%' }}
                                         />
                                         <input 
@@ -322,7 +352,7 @@ const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
                                         <input 
                                             type="file" 
                                             accept="image/*"
-                                            onChange={e => setEditFiles({...editFiles, cover_file: e.target.files[0]})} 
+                                            onChange={e => handleFileSelect(e, 'cover')} 
                                             style={{ fontSize: '0.8rem', width: '100%' }}
                                         />
                                     </div>
@@ -468,6 +498,15 @@ const FacilityProfileModal = ({ facilityId, onClose, currentUser }) => {
                         )}
                     </div>
                 </>
+            )}
+
+            {croppingState.isOpen && (
+                <ImageCropperModal 
+                    imageFile={croppingState.file}
+                    aspect={croppingState.aspect}
+                    onCropDone={handleCropDone}
+                    onCancel={() => setCroppingState({ isOpen: false, file: null, aspect: 1, targetField: null })}
+                />
             )}
         </div>
             </div>
