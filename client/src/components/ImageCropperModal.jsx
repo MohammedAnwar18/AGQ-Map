@@ -100,7 +100,9 @@ const ImageCropperModal = ({ imageFile, aspect = 1, onCropDone, onCancel }) => {
                         image={imageSrc}
                         crop={crop}
                         zoom={zoom}
-                        aspect={aspect} // Make this dynamic, normally 1 for profile and 3 for cover
+                        aspect={aspect}
+                        cropShape={aspect === 1 ? 'round' : 'rect'}
+                        showGrid={aspect !== 1}
                         onCropChange={setCrop}
                         onCropComplete={onCropComplete}
                         onZoomChange={setZoom}
