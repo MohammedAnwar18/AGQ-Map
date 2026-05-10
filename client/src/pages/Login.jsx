@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/api';
 import CustomCalendar from '../components/CustomCalendar';
@@ -7,8 +7,9 @@ import './Login.css';
 
 const Login = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { login } = useAuth();
-    const [isLogin, setIsLogin] = useState(true);
+    const [isLogin, setIsLogin] = useState(location.state?.mode === 'register' ? false : true);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [isOtpStep, setIsOtpStep] = useState(false);
@@ -443,7 +444,7 @@ const Login = () => {
                                                     style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: '#fbab15', marginTop: '3px' }}
                                                 />
                                                 <label htmlFor="terms" style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.9rem', cursor: 'pointer', lineHeight: '1.4' }}>
-                                                    أوافق على <Link to="/terms" style={{ color: '#fbab15', fontWeight: 'bold', textDecoration: 'none' }}>شروط الخدمة</Link> و <Link to="/privacy" style={{ color: '#fbab15', fontWeight: 'bold', textDecoration: 'none' }}>سياسة الخصوصية</Link> لنظام بالنوفا.
+                                                    أوافق على <Link to="/terms" state={{ mode: 'register' }} style={{ color: '#fbab15', fontWeight: 'bold', textDecoration: 'none' }}>شروط الخدمة</Link> و <Link to="/privacy" state={{ mode: 'register' }} style={{ color: '#fbab15', fontWeight: 'bold', textDecoration: 'none' }}>سياسة الخصوصية</Link> لنظام بالنوفا.
                                                 </label>
                                             </div>
                                         )}
@@ -580,9 +581,9 @@ const Login = () => {
                 flexShrink: 0
             }}>
                 <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'center', gap: '15px' }}>
-                    <Link to="/terms" style={{ color: 'rgba(255, 255, 255, 0.7)', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem' }}>شروط الخدمة</Link>
+                    <Link to="/terms" state={{ mode: isLogin ? 'login' : 'register' }} style={{ color: 'rgba(255, 255, 255, 0.7)', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem' }}>شروط الخدمة</Link>
                     <span style={{ opacity: 0.2 }}>|</span>
-                    <Link to="/privacy" style={{ color: 'rgba(255, 255, 255, 0.7)', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem' }}>سياسة الخصوصية</Link>
+                    <Link to="/privacy" state={{ mode: isLogin ? 'login' : 'register' }} style={{ color: 'rgba(255, 255, 255, 0.7)', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem' }}>سياسة الخصوصية</Link>
                 </div>
                 <p style={{ margin: 0, padding: 0, opacity: 0.7 }}>
                     &copy; {new Date().getFullYear()} PalNovaa. جميع الحقوق محفوظة.

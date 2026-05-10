@@ -166,3 +166,9 @@
         margin-bottom: 0.75rem;
     }
 }
+
+.close-x-btn:hover {
+    background: rgba(251, 171, 21, 0.15) !important;
+    transform: rotate(90deg) scale(1.1);
+    box-shadow: 0 0 15px rgba(251, 171, 21, 0.3);
+}
