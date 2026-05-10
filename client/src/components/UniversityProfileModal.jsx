@@ -40,7 +40,7 @@ const ShareIcon = () => (
     </svg>
 );
 
-const R2_BASE_URL = 'https://pub-6e55680fed9e448b82ffe80f9d92b020.r2.dev/panoramas';
+const R2_BASE_URL = 'https://pub-6e55680fed9e448b82ffe80f9d92b020.r2.dev/Bzu/birzeit_drone_images';
 
 const CAMPUS_PANORAMAS = [
     { id: 'DJI_0395', title: 'البوابة الرئيسية والمدخل', thumbnail: `${R2_BASE_URL}/drone_DJI_0395/thumbnail.jpg`, equirect: `${R2_BASE_URL}/drone_DJI_0395/equirectangular.jpg` },
