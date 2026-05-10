@@ -31,11 +31,45 @@ const Login = () => {
     });
 
     const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
+        const { name, value } = e.target;
+        if (name === 'date_of_birth') {
+            // تنظيف المدخلات للسماح بالأرقام والفواصل فقط
+            let cleanValue = value.replace(/[^0-9/]/g, '');
+            
+            // إضافة الفواصل تلقائياً
+            if (cleanValue.length === 2 && !cleanValue.includes('/') && e.nativeEvent.inputType !== 'deleteContentBackward') {
+                cleanValue += '/';
+            } else if (cleanValue.length === 5 && cleanValue.lastIndexOf('/') === 2 && e.nativeEvent.inputType !== 'deleteContentBackward') {
+                cleanValue += '/';
+            }
+            
+            setFormData({
+                ...formData,
+                date_of_birth: cleanValue.substring(0, 10)
+            });
+        } else {
+            setFormData({
+                ...formData,
+                [name]: value
+            });
+        }
         setError('');
+    };
+
+    const parseDateForServer = (dateStr) => {
+        if (!dateStr) return '';
+        // إذا كان بالتنسيق الصحيح بالفعل
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+        
+        // محاولة التحويل من DD/MM/YYYY إلى YYYY-MM-DD
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+            const [day, month, year] = parts;
+            if (day && month && year && year.length === 4) {
+                return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+            }
+        }
+        return dateStr;
     };
 
     const handleSubmit = async (e) => {
@@ -109,7 +143,7 @@ const Login = () => {
                     email: formData.email,
                     password: formData.password,
                     full_name: formData.full_name,
-                    date_of_birth: formData.date_of_birth,
+                    date_of_birth: parseDateForServer(formData.date_of_birth),
                     gender: formData.gender
                 });
 
@@ -344,21 +378,39 @@ const Login = () => {
                                                     </select>
                                                 </div>
                                                 <div className="form-group" style={{ position: 'relative' }}>
-                                                    <div
-                                                        className="input"
-                                                        onClick={() => setShowCalendar(true)}
-                                                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-                                                    >
-                                                        <span style={{ color: formData.date_of_birth ? 'inherit' : 'rgba(255, 255, 255, 0.5)' }}>{formData.date_of_birth || 'تاريخ الميلاد'}</span>
-                                                        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#fff">
-                                                            <path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Zm280 240q-17 0-28.5-11.5T440-440q0-17 11.5-28.5T480-480q17 0 28.5 11.5T520-440q0 17-11.5 28.5T480-400Zm-160 0q-17 0-28.5-11.5T280-440q0-17 11.5-28.5T320-480q17 0 28.5 11.5T360-440q0 17-11.5 28.5T320-400Zm320 0q-17 0-28.5-11.5T600-440q0-17 11.5-28.5T640-480q17 0 28.5 11.5T680-440q0 17-11.5 28.5T640-400ZM480-240q-17 0-28.5-11.5T440-280q0-17 11.5-28.5T480-320q17 0 28.5 11.5T520-280q0 17-11.5 28.5T480-240Zm-160 0q-17 0-28.5-11.5T280-280q0-17 11.5-28.5T320-320q17 0 28.5 11.5T360-280q0 17-11.5 28.5T320-240Zm320 0q-17 0-28.5-11.5T600-280q0-17 11.5-28.5T640-320q17 0 28.5 11.5T680-280q0 17-11.5 28.5T640-240Z" />
-                                                        </svg>
+                                                    <div style={{ display: 'flex', gap: '5px' }}>
+                                                        <input
+                                                            type="text"
+                                                            id="date_of_birth"
+                                                            name="date_of_birth"
+                                                            value={formData.date_of_birth}
+                                                            onChange={handleChange}
+                                                            className="input"
+                                                            placeholder="تاريخ الميلاد (يوم/شهر/سنة)"
+                                                            required
+                                                            style={{ flex: 1 }}
+                                                            maxLength={10}
+                                                        />
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => setShowCalendar(!showCalendar)}
+                                                            className="input"
+                                                            style={{ width: '50px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                                                        >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#fff">
+                                                                <path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Zm280 240q-17 0-28.5-11.5T440-440q0-17 11.5-28.5T480-480q17 0 28.5 11.5T520-440q0 17-11.5 28.5T480-400Zm-160 0q-17 0-28.5-11.5T280-440q0-17 11.5-28.5T320-480q17 0 28.5 11.5T360-440q0 17-11.5 28.5T320-400Zm320 0q-17 0-28.5-11.5T600-440q0-17 11.5-28.5T640-480q17 0 28.5 11.5T680-440q0 17-11.5 28.5T640-400ZM480-240q-17 0-28.5-11.5T440-280q0-17 11.5-28.5T480-320q17 0 28.5 11.5T520-280q0 17-11.5 28.5T480-240Zm-160 0q-17 0-28.5-11.5T280-280q0-17 11.5-28.5T320-320q17 0 28.5 11.5T360-280q0 17-11.5 28.5T320-240Zm320 0q-17 0-28.5-11.5T600-280q0-17 11.5-28.5T640-320q17 0 28.5 11.5T680-280q0 17-11.5 28.5T640-240Z" />
+                                                            </svg>
+                                                        </button>
                                                     </div>
                                                     {showCalendar && (
                                                         <div style={{ position: 'absolute', bottom: '100%', left: '0', right: '0', zIndex: 100 }}>
                                                             <CustomCalendar
-                                                                selectedDate={formData.date_of_birth}
-                                                                onChange={(date) => setFormData({ ...formData, date_of_birth: date })}
+                                                                selectedDate={parseDateForServer(formData.date_of_birth)}
+                                                                onChange={(date) => {
+                                                                    // تحويل YYYY-MM-DD القادم من التقويم إلى DD/MM/YYYY للعرض
+                                                                    const [y, m, d] = date.split('-');
+                                                                    setFormData({ ...formData, date_of_birth: `${d}/${m}/${y}` });
+                                                                }}
                                                                 onClose={() => setShowCalendar(false)}
                                                             />
                                                         </div>
