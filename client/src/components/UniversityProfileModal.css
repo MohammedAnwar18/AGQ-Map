@@ -401,3 +401,26 @@
         font-size: 1.1rem !important;
     }
 }
+
+/* Tour Section Styles */
+.pano-card:hover .play-icon-overlay {
+    opacity: 1 !important;
+}
+
+.loader-ring {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    border-top-color: #fbab15;
+    animation: ring-spin 1s ease-in-out infinite;
+}
+
+@keyframes ring-spin {
+    to { transform: rotate(360deg); }
+}
+
+.uni-tour-section {
+    padding-bottom: 50px;
+}

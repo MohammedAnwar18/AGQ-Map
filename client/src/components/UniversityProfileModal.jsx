@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { shopService, getImageUrl } from '../services/api';
 import ImageCropperModal from './ImageCropperModal';
 import BirzeitCalendar from './BirzeitCalendar';
+import PanoramaViewer from './PanoramaViewer';
 import './UniversityProfileModal.css';
 import './Modal.css';
 
@@ -38,6 +39,16 @@ const ShareIcon = () => (
         <line x1="12" y1="2" x2="12" y2="15"></line>
     </svg>
 );
+
+const CAMPUS_PANORAMAS = [
+    { id: 'DJI_0395', title: 'البوابة الرئيسية والمدخل', thumbnail: '/panoramas/drone_DJI_0395/thumbnail.jpg', equirect: '/panoramas/drone_DJI_0395/equirectangular.jpg' },
+    { id: 'DJI_0396', title: 'ساحة العلوم والهندسة', thumbnail: '/panoramas/drone_DJI_0396/thumbnail.jpg', equirect: '/panoramas/drone_DJI_0396/equirectangular.jpg' },
+    { id: 'DJI_0397', title: 'مبنى الإدارة والخدمات', thumbnail: '/panoramas/drone_DJI_0397/thumbnail.jpg', equirect: '/panoramas/drone_DJI_0397/equirectangular.jpg' },
+    { id: 'DJI_0398', title: 'كلية الفنون والتصميم', thumbnail: '/panoramas/drone_DJI_0398/thumbnail.jpg', equirect: '/panoramas/drone_DJI_0398/equirectangular.jpg' },
+    { id: 'DJI_0399', title: 'المكتبة والمجمع الثقافي', thumbnail: '/panoramas/drone_DJI_0399/thumbnail.jpg', equirect: '/panoramas/drone_DJI_0399/equirectangular.jpg' },
+    { id: 'DJI_0400', title: 'إطلالة جوية شاملة للحرم', thumbnail: '/panoramas/drone_DJI_0400/thumbnail.jpg', equirect: '/panoramas/drone_DJI_0400/equirectangular.jpg' },
+    { id: 'DJI_0401', title: 'المرافق الرياضية والساحات', thumbnail: '/panoramas/drone_DJI_0401/thumbnail.jpg', equirect: '/panoramas/drone_DJI_0401/equirectangular.jpg' },
+];
 
 const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChange, onFacilityClick, onShopClick }) => {
     const [activeTab, setActiveTab] = useState('overview');
@@ -77,6 +88,7 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
     const [localCoverPic, setLocalCoverPic] = useState(university.cover_picture || university.cover_image); // accommodate both
     const [isUploadingImage, setIsUploadingImage] = useState(false);
     const [cropState, setCropState] = useState({ isOpen: false, file: null, type: null, aspect: 1 });
+    const [selectedPanorama, setSelectedPanorama] = useState(null);
 
     const predefinedCategories = [
         { name: 'الكليات', defaultIcon: '🏛️' },
@@ -593,6 +605,9 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                     <button className={`uni-tab ${activeTab === 'news' ? 'active' : ''}`} onClick={() => setActiveTab('news')}>
                         الأخبار
                     </button>
+                    <button className={`uni-tab ${activeTab === 'tour' ? 'active' : ''}`} onClick={() => setActiveTab('tour')}>
+                        جولة 360° 🚁
+                    </button>
                 </div>
 
                 {/* Content Area */}
@@ -1017,6 +1032,74 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                             </div>
                         </div>
                     )}
+
+                    {activeTab === 'tour' && (
+                        <div className="uni-tour-section slide-in-right">
+                            <div style={{ marginBottom: '25px', textAlign: 'center' }}>
+                                <h3 className="section-title" style={{ marginBottom: '10px' }}>استكشف الحرم من الجو</h3>
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>اختر موقعاً لبدء الجولة الافتراضية بزاوية 360 درجة</p>
+                            </div>
+
+                            <div style={{ 
+                                display: 'grid', 
+                                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
+                                gap: '20px',
+                                padding: '10px'
+                            }}>
+                                {CAMPUS_PANORAMAS.map((pano) => (
+                                    <div 
+                                        key={pano.id} 
+                                        className="pano-card"
+                                        onClick={() => setSelectedPanorama(pano)}
+                                        style={{ 
+                                            position: 'relative', 
+                                            borderRadius: '20px', 
+                                            overflow: 'hidden', 
+                                            aspectRatio: '16/9', 
+                                            cursor: 'pointer',
+                                            boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+                                            border: '1px solid var(--bg-tertiary)',
+                                            transition: 'transform 0.3s ease'
+                                        }}
+                                        onMouseOver={e => e.currentTarget.style.transform = 'translateY(-5px)'}
+                                        onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+                                    >
+                                        <div style={{ 
+                                            width: '100%', 
+                                            height: '100%', 
+                                            background: `url(${pano.thumbnail}) center/cover` 
+                                        }} />
+                                        <div style={{ 
+                                            position: 'absolute', inset: 0, 
+                                            background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)',
+                                            display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+                                            padding: '15px'
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
+                                                <div style={{ background: '#fbab15', borderRadius: '50%', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                        <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
+                                                        <path d="M2 12h20"/>
+                                                    </svg>
+                                                </div>
+                                                {pano.title}
+                                            </div>
+                                        </div>
+                                        <div className="play-icon-overlay" style={{ 
+                                            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                                            background: 'rgba(251, 171, 21, 0.9)', borderRadius: '50%', width: '50px', height: '50px',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            opacity: 0, transition: 'opacity 0.3s'
+                                        }}>
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                                                <polygon points="5 3 19 12 5 21 5 3"/>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
                 </div>
 
@@ -1030,6 +1113,12 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                         handleImageUpload(croppedFile, cropState.type);
                         setCropState({ isOpen: false, file: null, type: null, aspect: 1 });
                     }}
+                />
+            )}
+            {selectedPanorama && (
+                <PanoramaViewer 
+                    imageSrc={selectedPanorama.equirect} 
+                    onClose={() => setSelectedPanorama(null)} 
                 />
             )}
         </div>
