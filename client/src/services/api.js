@@ -551,8 +551,10 @@ export const shopService = {
         return response.data;
     },
 
-    addPanorama: async (shopId, data) => {
-        const response = await api.post(`/shops/${shopId}/panoramas`, data);
+    addPanorama: async (shopId, formData) => {
+        const response = await api.post(`/shops/${shopId}/panoramas`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
         return response.data;
     },
 

@@ -980,6 +980,7 @@ const addShopPanorama = async (req, res) => {
     try {
         const { id } = req.params;
         const { title, thumbnail_url, equirect_url } = req.body;
+        const { uploadToCloud } = require('../utils/storage');
         
         const shopRes = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [id]);
         if (shopRes.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
@@ -987,10 +988,32 @@ const addShopPanorama = async (req, res) => {
         const isAuthorized = req.user.role === 'admin' || String(shopRes.rows[0].owner_id) === String(req.user.userId || req.user.id);
         if (!isAuthorized) return res.status(403).json({ error: 'Unauthorized' });
 
+        let finalThumbnailUrl = thumbnail_url;
+        let finalEquirectUrl = equirect_url;
+
+        // Handle File Uploads if present
+        if (req.files) {
+            if (req.files.thumbnail_file) {
+                const file = req.files.thumbnail_file[0];
+                finalThumbnailUrl = await uploadToCloud(file.buffer, file.originalname, file.mimetype);
+            }
+            if (req.files.equirect_file) {
+                const file = req.files.equirect_file[0];
+                finalEquirectUrl = await uploadToCloud(file.buffer, file.originalname, file.mimetype);
+            }
+        }
+
+        if (!finalEquirectUrl) {
+            return res.status(400).json({ error: 'Equirectangular image/URL is required' });
+        }
+
+        // If no thumbnail, use the equirect as thumbnail
+        if (!finalThumbnailUrl) finalThumbnailUrl = finalEquirectUrl;
+
         const result = await pool.query(
             `INSERT INTO university_panoramas (shop_id, title, thumbnail_url, equirect_url) 
              VALUES ($1, $2, $3, $4) RETURNING *`,
-            [id, title, thumbnail_url, equirect_url]
+            [id, title, finalThumbnailUrl, finalEquirectUrl]
         );
         res.status(201).json(result.rows[0]);
     } catch (e) {

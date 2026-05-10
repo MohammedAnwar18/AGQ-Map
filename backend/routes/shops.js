@@ -61,7 +61,7 @@ router.post('/:id/municipality-items', authenticateToken, upload.single('image')
 router.delete('/municipality-items/:itemId', authenticateToken, shopController.deleteMunicipalityItem);
 
 // البانوراما (إضافة / حذف)
-router.post('/:id/panoramas', authenticateToken, shopController.addShopPanorama);
+router.post('/:id/panoramas', authenticateToken, upload.fields([{ name: 'thumbnail_file', maxCount: 1 }, { name: 'equirect_file', maxCount: 1 }]), shopController.addShopPanorama);
 router.delete('/panoramas/:panoramaId', authenticateToken, shopController.deleteShopPanorama);
 
 

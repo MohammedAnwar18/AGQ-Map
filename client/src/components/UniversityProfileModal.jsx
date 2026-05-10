@@ -84,6 +84,8 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
     const [dynamicPanoramas, setDynamicPanoramas] = useState([]);
     const [isAddingPanorama, setIsAddingPanorama] = useState(false);
     const [newPanorama, setNewPanorama] = useState({ title: '', thumbnail_url: '', equirect_url: '' });
+    const [panoramaFiles, setPanoramaFiles] = useState({ thumbnail: null, equirect: null });
+    const [isSubmittingPano, setIsSubmittingPano] = useState(false);
 
     const predefinedCategories = [
         { name: 'الكليات', defaultIcon: '🏛️' },
@@ -113,14 +115,26 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
 
     const handleAddPanorama = async (e) => {
         e.preventDefault();
+        setIsSubmittingPano(true);
         try {
-            await shopService.addPanorama(university.id, newPanorama);
+            const formData = new FormData();
+            formData.append('title', newPanorama.title);
+            if (newPanorama.thumbnail_url) formData.append('thumbnail_url', newPanorama.thumbnail_url);
+            if (newPanorama.equirect_url) formData.append('equirect_url', newPanorama.equirect_url);
+            
+            if (panoramaFiles.thumbnail) formData.append('thumbnail_file', panoramaFiles.thumbnail);
+            if (panoramaFiles.equirect) formData.append('equirect_file', panoramaFiles.equirect);
+
+            await shopService.addPanorama(university.id, formData);
             alert('تم إضافة البانوراما بنجاح!');
             setIsAddingPanorama(false);
             setNewPanorama({ title: '', thumbnail_url: '', equirect_url: '' });
+            setPanoramaFiles({ thumbnail: null, equirect: null });
             loadPanoramas();
         } catch (error) {
-            alert('فشل إضافة البانوراما');
+            alert('فشل إضافة البانوراما. تأكد من إدخال جميع البيانات المطلوبة.');
+        } finally {
+            setIsSubmittingPano(false);
         }
     };
 
@@ -1098,22 +1112,51 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                                                     onChange={e => setNewPanorama({...newPanorama, title: e.target.value})}
                                                     required 
                                                 />
-                                                <input 
-                                                    placeholder="رابط الصورة المصغرة (Thumbnail URL)" 
-                                                    className="input" 
-                                                    value={newPanorama.thumbnail_url}
-                                                    onChange={e => setNewPanorama({...newPanorama, thumbnail_url: e.target.value})}
-                                                    required 
-                                                />
-                                                <input 
-                                                    placeholder="رابط الصورة البانورامية (Equirectangular URL)" 
-                                                    className="input" 
-                                                    value={newPanorama.equirect_url}
-                                                    onChange={e => setNewPanorama({...newPanorama, equirect_url: e.target.value})}
-                                                    required 
-                                                />
+                                                
+                                                <div style={{ border: '1px dashed rgba(255,255,255,0.1)', padding: '15px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                                    <p style={{ fontSize: '0.8rem', margin: 0, fontWeight: 'bold', color: '#fbab15' }}>صورة البانوراما (360°)</p>
+                                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                                        <input 
+                                                            type="file" 
+                                                            accept="image/*" 
+                                                            onChange={e => setPanoramaFiles({...panoramaFiles, equirect: e.target.files[0]})}
+                                                            style={{ flex: 1, fontSize: '0.8rem' }}
+                                                        />
+                                                        <span style={{ fontSize: '0.7rem' }}>أو</span>
+                                                        <input 
+                                                            placeholder="رابط مباشر" 
+                                                            className="input" 
+                                                            style={{ flex: 1, padding: '5px' }}
+                                                            value={newPanorama.equirect_url}
+                                                            onChange={e => setNewPanorama({...newPanorama, equirect_url: e.target.value})}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div style={{ border: '1px dashed rgba(255,255,255,0.1)', padding: '15px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                                    <p style={{ fontSize: '0.8rem', margin: 0, fontWeight: 'bold', color: '#fbab15' }}>الصورة المصغرة (Thumbnail - اختياري)</p>
+                                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                                        <input 
+                                                            type="file" 
+                                                            accept="image/*" 
+                                                            onChange={e => setPanoramaFiles({...panoramaFiles, thumbnail: e.target.files[0]})}
+                                                            style={{ flex: 1, fontSize: '0.8rem' }}
+                                                        />
+                                                        <span style={{ fontSize: '0.7rem' }}>أو</span>
+                                                        <input 
+                                                            placeholder="رابط مباشر" 
+                                                            className="input" 
+                                                            style={{ flex: 1, padding: '5px' }}
+                                                            value={newPanorama.thumbnail_url}
+                                                            onChange={e => setNewPanorama({...newPanorama, thumbnail_url: e.target.value})}
+                                                        />
+                                                    </div>
+                                                </div>
+
                                                 <div style={{ display: 'flex', gap: '10px' }}>
-                                                    <button type="submit" className="btn-small is-accept">حفظ</button>
+                                                    <button type="submit" className="btn-small is-accept" disabled={isSubmittingPano}>
+                                                        {isSubmittingPano ? 'جاري الرفع...' : 'حفظ'}
+                                                    </button>
                                                     <button type="button" className="btn-small" onClick={() => setIsAddingPanorama(false)}>إلغاء</button>
                                                 </div>
                                             </form>
