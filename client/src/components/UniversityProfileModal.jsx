@@ -40,14 +40,16 @@ const ShareIcon = () => (
     </svg>
 );
 
+const R2_BASE_URL = 'https://pub-6e55680fed9e448b82ffe80f9d92b020.r2.dev/panoramas';
+
 const CAMPUS_PANORAMAS = [
-    { id: 'DJI_0395', title: 'البوابة الرئيسية والمدخل', thumbnail: '/panoramas/drone_DJI_0395/thumbnail.jpg', equirect: '/panoramas/drone_DJI_0395/equirectangular.jpg' },
-    { id: 'DJI_0396', title: 'ساحة العلوم والهندسة', thumbnail: '/panoramas/drone_DJI_0396/thumbnail.jpg', equirect: '/panoramas/drone_DJI_0396/equirectangular.jpg' },
-    { id: 'DJI_0397', title: 'مبنى الإدارة والخدمات', thumbnail: '/panoramas/drone_DJI_0397/thumbnail.jpg', equirect: '/panoramas/drone_DJI_0397/equirectangular.jpg' },
-    { id: 'DJI_0398', title: 'كلية الفنون والتصميم', thumbnail: '/panoramas/drone_DJI_0398/thumbnail.jpg', equirect: '/panoramas/drone_DJI_0398/equirectangular.jpg' },
-    { id: 'DJI_0399', title: 'المكتبة والمجمع الثقافي', thumbnail: '/panoramas/drone_DJI_0399/thumbnail.jpg', equirect: '/panoramas/drone_DJI_0399/equirectangular.jpg' },
-    { id: 'DJI_0400', title: 'إطلالة جوية شاملة للحرم', thumbnail: '/panoramas/drone_DJI_0400/thumbnail.jpg', equirect: '/panoramas/drone_DJI_0400/equirectangular.jpg' },
-    { id: 'DJI_0401', title: 'المرافق الرياضية والساحات', thumbnail: '/panoramas/drone_DJI_0401/thumbnail.jpg', equirect: '/panoramas/drone_DJI_0401/equirectangular.jpg' },
+    { id: 'DJI_0395', title: 'البوابة الرئيسية والمدخل', thumbnail: `${R2_BASE_URL}/drone_DJI_0395/thumbnail.jpg`, equirect: `${R2_BASE_URL}/drone_DJI_0395/equirectangular.jpg` },
+    { id: 'DJI_0396', title: 'ساحة العلوم والهندسة', thumbnail: `${R2_BASE_URL}/drone_DJI_0396/thumbnail.jpg`, equirect: `${R2_BASE_URL}/drone_DJI_0396/equirectangular.jpg` },
+    { id: 'DJI_0397', title: 'مبنى الإدارة والخدمات', thumbnail: `${R2_BASE_URL}/drone_DJI_0397/thumbnail.jpg`, equirect: `${R2_BASE_URL}/drone_DJI_0397/equirectangular.jpg` },
+    { id: 'DJI_0398', title: 'كلية الفنون والتصميم', thumbnail: `${R2_BASE_URL}/drone_DJI_0398/thumbnail.jpg`, equirect: `${R2_BASE_URL}/drone_DJI_0398/equirectangular.jpg` },
+    { id: 'DJI_0399', title: 'المكتبة والمجمع الثقافي', thumbnail: `${R2_BASE_URL}/drone_DJI_0399/thumbnail.jpg`, equirect: `${R2_BASE_URL}/drone_DJI_0401/equirectangular.jpg` }, // DJI_0401 as placeholder if missing
+    { id: 'DJI_0400', title: 'إطلالة جوية شاملة للحرم', thumbnail: `${R2_BASE_URL}/drone_DJI_0400/thumbnail.jpg`, equirect: `${R2_BASE_URL}/drone_DJI_0400/equirectangular.jpg` },
+    { id: 'DJI_0401', title: 'المرافق الرياضية والساحات', thumbnail: `${R2_BASE_URL}/drone_DJI_0401/thumbnail.jpg`, equirect: `${R2_BASE_URL}/drone_DJI_0401/equirectangular.jpg` },
 ];
 
 const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChange, onFacilityClick, onShopClick }) => {
