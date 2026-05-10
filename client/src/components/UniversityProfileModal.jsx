@@ -648,9 +648,9 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                     <button className={`uni-tab ${activeTab === 'news' ? 'active' : ''}`} onClick={() => setActiveTab('news')}>
                         الأخبار
                     </button>
-                    <button className={`uni-tab ${activeTab === 'tour' ? 'active' : ''}`} onClick={() => setActiveTab('tour')}>
-                        جولة 360° 🚁
-                    </button>
+{/* <button className={`uni-tab ${activeTab === 'tour' ? 'active' : ''}`} onClick={() => setActiveTab('tour')}>
+    جولة 360° 🚁
+</button> */}
                 </div>
 
                 {/* Content Area */}
@@ -1076,175 +1076,11 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                         </div>
                     )}
 
-                    {activeTab === 'tour' && (
+                    {/* {activeTab === 'tour' && (
                         <div className="uni-tour-section slide-in-right">
-                            <div style={{ marginBottom: '25px', textAlign: 'center' }}>
-                                <h3 className="section-title" style={{ marginBottom: '10px' }}>استكشف الحرم من الجو</h3>
-                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>اختر موقعاً لبدء الجولة الافتراضية بزاوية 360 درجة</p>
-                                
-                                {isAdminOrOwner && (
-                                    <div style={{ marginTop: '15px' }}>
-                                        {!isAddingPanorama ? (
-                                            <button 
-                                                className="btn-small is-primary" 
-                                                onClick={() => setIsAddingPanorama(true)}
-                                                style={{ padding: '8px 20px', borderRadius: '12px' }}
-                                            >
-                                                + إضافة بانوراما يدوياً
-                                            </button>
-                                        ) : (
-                                            <form onSubmit={handleAddPanorama} style={{ 
-                                                background: 'var(--bg-tertiary)', 
-                                                padding: '20px', 
-                                                borderRadius: '16px',
-                                                marginTop: '15px',
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                gap: '12px',
-                                                maxWidth: '500px',
-                                                margin: '15px auto'
-                                            }}>
-                                                <h4 style={{ margin: 0 }}>إضافة بانوراما جديدة</h4>
-                                                <input 
-                                                    placeholder="العنوان (مثلاً: بوابة الجامعة)" 
-                                                    className="input" 
-                                                    value={newPanorama.title}
-                                                    onChange={e => setNewPanorama({...newPanorama, title: e.target.value})}
-                                                    required 
-                                                />
-                                                
-                                                <div style={{ border: '1px dashed rgba(255,255,255,0.1)', padding: '15px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                                    <p style={{ fontSize: '0.8rem', margin: 0, fontWeight: 'bold', color: '#fbab15' }}>صورة البانوراما (360°)</p>
-                                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                                        <input 
-                                                            type="file" 
-                                                            accept="image/*" 
-                                                            onChange={e => setPanoramaFiles({...panoramaFiles, equirect: e.target.files[0]})}
-                                                            style={{ flex: 1, fontSize: '0.8rem' }}
-                                                        />
-                                                        <span style={{ fontSize: '0.7rem' }}>أو</span>
-                                                        <input 
-                                                            placeholder="رابط مباشر" 
-                                                            className="input" 
-                                                            style={{ flex: 1, padding: '5px' }}
-                                                            value={newPanorama.equirect_url}
-                                                            onChange={e => setNewPanorama({...newPanorama, equirect_url: e.target.value})}
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                <div style={{ border: '1px dashed rgba(255,255,255,0.1)', padding: '15px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                                    <p style={{ fontSize: '0.8rem', margin: 0, fontWeight: 'bold', color: '#fbab15' }}>الصورة المصغرة (Thumbnail - اختياري)</p>
-                                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                                        <input 
-                                                            type="file" 
-                                                            accept="image/*" 
-                                                            onChange={e => setPanoramaFiles({...panoramaFiles, thumbnail: e.target.files[0]})}
-                                                            style={{ flex: 1, fontSize: '0.8rem' }}
-                                                        />
-                                                        <span style={{ fontSize: '0.7rem' }}>أو</span>
-                                                        <input 
-                                                            placeholder="رابط مباشر" 
-                                                            className="input" 
-                                                            style={{ flex: 1, padding: '5px' }}
-                                                            value={newPanorama.thumbnail_url}
-                                                            onChange={e => setNewPanorama({...newPanorama, thumbnail_url: e.target.value})}
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                <div style={{ display: 'flex', gap: '10px' }}>
-                                                    <button type="submit" className="btn-small is-accept" disabled={isSubmittingPano}>
-                                                        {isSubmittingPano ? 'جاري الرفع...' : 'حفظ'}
-                                                    </button>
-                                                    <button type="button" className="btn-small" onClick={() => setIsAddingPanorama(false)}>إلغاء</button>
-                                                </div>
-                                            </form>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-
-                            <div style={{ 
-                                display: 'grid', 
-                                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
-                                gap: '20px',
-                                padding: '10px'
-                            }}>
-                                {dynamicPanoramas.length === 0 && (
-                                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                                        لا توجد جولات افتراضية متاحة حالياً.
-                                    </div>
-                                )}
-                                {dynamicPanoramas.map((pano) => (
-                                    <div 
-                                        key={pano.id} 
-                                        className="pano-card"
-                                        onClick={() => setSelectedPanorama({ equirect: pano.equirect_url })}
-                                        style={{ 
-                                            position: 'relative', 
-                                            borderRadius: '20px', 
-                                            overflow: 'hidden', 
-                                            aspectRatio: '16/9', 
-                                            cursor: 'pointer',
-                                            boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
-                                            border: '1px solid var(--bg-tertiary)',
-                                            transition: 'transform 0.3s ease'
-                                        }}
-                                        onMouseOver={e => e.currentTarget.style.transform = 'translateY(-5px)'}
-                                        onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
-                                    >
-                                        <div style={{ 
-                                            width: '100%', 
-                                            height: '100%', 
-                                            background: `url(${getImageUrl(pano.thumbnail_url)}) center/cover` 
-                                        }} />
-                                        
-                                        {isAdminOrOwner && (
-                                            <button 
-                                                onClick={(e) => { e.stopPropagation(); handleDeletePanorama(pano.id); }}
-                                                style={{ 
-                                                    position: 'absolute', top: '10px', right: '10px', 
-                                                    background: 'rgba(239, 68, 68, 0.8)', border: 'none', 
-                                                    color: 'white', padding: '5px', borderRadius: '50%',
-                                                    zIndex: 10, cursor: 'pointer'
-                                                }}
-                                            >
-                                                <TrashIcon />
-                                            </button>
-                                        )}
-
-                                        <div style={{ 
-                                            position: 'absolute', inset: 0, 
-                                            background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)',
-                                            display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-                                            padding: '15px'
-                                        }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
-                                                <div style={{ background: '#fbab15', borderRadius: '50%', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                                        <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
-                                                        <path d="M2 12h20"/>
-                                                    </svg>
-                                                </div>
-                                                {pano.title}
-                                            </div>
-                                        </div>
-                                        <div className="play-icon-overlay" style={{ 
-                                            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                                            background: 'rgba(251, 171, 21, 0.9)', borderRadius: '50%', width: '50px', height: '50px',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            opacity: 0, transition: 'opacity 0.3s'
-                                        }}>
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-                                                <polygon points="5 3 19 12 5 21 5 3"/>
-                                            </svg>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                            ...
                         </div>
-                    )}
+                    )} */}
                 </div>
                 </div>
 
