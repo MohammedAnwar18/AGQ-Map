@@ -1197,7 +1197,7 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                                         <div style={{ 
                                             width: '100%', 
                                             height: '100%', 
-                                            background: `url(${pano.thumbnail_url}) center/cover` 
+                                            background: `url(${getImageUrl(pano.thumbnail_url)}) center/cover` 
                                         }} />
                                         
                                         {isAdminOrOwner && (
@@ -1262,7 +1262,7 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
             )}
             {selectedPanorama && (
                 <PanoramaViewer 
-                    imageSrc={selectedPanorama.equirect} 
+                    imageSrc={getImageUrl(selectedPanorama.equirect)} 
                     onClose={() => setSelectedPanorama(null)} 
                 />
             )}

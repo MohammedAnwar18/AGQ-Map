@@ -129,10 +129,16 @@ const PanoramaViewer = ({ imageSrc, onClose }) => {
     }, [imageSrc]);
 
     return (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 11000, background: 'black', display: 'flex', flexDirection: 'column' }}>
+        <div 
+            className="panorama-viewer-overlay"
+            onClick={e => e.stopPropagation()} 
+            onMouseDown={e => e.stopPropagation()}
+            onPointerDown={e => e.stopPropagation()}
+            style={{ position: 'fixed', inset: 0, zIndex: 20000, background: 'black', display: 'flex', flexDirection: 'column' }}
+        >
             <div style={{ 
                 position: 'absolute', top: '20px', left: '20px', right: '20px', 
-                zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' 
+                zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' 
             }}>
                 <div style={{ 
                     background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', 
@@ -147,7 +153,7 @@ const PanoramaViewer = ({ imageSrc, onClose }) => {
                     جولة افتراضية 360°
                 </div>
                 <button 
-                    onClick={onClose}
+                    onClick={(e) => { e.stopPropagation(); onClose(); }}
                     style={{ 
                         width: '40px', height: '40px', borderRadius: '50%', 
                         background: 'rgba(255,255,255,0.2)', border: 'none', 
@@ -165,11 +171,13 @@ const PanoramaViewer = ({ imageSrc, onClose }) => {
             {loading && (
                 <div style={{ 
                     position: 'absolute', inset: 0, display: 'flex', 
+                    flexDirection: 'column',
                     alignItems: 'center', justifyContent: 'center', 
-                    background: 'rgba(0,0,0,0.8)', color: 'white', zIndex: 2 
+                    background: 'rgba(0,0,0,0.8)', color: 'white', zIndex: 5 
                 }}>
-                    <div className="loader-ring"></div>
-                    <span style={{ marginLeft: '10px' }}>جاري تحميل البانوراما...</span>
+                    <div className="loader-ring" style={{ width: '40px', height: '40px', border: '3px solid rgba(255,255,255,0.3)', borderTopColor: '#fbab15', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+                    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                    <span style={{ marginTop: '15px' }}>جاري تحميل البانوراما...</span>
                 </div>
             )}
 
