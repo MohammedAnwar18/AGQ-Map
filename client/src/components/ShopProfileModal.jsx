@@ -237,7 +237,17 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     const [isFollowing, setIsFollowing] = useState(false);
     const [internalShops, setInternalShops] = useState([]); // Shops inside this mall
 
-    const isVanillaDesign = shop.name.includes('فاينلا') || shop.name.includes('فانيلا') || shop.name.includes('فاننيلا') || shop.name.toLowerCase().includes('vanilla');
+    // Design Engine
+    const design = useMemo(() => {
+        try {
+            return typeof shopData.custom_design === 'string'
+                ? JSON.parse(shopData.custom_design)
+                : (shopData.custom_design || {});
+        } catch { return {}; }
+    }, [shopData.custom_design]);
+
+    const isVanillaDesign = design.menu_layout === 'vanilla' || shop.name.includes('فاينلا') || shop.name.includes('فانيلا') || shop.name.includes('فاننيلا') || shop.name.toLowerCase().includes('vanilla');
+    const isModernRestaurantDesign = design.menu_layout === 'restaurant_modern';
 
     // Search State
     const [productSearchQuery, setProductSearchQuery] = useState('');
@@ -299,14 +309,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     const [agentChatStates, setAgentChatStates] = useState({});
     const [showDesignStudio, setShowDesignStudio] = useState(false);
 
-    // Design Engine
-    const design = useMemo(() => {
-        try {
-            return typeof shopData.custom_design === 'string'
-                ? JSON.parse(shopData.custom_design)
-                : (shopData.custom_design || {});
-        } catch { return {}; }
-    }, [shopData.custom_design]);
+
 
     // PERMISSIONS:
     // 1. System Admin: Can assign owners, remove owners, and edit everything.
@@ -1017,7 +1020,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                     {/* Driver Dashboard Removed */}
 
                     {/* Navigation Tabs */}
-                    {!isVanillaDesign && (
+                    {!isVanillaDesign && !isModernRestaurantDesign && (
                         <div style={{
                             display: 'flex', gap: 30,
                         borderBottom: '1px solid var(--bg-tertiary)', marginTop: 25,
@@ -1775,7 +1778,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                         </div>
                                     )}
 
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 20 }}>
+                                    <div style={isModernRestaurantDesign ? { display: 'flex', flexDirection: 'column', gap: '15px', paddingBottom: '30px' } : { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 20 }}>
                                         {products
                                             .filter(p => {
                                                 const matchesSearch = (p.name || '').toLowerCase().includes(productSearchQuery.toLowerCase()) ||
@@ -1904,6 +1907,69 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                         );
                                                     }
                                                     // End Taxi Custom Design
+
+                                                    // Start Modern Restaurant Design (UberEats/Talabat style)
+                                                    if (isModernRestaurantDesign) {
+                                                        return (
+                                                            <div key={product.id} 
+                                                                onClick={() => {
+                                                                    cartService.addItem({ ...product, shop_name: shopData.name });
+                                                                    setCartCount(cartService.getItemCount());
+                                                                }}
+                                                                style={{
+                                                                    display: 'flex',
+                                                                    background: 'var(--bg-primary)',
+                                                                    borderRadius: '16px',
+                                                                    padding: '12px',
+                                                                    border: '1px solid var(--bg-tertiary)',
+                                                                    boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+                                                                    cursor: 'pointer',
+                                                                    transition: 'transform 0.2s',
+                                                                    gap: '15px',
+                                                                    alignItems: 'center'
+                                                                }}
+                                                                onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                                                                onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+                                                            >
+                                                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                                    <h4 style={{ margin: '0 0 6px', fontSize: '1.15rem', color: 'var(--text-primary)', fontWeight: 'bold' }}>{product.name}</h4>
+                                                                    <p style={{ margin: '0 0 10px', fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                                                        {product.description || 'وجبة شهية ومميزة تحضر خصيصاً لك'}
+                                                                    </p>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                                        <span style={{ fontWeight: 'bold', fontSize: '1.05rem', color: 'var(--text-primary)' }}>{product.price} ₪</span>
+                                                                        {product.old_price && parseFloat(product.old_price) > parseFloat(product.price) && (
+                                                                            <span style={{ color: '#ef4444', textDecoration: 'line-through', fontSize: '0.85rem' }}>{product.old_price} ₪</span>
+                                                                        )}
+                                                                    </div>
+                                                                    {canEditShop && (
+                                                                        <div style={{ display: 'flex', gap: 5, marginTop: 10 }} onClick={e => e.stopPropagation()}>
+                                                                            <button onClick={() => openEditProduct(product)} style={{ background: '#f3f4f6', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '0.8rem', cursor: 'pointer' }}>تعديل</button>
+                                                                            <button onClick={() => handleDeleteProduct(product.id)} style={{ background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '0.8rem', cursor: 'pointer' }}>حذف</button>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                
+                                                                <div style={{ position: 'relative', width: '110px', height: '110px', flexShrink: 0 }}>
+                                                                    {product.image_url ? (
+                                                                        <img src={getImageUrl(product.image_url)} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }} />
+                                                                    ) : (
+                                                                        <div style={{ width: '100%', height: '100%', background: 'var(--bg-tertiary)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                            <span style={{ fontSize: '2rem' }}>🍔</span>
+                                                                        </div>
+                                                                    )}
+                                                                    <div style={{ 
+                                                                        position: 'absolute', bottom: '-10px', left: '50%', transform: 'translateX(-50%)',
+                                                                        background: 'white', border: '1px solid #e5e7eb', borderRadius: '20px', 
+                                                                        width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                        boxShadow: '0 2px 5px rgba(0,0,0,0.1)', color: 'var(--primary)', fontWeight: 'bold', fontSize: '1.2rem'
+                                                                    }}>
+                                                                        +
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    }
 
                                                     // Start Vanilla Custom Design
                                                     if (isVanillaDesign) {
