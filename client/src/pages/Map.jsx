@@ -27,6 +27,7 @@ import HistoricalTimelinePanel from '../components/HistoricalTimelinePanel';
 import SpatialReelsModal from '../components/SpatialReelsModal';
 import MagazineModal from '../components/MagazineModal';
 import PalNovaaLab from '../components/PalNovaaLab';
+import SplashLoading from '../components/SplashLoading';
 import { postService, friendService, authService, notificationService, communityService, shopService, getImageUrl } from '../services/api';
 import './Map.css';
 
@@ -1201,7 +1202,7 @@ const MapComponent = () => {
     // Refresh posts when mode changes or interval
     // (Logic included in main fetch effect above via dependency)
 
-    if (!user) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading...</div>;
+    if (!user) return <SplashLoading />;
 
     return (
         <div className="map-page" style={{ position: 'relative', height: '100dvh', width: '100vw', overflow: 'hidden' }}>

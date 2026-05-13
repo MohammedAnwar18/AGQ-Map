@@ -14,26 +14,13 @@ import OfflinePage from './components/OfflinePage';
 import PushNotificationManager from './components/PushNotificationManager';
 import IosInstallPrompt from './components/IosInstallPrompt';
 import PwaInstallPrompt from './components/PwaInstallPrompt';
+import SplashLoading from './components/SplashLoading';
 import './index.css';
 
 const ProtectedRoute = ({ children }) => {
     const { isAuthenticated, loading } = useAuth();
 
-    if (loading) {
-        return (
-            <div style={{
-                height: '100vh',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '1rem'
-            }}>
-                <div className="spinner"></div>
-                <p style={{ color: 'var(--text-secondary)' }}>جاري التحميل...</p>
-            </div>
-        );
-    }
+    if (loading) return <SplashLoading />;
 
     return isAuthenticated ? children : <Navigate to="/login" />;
 };
@@ -41,21 +28,7 @@ const ProtectedRoute = ({ children }) => {
 const AdminRoute = ({ children }) => {
     const { isAuthenticated, user, loading } = useAuth();
 
-    if (loading) {
-        return (
-            <div style={{
-                height: '100vh',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '1rem'
-            }}>
-                <div className="spinner"></div>
-                <p style={{ color: 'var(--text-secondary)' }}>جاري التحميل...</p>
-            </div>
-        );
-    }
+    if (loading) return <SplashLoading />;
 
     if (!isAuthenticated) {
         return <Navigate to="/login" />;
@@ -72,21 +45,7 @@ const AdminRoute = ({ children }) => {
 const PublicRoute = ({ children }) => {
     const { isAuthenticated, loading } = useAuth();
 
-    if (loading) {
-        return (
-            <div style={{
-                height: '100vh',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '1rem'
-            }}>
-                <div className="spinner"></div>
-                <p style={{ color: 'var(--text-secondary)' }}>جاري التحميل...</p>
-            </div>
-        );
-    }
+    if (loading) return <SplashLoading />;
 
     return isAuthenticated ? <Navigate to="/map" /> : children;
 };
