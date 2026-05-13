@@ -229,6 +229,8 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     const [isFollowing, setIsFollowing] = useState(false);
     const [internalShops, setInternalShops] = useState([]); // Shops inside this mall
 
+    const isVanillaDesign = shop.name.includes('فاينلا') || shop.name.toLowerCase().includes('vanilla');
+
     // Search State
     const [productSearchQuery, setProductSearchQuery] = useState('');
 
@@ -1006,8 +1008,9 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                     {/* Driver Dashboard Removed */}
 
                     {/* Navigation Tabs */}
-                    <div style={{
-                        display: 'flex', gap: 30,
+                    {!isVanillaDesign && (
+                        <div style={{
+                            display: 'flex', gap: 30,
                         borderBottom: '1px solid var(--bg-tertiary)', marginTop: 25,
                         padding: '0 30px',
                         alignItems: 'center',
@@ -1076,6 +1079,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                             </button>
                         )}
                     </div>
+                    )}
 
                     {/* Admin Section Visibility Control Panel */}
                     {isSystemAdmin && showSectionControl && (
@@ -1641,8 +1645,40 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                         </div>
                                     )}
 
+                                    {/* Vanilla Categories Layout */}
+                                    {isVanillaDesign && (
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '40px', marginTop: '30px' }}>
+                                            <div style={{ display: 'flex', gap: '30px', fontWeight: 'bold', marginBottom: '25px', color: 'var(--text-primary)', fontSize: '1.1rem' }}>
+                                                <span style={{ cursor: 'pointer' }}>طعام</span>
+                                                <span style={{ cursor: 'pointer', borderBottom: '2px solid var(--text-primary)', paddingBottom: '4px' }}>مشروبات</span>
+                                                <span style={{ cursor: 'pointer' }}>حلويات</span>
+                                                <span style={{ cursor: 'pointer', color: '#10b981' }}>Zero Sugar</span>
+                                                <span style={{ cursor: 'pointer', color: '#ef4444' }}>جديد</span>
+                                            </div>
+
+                                            <div style={{ display: 'flex', gap: '25px', color: 'var(--text-muted)', fontSize: '0.95rem', overflowX: 'auto', maxWidth: '100%', paddingBottom: '10px', scrollbarWidth: 'none' }}>
+                                                {['الكل', 'إسبريسو', 'خالي من السكر', 'مشاريب ربيعية', 'مشروبات ساخنة', 'اسبريسو بارد', 'مثلجة وباردة', 'مشروبات صحية', 'مشاريب الكراكينج', 'ميلك شيك', 'سموثي', 'عصائر طبيعية', 'بوظه'].map(cat => (
+                                                    <span 
+                                                        key={cat} 
+                                                        onClick={() => setSelectedProductCategory(cat)}
+                                                        style={{ 
+                                                            cursor: 'pointer', 
+                                                            whiteSpace: 'nowrap',
+                                                            color: selectedProductCategory === cat ? 'var(--text-primary)' : 'var(--text-muted)',
+                                                            borderBottom: selectedProductCategory === cat ? '2px solid var(--text-primary)' : 'none',
+                                                            fontWeight: selectedProductCategory === cat ? 'bold' : 'normal',
+                                                            paddingBottom: '4px'
+                                                        }}
+                                                    >
+                                                        {cat}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {/* Supermarket Categories Bar */}
-                                    {(['سوبر ماركت', 'سوبرماركت', 'Supermarket', 'supermarket'].includes(shopData.category)) && (
+                                    {(!isVanillaDesign && ['سوبر ماركت', 'سوبرماركت', 'Supermarket', 'supermarket'].includes(shopData.category)) && (
                                         <div style={{
                                             display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 15, marginBottom: 20,
                                             scrollbarWidth: 'none', msOverflowStyle: 'none',
@@ -1687,8 +1723,9 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                         </div>
                                     )}
 
-                                    <div style={{ marginBottom: 25 }}>
-                                        <div style={{ position: 'relative', marginBottom: 15 }}>
+                                    {!isVanillaDesign && (
+                                        <div style={{ marginBottom: 25 }}>
+                                            <div style={{ position: 'relative', marginBottom: 15 }}>
                                             <input
                                                 className="input"
                                                 type="text"
@@ -1706,9 +1743,9 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                             <div style={{ position: 'absolute', top: '50%', right: '15px', transform: 'translateY(-50%)', color: 'var(--text-muted)', display: 'flex' }}>
                                                 <SearchIcon />
                                             </div>
+                                            </div>
                                         </div>
-
-                                    </div>
+                                    )}
 
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 20 }}>
                                         {products
@@ -1824,6 +1861,52 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                     }
                                                     // End Taxi Custom Design
 
+                                                    // Start Vanilla Custom Design
+                                                    if (isVanillaDesign) {
+                                                        return (
+                                                            <div key={product.id} 
+                                                                onClick={() => {
+                                                                    cartService.addItem({ ...product, shop_name: shopData.name });
+                                                                    setCartCount(cartService.getItemCount());
+                                                                }}
+                                                                style={{ 
+                                                                    background: '#ffffff', 
+                                                                    borderRadius: '16px', 
+                                                                    padding: '25px', 
+                                                                    display: 'flex', 
+                                                                    flexDirection: 'column', 
+                                                                    alignItems: 'center', 
+                                                                    border: '1px solid rgba(0,0,0,0.04)',
+                                                                    boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
+                                                                    transition: 'transform 0.2s',
+                                                                    cursor: 'pointer'
+                                                                }}
+                                                                onMouseOver={e => e.currentTarget.style.transform = 'translateY(-5px)'}
+                                                                onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+                                                            >
+                                                                {product.image_url ? (
+                                                                    <div style={{ height: '180px', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '20px' }}>
+                                                                        <img src={getImageUrl(product.image_url)} alt={product.name} style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
+                                                                    </div>
+                                                                ) : <div style={{ height: '180px', width: '100%', marginBottom: '20px', background: '#f9f9f9', borderRadius: '12px' }}></div>}
+                                                                
+                                                                <h4 style={{ margin: '0 0 10px', fontSize: '1.3rem', fontWeight: '900', color: '#111827', textAlign: 'center' }}>{product.name}</h4>
+                                                                
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', color: '#fb923c', fontWeight: 'bold', marginTop: 'auto' }}>
+                                                                    <span style={{ color: '#6b7280', fontWeight: 'normal', fontSize: '0.8rem' }}>كبير</span> {product.price}
+                                                                </div>
+
+                                                                {canEditShop && (
+                                                                     <div style={{ display: 'flex', gap: 5, marginTop: 15, width: '100%', justifyContent: 'center' }} onClick={e => e.stopPropagation()}>
+                                                                         <button onClick={() => openEditProduct(product)} style={{ background: '#f3f4f6', border: 'none', borderRadius: '8px', padding: '4px 10px', cursor: 'pointer' }}>تعديل</button>
+                                                                         <button onClick={() => handleDeleteProduct(product.id)} style={{ background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '8px', padding: '4px 10px', cursor: 'pointer' }}>حذف</button>
+                                                                     </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    }
+                                                    // End Vanilla Custom Design
+
                                                     // Default Design
                                                     return (
                                                         <div key={product.id} style={{ background: 'var(--bg-primary)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', transition: 'transform 0.2s' }}>
@@ -1886,16 +1969,25 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                     <button
                                         onClick={() => setShowCart(true)}
                                         style={{
-                                            position: 'fixed', bottom: 30, left: 20, zIndex: 2100,
-                                            background: 'var(--bg-primary)', color: 'var(--text-primary)',
-                                            border: '2px solid var(--primary)', borderRadius: '50px',
-                                            padding: '10px 18px', fontSize: '1rem', fontWeight: 'bold',
-                                            display: 'flex', alignItems: 'center', gap: 8,
-                                            boxShadow: '0 4px 15px rgba(0,0,0,0.2)', cursor: 'pointer'
+                                            position: 'fixed', bottom: 30, right: 30, left: 'auto', zIndex: 2100,
+                                            background: isVanillaDesign ? '#2563eb' : 'var(--bg-primary)',
+                                            color: isVanillaDesign ? '#ffffff' : 'var(--text-primary)',
+                                            border: isVanillaDesign ? 'none' : '2px solid var(--primary)',
+                                            borderRadius: '50px',
+                                            width: isVanillaDesign ? '60px' : 'auto',
+                                            height: isVanillaDesign ? '60px' : 'auto',
+                                            padding: isVanillaDesign ? '0' : '10px 18px',
+                                            fontSize: '1rem', fontWeight: 'bold',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                            boxShadow: '0 8px 25px rgba(37,99,235,0.4)', cursor: 'pointer'
                                         }}
                                     >
-                                        {shopData.category === 'مكتب تاكسي' ? 'حجوزاتي' : 'السلة'} 🛒
-                                        {cartCount > 0 && <span style={{ background: 'red', color: 'white', borderRadius: '50%', padding: '1px 7px', fontSize: '0.85rem' }}>{cartCount}</span>}
+                                        {isVanillaDesign ? (
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                                        ) : (
+                                            shopData.category === 'مكتب تاكسي' ? 'حجوزاتي' : 'السلة 🛒'
+                                        )}
+                                        {cartCount > 0 && <span style={{ position: 'absolute', top: isVanillaDesign ? 0 : 'auto', right: isVanillaDesign ? 0 : 'auto', background: '#ef4444', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '0.75rem' }}>{cartCount}</span>}
                                     </button>
                                 </div>
                             )}
