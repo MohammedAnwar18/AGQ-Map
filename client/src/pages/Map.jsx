@@ -99,6 +99,22 @@ const haversineDistance = (coords1, coords2) => {
     return R * c;
 };
 
+// Point in Polygon function (Ray Casting)
+const isPointInPolygon = (point, vs) => {
+    let x = point[0], y = point[1];
+    let inside = false;
+    for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+        let xi = vs[i][0], yi = vs[i][1];
+        let xj = vs[j][0], yj = vs[j][1];
+        let intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+    return inside;
+};
+
+// Birzeit University Boundaries
+const BIRZEIT_POLYGON = [[35.18513515866644,31.957184076802875],[35.18209843743068,31.95649812627677],[35.17894340238078,31.956916389402295],[35.177661669392364,31.958305009319346],[35.17791801599083,31.959978017477695],[35.17953497145379,31.959911097736665],[35.180718109597166,31.961818291250495],[35.18123080279278,31.963089731588028],[35.18142568847392,31.963936130039684],[35.1817285933796,31.964982395362483],[35.18391383591873,31.964138041819965],[35.18564472109804,31.96298163197747],[35.18544999651445,31.962063836022807],[35.18663998007514,31.961788495446953],[35.187808327571105,31.960742193731534],[35.18551490470992,31.95864955453706],[35.18568799322745,31.95747471865181],[35.18553654077462,31.95699743728042],[35.185133382474106,31.957164567445005]];
+
 const MapComponent = () => {
     const { user, logout, socket } = useAuth();
     const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -1021,6 +1037,20 @@ const MapComponent = () => {
             });
         }
     }, [userLocation, isTracking]);
+
+    // Birzeit University Geofencing Notification
+    const hasWelcomedBirzeit = useRef(false);
+    useEffect(() => {
+        if (!userLocation || hasWelcomedBirzeit.current) return;
+        
+        // Ray casting point-in-polygon check
+        const isInside = isPointInPolygon([userLocation.longitude, userLocation.latitude], BIRZEIT_POLYGON);
+        
+        if (isInside) {
+            alert("مرحباً بك في جامعة بيرزيت! 🎓\nنتمنى لك يوماً دراسياً موفقاً.");
+            hasWelcomedBirzeit.current = true;
+        }
+    }, [userLocation]);
 
     // Public Map Data (Shops & University Facilities) - Always Fetch for everyone
     useEffect(() => {
