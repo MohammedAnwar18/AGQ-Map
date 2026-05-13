@@ -1584,29 +1584,16 @@ const MapComponent = () => {
                     {!currentCommunity && allShopsMap.filter(shop => {
                         if (shop.latitude == null || shop.longitude == null || isNaN(parseFloat(shop.latitude))) return false;
 
-                        // Educational Institutions & Municipalities: visible from mid zoom (12) to reveal town area
                         const shopCat = (shop.category || '').toLowerCase();
+                        
+                        // Educational Institutions: special handling to hide when zooming into facilities
                         if (shopCat.includes('university') || shopCat.includes('جامعة') || shopCat.includes('مؤسسة تعليمية')) {
-                            // Hide university icon as we zoom in closer (>= 15.5) to show detailed facilities
                             return viewState.zoom >= 12 && viewState.zoom < 15.5;
                         }
-                        // Medical centers visible from zoom 13+
-                        if (['مستشفى', 'مركز طبي'].includes(shop.category)) {
-                            return viewState.zoom >= 13;
-                        }
-                        if (['صيدلية', 'عيادة'].includes(shop.category)) {
-                            return viewState.zoom >= 15;
-                        }
-                        // Banks and Malls visible from zoomed out view (zoom 13+)
-                        if (['بنك', 'مركز تسوق', 'مجمع تجاري', 'Mall'].includes(shop.category)) {
-                            return viewState.zoom >= 13;
-                        }
-                        // ATMs and bank branches visible slightly earlier or with normal shops
-                        if (['صراف آلي', 'فرع بنك'].includes(shop.category)) {
-                            return viewState.zoom >= 16;
-                        }
-                        // Normal Shop: visible only when zoomed in close (e.g >= 17)
-                        return viewState.zoom >= 17;
+
+                        // Standard visibility for all other shops (Restaurants, Banks, Malls, etc.)
+                        // Standardizing to zoom 14+ for all as requested for uniform scale
+                        return viewState.zoom >= 14;
                     }).flatMap(shop => [
                         <Marker
                             key={`shop-${shop.id}`}

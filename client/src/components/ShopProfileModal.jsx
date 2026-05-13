@@ -370,6 +370,21 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
             setProducts(data.products || []);
             setInternalShops(data.internal_shops || []);
             setIsFollowing(data.shop.is_followed);
+
+            // Dynamic Font Loading for Custom Designs
+            if (data.shop.custom_design) {
+                const designObj = typeof data.shop.custom_design === 'string' ? JSON.parse(data.shop.custom_design) : data.shop.custom_design;
+                if (designObj?.font?.fontFamily) {
+                    const fontName = designObj.font.fontFamily.split(',')[0].replace(/'/g, '').replace(/ /g, '+');
+                    if (!document.getElementById(`font-${fontName}`)) {
+                        const link = document.createElement('link');
+                        link.id = `font-${fontName}`;
+                        link.rel = 'stylesheet';
+                        link.href = `https://fonts.googleapis.com/css2?family=${fontName}:wght@400;700;900&display=swap`;
+                        document.head.appendChild(link);
+                    }
+                }
+            }
         } catch (error) {
             console.error(error);
         } finally {
@@ -934,13 +949,13 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                     <span><b>{posts.length}</b> منشور</span>
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                                 {canEditShop && (
                                     <button 
                                         onClick={() => setShowDesignStudio(true)}
                                         style={{
-                                            background: 'linear-gradient(135deg,#E8B547,#C8324A)',
-                                            border: 'none', color: '#06091C', padding: '10px 20px',
+                                            background: design.palette ? `linear-gradient(135deg, ${design.palette.colors[3]}, ${design.palette.colors[2]})` : 'linear-gradient(135deg,#E8B547,#C8324A)',
+                                            border: 'none', color: design.palette ? design.palette.colors[0] : '#06091C', padding: '10px 20px',
                                             borderRadius: '12px', fontWeight: '800', cursor: 'pointer',
                                             display: 'flex', alignItems: 'center', gap: '8px',
                                             boxShadow: '0 4px 15px rgba(232,181,71,0.3)', transition: 'all 0.2s'
@@ -956,7 +971,14 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                         <TrashIcon /> حذف
                                     </button>
                                 )}
-                                <button onClick={handleFollow} className={`btn-small ${isFollowing ? 'btn-reject' : 'btn-accept'}`} style={{ fontFamily: 'inherit', padding: '8px 20px' }}>
+                                <button onClick={handleFollow} className={`btn-small ${isFollowing ? 'btn-reject' : 'btn-accept'}`} 
+                                    style={{ 
+                                        fontFamily: 'inherit', 
+                                        padding: '8px 20px',
+                                        background: (!isFollowing && design.palette) ? design.palette.colors[3] : undefined,
+                                        color: (!isFollowing && design.palette) ? design.palette.colors[0] : undefined,
+                                        border: 'none'
+                                    }}>
                                     {isFollowing ? 'إلغاء المتابعة' : 'متابعة'}
                                 </button>
                             </div>
