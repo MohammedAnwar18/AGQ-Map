@@ -1584,16 +1584,9 @@ const MapComponent = () => {
                     {!currentCommunity && allShopsMap.filter(shop => {
                         if (shop.latitude == null || shop.longitude == null || isNaN(parseFloat(shop.latitude))) return false;
 
-                        const shopCat = (shop.category || '').toLowerCase();
-                        
-                        // Educational Institutions: special handling to hide when zooming into facilities
-                        if (shopCat.includes('university') || shopCat.includes('جامعة') || shopCat.includes('مؤسسة تعليمية')) {
-                            return viewState.zoom >= 12 && viewState.zoom < 15.5;
-                        }
-
-                        // Standard visibility for all other shops (Restaurants, Banks, Malls, etc.)
-                        // Standardizing to zoom 14+ for all as requested for uniform scale
-                        return viewState.zoom >= 14;
+                        // Standardizing ALL shops and institutions to appear from Zoom 12+
+                        // This matches the university scale for uniform early discovery.
+                        return viewState.zoom >= 12;
                     }).flatMap(shop => [
                         <Marker
                             key={`shop-${shop.id}`}
