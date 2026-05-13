@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { friendService, shopService, getImageUrl } from '../services/api';
 import ProfileModal from './ProfileModal';
+import PalNovaaMarketDesign from './PalNovaaMarketDesign';
 import './Modal.css';
 
 // Helper: رندر أيقونة المحل بناءً على الفئة أو الصورة الحقيقية
@@ -59,6 +60,9 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
     const [showCreateOptions, setShowCreateOptions] = useState(false);
     const [isCreatingUniversity, setIsCreatingUniversity] = useState(false);
     const [newUniversityData, setNewUniversityData] = useState({ name: '', lat: '', lon: '' });
+
+    // Market Design Page
+    const [showMarketDesign, setShowMarketDesign] = useState(false);
 
     useEffect(() => {
         loadData();
@@ -299,8 +303,8 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                         {isShopsMode && !isCreatingShop && !showCreateOptions && !isCreatingUniversity && currentUser?.role === 'admin' && (
                             <button
                                 className="btn-small btn-add-friend"
-                                onClick={() => setShowCreateOptions(true)}
-                                style={{ borderRadius: '50%', width: '30px', height: '30px', padding: 0, fontSize: '1.2rem', background: '#10b981', color: 'white', border: 'none' }}
+                                onClick={() => setShowMarketDesign(true)}
+                                style={{ borderRadius: '50%', width: '30px', height: '30px', padding: 0, fontSize: '1.2rem', background: 'linear-gradient(135deg,#E8B547,#C8324A)', color: '#06091C', border: 'none', fontWeight: 900 }}
                                 title="إضافة مكان جديد"
                             >
                                 +
@@ -772,6 +776,13 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
             <ProfileModal
                 userId={selectedFriendId}
                 onClose={() => setSelectedFriendId(null)}
+            />
+        )}
+        {showMarketDesign && (
+            <PalNovaaMarketDesign
+                onClose={() => setShowMarketDesign(false)}
+                onSelectShop={() => { setShowMarketDesign(false); setShowCreateOptions(false); setIsCreatingShop(true); }}
+                onSelectUniversity={() => { setShowMarketDesign(false); setShowCreateOptions(false); setIsCreatingUniversity(true); }}
             />
         )}
         </>
