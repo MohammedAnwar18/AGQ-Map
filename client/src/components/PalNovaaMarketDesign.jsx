@@ -1,19 +1,38 @@
 import React, { useState, useEffect } from 'react';
 
 const PalNovaaMarketDesign = ({ onClose, onSelectShop, onSelectUniversity, initialDesign }) => {
-    // Studio State
-    const [design, setDesign] = useState(initialDesign || {
+    const defaultDesign = {
         palette: { name: 'Heritage Nova', colors: ['#0B102A','#8B1F33','#C8324A','#E8B547','#F8F4ED'] },
         font: { display: 'المتجر العتيق', fontFamily: "'Playfair Display',serif", pair: 'Playfair × Cairo' },
         pattern: { name: 'Heritage', bg: 'repeating-linear-gradient(45deg,#0B102A 0 8px,#8B1F33 8px 12px,#E8B547 12px 14px)' },
         category: 'Restaurant',
         shopName: 'محلي المبدع',
         layout: 'modern'
+    };
+
+    // Studio State
+    const [design, setDesign] = useState(() => {
+        if (!initialDesign || Object.keys(initialDesign).length === 0) return defaultDesign;
+        return {
+            ...defaultDesign,
+            ...initialDesign,
+            palette: initialDesign.palette || defaultDesign.palette,
+            font: initialDesign.font || defaultDesign.font,
+            pattern: initialDesign.pattern || defaultDesign.pattern,
+        };
     });
 
     // Sync if initialDesign changes
     useEffect(() => {
-        if (initialDesign) setDesign(initialDesign);
+        if (initialDesign && Object.keys(initialDesign).length > 0) {
+            setDesign(prev => ({
+                ...prev,
+                ...initialDesign,
+                palette: initialDesign.palette || prev.palette,
+                font: initialDesign.font || prev.font,
+                pattern: initialDesign.pattern || prev.pattern,
+            }));
+        }
     }, [initialDesign]);
 
     const [activeChip, setActiveChip] = useState('الكل');
@@ -74,30 +93,30 @@ const PalNovaaMarketDesign = ({ onClose, onSelectShop, onSelectUniversity, initi
         
         // Live Preview Styles
         mockProfile: {
-            background: design.palette.colors[0],
+            background: design.palette?.colors[0] || '#0B102A',
             borderRadius: '24px',
             overflow: 'hidden',
             width: '100%',
             height: '500px',
             boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
             position: 'relative',
-            fontFamily: design.font.fontFamily
+            fontFamily: design.font?.fontFamily
         },
         mockHero: {
             height: '180px',
-            background: design.pattern.bg,
+            background: design.pattern?.bg,
             position: 'relative'
         },
         mockAvatar: {
             width: '80px', height: '80px', borderRadius: '20px',
-            background: `linear-gradient(135deg, ${design.palette.colors[3]}, ${design.palette.colors[2]})`,
-            border: `4px solid ${design.palette.colors[0]}`,
+            background: `linear-gradient(135deg, ${design.palette?.colors[3]}, ${design.palette?.colors[2]})`,
+            border: `4px solid ${design.palette?.colors[0]}`,
             position: 'absolute', bottom: '-40px', right: '20px',
             display: 'grid', placeItems: 'center', fontSize: '2rem'
         },
         mockContent: {
             padding: '50px 20px 20px',
-            color: design.palette.colors[4]
+            color: design.palette?.colors[4]
         },
         mockTitle: {
             fontSize: '1.8rem', fontWeight: '900', marginBottom: '4px'
@@ -107,8 +126,8 @@ const PalNovaaMarketDesign = ({ onClose, onSelectShop, onSelectUniversity, initi
         },
         mockButton: {
             padding: '12px', borderRadius: '12px', width: '100%',
-            background: design.palette.colors[3],
-            color: design.palette.colors[0],
+            background: design.palette?.colors[3],
+            color: design.palette?.colors[0] || '#fff',
             border: 'none', fontWeight: '800', fontSize: '1rem',
             marginTop: '20px', fontFamily: 'inherit'
         }
@@ -167,7 +186,7 @@ const PalNovaaMarketDesign = ({ onClose, onSelectShop, onSelectUniversity, initi
                         <div style={st.sectionTitle}><span>02</span> لوحة الألوان</div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                             {palettes.map(p => (
-                                <div key={p.name} style={st.card(design.palette.name === p.name)} onClick={() => setDesign({...design, palette: p})}>
+                                <div key={p.name} style={st.card(design.palette?.name === p.name)} onClick={() => setDesign({...design, palette: p})}>
                                     <div style={{ display: 'flex', height: '12px', borderRadius: '4px', overflow: 'hidden', marginBottom: '8px' }}>
                                         {p.colors.map(c => <div key={c} style={{ flex: 1, background: c }} />)}
                                     </div>
@@ -183,7 +202,7 @@ const PalNovaaMarketDesign = ({ onClose, onSelectShop, onSelectUniversity, initi
                         <div style={st.sectionTitle}><span>03</span> الخطوط</div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                             {fonts.map(f => (
-                                <div key={f.display} style={{ ...st.card(design.font.display === f.display), padding: '20px' }} onClick={() => setDesign({...design, font: f})}>
+                                <div key={f.display} style={{ ...st.card(design.font?.display === f.display), padding: '20px' }} onClick={() => setDesign({...design, font: f})}>
                                     <div style={{ fontSize: '1.5rem', fontFamily: f.fontFamily, color: '#F8F4ED', marginBottom: '5px' }}>{f.display}</div>
                                     <div style={{ fontSize: '0.7rem', color: '#E8B547' }}>{f.pair}</div>
                                 </div>
@@ -196,7 +215,7 @@ const PalNovaaMarketDesign = ({ onClose, onSelectShop, onSelectUniversity, initi
                         <div style={st.sectionTitle}><span>04</span> أنماط Hero التراثية</div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
                             {patterns.map(p => (
-                                <div key={p.name} style={{ ...st.card(design.pattern.name === p.name), height: '80px', background: p.bg }} onClick={() => setDesign({...design, pattern: p})}>
+                                <div key={p.name} style={{ ...st.card(design.pattern?.name === p.name), height: '80px', background: p.bg }} onClick={() => setDesign({...design, pattern: p})}>
                                     <div style={{ position: 'absolute', bottom: 5, left: 5, padding: '2px 6px', background: 'rgba(0,0,0,0.6)', borderRadius: '4px', fontSize: '0.7rem', color: '#fff' }}>{p.name}</div>
                                 </div>
                             ))}
@@ -220,16 +239,16 @@ const PalNovaaMarketDesign = ({ onClose, onSelectShop, onSelectUniversity, initi
                         <div style={st.mockContent}>
                             <div style={st.mockTitle}>{design.shopName || 'اسم المحل'}</div>
                             <div style={st.mockSub}>
-                                {design.category} · مدينة القدس · <span style={{ color: design.palette.colors[3] }}>مفتوح الآن</span>
+                                {design.category} · مدينة القدس · <span style={{ color: design.palette?.colors[3] }}>مفتوح الآن</span>
                             </div>
                             
                             <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
                                 <div style={{ flex: 1, height: '40px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px' }}></div>
                                 <div style={{ flex: 1, height: '40px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px' }}></div>
-                                <div style={{ flex: 1, height: '40px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px' }}></div>
+                                <div style={{ flex: 1, height: '40px', background: 'rgba(255,255,255,0.05)', borderRadius: '100px' }}></div>
                             </div>
-
-                            <div style={{ height: '2px', background: `linear-gradient(to left, transparent, ${design.palette.colors[3]}, transparent)`, opacity: 0.3, marginBottom: '20px' }}></div>
+ 
+                            <div style={{ height: '2px', background: `linear-gradient(to left, transparent, ${design.palette?.colors[3] || '#E8B547'}, transparent)`, opacity: 0.3, marginBottom: '20px' }}></div>
                             
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -255,7 +274,7 @@ const PalNovaaMarketDesign = ({ onClose, onSelectShop, onSelectUniversity, initi
                     <div style={{ background: 'rgba(232,181,71,0.05)', border: '1px solid rgba(232,181,71,0.2)', borderRadius: '16px', padding: '15px' }}>
                         <div style={{ fontSize: '0.85rem', color: '#E8B547', fontWeight: 'bold', marginBottom: '5px' }}>💡 معلومة التصميم</div>
                         <div style={{ fontSize: '0.8rem', color: '#8B8772', lineHeight: '1.5' }}>
-                            لوحة "{design.palette.name}" تستخدم تباين عالي مع خط "{design.font.display}" لخلق هوية بصرية قوية تناسب طابع {design.category}.
+                            لوحة "{design.palette?.name}" تستخدم تباين عالي مع خط "{design.font?.display}" لخلق هوية بصرية قوية تناسب طابع {design.category}.
                         </div>
                     </div>
                 </div>
