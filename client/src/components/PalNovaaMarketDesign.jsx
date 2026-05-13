@@ -23,19 +23,9 @@ const PalNovaaMarketDesign = ({ onClose, onSelectShop, onSelectUniversity, initi
         };
     });
 
-    // Sync if initialDesign changes
-    useEffect(() => {
-        if (initialDesign && Object.keys(initialDesign).length > 0) {
-            setDesign(prev => ({
-                ...prev,
-                ...initialDesign,
-                palette: initialDesign.palette || prev.palette,
-                font: initialDesign.font || prev.font,
-                pattern: initialDesign.pattern || prev.pattern,
-                layout: initialDesign.layout || prev.layout,
-            }));
-        }
-    }, [initialDesign]);
+    // Removed the initialDesign sync useEffect to prevent the state from reverting 
+    // when the parent component re-renders (e.g., from background updates or live data).
+    // The initial state is already correctly captured in the useState above.
 
     const [activeChip, setActiveChip] = useState('الكل');
     const [previewMode, setPreviewMode] = useState('card'); // 'card' or 'profile'

@@ -291,8 +291,8 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     // Design Engine
     const design = useMemo(() => {
         try {
-            return typeof shopData.custom_design === 'string' 
-                ? JSON.parse(shopData.custom_design) 
+            return typeof shopData.custom_design === 'string'
+                ? JSON.parse(shopData.custom_design)
                 : (shopData.custom_design || {});
         } catch { return {}; }
     }, [shopData.custom_design]);
@@ -639,13 +639,13 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
 
     const handleSaveDesign = async (newDesign) => {
         try {
-            await shopService.updateProfile(shopData.id, { 
+            await shopService.updateProfile(shopData.id, {
                 custom_design: newDesign,
                 name: newDesign.shopName,
                 category: newDesign.category
             });
-            setShopData(prev => ({ 
-                ...prev, 
+            setShopData(prev => ({
+                ...prev,
                 custom_design: newDesign,
                 name: newDesign.shopName,
                 category: newDesign.category
@@ -793,8 +793,8 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                     {/* Header / Hero */}
                     <div style={{
                         height: '250px',
-                        background: shopData.cover_picture 
-                            ? `url(${coverUrl}) center/cover` 
+                        background: shopData.cover_picture
+                            ? `url(${coverUrl}) center/cover`
                             : (design.pattern ? design.pattern.bg : coverUrl),
                         position: 'relative'
                     }}>
@@ -814,9 +814,9 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                             </div>
                         )}
 
-                        <div style={{ 
-                            position: 'absolute', 
-                            bottom: design.layout === 'floating' ? 15 : -50, 
+                        <div style={{
+                            position: 'absolute',
+                            bottom: design.layout === 'floating' ? 15 : -50,
                             right: (design.layout === 'modern' || design.layout === 'floating') ? 30 : undefined,
                             left: design.layout === 'classic' ? '50%' : (design.layout === 'minimal' ? 30 : undefined),
                             transform: design.layout === 'classic' ? 'translateX(-50%)' : undefined,
@@ -853,16 +853,16 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                     </div>
 
                     {/* Shop Info & Stats */}
-                    <div style={{ 
-                        marginTop: design.layout === 'floating' ? 20 : 60, 
+                    <div style={{
+                        marginTop: design.layout === 'floating' ? 20 : 60,
                         padding: '0 30px',
                         textAlign: design.layout === 'classic' ? 'center' : (design.layout === 'minimal' ? 'left' : 'right')
                     }}>
-                        <div style={{ 
-                            display: 'flex', 
+                        <div style={{
+                            display: 'flex',
                             flexDirection: design.layout === 'classic' ? 'column' : (design.layout === 'minimal' ? 'row-reverse' : 'row'),
-                            justifyContent: design.layout === 'classic' ? 'center' : 'space-between', 
-                            alignItems: design.layout === 'classic' ? 'center' : 'flex-start', 
+                            justifyContent: design.layout === 'classic' ? 'center' : 'space-between',
+                            alignItems: design.layout === 'classic' ? 'center' : 'flex-start',
                             flexWrap: 'wrap',
                             gap: '20px'
                         }}>
@@ -967,9 +967,9 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                     <span><b>{posts.length}</b> منشور</span>
                                 </div>
                             </div>
-                                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', justifyContent: design.layout === 'classic' ? 'center' : (design.layout === 'minimal' ? 'flex-end' : 'flex-start'), marginTop: design.layout === 'classic' ? '15px' : '0' }}>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', justifyContent: design.layout === 'classic' ? 'center' : (design.layout === 'minimal' ? 'flex-end' : 'flex-start'), marginTop: design.layout === 'classic' ? '15px' : '0' }}>
                                 {canEditShop && (
-                                    <button 
+                                    <button
                                         onClick={() => setShowDesignStudio(true)}
                                         style={{
                                             background: design.palette ? `linear-gradient(135deg, ${design.palette.colors[3]}, ${design.palette.colors[2]})` : 'linear-gradient(135deg,#E8B547,#C8324A)',
@@ -981,7 +981,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                         onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
                                         onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
                                     >
-                                        🎨 استوديو التصميم
+                                        استوديو التصميم
                                     </button>
                                 )}
                                 {currentUser?.role === 'admin' && (
@@ -989,9 +989,9 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                         <TrashIcon /> حذف
                                     </button>
                                 )}
-                                <button onClick={handleFollow} className={`btn-small ${isFollowing ? 'btn-reject' : 'btn-accept'}`} 
-                                    style={{ 
-                                        fontFamily: 'inherit', 
+                                <button onClick={handleFollow} className={`btn-small ${isFollowing ? 'btn-reject' : 'btn-accept'}`}
+                                    style={{
+                                        fontFamily: 'inherit',
                                         padding: '8px 20px',
                                         background: (!isFollowing && design.palette) ? design.palette.colors[3] : undefined,
                                         color: (!isFollowing && design.palette) ? design.palette.colors[0] : undefined,
@@ -2938,7 +2938,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                     )}
 
                     {showDesignStudio && (
-                        <PalNovaaMarketDesign 
+                        <PalNovaaMarketDesign
                             onClose={() => setShowDesignStudio(false)}
                             initialDesign={{
                                 ...design,
