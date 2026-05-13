@@ -229,7 +229,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     const [isFollowing, setIsFollowing] = useState(false);
     const [internalShops, setInternalShops] = useState([]); // Shops inside this mall
 
-    const isVanillaDesign = shop.name.includes('فاينلا') || shop.name.toLowerCase().includes('vanilla');
+    const isVanillaDesign = shop.name.includes('فاينلا') || shop.name.includes('فانيلا') || shop.name.includes('فاننيلا') || shop.name.toLowerCase().includes('vanilla');
 
     // Search State
     const [productSearchQuery, setProductSearchQuery] = useState('');
