@@ -12,6 +12,7 @@ const AdminDashboard = () => {
     const [stats, setStats] = useState(null);
     const [users, setUsers] = useState([]);
     const [posts, setPosts] = useState([]);
+    const [shops, setShops] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
@@ -50,6 +51,10 @@ const AdminDashboard = () => {
                 const postsData = await adminService.getAllPosts(currentPage, 30);
                 setPosts(postsData.posts);
                 setPagination(postsData.pagination);
+            } else if (activeTab === 'shops') {
+                const shopsData = await adminService.getAllShops(searchQuery, currentPage, 15);
+                setShops(shopsData.shops);
+                setPagination(shopsData.pagination);
             }
         } catch (error) {
             console.error('Failed to load data:', error);
@@ -103,6 +108,28 @@ const AdminDashboard = () => {
         }
     };
 
+    // Shop Handlers
+    const handleDeleteShop = async (shopId) => {
+        if (window.confirm('هل أنت متأكد من حذف هذا المحل نهائياً من الخريطة؟')) {
+            try {
+                await adminService.deleteShop(shopId);
+                loadData();
+            } catch (error) {
+                alert('فشل في حذف المحل');
+            }
+        }
+    };
+
+    const handleToggleShopVisibility = async (shopId, currentHiddenStatus) => {
+        try {
+            // currentHiddenStatus is true if it's hidden, so we pass !currentHiddenStatus to toggle
+            await adminService.toggleShopStatus(shopId, !currentHiddenStatus);
+            loadData();
+        } catch (error) {
+            alert('فشل في تحديث حالة ظهور المحل');
+        }
+    };
+
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleDateString('ar-SA', {
             year: 'numeric',
@@ -126,6 +153,7 @@ const AdminDashboard = () => {
                     {[
                         { id: 'overview', icon: '📊', label: 'الرئيسية' },
                         { id: 'users', icon: '👥', label: 'المستخدمين' },
+                        { id: 'shops', icon: '🏪', label: 'إدارة المحلات' },
                         { id: 'data', icon: '📝', label: 'كل البيانات' },
                         { id: 'files', icon: '📁', label: 'ملفات الوسائط' },
                         { id: 'map', icon: '🌏', label: 'خارطة النشاط' },
@@ -157,8 +185,9 @@ const AdminDashboard = () => {
                         <h2>{
                             activeTab === 'overview' ? 'لوحة التحكم العامة' :
                                 activeTab === 'users' ? 'إدارة الحسابات' :
-                                    activeTab === 'data' ? 'إدارة المحتوى والبيانات' :
-                                        activeTab === 'files' ? 'مكتبة الوسائط' : 'خارطة النشاط الموحدة'
+                                    activeTab === 'shops' ? 'إدارة المحلات والمؤسسات' :
+                                        activeTab === 'data' ? 'إدارة المحتوى والبيانات' :
+                                            activeTab === 'files' ? 'مكتبة الوسائط' : 'خارطة النشاط الموحدة'
                         }</h2>
                         <p>مرحباً بك يا {user.full_name || user.username} • {new Date().toLocaleDateString('ar-SA', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                     </div>
@@ -291,6 +320,85 @@ const AdminDashboard = () => {
                                                             {u.is_active ? '🛡️' : '⚡'}
                                                         </button>
                                                         <button className="btn-circle destructive" title="حذف نهائي" onClick={() => handleDeleteUser(u.id)}>🗑️</button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                        {pagination && pagination.totalPages > 1 && (
+                            <div className="pagination">
+                                {[...Array(pagination.totalPages)].map((_, i) => (
+                                    <button key={i + 1} className={currentPage === i + 1 ? 'active' : ''} onClick={() => setCurrentPage(i + 1)}>{i + 1}</button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Shops Management */}
+                {activeTab === 'shops' && (
+                    <div className="admin-content-card">
+                        <div className="content-header">
+                            <h3>إدارة المحلات والجامعات على الخريطة</h3>
+                            <div className="admin-search">
+                                <input
+                                    type="text"
+                                    placeholder="بحث عن محل..."
+                                    value={searchQuery}
+                                    onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                                />
+                                <span className="admin-search-icon">🔍</span>
+                            </div>
+                        </div>
+
+                        <div className="admin-table-wrapper">
+                            {loading ? (
+                                <div className="loading-container"><div className="spinner"></div></div>
+                            ) : (
+                                <table className="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>المحل / المؤسسة</th>
+                                            <th>التصنيف</th>
+                                            <th>تاريخ الإضافة</th>
+                                            <th>حالة الظهور</th>
+                                            <th>إجراءات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {shops.map(s => (
+                                            <tr key={s.id}>
+                                                <td>
+                                                    <div className="user-cell">
+                                                        <div className="user-avatar-wrapper">
+                                                            <img src={s.profile_picture || '/default-shop.png'} alt={s.name} className="user-avatar" style={{ borderRadius: '8px' }} />
+                                                        </div>
+                                                        <div className="user-info">
+                                                            <h4 style={{ fontSize: '1rem' }}>{s.name}</h4>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td><span style={{ fontWeight: 600, color: 'var(--accent)' }}>{s.category}</span></td>
+                                                <td>{formatDate(s.created_at)}</td>
+                                                <td>
+                                                    <span className={`status-tag ${!s.is_hidden ? 'active' : 'inactive'}`}>
+                                                        {!s.is_hidden ? 'ظاهر' : 'مخفي'}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div className="action-btns">
+                                                        <button
+                                                            className="btn-circle"
+                                                            title={s.is_hidden ? 'إظهار على الخريطة' : 'إخفاء من الخريطة'}
+                                                            onClick={() => handleToggleShopVisibility(s.id, s.is_hidden)}
+                                                            style={{ color: s.is_hidden ? '#10b981' : '#f59e0b' }}
+                                                        >
+                                                            {s.is_hidden ? '👁️' : '🙈'}
+                                                        </button>
+                                                        <button className="btn-circle destructive" title="حذف نهائي" onClick={() => handleDeleteShop(s.id)}>🗑️</button>
                                                     </div>
                                                 </td>
                                             </tr>

@@ -284,6 +284,77 @@ const createAdminPost = async (req, res) => {
     }
 };
 
+/**
+ * الحصول على جميع المحلات
+ */
+const getAllShops = async (req, res) => {
+    try {
+        const { search, page = 1, limit = 50 } = req.query;
+        const offset = (page - 1) * limit;
+
+        let query = `
+            SELECT id, name, category, profile_picture, created_at, 'shop' as type, is_hidden 
+            FROM shops
+        `;
+        let params = [];
+        if (search) {
+            query += ` WHERE name ILIKE $1 OR category ILIKE $1`;
+            params.push(`%${search}%`);
+        }
+        
+        query += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+        params.push(limit, offset);
+
+        const result = await pool.query(query, params);
+
+        let countQuery = 'SELECT COUNT(*) as count FROM shops';
+        if (search) countQuery += ` WHERE name ILIKE $1 OR category ILIKE $1`;
+        const countResult = await pool.query(countQuery, search ? [`%${search}%`] : []);
+
+        res.json({
+            shops: result.rows,
+            pagination: {
+                total: parseInt(countResult.rows[0].count),
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(countResult.rows[0].count / limit)
+            }
+        });
+    } catch (error) {
+        console.error('Get all shops error:', error);
+        res.status(500).json({ error: 'Server error fetching shops' });
+    }
+};
+
+/**
+ * حذف محل
+ */
+const deleteShop = async (req, res) => {
+    try {
+        const { shopId } = req.params;
+        await pool.query('DELETE FROM shops WHERE id = $1', [shopId]);
+        res.json({ message: 'Shop deleted successfully' });
+    } catch (error) {
+        console.error('Delete shop error:', error);
+        res.status(500).json({ error: 'Server error deleting shop' });
+    }
+};
+
+/**
+ * تغيير حالة ظهور المحل (تفعيل/تعطيل)
+ */
+const toggleShopStatus = async (req, res) => {
+    try {
+        const { shopId } = req.params;
+        const { is_hidden } = req.body;
+        await pool.query('UPDATE shops SET is_hidden = $1 WHERE id = $2', [is_hidden, shopId]);
+        res.json({ message: 'Shop status updated successfully', is_hidden });
+    } catch (error) {
+        console.error('Toggle shop status error:', error);
+        res.status(500).json({ error: 'Server error updating shop status' });
+    }
+};
+
 module.exports = {
     getDashboardStats,
     getAllUsers,
@@ -292,5 +363,8 @@ module.exports = {
     toggleUserStatus,
     getAllPosts,
     deletePost,
-    createAdminPost
+    createAdminPost,
+    getAllShops,
+    deleteShop,
+    toggleShopStatus
 };

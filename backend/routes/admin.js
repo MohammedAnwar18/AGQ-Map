@@ -12,7 +12,10 @@ const {
     toggleUserStatus,
     getAllPosts,
     deletePost,
-    createAdminPost
+    createAdminPost,
+    getAllShops,
+    deleteShop,
+    toggleShopStatus
 } = require('../controllers/adminController');
 
 const upload = require('../middleware/upload');
@@ -34,5 +37,10 @@ router.patch('/users/:userId/status', toggleUserStatus);
 router.get('/posts', getAllPosts);
 router.delete('/posts/:postId', deletePost);
 router.post('/posts', upload.single('image'), createAdminPost);
+
+// Shop Management
+router.get('/shops', getAllShops);
+router.delete('/shops/:shopId', deleteShop);
+router.patch('/shops/:shopId/status', toggleShopStatus);
 
 module.exports = router;

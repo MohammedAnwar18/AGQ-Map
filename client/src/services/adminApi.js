@@ -88,6 +88,24 @@ export const adminService = {
             }
         });
         return response.data;
+    },
+
+    // Shop Management
+    getAllShops: async (search = '', page = 1, limit = 50) => {
+        const response = await adminApi.get('/shops', {
+            params: { search, page, limit }
+        });
+        return response.data;
+    },
+
+    deleteShop: async (shopId) => {
+        const response = await adminApi.delete(`/shops/${shopId}`);
+        return response.data;
+    },
+
+    toggleShopStatus: async (shopId, is_hidden) => {
+        const response = await adminApi.patch(`/shops/${shopId}/status`, { is_hidden });
+        return response.data;
     }
 };
 
