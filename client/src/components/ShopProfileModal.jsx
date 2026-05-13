@@ -136,6 +136,14 @@ const SUPERMARKET_CATEGORIES = [
     "مستلزمات الشواء", "الحلويات", "المشروبات", "التسالي"
 ];
 
+const VANILLA_CATEGORIES = {
+    'طعام': ['فطور', 'بيغل ساندويتش', 'مقبلات', 'الوجبة الصحية', 'سلطات صحية', 'ســلــطـــات', 'برجر', 'بـيـتــــزا', 'باستـــــــــا', 'ساندويشات'],
+    'مشروبات': ['إسبريسو', 'خالي من السكر', 'مشاريب ربيعية', 'مشروبات ساخنة', 'اسبريسو بارد', 'مثلجة وباردة', 'مشروبات صحية', 'مشاريب الكراكينج', 'ميلك شيك', 'سموذي', 'عصائر طبيعية', 'بوظه'],
+    'حلويات': ['حلويات', 'حلويات صحيه', 'الكوكيز', 'فطائر', 'ترفلز', 'ماكرونز', 'قوالب الكيك'],
+    'Zero Sugar': ['مشروبات صحية', 'عصائر طبيعية', 'ساندويشات', 'بيغل ساندويتش', 'سلطات صحية', 'خالي من السكر', 'حلويات صحيه', 'الوجبة الصحية'],
+    'جديد': ['جديد']
+};
+
 const MapPicker = ({ initialLocation, radius, onLocationChange }) => {
     const [viewState, setViewState] = useState({
         latitude: parseFloat(initialLocation?.latitude) || 32.2227,
@@ -1548,7 +1556,11 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                             >
                                                                 <option value="">اختر القسم...</option>
                                                                 {isVanillaDesign 
-                                                                    ? ['طعام', 'مشروبات', 'حلويات', 'Zero Sugar', 'جديد'].map(c => <option key={c} value={c}>{c}</option>)
+                                                                    ? Object.entries(VANILLA_CATEGORIES).map(([main, subs]) => (
+                                                                        <optgroup key={main} label={main}>
+                                                                            {subs.map(sub => <option key={`${main}-${sub}`} value={sub}>{sub}</option>)}
+                                                                        </optgroup>
+                                                                    ))
                                                                     : SUPERMARKET_CATEGORIES.filter(c => c !== 'الكل').map(c => <option key={c} value={c}>{c}</option>)
                                                                 }
                                                             </select>
@@ -1654,7 +1666,10 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                 {['طعام', 'مشروبات', 'حلويات', 'Zero Sugar', 'جديد'].map(cat => (
                                                     <span 
                                                         key={cat}
-                                                        onClick={() => setSelectedVanillaMainCategory(cat)}
+                                                        onClick={() => {
+                                                            setSelectedVanillaMainCategory(cat);
+                                                            setSelectedProductCategory('الكل'); // Reset sub-category on change
+                                                        }}
                                                         style={{ 
                                                             cursor: 'pointer', 
                                                             borderBottom: selectedVanillaMainCategory === cat ? '2px solid var(--text-primary)' : 'none', 
@@ -1670,7 +1685,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                             </div>
 
                                             <div style={{ display: 'flex', gap: '25px', color: 'var(--text-muted)', fontSize: '0.95rem', overflowX: 'auto', maxWidth: '100%', paddingBottom: '10px', scrollbarWidth: 'none' }}>
-                                                {['الكل', 'إسبريسو', 'خالي من السكر', 'مشاريب ربيعية', 'مشروبات ساخنة', 'اسبريسو بارد', 'مثلجة وباردة', 'مشروبات صحية', 'مشاريب الكراكينج', 'ميلك شيك', 'سموثي', 'عصائر طبيعية', 'بوظه'].map(cat => (
+                                                {['الكل', ...(VANILLA_CATEGORIES[selectedVanillaMainCategory] || [])].map(cat => (
                                                     <span 
                                                         key={cat} 
                                                         onClick={() => setSelectedProductCategory(cat)}
@@ -1777,7 +1792,11 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                 if (['سوبر ماركت', 'سوبرماركت', 'Supermarket', 'supermarket'].includes(shopData.category) && !matchesCategory) return false;
                                                 
                                                 // Vanilla Filtering
-                                                if (isVanillaDesign && p.category && p.category !== selectedVanillaMainCategory) return false;
+                                                if (isVanillaDesign) {
+                                                    const validSubs = VANILLA_CATEGORIES[selectedVanillaMainCategory] || [];
+                                                    if (p.category && !validSubs.includes(p.category)) return false;
+                                                    if (selectedProductCategory !== 'الكل' && p.category !== selectedProductCategory) return false;
+                                                }
 
                                                 return matchesSearch;
                                             })
@@ -1799,7 +1818,11 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                     if (['سوبر ماركت', 'سوبرماركت', 'Supermarket', 'supermarket'].includes(shopData.category) && !matchesCategory) return false;
                                                     
                                                     // Vanilla Filtering
-                                                    if (isVanillaDesign && p.category && p.category !== selectedVanillaMainCategory) return false;
+                                                    if (isVanillaDesign) {
+                                                        const validSubs = VANILLA_CATEGORIES[selectedVanillaMainCategory] || [];
+                                                        if (p.category && !validSubs.includes(p.category)) return false;
+                                                        if (selectedProductCategory !== 'الكل' && p.category !== selectedProductCategory) return false;
+                                                    }
 
                                                     return matchesSearch;
                                                 })
