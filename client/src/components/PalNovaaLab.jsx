@@ -187,12 +187,22 @@ const PalNovaaLab = ({ onClose }) => {
     const activeTableLayer = useMemo(() => geoLayers.find(l => l.id === activeTableLayerId) || null, [geoLayers, activeTableLayerId]);
 
     const attributeKeys = useMemo(() => {
-        if (!activeTableLayer || !activeTableLayer.data.features) return [];
+        if (!activeTableLayer || !activeTableLayer.data) return [];
         const keys = new Set();
-        for (let i = 0; i < Math.min(activeTableLayer.data.features.length, 100); i++) {
-            const props = activeTableLayer.data.features[i].properties;
-            if (props) {
-                Object.keys(props).forEach(k => keys.add(k));
+        
+        if (activeTableLayer.type === 'table') {
+            // For CSV tables
+            const data = activeTableLayer.data;
+            for (let i = 0; i < Math.min(data.length, 50); i++) {
+                Object.keys(data[i] || {}).forEach(k => keys.add(k));
+            }
+        } else if (activeTableLayer.data.features) {
+            // For GeoJSON layers
+            for (let i = 0; i < Math.min(activeTableLayer.data.features.length, 100); i++) {
+                const props = activeTableLayer.data.features[i].properties;
+                if (props) {
+                    Object.keys(props).forEach(k => keys.add(k));
+                }
             }
         }
         return Array.from(keys);
@@ -439,48 +449,56 @@ const PalNovaaLab = ({ onClose }) => {
 
                 if (myFeatures && myFeatures.length > 0) {
                     const clickedFeature = myFeatures[0];
+                    const featureId = clickedFeature.id;
                     
-                    // الحالة 1: الضغطة الثالثة (الاستخراج)
-                    if (clickCountRef.current === 3) {
-                        handleExtractFeature(clickedFeature);
-                        clickCountRef.current = 0;
-                        return; // الخروج فوراً
-                    }
-
-                    // الحالة 2: الضغطة الأولى أو الثانية (عرض البيانات والتحديد المتعدد)
-                    setSelectedFeatureInfo({
-                        properties: clickedFeature.properties || {},
-                        longitude: e.lngLat.lng,
-                        latitude: e.lngLat.lat
-                    });
-
-                    // التحديد المتعدد: إضافة المعلم للقائمة أو إزالته إذا كان موجوداً
-                    const featureJson = clickedFeature.toJSON();
-                    const featureId = featureJson.id || JSON.stringify(featureJson.geometry.coordinates);
-
-                    setHighlightFeatures(prev => {
-                        const exists = prev.find(f => (f.id || JSON.stringify(f.geometry.coordinates)) === featureId);
-                        if (exists) {
-                            return prev.filter(f => (f.id || JSON.stringify(f.geometry.coordinates)) !== featureId);
-                        } else {
-                            return [...prev, featureJson];
-                        }
-                    });
-
-                    setSelectedFeatures(prev => {
-                        const exists = prev.find(f => (f.id || JSON.stringify(f.geometry.coordinates)) === featureId);
-                        if (exists) {
-                            return prev.filter(f => (f.id || JSON.stringify(f.geometry.coordinates)) !== featureId);
-                        } else {
-                            return [...prev, featureJson];
-                        }
-                    });
-
+                    // البحث عن المعلم الأصلي في geoLayers للحصول على أحدث الخصائص (بعد الربط)
+                    let fullProperties = clickedFeature.properties || {};
                     const layerId = clickedFeature.layer.id;
                     let originalLayerId = null;
                     if (layerId.startsWith('poly-')) originalLayerId = layerId.replace('poly-', '');
                     else if (layerId.startsWith('line-')) originalLayerId = layerId.replace('line-', '');
                     else if (layerId.startsWith('point-')) originalLayerId = layerId.replace('point-', '');
+
+                    if (originalLayerId) {
+                        const targetLayer = geoLayers.find(l => l.id === originalLayerId);
+                        if (targetLayer && targetLayer.data?.features) {
+                            const originalFeature = targetLayer.data.features.find(f => f.id === featureId);
+                            if (originalFeature) {
+                                fullProperties = originalFeature.properties || {};
+                            }
+                        }
+                    }
+                    
+                    // الحالة 1: الضغطة الثالثة (الاستخراج)
+                    if (clickCountRef.current === 3) {
+                        handleExtractFeature(clickedFeature);
+                        clickCountRef.current = 0;
+                        return;
+                    }
+
+                    // الحالة 2: الضغطة الأولى أو الثانية
+                    setSelectedFeatureInfo({
+                        properties: fullProperties,
+                        longitude: e.lngLat.lng,
+                        latitude: e.lngLat.lat
+                    });
+
+                    // التحديد المتعدد
+                    const featureJson = clickedFeature.toJSON();
+                    // نستخدم نفس المعرف ID للاتساق
+                    const fId = featureId || JSON.stringify(featureJson.geometry.coordinates);
+
+                    setHighlightFeatures(prev => {
+                        const exists = prev.find(f => (f.id || JSON.stringify(f.geometry.coordinates)) === fId);
+                        if (exists) return prev.filter(f => (f.id || JSON.stringify(f.geometry.coordinates)) !== fId);
+                        return [...prev, { ...featureJson, id: fId, properties: fullProperties }];
+                    });
+
+                    setSelectedFeatures(prev => {
+                        const exists = prev.find(f => (f.id || JSON.stringify(f.geometry.coordinates)) === fId);
+                        if (exists) return prev.filter(f => (f.id || JSON.stringify(f.geometry.coordinates)) !== fId);
+                        return [...prev, { ...featureJson, id: fId, properties: fullProperties }];
+                    });
 
                     if (originalLayerId) {
                         setActiveTableLayerId(originalLayerId);
@@ -614,11 +632,21 @@ const PalNovaaLab = ({ onClose }) => {
                     if (response.data.success) {
                         const newLayerId = Date.now().toString();
                         const defaultColor = ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899'][geoLayers.length % 5];
+                        
+                        // تأكد من وجود معرفات لكل معلم
+                        const geojsonData = response.data.geojson || json;
+                        if (geojsonData.features) {
+                            geojsonData.features = geojsonData.features.map((f, idx) => ({
+                                ...f,
+                                id: f.id || `${newLayerId}_${idx}`
+                            }));
+                        }
+
                         const newLayer = {
                             id: newLayerId,
                             name: file.name.substring(0, 19),
                             dataUrl: response.data.url,
-                            data: response.data.geojson || json, // Use server-processed if available
+                            data: geojsonData,
                             color: defaultColor
                         };
                         setGeoLayers(prev => [...prev, newLayer]);
@@ -2037,7 +2065,9 @@ const PalNovaaLab = ({ onClose }) => {
                                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
                                     <span>جدول البيانات: {activeTableLayer.name}</span>
                                     <small>
-                                        {selectedFeatures.length > 0 ? `${selectedFeatures.length} معلم محدد` : `${activeTableLayer.data?.features?.length || 0} معلم`}
+                                        {activeTableLayer.type === 'table' 
+                                            ? `${activeTableLayer.data?.length || 0} سجل بيانات`
+                                            : (selectedFeatures.length > 0 ? `${selectedFeatures.length} معلم محدد` : `${activeTableLayer.data?.features?.length || 0} معلم`)}
                                     </small>
                                 </div>
                                 <div style={{ display: 'flex', gap: '10px' }}>
@@ -2078,6 +2108,15 @@ const PalNovaaLab = ({ onClose }) => {
                                     </thead>
                                     <tbody>
                                         {(() => {
+                                            if (activeTableLayer.type === 'table') {
+                                                return (activeTableLayer.data || []).map((row, i) => (
+                                                    <tr key={i}>
+                                                        <td>{i + 1}</td>
+                                                        {attributeKeys.map(k => <td key={k}>{String(row[k] || '-')}</td>)}
+                                                    </tr>
+                                                ));
+                                            }
+
                                             const allFeatures = activeTableLayer.data?.features || [];
                                             // إذا كان هناك تحديد، نظهر فقط المعالم المختارة
                                             const displayFeatures = selectedFeatures.length > 0 ?
