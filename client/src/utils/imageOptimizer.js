@@ -12,8 +12,9 @@ export const optimizeImage = async (file, options = {}) => {
         type = 'image/webp'
     } = options;
 
-    // If it's not an image, return original file (e.g. video)
-    if (!file.type.startsWith('image/')) {
+    // If it's not an image or it's an SVG, return original file
+    // SVGs are XML and shouldn't be rasterized/compressed by canvas
+    if (!file.type.startsWith('image/') || file.type === 'image/svg+xml') {
         return file;
     }
 

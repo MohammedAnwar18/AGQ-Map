@@ -587,14 +587,19 @@ const addProduct = async (req, res) => {
         let media_urls = [];
         if (req.files) media_urls = await Promise.all(req.files.map(f => uploadToSupabase(f.buffer, f.originalname, f.mimetype)));
 
+        // Sanitize price values: empty string or invalid number should be null for numeric columns
+        const parsedPrice = (price === '' || price === undefined || price === null || isNaN(parseFloat(price))) ? null : parseFloat(price);
+        const parsedOldPrice = (old_price === '' || old_price === undefined || old_price === null || isNaN(parseFloat(old_price))) ? null : parseFloat(old_price);
+
         const result = await pool.query(`
             INSERT INTO shop_products (shop_id, name, price, description, image_url, image_urls, old_price, category)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING *
-        `, [shopId, name, price, description, media_urls[0] || null, media_urls, old_price, category]);
+        `, [shopId, name, parsedPrice, description, media_urls[0] || null, media_urls, parsedOldPrice, category]);
         res.json(result.rows[0]);
     } catch (e) {
-        res.status(500).json({ error: 'Failed' });
+        console.error('addProduct error:', e);
+        res.status(500).json({ error: 'Failed to add product' });
     }
 };
 
@@ -615,7 +620,13 @@ const updateProduct = async (req, res) => {
         fields.forEach(f => {
             if (req.body[f] !== undefined) {
                 queryParts.push(`${f} = $${idx++}`);
-                vals.push(req.body[f]);
+                // Sanitize numeric fields
+                if (f === 'price' || f === 'old_price') {
+                    const val = (req.body[f] === '' || req.body[f] === null || isNaN(parseFloat(req.body[f]))) ? null : parseFloat(req.body[f]);
+                    vals.push(val);
+                } else {
+                    vals.push(req.body[f]);
+                }
             }
         });
 
@@ -631,7 +642,8 @@ const updateProduct = async (req, res) => {
         const result = await pool.query(`UPDATE shop_products SET ${queryParts.join(', ')} WHERE id = $${idx++} AND shop_id = $${idx} RETURNING *`, vals);
         res.json(result.rows[0]);
     } catch (e) {
-        res.status(500).json({ error: 'Failed' });
+        console.error('updateProduct error:', e);
+        res.status(500).json({ error: 'Failed to update product' });
     }
 };
 

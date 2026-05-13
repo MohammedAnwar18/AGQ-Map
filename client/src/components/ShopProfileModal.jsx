@@ -819,9 +819,14 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                 <button onClick={() => coverInputRef.current.click()} style={{ background: 'rgba(0,0,0,0.5)', border: 'none', color: 'white', padding: '8px 12px', borderRadius: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <CameraIcon /> تغيير الغلاف
                                 </button>
-                                <input type="file" ref={coverInputRef} accept="image/*" hidden onChange={e => {
-                                    if (e.target.files[0]) {
-                                        setCropState({ isOpen: true, file: e.target.files[0], type: 'cover_picture', aspect: 3 });
+                                <input type="file" ref={coverInputRef} accept="image/*,.svg" hidden onChange={e => {
+                                    const file = e.target.files[0];
+                                    if (file) {
+                                        if (file.type === 'image/svg+xml') {
+                                            handleImageUpload('cover_picture', file);
+                                        } else {
+                                            setCropState({ isOpen: true, file: file, type: 'cover_picture', aspect: 3 });
+                                        }
                                     }
                                     e.target.value = null;
                                 }} />
@@ -856,9 +861,14 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                         <CameraIcon />
                                     </button>
                                 )}
-                                <input type="file" ref={profileInputRef} accept="image/*" hidden onChange={e => {
-                                    if (e.target.files[0]) {
-                                        setCropState({ isOpen: true, file: e.target.files[0], type: 'profile_picture', aspect: 1 });
+                                <input type="file" ref={profileInputRef} accept="image/*,.svg" hidden onChange={e => {
+                                    const file = e.target.files[0];
+                                    if (file) {
+                                        if (file.type === 'image/svg+xml') {
+                                            handleImageUpload('profile_picture', file);
+                                        } else {
+                                            setCropState({ isOpen: true, file: file, type: 'profile_picture', aspect: 1 });
+                                        }
                                     }
                                     e.target.value = null;
                                 }} />
@@ -1650,7 +1660,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                         type="file"
                                                         multiple
                                                         onChange={e => setProductImages([...productImages, ...Array.from(e.target.files)])}
-                                                        accept="image/*"
+                                                        accept="image/*,.svg"
                                                         hidden
                                                     />
                                                 </div>
@@ -2521,7 +2531,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                     id="post-images-input"
                                                     type="file"
                                                     multiple
-                                                    accept="image/*,video/*"
+                                                    accept="image/*,video/*,.svg"
                                                     onChange={e => setPostImages([...postImages, ...Array.from(e.target.files)])}
                                                     hidden
                                                 />
