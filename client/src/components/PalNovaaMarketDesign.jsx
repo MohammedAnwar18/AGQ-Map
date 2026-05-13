@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 
-const PalNovaaMarketDesign = ({ onClose, onSelectShop, onSelectUniversity }) => {
+const PalNovaaMarketDesign = ({ onClose, onSelectShop, onSelectUniversity, initialDesign }) => {
     // Studio State
-    const [design, setDesign] = useState({
+    const [design, setDesign] = useState(initialDesign || {
         palette: { name: 'Heritage Nova', colors: ['#0B102A','#8B1F33','#C8324A','#E8B547','#F8F4ED'] },
         font: { display: 'المتجر العتيق', fontFamily: "'Playfair Display',serif", pair: 'Playfair × Cairo' },
         pattern: { name: 'Heritage', bg: 'repeating-linear-gradient(45deg,#0B102A 0 8px,#8B1F33 8px 12px,#E8B547 12px 14px)' },
@@ -10,6 +10,11 @@ const PalNovaaMarketDesign = ({ onClose, onSelectShop, onSelectUniversity }) => 
         shopName: 'محلي المبدع',
         layout: 'modern'
     });
+
+    // Sync if initialDesign changes
+    useEffect(() => {
+        if (initialDesign) setDesign(initialDesign);
+    }, [initialDesign]);
 
     const [activeChip, setActiveChip] = useState('الكل');
     const [previewMode, setPreviewMode] = useState('card'); // 'card' or 'profile'

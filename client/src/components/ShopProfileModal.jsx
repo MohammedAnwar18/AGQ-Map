@@ -9,6 +9,7 @@ import Map, { Marker, Source, Layer } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './Modal.css';
+import PalNovaaMarketDesign from './PalNovaaMarketDesign';
 
 // --- Assets / Icons ---
 const CameraIcon = () => (
@@ -285,6 +286,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     const [simPrompt, setSimPrompt] = useState('');
     const [expandedAgentIndex, setExpandedAgentIndex] = useState(null);
     const [agentChatStates, setAgentChatStates] = useState({});
+    const [showDesignStudio, setShowDesignStudio] = useState(false);
 
     // Design Engine
     const design = useMemo(() => {
@@ -620,6 +622,28 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
         }
     };
 
+    const handleSaveDesign = async (newDesign) => {
+        try {
+            await shopService.updateProfile(shopData.id, { 
+                custom_design: newDesign,
+                name: newDesign.shopName,
+                category: newDesign.category
+            });
+            setShopData(prev => ({ 
+                ...prev, 
+                custom_design: newDesign,
+                name: newDesign.shopName,
+                category: newDesign.category
+            }));
+            setShowDesignStudio(false);
+            alert('تم تحديث تصميم المحل بنجاح! ✨');
+            if (onFollowChange) onFollowChange(); // Refresh map/list
+        } catch (e) {
+            console.error(e);
+            alert('فشل في حفظ التصميم الجديد');
+        }
+    };
+
     const handleLike = async (postId) => {
         setPosts(posts.map(p => {
             if (p.id === postId) {
@@ -910,13 +934,29 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                     <span><b>{posts.length}</b> منشور</span>
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                                {currentUser?.role === 'admin' && (
-                                    <button onClick={handleDeleteShop} className="btn-small btn-reject" style={{ fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px' }}>
-                                        <TrashIcon /> حذف المحل
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                {canEditShop && (
+                                    <button 
+                                        onClick={() => setShowDesignStudio(true)}
+                                        style={{
+                                            background: 'linear-gradient(135deg,#E8B547,#C8324A)',
+                                            border: 'none', color: '#06091C', padding: '10px 20px',
+                                            borderRadius: '12px', fontWeight: '800', cursor: 'pointer',
+                                            display: 'flex', alignItems: 'center', gap: '8px',
+                                            boxShadow: '0 4px 15px rgba(232,181,71,0.3)', transition: 'all 0.2s'
+                                        }}
+                                        onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                                        onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+                                    >
+                                        🎨 استوديو التصميم
                                     </button>
                                 )}
-                                <button onClick={handleFollow} className={`btn-small ${isFollowing ? 'btn-reject' : 'btn-accept'}`} style={{ fontFamily: 'inherit' }}>
+                                {currentUser?.role === 'admin' && (
+                                    <button onClick={handleDeleteShop} className="btn-small btn-reject" style={{ fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '5px', padding: '8px 12px' }}>
+                                        <TrashIcon /> حذف
+                                    </button>
+                                )}
+                                <button onClick={handleFollow} className={`btn-small ${isFollowing ? 'btn-reject' : 'btn-accept'}`} style={{ fontFamily: 'inherit', padding: '8px 20px' }}>
                                     {isFollowing ? 'إلغاء المتابعة' : 'متابعة'}
                                 </button>
                             </div>
