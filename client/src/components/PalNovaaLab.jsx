@@ -130,6 +130,14 @@ const PalNovaaLab = ({ onClose }) => {
     const [layerStyles, setLayerStyles] = useState({}); // { layerId: { color, outlineColor, outlineWidth, shape, opacity, fillOpacity } }
     const [stylePopup, setStylePopup] = useState(null); // { layerId, x, y }
 
+    // Join/Link Data State
+    const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
+    const [joinTargetLayerId, setJoinTargetLayerId] = useState(null); // The GeoJSON layer to receive data
+    const [selectedCsvLayerId, setSelectedCsvLayerId] = useState(''); // The CSV layer source
+    const [joinKeyMap, setJoinKeyMap] = useState(''); // Key field in GeoJSON
+    const [joinKeyCsv, setJoinKeyCsv] = useState(''); // Key field in CSV
+    const [selectedCsvFields, setSelectedCsvFields] = useState([]); // Fields to import
+
     const pointShapes = [
         { id: 'circle', name: 'دائرة', icon: '●' },
         { id: 'square', name: 'مربع', icon: '■' },
@@ -551,13 +559,47 @@ const PalNovaaLab = ({ onClose }) => {
         return () => clearTimeout(timer);
     }, []);
 
+    const parseCSV = (text) => {
+        const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+        if (lines.length < 2) return [];
+        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+        return lines.slice(1).map(line => {
+            const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+            const obj = {};
+            headers.forEach((h, i) => {
+                obj[h] = values[i] || '';
+            });
+            return obj;
+        });
+    };
+
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
+        const isCsv = file.name.endsWith('.csv');
         const reader = new FileReader();
         reader.onload = async (event) => {
             try {
+                if (isCsv) {
+                    const csvData = parseCSV(event.target.result);
+                    if (csvData.length === 0) {
+                        alert("ملف CSV فارغ أو غير صالح");
+                        return;
+                    }
+                    const newLayerId = `csv-${Date.now()}`;
+                    const newLayer = {
+                        id: newLayerId,
+                        name: file.name.substring(0, 19),
+                        type: 'table',
+                        data: csvData, // Array of objects
+                        isVisible: false
+                    };
+                    setGeoLayers(prev => [...prev, newLayer]);
+                    alert(`✅ تم تحميل جدول البيانات "${file.name}" بنجاح!`);
+                    return;
+                }
+
                 const json = JSON.parse(event.target.result);
                 if (json.type === 'FeatureCollection' || json.type === 'Feature') {
                     // الرفع للسيرفر (Cloudflare R2)
@@ -631,6 +673,44 @@ const PalNovaaLab = ({ onClose }) => {
             }
         };
         reader.readAsText(file);
+    };
+
+    const handlePerformJoin = () => {
+        if (!joinTargetLayerId || !selectedCsvLayerId || !joinKeyMap || !joinKeyCsv || selectedCsvFields.length === 0) {
+            alert("الرجاء إكمال كافة إعدادات الربط");
+            return;
+        }
+
+        setGeoLayers(prev => prev.map(layer => {
+            if (layer.id === joinTargetLayerId) {
+                const csvLayer = prev.find(l => l.id === selectedCsvLayerId);
+                if (!csvLayer) return layer;
+
+                const newFeatures = layer.data.features.map(feature => {
+                    const keyValue = feature.properties[joinKeyMap];
+                    // البحث عن الصف المطابق في CSV
+                    const matchingRow = csvLayer.data.find(row => String(row[joinKeyCsv]) === String(keyValue));
+
+                    if (matchingRow) {
+                        const newProperties = { ...feature.properties };
+                        selectedCsvFields.forEach(field => {
+                            newProperties[field] = matchingRow[field];
+                        });
+                        return { ...feature, properties: newProperties };
+                    }
+                    return feature;
+                });
+
+                return {
+                    ...layer,
+                    data: { ...layer.data, features: newFeatures }
+                };
+            }
+            return layer;
+        }));
+
+        setIsJoinModalOpen(false);
+        alert(`✅ تم ربط ${selectedCsvFields.length} حقول بـ ${activeTableLayer.name} بنجاح!`);
     };
 
     const handleImportLink = async () => {
@@ -1961,6 +2041,19 @@ const PalNovaaLab = ({ onClose }) => {
                                     </small>
                                 </div>
                                 <div style={{ display: 'flex', gap: '10px' }}>
+                                    {activeTableLayer.type !== 'table' && (
+                                        <button
+                                            className="ds-btn primary small"
+                                            onClick={() => {
+                                                setJoinTargetLayerId(activeTableLayer.id);
+                                                setIsJoinModalOpen(true);
+                                            }}
+                                            style={{ padding: '4px 12px', fontSize: '0.7rem', background: '#10D9A0', color: 'black' }}
+                                        >
+                                            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="3" style={{ marginRight: '5px' }}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
+                                            ربط بيانات (CSV)
+                                        </button>
+                                    )}
                                     {selectedFeatures.length > 0 && (
                                         <button
                                             className="ds-btn secondary small"
@@ -2013,6 +2106,105 @@ const PalNovaaLab = ({ onClose }) => {
                                         })()}
                                     </tbody>
                                 </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Join Modal */}
+                    {isJoinModalOpen && (
+                        <div className="custom-modal-overlay" style={{ zIndex: 10001 }}>
+                            <div className="custom-modal-content" style={{ maxWidth: '600px', width: '90%', padding: '25px', borderRadius: '24px', background: 'var(--bg-3)', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                    <h3 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--primary)' }}>ربط حقول بيانات (CSV)</h3>
+                                    <button className="close-table-btn" onClick={() => setIsJoinModalOpen(false)}>
+                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                                    </button>
+                                </div>
+
+                                <div className="join-form" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                    {/* Step 1: Select CSV */}
+                                    <div className="form-group">
+                                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', opacity: 0.8 }}>1. اختر ملف CSV المصدر:</label>
+                                        <select 
+                                            value={selectedCsvLayerId} 
+                                            onChange={(e) => setSelectedCsvLayerId(e.target.value)}
+                                            style={{ width: '100%', padding: '10px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}
+                                        >
+                                            <option value="">-- اختر جدول --</option>
+                                            {geoLayers.filter(l => l.type === 'table').map(l => (
+                                                <option key={l.id} value={l.id}>{l.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {selectedCsvLayerId && (
+                                        <>
+                                            {/* Step 2: Key Fields */}
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                                                <div className="form-group">
+                                                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', opacity: 0.7 }}>حقل الربط في الخريطة:</label>
+                                                    <select 
+                                                        value={joinKeyMap} 
+                                                        onChange={(e) => setJoinKeyMap(e.target.value)}
+                                                        style={{ width: '100%', padding: '8px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}
+                                                    >
+                                                        <option value="">-- اختر حقل --</option>
+                                                        {attributeKeys.map(k => <option key={k} value={k}>{k}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div className="form-group">
+                                                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', opacity: 0.7 }}>حقل الربط في CSV:</label>
+                                                    <select 
+                                                        value={joinKeyCsv} 
+                                                        onChange={(e) => setJoinKeyCsv(e.target.value)}
+                                                        style={{ width: '100%', padding: '8px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}
+                                                    >
+                                                        <option value="">-- اختر حقل --</option>
+                                                        {geoLayers.find(l => l.id === selectedCsvLayerId)?.data[0] && Object.keys(geoLayers.find(l => l.id === selectedCsvLayerId).data[0]).map(k => (
+                                                            <option key={k} value={k}>{k}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            {/* Step 3: Fields to Import */}
+                                            <div className="form-group">
+                                                <label style={{ display: 'block', marginBottom: '10px', fontSize: '0.9rem', opacity: 0.8 }}>3. اختر الحقول المراد استيرادها:</label>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', maxHeight: '150px', overflowY: 'auto', padding: '10px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px' }}>
+                                                    {geoLayers.find(l => l.id === selectedCsvLayerId)?.data[0] && Object.keys(geoLayers.find(l => l.id === selectedCsvLayerId).data[0]).map(k => (
+                                                        <label key={k} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', cursor: 'pointer' }}>
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={selectedCsvFields.includes(k)}
+                                                                onChange={(e) => {
+                                                                    if (e.target.checked) setSelectedCsvFields([...selectedCsvFields, k]);
+                                                                    else setSelectedCsvFields(selectedCsvFields.filter(f => f !== k));
+                                                                }}
+                                                            />
+                                                            {k}
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
+                                                <button 
+                                                    className="ds-btn primary w-100" 
+                                                    onClick={handlePerformJoin}
+                                                    style={{ background: 'var(--primary)', color: 'black' }}
+                                                >
+                                                    إتمام عملية الربط والحفظ
+                                                </button>
+                                                <button 
+                                                    className="ds-btn secondary" 
+                                                    onClick={() => setIsJoinModalOpen(false)}
+                                                >
+                                                    إلغاء
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     )}
@@ -2091,13 +2283,15 @@ const PalNovaaLab = ({ onClose }) => {
                                         </div>
 
                                         {geoLayers.map(layer => {
+                                            const isTable = layer.type === 'table';
                                             const currentStyle = layerStyles[layer.id] || { color: layer.color };
                                             return (
-                                                <div key={layer.id} className="layer-item active">
+                                                <div key={layer.id} className={`layer-item active ${isTable ? 'table-layer' : ''}`}>
                                                     <div className="layer-main-info">
                                                         <div
                                                             className="layer-color-btn"
                                                             onClick={(e) => {
+                                                                if (isTable) return;
                                                                 const rect = e.currentTarget.getBoundingClientRect();
                                                                 setStylePopup({
                                                                     layerId: layer.id,
@@ -2105,9 +2299,20 @@ const PalNovaaLab = ({ onClose }) => {
                                                                     y: Math.max(20, Math.min(window.innerHeight - 600, rect.top - 40))
                                                                 });
                                                             }}
-                                                            style={{ background: currentStyle.color || layer.color }}
-                                                            title="تعديل النمط والرموز"
-                                                        ></div>
+                                                            style={{ 
+                                                                background: isTable ? 'rgba(16, 217, 160, 0.2)' : (currentStyle.color || layer.color),
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                            }}
+                                                            title={isTable ? "جدول بيانات" : "تعديل النمط والرموز"}
+                                                        >
+                                                            {isTable && (
+                                                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#10D9A0" strokeWidth="2.5">
+                                                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                                                    <line x1="3" y1="9" x2="21" y2="9" />
+                                                                    <line x1="9" y1="21" x2="9" y2="9" />
+                                                                </svg>
+                                                            )}
+                                                        </div>
                                                         <div className="layer-text">
                                                             {editingLayerId === layer.id ? (
                                                                 <input
@@ -2129,7 +2334,11 @@ const PalNovaaLab = ({ onClose }) => {
                                                                     {layer.name}
                                                                 </h5>
                                                             )}
-                                                            <small>{layer.data?.features?.length || 0} معلم</small>
+                                                            <small>
+                                                                {isTable 
+                                                                    ? `${layer.data?.length || 0} سجل بيانات` 
+                                                                    : `${layer.data?.features?.length || 0} معلم جغرافي`}
+                                                            </small>
                                                             {layer.measurement && <small style={{ color: 'var(--accent-cyan)', fontWeight: 'bold' }}>القياس: {layer.measurement}</small>}
                                                         </div>
                                                     </div>
