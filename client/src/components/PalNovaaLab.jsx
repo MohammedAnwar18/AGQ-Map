@@ -100,7 +100,8 @@ const PalNovaaLab = ({ onClose }) => {
     const [builderTab, setBuilderTab] = useState('basic'); // 'basic', 'components', 'icons'
     const [isMagicPromptOpen, setIsMagicPromptOpen] = useState(false);
     const [magicPromptText, setMagicPromptText] = useState('');
-    const [highlightFeature, setHighlightFeature] = useState(null);
+    const [highlightFeatures, setHighlightFeatures] = useState([]);
+    const [selectedFeatures, setSelectedFeatures] = useState([]);
     const [isGenerating, setIsGenerating] = useState(false);
     const [uploadedHtmlContent, setUploadedHtmlContent] = useState(null);
     const [uploadedHtmlName, setUploadedHtmlName] = useState('');
@@ -303,6 +304,62 @@ const PalNovaaLab = ({ onClose }) => {
         }
     };
 
+    const handleBulkExtract = () => {
+        if (selectedFeatures.length === 0) return;
+        
+        try {
+            const newLayerId = `bulk-ext-${Date.now()}`;
+            const newLayer = {
+                id: newLayerId,
+                name: `مجموعة مستخرجة (${selectedFeatures.length} معلم)`,
+                data: {
+                    type: 'FeatureCollection',
+                    features: selectedFeatures.map(f => ({
+                        ...f,
+                        properties: { ...f.properties, extracted_at: new Date().toISOString() }
+                    }))
+                },
+                color: '#fbab15',
+                isVisible: true
+            };
+
+            setGeoLayers(prev => [...prev, newLayer]);
+            setLayerStyles(prev => ({
+                ...prev,
+                [newLayerId]: {
+                    color: '#fbab15',
+                    outlineColor: '#ffffff',
+                    outlineWidth: 3,
+                    shape: 'circle',
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }
+            }));
+
+            // تفريغ التحديد بعد الاستخراج
+            setSelectedFeatures([]);
+            setHighlightFeatures([]);
+            
+            alert(`✅ تم استخراج ${selectedFeatures.length} معلم في طبقة مستقلة بنجاح!`);
+        } catch (err) {
+            console.error("Bulk extraction error:", err);
+        }
+    };
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.code === 'Space' || e.keyCode === 32) {
+                if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    handleBulkExtract();
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedFeatures]);
+
     const handleMapClick = (e) => {
         if (drawingMode) {
             const coord = [e.lngLat.lng, e.lngLat.lat];
@@ -381,14 +438,34 @@ const PalNovaaLab = ({ onClose }) => {
                         return; // الخروج فوراً
                     }
 
-                    // الحالة 2: الضغطة الأولى أو الثانية (عرض البيانات)
+                    // الحالة 2: الضغطة الأولى أو الثانية (عرض البيانات والتحديد المتعدد)
                     setSelectedFeatureInfo({
                         properties: clickedFeature.properties || {},
                         longitude: e.lngLat.lng,
                         latitude: e.lngLat.lat
                     });
 
-                    setHighlightFeature(clickedFeature.toJSON());
+                    // التحديد المتعدد: إضافة المعلم للقائمة أو إزالته إذا كان موجوداً
+                    const featureJson = clickedFeature.toJSON();
+                    const featureId = featureJson.id || JSON.stringify(featureJson.geometry.coordinates);
+
+                    setHighlightFeatures(prev => {
+                        const exists = prev.find(f => (f.id || JSON.stringify(f.geometry.coordinates)) === featureId);
+                        if (exists) {
+                            return prev.filter(f => (f.id || JSON.stringify(f.geometry.coordinates)) !== featureId);
+                        } else {
+                            return [...prev, featureJson];
+                        }
+                    });
+
+                    setSelectedFeatures(prev => {
+                        const exists = prev.find(f => (f.id || JSON.stringify(f.geometry.coordinates)) === featureId);
+                        if (exists) {
+                            return prev.filter(f => (f.id || JSON.stringify(f.geometry.coordinates)) !== featureId);
+                        } else {
+                            return [...prev, featureJson];
+                        }
+                    });
 
                     const layerId = clickedFeature.layer.id;
                     let originalLayerId = null;
@@ -402,7 +479,8 @@ const PalNovaaLab = ({ onClose }) => {
                     }
                 } else {
                     setSelectedFeatureInfo(null);
-                    setHighlightFeature(null);
+                    setHighlightFeatures([]);
+                    setSelectedFeatures([]);
                 }
             } catch (err) {
                 console.error("Map click query error:", err);
@@ -1830,8 +1908,8 @@ const PalNovaaLab = ({ onClose }) => {
                             })}
 
                             {/* Highlight Layer */}
-                            {highlightFeature && (
-                                <Source id="highlight-source" type="geojson" data={highlightFeature}>
+                            {highlightFeatures.length > 0 && (
+                                <Source id="highlight-source" type="geojson" data={{ type: 'FeatureCollection', features: highlightFeatures }}>
                                     <Layer
                                         id="highlight-outline"
                                         type="line"
@@ -1878,17 +1956,17 @@ const PalNovaaLab = ({ onClose }) => {
                                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
                                     <span>جدول البيانات: {activeTableLayer.name}</span>
                                     <small>
-                                        {highlightFeature ? 'معلم واحد محدد' : `${activeTableLayer.data?.features?.length || 0} معلم`}
+                                        {selectedFeatures.length > 0 ? `${selectedFeatures.length} معلم محدد` : `${activeTableLayer.data?.features?.length || 0} معلم`}
                                     </small>
                                 </div>
                                 <div style={{ display: 'flex', gap: '10px' }}>
-                                    {highlightFeature && (
+                                    {selectedFeatures.length > 0 && (
                                         <button
                                             className="ds-btn secondary small"
-                                            onClick={() => setHighlightFeature(null)}
+                                            onClick={() => { setHighlightFeatures([]); setSelectedFeatures([]); }}
                                             style={{ padding: '4px 12px', fontSize: '0.7rem' }}
                                         >
-                                            عرض الكل
+                                            إلغاء التحديد ({selectedFeatures.length})
                                         </button>
                                     )}
                                     <button className="close-table-btn" onClick={() => setShowBottomTable(false)}>
@@ -1907,26 +1985,30 @@ const PalNovaaLab = ({ onClose }) => {
                                     <tbody>
                                         {(() => {
                                             const allFeatures = activeTableLayer.data?.features || [];
-                                            // If a feature is highlighted on map, show only that one in the table
-                                            const displayFeatures = highlightFeature ?
+                                            // إذا كان هناك تحديد، نظهر فقط المعالم المختارة
+                                            const displayFeatures = selectedFeatures.length > 0 ?
                                                 allFeatures.filter(f => {
-                                                    // Simple heuristic: compare properties or ID if available
-                                                    if (f.id && highlightFeature.id) return f.id === highlightFeature.id;
-                                                    return JSON.stringify(f.properties) === JSON.stringify(highlightFeature.properties);
+                                                    const fId = f.id || JSON.stringify(f.geometry.coordinates);
+                                                    return selectedFeatures.some(sf => (sf.id || JSON.stringify(sf.geometry.coordinates)) === fId);
                                                 }) : allFeatures;
 
-                                            return displayFeatures.map((f, i) => (
-                                                <tr key={i} className={highlightFeature ? 'highlighted-row' : ''} onClick={() => {
-                                                    const coords = f.geometry?.type === 'Point' ? f.geometry.coordinates : (f.geometry?.coordinates?.[0]?.[0] || f.geometry?.coordinates?.[0]);
-                                                    if (coords && typeof coords[0] === 'number') {
-                                                        mapRef.current.flyTo({ center: coords, zoom: 16 });
-                                                        setSelectedFeatureInfo({ properties: f.properties || {}, longitude: coords[0], latitude: coords[1] });
-                                                    }
-                                                }}>
-                                                    <td>{i + 1}</td>
-                                                    {attributeKeys.map(k => <td key={k}>{String(f.properties?.[k] || '-')}</td>)}
-                                                </tr>
-                                            ));
+                                            return displayFeatures.map((f, i) => {
+                                                const fId = f.id || JSON.stringify(f.geometry.coordinates);
+                                                const isHighlighted = selectedFeatures.some(sf => (sf.id || JSON.stringify(sf.geometry.coordinates)) === fId);
+                                                
+                                                return (
+                                                    <tr key={i} className={isHighlighted ? 'highlighted-row' : ''} onClick={() => {
+                                                        const coords = f.geometry?.type === 'Point' ? f.geometry.coordinates : (f.geometry?.coordinates?.[0]?.[0] || f.geometry?.coordinates?.[0]);
+                                                        if (coords && typeof coords[0] === 'number') {
+                                                            mapRef.current.flyTo({ center: coords, zoom: 16 });
+                                                            setSelectedFeatureInfo({ properties: f.properties || {}, longitude: coords[0], latitude: coords[1] });
+                                                        }
+                                                    }}>
+                                                        <td>{i + 1}</td>
+                                                        {attributeKeys.map(k => <td key={k}>{String(f.properties?.[k] || '-')}</td>)}
+                                                    </tr>
+                                                );
+                                            });
                                         })()}
                                     </tbody>
                                 </table>
