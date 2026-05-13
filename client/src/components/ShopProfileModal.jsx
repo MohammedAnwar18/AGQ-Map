@@ -2897,6 +2897,18 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                         />
                     )}
 
+                    {showDesignStudio && (
+                        <PalNovaaMarketDesign 
+                            onClose={() => setShowDesignStudio(false)}
+                            initialDesign={{
+                                ...design,
+                                shopName: shopData.name,
+                                category: shopData.category
+                            }}
+                            onSelectShop={handleSaveDesign}
+                        />
+                    )}
+
 
                 </div>
             </div >
