@@ -22,6 +22,17 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="application-name" content="PalNovaa" />
   <meta name="msapplication-navbutton-color" content="#0f172a" />
+  <meta name="apple-touch-fullscreen" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  
+  <script>
+    // منع ميزة "السحب للتحديث" (Pull-to-refresh) التي تخرب تجربة التطبيق
+    document.addEventListener('touchmove', function (e) {
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+  </script>
 
   <link rel="manifest" href="/manifest.json" />
   <title>PalNovaa | خريطتك الاجتماعية</title>
