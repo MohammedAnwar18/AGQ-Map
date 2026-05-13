@@ -305,7 +305,7 @@ const getFollowedShops = async (req, res) => {
 // --- 5. Create Shop (Admin) ---
 const createShop = async (req, res) => {
     try {
-        const { name, latitude, longitude, category, parent_shop_id, floor } = req.body;
+        const { name, latitude, longitude, category, parent_shop_id, floor, custom_design } = req.body;
         const ownerId = req.user.id || req.user.userId;
 
         const lat = parseFloat(latitude);
@@ -316,10 +316,10 @@ const createShop = async (req, res) => {
         }
 
         const result = await pool.query(`
-            INSERT INTO shops (name, latitude, longitude, category, owner_id, parent_shop_id, floor, location)
-            VALUES ($1, $2::numeric, $3::numeric, $4, $5, $6, $7, ST_SetSRID(ST_MakePoint($3::double precision, $2::double precision), 4326)::geography)
+            INSERT INTO shops (name, latitude, longitude, category, owner_id, parent_shop_id, floor, location, custom_design)
+            VALUES ($1, $2::numeric, $3::numeric, $4, $5, $6, $7, ST_SetSRID(ST_MakePoint($3::double precision, $2::double precision), 4326)::geography, $8)
             RETURNING *
-        `, [name, lat, lon, category || 'General', ownerId, parent_shop_id || null, floor || null]);
+        `, [name, lat, lon, category || 'General', ownerId, parent_shop_id || null, floor || null, custom_design || {}]);
 
         const newShop = result.rows[0];
 
@@ -446,11 +446,11 @@ const updateShopProfile = async (req, res) => {
         let values = [];
         let index = 1;
 
-        const fields = ['name', 'bio', 'opening_hours', 'contact_info', 'category', 'parent_shop_id', 'floor', 'enable_proximity_notifications', 'is_hidden', 'proximity_radius'];
+        const fields = ['name', 'bio', 'opening_hours', 'contact_info', 'category', 'parent_shop_id', 'floor', 'enable_proximity_notifications', 'is_hidden', 'proximity_radius', 'custom_design'];
         fields.forEach(field => {
             if (req.body[field] !== undefined) {
                 queryParts.push(`${field} = $${index++}`);
-                values.push(req.body[field] === '' ? null : req.body[field]);
+                values.push(req.body[field] === '' ? null : (field === 'custom_design' && typeof req.body[field] === 'string' ? JSON.parse(req.body[field]) : req.body[field]));
             }
         });
 

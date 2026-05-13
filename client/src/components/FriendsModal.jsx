@@ -63,6 +63,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
 
     // Market Design Page
     const [showMarketDesign, setShowMarketDesign] = useState(false);
+    const [pendingDesign, setPendingDesign] = useState(null);
 
     useEffect(() => {
         loadData();
@@ -212,12 +213,14 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                 name: newShopData.name,
                 category: newShopData.category,
                 latitude: parseFloat(newShopData.lat),
-                longitude: parseFloat(newShopData.lon)
+                longitude: parseFloat(newShopData.lon),
+                custom_design: pendingDesign
             });
 
-            alert("تم إنشاء المحل بنجاح!");
+            alert("تم إنشاء المحل بنجاح مع التصميم الخاص!");
             setIsCreatingShop(false);
             setNewShopData({ name: '', category: 'General', lat: '', lon: '' });
+            setPendingDesign(null);
             await handleFollowShop(createdShop);
         } catch (error) {
             console.error("Create shop failed", error);
@@ -781,7 +784,13 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
         {showMarketDesign && (
             <PalNovaaMarketDesign
                 onClose={() => setShowMarketDesign(false)}
-                onSelectShop={() => { setShowMarketDesign(false); setShowCreateOptions(false); setIsCreatingShop(true); }}
+                onSelectShop={(design) => { 
+                    setPendingDesign(design);
+                    setNewShopData(prev => ({ ...prev, name: design.shopName, category: design.category }));
+                    setShowMarketDesign(false); 
+                    setShowCreateOptions(false); 
+                    setIsCreatingShop(true); 
+                }}
                 onSelectUniversity={() => { setShowMarketDesign(false); setShowCreateOptions(false); setIsCreatingUniversity(true); }}
             />
         )}

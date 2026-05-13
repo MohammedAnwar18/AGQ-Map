@@ -286,6 +286,15 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     const [expandedAgentIndex, setExpandedAgentIndex] = useState(null);
     const [agentChatStates, setAgentChatStates] = useState({});
 
+    // Design Engine
+    const design = useMemo(() => {
+        try {
+            return typeof shopData.custom_design === 'string' 
+                ? JSON.parse(shopData.custom_design) 
+                : (shopData.custom_design || {});
+        } catch { return {}; }
+    }, [shopData.custom_design]);
+
     // PERMISSIONS:
     // 1. System Admin: Can assign owners, remove owners, and edit everything.
     const isSystemAdmin = currentUser?.role === 'admin';
@@ -702,10 +711,11 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
             <div className="modal-container"
                 style={{
                     overflowY: 'auto',
-                    background: 'var(--bg-primary)',
-                    color: 'var(--text-primary)',
+                    background: design.palette ? design.palette.colors[0] : 'var(--bg-primary)',
+                    color: design.palette ? design.palette.colors[4] : 'var(--text-primary)',
                     display: 'flex',
-                    flexDirection: 'column'
+                    flexDirection: 'column',
+                    fontFamily: design.font ? design.font.fontFamily : 'inherit'
                 }}
                 onClick={e => e.stopPropagation()}>
 
@@ -744,7 +754,9 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                     {/* Header / Hero */}
                     <div style={{
                         height: '250px',
-                        background: shopData.cover_picture ? `url(${coverUrl}) center/cover` : coverUrl,
+                        background: shopData.cover_picture 
+                            ? `url(${coverUrl}) center/cover` 
+                            : (design.pattern ? design.pattern.bg : coverUrl),
                         position: 'relative'
                     }}>
 
