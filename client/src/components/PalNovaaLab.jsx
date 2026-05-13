@@ -2110,25 +2110,43 @@ const PalNovaaLab = ({ onClose }) => {
                         </div>
                     )}
 
-                    {/* Join Modal */}
+                    {/* Join Modal - Fixed & Centered Overlay */}
                     {isJoinModalOpen && (
-                        <div className="custom-modal-overlay" style={{ zIndex: 10001 }}>
-                            <div className="custom-modal-content" style={{ maxWidth: '600px', width: '90%', padding: '25px', borderRadius: '24px', background: 'var(--bg-3)', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                                    <h3 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--primary)' }}>ربط حقول بيانات (CSV)</h3>
+                        <div style={{
+                            position: 'fixed',
+                            inset: 0,
+                            zIndex: 99999,
+                            background: 'rgba(0,0,0,0.85)',
+                            backdropFilter: 'blur(10px)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '20px'
+                        }}>
+                            <div style={{ 
+                                maxWidth: '600px', 
+                                width: '100%', 
+                                padding: '30px', 
+                                borderRadius: '28px', 
+                                background: '#0f172a', 
+                                border: '1px solid rgba(255,255,255,0.1)', 
+                                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+                                position: 'relative'
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+                                    <h3 style={{ margin: 0, fontSize: '1.5rem', color: '#10D9A0' }}>ربط حقول بيانات (CSV)</h3>
                                     <button className="close-table-btn" onClick={() => setIsJoinModalOpen(false)}>
                                         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                                     </button>
                                 </div>
 
                                 <div className="join-form" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                                    {/* Step 1: Select CSV */}
                                     <div className="form-group">
-                                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', opacity: 0.8 }}>1. اختر ملف CSV المصدر:</label>
+                                        <label style={{ display: 'block', marginBottom: '10px', fontSize: '0.95rem', color: '#94a3b8' }}>1. اختر ملف CSV المصدر:</label>
                                         <select 
                                             value={selectedCsvLayerId} 
                                             onChange={(e) => setSelectedCsvLayerId(e.target.value)}
-                                            style={{ width: '100%', padding: '10px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}
+                                            style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}
                                         >
                                             <option value="">-- اختر جدول --</option>
                                             {geoLayers.filter(l => l.type === 'table').map(l => (
@@ -2139,25 +2157,24 @@ const PalNovaaLab = ({ onClose }) => {
 
                                     {selectedCsvLayerId && (
                                         <>
-                                            {/* Step 2: Key Fields */}
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                                                 <div className="form-group">
-                                                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', opacity: 0.7 }}>حقل الربط في الخريطة:</label>
+                                                    <label style={{ display: 'block', marginBottom: '10px', fontSize: '0.85rem', color: '#94a3b8' }}>حقل الربط في الخريطة:</label>
                                                     <select 
                                                         value={joinKeyMap} 
                                                         onChange={(e) => setJoinKeyMap(e.target.value)}
-                                                        style={{ width: '100%', padding: '8px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}
+                                                        style={{ width: '100%', padding: '10px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}
                                                     >
                                                         <option value="">-- اختر حقل --</option>
                                                         {attributeKeys.map(k => <option key={k} value={k}>{k}</option>)}
                                                     </select>
                                                 </div>
                                                 <div className="form-group">
-                                                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', opacity: 0.7 }}>حقل الربط في CSV:</label>
+                                                    <label style={{ display: 'block', marginBottom: '10px', fontSize: '0.85rem', color: '#94a3b8' }}>حقل الربط في CSV:</label>
                                                     <select 
                                                         value={joinKeyCsv} 
                                                         onChange={(e) => setJoinKeyCsv(e.target.value)}
-                                                        style={{ width: '100%', padding: '8px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}
+                                                        style={{ width: '100%', padding: '10px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}
                                                     >
                                                         <option value="">-- اختر حقل --</option>
                                                         {geoLayers.find(l => l.id === selectedCsvLayerId)?.data[0] && Object.keys(geoLayers.find(l => l.id === selectedCsvLayerId).data[0]).map(k => (
@@ -2167,15 +2184,15 @@ const PalNovaaLab = ({ onClose }) => {
                                                 </div>
                                             </div>
 
-                                            {/* Step 3: Fields to Import */}
                                             <div className="form-group">
-                                                <label style={{ display: 'block', marginBottom: '10px', fontSize: '0.9rem', opacity: 0.8 }}>3. اختر الحقول المراد استيرادها:</label>
-                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', maxHeight: '150px', overflowY: 'auto', padding: '10px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px' }}>
+                                                <label style={{ display: 'block', marginBottom: '12px', fontSize: '0.95rem', color: '#94a3b8' }}>3. اختر الحقول المراد استيرادها:</label>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', maxHeight: '180px', overflowY: 'auto', padding: '15px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
                                                     {geoLayers.find(l => l.id === selectedCsvLayerId)?.data[0] && Object.keys(geoLayers.find(l => l.id === selectedCsvLayerId).data[0]).map(k => (
-                                                        <label key={k} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', cursor: 'pointer' }}>
+                                                        <label key={k} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.8rem', cursor: 'pointer', color: '#e2e8f0' }}>
                                                             <input 
                                                                 type="checkbox" 
                                                                 checked={selectedCsvFields.includes(k)}
+                                                                style={{ width: '16px', height: '16px', accentColor: '#10D9A0' }}
                                                                 onChange={(e) => {
                                                                     if (e.target.checked) setSelectedCsvFields([...selectedCsvFields, k]);
                                                                     else setSelectedCsvFields(selectedCsvFields.filter(f => f !== k));
@@ -2187,17 +2204,18 @@ const PalNovaaLab = ({ onClose }) => {
                                                 </div>
                                             </div>
 
-                                            <div style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
+                                            <div style={{ marginTop: '15px', display: 'flex', gap: '12px' }}>
                                                 <button 
                                                     className="ds-btn primary w-100" 
                                                     onClick={handlePerformJoin}
-                                                    style={{ background: 'var(--primary)', color: 'black' }}
+                                                    style={{ background: '#10D9A0', color: 'black', height: '45px', borderRadius: '12px', fontWeight: 'bold' }}
                                                 >
                                                     إتمام عملية الربط والحفظ
                                                 </button>
                                                 <button 
                                                     className="ds-btn secondary" 
                                                     onClick={() => setIsJoinModalOpen(false)}
+                                                    style={{ height: '45px', borderRadius: '12px', padding: '0 25px' }}
                                                 >
                                                     إلغاء
                                                 </button>
