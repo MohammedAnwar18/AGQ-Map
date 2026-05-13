@@ -872,7 +872,9 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                                             <div key={index} className="uni-category-card" onClick={() => setSelectedFacilityCategory(cat)}>
                                                 <div className="cat-icon-large">
                                                     {(() => {
-                                                        const icon = facilities[cat][0]?.icon || '📍';
+                                                        const categoryConfig = predefinedCategories.find(c => c.name === cat);
+                                                        const icon = categoryConfig?.defaultIcon || facilities[cat][0]?.icon || '📍';
+                                                        
                                                         if (typeof icon === 'string' && (icon.startsWith('http') || icon.includes('r2.dev'))) {
                                                             return <img src={icon} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }} />;
                                                         }
