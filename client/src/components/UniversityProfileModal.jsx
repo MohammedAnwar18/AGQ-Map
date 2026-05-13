@@ -871,7 +871,13 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                                         ) : categories.map((cat, index) => (
                                             <div key={index} className="uni-category-card" onClick={() => setSelectedFacilityCategory(cat)}>
                                                 <div className="cat-icon-large">
-                                                    {facilities[cat][0]?.icon || '📍'}
+                                                    {(() => {
+                                                        const icon = facilities[cat][0]?.icon || '📍';
+                                                        if (typeof icon === 'string' && (icon.startsWith('http') || icon.includes('r2.dev'))) {
+                                                            return <img src={icon} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }} />;
+                                                        }
+                                                        return icon;
+                                                    })()}
                                                 </div>
                                                 <h4>{cat}</h4>
                                                 <span>{facilities[cat].length} مرفق</span>
@@ -898,7 +904,15 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                                                     {editingFacility?.id === item.id && editingFacility?.is_shop === item.is_shop ? (
                                                         // Inline rename form
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 0' }}>
-                                                            <div className="item-icon">{item.icon}</div>
+                                                            <div className="item-icon">
+                                                                {(() => {
+                                                                    const icon = item.icon || '📍';
+                                                                    if (typeof icon === 'string' && (icon.startsWith('http') || icon.includes('r2.dev'))) {
+                                                                        return <img src={icon} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />;
+                                                                    }
+                                                                    return icon;
+                                                                })()}
+                                                            </div>
                                                             <input
                                                                 type="text"
                                                                 value={editingFacilityName}
@@ -911,7 +925,15 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                                                         </div>
                                                     ) : (
                                                         <>
-                                                            <div className="item-icon" onClick={() => handleFeatureClick(item)} style={{ cursor: 'pointer' }}>{item.icon}</div>
+                                                            <div className="item-icon" onClick={() => handleFeatureClick(item)} style={{ cursor: 'pointer', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                {(() => {
+                                                                    const icon = item.icon || '📍';
+                                                                    if (typeof icon === 'string' && (icon.startsWith('http') || icon.includes('r2.dev'))) {
+                                                                        return <img src={icon} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />;
+                                                                    }
+                                                                    return icon;
+                                                                })()}
+                                                            </div>
                                                             <div className="item-details" onClick={() => handleFeatureClick(item)} style={{ cursor: 'pointer', flex: 1 }}>
                                                                 <h4>{item.name}</h4>
                                                                 <p>{item.is_shop ? 'محل/كلية - انقر للعرض' : 'انقر لعرض التفاصيل على الخريطة'}</p>
