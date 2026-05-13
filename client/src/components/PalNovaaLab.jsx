@@ -2229,13 +2229,14 @@ const PalNovaaLab = ({ onClose }) => {
                                     <div className="panel-section-title">إضافة بيانات</div>
 
                                     <div className="upload-box" onClick={() => document.getElementById('geo-upload').click()}>
-                                        <input id="geo-upload" type="file" accept=".geojson,.json" onChange={handleFileUpload} style={{ display: 'none' }} />
+                                        <input id="geo-upload" type="file" accept=".geojson,.json,.csv" onChange={handleFileUpload} style={{ display: 'none' }} />
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
                                         </svg>
-                                        <span>رفع ملف GeoJSON أو JSON</span>
+                                        <span>رفع ملف GeoJSON أو CSV</span>
                                         <div className="formats">
                                             <span className="format-pill">.geojson</span>
+                                            <span className="format-pill">.csv</span>
                                             <span className="format-pill">.json</span>
                                         </div>
                                     </div>
