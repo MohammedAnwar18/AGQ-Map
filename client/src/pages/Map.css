@@ -319,8 +319,8 @@
     left: 0;
     right: 0;
     width: 100%;
-    height: calc(60px + env(safe-area-inset-bottom, 0px));
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    height: 65px;
+    padding-bottom: 5px;
     box-sizing: border-box;
     background: var(--glass-bg) !important;
     backdrop-filter: blur(var(--blur-std)) saturate(200%);
@@ -547,7 +547,7 @@
         border-bottom-left-radius: 24px;
         border-right: none;
         padding-top: max(env(safe-area-inset-top, 0px), 20px);
-        padding-bottom: max(env(safe-area-inset-bottom, 0px), 20px);
+        padding-bottom: 15px;
         box-sizing: border-box;
     }
 }
