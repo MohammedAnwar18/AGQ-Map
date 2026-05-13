@@ -814,7 +814,14 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                             </div>
                         )}
 
-                        <div style={{ position: 'absolute', bottom: -50, right: 30 }}>
+                        <div style={{ 
+                            position: 'absolute', 
+                            bottom: design.layout === 'floating' ? 15 : -50, 
+                            right: (design.layout === 'modern' || design.layout === 'floating') ? 30 : undefined,
+                            left: design.layout === 'classic' ? '50%' : (design.layout === 'minimal' ? 30 : undefined),
+                            transform: design.layout === 'classic' ? 'translateX(-50%)' : undefined,
+                            zIndex: 10
+                        }}>
                             <div style={{ position: 'relative' }}>
                                 <div style={{
                                     width: 120, height: 120, borderRadius: '50%',
@@ -846,10 +853,21 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                     </div>
 
                     {/* Shop Info & Stats */}
-                    <div style={{ marginTop: 60, padding: '0 30px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                            <div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
+                    <div style={{ 
+                        marginTop: design.layout === 'floating' ? 20 : 60, 
+                        padding: '0 30px',
+                        textAlign: design.layout === 'classic' ? 'center' : (design.layout === 'minimal' ? 'left' : 'right')
+                    }}>
+                        <div style={{ 
+                            display: 'flex', 
+                            flexDirection: design.layout === 'classic' ? 'column' : (design.layout === 'minimal' ? 'row-reverse' : 'row'),
+                            justifyContent: design.layout === 'classic' ? 'center' : 'space-between', 
+                            alignItems: design.layout === 'classic' ? 'center' : 'flex-start', 
+                            flexWrap: 'wrap',
+                            gap: '20px'
+                        }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: design.layout === 'classic' ? 'center' : (design.layout === 'minimal' ? 'flex-end' : 'flex-start') }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 15, justifyContent: design.layout === 'classic' ? 'center' : 'flex-start', flexWrap: 'wrap' }}>
                                     {editingName ? (
                                         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                                             <input
@@ -949,7 +967,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                     <span><b>{posts.length}</b> منشور</span>
                                 </div>
                             </div>
-                                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', justifyContent: design.layout === 'classic' ? 'center' : (design.layout === 'minimal' ? 'flex-end' : 'flex-start'), marginTop: design.layout === 'classic' ? '15px' : '0' }}>
                                 {canEditShop && (
                                     <button 
                                         onClick={() => setShowDesignStudio(true)}

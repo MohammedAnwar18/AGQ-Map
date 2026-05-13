@@ -19,6 +19,7 @@ const PalNovaaMarketDesign = ({ onClose, onSelectShop, onSelectUniversity, initi
             palette: initialDesign.palette || defaultDesign.palette,
             font: initialDesign.font || defaultDesign.font,
             pattern: initialDesign.pattern || defaultDesign.pattern,
+            layout: initialDesign.layout || defaultDesign.layout,
         };
     });
 
@@ -31,6 +32,7 @@ const PalNovaaMarketDesign = ({ onClose, onSelectShop, onSelectUniversity, initi
                 palette: initialDesign.palette || prev.palette,
                 font: initialDesign.font || prev.font,
                 pattern: initialDesign.pattern || prev.pattern,
+                layout: initialDesign.layout || prev.layout,
             }));
         }
     }, [initialDesign]);
@@ -75,6 +77,13 @@ const PalNovaaMarketDesign = ({ onClose, onSelectShop, onSelectUniversity, initi
         { icon: '👕', label: 'ملابس', val: 'Clothing' }, { icon: '💊', label: 'صيدلية', val: 'Pharmacy' }, { icon: '🏦', label: 'بنوك', val: 'Bank' },
     ];
 
+    const layouts = [
+        { id: 'modern', name: 'عصري (يمين)', desc: 'الصورة عائمة على اليمين', styles: { bottom: '-40px', right: '20px' } },
+        { id: 'classic', name: 'كلاسيكي (وسط)', desc: 'الصورة في المنتصف', styles: { bottom: '-40px', left: '50%', transform: 'translateX(-50%)' } },
+        { id: 'minimal', name: 'بسيط (يسار)', desc: 'الصورة عائمة على اليسار', styles: { bottom: '-40px', left: '20px' } },
+        { id: 'floating', name: 'عائم (مدمج)', desc: 'مدمج داخل الغلاف', styles: { bottom: '15px', right: '20px', border: 'none', background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)' } }
+    ];
+
     const st = {
         overlay: { position:'fixed',inset:0,zIndex:99999,background:'#06091C',overflowY:'auto',direction:'rtl',fontFamily:"'Cairo', sans-serif" },
         header: { position:'sticky',top:0,zIndex:100,background:'rgba(6,9,28,0.9)',backdropFilter:'blur(20px)',borderBottom:'1px solid rgba(232,181,71,0.15)',padding:'12px 20px',display:'flex',alignItems:'center',justifyContent:'space-between' },
@@ -107,12 +116,17 @@ const PalNovaaMarketDesign = ({ onClose, onSelectShop, onSelectUniversity, initi
             background: design.pattern?.bg,
             position: 'relative'
         },
-        mockAvatar: {
-            width: '80px', height: '80px', borderRadius: '20px',
-            background: `linear-gradient(135deg, ${design.palette?.colors[3]}, ${design.palette?.colors[2]})`,
-            border: `4px solid ${design.palette?.colors[0]}`,
-            position: 'absolute', bottom: '-40px', right: '20px',
-            display: 'grid', placeItems: 'center', fontSize: '2rem'
+        mockAvatar: () => {
+            const layoutStyle = layouts.find(l => l.id === design.layout)?.styles || layouts[0].styles;
+            return {
+                width: '80px', height: '80px', borderRadius: '20px',
+                background: `linear-gradient(135deg, ${design.palette?.colors[3]}, ${design.palette?.colors[2]})`,
+                border: `4px solid ${design.palette?.colors[0]}`,
+                position: 'absolute',
+                display: 'grid', placeItems: 'center', fontSize: '2rem',
+                transition: 'all 0.3s ease',
+                ...layoutStyle
+            };
         },
         mockContent: {
             padding: '50px 20px 20px',
@@ -215,8 +229,21 @@ const PalNovaaMarketDesign = ({ onClose, onSelectShop, onSelectUniversity, initi
                         <div style={st.sectionTitle}><span>04</span> أنماط Hero التراثية</div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
                             {patterns.map(p => (
-                                <div key={p.name} style={{ ...st.card(design.pattern?.name === p.name), height: '80px', background: p.bg }} onClick={() => setDesign({...design, pattern: p})}>
+                                <div key={p.name} style={{ ...st.card(design.pattern?.name === p.name), height: '80px', background: p.bg, position: 'relative' }} onClick={() => setDesign({...design, pattern: p})}>
                                     <div style={{ position: 'absolute', bottom: 5, left: 5, padding: '2px 6px', background: 'rgba(0,0,0,0.6)', borderRadius: '4px', fontSize: '0.7rem', color: '#fff' }}>{p.name}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Step 5: Layouts */}
+                    <div style={{ marginBottom: '40px' }}>
+                        <div style={st.sectionTitle}><span>05</span> تنسيق الواجهة (المكان والشكل)</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                            {layouts.map(l => (
+                                <div key={l.id} style={st.card(design.layout === l.id)} onClick={() => setDesign({...design, layout: l.id})}>
+                                    <div style={{ fontSize: '0.9rem', color: '#F8F4ED', fontWeight: '700', marginBottom: '4px' }}>{l.name}</div>
+                                    <div style={{ fontSize: '0.7rem', color: '#8B8772' }}>{l.desc}</div>
                                 </div>
                             ))}
                         </div>
@@ -232,11 +259,11 @@ const PalNovaaMarketDesign = ({ onClose, onSelectShop, onSelectUniversity, initi
                     <div style={st.mockProfile}>
                         <div style={st.mockHero}>
                             <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(0,0,0,0.4)', color: '#fff', padding: '4px 12px', borderRadius: '100px', fontSize: '0.7rem' }}>Preview Mode</div>
-                            <div style={st.mockAvatar}>
+                            <div style={st.mockAvatar()}>
                                 {categories.find(c => c.val === design.category)?.icon || '🏪'}
                             </div>
                         </div>
-                        <div style={st.mockContent}>
+                        <div style={{...st.mockContent, textAlign: design.layout === 'classic' ? 'center' : (design.layout === 'minimal' ? 'left' : 'right')}}>
                             <div style={st.mockTitle}>{design.shopName || 'اسم المحل'}</div>
                             <div style={st.mockSub}>
                                 {design.category} · مدينة القدس · <span style={{ color: design.palette?.colors[3] }}>مفتوح الآن</span>
