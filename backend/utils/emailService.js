@@ -1,6 +1,20 @@
 const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// تهيئة Resend (إذا كان المفتاح موجوداً)
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+
+// تهيئة Nodemailer (إذا كانت إعدادات SMTP موجودة)
+const transporter = process.env.EMAIL_SERVICE ? nodemailer.createTransport({
+    service: process.env.EMAIL_SERVICE,
+    host: process.env.EMAIL_HOST,
+    port: process.env.EMAIL_PORT || 587,
+    secure: process.env.EMAIL_SECURE === 'true',
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+}) : null;
 
 // ===== قالب الإيميل الاحترافي لـ PalNovaa =====
 const buildOtpEmailHtml = (otpCode) => `
@@ -10,12 +24,18 @@ const buildOtpEmailHtml = (otpCode) => `
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet"/>
+  <style>
+    @media only screen and (max-width: 600px) {
+      .inner-body { width: 100% !important; }
+      .otp-box { font-size: 36px !important; letter-spacing: 10px !important; }
+    }
+  </style>
 </head>
 <body style="margin:0;padding:0;background-color:#0f172a;font-family:'Tajawal',Arial,sans-serif;direction:rtl;text-align:right;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#0f172a;padding:40px 20px;">
     <tr>
       <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#1e293b;border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+        <table class="inner-body" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#1e293b;border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
 
           <!-- HEADER -->
           <tr>
@@ -25,7 +45,7 @@ const buildOtpEmailHtml = (otpCode) => `
                 alt="PalNovaa"
                 width="80"
                 height="80"
-                style="border-radius:16px;margin-bottom:16px;display:block;margin-left:auto;margin-right:auto;border:2px solid #fbab15;"
+                style="border-radius:16px;margin-bottom:16px;display:inline-block;border:2px solid #fbab15;"
               />
               <h1 style="margin:0;color:#fbab15;font-size:32px;letter-spacing:2px;font-weight:800;">PalNovaa</h1>
               <p style="margin:6px 0 0;color:#94a3b8;font-size:14px;">الشبكة الاجتماعية المكانية الذكية</p>
@@ -46,9 +66,9 @@ const buildOtpEmailHtml = (otpCode) => `
               <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:30px;">
                 <tr>
                   <td align="center">
-                    <div style="background:linear-gradient(135deg,#0f172a,#1a2540);border:2px solid #fbab15;border-radius:16px;padding:30px 20px;display:inline-block;">
-                      <p style="margin:0 0 8px;color:#94a3b8;font-size:13px;letter-spacing:1px;">رمز التحقق</p>
-                      <p style="margin:0;font-size:48px;font-weight:900;color:#fbab15;letter-spacing:18px;font-family:'Courier New',monospace;">${otpCode}</p>
+                    <div style="background:linear-gradient(135deg,#0f172a,#1a2540);border:2px solid #fbab15;border-radius:16px;padding:30px 20px;display:inline-block;min-width:200px;">
+                      <p style="margin:0 0 8px;color:#94a3b8;font-size:13px;letter-spacing:1px;text-align:center;">رمز التحقق</p>
+                      <p class="otp-box" style="margin:0;font-size:48px;font-weight:900;color:#fbab15;letter-spacing:18px;font-family:monospace;text-align:center;">${otpCode}</p>
                     </div>
                   </td>
                 </tr>
@@ -58,7 +78,7 @@ const buildOtpEmailHtml = (otpCode) => `
               <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
                 <tr>
                   <td style="background:rgba(251,171,21,0.1);border:1px solid rgba(251,171,21,0.3);border-radius:10px;padding:14px 18px;">
-                    <p style="margin:0;color:#fcd34d;font-size:13px;">
+                    <p style="margin:0;color:#fcd34d;font-size:13px;text-align:center;">
                       ⏱ هذا الرمز صالح لمدة <strong>5 دقائق فقط</strong>
                     </p>
                   </td>
@@ -91,31 +111,93 @@ const buildOtpEmailHtml = (otpCode) => `
 </html>
 `;
 
-// ===== إرسال رمز التحقق OTP =====
-const sendOtpEmail = async (to, otpCode) => {
-    try {
-        const { data, error } = await resend.emails.send({
-            from: 'PalNovaa <noreply@palnovaa.com>',
-            to: [to],
-            subject: 'PalNovaa - رمز التحقق الخاص بك',
-            html: buildOtpEmailHtml(otpCode),
-        });
+// نص بديل للإيميل (هام جداً لتقليل احتمالية اعتباره سبام)
+const buildOtpEmailText = (otpCode) => `
+مرحباً،
 
-        if (error) {
-            console.error('❌ Resend API error:', error);
-            console.log('📋 OTP Fallback:', otpCode);
+رمز التحقق الخاص بك لـ PalNovaa هو: ${otpCode}
+
+هذا الرمز صالح لمدة 5 دقائق فقط.
+
+إذا لم تطلب هذا الرمز، يرجى تجاهل هذه الرسالة.
+
+شكراً لك،
+فريق PalNovaa
+`;
+
+/**
+ * إرسال رمز التحقق OTP
+ * تحاول الدالة استخدام Nodemailer أولاً (إذا تم إعداده) ثم Resend كبديل
+ */
+const sendOtpEmail = async (to, otpCode) => {
+    const subject = 'PalNovaa - رمز التحقق الخاص بك';
+    const htmlContent = buildOtpEmailHtml(otpCode);
+    const textContent = buildOtpEmailText(otpCode);
+    const fromName = 'PalNovaa Security';
+    
+    // ملاحظة: سجلات الـ DNS الخاصة بك موثقة على send.palnovaa.com
+    const authenticatedDomain = 'send.palnovaa.com';
+    const fromEmail = process.env.EMAIL_USER || `noreply@${authenticatedDomain}`;
+
+    // 1. محاولة الإرسال عبر Nodemailer (SMTP) إذا كان مفعلاً
+    if (transporter) {
+        try {
+            await transporter.sendMail({
+                from: `"${fromName}" <${fromEmail}>`,
+                to,
+                subject,
+                text: textContent,
+                html: htmlContent,
+                headers: {
+                    'X-Priority': '1',
+                    'X-MSMail-Priority': 'High',
+                    'Importance': 'high',
+                    'Precedence': 'bulk'
+                }
+            });
+            console.log('✅ Email sent via Nodemailer (SMTP)');
+            return true;
+        } catch (err) {
+            console.error('❌ Nodemailer error:', err.message);
+        }
+    }
+
+    // 2. محاولة الإرسال عبر Resend
+    if (resend) {
+        try {
+            const resendFrom = process.env.RESEND_FROM || `noreply@${authenticatedDomain}`;
+            const { data, error } = await resend.emails.send({
+                from: `${fromName} <${resendFrom}>`,
+                to: [to],
+                subject: subject,
+                text: textContent,
+                html: htmlContent,
+                // إضافة Header يمنع التصنيف كـ Spam في بعض الأنظمة
+                headers: {
+                    'Precedence': 'bulk',
+                    'X-Entity-Ref-ID': Date.now().toString()
+                }
+            });
+
+            if (error) {
+                console.error('❌ Resend API error:', error);
+                return false;
+            }
+
+            console.log('✅ Email sent via Resend:', data?.id);
+            return true;
+
+        } catch (err) {
+            console.error('❌ Resend unexpected error:', err.message);
             return false;
         }
-
-        console.log('✅ Email sent via Resend:', data?.id);
-        return true;
-
-    } catch (err) {
-        console.error('❌ Unexpected error sending email:', err.message);
-        console.log('📋 OTP Fallback:', otpCode);
-        return false;
     }
+
+    console.error('❌ No email provider configured (Set EMAIL_USER/PASS or RESEND_API_KEY)');
+    console.log('📋 OTP Fallback:', otpCode);
+    return false;
 };
 
 module.exports = { sendOtpEmail };
+
 

@@ -47,7 +47,7 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
     const [selectedFacilityCategory, setSelectedFacilityCategory] = useState(null);
     const [facilities, setFacilities] = useState({});
     const [isLoadingFacs, setIsLoadingFacs] = useState(true);
-    
+
     // Create facility state
     const [isCreatingFacility, setIsCreatingFacility] = useState(false);
     const [newFacilityData, setNewFacilityData] = useState({ name: '', category: 'الكليات', icon: '🏛️', lat: '', lon: '', description: '' });
@@ -121,7 +121,7 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
             formData.append('title', newPanorama.title);
             if (newPanorama.thumbnail_url) formData.append('thumbnail_url', newPanorama.thumbnail_url);
             if (newPanorama.equirect_url) formData.append('equirect_url', newPanorama.equirect_url);
-            
+
             if (panoramaFiles.thumbnail) formData.append('thumbnail_file', panoramaFiles.thumbnail);
             if (panoramaFiles.equirect) formData.append('equirect_file', panoramaFiles.equirect);
 
@@ -199,9 +199,9 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
     const handleLikePost = async (postId) => {
         try {
             const { liked } = await shopService.togglePostLike(postId);
-            setUniNews(prev => prev.map(p => 
-                p.id === postId 
-                    ? { ...p, is_liked: liked, likes_count: liked ? (p.likes_count + 1) : (p.likes_count - 1) } 
+            setUniNews(prev => prev.map(p =>
+                p.id === postId
+                    ? { ...p, is_liked: liked, likes_count: liked ? (p.likes_count + 1) : (p.likes_count - 1) }
                     : p
             ));
         } catch (e) { console.error(e); }
@@ -219,9 +219,9 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
         if (!newComment.trim()) return;
         try {
             const comment = await shopService.addPostComment(postId, newComment);
-            setComments(prev => ({ 
-                ...prev, 
-                [postId]: [...(prev[postId] || []), comment] 
+            setComments(prev => ({
+                ...prev,
+                [postId]: [...(prev[postId] || []), comment]
             }));
             setUniNews(prev => prev.map(p => p.id === postId ? { ...p, comments_count: (p.comments_count || 0) + 1 } : p));
             setNewComment('');
@@ -298,11 +298,11 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
             ]);
 
             const merged = { ...facData.facilities };
-            
+
             // Add internal shops to categories (especially 'الكليات')
             (profileData.internal_shops || []).forEach(shop => {
                 let cat = shop.category || 'أخرى';
-                
+
                 // Normalize category names for consistent grouping
                 const lowerCat = cat.toLowerCase();
                 if (lowerCat.includes('college') || lowerCat.includes('كلية') || lowerCat.includes('كليات')) {
@@ -314,7 +314,7 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                 }
 
                 if (!merged[cat]) merged[cat] = [];
-                
+
                 // Avoid duplicates
                 if (!merged[cat].some(item => String(item.id) === String(shop.id) && item.is_shop)) {
                     merged[cat].push({
@@ -367,8 +367,8 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
         }
     };
 
-    const isAdminOrOwner = currentUser?.role === 'admin' || 
-                         String(currentUser?.userId || currentUser?.id) === String(uniData.owner_id);
+    const isAdminOrOwner = currentUser?.role === 'admin' ||
+        String(currentUser?.userId || currentUser?.id) === String(uniData.owner_id);
 
     const handleImageUpload = async (file, type) => {
         if (!file) return;
@@ -385,8 +385,8 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                 } else {
                     setLocalCoverPic(response.cover_picture);
                 }
-                
-                if (onFollowChange) onFollowChange(); 
+
+                if (onFollowChange) onFollowChange();
                 alert('تم تحديث الصورة بنجاح!');
             }
         } catch (error) {
@@ -404,8 +404,8 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
             } else {
                 await shopService.follow(uniData.id);
             }
-            setUniData(prev => ({ 
-                ...prev, 
+            setUniData(prev => ({
+                ...prev,
                 is_followed: !prev.is_followed,
                 followers_count: !prev.is_followed ? (prev.followers_count + 1) : (prev.followers_count - 1)
             }));
@@ -475,26 +475,26 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                 flexDirection: 'column',
                 overflowY: 'auto'
             }}>
-                
+
                 {/* Standard Modal Header */}
-                <div className="modal-header" style={{ 
-                    position: 'sticky', 
-                    top: 0, 
-                    zIndex: 1000, 
-                    background: 'var(--bg-secondary)', 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
+                <div className="modal-header" style={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    background: 'var(--bg-secondary)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
                     padding: 'calc(env(safe-area-inset-top, 0px) + 12px) 15px 12px',
                     borderBottom: '1px solid var(--bg-tertiary)',
                     backdropFilter: 'blur(10px)'
                 }}>
-                    <button 
-                        onClick={handleShare} 
-                        style={{ 
-                            background: 'rgba(251, 171, 21, 0.1)', 
-                            border: 'none', 
-                            color: 'var(--primary)', 
+                    <button
+                        onClick={handleShare}
+                        style={{
+                            background: 'rgba(251, 171, 21, 0.1)',
+                            border: 'none',
+                            color: 'var(--primary)',
                             cursor: 'pointer',
                             padding: '10px',
                             display: 'flex',
@@ -509,13 +509,13 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                     >
                         <ShareIcon />
                     </button>
-                    
-                    <h2 style={{ 
-                        margin: 0, 
-                        fontSize: '1rem', 
-                        fontWeight: '900', 
-                        color: 'var(--text-primary)', 
-                        flex: 1, 
+
+                    <h2 style={{
+                        margin: 0,
+                        fontSize: '1rem',
+                        fontWeight: '900',
+                        color: 'var(--text-primary)',
+                        flex: 1,
                         textAlign: 'center',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
@@ -525,12 +525,12 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                         {uniData?.name || 'الملف الشخصي'}
                     </h2>
 
-                    <button 
-                        className="btn-close" 
-                        onClick={onClose} 
-                        style={{ 
-                            fontSize: '1.2rem', 
-                            position: 'static', 
+                    <button
+                        className="btn-close"
+                        onClick={onClose}
+                        style={{
+                            fontSize: '1.2rem',
+                            position: 'static',
                             background: 'rgba(255,255,255,0.1)',
                             width: '38px',
                             height: '38px',
@@ -545,543 +545,543 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                 </div>
 
                 <div style={{ flex: 1, padding: 0, display: 'block', overflowY: 'auto' }}>
-                {/* Header & Cover */}
-                <div className="uni-cover-section">
-                    <img 
-                        src={localCoverPic ? getImageUrl(localCoverPic) : 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'} 
-                        alt="University Cover" 
-                        className="uni-cover-img" 
-                        style={{ opacity: isUploadingImage ? 0.5 : 1 }}
-                    />
-                    {isAdminOrOwner && (
-                        <label className="upload-btn" style={{ position: 'absolute', top: '20px', right: '60px', background: 'rgba(0,0,0,0.6)', color: 'white', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', zIndex: 10, fontSize: '0.85rem' }}>
-                            📷 تغيير الغلاف
-                            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
-                                if (e.target.files[0]) {
-                                    setCropState({ isOpen: true, file: e.target.files[0], type: 'cover_picture', aspect: 2.1 });
-                                }
-                                e.target.value = null;
-                            }} disabled={isUploadingImage} />
-                        </label>
-                    )}
-                    <div className="uni-cover-overlay"></div>
-                    
-                    <div className="uni-profile-info">
-                        <div className="uni-logo-wrapper" style={{ position: 'relative' }}>
-                            <img 
-                                src={localProfilePic ? getImageUrl(localProfilePic) : (uniData.profile_picture ? getImageUrl(uniData.profile_picture) : 'https://cdn-icons-png.flaticon.com/512/3202/3202796.png')} 
-                                alt="University Logo" 
-                                className="uni-logo-img" 
-                                style={{ opacity: isUploadingImage ? 0.5 : 1 }}
-                            />
-                            {isAdminOrOwner && (
-                                <label style={{ position: 'absolute', bottom: 0, right: 0, background: '#3b82f6', color: 'white', width: '30px', height: '30px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.3)', border: '2px solid white' }}>
-                                    +
-                                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
-                                        if (e.target.files[0]) {
-                                            setCropState({ isOpen: true, file: e.target.files[0], type: 'profile_picture', aspect: 1 });
-                                        }
-                                        e.target.value = null;
-                                    }} disabled={isUploadingImage} />
-                                </label>
-                            )}
-                        </div>
-                        <div className="uni-title-section">
-                            {isEditingName ? (
-                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                    <input 
-                                        type="text" 
-                                        value={nameInput} 
-                                        onChange={e => setNameInput(e.target.value)}
-                                        className="input"
-                                        style={{ height: '35px', padding: '5px 10px', fontSize: '1.2rem', fontWeight: 'bold' }}
-                                        autoFocus
-                                    />
-                                    <button className="btn-small is-accept" onClick={handleUpdateName}>حفظ</button>
-                                    <button className="btn-small" onClick={() => setIsEditingName(false)}>✕</button>
-                                </div>
-                            ) : (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <h2 className="uni-name">{uniData.name}</h2>
-                                    {isAdminOrOwner && (
-                                        <button 
-                                            onClick={() => { setIsEditingName(true); setNameInput(uniData.name); }} 
-                                            style={{ 
-                                                background: 'rgba(251, 171, 21, 0.15)', border: 'none', color: '#fbab15', 
-                                                cursor: 'pointer', padding: '6px', borderRadius: '50%',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                transition: 'all 0.2s ease'
-                                            }}
-                                            title="تعديل الاسم"
-                                            onMouseOver={e => e.currentTarget.style.transform = 'scale(1.1)'}
-                                            onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
-                                        >
-                                            <EditIcon />
-                                        </button>
-                                    )}
-                                </div>
-                            )}
-                            <p className="uni-category">مؤسسة تعليمية</p>
-                            <div className="uni-followers-count" style={{ fontSize: '0.85rem', color: '#ccc', marginTop: '4px' }}>
-                                {uniData.followers_count || 0} متابع
+                    {/* Header & Cover */}
+                    <div className="uni-cover-section">
+                        <img
+                            src={localCoverPic ? getImageUrl(localCoverPic) : 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'}
+                            alt="University Cover"
+                            className="uni-cover-img"
+                            style={{ opacity: isUploadingImage ? 0.5 : 1 }}
+                        />
+                        {isAdminOrOwner && (
+                            <label className="upload-btn" style={{ position: 'absolute', top: '20px', right: '60px', background: 'rgba(0,0,0,0.6)', color: 'white', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', zIndex: 10, fontSize: '0.85rem' }}>
+                                📷 تغيير الغلاف
+                                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
+                                    if (e.target.files[0]) {
+                                        setCropState({ isOpen: true, file: e.target.files[0], type: 'cover_picture', aspect: 2.1 });
+                                    }
+                                    e.target.value = null;
+                                }} disabled={isUploadingImage} />
+                            </label>
+                        )}
+                        <div className="uni-cover-overlay"></div>
+
+                        <div className="uni-profile-info">
+                            <div className="uni-logo-wrapper" style={{ position: 'relative' }}>
+                                <img
+                                    src={localProfilePic ? getImageUrl(localProfilePic) : (uniData.profile_picture ? getImageUrl(uniData.profile_picture) : 'https://cdn-icons-png.flaticon.com/512/3202/3202796.png')}
+                                    alt="University Logo"
+                                    className="uni-logo-img"
+                                    style={{ opacity: isUploadingImage ? 0.5 : 1 }}
+                                />
+                                {isAdminOrOwner && (
+                                    <label style={{ position: 'absolute', bottom: 0, right: 0, background: '#3b82f6', color: 'white', width: '30px', height: '30px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.3)', border: '2px solid white' }}>
+                                        +
+                                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
+                                            if (e.target.files[0]) {
+                                                setCropState({ isOpen: true, file: e.target.files[0], type: 'profile_picture', aspect: 1 });
+                                            }
+                                            e.target.value = null;
+                                        }} disabled={isUploadingImage} />
+                                    </label>
+                                )}
                             </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                            <button className={`uni-follow-btn ${uniData.is_followed ? 'is-unfollow' : ''}`} onClick={handleFollow}>
-                                {uniData.is_followed ? 'إلغاء المتابعة' : 'متابعة'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Navigation Tabs */}
-                <div className="uni-tabs">
-                    <button className={`uni-tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>
-                        الرئيسية
-                    </button>
-                    <button className={`uni-tab ${activeTab === 'facilities' ? 'active' : ''}`} onClick={() => setActiveTab('facilities')}>
-                        المرافق التفاعلية
-                    </button>
-                    <button className={`uni-tab ${activeTab === 'calendar' ? 'active' : ''}`} onClick={() => setActiveTab('calendar')} style={{ color: activeTab === 'calendar' ? '#fbab15' : undefined, borderBottomColor: activeTab === 'calendar' ? '#fbab15' : undefined }}>
-                        التقويم
-                    </button>
-                    <button className={`uni-tab ${activeTab === 'news' ? 'active' : ''}`} onClick={() => setActiveTab('news')}>
-                        الأخبار
-                    </button>
-{/* <button className={`uni-tab ${activeTab === 'tour' ? 'active' : ''}`} onClick={() => setActiveTab('tour')}>
-    جولة 360° 🚁
-</button> */}
-                </div>
-
-                {/* Content Area */}
-                <div className="uni-content-area">
-
-                    {/* Academic Calendar Tab */}
-                    {activeTab === 'calendar' && (
-                        <BirzeitCalendar />
-                    )}
-                    {activeTab === 'overview' && (
-                        <div className="uni-overview-tab">
-                             <div className="uni-about-card">
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                    <h3>عن الجامعة</h3>
-                                    {isAdminOrOwner && !isEditingAbout && (
-                                        <button 
-                                            onClick={() => { setIsEditingAbout(true); setAboutInput(uniData.bio || ''); }}
-                                            style={{ 
-                                                background: 'rgba(251, 171, 21, 0.15)', border: 'none', color: '#fbab15', 
-                                                cursor: 'pointer', padding: '6px', borderRadius: '50%',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                transition: 'all 0.2s ease'
-                                            }}
-                                            onMouseOver={e => e.currentTarget.style.transform = 'scale(1.1)'}
-                                            onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
-                                        >
-                                            <EditIcon />
-                                        </button>
-                                    )}
-                                </div>
-                                {isEditingAbout ? (
-                                    <div className="hours-edit-panel">
-                                        <textarea 
-                                            value={aboutInput} 
-                                            onChange={e => setAboutInput(e.target.value)} 
-                                            placeholder="اكتب نبذة عن الجامعة وطبيعة عملها..."
-                                            className="textarea"
-                                            rows={4}
+                            <div className="uni-title-section">
+                                {isEditingName ? (
+                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                        <input
+                                            type="text"
+                                            value={nameInput}
+                                            onChange={e => setNameInput(e.target.value)}
+                                            className="input"
+                                            style={{ height: '35px', padding: '5px 10px', fontSize: '1.2rem', fontWeight: 'bold' }}
+                                            autoFocus
                                         />
-                                        <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                                            <button className="btn-small is-accept" onClick={handleUpdateAbout}>حفظ</button>
-                                            <button className="btn-small" onClick={() => setIsEditingAbout(false)}>إلغاء</button>
-                                        </div>
+                                        <button className="btn-small is-accept" onClick={handleUpdateName}>حفظ</button>
+                                        <button className="btn-small" onClick={() => setIsEditingName(false)}>✕</button>
                                     </div>
                                 ) : (
-                                    <p className="bio-display">{uniData.bio || 'مرحباً بك في الحرم الجامعي الذكي. لا يوجد وصف متاح حالياً.'}</p>
-                                )}
-                            </div>
-                            <div className="uni-quick-stats">
-                                <div className="stat-box">
-                                    <span className="stat-value">{facilities['الكليات']?.length || 0}</span>
-                                    <span className="stat-label">كليات</span>
-                                </div>
-                                <div className="stat-box">
-                                    <span className="stat-value">{Object.values(facilities).flat().length}</span>
-                                    <span className="stat-label">مرفق</span>
-                                </div>
-                            </div>
-
-                            <div className="uni-about-card" style={{ marginTop: '15px', padding: '0' }}>
-                                <div 
-                                    onClick={() => setShowContactInfo(!showContactInfo)}
-                                    style={{ 
-                                        display: 'flex', 
-                                        justifyContent: 'space-between', 
-                                        alignItems: 'center', 
-                                        padding: '15px 20px',
-                                        cursor: 'pointer',
-                                        transition: 'background 0.2s'
-                                    }}
-                                    onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
-                                    onMouseOut={e => e.currentTarget.style.background = 'transparent'}
-                                >
-                                    <h3 style={{ margin: 0, color: '#fbab15', fontSize: '1.05rem', fontWeight: '800' }}>للتواصل مع الجامعة</h3>
-                                    <svg 
-                                        width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbab15" strokeWidth="2.5" 
-                                        style={{ transform: showContactInfo ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}
-                                    >
-                                        <polyline points="6 9 12 15 18 9"></polyline>
-                                    </svg>
-                                </div>
-
-                                {showContactInfo && (
-                                    <div style={{ 
-                                        padding: '0 20px 20px', 
-                                        display: 'flex', 
-                                        flexDirection: 'column', 
-                                        gap: '12px',
-                                        animation: 'slideDown 0.3s ease-out'
-                                    }}>
-                                        {[
-                                            { label: 'دائرة المالية', email: 'students.accounts@birzeit.edu' },
-                                            { label: 'دائرة التسجيل', email: 'reg_office@birzeit.edu' },
-                                            { label: 'وحدة المساعدات المالية', email: 'info.sfau@birzeit.edu' },
-                                            { label: 'دائرة تكنولوجيا المعلومات', email: 'Helpdesk@birzeit.edu' },
-                                            { label: 'دعم التعليم الإلكتروني', email: 'ITC@birzeit.edu' }
-                                        ].map((item, idx) => (
-                                            <div key={idx} style={{ 
-                                                display: 'flex', 
-                                                justifyContent: 'space-between', 
-                                                alignItems: 'center',
-                                                padding: '10px 0',
-                                                borderBottom: idx === 4 ? 'none' : '1px solid rgba(255,255,255,0.05)'
-                                            }}>
-                                                <span style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>{item.label}</span>
-                                                <a href={`mailto:${item.email}`} style={{ 
-                                                    fontSize: '0.8rem', 
-                                                    color: '#3b82f6', 
-                                                    textDecoration: 'none',
-                                                    fontWeight: '600'
-                                                }}>{item.email}</a>
-                                            </div>
-                                        ))}
-                                        <div style={{ 
-                                            marginTop: '8px', 
-                                            padding: '12px', 
-                                            background: 'rgba(59, 130, 246, 0.12)', 
-                                            borderRadius: '12px',
-                                            textAlign: 'center',
-                                            border: '1px solid rgba(59, 130, 246, 0.2)'
-                                        }}>
-                                            <div style={{ fontSize: '0.75rem', color: '#60a5fa', marginBottom: '4px', fontWeight: 'bold' }}> الرقم المجاني للاتصال</div>
-                                            <a href="tel:1800298200" style={{ fontSize: '1.2rem', fontWeight: '900', color: 'white', textDecoration: 'none', letterSpacing: '1px' }}>1800298200</a>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            
-                            {isAdminOrOwner && (
-                                <div className="uni-admin-actions" style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                    <button 
-                                        className="uni-follow-btn" 
-                                        style={{ background: '#3b82f6', boxShadow: '0 4px 10px rgba(59, 130, 246, 0.4)' }}
-                                        onClick={() => { setActiveTab('facilities'); setIsCreatingFacility(true); }}
-                                    >
-                                        + إضافة مرفق جديد للجامعة
-                                    </button>
-
-                                    {/* Only System Admin can assign a page owner */}
-                                    {currentUser?.role === 'admin' && (
-                                        <div className="assign-owner-section" style={{ marginTop: '15px', padding: '15px', border: '1px solid #ddd', borderRadius: '12px', background: 'white' }}>
-                                            <p style={{ fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '10px' }}>إدارة مسؤول الصفحة (Admin) 🛠️</p>
-                                            <p style={{ fontSize: '0.8rem', color: '#666', marginBottom: '10px' }}>
-                                                المسؤول الحالي: {uniData.owner_name || 'لا يوجد (إدارة النظام)'}
-                                            </p>
-                                            {!isAssigningOwner ? (
-                                                <button className="btn-small is-primary" onClick={() => setIsAssigningOwner(true)}>تعيين مسؤول جديد</button>
-                                            ) : (
-                                                <form onSubmit={handleAssignOwner} style={{ display: 'flex', gap: '10px' }}>
-                                                    <input 
-                                                        className="input" 
-                                                        placeholder="اسم المستخدم" 
-                                                        value={ownerUsername} 
-                                                        onChange={e => setOwnerUsername(e.target.value)}
-                                                        required
-                                                    />
-                                                    <button type="submit" className="btn-small is-accept">تأكيد</button>
-                                                    <button type="button" className="btn-small" onClick={() => setIsAssigningOwner(false)}>إلغاء</button>
-                                                </form>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {activeTab === 'facilities' && (
-                        <div className="uni-facilities-tab">
-                            {isCreatingFacility ? (
-                                <div className="uni-create-facility slide-in-right">
-                                    <button className="uni-back-btn" onClick={() => setIsCreatingFacility(false)}>
-                                        &rarr; رجوع
-                                    </button>
-                                    <h3 className="section-title" style={{ marginTop: 0 }}>إضافة مرفق جديد</h3>
-                                    <form onSubmit={handleCreateFacility} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                        <div>
-                                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>اسم المرفق</label>
-                                            <input type="text" className="input" placeholder="مثل: كلية الهندسة" value={newFacilityData.name} onChange={e => setNewFacilityData({ ...newFacilityData, name: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} required />
-                                        </div>
-                                        <div>
-                                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>التصنيف</label>
-                                            <select className="input" value={newFacilityData.category} onChange={e => {
-                                                const cat = e.target.value;
-                                                const defIcon = predefinedCategories.find(c => c.name === cat)?.defaultIcon || '📍';
-                                                setNewFacilityData({ ...newFacilityData, category: cat, icon: defIcon });
-                                            }} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
-                                                {predefinedCategories.map(c => (
-                                                    <option key={c.name} value={c.name}>{c.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>الأيقونة (إيموجي)</label>
-                                            <input type="text" className="input" placeholder="🏛️" value={newFacilityData.icon} onChange={e => setNewFacilityData({ ...newFacilityData, icon: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} required maxLength={5} />
-                                        </div>
-                                        <div>
-                                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>الموقع على الخريطة</label>
-                                            <div style={{ display: 'flex', gap: '10px' }}>
-                                                <input type="number" step="any" placeholder="خط العرض" value={newFacilityData.lat} onChange={e => setNewFacilityData({ ...newFacilityData, lat: e.target.value })} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} required />
-                                                <input type="number" step="any" placeholder="خط الطول" value={newFacilityData.lon} onChange={e => setNewFacilityData({ ...newFacilityData, lon: e.target.value })} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} required />
-                                            </div>
-                                            <button type="button" className="btn-small" onClick={getCurrentLocation} style={{ marginTop: '10px', width: '100%', background: '#10b981', color: 'white', border: 'none' }}>
-                                                📍 تحديد إحداثيات موقعي الحالي
-                                            </button>
-                                        </div>
-                                        <button type="submit" className="uni-follow-btn" style={{ marginTop: '10px' }}>حفظ المرفق</button>
-                                    </form>
-                                </div>
-                            ) : !selectedFacilityCategory ? (
-                                <div className="uni-categories-grid">
-                                    {categories.length === 0 ? (
-                                        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
-                                            لم يتم إضافة أي مرافق بعد.<br/>
-                                            {isAdminOrOwner && <button onClick={() => setIsCreatingFacility(true)} style={{ background: 'none', color: '#10b981', border: 'none', cursor: 'pointer', marginTop: '10px', fontSize: '1rem', fontWeight: 'bold' }}>إضافة مرفق الآن</button>}
-                                        </div>
-                                    ) : categories.map((cat, index) => (
-                                        <div key={index} className="uni-category-card" onClick={() => setSelectedFacilityCategory(cat)}>
-                                            <div className="cat-icon-large">
-                                                {facilities[cat][0]?.icon || '📍'}
-                                            </div>
-                                            <h4>{cat}</h4>
-                                            <span>{facilities[cat].length} مرفق</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="uni-facility-list-view slide-in-right">
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                                        <button className="uni-back-btn" onClick={() => setSelectedFacilityCategory(null)} style={{ marginBottom: 0 }}>
-                                            &rarr; رجوع للتصنيفات
-                                        </button>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <h2 className="uni-name">{uniData.name}</h2>
                                         {isAdminOrOwner && (
-                                            <button onClick={() => setIsCreatingFacility(true)} style={{ background: 'none', color: '#3b82f6', border: 'none', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' }}>
-                                                + إضافة
+                                            <button
+                                                onClick={() => { setIsEditingName(true); setNameInput(uniData.name); }}
+                                                style={{
+                                                    background: 'rgba(251, 171, 21, 0.15)', border: 'none', color: '#fbab15',
+                                                    cursor: 'pointer', padding: '6px', borderRadius: '50%',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    transition: 'all 0.2s ease'
+                                                }}
+                                                title="تعديل الاسم"
+                                                onMouseOver={e => e.currentTarget.style.transform = 'scale(1.1)'}
+                                                onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+                                            >
+                                                <EditIcon />
                                             </button>
                                         )}
                                     </div>
-                                    <h3 className="section-title">مرافق {selectedFacilityCategory}</h3>
-                                    
-                                    <div className="uni-items-list">
-                                        {facilities[selectedFacilityCategory]?.map(item => (
-                                            <div key={`${item.is_shop ? 'shop' : 'fac'}-${item.id}`} className="uni-list-item">
-                                                {editingFacility?.id === item.id && editingFacility?.is_shop === item.is_shop ? (
-                                                    // Inline rename form
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 0' }}>
-                                                        <div className="item-icon">{item.icon}</div>
-                                                        <input
-                                                            type="text"
-                                                            value={editingFacilityName}
-                                                            onChange={e => setEditingFacilityName(e.target.value)}
-                                                            autoFocus
-                                                            style={{ flex: 1, padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--primary)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
-                                                        />
-                                                        <button onClick={() => handleRenameFacility()} style={{ background: '#10b981', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem' }}>حفظ</button>
-                                                        <button onClick={() => setEditingFacility(null)} style={{ background: 'transparent', color: 'var(--text-muted)', border: 'none', padding: '6px', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
-                                                    </div>
+                                )}
+                                <p className="uni-category">مؤسسة تعليمية</p>
+                                <div className="uni-followers-count" style={{ fontSize: '0.85rem', color: '#ccc', marginTop: '4px' }}>
+                                    {uniData.followers_count || 0} متابع
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button className={`uni-follow-btn ${uniData.is_followed ? 'is-unfollow' : ''}`} onClick={handleFollow}>
+                                    {uniData.is_followed ? 'إلغاء المتابعة' : 'متابعة'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Navigation Tabs */}
+                    <div className="uni-tabs">
+                        <button className={`uni-tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>
+                            الرئيسية
+                        </button>
+                        <button className={`uni-tab ${activeTab === 'facilities' ? 'active' : ''}`} onClick={() => setActiveTab('facilities')}>
+                            المرافق التفاعلية
+                        </button>
+                        <button className={`uni-tab ${activeTab === 'calendar' ? 'active' : ''}`} onClick={() => setActiveTab('calendar')} style={{ color: activeTab === 'calendar' ? '#fbab15' : undefined, borderBottomColor: activeTab === 'calendar' ? '#fbab15' : undefined }}>
+                            التقويم
+                        </button>
+                        <button className={`uni-tab ${activeTab === 'news' ? 'active' : ''}`} onClick={() => setActiveTab('news')}>
+                            الأخبار
+                        </button>
+                        {/* <button className={`uni-tab ${activeTab === 'tour' ? 'active' : ''}`} onClick={() => setActiveTab('tour')}>
+    جولة 360° 🚁
+</button> */}
+                    </div>
+
+                    {/* Content Area */}
+                    <div className="uni-content-area">
+
+                        {/* Academic Calendar Tab */}
+                        {activeTab === 'calendar' && (
+                            <BirzeitCalendar />
+                        )}
+                        {activeTab === 'overview' && (
+                            <div className="uni-overview-tab">
+                                <div className="uni-about-card">
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                        <h3>عن الجامعة</h3>
+                                        {isAdminOrOwner && !isEditingAbout && (
+                                            <button
+                                                onClick={() => { setIsEditingAbout(true); setAboutInput(uniData.bio || ''); }}
+                                                style={{
+                                                    background: 'rgba(251, 171, 21, 0.15)', border: 'none', color: '#fbab15',
+                                                    cursor: 'pointer', padding: '6px', borderRadius: '50%',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    transition: 'all 0.2s ease'
+                                                }}
+                                                onMouseOver={e => e.currentTarget.style.transform = 'scale(1.1)'}
+                                                onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+                                            >
+                                                <EditIcon />
+                                            </button>
+                                        )}
+                                    </div>
+                                    {isEditingAbout ? (
+                                        <div className="hours-edit-panel">
+                                            <textarea
+                                                value={aboutInput}
+                                                onChange={e => setAboutInput(e.target.value)}
+                                                placeholder="اكتب نبذة عن الجامعة وطبيعة عملها..."
+                                                className="textarea"
+                                                rows={4}
+                                            />
+                                            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                                <button className="btn-small is-accept" onClick={handleUpdateAbout}>حفظ</button>
+                                                <button className="btn-small" onClick={() => setIsEditingAbout(false)}>إلغاء</button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className="bio-display">{uniData.bio || 'مرحباً بك في الحرم الجامعي الذكي. لا يوجد وصف متاح حالياً.'}</p>
+                                    )}
+                                </div>
+                                <div className="uni-quick-stats">
+                                    <div className="stat-box">
+                                        <span className="stat-value">{facilities['الكليات']?.length || 0}</span>
+                                        <span className="stat-label">كليات</span>
+                                    </div>
+                                    <div className="stat-box">
+                                        <span className="stat-value">{Object.values(facilities).flat().length}</span>
+                                        <span className="stat-label">مرفق</span>
+                                    </div>
+                                </div>
+
+                                <div className="uni-about-card" style={{ marginTop: '15px', padding: '0' }}>
+                                    <div
+                                        onClick={() => setShowContactInfo(!showContactInfo)}
+                                        style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            padding: '15px 20px',
+                                            cursor: 'pointer',
+                                            transition: 'background 0.2s'
+                                        }}
+                                        onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+                                        onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                                    >
+                                        <h3 style={{ margin: 0, color: '#fbab15', fontSize: '1.05rem', fontWeight: '800' }}>للتواصل مع الجامعة</h3>
+                                        <svg
+                                            width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbab15" strokeWidth="2.5"
+                                            style={{ transform: showContactInfo ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}
+                                        >
+                                            <polyline points="6 9 12 15 18 9"></polyline>
+                                        </svg>
+                                    </div>
+
+                                    {showContactInfo && (
+                                        <div style={{
+                                            padding: '0 20px 20px',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '12px',
+                                            animation: 'slideDown 0.3s ease-out'
+                                        }}>
+                                            {[
+                                                { label: 'دائرة المالية', email: 'students.accounts@birzeit.edu' },
+                                                { label: 'دائرة التسجيل', email: 'reg_office@birzeit.edu' },
+                                                { label: 'وحدة المساعدات المالية', email: 'info.sfau@birzeit.edu' },
+                                                { label: 'دائرة تكنولوجيا المعلومات', email: 'Helpdesk@birzeit.edu' },
+                                                { label: 'دعم التعليم الإلكتروني', email: 'ITC@birzeit.edu' }
+                                            ].map((item, idx) => (
+                                                <div key={idx} style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'center',
+                                                    padding: '10px 0',
+                                                    borderBottom: idx === 4 ? 'none' : '1px solid rgba(255,255,255,0.05)'
+                                                }}>
+                                                    <span style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>{item.label}</span>
+                                                    <a href={`mailto:${item.email}`} style={{
+                                                        fontSize: '0.8rem',
+                                                        color: '#3b82f6',
+                                                        textDecoration: 'none',
+                                                        fontWeight: '600'
+                                                    }}>{item.email}</a>
+                                                </div>
+                                            ))}
+                                            <div style={{
+                                                marginTop: '8px',
+                                                padding: '12px',
+                                                background: 'rgba(59, 130, 246, 0.12)',
+                                                borderRadius: '12px',
+                                                textAlign: 'center',
+                                                border: '1px solid rgba(59, 130, 246, 0.2)'
+                                            }}>
+                                                <div style={{ fontSize: '0.75rem', color: '#60a5fa', marginBottom: '4px', fontWeight: 'bold' }}> الرقم المجاني للاتصال</div>
+                                                <a href="tel:1800298200" style={{ fontSize: '1.2rem', fontWeight: '900', color: 'white', textDecoration: 'none', letterSpacing: '1px' }}>1800298200</a>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+
+                                {isAdminOrOwner && (
+                                    <div className="uni-admin-actions" style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                        <button
+                                            className="uni-follow-btn"
+                                            style={{ background: '#3b82f6', boxShadow: '0 4px 10px rgba(59, 130, 246, 0.4)' }}
+                                            onClick={() => { setActiveTab('facilities'); setIsCreatingFacility(true); }}
+                                        >
+                                            + إضافة مرفق جديد للجامعة
+                                        </button>
+
+                                        {/* Only System Admin can assign a page owner */}
+                                        {currentUser?.role === 'admin' && (
+                                            <div className="assign-owner-section" style={{ marginTop: '15px', padding: '15px', border: '1px solid #ddd', borderRadius: '12px', background: 'white' }}>
+                                                <p style={{ fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '10px' }}>إدارة مسؤول الصفحة (Admin) 🛠️</p>
+                                                <p style={{ fontSize: '0.8rem', color: '#666', marginBottom: '10px' }}>
+                                                    المسؤول الحالي: {uniData.owner_name || 'لا يوجد (إدارة النظام)'}
+                                                </p>
+                                                {!isAssigningOwner ? (
+                                                    <button className="btn-small is-primary" onClick={() => setIsAssigningOwner(true)}>تعيين مسؤول جديد</button>
                                                 ) : (
-                                                    <>
-                                                        <div className="item-icon" onClick={() => handleFeatureClick(item)} style={{ cursor: 'pointer' }}>{item.icon}</div>
-                                                        <div className="item-details" onClick={() => handleFeatureClick(item)} style={{ cursor: 'pointer', flex: 1 }}>
-                                                            <h4>{item.name}</h4>
-                                                            <p>{item.is_shop ? 'محل/كلية - انقر للعرض' : 'انقر لعرض التفاصيل على الخريطة'}</p>
-                                                        </div>
-                                                        {isAdminOrOwner && (
-                                                            <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                                                                <button
-                                                                    onClick={() => { setEditingFacility(item); setEditingFacilityName(item.name); }}
-                                                                    title="تعديل الاسم"
-                                                                    style={{ background: 'rgba(251,171,21,0.15)', border: 'none', color: '#fbab15', padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                                                                >
-                                                                    <EditIcon />
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleDeleteFacility(item)}
-                                                                    title="حذف المرفق"
-                                                                    style={{ background: 'rgba(239,68,68,0.1)', border: 'none', color: '#ef4444', padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                                                                >
-                                                                    <TrashIcon />
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                        {!isAdminOrOwner && (
-                                                            <div className="item-action" onClick={() => handleFeatureClick(item)} style={{ cursor: 'pointer' }}>
-                                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
-                                                            </div>
-                                                        )}
-                                                    </>
+                                                    <form onSubmit={handleAssignOwner} style={{ display: 'flex', gap: '10px' }}>
+                                                        <input
+                                                            className="input"
+                                                            placeholder="اسم المستخدم"
+                                                            value={ownerUsername}
+                                                            onChange={e => setOwnerUsername(e.target.value)}
+                                                            required
+                                                        />
+                                                        <button type="submit" className="btn-small is-accept">تأكيد</button>
+                                                        <button type="button" className="btn-small" onClick={() => setIsAssigningOwner(false)}>إلغاء</button>
+                                                    </form>
                                                 )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'facilities' && (
+                            <div className="uni-facilities-tab">
+                                {isCreatingFacility ? (
+                                    <div className="uni-create-facility slide-in-right">
+                                        <button className="uni-back-btn" onClick={() => setIsCreatingFacility(false)}>
+                                            &rarr; رجوع
+                                        </button>
+                                        <h3 className="section-title" style={{ marginTop: 0 }}>إضافة مرفق جديد</h3>
+                                        <form onSubmit={handleCreateFacility} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                            <div>
+                                                <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>اسم المرفق</label>
+                                                <input type="text" className="input" placeholder="مثل: كلية الهندسة" value={newFacilityData.name} onChange={e => setNewFacilityData({ ...newFacilityData, name: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} required />
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>التصنيف</label>
+                                                <select className="input" value={newFacilityData.category} onChange={e => {
+                                                    const cat = e.target.value;
+                                                    const defIcon = predefinedCategories.find(c => c.name === cat)?.defaultIcon || '📍';
+                                                    setNewFacilityData({ ...newFacilityData, category: cat, icon: defIcon });
+                                                }} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+                                                    {predefinedCategories.map(c => (
+                                                        <option key={c.name} value={c.name}>{c.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>الأيقونة (إيموجي)</label>
+                                                <input type="text" className="input" placeholder="🏛️" value={newFacilityData.icon} onChange={e => setNewFacilityData({ ...newFacilityData, icon: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} required maxLength={5} />
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>الموقع على الخريطة</label>
+                                                <div style={{ display: 'flex', gap: '10px' }}>
+                                                    <input type="number" step="any" placeholder="خط العرض" value={newFacilityData.lat} onChange={e => setNewFacilityData({ ...newFacilityData, lat: e.target.value })} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} required />
+                                                    <input type="number" step="any" placeholder="خط الطول" value={newFacilityData.lon} onChange={e => setNewFacilityData({ ...newFacilityData, lon: e.target.value })} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} required />
+                                                </div>
+                                                <button type="button" className="btn-small" onClick={getCurrentLocation} style={{ marginTop: '10px', width: '100%', background: '#10b981', color: 'white', border: 'none' }}>
+                                                    📍 تحديد إحداثيات موقعي الحالي
+                                                </button>
+                                            </div>
+                                            <button type="submit" className="uni-follow-btn" style={{ marginTop: '10px' }}>حفظ المرفق</button>
+                                        </form>
+                                    </div>
+                                ) : !selectedFacilityCategory ? (
+                                    <div className="uni-categories-grid">
+                                        {categories.length === 0 ? (
+                                            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                                                لم يتم إضافة أي مرافق بعد.<br />
+                                                {isAdminOrOwner && <button onClick={() => setIsCreatingFacility(true)} style={{ background: 'none', color: '#10b981', border: 'none', cursor: 'pointer', marginTop: '10px', fontSize: '1rem', fontWeight: 'bold' }}>إضافة مرفق الآن</button>}
+                                            </div>
+                                        ) : categories.map((cat, index) => (
+                                            <div key={index} className="uni-category-card" onClick={() => setSelectedFacilityCategory(cat)}>
+                                                <div className="cat-icon-large">
+                                                    {facilities[cat][0]?.icon || '📍'}
+                                                </div>
+                                                <h4>{cat}</h4>
+                                                <span>{facilities[cat].length} مرفق</span>
                                             </div>
                                         ))}
                                     </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {activeTab === 'news' && (
-                        <div className="uni-news-tab">
-                            {isAdminOrOwner && (
-                                <div className="news-admin-actions" style={{ marginBottom: '20px' }}>
-                                    {!showNewsForm ? (
-                                        <button className="btn-small is-primary" onClick={() => setShowNewsForm(true)}>+ إضافة خبر أو إعلان جديد</button>
-                                    ) : (
-                                        <form onSubmit={handleCreateNews} className="news-form slide-up" style={{ background: 'var(--bg-tertiary)', padding: '20px', borderRadius: '16px' }}>
-                                            <input placeholder="العنوان" className="input" value={newNews.title} onChange={e => setNewNews({...newNews, title: e.target.value})} style={{ width: '100%', marginBottom: '10px' }} required />
-                                            <textarea placeholder="ماذا تريد أن تعلن؟" className="textarea" value={newNews.content} onChange={e => setNewNews({...newNews, content: e.target.value})} style={{ width: '100%', marginBottom: '10px' }} required />
-                                            <input placeholder="رابط مرفق (اختياري)" className="input" value={newNews.external_link} onChange={e => setNewNews({...newNews, external_link: e.target.value})} style={{ width: '100%', marginBottom: '10px' }} />
-                                            <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                                                <select className="select" value={newNews.post_type} onChange={e => setNewNews({...newNews, post_type: e.target.value})} style={{ flex: 1 }}>
-                                                    <option value="news">خبر 📢</option>
-                                                    <option value="announcement">إعلان رسمي ✉️</option>
-                                                </select>
-                                                <input type="file" onChange={e => setNewsMedia(e.target.files[0])} style={{ flex: 1, fontSize: '0.8rem' }} />
-                                            </div>
-                                            <div style={{ display: 'flex', gap: '10px' }}>
-                                                <button type="submit" className="btn-small is-accept" disabled={isSubmittingNews}>{isSubmittingNews ? 'جاري النشر...' : 'نشر'}</button>
-                                                <button type="button" className="btn-small" onClick={() => setShowNewsForm(false)}>إلغاء</button>
-                                            </div>
-                                        </form>
-                                    )}
-                                </div>
-                            )}
-
-                            <div className="news-feed">
-                                {uniNews.length === 0 ? (
-                                    <div className="empty-state">
-                                        <p>لا توجد إعلانات حالياً.</p>
-                                    </div>
                                 ) : (
-                                    uniNews.map(post => (
-                                        <div key={post.id} className="news-card slide-in-right" style={{ background: 'var(--bg-primary)', padding: '18px', borderRadius: '16px', marginBottom: '18px', border: '1px solid var(--bg-tertiary)', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-                                            <div className="news-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                                                <div style={{ flex: 1 }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                                                        <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '6px', background: post.post_type === 'announcement' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)', color: post.post_type === 'announcement' ? '#ef4444' : '#10b981', fontWeight: '800', textTransform: 'uppercase' }}>
-                                                            {post.post_type === 'announcement' ? 'إعلان رسمي' : 'خبر'}
-                                                        </span>
-                                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>• {new Date(post.created_at).toLocaleDateString('ar-EG')}</span>
-                                                    </div>
-                                                    <h3 style={{ margin: '4px 0', fontSize: '1.2rem', fontWeight: '800', color: 'var(--text-primary)' }}>{post.title}</h3>
-                                                </div>
-                                                {isAdminOrOwner && (
-                                                    <button 
-                                                        onClick={() => handleDeletePost(post.id)}
-                                                        style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: '5px', transition: 'color 0.2s' }}
-                                                        onMouseOver={e => e.currentTarget.style.color = '#ef4444'}
-                                                        onMouseOut={e => e.currentTarget.style.color = '#9ca3af'}
-                                                    >
-                                                        <TrashIcon />
-                                                    </button>
-                                                )}
-                                            </div>
-
-                                            <p style={{ fontSize: '1rem', lineHeight: 1.6, color: 'var(--text-secondary)', marginBottom: '12px' }}>{post.content}</p>
-
-                                            {post.image_url && (
-                                                <div style={{ borderRadius: '12px', overflow: 'hidden', marginBottom: '12px' }}>
-                                                    <img src={getImageUrl(post.image_url)} style={{ width: '100%', maxHeight: '350px', objectFit: 'cover' }} />
-                                                </div>
-                                            )}
-
-                                            {post.external_link && (
-                                                <a href={post.external_link.startsWith('http') ? post.external_link : `https://${post.external_link}`} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', marginBottom: '15px', color: '#3b82f6', fontSize: '0.9rem', fontWeight: 'bold', textDecoration: 'none', background: 'rgba(59, 130, 246, 0.05)', padding: '6px 12px', borderRadius: '8px' }}>
-                                                    🔗 رابط المعلومات
-                                                </a>
-                                            )}
-
-                                            <div className="news-card-actions" style={{ display: 'flex', gap: '24px', marginTop: '12px', borderTop: '1px solid var(--bg-tertiary)', paddingTop: '15px' }}>
-                                                <button 
-                                                    onClick={() => handleLikePost(post.id)} 
-                                                    style={{ background: 'none', border: 'none', color: post.is_liked ? '#ef4444' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.95rem', fontWeight: '600', transition: 'all 0.2s' }}
-                                                >
-                                                    <HeartIcon filled={post.is_liked} />
-                                                    <span>{post.likes_count || 0}</span>
+                                    <div className="uni-facility-list-view slide-in-right">
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                                            <button className="uni-back-btn" onClick={() => setSelectedFacilityCategory(null)} style={{ marginBottom: 0 }}>
+                                                &rarr; رجوع للتصنيفات
+                                            </button>
+                                            {isAdminOrOwner && (
+                                                <button onClick={() => setIsCreatingFacility(true)} style={{ background: 'none', color: '#3b82f6', border: 'none', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                                                    + إضافة
                                                 </button>
-                                                <button 
-                                                    onClick={() => { 
-                                                        if (activeCommentPost === post.id) setActiveCommentPost(null);
-                                                        else { setActiveCommentPost(post.id); loadComments(post.id); } 
-                                                    }} 
-                                                    style={{ background: 'none', border: 'none', color: activeCommentPost === post.id ? '#3b82f6' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.95rem', fontWeight: '600', transition: 'all 0.2s' }}
-                                                >
-                                                    <MessageIcon />
-                                                    <span>{post.comments_count || 0}</span>
-                                                </button>
-                                            </div>
-
-                                            {activeCommentPost === post.id && (
-                                                <div className="comments-section" style={{ marginTop: '15px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '14px', border: '1px solid var(--bg-tertiary)' }}>
-                                                    <div className="comments-list" style={{ maxHeight: '250px', overflowY: 'auto', marginBottom: '12px' }}>
-                                                        {(comments[post.id] || []).length === 0 ? (
-                                                            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', padding: '10px' }}>لا توجد تعليقات بعد. كن أول من يعلق!</p>
-                                                        ) : (
-                                                            comments[post.id].map(c => (
-                                                                <div key={c.id} style={{ display: 'flex', gap: '10px', marginBottom: '12px', animation: 'fadeIn 0.3s ease' }}>
-                                                                    <img src={getImageUrl(c.profile_picture)} style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--bg-tertiary)' }} />
-                                                                    <div style={{ background: 'var(--bg-tertiary)', padding: '8px 14px', borderRadius: '16px', flex: 1, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                                                                        <div style={{ fontWeight: '800', fontSize: '0.8rem', color: 'var(--text-primary)', marginBottom: '2px' }}>{c.username}</div>
-                                                                        <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>{c.content}</div>
-                                                                    </div>
-                                                                </div>
-                                                            ))
-                                                        )}
-                                                    </div>
-                                                    <form onSubmit={(e) => handleAddComment(e, post.id)} style={{ display: 'flex', gap: '10px' }}>
-                                                        <input 
-                                                            className="input" 
-                                                            placeholder="أضف تعليقاً..." 
-                                                            style={{ flex: 1, fontSize: '0.9rem', padding: '10px 15px', borderRadius: '12px', background: 'var(--bg-primary)', border: '1px solid var(--bg-tertiary)' }} 
-                                                            value={newComment}
-                                                            onChange={e => setNewComment(e.target.value)}
-                                                        />
-                                                        <button type="submit" className="btn-small is-primary" style={{ borderRadius: '12px' }}>نشر</button>
-                                                    </form>
-                                                </div>
                                             )}
                                         </div>
-                                    ))
+                                        <h3 className="section-title">مرافق {selectedFacilityCategory}</h3>
+
+                                        <div className="uni-items-list">
+                                            {facilities[selectedFacilityCategory]?.map(item => (
+                                                <div key={`${item.is_shop ? 'shop' : 'fac'}-${item.id}`} className="uni-list-item">
+                                                    {editingFacility?.id === item.id && editingFacility?.is_shop === item.is_shop ? (
+                                                        // Inline rename form
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 0' }}>
+                                                            <div className="item-icon">{item.icon}</div>
+                                                            <input
+                                                                type="text"
+                                                                value={editingFacilityName}
+                                                                onChange={e => setEditingFacilityName(e.target.value)}
+                                                                autoFocus
+                                                                style={{ flex: 1, padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--primary)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
+                                                            />
+                                                            <button onClick={() => handleRenameFacility()} style={{ background: '#10b981', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem' }}>حفظ</button>
+                                                            <button onClick={() => setEditingFacility(null)} style={{ background: 'transparent', color: 'var(--text-muted)', border: 'none', padding: '6px', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <div className="item-icon" onClick={() => handleFeatureClick(item)} style={{ cursor: 'pointer' }}>{item.icon}</div>
+                                                            <div className="item-details" onClick={() => handleFeatureClick(item)} style={{ cursor: 'pointer', flex: 1 }}>
+                                                                <h4>{item.name}</h4>
+                                                                <p>{item.is_shop ? 'محل/كلية - انقر للعرض' : 'انقر لعرض التفاصيل على الخريطة'}</p>
+                                                            </div>
+                                                            {isAdminOrOwner && (
+                                                                <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                                                                    <button
+                                                                        onClick={() => { setEditingFacility(item); setEditingFacilityName(item.name); }}
+                                                                        title="تعديل الاسم"
+                                                                        style={{ background: 'rgba(251,171,21,0.15)', border: 'none', color: '#fbab15', padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                                                                    >
+                                                                        <EditIcon />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleDeleteFacility(item)}
+                                                                        title="حذف المرفق"
+                                                                        style={{ background: 'rgba(239,68,68,0.1)', border: 'none', color: '#ef4444', padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                                                                    >
+                                                                        <TrashIcon />
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                            {!isAdminOrOwner && (
+                                                                <div className="item-action" onClick={() => handleFeatureClick(item)} style={{ cursor: 'pointer' }}>
+                                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
                                 )}
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    {/* {activeTab === 'tour' && (
+                        {activeTab === 'news' && (
+                            <div className="uni-news-tab">
+                                {isAdminOrOwner && (
+                                    <div className="news-admin-actions" style={{ marginBottom: '20px' }}>
+                                        {!showNewsForm ? (
+                                            <button className="btn-small is-primary" onClick={() => setShowNewsForm(true)}>+ إضافة خبر أو إعلان جديد</button>
+                                        ) : (
+                                            <form onSubmit={handleCreateNews} className="news-form slide-up" style={{ background: 'var(--bg-tertiary)', padding: '20px', borderRadius: '16px' }}>
+                                                <input placeholder="العنوان" className="input" value={newNews.title} onChange={e => setNewNews({ ...newNews, title: e.target.value })} style={{ width: '100%', marginBottom: '10px' }} required />
+                                                <textarea placeholder="ماذا تريد أن تعلن؟" className="textarea" value={newNews.content} onChange={e => setNewNews({ ...newNews, content: e.target.value })} style={{ width: '100%', marginBottom: '10px' }} required />
+                                                <input placeholder="رابط مرفق (اختياري)" className="input" value={newNews.external_link} onChange={e => setNewNews({ ...newNews, external_link: e.target.value })} style={{ width: '100%', marginBottom: '10px' }} />
+                                                <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                                                    <select className="select" value={newNews.post_type} onChange={e => setNewNews({ ...newNews, post_type: e.target.value })} style={{ flex: 1 }}>
+                                                        <option value="news">خبر 📢</option>
+                                                        <option value="announcement">إعلان رسمي ✉️</option>
+                                                    </select>
+                                                    <input type="file" onChange={e => setNewsMedia(e.target.files[0])} style={{ flex: 1, fontSize: '0.8rem' }} />
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '10px' }}>
+                                                    <button type="submit" className="btn-small is-accept" disabled={isSubmittingNews}>{isSubmittingNews ? 'جاري النشر...' : 'نشر'}</button>
+                                                    <button type="button" className="btn-small" onClick={() => setShowNewsForm(false)}>إلغاء</button>
+                                                </div>
+                                            </form>
+                                        )}
+                                    </div>
+                                )}
+
+                                <div className="news-feed">
+                                    {uniNews.length === 0 ? (
+                                        <div className="empty-state">
+                                            <p>لا توجد إعلانات حالياً.</p>
+                                        </div>
+                                    ) : (
+                                        uniNews.map(post => (
+                                            <div key={post.id} className="news-card slide-in-right" style={{ background: 'var(--bg-primary)', padding: '18px', borderRadius: '16px', marginBottom: '18px', border: '1px solid var(--bg-tertiary)', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                                                <div className="news-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                                            <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '6px', background: post.post_type === 'announcement' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)', color: post.post_type === 'announcement' ? '#ef4444' : '#10b981', fontWeight: '800', textTransform: 'uppercase' }}>
+                                                                {post.post_type === 'announcement' ? 'إعلان رسمي' : 'خبر'}
+                                                            </span>
+                                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>• {new Date(post.created_at).toLocaleDateString('ar-EG')}</span>
+                                                        </div>
+                                                        <h3 style={{ margin: '4px 0', fontSize: '1.2rem', fontWeight: '800', color: 'var(--text-primary)' }}>{post.title}</h3>
+                                                    </div>
+                                                    {isAdminOrOwner && (
+                                                        <button
+                                                            onClick={() => handleDeletePost(post.id)}
+                                                            style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: '5px', transition: 'color 0.2s' }}
+                                                            onMouseOver={e => e.currentTarget.style.color = '#ef4444'}
+                                                            onMouseOut={e => e.currentTarget.style.color = '#9ca3af'}
+                                                        >
+                                                            <TrashIcon />
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                <p style={{ fontSize: '1rem', lineHeight: 1.6, color: 'var(--text-secondary)', marginBottom: '12px' }}>{post.content}</p>
+
+                                                {post.image_url && (
+                                                    <div style={{ borderRadius: '12px', overflow: 'hidden', marginBottom: '12px' }}>
+                                                        <img src={getImageUrl(post.image_url)} style={{ width: '100%', maxHeight: '350px', objectFit: 'cover' }} />
+                                                    </div>
+                                                )}
+
+                                                {post.external_link && (
+                                                    <a href={post.external_link.startsWith('http') ? post.external_link : `https://${post.external_link}`} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', marginBottom: '15px', color: '#3b82f6', fontSize: '0.9rem', fontWeight: 'bold', textDecoration: 'none', background: 'rgba(59, 130, 246, 0.05)', padding: '6px 12px', borderRadius: '8px' }}>
+                                                        🔗 رابط المعلومات
+                                                    </a>
+                                                )}
+
+                                                <div className="news-card-actions" style={{ display: 'flex', gap: '24px', marginTop: '12px', borderTop: '1px solid var(--bg-tertiary)', paddingTop: '15px' }}>
+                                                    <button
+                                                        onClick={() => handleLikePost(post.id)}
+                                                        style={{ background: 'none', border: 'none', color: post.is_liked ? '#ef4444' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.95rem', fontWeight: '600', transition: 'all 0.2s' }}
+                                                    >
+                                                        <HeartIcon filled={post.is_liked} />
+                                                        <span>{post.likes_count || 0}</span>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            if (activeCommentPost === post.id) setActiveCommentPost(null);
+                                                            else { setActiveCommentPost(post.id); loadComments(post.id); }
+                                                        }}
+                                                        style={{ background: 'none', border: 'none', color: activeCommentPost === post.id ? '#3b82f6' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.95rem', fontWeight: '600', transition: 'all 0.2s' }}
+                                                    >
+                                                        <MessageIcon />
+                                                        <span>{post.comments_count || 0}</span>
+                                                    </button>
+                                                </div>
+
+                                                {activeCommentPost === post.id && (
+                                                    <div className="comments-section" style={{ marginTop: '15px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '14px', border: '1px solid var(--bg-tertiary)' }}>
+                                                        <div className="comments-list" style={{ maxHeight: '250px', overflowY: 'auto', marginBottom: '12px' }}>
+                                                            {(comments[post.id] || []).length === 0 ? (
+                                                                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', padding: '10px' }}>لا توجد تعليقات بعد. كن أول من يعلق!</p>
+                                                            ) : (
+                                                                comments[post.id].map(c => (
+                                                                    <div key={c.id} style={{ display: 'flex', gap: '10px', marginBottom: '12px', animation: 'fadeIn 0.3s ease' }}>
+                                                                        <img src={getImageUrl(c.profile_picture)} style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--bg-tertiary)' }} />
+                                                                        <div style={{ background: 'var(--bg-tertiary)', padding: '8px 14px', borderRadius: '16px', flex: 1, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                                                                            <div style={{ fontWeight: '800', fontSize: '0.8rem', color: 'var(--text-primary)', marginBottom: '2px' }}>{c.username}</div>
+                                                                            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>{c.content}</div>
+                                                                        </div>
+                                                                    </div>
+                                                                ))
+                                                            )}
+                                                        </div>
+                                                        <form onSubmit={(e) => handleAddComment(e, post.id)} style={{ display: 'flex', gap: '10px' }}>
+                                                            <input
+                                                                className="input"
+                                                                placeholder="أضف تعليقاً..."
+                                                                style={{ flex: 1, fontSize: '0.9rem', padding: '10px 15px', borderRadius: '12px', background: 'var(--bg-primary)', border: '1px solid var(--bg-tertiary)' }}
+                                                                value={newComment}
+                                                                onChange={e => setNewComment(e.target.value)}
+                                                            />
+                                                            <button type="submit" className="btn-small is-primary" style={{ borderRadius: '12px' }}>نشر</button>
+                                                        </form>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* {activeTab === 'tour' && (
                         <div className="uni-tour-section slide-in-right">
                             ...
                         </div>
                     )} */}
-                </div>
+                    </div>
                 </div>
 
             </div>
@@ -1097,9 +1097,9 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                 />
             )}
             {selectedPanorama && (
-                <PanoramaViewer 
-                    imageSrc={getImageUrl(selectedPanorama.equirect)} 
-                    onClose={() => setSelectedPanorama(null)} 
+                <PanoramaViewer
+                    imageSrc={getImageUrl(selectedPanorama.equirect)}
+                    onClose={() => setSelectedPanorama(null)}
                 />
             )}
         </div>
