@@ -60,6 +60,8 @@ const PalNovaaLab = ({ onClose }) => {
     }
 
     const mapRef = useRef(null);
+    const clickCountRef = useRef(0);
+    const clickTimerRef = useRef(null);
 
     const mapStyle = useMemo(() => ({
         version: 8,
@@ -255,6 +257,52 @@ const PalNovaaLab = ({ onClose }) => {
         setEditingLayerId(null);
     };
 
+    const handleExtractFeature = (feature) => {
+        try {
+            const featureJson = feature.toJSON ? feature.toJSON() : feature;
+            const newLayerId = `ext-${Date.now()}`;
+            
+            const featureName = featureJson.properties?.name || 
+                                featureJson.properties?.Name || 
+                                featureJson.properties?.label || 
+                                featureJson.properties?.OBJECTID || 
+                                'معلم مستخرج';
+
+            const newLayer = {
+                id: newLayerId,
+                name: `طبقة مستقلة: ${featureName}`,
+                data: {
+                    type: 'FeatureCollection',
+                    features: [{
+                        ...featureJson,
+                        properties: { ...featureJson.properties, extracted_at: new Date().toISOString() }
+                    }]
+                },
+                color: '#fbab15',
+                isVisible: true
+            };
+
+            setGeoLayers(prev => [...prev, newLayer]);
+
+            setLayerStyles(prev => ({
+                ...prev,
+                [newLayerId]: {
+                    color: '#fbab15',
+                    outlineColor: '#ffffff',
+                    outlineWidth: 3,
+                    shape: 'circle',
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }
+            }));
+
+            // تأثير بصري بسيط (تنبيه)
+            alert(`✅ تم استخراج "${featureName}" بنجاح في طبقة جديدة مستقلة!`);
+        } catch (err) {
+            console.error("Extraction error:", err);
+        }
+    };
+
     const handleMapClick = (e) => {
         if (drawingMode) {
             const coord = [e.lngLat.lng, e.lngLat.lat];
@@ -271,7 +319,6 @@ const PalNovaaLab = ({ onClose }) => {
                     color: defaultColor
                 }]);
 
-                // Initialize default style
                 setLayerStyles(prev => ({
                     ...prev,
                     [newLayerId]: {
@@ -298,10 +345,16 @@ const PalNovaaLab = ({ onClose }) => {
             return;
         }
 
-        // Close style popup if open
+        // --- نظام تعقب الضغطات المتعددة ---
+        clickCountRef.current += 1;
+        if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+        
+        clickTimerRef.current = setTimeout(() => {
+            clickCountRef.current = 0;
+        }, 450); // نافذة زمنية للضغط المتتالي
+
         if (stylePopup) setStylePopup(null);
 
-        // If not drawing, check for feature clicks using a BBox for better click tolerance
         const map = mapRef.current?.getMap();
         if (map) {
             try {
@@ -310,10 +363,7 @@ const PalNovaaLab = ({ onClose }) => {
                     [e.point.x + 5, e.point.y + 5]
                 ];
 
-                // Get all features in BBox without specifying layers to avoid exceptions from non-existent layers
                 const features = map.queryRenderedFeatures(bbox);
-
-                // Filter only our app's specific layer prefixes
                 const myFeatures = features.filter(f =>
                     f.layer.id.startsWith('poly-') ||
                     f.layer.id.startsWith('line-') ||
@@ -323,16 +373,23 @@ const PalNovaaLab = ({ onClose }) => {
 
                 if (myFeatures && myFeatures.length > 0) {
                     const clickedFeature = myFeatures[0];
+                    
+                    // الحالة 1: الضغطة الثالثة (الاستخراج)
+                    if (clickCountRef.current === 3) {
+                        handleExtractFeature(clickedFeature);
+                        clickCountRef.current = 0;
+                        return; // الخروج فوراً
+                    }
+
+                    // الحالة 2: الضغطة الأولى أو الثانية (عرض البيانات)
                     setSelectedFeatureInfo({
                         properties: clickedFeature.properties || {},
                         longitude: e.lngLat.lng,
                         latitude: e.lngLat.lat
                     });
 
-                    // HIGHLIGHT FEATURE: Set the clicked feature for the highlight layer
                     setHighlightFeature(clickedFeature.toJSON());
 
-                    // Auto-open attribute table for the clicked layer
                     const layerId = clickedFeature.layer.id;
                     let originalLayerId = null;
                     if (layerId.startsWith('poly-')) originalLayerId = layerId.replace('poly-', '');
