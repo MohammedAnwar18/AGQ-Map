@@ -255,6 +255,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     const [newProduct, setNewProduct] = useState({ name: '', price: '', description: '', image: null, category: '' });
     const [productImages, setProductImages] = useState([]);
     const [selectedProductCategory, setSelectedProductCategory] = useState('الكل');
+    const [selectedVanillaMainCategory, setSelectedVanillaMainCategory] = useState('مشروبات');
 
     // Info Editing
     const [isUpdatingCover, setIsUpdatingCover] = useState(false);
@@ -1536,9 +1537,9 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                         </label>
                                                         <input className="input" type="text" value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} required style={{ width: '100%' }} placeholder={shopData.category === 'مكتب تاكسي' ? 'مثال: توصيلة للمطار' : ''} />
                                                     </div>
-                                                    {(['سوبر ماركت', 'سوبرماركت', 'Supermarket', 'supermarket'].includes(shopData.category)) && (
+                                                    {(['سوبر ماركت', 'سوبرماركت', 'Supermarket', 'supermarket'].includes(shopData.category) || isVanillaDesign) && (
                                                         <div style={{ flex: 1 }}>
-                                                            <label style={{ display: 'block', marginBottom: 5 }}>القسم</label>
+                                                            <label style={{ display: 'block', marginBottom: 5 }}>القسم (الرئيسي)</label>
                                                             <select
                                                                 className="input"
                                                                 value={newProduct.category}
@@ -1546,9 +1547,10 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                                 style={{ width: '100%', padding: '8px' }}
                                                             >
                                                                 <option value="">اختر القسم...</option>
-                                                                {SUPERMARKET_CATEGORIES.filter(c => c !== 'الكل').map(c => (
-                                                                    <option key={c} value={c}>{c}</option>
-                                                                ))}
+                                                                {isVanillaDesign 
+                                                                    ? ['طعام', 'مشروبات', 'حلويات', 'Zero Sugar', 'جديد'].map(c => <option key={c} value={c}>{c}</option>)
+                                                                    : SUPERMARKET_CATEGORIES.filter(c => c !== 'الكل').map(c => <option key={c} value={c}>{c}</option>)
+                                                                }
                                                             </select>
                                                         </div>
                                                     )}
@@ -1649,11 +1651,22 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                     {isVanillaDesign && (
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '40px', marginTop: '30px' }}>
                                             <div style={{ display: 'flex', gap: '30px', fontWeight: 'bold', marginBottom: '25px', color: 'var(--text-primary)', fontSize: '1.1rem' }}>
-                                                <span style={{ cursor: 'pointer' }}>طعام</span>
-                                                <span style={{ cursor: 'pointer', borderBottom: '2px solid var(--text-primary)', paddingBottom: '4px' }}>مشروبات</span>
-                                                <span style={{ cursor: 'pointer' }}>حلويات</span>
-                                                <span style={{ cursor: 'pointer', color: '#10b981' }}>Zero Sugar</span>
-                                                <span style={{ cursor: 'pointer', color: '#ef4444' }}>جديد</span>
+                                                {['طعام', 'مشروبات', 'حلويات', 'Zero Sugar', 'جديد'].map(cat => (
+                                                    <span 
+                                                        key={cat}
+                                                        onClick={() => setSelectedVanillaMainCategory(cat)}
+                                                        style={{ 
+                                                            cursor: 'pointer', 
+                                                            borderBottom: selectedVanillaMainCategory === cat ? '2px solid var(--text-primary)' : 'none', 
+                                                            paddingBottom: '4px',
+                                                            color: cat === 'Zero Sugar' && selectedVanillaMainCategory !== cat ? '#10b981' : 
+                                                                   cat === 'جديد' && selectedVanillaMainCategory !== cat ? '#ef4444' : 
+                                                                   selectedVanillaMainCategory === cat ? 'var(--text-primary)' : 'var(--text-muted)'
+                                                        }}
+                                                    >
+                                                        {cat}
+                                                    </span>
+                                                ))}
                                             </div>
 
                                             <div style={{ display: 'flex', gap: '25px', color: 'var(--text-muted)', fontSize: '0.95rem', overflowX: 'auto', maxWidth: '100%', paddingBottom: '10px', scrollbarWidth: 'none' }}>
@@ -1762,6 +1775,10 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                 const isOnSale = p.old_price && parseFloat(p.old_price) > parseFloat(p.price);
 
                                                 if (['سوبر ماركت', 'سوبرماركت', 'Supermarket', 'supermarket'].includes(shopData.category) && !matchesCategory) return false;
+                                                
+                                                // Vanilla Filtering
+                                                if (isVanillaDesign && p.category && p.category !== selectedVanillaMainCategory) return false;
+
                                                 return matchesSearch;
                                             })
                                             .length === 0 ? <p style={{ color: 'var(--text-muted)', gridColumn: '1/-1', textAlign: 'center', padding: '20px' }}>
@@ -1780,6 +1797,10 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                     const isOnSale = p.old_price && parseFloat(p.old_price) > parseFloat(p.price);
 
                                                     if (['سوبر ماركت', 'سوبرماركت', 'Supermarket', 'supermarket'].includes(shopData.category) && !matchesCategory) return false;
+                                                    
+                                                    // Vanilla Filtering
+                                                    if (isVanillaDesign && p.category && p.category !== selectedVanillaMainCategory) return false;
+
                                                     return matchesSearch;
                                                 })
                                                 .map(product => {
