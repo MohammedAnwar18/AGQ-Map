@@ -322,9 +322,9 @@
     height: 65px;
     padding-bottom: 5px;
     box-sizing: border-box;
-    background: var(--glass-bg) !important;
-    backdrop-filter: blur(var(--blur-std)) saturate(200%);
-    -webkit-backdrop-filter: blur(var(--blur-std)) saturate(200%);
+    background: rgba(15, 23, 42, 0.98) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     border: none !important;
     border-top: 1px solid var(--glass-border) !important;
     border-radius: 0;
@@ -334,7 +334,7 @@
     padding-left: 0;
     padding-right: 0;
     z-index: 2200;
-    box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.3), 0 80px 0 0 rgba(15, 23, 42, 0.98);
 }
 
 .bottom-nav::before {

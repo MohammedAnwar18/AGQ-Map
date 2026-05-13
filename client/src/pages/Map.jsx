@@ -1039,6 +1039,9 @@ const MapComponent = () => {
         }
     }, [userLocation, isTracking]);
 
+    const [isInitialDataLoaded, setIsInitialDataLoaded] = useState(false);
+
+
     // Birzeit University Geofencing Notification
     const hasWelcomedBirzeit = useRef(false);
     useEffect(() => {
@@ -1065,10 +1068,13 @@ const MapComponent = () => {
             }
         };
         fetchPublicMapData();
+        // Set data loaded if not authenticated (private fetch won't run)
+        if (!user) setIsInitialDataLoaded(true);
+        
         // Refresh public data every 30 seconds
         const interval = setInterval(fetchPublicMapData, 30000);
         return () => clearInterval(interval);
-    }, []);
+    }, [user]);
 
     // Private User Data (Friends, Managed Shops, Following) - Authenticated Only
     useEffect(() => {
@@ -1095,7 +1101,11 @@ const MapComponent = () => {
                     setManagedShopsMap(managedShopsData.shops);
                     setHasManagedShops(managedShopsData.shops.length > 0);
                 }
-            } catch (e) { console.error("Error in fetchPrivateData:", e); }
+                setIsInitialDataLoaded(true);
+            } catch (e) { 
+                console.error("Error in fetchPrivateData:", e); 
+                setIsInitialDataLoaded(true);
+            }
         };
 
         fetchPrivateData();
@@ -1202,7 +1212,7 @@ const MapComponent = () => {
     // Refresh posts when mode changes or interval
     // (Logic included in main fetch effect above via dependency)
 
-    if (!user) return <SplashLoading />;
+    if (!user || !isInitialDataLoaded) return <SplashLoading />;
 
     return (
         <div className="map-page" style={{ position: 'relative', height: '100dvh', width: '100vw', overflow: 'hidden' }}>
