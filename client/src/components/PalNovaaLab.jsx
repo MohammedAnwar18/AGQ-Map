@@ -647,7 +647,8 @@ const PalNovaaLab = ({ onClose }) => {
                             name: file.name.substring(0, 19),
                             dataUrl: response.data.url,
                             data: geojsonData,
-                            color: defaultColor
+                            color: defaultColor,
+                            isVisible: true
                         };
                         setGeoLayers(prev => [...prev, newLayer]);
 
@@ -1939,7 +1940,7 @@ const PalNovaaLab = ({ onClose }) => {
                         >
                             <NavigationControl position="bottom-right" />
 
-                            {geoLayers.map(layer => {
+                            {geoLayers.filter(l => l.isVisible !== false).map(layer => {
                                 const style = layerStyles[layer.id] || {
                                     color: layer.color || '#F5A623',
                                     outlineColor: '#ffffff',
@@ -2401,10 +2402,28 @@ const PalNovaaLab = ({ onClose }) => {
                                                         </div>
                                                     </div>
                                                     <div className="layer-actions">
+                                                        <button 
+                                                            className={`visibility-btn ${layer.isVisible !== false ? 'active' : ''}`} 
+                                                            onClick={() => {
+                                                                setGeoLayers(prev => prev.map(l => l.id === layer.id ? { ...l, isVisible: !l.isVisible } : l));
+                                                            }}
+                                                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: layer.isVisible !== false ? 'var(--primary)' : '#666', display: 'flex', alignItems: 'center', padding: '4px' }}
+                                                            title={layer.isVisible !== false ? "إخفاء من الخريطة" : "إظهار على الخريطة"}
+                                                        >
+                                                            {layer.isVisible !== false ? (
+                                                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                                                            ) : (
+                                                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
+                                                            )}
+                                                        </button>
                                                         <button className="edit" onClick={() => { setEditingLayerId(layer.id); setTempLayerName(layer.name); }} title="إعادة تسمية">
                                                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                                                         </button>
-                                                        <button onClick={() => { setActiveTableLayerId(layer.id); setShowBottomTable(true); }} title="عرض البيانات الوصفية">
+                                                        <button onClick={() => { 
+                                                            setActiveTableLayerId(layer.id); 
+                                                            setShowBottomTable(true);
+                                                            setGeoLayers(prev => prev.map(l => l.id === layer.id ? { ...l, isVisible: true } : l));
+                                                        }} title="عرض البيانات الوصفية">
                                                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
                                                         </button>
                                                         <button className="delete" onClick={() => { setGeoLayers(prev => prev.filter(l => l.id !== layer.id)); setLayerStyles(prev => { const n = { ...prev }; delete n[layer.id]; return n; }); if (activeTableLayerId === layer.id) { setActiveTableLayerId(null); setShowBottomTable(false); } }} title="حذف الطبقة">
