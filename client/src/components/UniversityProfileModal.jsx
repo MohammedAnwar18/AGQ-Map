@@ -415,6 +415,25 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
         }
     };
 
+    const handleDeleteUniversity = async () => {
+        const confirmed = window.confirm(
+            `⚠️ تحذير: هل أنت متأكد من حذف جامعة "${uniData.name}" بشكل نهائي؟\n\nسيتم حذف جميع البيانات المرتبطة بها (المرافق، الأخبار، المتابعون) ولا يمكن التراجع عن هذا الإجراء.`
+        );
+        if (!confirmed) return;
+
+        const doubleConfirm = window.confirm(`تأكيد نهائي: حذف "${uniData.name}" نهائياً؟`);
+        if (!doubleConfirm) return;
+
+        try {
+            await shopService.deleteShop(uniData.id);
+            alert('✅ تم حذف الجامعة بنجاح.');
+            if (onFollowChange) onFollowChange();
+            onClose();
+        } catch (e) {
+            alert(e.response?.data?.error || 'حدث خطأ أثناء الحذف. يرجى المحاولة مرة أخرى.');
+        }
+    };
+
     // Build categories derived from data + predefined
     const categories = Object.keys(facilities);
 
@@ -626,10 +645,36 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                                     {uniData.followers_count || 0} متابع
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '10px' }}>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                                 <button className={`uni-follow-btn ${uniData.is_followed ? 'is-unfollow' : ''}`} onClick={handleFollow}>
                                     {uniData.is_followed ? 'إلغاء المتابعة' : 'متابعة'}
                                 </button>
+                                {currentUser?.role === 'admin' && (
+                                    <button
+                                        onClick={handleDeleteUniversity}
+                                        title="حذف الجامعة نهائياً"
+                                        style={{
+                                            background: 'rgba(239, 68, 68, 0.15)',
+                                            border: '1px solid rgba(239, 68, 68, 0.4)',
+                                            color: '#ef4444',
+                                            cursor: 'pointer',
+                                            padding: '8px 14px',
+                                            borderRadius: '10px',
+                                            fontSize: '0.8rem',
+                                            fontWeight: '700',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px',
+                                            transition: 'all 0.2s',
+                                            fontFamily: 'inherit'
+                                        }}
+                                        onMouseOver={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.3)'; e.currentTarget.style.borderColor = '#ef4444'; }}
+                                        onMouseOut={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.15)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.4)'; }}
+                                    >
+                                        <TrashIcon />
+                                        حذف الجامعة
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
