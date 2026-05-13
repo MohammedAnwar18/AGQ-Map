@@ -254,7 +254,8 @@ const PalNovaaLab = ({ onClose }) => {
     };
 
     const handleRenameLayer = (id, newName) => {
-        setGeoLayers(prev => prev.map(l => l.id === id ? { ...l, name: newName } : l));
+        const finalName = newName.substring(0, 19);
+        setGeoLayers(prev => prev.map(l => l.id === id ? { ...l, name: finalName } : l));
         setEditingLayerId(null);
     };
 
@@ -263,15 +264,15 @@ const PalNovaaLab = ({ onClose }) => {
             const featureJson = feature.toJSON ? feature.toJSON() : feature;
             const newLayerId = `ext-${Date.now()}`;
             
-            const featureName = featureJson.properties?.name || 
-                                featureJson.properties?.Name || 
-                                featureJson.properties?.label || 
-                                featureJson.properties?.OBJECTID || 
-                                'معلم مستخرج';
+            const featureName = (featureJson.properties?.name || 
+                                 featureJson.properties?.Name || 
+                                 featureJson.properties?.label || 
+                                 featureJson.properties?.OBJECTID || 
+                                 'معلم مستخرج').substring(0, 19);
 
             const newLayer = {
                 id: newLayerId,
-                name: `طبقة مستقلة: ${featureName}`,
+                name: `مستخرج: ${featureName}`.substring(0, 19),
                 data: {
                     type: 'FeatureCollection',
                     features: [{
@@ -311,7 +312,7 @@ const PalNovaaLab = ({ onClose }) => {
             const newLayerId = `bulk-ext-${Date.now()}`;
             const newLayer = {
                 id: newLayerId,
-                name: `مجموعة مستخرجة (${selectedFeatures.length} معلم)`,
+                name: `مجموعة (${selectedFeatures.length})`.substring(0, 19),
                 data: {
                     type: 'FeatureCollection',
                     features: selectedFeatures.map(f => ({
@@ -573,7 +574,7 @@ const PalNovaaLab = ({ onClose }) => {
                         const defaultColor = ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899'][geoLayers.length % 5];
                         const newLayer = {
                             id: newLayerId,
-                            name: file.name,
+                            name: file.name.substring(0, 19),
                             dataUrl: response.data.url,
                             data: response.data.geojson || json, // Use server-processed if available
                             color: defaultColor
@@ -655,7 +656,7 @@ const PalNovaaLab = ({ onClose }) => {
                 const defaultColor = ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899'][geoLayers.length % 5];
                 setGeoLayers(prev => [...prev, {
                     id: newLayerId,
-                    name: response.data.name || 'طبقة مستوردة',
+                    name: (response.data.name || 'طبقة مستوردة').substring(0, 19),
                     dataUrl: response.data.url,
                     data: response.data.geojson, // تخزين البيانات محلياً لمنع الأعطال
                     color: defaultColor
@@ -2111,7 +2112,7 @@ const PalNovaaLab = ({ onClose }) => {
                                                             {editingLayerId === layer.id ? (
                                                                 <input
                                                                     autoFocus
-                                                                    className="rename-input"
+                                                                    className="rename-input" maxLength={19}
                                                                     value={tempLayerName}
                                                                     onChange={(e) => setTempLayerName(e.target.value)}
                                                                     onBlur={() => handleRenameLayer(layer.id, tempLayerName)}
