@@ -739,9 +739,43 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
 
     if (isCoffeeLabApp) {
         return (
-            <div className="modal-overlay" onClick={onClose} style={{ padding: 0, margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div className="modal-container" style={{ width: '100%', height: '100%', maxWidth: 'none', borderRadius: 0, padding: 0, margin: 0, display: 'flex', flexDirection: 'column', background: '#14110F', position: 'relative' }} onClick={e => e.stopPropagation()}>
-                    <button onClick={onClose} style={{ color: '#fff', zIndex: 9999, position: 'absolute', top: 15, right: 15, background: 'rgba(0,0,0,0.5)', borderRadius: '50%', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
+            <div className="modal-overlay" onClick={onClose} style={{ padding: 0, margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000' }}>
+                <div className="modal-container" style={{ 
+                    width: '100%', 
+                    height: '100dvh', 
+                    maxWidth: 'none', 
+                    borderRadius: 0, 
+                    padding: 0, 
+                    margin: 0, 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    background: '#14110F', 
+                    position: 'relative',
+                    overflow: 'hidden'
+                }} onClick={e => e.stopPropagation()}>
+                    {/* Premium Close Button with Safe Area Support */}
+                    <button 
+                        onClick={onClose} 
+                        style={{ 
+                            color: '#fff', 
+                            zIndex: 10000, 
+                            position: 'absolute', 
+                            top: 'calc(15px + env(safe-area-inset-top, 0px))', 
+                            right: '15px', 
+                            background: 'rgba(0,0,0,0.6)', 
+                            backdropFilter: 'blur(10px)',
+                            borderRadius: '50%', 
+                            width: '40px', 
+                            height: '40px', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            border: '1px solid rgba(255,255,255,0.2)', 
+                            cursor: 'pointer', 
+                            fontSize: '1.4rem',
+                            transition: 'all 0.2s'
+                        }}
+                    >✕</button>
                     <iframe
                         src="/CoffeLab/index.html"
                         style={{ width: '100%', height: '100%', border: 'none', flex: 1 }}
