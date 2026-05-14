@@ -742,8 +742,8 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
             <div className="modal-overlay" onClick={onClose} style={{ padding: 0, margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <div className="modal-container" style={{ width: '100%', height: '100%', maxWidth: 'none', borderRadius: 0, padding: 0, margin: 0, display: 'flex', flexDirection: 'column', background: '#14110F', position: 'relative' }} onClick={e => e.stopPropagation()}>
                     <button onClick={onClose} style={{ color: '#fff', zIndex: 9999, position: 'absolute', top: 15, right: 15, background: 'rgba(0,0,0,0.5)', borderRadius: '50%', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
-                    <iframe 
-                        src="/CoffeLab/index.html" 
+                    <iframe
+                        src="/CoffeLab/index.html"
                         style={{ width: '100%', height: '100%', border: 'none', flex: 1 }}
                         title="Coffee Lab App"
                     />
@@ -1841,7 +1841,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                     )}
 
                                     {isLabDesign && (
-                                         <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', marginBottom: 14, direction: 'rtl' }}>
+                                        <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', marginBottom: 14, direction: 'rtl' }}>
                                             <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', textTransform: 'uppercase', color: '#8A857C', paddingTop: 4 }}>03</div>
                                             <div>
                                                 <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', textTransform: 'uppercase', color: '#7B4A2A', marginBottom: 4 }}>SIGNATURE</div>
@@ -1995,7 +1995,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                                     {product.image_url ? (
                                                                         <img src={getImageUrl(product.image_url)} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                                                     ) : (
-                                                                        <span style={{fontSize: '3rem'}}>🧪</span>
+                                                                        <span style={{ fontSize: '3rem' }}>🧪</span>
                                                                     )}
                                                                 </div>
 
@@ -2009,7 +2009,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                                         <b style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '22px', fontWeight: '700', color: '#2A2A2C' }}>{product.price}</b>
                                                                     </div>
                                                                     <button style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#2A2A2C', color: '#F5F1EA', border: 'none', display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
-                                                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                                                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
                                                                     </button>
                                                                 </div>
                                                                 {canEditShop && (
@@ -2935,53 +2935,53 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                         )}
 
 
-                    {/* Image Cropper Modal for Profile/Cover updates */}
-                    {cropState.isOpen && (
-                        <ImageCropperModal
-                            imageFile={cropState.file}
-                            aspect={cropState.aspect}
-                            onCancel={() => setCropState({ isOpen: false, file: null, type: null, aspect: 1 })}
-                            onCropDone={(croppedFile) => {
-                                handleImageUpload(cropState.type, croppedFile);
-                                setCropState({ isOpen: false, file: null, type: null, aspect: 1 });
-                            }}
-                        />
-                    )}
+                        {/* Image Cropper Modal for Profile/Cover updates */}
+                        {cropState.isOpen && (
+                            <ImageCropperModal
+                                imageFile={cropState.file}
+                                aspect={cropState.aspect}
+                                onCancel={() => setCropState({ isOpen: false, file: null, type: null, aspect: 1 })}
+                                onCropDone={(croppedFile) => {
+                                    handleImageUpload(cropState.type, croppedFile);
+                                    setCropState({ isOpen: false, file: null, type: null, aspect: 1 });
+                                }}
+                            />
+                        )}
 
-                    {selectedPost && (
-                        <PostDetailModal
-                            post={selectedPost}
-                            onClose={() => setSelectedPost(null)}
-                            onUpdate={(updatedPost) => {
-                                setPosts(posts.map(p => p.id === updatedPost.id ? updatedPost : p));
-                                setSelectedPost(updatedPost);
-                            }}
-                            onDelete={(postId) => {
-                                setPosts(posts.filter(p => p.id !== postId));
-                                setSelectedPost(null);
-                            }}
-                        />
-                    )}
+                        {selectedPost && (
+                            <PostDetailModal
+                                post={selectedPost}
+                                onClose={() => setSelectedPost(null)}
+                                onUpdate={(updatedPost) => {
+                                    setPosts(posts.map(p => p.id === updatedPost.id ? updatedPost : p));
+                                    setSelectedPost(updatedPost);
+                                }}
+                                onDelete={(postId) => {
+                                    setPosts(posts.filter(p => p.id !== postId));
+                                    setSelectedPost(null);
+                                }}
+                            />
+                        )}
 
-                    {showCart && (
-                        <CartModal
-                            onClose={() => setShowCart(false)}
-                            shopId={shopData.id}
-                            shopName={shopData.name}
-                        />
-                    )}
+                        {showCart && (
+                            <CartModal
+                                onClose={() => setShowCart(false)}
+                                shopId={shopData.id}
+                                shopName={shopData.name}
+                            />
+                        )}
 
-                    {showDesignStudio && (
-                        <PalNovaaMarketDesign
-                            onClose={() => setShowDesignStudio(false)}
-                            initialDesign={{
-                                ...design,
-                                shopName: shopData.name,
-                                category: shopData.category
-                            }}
-                            onSelectShop={handleSaveDesign}
-                        />
-                    )}
+                        {showDesignStudio && (
+                            <PalNovaaMarketDesign
+                                onClose={() => setShowDesignStudio(false)}
+                                initialDesign={{
+                                    ...design,
+                                    shopName: shopData.name,
+                                    category: shopData.category
+                                }}
+                                onSelectShop={handleSaveDesign}
+                            />
+                        )}
                     </div>
                 </div>
             </div>

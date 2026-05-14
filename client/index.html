@@ -23,7 +23,6 @@
   <meta name="application-name" content="PalNovaa" />
   <meta name="msapplication-navbutton-color" content="#0f172a" />
   <meta name="apple-touch-fullscreen" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   
   <script>
     // منع ميزة "السحب للتحديث" (Pull-to-refresh) التي تخرب تجربة التطبيق
@@ -60,9 +59,13 @@
     /* ============ Splash Screen ============ */
     #splash-screen {
       position: fixed;
-      inset: 0;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
       width: 100vw;
       height: 100vh;
+      height: 100dvh;
       overflow: hidden;
       background:
         radial-gradient(120% 80% at 50% 20%, #1a2554 0%, transparent 60%),
@@ -339,6 +342,9 @@
     body.splash-active {
       overflow: hidden;
       background: var(--bg-0);
+      margin: 0;
+      height: 100vh;
+      height: 100dvh;
     }
   </style>
 

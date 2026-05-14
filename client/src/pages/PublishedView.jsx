@@ -142,17 +142,17 @@ const PublishedView = () => {
 
     if (loading) {
         return (
-            <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#050B16', color: 'white' }}>
+            <div style={{ height: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#050B16', color: 'white' }}>
                 <p>جاري التحميل...</p>
             </div>
         );
     }
 
-    if (error) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>{error}</div>;
+    if (error) return <div style={{ height: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>{error}</div>;
 
     return (
         <div className={`published-app-container layout-${selections.layout}`} style={{ 
-            height: '100vh', width: '100vw', overflow: 'hidden', position: 'relative',
+            height: '100dvh', width: '100vw', overflow: 'hidden', position: 'relative',
             display: 'flex', flexDirection: selections.layout === 'stacked' ? 'column' : 'row',
             fontFamily: 'var(--font-main)', color: 'white',
             backgroundColor: 'var(--bg-deep)', ...dynamicStyles
