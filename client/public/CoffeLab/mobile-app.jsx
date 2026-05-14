@@ -23,7 +23,6 @@ function MobileApp() {
 
   const [tab, setTab] = useState('home');
   const [cart, setCart] = useState([]);
-  const [cartOpen, setCartOpen] = useState(false);
   const [activeCat, setActiveCat] = useState(null);
 
   const addToCart = (item) => {
@@ -39,18 +38,22 @@ function MobileApp() {
   const cartTotal = cart.reduce((s,x)=>s + x.price*x.qty, 0);
 
   const screenStyle = {
-    '--bg': palette.bg, '--ink': palette.ink, '--accent': palette.accent,
-    '--soft': palette.soft, '--muted': palette.muted,
+    '--bg': palette.bg, 
+    '--ink': palette.ink, 
+    '--accent': palette.accent,
+    '--soft': palette.soft, 
+    '--muted': palette.muted,
   };
 
   return (
-    <div className="m-stage" style={{ padding: 0 }}>
-      <div className="m-app" style={{ ...screenStyle, width: '100%', height: '100%' }} dir="rtl">
+    <div className="m-app-root" style={screenStyle} dir="rtl">
+      <div className="m-app-container">
         {tab === 'home'    && <HomeScreen onAdd={addToCart} onCat={(c)=>{setActiveCat(c); setTab('menu');}} setTab={setTab} cartCount={cartCount}/>}
         {tab === 'menu'    && <MenuScreen activeCat={activeCat} setActiveCat={setActiveCat} showRings={t.showLabRings} onAdd={addToCart} setTab={setTab} cartCount={cartCount}/>}
         {tab === 'map'     && <MapScreen setTab={setTab} cartCount={cartCount}/>}
         {tab === 'cart'    && <CartScreen cart={cart} updateQty={updateQty} total={cartTotal} setTab={setTab}/>}
         {tab === 'profile' && <ProfileScreen />}
+        
         <TabBar tab={tab} setTab={setTab} cartCount={cartCount} />
       </div>
     </div>
@@ -404,31 +407,26 @@ function ProfileScreen() {
 // ─────────────────────── APP HEADER
 function AppHeader({ title, sub, onBack, onCart, cartCount }) {
   return (
-    <header className="m-app-header">
-      {onBack ? (
-        <button className="m-icon-btn" onClick={onBack} aria-label="رجوع">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="m14 6-6 6 6 6"/></svg>
-        </button>
-      ) : (
-        <div style={{width: 38}}></div>
-      )}
-      <div className="m-app-header-left">
-        {title ? (
-          <>
-            <div className="m-mono m-app-header-sub">{sub}</div>
-            <div className="m-app-header-title">{title}</div>
-          </>
+    <header className="m-app-header" style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '0 20px', height: '60px', background: 'transparent' }}>
+      <div style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'space-between' }}>
+        {onBack ? (
+          <button className="m-icon-btn" onClick={onBack} aria-label="رجوع">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
         ) : (
-          <>
-            <div className="m-mono m-app-header-sub">مساء الخير</div>
-            <div className="m-app-header-title">Coffee Lab</div>
-          </>
+          <div style={{width: 42}}></div>
+        )}
+        
+        {/* Middle space is now empty because title is in parent */}
+        <div style={{ flex: 1 }}></div>
+
+        {onCart && (
+          <button className="m-icon-btn" onClick={onCart} aria-label="السلة" style={{ background: '#2A2A2C', color: '#F5F1EA' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+            {cartCount > 0 && <span className="m-icon-badge" style={{ background: '#7B4A2A' }}>{cartCount}</span>}
+          </button>
         )}
       </div>
-      <button className="m-icon-btn" onClick={onCart} aria-label="السلة">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M4 6h2l2 12h11l2-9H7"/><circle cx="10" cy="21" r="1.4"/><circle cx="18" cy="21" r="1.4"/></svg>
-        {cartCount > 0 && <span className="m-icon-badge">{cartCount}</span>}
-      </button>
     </header>
   );
 }

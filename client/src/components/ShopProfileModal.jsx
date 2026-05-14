@@ -749,36 +749,61 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                     margin: 0, 
                     display: 'flex', 
                     flexDirection: 'column', 
-                    background: '#14110F', 
+                    background: '#F5F1EA', /* Match Coffee Lab BG */
                     position: 'relative',
                     overflow: 'hidden'
                 }} onClick={e => e.stopPropagation()}>
-                    {/* Premium Close Button with Safe Area Support */}
-                    <button 
-                        onClick={onClose} 
-                        style={{ 
-                            color: '#fff', 
-                            zIndex: 10000, 
-                            position: 'absolute', 
-                            top: 'calc(15px + env(safe-area-inset-top, 0px))', 
-                            right: '15px', 
-                            background: 'rgba(0,0,0,0.6)', 
-                            backdropFilter: 'blur(10px)',
-                            borderRadius: '50%', 
-                            width: '40px', 
-                            height: '40px', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'center', 
-                            border: '1px solid rgba(255,255,255,0.2)', 
-                            cursor: 'pointer', 
-                            fontSize: '1.4rem',
-                            transition: 'all 0.2s'
-                        }}
-                    >✕</button>
+                    
+                    {/* Native-style Top Bar for Coffee Lab */}
+                    <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: 'calc(60px + env(safe-area-inset-top, 20px))',
+                        paddingTop: 'env(safe-area-inset-top, 20px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        paddingInline: '20px',
+                        zIndex: 10000,
+                        background: 'rgba(245, 241, 234, 0.8)',
+                        backdropFilter: 'blur(10px)',
+                        borderBottom: '1px solid rgba(0,0,0,0.05)'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ width: '32px', height: '32px', background: '#2A2A2C', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#F5F1EA', fontWeight: 'bold', fontSize: '12px' }}>CL</div>
+                            <span style={{ fontWeight: '800', color: '#2A2A2C', fontSize: '16px' }}>Coffee Lab</span>
+                        </div>
+                        
+                        <button 
+                            onClick={onClose} 
+                            style={{ 
+                                color: '#2A2A2C', 
+                                background: 'rgba(0,0,0,0.05)',
+                                borderRadius: '50%', 
+                                width: '36px', 
+                                height: '36px', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                border: 'none', 
+                                cursor: 'pointer', 
+                                fontSize: '1.2rem',
+                                fontWeight: 'bold'
+                            }}
+                        >✕</button>
+                    </div>
+
                     <iframe
                         src="/CoffeLab/index.html"
-                        style={{ width: '100%', height: '100%', border: 'none', flex: 1 }}
+                        style={{ 
+                            width: '100%', 
+                            height: '100%', 
+                            border: 'none', 
+                            flex: 1,
+                            marginTop: '0' /* The internal app handles its own padding now */
+                        }}
                         title="Coffee Lab App"
                     />
                 </div>
