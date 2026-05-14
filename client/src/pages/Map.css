@@ -319,8 +319,8 @@
     left: 0;
     right: 0;
     width: 100%;
-    height: calc(58px + env(safe-area-inset-bottom, 12px));
-    padding-bottom: env(safe-area-inset-bottom, 12px);
+    height: 60px;
+    padding-bottom: 0;
     box-sizing: border-box;
     background: rgba(15, 23, 42, 0.95) !important;
     backdrop-filter: blur(20px) saturate(180%);
@@ -449,8 +449,8 @@
         left: 0;
         right: 0;
         bottom: 0;
-        height: calc(54px + env(safe-area-inset-bottom, 10px));
-        padding-bottom: env(safe-area-inset-bottom, 10px);
+        height: 56px;
+        padding-bottom: 0;
     }
 
     .nav-item.center-btn {
