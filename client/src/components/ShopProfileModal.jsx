@@ -725,6 +725,18 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
 
     if (!shopData) return null;
 
+    // Prevent flashing old design while loading the full profile (which contains custom_design)
+    if (loading) {
+        return (
+            <div className="modal-overlay" onClick={onClose} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <div style={{ background: 'var(--bg-primary)', padding: '25px 40px', borderRadius: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
+                    <div className="spinner" style={{ borderColor: 'var(--primary)', borderTopColor: 'transparent', width: 40, height: 40, borderWidth: 4 }}></div>
+                    <span style={{ color: 'var(--text-primary)', fontWeight: 'bold', fontSize: '1.1rem' }}>جاري تحميل المتجر...</span>
+                </div>
+            </div>
+        );
+    }
+
     if (isCoffeeLabApp) {
         return (
             <div className="modal-overlay" onClick={onClose} style={{ padding: 0, margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
