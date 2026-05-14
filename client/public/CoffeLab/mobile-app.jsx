@@ -44,47 +44,15 @@ function MobileApp() {
   };
 
   return (
-    <div className="m-stage">
-      <div className="m-stage-bg"></div>
-      <div className="m-stage-meta">
-        <div className="m-stage-meta-row">
-          <CLSeal size={32} dark={true}/>
-          <div>
-            <div className="m-meta-en">COFFEE LAB</div>
-            <div className="m-meta-ar">تجربة تطبيق الهاتف</div>
-          </div>
-        </div>
-        <div className="m-meta-divider"></div>
-        <div className="m-mono m-meta-small">v 2.6 · BUILD 0512 · iOS</div>
+    <div className="m-stage" style={{ padding: 0 }}>
+      <div className="m-app" style={{ ...screenStyle, width: '100%', height: '100%' }} dir="rtl">
+        {tab === 'home'    && <HomeScreen onAdd={addToCart} onCat={(c)=>{setActiveCat(c); setTab('menu');}} setTab={setTab} cartCount={cartCount}/>}
+        {tab === 'menu'    && <MenuScreen activeCat={activeCat} setActiveCat={setActiveCat} showRings={t.showLabRings} onAdd={addToCart} setTab={setTab} cartCount={cartCount}/>}
+        {tab === 'map'     && <MapScreen setTab={setTab} cartCount={cartCount}/>}
+        {tab === 'cart'    && <CartScreen cart={cart} updateQty={updateQty} total={cartTotal} setTab={setTab}/>}
+        {tab === 'profile' && <ProfileScreen />}
+        <TabBar tab={tab} setTab={setTab} cartCount={cartCount} />
       </div>
-
-      <div className="m-device-wrap">
-        <window.IOSDevice width={390} height={844}>
-          <div className="m-app" style={screenStyle} dir="rtl">
-            {tab === 'home'    && <HomeScreen onAdd={addToCart} onCat={(c)=>{setActiveCat(c); setTab('menu');}} setTab={setTab} cartCount={cartCount}/>}
-            {tab === 'menu'    && <MenuScreen activeCat={activeCat} setActiveCat={setActiveCat} showRings={t.showLabRings} onAdd={addToCart} setTab={setTab} cartCount={cartCount}/>}
-            {tab === 'map'     && <MapScreen setTab={setTab} cartCount={cartCount}/>}
-            {tab === 'cart'    && <CartScreen cart={cart} updateQty={updateQty} total={cartTotal} setTab={setTab}/>}
-            {tab === 'profile' && <ProfileScreen />}
-            <TabBar tab={tab} setTab={setTab} cartCount={cartCount} />
-          </div>
-        </window.IOSDevice>
-      </div>
-
-      <window.TweaksPanel title="Tweaks">
-        <window.TweakSection label="اللوحة اللونية">
-          <window.TweakRadio label="اللون" value={t.palette} onChange={(v)=>setT('palette', v)}
-            options={[
-              { value: 'charcoal', label: 'فحمي' },
-              { value: 'espresso', label: 'إسبريسو' },
-              { value: 'matcha',   label: 'ماتشا' },
-              { value: 'cocoa',    label: 'كاكاو' },
-            ]} />
-        </window.TweakSection>
-        <window.TweakSection label="عناصر المختبر">
-          <window.TweakToggle label="حلقات الأيقونات" value={t.showLabRings} onChange={(v)=>setT('showLabRings', v)} />
-        </window.TweakSection>
-      </window.TweaksPanel>
     </div>
   );
 }
