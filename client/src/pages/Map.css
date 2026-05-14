@@ -315,22 +315,24 @@
 /* Bottom Navigation Bar - Native Edge-to-Edge */
 .bottom-nav {
     position: fixed;
-    bottom: calc(15px + env(safe-area-inset-bottom, 0px));
-    left: 15px;
-    right: 15px;
-    height: 64px;
-    background: rgba(15, 23, 42, 0.85) !important;
-    backdrop-filter: blur(25px) saturate(200%);
-    -webkit-backdrop-filter: blur(25px) saturate(200%);
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
-    border-radius: 32px;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: calc(58px + env(safe-area-inset-bottom, 12px));
+    padding-bottom: env(safe-area-inset-bottom, 12px);
+    box-sizing: border-box;
+    background: rgba(15, 23, 42, 0.95) !important;
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: none !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 0;
     display: flex;
     justify-content: space-evenly;
     align-items: center;
-    padding: 0 10px;
     z-index: 2200;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-    transition: all 0.3s ease;
+    box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.3);
 }
 
 .bottom-nav::before {
@@ -444,10 +446,11 @@
 /* Mobile Responsive Overrides */
 @media (max-width: 768px) {
     .bottom-nav {
-        left: 10px;
-        right: 10px;
-        bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-        height: 56px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: calc(54px + env(safe-area-inset-bottom, 10px));
+        padding-bottom: env(safe-area-inset-bottom, 10px);
     }
 
     .nav-item.center-btn {
