@@ -65,6 +65,8 @@ function MobileApp() {
             {tab === 'menu'    && <MenuScreen activeCat={activeCat} setActiveCat={setActiveCat} showRings={t.showLabRings} onAdd={addToCart} setTab={setTab} cartCount={cartCount}/>}
             {tab === 'map'     && <MapScreen setTab={setTab} cartCount={cartCount}/>}
             {tab === 'cart'    && <CartScreen cart={cart} updateQty={updateQty} total={cartTotal} setTab={setTab}/>}
+            {tab === 'profile' && <ProfileScreen />}
+            <TabBar tab={tab} setTab={setTab} cartCount={cartCount} />
           </div>
         </window.IOSDevice>
       </div>

@@ -242,6 +242,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     const isVanillaDesign = design.menu_layout === 'vanilla' || shop.name.includes('فاينلا') || shop.name.includes('فانيلا') || shop.name.includes('فاننيلا') || shop.name.toLowerCase().includes('vanilla');
     const isModernRestaurantDesign = design.menu_layout === 'restaurant_modern';
     const isLabDesign = design.menu_layout === 'lab' || shop.name.toLowerCase().includes('coffee lab') || shop.name.includes('لاب');
+    const isCoffeeLabApp = shop.name.toLowerCase().includes('coffee lab') || shop.name.includes('كوفي لاب') || design.layout === 'coffeelab';
 
     // Search State
     const [productSearchQuery, setProductSearchQuery] = useState('');
@@ -723,6 +724,21 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     // --- Render Helpers ---
 
     if (!shopData) return null;
+
+    if (isCoffeeLabApp) {
+        return (
+            <div className="modal-overlay" onClick={onClose} style={{ padding: 0, margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div className="modal-container" style={{ width: '100%', height: '100%', maxWidth: 'none', borderRadius: 0, padding: 0, margin: 0, display: 'flex', flexDirection: 'column', background: '#14110F', position: 'relative' }} onClick={e => e.stopPropagation()}>
+                    <button onClick={onClose} style={{ color: '#fff', zIndex: 9999, position: 'absolute', top: 15, right: 15, background: 'rgba(0,0,0,0.5)', borderRadius: '50%', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
+                    <iframe 
+                        src="/CoffeLab/index.html" 
+                        style={{ width: '100%', height: '100%', border: 'none', flex: 1 }}
+                        title="Coffee Lab App"
+                    />
+                </div>
+            </div>
+        );
+    }
 
 
     const coverUrl = shopData.cover_picture
