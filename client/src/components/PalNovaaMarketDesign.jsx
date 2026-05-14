@@ -40,6 +40,7 @@ const PalNovaaMarketDesign = ({ onClose, onSelectShop, onSelectUniversity, initi
         { name: 'Olive Branch', tag: 'ترابي · طبيعي', colors: ['#141A35','#4F5E32','#8DA463','#BDC9B8','#EFE8D8'] },
         { name: 'Mediterranean', tag: 'منعش · مائي', colors: ['#0B102A','#3FA7A1','#7FA8C9','#BDC9B8','#F8F4ED'] },
         { name: 'Midnight Gold', tag: 'فاخر · رسمي', colors: ['#06091C','#141A35','#222B55','#E8B547','#F4D183'] },
+        { name: 'Coffee Lab', tag: 'تقني · قهوة المختبر', colors: ['#F5F1EA', '#2A2A2C', '#7B4A2A', '#EAE3D6', '#8A857C'] },
         { name: 'Old Stone', tag: 'حجر القدس', colors: ['#F8F4ED','#EFE8D8','#D4B895','#8B6F47','#3D2817'] },
         { name: 'Sunset Souq', tag: 'دافئ · حيوي', colors: ['#0B102A','#FF6B35','#F7B538','#FFE15D','#FFF8E7'] },
         { name: 'Bouquet', tag: 'بوتيك · أنثوي', colors: ['#1A1A1A','#8B1F33','#E8A0B5','#EFE8D8','#FFFFFF'] },
@@ -50,6 +51,7 @@ const PalNovaaMarketDesign = ({ onClose, onSelectShop, onSelectUniversity, initi
         { display: 'المتجر العتيق', fontFamily: "'Playfair Display',serif", pair: 'Playfair × Cairo', tag: 'راقي · تراثي' },
         { display: 'NOVA / MARKET', fontFamily: "'Space Grotesk',sans-serif", pair: 'Space Grotesk × Tajawal', tag: 'تقني · حديث' },
         { display: 'حِرفة وتُراث', fontFamily: "'Amiri',serif", pair: 'Amiri × Cairo', tag: 'تراثي · ثقيل' },
+        { display: 'LAB / COFFEE', fontFamily: "'Bricolage Grotesque', sans-serif", pair: 'Bricolage × Tajawal', tag: 'تقني · دقيق' },
         { display: 'FRESH STOP', fontFamily: "'Inter',sans-serif", pair: 'Inter × Cairo', tag: 'نظيف · متعدد' },
     ];
 
@@ -67,11 +69,21 @@ const PalNovaaMarketDesign = ({ onClose, onSelectShop, onSelectUniversity, initi
         { icon: '👕', label: 'ملابس', val: 'Clothing' }, { icon: '💊', label: 'صيدلية', val: 'Pharmacy' }, { icon: '🏦', label: 'بنوك', val: 'Bank' },
     ];
 
+
     const layouts = [
-        { id: 'modern', name: 'عصري (يمين)', desc: 'الصورة عائمة على اليمين', styles: { bottom: '-40px', right: '20px' } },
-        { id: 'classic', name: 'كلاسيكي (وسط)', desc: 'الصورة في المنتصف', styles: { bottom: '-40px', left: '50%', transform: 'translateX(-50%)' } },
-        { id: 'minimal', name: 'بسيط (يسار)', desc: 'الصورة عائمة على اليسار', styles: { bottom: '-40px', left: '20px' } },
+        { id: 'modern', name: 'حديث (يمين)', desc: 'الصورة في اليمين', styles: { bottom: '-40px', right: '30px', border: '4px solid #0B102A' } },
+        { id: 'classic', name: 'كلاسيك (وسط)', desc: 'الصورة في المنتصف', styles: { bottom: '-40px', left: '50%', transform: 'translateX(-50%)', border: '4px solid #0B102A' } },
+        { id: 'minimal', name: 'مينيمال (يسار)', desc: 'الصورة في اليسار', styles: { bottom: '-40px', left: '30px', border: '4px solid #0B102A' } },
         { id: 'floating', name: 'عائم (مدمج)', desc: 'مدمج داخل الغلاف', styles: { bottom: '15px', right: '20px', border: 'none', background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)' } }
+    ];
+
+
+
+    const menuLayouts = [
+        { id: 'default', name: 'الافتراضي', icon: '📱' },
+        { id: 'vanilla', name: 'فانيلا (كلاسيك)', icon: '🍦' },
+        { id: 'restaurant_modern', name: 'مطعم عصري', icon: '🍔' },
+        { id: 'lab', name: 'مُختبر (Lab)', icon: '🔬' }
     ];
 
     const st = {
@@ -228,12 +240,25 @@ const PalNovaaMarketDesign = ({ onClose, onSelectShop, onSelectUniversity, initi
 
                     {/* Step 5: Layouts */}
                     <div style={{ marginBottom: '40px' }}>
-                        <div style={st.sectionTitle}><span>05</span> تنسيق الواجهة (المكان والشكل)</div>
+                        <div style={st.sectionTitle}><span>05</span> تنسيق رأس الصفحة</div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                             {layouts.map(l => (
                                 <div key={l.id} style={st.card(design.layout === l.id)} onClick={() => setDesign({...design, layout: l.id})}>
                                     <div style={{ fontSize: '0.9rem', color: '#F8F4ED', fontWeight: '700', marginBottom: '4px' }}>{l.name}</div>
                                     <div style={{ fontSize: '0.7rem', color: '#8B8772' }}>{l.desc}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Step 6: Menu Styles */}
+                    <div style={{ marginBottom: '40px' }}>
+                        <div style={st.sectionTitle}><span>06</span> نمط عرض المنتجات</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                            {menuLayouts.map(m => (
+                                <div key={m.id} style={st.card(design.menu_layout === m.id || (!design.menu_layout && m.id === 'default'))} onClick={() => setDesign({...design, menu_layout: m.id})}>
+                                    <div style={{ fontSize: '1.2rem', marginBottom: '5px' }}>{m.icon}</div>
+                                    <div style={{ fontSize: '0.9rem', color: '#F8F4ED', fontWeight: '700' }}>{m.name}</div>
                                 </div>
                             ))}
                         </div>

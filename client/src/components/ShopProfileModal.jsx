@@ -57,14 +57,7 @@ const ShareIcon = () => (
 );
 // ... existing icons ...
 
-const TaxiIcon = () => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M18.5 10H5.5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2z"></path>
-        <path d="M7 10l1-4h8l1 4"></path>
-        <circle cx="7" cy="18" r="1.5"></circle>
-        <circle cx="17" cy="18" r="1.5"></circle>
-    </svg>
-);
+
 
 const SearchIcon = () => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -248,6 +241,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
 
     const isVanillaDesign = design.menu_layout === 'vanilla' || shop.name.includes('فاينلا') || shop.name.includes('فانيلا') || shop.name.includes('فاننيلا') || shop.name.toLowerCase().includes('vanilla');
     const isModernRestaurantDesign = design.menu_layout === 'restaurant_modern';
+    const isLabDesign = design.menu_layout === 'lab' || shop.name.toLowerCase().includes('coffee lab') || shop.name.includes('لاب');
 
     // Search State
     const [productSearchQuery, setProductSearchQuery] = useState('');
@@ -289,17 +283,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     const [editingCategory, setEditingCategory] = useState(false);
     const [categoryInput, setCategoryInput] = useState('');
 
-    // Drivers State (Taxi Office)
-    const [drivers, setDrivers] = useState([]);
-    const [newDriverData, setNewDriverData] = useState({ username: '', car_type: '', plate_number: '', passengers: 4 });
-    const [loadingDrivers, setLoadingDrivers] = useState(false);
 
-    // Requests State (Taxi Office - for Owner)
-    const [requests, setRequests] = useState([]);
-    const [loadingRequests, setLoadingRequests] = useState(false);
-
-    // Driver's Own Requests
-    const [myDriverRequests, setMyDriverRequests] = useState([]);
 
     // Simulator Mock State
     const [simResult, setSimResult] = useState(null);
@@ -350,7 +334,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     const isSectionVisible = (sectionKey) => !hiddenSections.includes(sectionKey);
 
     // Check if current user is a driver in this shop
-    const isDriver = drivers.some(d => d.id === currentUser?.id);
+
 
     useEffect(() => {
         if (shop?.id) loadShopData();
@@ -360,19 +344,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
         return () => window.removeEventListener('cart-updated', updateCount);
     }, [shop]);
 
-    // Load drivers when entering Taxi Services
-    useEffect(() => {
-        if (shopData?.category === 'مكتب تاكسي' && (activeTab === 'products' || activeTab === 'drivers')) {
-            loadDrivers();
-        }
-    }, [activeTab, shopData?.category]);
 
-    // Load driver's own requests when they become a driver
-    useEffect(() => {
-        if (isDriver && shopData?.category === 'مكتب تاكسي') {
-            loadMyDriverRequests();
-        }
-    }, [isDriver, shopData?.category]);
 
     const loadShopData = async () => {
         setLoading(true);
@@ -1033,74 +1005,72 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                     {!isVanillaDesign && !isModernRestaurantDesign && (
                         <div style={{
                             display: 'flex', gap: 30,
-                        borderBottom: '1px solid var(--bg-tertiary)', marginTop: 25,
-                        padding: '0 30px',
-                        alignItems: 'center',
-                        flexWrap: 'wrap'
-                    }}>
-                        {[
-                            ...((shopData.category === 'صراف آلي' || shopData.category === 'فرع بنك') ? [] : ['products']),
-                            'timeline',
-                            ...(canEditShop ? ['simulate'] : []),
-                            'about'
-                        ]
-                            // Filter hidden tabs - admins always see everything, others don't see hidden
-                            .filter(tab => isSystemAdmin || isSectionVisible(tab))
-                            .map(tab => (
+                            borderBottom: '1px solid var(--bg-tertiary)', marginTop: 25,
+                            padding: '0 30px',
+                            alignItems: 'center',
+                            flexWrap: 'wrap'
+                        }}>
+                            {[
+                                ...((shopData.category === 'صراف آلي' || shopData.category === 'فرع بنك') ? [] : ['products']),
+                                'timeline',
+                                ...(canEditShop ? ['simulate'] : []),
+                                'about'
+                            ]
+                                // Filter hidden tabs - admins always see everything, others don't see hidden
+                                .filter(tab => isSystemAdmin || isSectionVisible(tab))
+                                .map(tab => (
+                                    <button
+                                        key={tab}
+                                        onClick={() => {
+                                            setActiveTab(tab);
+
+                                        }}
+                                        style={{
+                                            border: 'none', background: 'none',
+                                            padding: '15px 5px',
+                                            fontSize: '1rem', fontWeight: activeTab === tab ? 'bold' : 'normal',
+                                            color: activeTab === tab ? 'var(--primary)' : (hiddenSections.includes(tab) && isSystemAdmin ? '#9ca3af' : 'var(--text-muted)'),
+                                            borderBottom: activeTab === tab ? '3px solid var(--primary)' : '3px solid transparent',
+                                            cursor: 'pointer',
+                                            fontFamily: 'inherit',
+                                            opacity: hiddenSections.includes(tab) && isSystemAdmin ? 0.5 : 1,
+                                            textDecoration: hiddenSections.includes(tab) && isSystemAdmin ? 'line-through' : 'none',
+                                        }}
+                                    >
+                                        {/* Make tab label dynamic */}
+                                        {(() => {
+                                            if (tab === 'products') {
+                                                if (shopData.category === 'مركز تسوق' || shopData.category === 'مجمع تجاري' || shopData.category === 'Mall') return 'الدليل';
+                                                return 'المنتجات';
+                                            }
+                                            if (tab === 'timeline') return 'أخبار';
+
+                                            if (tab === 'mall_map') return 'خريطة المول 🗺️';
+                                            if (tab === 'simulate') return 'محاكي الأعمال';
+                                            return 'حول';
+                                        })()}
+                                    </button>
+                                ))}
+
+                            {/* Admin Section Control Toggle */}
+                            {isSystemAdmin && (
                                 <button
-                                    key={tab}
-                                    onClick={() => {
-                                        setActiveTab(tab);
-                                        if (tab === 'drivers') loadDrivers();
-                                        if (tab === 'requests') loadRequests();
-                                    }}
+                                    onClick={() => setShowSectionControl(!showSectionControl)}
+                                    title="إدارة ظهور الأقسام"
                                     style={{
-                                        border: 'none', background: 'none',
-                                        padding: '15px 5px',
-                                        fontSize: '1rem', fontWeight: activeTab === tab ? 'bold' : 'normal',
-                                        color: activeTab === tab ? 'var(--primary)' : (hiddenSections.includes(tab) && isSystemAdmin ? '#9ca3af' : 'var(--text-muted)'),
-                                        borderBottom: activeTab === tab ? '3px solid var(--primary)' : '3px solid transparent',
-                                        cursor: 'pointer',
-                                        fontFamily: 'inherit',
-                                        opacity: hiddenSections.includes(tab) && isSystemAdmin ? 0.5 : 1,
-                                        textDecoration: hiddenSections.includes(tab) && isSystemAdmin ? 'line-through' : 'none',
+                                        marginRight: 'auto', marginLeft: 10,
+                                        background: showSectionControl ? 'rgba(239,68,68,0.1)' : 'rgba(251,171,21,0.1)',
+                                        border: `1px solid ${showSectionControl ? '#ef4444' : '#fbab15'}`,
+                                        color: showSectionControl ? '#ef4444' : '#fbab15',
+                                        borderRadius: '8px', padding: '5px 10px',
+                                        cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit',
+                                        display: 'flex', alignItems: 'center', gap: 5
                                     }}
                                 >
-                                    {/* Make tab label dynamic */}
-                                    {(() => {
-                                        if (tab === 'products') {
-                                            if (shopData.category === 'مركز تسوق' || shopData.category === 'مجمع تجاري' || shopData.category === 'Mall') return 'الدليل';
-                                            return 'المنتجات';
-                                        }
-                                        if (tab === 'timeline') return 'أخبار';
-                                        if (tab === 'drivers') return 'السائقين';
-                                        if (tab === 'requests') return 'الطلبات';
-                                        if (tab === 'mall_map') return 'خريطة المول 🗺️';
-                                        if (tab === 'simulate') return 'محاكي الأعمال';
-                                        return 'حول';
-                                    })()}
+                                    {showSectionControl ? '✕ إغلاق' : '⚙️ إدارة الأقسام'}
                                 </button>
-                            ))}
-
-                        {/* Admin Section Control Toggle */}
-                        {isSystemAdmin && (
-                            <button
-                                onClick={() => setShowSectionControl(!showSectionControl)}
-                                title="إدارة ظهور الأقسام"
-                                style={{
-                                    marginRight: 'auto', marginLeft: 10,
-                                    background: showSectionControl ? 'rgba(239,68,68,0.1)' : 'rgba(251,171,21,0.1)',
-                                    border: `1px solid ${showSectionControl ? '#ef4444' : '#fbab15'}`,
-                                    color: showSectionControl ? '#ef4444' : '#fbab15',
-                                    borderRadius: '8px', padding: '5px 10px',
-                                    cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit',
-                                    display: 'flex', alignItems: 'center', gap: 5
-                                }}
-                            >
-                                {showSectionControl ? '✕ إغلاق' : '⚙️ إدارة الأقسام'}
-                            </button>
-                        )}
-                    </div>
+                            )}
+                        </div>
                     )}
 
                     {/* Admin Section Visibility Control Panel */}
@@ -1526,7 +1496,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
 
                         {/* --- Regular Products Tab --- */}
                         {activeTab === 'products' &&
-                            shopData.category !== 'مكتب تاكسي' &&
+
                             shopData.category !== 'بنك' &&
                             !(shopData.category === 'مركز تسوق' || shopData.category === 'مجمع تجاري' || shopData.category === 'Mall') && (
                                 <div>
@@ -1546,17 +1516,16 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                     {showAddProduct && (
                                         <div style={{ background: 'var(--bg-primary)', padding: 20, borderRadius: 12, marginBottom: 20 }}>
                                             <h3 style={{ marginTop: 0 }}>
-                                                {editingProduct
-                                                    ? (shopData.category === 'مكتب تاكسي' ? 'تعديل الخدمة' : 'تعديل المنتج')
-                                                    : (shopData.category === 'مكتب تاكسي' ? 'خدمة توصيل جديدة' : 'منتج جديد')}
+                                                {editingProduct ? 'تعديل المنتج' : 'منتج جديد'}
                                             </h3>
+
                                             <form onSubmit={handleSaveProduct}>
                                                 <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
                                                     <div style={{ flex: 1 }}>
-                                                        <label style={{ display: 'block', marginBottom: 5 }}>
-                                                            {shopData.category === 'مكتب تاكسي' ? 'اسم الوجهة/الخدمة' : 'اسم المنتج'}
-                                                        </label>
-                                                        <input className="input" type="text" value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} required style={{ width: '100%' }} placeholder={shopData.category === 'مكتب تاكسي' ? 'مثال: توصيلة للمطار' : ''} />
+                                                        <label style={{ display: 'block', marginBottom: 5 }}>اسم المنتج</label>
+
+                                                        <input className="input" type="text" value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} required style={{ width: '100%' }} />
+
                                                     </div>
                                                     {(['سوبر ماركت', 'سوبرماركت', 'Supermarket', 'supermarket'].includes(shopData.category) || isVanillaDesign) && (
                                                         <div style={{ flex: 1 }}>
@@ -1568,7 +1537,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                                 style={{ width: '100%', padding: '8px' }}
                                                             >
                                                                 <option value="">اختر القسم...</option>
-                                                                {isVanillaDesign 
+                                                                {isVanillaDesign
                                                                     ? Object.entries(VANILLA_CATEGORIES).map(([main, subs]) => (
                                                                         <optgroup key={main} label={main}>
                                                                             {subs.map(sub => <option key={`${main}-${sub}`} value={sub}>{sub}</option>)}
@@ -1582,21 +1551,20 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                 </div>
                                                 <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
                                                     <div style={{ width: '100px' }}>
-                                                        <label style={{ display: 'block', marginBottom: 5 }}>
-                                                            {shopData.category === 'مكتب تاكسي' ? 'التكلفة' : 'السعر الحالي'}
-                                                        </label>
+                                                        <label style={{ display: 'block', marginBottom: 5 }}>السعر الحالي</label>
+
                                                         <input className="input" type="number" value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} required style={{ width: '100%' }} />
                                                     </div>
                                                     <div style={{ width: '100px' }}>
-                                                        <label style={{ display: 'block', marginBottom: 5 }}>
-                                                            {shopData.category === 'مكتب تاكسي' ? 'سعر سابق' : 'السعر القديم'}
-                                                        </label>
+                                                        <label style={{ display: 'block', marginBottom: 5 }}>السعر القديم</label>
+
                                                         <input className="input" type="number" value={newProduct.old_price} onChange={e => setNewProduct({ ...newProduct, old_price: e.target.value })} style={{ width: '100%' }} placeholder="اختياري" />
                                                     </div>
                                                 </div>
                                                 <textarea
                                                     className="input"
-                                                    placeholder={shopData.category === 'مكتب تاكسي' ? 'تفاصيل الرحلة، نوع السيارة، عدد الركاب المسموح...' : 'وصف المنتج...'}
+                                                    placeholder="وصف المنتج..."
+
                                                     value={newProduct.description}
                                                     onChange={e => setNewProduct({ ...newProduct, description: e.target.value })}
                                                     style={{ width: '100%', marginBottom: 10 }}
@@ -1648,9 +1616,9 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                             </div>
                                                         ) : (
                                                             <div style={{ color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                                                {shopData.category === 'مكتب تاكسي' ? <TaxiIcon /> : <PhotoIcon />}
+                                                                <PhotoIcon />
                                                                 <span style={{ marginTop: 8, fontSize: '0.9rem' }}>
-                                                                    {editingProduct ? 'إضافة/تغيير الصور (يمكنك اختيار عدة صور)' : (shopData.category === 'مكتب تاكسي' ? 'اضغط لإضافة صورة للسيارة/الوجهة' : 'اضغط لإضافة صور المنتج (يمكنك اختيار عدة صور)')}
+                                                                    {editingProduct ? 'إضافة/تغيير الصور (يمكنك اختيار عدة صور)' : 'اضغط لإضافة صور المنتج (يمكنك اختيار عدة صور)'}
                                                                 </span>
                                                             </div>
                                                         )}
@@ -1677,19 +1645,19 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '40px', marginTop: '30px' }}>
                                             <div style={{ display: 'flex', gap: '30px', fontWeight: 'bold', marginBottom: '25px', color: 'var(--text-primary)', fontSize: '1.1rem' }}>
                                                 {['طعام', 'مشروبات', 'حلويات', 'Zero Sugar', 'جديد'].map(cat => (
-                                                    <span 
+                                                    <span
                                                         key={cat}
                                                         onClick={() => {
                                                             setSelectedVanillaMainCategory(cat);
                                                             setSelectedProductCategory('الكل'); // Reset sub-category on change
                                                         }}
-                                                        style={{ 
-                                                            cursor: 'pointer', 
-                                                            borderBottom: selectedVanillaMainCategory === cat ? '2px solid var(--text-primary)' : 'none', 
+                                                        style={{
+                                                            cursor: 'pointer',
+                                                            borderBottom: selectedVanillaMainCategory === cat ? '2px solid var(--text-primary)' : 'none',
                                                             paddingBottom: '4px',
-                                                            color: cat === 'Zero Sugar' && selectedVanillaMainCategory !== cat ? '#10b981' : 
-                                                                   cat === 'جديد' && selectedVanillaMainCategory !== cat ? '#ef4444' : 
-                                                                   selectedVanillaMainCategory === cat ? 'var(--text-primary)' : 'var(--text-muted)'
+                                                            color: cat === 'Zero Sugar' && selectedVanillaMainCategory !== cat ? '#10b981' :
+                                                                cat === 'جديد' && selectedVanillaMainCategory !== cat ? '#ef4444' :
+                                                                    selectedVanillaMainCategory === cat ? 'var(--text-primary)' : 'var(--text-muted)'
                                                         }}
                                                     >
                                                         {cat}
@@ -1699,11 +1667,11 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
 
                                             <div style={{ display: 'flex', gap: '25px', color: 'var(--text-muted)', fontSize: '0.95rem', overflowX: 'auto', maxWidth: '100%', paddingBottom: '10px', scrollbarWidth: 'none' }}>
                                                 {['الكل', ...(VANILLA_CATEGORIES[selectedVanillaMainCategory] || [])].map(cat => (
-                                                    <span 
-                                                        key={cat} 
+                                                    <span
+                                                        key={cat}
                                                         onClick={() => setSelectedProductCategory(cat)}
-                                                        style={{ 
-                                                            cursor: 'pointer', 
+                                                        style={{
+                                                            cursor: 'pointer',
                                                             whiteSpace: 'nowrap',
                                                             color: selectedProductCategory === cat ? 'var(--text-primary)' : 'var(--text-muted)',
                                                             borderBottom: selectedProductCategory === cat ? '2px solid var(--text-primary)' : 'none',
@@ -1764,47 +1732,109 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                         </div>
                                     )}
 
-                                    {!isVanillaDesign && (
+                                    {!isVanillaDesign && !isLabDesign && (
                                         <div style={{ marginBottom: 25 }}>
                                             <div style={{ position: 'relative', marginBottom: 15 }}>
-                                            <input
-                                                className="input"
-                                                type="text"
-                                                placeholder={shopData.category === 'مكتب تاكسي' ? 'بحث في الوجهات/الخدمات...' : 'بحث في المنتجات...'}
-                                                value={productSearchQuery}
-                                                onChange={e => setProductSearchQuery(e.target.value)}
-                                                style={{
-                                                    width: '100%',
-                                                    padding: '12px 45px 12px 15px',
-                                                    borderRadius: '12px',
-                                                    fontSize: '1rem',
-                                                    fontFamily: "'Tajawal', sans-serif"
-                                                }}
-                                            />
-                                            <div style={{ position: 'absolute', top: '50%', right: '15px', transform: 'translateY(-50%)', color: 'var(--text-muted)', display: 'flex' }}>
-                                                <SearchIcon />
-                                            </div>
+                                                <input
+                                                    className="input"
+                                                    type="text"
+                                                    placeholder="بحث في المنتجات..."
+
+                                                    value={productSearchQuery}
+                                                    onChange={e => setProductSearchQuery(e.target.value)}
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '12px 45px 12px 15px',
+                                                        borderRadius: '12px',
+                                                        fontSize: '1rem',
+                                                        fontFamily: "'Tajawal', sans-serif"
+                                                    }}
+                                                />
+                                                <div style={{ position: 'absolute', top: '50%', right: '15px', transform: 'translateY(-50%)', color: 'var(--text-muted)', display: 'flex' }}>
+                                                    <SearchIcon />
+                                                </div>
                                             </div>
                                         </div>
                                     )}
 
-                                    <div style={isModernRestaurantDesign ? { display: 'flex', flexDirection: 'column', gap: '15px', paddingBottom: '30px' } : { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 20 }}>
+                                    {/* Lab Design Categories */}
+                                    {isLabDesign && (
+                                        <div style={{ padding: '0 5px 20px', direction: 'rtl' }}>
+                                            <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', marginBottom: 14 }}>
+                                                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', textTransform: 'uppercase', color: '#8A857C', paddingTop: 4 }}>01</div>
+                                                <div>
+                                                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', textTransform: 'uppercase', color: '#7B4A2A', marginBottom: 4 }}>MENU</div>
+                                                    <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: '#2A2A2C' }}>استعرض الأقسام</h2>
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
+                                                {['coffee', 'hot', 'cold', 'matcha'].map(id => (
+                                                    <div key={id} style={{ background: 'white', border: '1px solid rgba(42,42,44,0.1)', borderRadius: 14, padding: '12px 6px 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, textAlign: 'center', cursor: 'pointer' }} onClick={() => setSelectedProductCategory(id === 'coffee' ? 'قهوة' : id === 'hot' ? 'ساخن' : id === 'cold' ? 'بارد' : 'ماتشا')}>
+                                                        <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#EAE3D6', display: 'grid', placeItems: 'center', fontSize: '1.4rem' }}>
+                                                            {id === 'coffee' && '☕'}
+                                                            {id === 'hot' && '🔥'}
+                                                            {id === 'cold' && '❄️'}
+                                                            {id === 'matcha' && '🍵'}
+                                                        </div>
+                                                        <div style={{ fontSize: '11px', fontWeight: 600, color: '#2A2A2C' }}>{id === 'coffee' ? 'قهوة' : id === 'hot' ? 'ساخن' : id === 'cold' ? 'بارد' : 'ماتشا'}</div>
+                                                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px', color: '#8A857C' }}>04</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Lab Readout */}
+                                    {isLabDesign && (
+                                        <div style={{ marginBottom: 30, direction: 'rtl' }}>
+                                            <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', marginBottom: 14 }}>
+                                                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', textTransform: 'uppercase', color: '#8A857C', paddingTop: 4 }}>02</div>
+                                                <div>
+                                                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', textTransform: 'uppercase', color: '#7B4A2A', marginBottom: 4 }}>LAB DIARY</div>
+                                                    <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: '#2A2A2C' }}>قياسات اليوم</h2>
+                                                </div>
+                                            </div>
+                                            <div style={{ background: '#2A2A2C', color: '#F5F1EA', borderRadius: 18, padding: 18, boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px dashed rgba(255,255,255,0.12)', fontSize: 13 }}>
+                                                    <span>درجة الاستخراج</span><b>92.4°</b>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px dashed rgba(255,255,255,0.12)', fontSize: 13 }}>
+                                                    <span>زمن التخمير</span><b>04:22</b>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', fontSize: 13 }}>
+                                                    <span>الحموضة</span><b>4.8 pH</b>
+                                                </div>
+                                                <div style={{ height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 999, marginTop: 10, overflow: 'hidden' }}>
+                                                    <div style={{ height: '100%', width: '72%', background: '#7B4A2A' }}></div>
+                                                </div>
+                                                <div style={{ opacity: 0.5, marginTop: 12, fontSize: 9, fontFamily: "'JetBrains Mono', monospace" }}>CL · LAB INSTRUMENT v2.6</div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {isLabDesign && (
+                                         <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', marginBottom: 14, direction: 'rtl' }}>
+                                            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', textTransform: 'uppercase', color: '#8A857C', paddingTop: 4 }}>03</div>
+                                            <div>
+                                                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', textTransform: 'uppercase', color: '#7B4A2A', marginBottom: 4 }}>SIGNATURE</div>
+                                                <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: '#2A2A2C' }}>قائمة المنتجات</h2>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div style={isModernRestaurantDesign ? { display: 'flex', flexDirection: 'column', gap: '15px', paddingBottom: '30px' } : (isLabDesign ? { display: 'flex', gap: 15, overflowX: 'auto', paddingBottom: '30px', scrollbarWidth: 'none', direction: 'rtl' } : { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 20 })}>
+
                                         {products
                                             .filter(p => {
                                                 const matchesSearch = (p.name || '').toLowerCase().includes(productSearchQuery.toLowerCase()) ||
                                                     (p.description && p.description.toLowerCase().includes(productSearchQuery.toLowerCase()));
 
-                                                // Category filter for supermarket
                                                 const matchesCategory = selectedProductCategory === 'الكل' ||
                                                     (selectedProductCategory === 'العروض' && p.old_price && parseFloat(p.old_price) > parseFloat(p.price)) ||
                                                     (p.category === selectedProductCategory);
 
-                                                // Sale check: has old_price AND old_price > price
-                                                const isOnSale = p.old_price && parseFloat(p.old_price) > parseFloat(p.price);
-
                                                 if (['سوبر ماركت', 'سوبرماركت', 'Supermarket', 'supermarket'].includes(shopData.category) && !matchesCategory) return false;
-                                                
-                                                // Vanilla Filtering
+
                                                 if (isVanillaDesign) {
                                                     const validSubs = VANILLA_CATEGORIES[selectedVanillaMainCategory] || [];
                                                     if (p.category && !validSubs.includes(p.category)) return false;
@@ -1821,16 +1851,12 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                     const matchesSearch = (p.name || '').toLowerCase().includes(productSearchQuery.toLowerCase()) ||
                                                         (p.description && p.description.toLowerCase().includes(productSearchQuery.toLowerCase()));
 
-                                                    // Category filter for supermarket
                                                     const matchesCategory = selectedProductCategory === 'الكل' ||
                                                         (selectedProductCategory === 'العروض' && p.old_price && parseFloat(p.old_price) > parseFloat(p.price)) ||
                                                         (p.category === selectedProductCategory);
 
-                                                    const isOnSale = p.old_price && parseFloat(p.old_price) > parseFloat(p.price);
-
                                                     if (['سوبر ماركت', 'سوبرماركت', 'Supermarket', 'supermarket'].includes(shopData.category) && !matchesCategory) return false;
-                                                    
-                                                    // Vanilla Filtering
+
                                                     if (isVanillaDesign) {
                                                         const validSubs = VANILLA_CATEGORIES[selectedVanillaMainCategory] || [];
                                                         if (p.category && !validSubs.includes(p.category)) return false;
@@ -1840,88 +1866,10 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                     return matchesSearch;
                                                 })
                                                 .map(product => {
-                                                    // Start Taxi Custom Design
-                                                    if (shopData.category === 'مكتب تاكسي') {
-                                                        return (
-                                                            <div key={product.id} style={{
-                                                                background: 'var(--bg-primary)',
-                                                                borderRadius: 16,
-                                                                overflow: 'hidden',
-                                                                boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
-                                                                border: '1px solid #fbab15', // Taxi Yellow Border
-                                                                display: 'flex',
-                                                                flexDirection: 'column',
-                                                                position: 'relative'
-                                                            }}>
-                                                                {/* Taxi Header Stripe */}
-                                                                <div style={{ height: '8px', background: 'repeating-linear-gradient(45deg, #000, #000 10px, #fbab15 10px, #fbab15 20px)' }}></div>
 
-                                                                <div style={{ padding: 15, flex: 1 }}>
-                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                                                        <h4 style={{ margin: '0 0 5px', fontSize: '1.2rem', color: 'var(--text-primary)' }}>{product.name}</h4>
-                                                                        <span style={{
-                                                                            background: '#fbab15', color: '#000',
-                                                                            fontWeight: 'bold', padding: '2px 8px', borderRadius: '4px', fontSize: '0.9rem'
-                                                                        }}>
-                                                                            {product.price} ₪
-                                                                        </span>
-                                                                    </div>
-
-                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                                                                        {product.old_price && parseFloat(product.old_price) > parseFloat(product.price) && (
-                                                                            <span style={{ color: '#ef4444', textDecoration: 'line-through', fontSize: '0.85rem' }}>{product.old_price} ₪</span>
-                                                                        )}
-                                                                    </div>
-
-                                                                    <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: '0 0 15px', lineHeight: '1.4' }}>
-                                                                        {product.description || 'خدمة توصيل سريعة وآمنة.'}
-                                                                    </p>
-
-                                                                    {/* Image if available, simplified for taxi */}
-                                                                    {product.image_url && (
-                                                                        <div style={{ height: '100px', marginBottom: 15, borderRadius: '8px', overflow: 'hidden' }}>
-                                                                            <img src={getImageUrl(product.image_url)} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-
-                                                                {/* Actions */}
-                                                                <div style={{ padding: '0 15px 15px', display: 'flex', gap: 10 }}>
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            const note = window.prompt('(اختياري) ملاحظات للسائق أو تفاصيل الموقع:', '');
-                                                                            if (note !== null) {
-                                                                                cartService.addItem({ ...product, shop_name: shopData.name, note: note });
-                                                                                alert('تم إضافة الحجز إلى قائمة رحلاتك! يرجى تأكيد الطلب من السلة. 🚖');
-                                                                            }
-                                                                        }}
-                                                                        style={{
-                                                                            flex: 1, padding: '10px',
-                                                                            background: '#000', color: '#fbab15',
-                                                                            border: 'none', borderRadius: '8px',
-                                                                            cursor: 'pointer', fontWeight: 'bold',
-                                                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'
-                                                                        }}
-                                                                    >
-                                                                        <span>حجز الآن</span>
-                                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
-                                                                    </button>
-                                                                    {canEditShop && (
-                                                                        <>
-                                                                            <button onClick={() => openEditProduct(product)} style={{ background: '#f3f4f6', border: 'none', borderRadius: '8px', width: 40, cursor: 'pointer' }}>✏️</button>
-                                                                            <button onClick={() => handleDeleteProduct(product.id)} style={{ background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '8px', width: 40, cursor: 'pointer' }}>×</button>
-                                                                        </>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    }
-                                                    // End Taxi Custom Design
-
-                                                    // Start Modern Restaurant Design (UberEats/Talabat style)
                                                     if (isModernRestaurantDesign) {
                                                         return (
-                                                            <div key={product.id} 
+                                                            <div key={product.id}
                                                                 onClick={() => {
                                                                     cartService.addItem({ ...product, shop_name: shopData.name });
                                                                     setCartCount(cartService.getItemCount());
@@ -1959,7 +1907,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                                         </div>
                                                                     )}
                                                                 </div>
-                                                                
                                                                 <div style={{ position: 'relative', width: '110px', height: '110px', flexShrink: 0 }}>
                                                                     {product.image_url ? (
                                                                         <img src={getImageUrl(product.image_url)} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }} />
@@ -1968,9 +1915,9 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                                             <span style={{ fontSize: '2rem' }}>🍔</span>
                                                                         </div>
                                                                     )}
-                                                                    <div style={{ 
+                                                                    <div style={{
                                                                         position: 'absolute', bottom: '-10px', left: '50%', transform: 'translateX(-50%)',
-                                                                        background: 'white', border: '1px solid #e5e7eb', borderRadius: '20px', 
+                                                                        background: 'white', border: '1px solid #e5e7eb', borderRadius: '20px',
                                                                         width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                                         boxShadow: '0 2px 5px rgba(0,0,0,0.1)', color: 'var(--primary)', fontWeight: 'bold', fontSize: '1.2rem'
                                                                     }}>
@@ -1980,22 +1927,88 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                             </div>
                                                         );
                                                     }
-
-                                                    // Start Vanilla Custom Design
-                                                    if (isVanillaDesign) {
+                                                    if (isLabDesign) {
                                                         return (
-                                                            <div key={product.id} 
+                                                            <div key={product.id}
                                                                 onClick={() => {
                                                                     cartService.addItem({ ...product, shop_name: shopData.name });
                                                                     setCartCount(cartService.getItemCount());
                                                                 }}
-                                                                style={{ 
-                                                                    background: '#ffffff', 
-                                                                    borderRadius: '16px', 
-                                                                    padding: '25px', 
-                                                                    display: 'flex', 
-                                                                    flexDirection: 'column', 
-                                                                    alignItems: 'center', 
+                                                                style={{
+                                                                    flexShrink: 0,
+                                                                    width: '260px',
+                                                                    background: 'white',
+                                                                    border: '1px solid rgba(42,42,44,0.1)',
+                                                                    borderRadius: '18px',
+                                                                    padding: '16px',
+                                                                    display: 'flex',
+                                                                    flexDirection: 'column',
+                                                                    gap: '8px',
+                                                                    position: 'relative',
+                                                                    cursor: 'pointer',
+                                                                    transition: 'all 0.2s',
+                                                                    textAlign: 'right'
+                                                                }}
+                                                                onMouseOver={e => e.currentTarget.style.transform = 'translateY(-4px)'}
+                                                                onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+                                                            >
+                                                                <div style={{
+                                                                    position: 'absolute', top: 12, left: 12,
+                                                                    fontFamily: "'JetBrains Mono', monospace", fontSize: '9px',
+                                                                    textTransform: 'uppercase', background: '#2A2A2C', color: '#F5F1EA',
+                                                                    padding: '3px 9px', borderRadius: '999px'
+                                                                }}>{product.old_price ? 'OFFER' : 'N° ' + String(product.id % 1000).padStart(3, '0')}</div>
+
+                                                                <div style={{
+                                                                    width: '100%', height: '140px', background: '#EAE3D6',
+                                                                    borderRadius: '12px', display: 'grid', placeItems: 'center', color: '#2A2A2C',
+                                                                    marginBottom: 5, overflow: 'hidden'
+                                                                }}>
+                                                                    {product.image_url ? (
+                                                                        <img src={getImageUrl(product.image_url)} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                                    ) : (
+                                                                        <span style={{fontSize: '3rem'}}>🧪</span>
+                                                                    )}
+                                                                </div>
+
+                                                                <div style={{ fontSize: '18px', fontWeight: '700', letterSpacing: '-0.01em', color: '#2A2A2C' }}>{product.name}</div>
+                                                                <div style={{ color: '#7B4A2A', fontSize: '10px', fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', fontWeight: '600' }}>{product.category || 'LAB SPEC'}</div>
+                                                                <p style={{ fontSize: '12px', color: '#8A857C', lineHeight: '1.5', margin: '5px 0', height: '36px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{product.description || 'قياسات دقيقة وطعم استثنائي محضر في مختبرنا.'}</p>
+
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid rgba(42,42,44,0.08)' }}>
+                                                                    <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: '5px' }}>
+                                                                        <span style={{ color: '#8A857C', fontSize: '10px', fontFamily: "'JetBrains Mono', monospace" }}>ILS</span>
+                                                                        <b style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '22px', fontWeight: '700', color: '#2A2A2C' }}>{product.price}</b>
+                                                                    </div>
+                                                                    <button style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#2A2A2C', color: '#F5F1EA', border: 'none', display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
+                                                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                                                                    </button>
+                                                                </div>
+                                                                {canEditShop && (
+                                                                    <div style={{ display: 'flex', gap: 5, marginTop: 10 }} onClick={e => e.stopPropagation()}>
+                                                                        <button onClick={() => openEditProduct(product)} style={{ background: '#f3f4f6', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '0.8rem', cursor: 'pointer' }}>تعديل</button>
+                                                                        <button onClick={() => handleDeleteProduct(product.id)} style={{ background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '0.8rem', cursor: 'pointer' }}>حذف</button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    // Start Vanilla Custom Design
+                                                    if (isVanillaDesign) {
+                                                        return (
+                                                            <div key={product.id}
+                                                                onClick={() => {
+                                                                    cartService.addItem({ ...product, shop_name: shopData.name });
+                                                                    setCartCount(cartService.getItemCount());
+                                                                }}
+                                                                style={{
+                                                                    background: '#ffffff',
+                                                                    borderRadius: '16px',
+                                                                    padding: '25px',
+                                                                    display: 'flex',
+                                                                    flexDirection: 'column',
+                                                                    alignItems: 'center',
                                                                     border: '1px solid rgba(0,0,0,0.04)',
                                                                     boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
                                                                     transition: 'transform 0.2s',
@@ -2009,18 +2022,18 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                                         <img src={getImageUrl(product.image_url)} alt={product.name} style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
                                                                     </div>
                                                                 ) : <div style={{ height: '180px', width: '100%', marginBottom: '20px', background: '#f9f9f9', borderRadius: '12px' }}></div>}
-                                                                
+
                                                                 <h4 style={{ margin: '0 0 10px', fontSize: '1.3rem', fontWeight: '900', color: '#111827', textAlign: 'center' }}>{product.name}</h4>
-                                                                
+
                                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', color: '#fb923c', fontWeight: 'bold', marginTop: 'auto' }}>
                                                                     <span style={{ color: '#6b7280', fontWeight: 'normal', fontSize: '0.8rem' }}>كبير</span> {product.price}
                                                                 </div>
 
                                                                 {canEditShop && (
-                                                                     <div style={{ display: 'flex', gap: 5, marginTop: 15, width: '100%', justifyContent: 'center' }} onClick={e => e.stopPropagation()}>
-                                                                         <button onClick={() => openEditProduct(product)} style={{ background: '#f3f4f6', border: 'none', borderRadius: '8px', padding: '4px 10px', cursor: 'pointer' }}>تعديل</button>
-                                                                         <button onClick={() => handleDeleteProduct(product.id)} style={{ background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '8px', padding: '4px 10px', cursor: 'pointer' }}>حذف</button>
-                                                                     </div>
+                                                                    <div style={{ display: 'flex', gap: 5, marginTop: 15, width: '100%', justifyContent: 'center' }} onClick={e => e.stopPropagation()}>
+                                                                        <button onClick={() => openEditProduct(product)} style={{ background: '#f3f4f6', border: 'none', borderRadius: '8px', padding: '4px 10px', cursor: 'pointer' }}>تعديل</button>
+                                                                        <button onClick={() => handleDeleteProduct(product.id)} style={{ background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '8px', padding: '4px 10px', cursor: 'pointer' }}>حذف</button>
+                                                                    </div>
                                                                 )}
                                                             </div>
                                                         );
@@ -2031,7 +2044,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                     return (
                                                         <div key={product.id} style={{ background: 'var(--bg-primary)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', transition: 'transform 0.2s' }}>
                                                             <div style={{ aspectRatio: '1/1', background: '#f3f4f6', position: 'relative', borderBottom: '1px solid var(--bg-tertiary)' }}>
-                                                                {/* Instagram-like Image Carousel */}
                                                                 {product.image_urls && product.image_urls.length > 0 ? (
                                                                     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
                                                                         <ProductImageSlider images={product.image_urls} getImageUrl={getImageUrl} />
@@ -2043,15 +2055,12 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                                         style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '10px' }}
                                                                     />
                                                                 ) : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#aaa' }}>No Image</div>}
-
                                                                 {canEditShop && (
                                                                     <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 5, zIndex: 10 }}>
                                                                         <button onClick={() => openEditProduct(product)} style={{ background: 'rgba(255, 255, 255, 0.9)', color: '#333', border: 'none', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>✏️</button>
                                                                         <button onClick={() => handleDeleteProduct(product.id)} style={{ background: 'rgba(239, 68, 68, 0.9)', color: 'white', border: 'none', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>×</button>
                                                                     </div>
                                                                 )}
-
-                                                                {/* Sale Badge */}
                                                                 {product.old_price && parseFloat(product.old_price) > parseFloat(product.price) && (
                                                                     <div style={{ position: 'absolute', top: 10, left: 10, background: '#ef4444', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)', zIndex: 5 }}>
                                                                         عرض خاص
@@ -2060,14 +2069,12 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                             </div>
                                                             <div style={{ padding: 15 }}>
                                                                 <h4 style={{ margin: '0 0 8px', fontSize: '1.1rem' }}>{product.name}</h4>
-
                                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 5 }}>
                                                                     <div style={{ color: 'var(--primary)', fontWeight: 'bold', fontSize: '1.2rem' }}>{product.price} شيكل</div>
                                                                     {product.old_price && parseFloat(product.old_price) > parseFloat(product.price) && (
                                                                         <div style={{ color: 'var(--text-muted)', textDecoration: 'line-through', fontSize: '0.9rem' }}>{product.old_price} شيكل</div>
                                                                     )}
                                                                 </div>
-
                                                                 <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: '8px 0', lineHeight: '1.5' }}>{product.description}</p>
                                                                 <button
                                                                     onClick={() => {
@@ -2105,210 +2112,15 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                         {isVanillaDesign ? (
                                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
                                         ) : (
-                                            shopData.category === 'مكتب تاكسي' ? 'حجوزاتي' : 'السلة 🛒'
+                                            'السلة 🛒'
+
                                         )}
                                         {cartCount > 0 && <span style={{ position: 'absolute', top: isVanillaDesign ? 0 : 'auto', right: isVanillaDesign ? 0 : 'auto', background: '#ef4444', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '0.75rem' }}>{cartCount}</span>}
                                     </button>
                                 </div>
                             )}
 
-                        {activeTab === 'drivers' && (
-                            <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-                                <h3 style={{ borderBottom: '2px solid #fbab15', paddingBottom: 10, marginBottom: 20 }}>🚖 إدارة السائقين (التاكسي)</h3>
 
-                                {/* Add Driver Form */}
-                                <div style={{ background: 'var(--bg-primary)', padding: 20, borderRadius: 12, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-                                    <h4 style={{ margin: '0 0 10px' }}>إضافة سائق جديد</h4>
-                                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: 10 }}>أدخل اسم المستخدم (Username) للمستخدم الذي تريد تعيينه كسائق. سيظهر موقعه لمتابعي المكتب.</p>
-                                    <form onSubmit={handleAddDriver} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                        <input
-                                            className="input"
-                                            value={newDriverData.username}
-                                            onChange={e => setNewDriverData({ ...newDriverData, username: e.target.value })}
-                                            placeholder="اسم المستخدم (Username) للسائق"
-                                            required
-                                            style={{ width: '100%' }}
-                                        />
-                                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                                            <input
-                                                className="input"
-                                                value={newDriverData.car_type}
-                                                onChange={e => setNewDriverData({ ...newDriverData, car_type: e.target.value })}
-                                                placeholder="نوع السيارة (مثال: Toyota Prius)"
-                                                style={{ flex: 1, minWidth: '150px' }}
-                                            />
-                                            <input
-                                                className="input"
-                                                value={newDriverData.plate_number}
-                                                onChange={e => setNewDriverData({ ...newDriverData, plate_number: e.target.value })}
-                                                placeholder="رقم اللوحة"
-                                                style={{ flex: 1, minWidth: '120px' }}
-                                            />
-                                            <input
-                                                className="input"
-                                                type="number"
-                                                value={newDriverData.passengers}
-                                                onChange={e => setNewDriverData({ ...newDriverData, passengers: e.target.value })}
-                                                placeholder="ركاب"
-                                                style={{ width: 80 }}
-                                                min="1" max="10"
-                                            />
-                                        </div>
-                                        <button type="submit" className="btn-small is-primary" style={{ alignSelf: 'flex-end' }}>+ إضافة السائق</button>
-                                    </form>
-                                </div>
-
-                                {/* Drivers List */}
-                                <div>
-                                    <h4 style={{ margin: '0 0 15px' }}>السائقين الحاليين ({drivers.length})</h4>
-                                    {loadingDrivers ? <div className="spinner"></div> : (
-                                        drivers.length === 0 ? <p style={{ color: 'var(--text-muted)' }}>لا يوجد سائقين مسجلين.</p> :
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                                {drivers.map(driver => (
-                                                    <div key={driver.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-primary)', padding: '12px', borderRadius: 12, boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
-                                                            <div style={{ position: 'relative' }}>
-                                                                <img
-                                                                    src={getImageUrl(driver.profile_picture) || '/default-user.png'}
-                                                                    style={{ width: 50, height: 50, borderRadius: '50%', objectFit: 'cover' }}
-                                                                    alt={driver.username}
-                                                                />
-                                                                <span style={{ position: 'absolute', bottom: 0, right: 0, width: 12, height: 12, background: driver.latitude ? '#22c55e' : '#9ca3af', border: '2px solid white', borderRadius: '50%' }} title={driver.latitude ? 'متصل (موقعه متاح)' : 'غير متصل'}></span>
-                                                            </div>
-                                                            <div>
-                                                                <div style={{ fontWeight: 'bold', fontSize: '1rem' }}>{driver.full_name || driver.username}</div>
-                                                                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>@{driver.username}</div>
-                                                            </div>
-                                                        </div>
-                                                        <button
-                                                            onClick={() => handleRemoveDriver(driver.id)}
-                                                            style={{ background: '#fee2e2', color: '#ef4444', border: 'none', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' }}
-                                                        >
-                                                            إزالة
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {activeTab === 'requests' && (
-                            <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-                                <h3 style={{ borderBottom: '2px solid #fbab15', paddingBottom: 10, marginBottom: 20 }}>📋 طلبات التاكسي الحالية</h3>
-
-                                {loadingRequests ? <div className="spinner"></div> : (
-                                    requests.length === 0 ? (
-                                        <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>لا توجد طلبات حالياً</p>
-                                    ) : (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
-                                            {requests.map(req => (
-                                                <div key={req.id} style={{
-                                                    background: 'var(--bg-primary)', borderRadius: 12, padding: 20,
-                                                    border: '1px solid var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-                                                }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 15 }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
-                                                            <img src={getImageUrl(req.profile_picture) || '/default-user.png'} style={{
-                                                                width: 50, height: 50, borderRadius: '50%', objectFit: 'cover', border: '2px solid #fbab15'
-                                                            }} />
-                                                            <div>
-                                                                <h4 style={{ margin: 0 }}>{req.full_name || req.username}</h4>
-                                                                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>📞 {req.phone_number || 'غير متوفر'}</div>
-                                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 3 }}>
-                                                                    📍 {req.pickup_address}
-                                                                </div>
-                                                                {/* Additional User Info */}
-                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px 15px', marginTop: 8 }}>
-                                                                    {req.marital_status && (
-                                                                        <div style={{ fontSize: '0.75rem', color: '#fbab15', fontWeight: '600' }}>
-                                                                            💍 {req.marital_status}
-                                                                        </div>
-                                                                    )}
-                                                                    {req.workplace && (
-                                                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'var(--bg-secondary)', padding: '2px 8px', borderRadius: '4px' }}>
-                                                                            💼 {req.workplace}
-                                                                        </div>
-                                                                    )}
-                                                                    {(req.education || req.institution) && (
-                                                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'var(--bg-secondary)', padding: '2px 8px', borderRadius: '4px' }}>
-                                                                            🎓 {req.education || ''} {req.institution ? `(${req.institution})` : ''}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div style={{
-                                                            background: req.status === 'pending' ? '#fef3c7' : req.status === 'accepted' ? '#dbeafe' : '#d1fae5',
-                                                            color: req.status === 'pending' ? '#92400e' : req.status === 'accepted' ? '#1e40af' : '#065f46',
-                                                            padding: '5px 12px', borderRadius: 20, fontSize: '0.85rem', fontWeight: 'bold'
-                                                        }}>
-                                                            {req.status === 'pending' ? '⏳ قيد الانتظار' : req.status === 'accepted' ? '✅ تم القبول' : '🚗 في الطريق'}
-                                                        </div>
-                                                    </div>
-
-                                                    <div style={{ display: 'flex', gap: 10, marginTop: 15 }}>
-                                                        {req.status === 'pending' && (
-                                                            <>
-                                                                <select
-                                                                    style={{
-                                                                        flex: 1, padding: '8px', borderRadius: 6, border: '1px solid var(--border-color)',
-                                                                        background: 'var(--bg-secondary)', color: 'var(--text-primary)'
-                                                                    }}
-                                                                    onChange={(e) => {
-                                                                        if (e.target.value) {
-                                                                            handleUpdateRequestStatus(req.id, 'accepted', e.target.value);
-                                                                        }
-                                                                    }}
-                                                                    defaultValue=""
-                                                                >
-                                                                    <option value="">اختر سائق...</option>
-                                                                    {drivers.map(d => (
-                                                                        <option key={d.id} value={d.id}>{d.full_name || d.username} - {d.car_type}</option>
-                                                                    ))}
-                                                                </select>
-                                                                <button
-                                                                    onClick={() => handleUpdateRequestStatus(req.id, 'cancelled')}
-                                                                    style={{
-                                                                        background: '#fee2e2', color: '#ef4444', border: 'none',
-                                                                        padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 'bold'
-                                                                    }}
-                                                                >
-                                                                    إلغاء
-                                                                </button>
-                                                            </>
-                                                        )}
-                                                        {req.status === 'accepted' && (
-                                                            <button
-                                                                onClick={() => handleUpdateRequestStatus(req.id, 'arrived')}
-                                                                style={{
-                                                                    flex: 1, background: '#fbab15', color: 'white', border: 'none',
-                                                                    padding: '10px', borderRadius: 6, cursor: 'pointer', fontWeight: 'bold'
-                                                                }}
-                                                            >
-                                                                ✅ تأكيد الوصول
-                                                            </button>
-                                                        )}
-                                                        {req.status === 'arrived' && (
-                                                            <button
-                                                                onClick={() => handleUpdateRequestStatus(req.id, 'completed')}
-                                                                style={{
-                                                                    flex: 1, background: '#10b981', color: 'white', border: 'none',
-                                                                    padding: '10px', borderRadius: 6, cursor: 'pointer', fontWeight: 'bold'
-                                                                }}
-                                                            >
-                                                                ✔️ إكمال الرحلة
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )
-                                )}
-                            </div>
-                        )}
 
                         {showCart && <CartModal onClose={() => setShowCart(false)} />}
 
@@ -3094,25 +2906,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                             </div>
                         )}
 
-                    </div>
 
-                    <style>{`
-                .btn-small { padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; font-family: inherit; }
-                .btn-accept { background: var(--primary); color: white; }
-                .btn-reject { background: #ef4444; color: white; }
-                .is-primary { background: var(--primary); color: white; }
-                .input { background: var(--bg-tertiary); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px; border-radius: 6px; }
-                .btn-primary-glow {
-                    background: var(--primary);
-                    color: white;
-                    box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
-                    transition: all 0.3s ease;
-                }
-                .btn-primary-glow:hover {
-                    box-shadow: 0 0 25px rgba(99, 102, 241, 0.6);
-                    transform: translateY(-1px);
-                }
-            `}</style>
                     {/* Image Cropper Modal for Profile/Cover updates */}
                     {cropState.isOpen && (
                         <ImageCropperModal
@@ -3160,12 +2954,12 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                             onSelectShop={handleSaveDesign}
                         />
                     )}
-
-
+                    </div>
                 </div>
-            </div >
-        </div >
+            </div>
+        </div>
     );
+
 };
 
 export default ShopProfileModal;

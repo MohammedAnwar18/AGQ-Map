@@ -9,7 +9,8 @@ const categoryEmoji = (category) => {
     const map = {
         'مركز تسوق': '🏢', 'Restaurant': '🍽️', 'Cafe': '☕', 'بنك': '🏦',
         'University': '🎓', 'Clothing': '👕', 'Electronics': '📱',
-        'Supermarket': '🛒', 'مكتب تاكسي': '🚕', 'مجمع تجاري': '🏘️', 'Service': '⚙️',
+        'Supermarket': '🛒', 'مجمع تجاري': '🏘️', 'Service': '⚙️',
+
         'بلدية': '🏩', 'Municipality': '🏩',
         'مركز طبي': '🏥', 'مستشفى': '🏨', 'عيادة': '🩺', 'صيدلية': '💊'
     };
@@ -595,7 +596,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                         <option value="Clothing">ملابس</option>
                                                         <option value="Electronics">إلكترونيات</option>
                                                         <option value="Supermarket">سوبرماركت</option>
-                                                        <option value="مكتب تاكسي">مكتب تاكسي 🚕</option>
+
                                                         <option value="Service">خدمات</option>
                                                     </select>
                                                 </div>

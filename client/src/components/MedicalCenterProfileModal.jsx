@@ -53,14 +53,7 @@ const ShareIcon = () => (
 );
 // ... existing icons ...
 
-const TaxiIcon = () => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M18.5 10H5.5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2z"></path>
-        <path d="M7 10l1-4h8l1 4"></path>
-        <circle cx="7" cy="18" r="1.5"></circle>
-        <circle cx="17" cy="18" r="1.5"></circle>
-    </svg>
-);
+
 
 const SearchIcon = () => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -172,17 +165,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
     const [editingCategory, setEditingCategory] = useState(false);
     const [categoryInput, setCategoryInput] = useState('');
 
-    // Drivers State (Taxi Office)
-    const [drivers, setDrivers] = useState([]);
-    const [newDriverData, setNewDriverData] = useState({ username: '', car_type: '', plate_number: '', passengers: 4 });
-    const [loadingDrivers, setLoadingDrivers] = useState(false);
 
-    // Requests State (Taxi Office - for Owner)
-    const [requests, setRequests] = useState([]);
-    const [loadingRequests, setLoadingRequests] = useState(false);
-
-    // Driver's Own Requests
-    const [myDriverRequests, setMyDriverRequests] = useState([]);
 
     // Simulator Mock State
     const [simResult, setSimResult] = useState(null);
@@ -230,7 +213,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
     const isSectionVisible = (sectionKey) => !hiddenSections.includes(sectionKey);
 
     // Check if current user is a driver in this shop
-    const isDriver = drivers.some(d => d.id === currentUser?.id);
+
 
     useEffect(() => {
         if (shop?.id) loadShopData();
@@ -240,19 +223,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
         return () => window.removeEventListener('cart-updated', updateCount);
     }, [shop]);
 
-    // Load drivers when entering Taxi Services
-    useEffect(() => {
-        if (shopData?.category === 'مكتب تاكسي' && (activeTab === 'products' || activeTab === 'drivers')) {
-            loadDrivers();
-        }
-    }, [activeTab, shopData?.category]);
 
-    // Load driver's own requests when they become a driver
-    useEffect(() => {
-        if (isDriver && shopData?.category === 'مكتب تاكسي') {
-            loadMyDriverRequests();
-        }
-    }, [isDriver, shopData?.category]);
 
     const loadShopData = async () => {
         setLoading(true);
@@ -657,12 +628,18 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                 <button onClick={() => coverInputRef.current.click()} style={{ background: 'rgba(0,0,0,0.5)', border: 'none', color: 'white', padding: '8px 12px', borderRadius: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <CameraIcon /> تغيير الغلاف
                                 </button>
-                                <input type="file" ref={coverInputRef} accept="image/*" hidden onChange={e => {
-                                    if (e.target.files[0]) {
-                                        setCropState({ isOpen: true, file: e.target.files[0], type: 'cover_picture', aspect: 3 });
+                                <input type="file" ref={coverInputRef} accept="image/*,.svg" hidden onChange={e => {
+                                    const file = e.target.files[0];
+                                    if (file) {
+                                        if (file.type === 'image/svg+xml') {
+                                            handleImageUpload('cover_picture', file);
+                                        } else {
+                                            setCropState({ isOpen: true, file: file, type: 'cover_picture', aspect: 3 });
+                                        }
                                     }
                                     e.target.value = null;
                                 }} />
+
                             </div>
                         )}
 
@@ -687,12 +664,18 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                         <CameraIcon />
                                     </button>
                                 )}
-                                <input type="file" ref={profileInputRef} accept="image/*" hidden onChange={e => {
-                                    if (e.target.files[0]) {
-                                        setCropState({ isOpen: true, file: e.target.files[0], type: 'profile_picture', aspect: 1 });
+                                <input type="file" ref={profileInputRef} accept="image/*,.svg" hidden onChange={e => {
+                                    const file = e.target.files[0];
+                                    if (file) {
+                                        if (file.type === 'image/svg+xml') {
+                                            handleImageUpload('profile_picture', file);
+                                        } else {
+                                            setCropState({ isOpen: true, file: file, type: 'profile_picture', aspect: 1 });
+                                        }
                                     }
                                     e.target.value = null;
                                 }} />
+
                             </div>
                         </div>
                     </div>
@@ -814,8 +797,6 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                         </div>
                     </div>
 
-                    {/* Driver Dashboard Removed */}
-
                     {/* Navigation Tabs */}
                     <div style={{
                         display: 'flex', gap: 30,
@@ -837,8 +818,6 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                     key={tab}
                                     onClick={() => {
                                         setActiveTab(tab);
-                                        if (tab === 'drivers') loadDrivers();
-                                        if (tab === 'requests') loadRequests();
                                     }}
                                     style={{
                                         border: 'none', background: 'none',
@@ -1124,7 +1103,6 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
 
                         {/* --- Products Tab --- */}
 
-
                         {/* --- Bank View --- */}
                         {activeTab === 'products' && shopData.category === 'بنك' && (
                             <div style={{ animation: 'fadeIn 0.5s' }}>
@@ -1305,7 +1283,6 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
 
                         {/* --- Regular Products Tab --- */}
                         {activeTab === 'products' &&
-                            shopData.category !== 'مكتب تاكسي' &&
                             shopData.category !== 'بنك' &&
                             !(shopData.category === 'مركز تسوق' || shopData.category === 'مجمع تجاري' || shopData.category === 'Mall') && (
                                 <div>
@@ -1326,16 +1303,16 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                         <div style={{ background: 'var(--bg-primary)', padding: 20, borderRadius: 12, marginBottom: 20 }}>
                                             <h3 style={{ marginTop: 0 }}>
                                                 {editingProduct
-                                                    ? (shopData.category === 'مكتب تاكسي' ? 'تعديل الخدمة' : 'تعديل القسم / العيادة')
-                                                    : (shopData.category === 'مكتب تاكسي' ? 'خدمة توصيل جديدة' : 'قسم / عيادة جديد')}
+                                                    ? 'تعديل القسم / العيادة'
+                                                    : 'قسم / عيادة جديد'}
                                             </h3>
                                             <form onSubmit={handleSaveProduct}>
                                                 <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
                                                     <div style={{ flex: 1 }}>
                                                         <label style={{ display: 'block', marginBottom: 5 }}>
-                                                            {shopData.category === 'مكتب تاكسي' ? 'اسم الوجهة/الخدمة' : 'اسم القسم / العيادة'}
+                                                            اسم القسم / العيادة
                                                         </label>
-                                                        <input className="input" type="text" value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} required style={{ width: '100%' }} placeholder={shopData.category === 'مكتب تاكسي' ? 'مثال: توصيلة للمطار' : ''} />
+                                                        <input className="input" type="text" value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} required style={{ width: '100%' }} />
                                                     </div>
                                                     {(['سوبر ماركت', 'سوبرماركت', 'Supermarket', 'supermarket'].includes(shopData.category)) && (
                                                         <div style={{ flex: 1 }}>
@@ -1357,20 +1334,20 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                                 <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
                                                     <div style={{ width: '100px' }}>
                                                         <label style={{ display: 'block', marginBottom: 5 }}>
-                                                            {shopData.category === 'مكتب تاكسي' ? 'التكلفة' : 'سعر الكشفية / الخدمة'}
+                                                            سعر الكشفية / الخدمة
                                                         </label>
                                                         <input className="input" type="number" value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} required style={{ width: '100%' }} />
                                                     </div>
                                                     <div style={{ width: '100px' }}>
                                                         <label style={{ display: 'block', marginBottom: 5 }}>
-                                                            {shopData.category === 'مكتب تاكسي' ? 'سعر سابق' : 'سعر سابق'}
+                                                            سعر سابق
                                                         </label>
                                                         <input className="input" type="number" value={newProduct.old_price} onChange={e => setNewProduct({ ...newProduct, old_price: e.target.value })} style={{ width: '100%' }} placeholder="اختياري" />
                                                     </div>
                                                 </div>
                                                 <textarea
                                                     className="input"
-                                                    placeholder={shopData.category === 'مكتب تاكسي' ? 'تفاصيل الرحلة، نوع السيارة، عدد الركاب المسموح...' : 'وصف القسم / العيادة...'}
+                                                    placeholder={'وصف القسم / العيادة...'}
                                                     value={newProduct.description}
                                                     onChange={e => setNewProduct({ ...newProduct, description: e.target.value })}
                                                     style={{ width: '100%', marginBottom: 10 }}
@@ -1422,9 +1399,9 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                                             </div>
                                                         ) : (
                                                             <div style={{ color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                                                {shopData.category === 'مكتب تاكسي' ? <TaxiIcon /> : <PhotoIcon />}
+                                                                <PhotoIcon />
                                                                 <span style={{ marginTop: 8, fontSize: '0.9rem' }}>
-                                                                    {editingProduct ? 'إضافة/تغيير الصور (يمكنك اختيار عدة صور)' : (shopData.category === 'مكتب تاكسي' ? 'اضغط لإضافة صورة للسيارة/الوجهة' : 'اضغط لإضافة صور القسم / العيادة (يمكنك اختيار عدة صور)')}
+                                                                    {editingProduct ? 'إضافة/تغيير الصور (يمكنك اختيار عدة صور)' : 'اضغط لإضافة صور القسم / العيادة (يمكنك اختيار عدة صور)'}
                                                                 </span>
                                                             </div>
                                                         )}
@@ -1434,7 +1411,8 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                                         type="file"
                                                         multiple
                                                         onChange={e => setProductImages([...productImages, ...Array.from(e.target.files)])}
-                                                        accept="image/*"
+                                                        accept="image/*,.svg"
+
                                                         hidden
                                                     />
                                                 </div>
@@ -1497,7 +1475,8 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                             <input
                                                 className="input"
                                                 type="text"
-                                                placeholder={shopData.category === 'مكتب تاكسي' ? 'بحث في الوجهات/الخدمات...' : 'بحث في القسم / العيادةات...'}
+                                                placeholder="بحث في القسم / العيادةات..."
+
                                                 value={productSearchQuery}
                                                 onChange={e => setProductSearchQuery(e.target.value)}
                                                 style={{
@@ -1551,83 +1530,6 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                                     return matchesSearch;
                                                 })
                                                 .map(product => {
-                                                    // Start Taxi Custom Design
-                                                    if (shopData.category === 'مكتب تاكسي') {
-                                                        return (
-                                                            <div key={product.id} style={{
-                                                                background: 'var(--bg-primary)',
-                                                                borderRadius: 16,
-                                                                overflow: 'hidden',
-                                                                boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
-                                                                border: '1px solid #ef4444', // Taxi Yellow Border
-                                                                display: 'flex',
-                                                                flexDirection: 'column',
-                                                                position: 'relative'
-                                                            }}>
-                                                                {/* Taxi Header Stripe */}
-                                                                <div style={{ height: '8px', background: 'repeating-linear-gradient(45deg, #000, #000 10px, #ef4444 10px, #ef4444 20px)' }}></div>
-
-                                                                <div style={{ padding: 15, flex: 1 }}>
-                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                                                        <h4 style={{ margin: '0 0 5px', fontSize: '1.2rem', color: 'var(--text-primary)' }}>{product.name}</h4>
-                                                                        <span style={{
-                                                                            background: '#ef4444', color: '#000',
-                                                                            fontWeight: 'bold', padding: '2px 8px', borderRadius: '4px', fontSize: '0.9rem'
-                                                                        }}>
-                                                                            {product.price} ₪
-                                                                        </span>
-                                                                    </div>
-
-                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                                                                        {product.old_price && parseFloat(product.old_price) > parseFloat(product.price) && (
-                                                                            <span style={{ color: '#ef4444', textDecoration: 'line-through', fontSize: '0.85rem' }}>{product.old_price} ₪</span>
-                                                                        )}
-                                                                    </div>
-
-                                                                    <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: '0 0 15px', lineHeight: '1.4' }}>
-                                                                        {product.description || 'خدمة توصيل سريعة وآمنة.'}
-                                                                    </p>
-
-                                                                    {/* Image if available, simplified for taxi */}
-                                                                    {product.image_url && (
-                                                                        <div style={{ height: '100px', marginBottom: 15, borderRadius: '8px', overflow: 'hidden' }}>
-                                                                            <img src={getImageUrl(product.image_url)} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-
-                                                                {/* Actions */}
-                                                                <div style={{ padding: '0 15px 15px', display: 'flex', gap: 10 }}>
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            const note = window.prompt('(اختياري) ملاحظات للسائق أو تفاصيل الموقع:', '');
-                                                                            if (note !== null) {
-                                                                                cartService.addItem({ ...product, shop_name: shopData.name, note: note });
-                                                                                alert('تم إضافة الحجز إلى قائمة رحلاتك! يرجى تأكيد الطلب من السلة. 🚖');
-                                                                            }
-                                                                        }}
-                                                                        style={{
-                                                                            flex: 1, padding: '10px',
-                                                                            background: '#000', color: '#ef4444',
-                                                                            border: 'none', borderRadius: '8px',
-                                                                            cursor: 'pointer', fontWeight: 'bold',
-                                                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'
-                                                                        }}
-                                                                    >
-                                                                        <span>حجز الآن</span>
-                                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
-                                                                    </button>
-                                                                    {canEditShop && (
-                                                                        <>
-                                                                            <button onClick={() => openEditProduct(product)} style={{ background: '#f3f4f6', border: 'none', borderRadius: '8px', width: 40, cursor: 'pointer' }}>✏️</button>
-                                                                            <button onClick={() => handleDeleteProduct(product.id)} style={{ background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '8px', width: 40, cursor: 'pointer' }}>×</button>
-                                                                        </>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    }
-                                                    // End Taxi Custom Design
 
                                                     // Default Design
                                                     return (
@@ -1685,222 +1587,10 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
                                                 })
                                         }
                                     </div>
-
-                                    {/* Floating Cart Button */}
-                                    <button
-                                        onClick={() => setShowCart(true)}
-                                        style={{
-                                            position: 'fixed', bottom: 30, left: 20, zIndex: 2100,
-                                            background: 'var(--bg-primary)', color: 'var(--text-primary)',
-                                            border: '2px solid var(--primary)', borderRadius: '50px',
-                                            padding: '10px 18px', fontSize: '1rem', fontWeight: 'bold',
-                                            display: 'flex', alignItems: 'center', gap: 8,
-                                            boxShadow: '0 4px 15px rgba(0,0,0,0.2)', cursor: 'pointer'
-                                        }}
-                                    >
-                                        {shopData.category === 'مكتب تاكسي' ? 'حجوزاتي' : 'السلة'} 🛒
-                                        {cartCount > 0 && <span style={{ background: 'red', color: 'white', borderRadius: '50%', padding: '1px 7px', fontSize: '0.85rem' }}>{cartCount}</span>}
-                                    </button>
                                 </div>
                             )}
 
-                        {activeTab === 'drivers' && (
-                            <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-                                <h3 style={{ borderBottom: '2px solid #ef4444', paddingBottom: 10, marginBottom: 20 }}>🚖 إدارة السائقين (التاكسي)</h3>
 
-                                {/* Add Driver Form */}
-                                <div style={{ background: 'var(--bg-primary)', padding: 20, borderRadius: 12, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-                                    <h4 style={{ margin: '0 0 10px' }}>إضافة سائق جديد</h4>
-                                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: 10 }}>أدخل اسم المستخدم (Username) للمستخدم الذي تريد تعيينه كسائق. سيظهر موقعه لمتابعي المكتب.</p>
-                                    <form onSubmit={handleAddDriver} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                        <input
-                                            className="input"
-                                            value={newDriverData.username}
-                                            onChange={e => setNewDriverData({ ...newDriverData, username: e.target.value })}
-                                            placeholder="اسم المستخدم (Username) للسائق"
-                                            required
-                                            style={{ width: '100%' }}
-                                        />
-                                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                                            <input
-                                                className="input"
-                                                value={newDriverData.car_type}
-                                                onChange={e => setNewDriverData({ ...newDriverData, car_type: e.target.value })}
-                                                placeholder="نوع السيارة (مثال: Toyota Prius)"
-                                                style={{ flex: 1, minWidth: '150px' }}
-                                            />
-                                            <input
-                                                className="input"
-                                                value={newDriverData.plate_number}
-                                                onChange={e => setNewDriverData({ ...newDriverData, plate_number: e.target.value })}
-                                                placeholder="رقم اللوحة"
-                                                style={{ flex: 1, minWidth: '120px' }}
-                                            />
-                                            <input
-                                                className="input"
-                                                type="number"
-                                                value={newDriverData.passengers}
-                                                onChange={e => setNewDriverData({ ...newDriverData, passengers: e.target.value })}
-                                                placeholder="ركاب"
-                                                style={{ width: 80 }}
-                                                min="1" max="10"
-                                            />
-                                        </div>
-                                        <button type="submit" className="btn-small is-primary" style={{ alignSelf: 'flex-end' }}>+ إضافة السائق</button>
-                                    </form>
-                                </div>
-
-                                {/* Drivers List */}
-                                <div>
-                                    <h4 style={{ margin: '0 0 15px' }}>السائقين الحاليين ({drivers.length})</h4>
-                                    {loadingDrivers ? <div className="spinner"></div> : (
-                                        drivers.length === 0 ? <p style={{ color: 'var(--text-muted)' }}>لا يوجد سائقين مسجلين.</p> :
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                                {drivers.map(driver => (
-                                                    <div key={driver.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-primary)', padding: '12px', borderRadius: 12, boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
-                                                            <div style={{ position: 'relative' }}>
-                                                                <img
-                                                                    src={getImageUrl(driver.profile_picture) || '/default-user.png'}
-                                                                    style={{ width: 50, height: 50, borderRadius: '50%', objectFit: 'cover' }}
-                                                                    alt={driver.username}
-                                                                />
-                                                                <span style={{ position: 'absolute', bottom: 0, right: 0, width: 12, height: 12, background: driver.latitude ? '#22c55e' : '#9ca3af', border: '2px solid white', borderRadius: '50%' }} title={driver.latitude ? 'متصل (موقعه متاح)' : 'غير متصل'}></span>
-                                                            </div>
-                                                            <div>
-                                                                <div style={{ fontWeight: 'bold', fontSize: '1rem' }}>{driver.full_name || driver.username}</div>
-                                                                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>@{driver.username}</div>
-                                                            </div>
-                                                        </div>
-                                                        <button
-                                                            onClick={() => handleRemoveDriver(driver.id)}
-                                                            style={{ background: '#fee2e2', color: '#ef4444', border: 'none', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' }}
-                                                        >
-                                                            إزالة
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {activeTab === 'requests' && (
-                            <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-                                <h3 style={{ borderBottom: '2px solid #ef4444', paddingBottom: 10, marginBottom: 20 }}>📋 طلبات التاكسي الحالية</h3>
-
-                                {loadingRequests ? <div className="spinner"></div> : (
-                                    requests.length === 0 ? (
-                                        <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>لا توجد طلبات حالياً</p>
-                                    ) : (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
-                                            {requests.map(req => (
-                                                <div key={req.id} style={{
-                                                    background: 'var(--bg-primary)', borderRadius: 12, padding: 20,
-                                                    border: '1px solid var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-                                                }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 15 }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
-                                                            <img src={getImageUrl(req.profile_picture) || '/default-user.png'} style={{
-                                                                width: 50, height: 50, borderRadius: '50%', objectFit: 'cover', border: '2px solid #ef4444'
-                                                            }} />
-                                                            <div>
-                                                                <h4 style={{ margin: 0 }}>{req.full_name || req.username}</h4>
-                                                                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>📞 {req.phone_number || 'غير متوفر'}</div>
-                                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 3 }}>
-                                                                    📍 {req.pickup_address}
-                                                                </div>
-                                                                {/* Additional User Info */}
-                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px 15px', marginTop: 8 }}>
-                                                                    {req.marital_status && (
-                                                                        <div style={{ fontSize: '0.75rem', color: '#ef4444', fontWeight: '600' }}>
-                                                                            💍 {req.marital_status}
-                                                                        </div>
-                                                                    )}
-                                                                    {req.workplace && (
-                                                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'var(--bg-secondary)', padding: '2px 8px', borderRadius: '4px' }}>
-                                                                            💼 {req.workplace}
-                                                                        </div>
-                                                                    )}
-                                                                    {(req.education || req.institution) && (
-                                                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'var(--bg-secondary)', padding: '2px 8px', borderRadius: '4px' }}>
-                                                                            🎓 {req.education || ''} {req.institution ? `(${req.institution})` : ''}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div style={{
-                                                            background: req.status === 'pending' ? '#fef3c7' : req.status === 'accepted' ? '#dbeafe' : '#d1fae5',
-                                                            color: req.status === 'pending' ? '#92400e' : req.status === 'accepted' ? '#1e40af' : '#065f46',
-                                                            padding: '5px 12px', borderRadius: 20, fontSize: '0.85rem', fontWeight: 'bold'
-                                                        }}>
-                                                            {req.status === 'pending' ? '⏳ قيد الانتظار' : req.status === 'accepted' ? '✅ تم القبول' : '🚗 في الطريق'}
-                                                        </div>
-                                                    </div>
-
-                                                    <div style={{ display: 'flex', gap: 10, marginTop: 15 }}>
-                                                        {req.status === 'pending' && (
-                                                            <>
-                                                                <select
-                                                                    style={{
-                                                                        flex: 1, padding: '8px', borderRadius: 6, border: '1px solid var(--border-color)',
-                                                                        background: 'var(--bg-secondary)', color: 'var(--text-primary)'
-                                                                    }}
-                                                                    onChange={(e) => {
-                                                                        if (e.target.value) {
-                                                                            handleUpdateRequestStatus(req.id, 'accepted', e.target.value);
-                                                                        }
-                                                                    }}
-                                                                    defaultValue=""
-                                                                >
-                                                                    <option value="">اختر سائق...</option>
-                                                                    {drivers.map(d => (
-                                                                        <option key={d.id} value={d.id}>{d.full_name || d.username} - {d.car_type}</option>
-                                                                    ))}
-                                                                </select>
-                                                                <button
-                                                                    onClick={() => handleUpdateRequestStatus(req.id, 'cancelled')}
-                                                                    style={{
-                                                                        background: '#fee2e2', color: '#ef4444', border: 'none',
-                                                                        padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 'bold'
-                                                                    }}
-                                                                >
-                                                                    إلغاء
-                                                                </button>
-                                                            </>
-                                                        )}
-                                                        {req.status === 'accepted' && (
-                                                            <button
-                                                                onClick={() => handleUpdateRequestStatus(req.id, 'arrived')}
-                                                                style={{
-                                                                    flex: 1, background: '#ef4444', color: 'white', border: 'none',
-                                                                    padding: '10px', borderRadius: 6, cursor: 'pointer', fontWeight: 'bold'
-                                                                }}
-                                                            >
-                                                                ✅ تأكيد الوصول
-                                                            </button>
-                                                        )}
-                                                        {req.status === 'arrived' && (
-                                                            <button
-                                                                onClick={() => handleUpdateRequestStatus(req.id, 'completed')}
-                                                                style={{
-                                                                    flex: 1, background: '#10b981', color: 'white', border: 'none',
-                                                                    padding: '10px', borderRadius: 6, cursor: 'pointer', fontWeight: 'bold'
-                                                                }}
-                                                            >
-                                                                ✔️ إكمال الرحلة
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )
-                                )}
-                            </div>
-                        )}
 
                         {showCart && <CartModal onClose={() => setShowCart(false)} />}
 
