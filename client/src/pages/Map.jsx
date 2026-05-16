@@ -1039,7 +1039,7 @@ const MapComponent = () => {
         }
     }, [userLocation, isTracking]);
 
-    const [isInitialDataLoaded, setIsInitialDataLoaded] = useState(false);
+    const [isInitialDataLoaded, setIsInitialDataLoaded] = useState(true);
 
 
     // Birzeit University Geofencing Notification

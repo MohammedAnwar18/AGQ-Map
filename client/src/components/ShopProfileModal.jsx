@@ -725,17 +725,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
 
     if (!shopData) return null;
 
-    // Prevent flashing old design while loading the full profile (which contains custom_design)
-    if (loading) {
-        return (
-            <div className="modal-overlay" onClick={onClose} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <div style={{ background: 'var(--bg-primary)', padding: '25px 40px', borderRadius: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
-                    <div className="spinner" style={{ borderColor: 'var(--primary)', borderTopColor: 'transparent', width: 40, height: 40, borderWidth: 4 }}></div>
-                    <span style={{ color: 'var(--text-primary)', fontWeight: 'bold', fontSize: '1.1rem' }}>جاري تحميل المتجر...</span>
-                </div>
-            </div>
-        );
-    }
+    // No full-screen loading blocker here so the modal opens instantly. Sub-content loads asynchronously in the tabs.
 
     if (isCoffeeLabApp) {
         return (
@@ -1930,9 +1920,18 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
 
                                                 return matchesSearch;
                                             })
-                                            .length === 0 ? <p style={{ color: 'var(--text-muted)', gridColumn: '1/-1', textAlign: 'center', padding: '20px' }}>
-                                            {products.length === 0 ? 'لا توجد منتجات.' : 'لا توجد منتجات تطابق البحث/الفلتر.'}
-                                        </p> :
+                                            .length === 0 ? (
+                                                loading ? (
+                                                    <div style={{ gridColumn: '1/-1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px', gap: '15px' }}>
+                                                        <div className="spinner" style={{ borderColor: 'var(--primary)', borderTopColor: 'transparent', width: '30px', height: '30px', borderWidth: '3px' }}></div>
+                                                        <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 'bold' }}>جاري تحميل المنتجات...</span>
+                                                    </div>
+                                                ) : (
+                                                    <p style={{ color: 'var(--text-muted)', gridColumn: '1/-1', textAlign: 'center', padding: '20px' }}>
+                                                        {products.length === 0 ? 'لا توجد منتجات.' : 'لا توجد منتجات تطابق البحث/الفلتر.'}
+                                                    </p>
+                                                )
+                                            ) :
                                             products
                                                 .filter(p => {
                                                     const matchesSearch = (p.name || '').toLowerCase().includes(productSearchQuery.toLowerCase()) ||
@@ -2475,6 +2474,17 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                     </div>
                                 )}
 
+                                {loading && posts.length === 0 && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px', gap: '15px' }}>
+                                        <div className="spinner" style={{ borderColor: 'var(--primary)', borderTopColor: 'transparent', width: '30px', height: '30px', borderWidth: '3px' }}></div>
+                                        <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 'bold' }}>جاري تحميل المنشورات...</span>
+                                    </div>
+                                )}
+
+                                {!loading && posts.length === 0 && (
+                                    <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>لا توجد منشورات بعد.</p>
+                                )}
+
                                 {posts.map(post => (
                                     <div key={post.id} style={{ background: 'var(--bg-primary)', borderRadius: 10, padding: 15, marginBottom: 15 }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
@@ -2589,7 +2599,13 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
 
                         {/* --- About Tab --- */}
                         {activeTab === 'about' && (
-                            <div style={{ display: 'grid', gap: 20 }}>
+                            loading ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px', gap: '15px' }}>
+                                    <div className="spinner" style={{ borderColor: 'var(--primary)', borderTopColor: 'transparent', width: '30px', height: '30px', borderWidth: '3px' }}></div>
+                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 'bold' }}>جاري تحميل التفاصيل...</span>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'grid', gap: 20 }}>
                                 <div style={{ background: 'var(--bg-primary)', padding: 20, borderRadius: 10 }}>
                                     <h3>من نحن</h3>
                                     <p>{shopData.bio || 'لا توجد نبذة.'}</p>
@@ -2991,6 +3007,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                     </div>
                                 )}
                             </div>
+                        )
                         )}
 
 

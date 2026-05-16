@@ -923,7 +923,7 @@ const getFollowedUniversitiesFacilities = async (req, res) => {
 
 const getAllShopsMap = async (req, res) => {
     try {
-        const shopsRes = await pool.query('SELECT id, name, category, profile_picture, latitude, longitude, floor, parent_shop_id, \'shop\' as type FROM shops WHERE is_hidden = FALSE');
+        const shopsRes = await pool.query('SELECT id, name, category, profile_picture, cover_picture, custom_design, hidden_sections, latitude, longitude, floor, parent_shop_id, \'shop\' as type FROM shops WHERE is_hidden = FALSE');
         const facilitiesRes = await pool.query('SELECT id, name, category, icon, latitude, longitude, university_id as parent_shop_id, \'facility\' as type FROM university_facilities');
 
         res.json({

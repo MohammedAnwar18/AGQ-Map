@@ -244,23 +244,29 @@
 
 .notification-badge {
     position: absolute;
-    top: -2px;
-    right: -2px;
-    width: 18px;
+    top: -4px;
+    right: -4px;
+    min-width: 18px;
     height: 18px;
     background-color: #ef4444;
     /* Red 500 */
     color: white;
-    border-radius: 50%;
-    font-size: 0.7rem;
-    font-weight: bold;
-    display: flex;
+    border-radius: 9px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid #1e293b;
+    padding: 0 4px;
+    box-sizing: border-box;
+    border: 1.5px solid #1e293b;
     /* Match bg to create cutout effect */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
     z-index: 10;
+    font-family: system-ui, -apple-system, sans-serif;
+    line-height: 1;
+    direction: ltr;
+    white-space: nowrap;
 }
 
 /* Update FABs to have orange border */
