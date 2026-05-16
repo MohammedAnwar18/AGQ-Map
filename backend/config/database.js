@@ -1,8 +1,10 @@
 const { Pool } = require('pg');
 
+const path = require('path');
+
 // التحميل فقط في البيئة المحلية، في Vercel البيئة جاهزة تلقائياً
 if (!process.env.VERCEL) {
-  require('dotenv').config();
+  require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 }
 
 let pool;

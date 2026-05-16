@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Start-Process powershell -ArgumentList \"-NoExit\", \"-Command\", \"cd 'c:\\\\Users\\\\Moham\\\\Desktop\\\\APPAGQ\\\\client'; npm run dev\")"
+    ]
+  }
+}

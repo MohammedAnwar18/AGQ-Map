@@ -135,8 +135,8 @@ const sendOtpEmail = async (to, otpCode) => {
     const textContent = buildOtpEmailText(otpCode);
     const fromName = 'PalNovaa Security';
     
-    // ملاحظة: سجلات الـ DNS الخاصة بك موثقة على send.palnovaa.com
-    const authenticatedDomain = 'send.palnovaa.com';
+    // ملاحظة: سجلات الـ DNS الخاصة بك موثقة على palnovaa.com
+    const authenticatedDomain = process.env.RESEND_DOMAIN || 'palnovaa.com';
     const fromEmail = process.env.EMAIL_USER || `noreply@${authenticatedDomain}`;
 
     // 1. محاولة الإرسال عبر Nodemailer (SMTP) إذا كان مفعلاً
