@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { friendService, messageService } from '../services/api';
+import DefaultAvatar from './DefaultAvatar';
 import './Modal.css';
 import './ChatModalStyles.css';
 
@@ -245,9 +246,7 @@ const ChatModal = ({ onClose }) => {
                                             {friend.profile_picture ? (
                                                 <img src={friend.profile_picture} alt={friend.username} />
                                             ) : (
-                                                <div className="avatar-placeholder">
-                                                    {friend.username.charAt(0).toUpperCase()}
-                                                </div>
+                                                <DefaultAvatar gender={friend.gender} size={50} uid={String(friend.id)} />
                                             )}
                                             {friend.is_online && <div className="online-indicator" />}
                                         </div>
@@ -274,9 +273,7 @@ const ChatModal = ({ onClose }) => {
                                 {selectedFriend.profile_picture ? (
                                     <img src={selectedFriend.profile_picture} alt={selectedFriend.username} />
                                 ) : (
-                                    <div className="avatar-placeholder">
-                                        {selectedFriend.username.charAt(0).toUpperCase()}
-                                    </div>
+                                    <DefaultAvatar gender={selectedFriend.gender} size={40} uid={`hdr-${selectedFriend.id}`} />
                                 )}
                                 {selectedFriend.is_online && <div className="online-indicator" />}
                             </div>
@@ -301,17 +298,13 @@ const ChatModal = ({ onClose }) => {
                                             user.profile_picture ? (
                                                 <img src={user.profile_picture} alt="You" />
                                             ) : (
-                                                <div className="avatar-placeholder">
-                                                    {user.username.charAt(0).toUpperCase()}
-                                                </div>
+                                                <DefaultAvatar gender={user.gender} size={36} uid={`me-${user.id}`} />
                                             )
                                         ) : (
                                             selectedFriend.profile_picture ? (
                                                 <img src={selectedFriend.profile_picture} alt={selectedFriend.username} />
                                             ) : (
-                                                <div className="avatar-placeholder">
-                                                    {selectedFriend.username.charAt(0).toUpperCase()}
-                                                </div>
+                                                <DefaultAvatar gender={selectedFriend.gender} size={36} uid={`fr-${selectedFriend.id}`} />
                                             )
                                         )}
                                     </div>

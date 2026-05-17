@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { userService, friendService } from '../services/api';
+import DefaultAvatar from './DefaultAvatar';
 import './Modal.css';
 
 const SearchModal = ({ onClose }) => {
@@ -157,9 +158,7 @@ const SearchModal = ({ onClose }) => {
                                         {user.profile_picture ? (
                                             <img src={user.profile_picture} alt={user.username} />
                                         ) : (
-                                            <div className="avatar-placeholder">
-                                                {user.username.charAt(0).toUpperCase()}
-                                            </div>
+                                            <DefaultAvatar gender={user.gender} size={50} uid={String(user.id)} />
                                         )}
                                     </div>
                                     <div className="chat-info">

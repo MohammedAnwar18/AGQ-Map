@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import ImageCropper from './ImageCropper';
 import CustomCalendar from './CustomCalendar';
 import FriendButton from './FriendButton';
+import DefaultAvatar from './DefaultAvatar';
 import './Modal.css';
 
 // Admin verification badge - golden shield with checkmark
@@ -329,9 +330,7 @@ const ProfileModal = ({ userId, onClose }) => {
                                         {profile.profile_picture ? (
                                             <img src={profile.profile_picture} alt={profile.username || profile.full_name} />
                                         ) : (
-                                            <div className="avatar-placeholder" style={{ fontSize: '2.5rem' }}>
-                                                {(profile.full_name || profile.username || '?').charAt(0).toUpperCase()}
-                                            </div>
+                                            <DefaultAvatar gender={profile.gender} size={110} uid={String(profile.id || 'p')} style={{ borderRadius: '50%' }} />
                                         )}
 
                                         {editing && (

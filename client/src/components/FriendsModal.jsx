@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { friendService, shopService, getImageUrl } from '../services/api';
 import ProfileModal from './ProfileModal';
 import PalNovaaMarketDesign from './PalNovaaMarketDesign';
+import DefaultAvatar from './DefaultAvatar';
 import './Modal.css';
 
 // Helper: رندر أيقونة المحل بناءً على الفئة أو الصورة الحقيقية
@@ -379,9 +380,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                         {friend.profile_picture ? (
                                                             <img src={getImageUrl(friend.profile_picture)} alt={friend.username} />
                                                         ) : (
-                                                            <div className="avatar-placeholder">
-                                                                {friend.username.charAt(0).toUpperCase()}
-                                                            </div>
+                                                            <DefaultAvatar gender={friend.gender} size={50} uid={String(friend.id)} />
                                                         )}
                                                         {friend.is_online && <div className="online-indicator" />}
                                                     </div>
@@ -451,9 +450,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                     {request.profile_picture ? (
                                                         <img src={getImageUrl(request.profile_picture)} alt={request.username} />
                                                     ) : (
-                                                        <div className="avatar-placeholder">
-                                                            {(request.username || 'U').charAt(0).toUpperCase()}
-                                                        </div>
+                                                        <DefaultAvatar gender={request.gender} size={50} uid={`req-${request.id}`} />
                                                     )}
                                                 </div>
                                                 <div className="chat-info">

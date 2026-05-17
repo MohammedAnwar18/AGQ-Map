@@ -94,6 +94,10 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('token', userToken);
     };
 
+    const updateUser = (updates) => {
+        setUser(prev => ({ ...prev, ...updates }));
+    };
+
     const logout = () => {
         setUser(null);
         setToken(null);
@@ -110,6 +114,7 @@ export const AuthProvider = ({ children }) => {
         socket,
         login,
         logout,
+        updateUser,
         isAuthenticated: !!user
     };
 

@@ -15,7 +15,28 @@ import PushNotificationManager from './components/PushNotificationManager';
 import IosInstallPrompt from './components/IosInstallPrompt';
 import PwaInstallPrompt from './components/PwaInstallPrompt';
 import SplashLoading from './components/SplashLoading';
+import ProfileSetupModal from './components/ProfileSetupModal';
 import './index.css';
+
+const OnboardingManager = () => {
+    const { user, isAuthenticated } = useAuth();
+    const [show, setShow] = useState(false);
+
+    useEffect(() => {
+        if (isAuthenticated && user && !user.profile_picture) {
+            const seen = sessionStorage.getItem('profile_setup_shown');
+            if (!seen) setShow(true);
+        }
+    }, [isAuthenticated, user]);
+
+    const handleClose = () => {
+        sessionStorage.setItem('profile_setup_shown', '1');
+        setShow(false);
+    };
+
+    if (!show) return null;
+    return <ProfileSetupModal onClose={handleClose} />;
+};
 
 const ProtectedRoute = ({ children }) => {
     const { isAuthenticated, loading } = useAuth();
@@ -97,6 +118,7 @@ function App() {
                         <PushNotificationManager />
                         <IosInstallPrompt />
                         <PwaInstallPrompt />
+                        <OnboardingManager />
                         <Routes>
                             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
                             <Route path="/map" element={<ProtectedRoute><Map /></ProtectedRoute>} />
