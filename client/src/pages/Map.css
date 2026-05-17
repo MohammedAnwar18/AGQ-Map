@@ -249,22 +249,22 @@
     min-width: 18px;
     height: 18px;
     background-color: #ef4444;
-    /* Red 500 */
-    color: white;
-    border-radius: 9px;
-    font-size: 0.65rem;
+    color: #ffffff;
+    border-radius: 50px; /* Fully rounded capsule */
+    font-size: 10px; /* Clear and crisp on all mobile screens */
     font-weight: 800;
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: center;
+    text-align: center;
     padding: 0 4px;
     box-sizing: border-box;
     border: 1.5px solid #1e293b;
-    /* Match bg to create cutout effect */
     box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
     z-index: 10;
-    font-family: system-ui, -apple-system, sans-serif;
-    line-height: 1;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 0; /* Bulletproof trick to collapse baseline and center numbers vertically */
+    font-variant-numeric: tabular-nums; /* Ensures numbers have consistent width for perfect horizontal centering */
     direction: ltr;
     white-space: nowrap;
 }
