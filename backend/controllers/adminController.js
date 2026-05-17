@@ -49,6 +49,7 @@ const getAllUsers = async (req, res) => {
             SELECT 
                 u.id, u.username, u.email, u.full_name, u.profile_picture,
                 u.created_at, u.is_active, u.is_online, u.last_seen, u.role,
+                u.last_latitude, u.last_longitude,
                 COUNT(DISTINCT p.id) as posts_count,
                 COUNT(DISTINCT f.id) as friends_count
             FROM users u
@@ -104,7 +105,8 @@ const getUserDetails = async (req, res) => {
             `SELECT 
                 id, username, email, full_name, bio, profile_picture, date_of_birth,
                 created_at, last_seen, is_online, is_active, role,
-                marital_status, workplace, education, institution
+                marital_status, workplace, education, institution,
+                last_latitude, last_longitude
              FROM users WHERE id = $1`,
             [userId]
         );

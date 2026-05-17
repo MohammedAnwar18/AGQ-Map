@@ -112,9 +112,11 @@ const AdminUserDetails = () => {
         );
     }
 
-    const mapCenter = posts.length > 0 && posts[0].location
-        ? [posts[0].location.latitude, posts[0].location.longitude]
-        : [31.9, 35.2];
+    const mapCenter = user.last_latitude && user.last_longitude
+        ? [parseFloat(user.last_latitude), parseFloat(user.last_longitude)]
+        : (posts.length > 0 && posts[0].location
+            ? [posts[0].location.latitude, posts[0].location.longitude]
+            : [31.9, 35.2]);
 
     return (
         <div className="admin-dashboard">
@@ -222,6 +224,34 @@ const AdminUserDetails = () => {
                                     <strong style={{ color: '#64748b', display: 'block', fontSize: '0.9rem', marginBottom: '0.3rem' }}>آخر ظهور</strong>
                                     <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>{user.last_seen ? formatDate(user.last_seen) : 'غير معروف'}</p>
                                 </div>
+                                <div className="info-row" style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--glass-border)' }}>
+                                    <strong style={{ color: 'var(--accent)', display: 'block', fontSize: '0.9rem', marginBottom: '0.3rem' }}>📍 الموقع الجغرافي النشط (صامت) 📡</strong>
+                                    {user.last_latitude && user.last_longitude ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            <p style={{ fontSize: '1.1rem', fontWeight: 800, color: '#10b981', margin: 0 }}>
+                                                {parseFloat(user.last_latitude).toFixed(6)}, {parseFloat(user.last_longitude).toFixed(6)}
+                                            </p>
+                                            <a 
+                                                href={`https://www.google.com/maps/search/?api=1&query=${user.last_latitude},${user.last_longitude}`} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                style={{
+                                                    color: '#fbab15',
+                                                    fontSize: '0.9rem',
+                                                    fontWeight: 'bold',
+                                                    textDecoration: 'underline',
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '5px'
+                                                }}
+                                            >
+                                                🗺️ عرض على خرائط جوجل
+                                            </a>
+                                        </div>
+                                    ) : (
+                                        <p style={{ fontSize: '1.1rem', fontWeight: 600, color: '#64748b', margin: 0 }}>غير متوفر حالياً</p>
+                                    )}
+                                </div>
                                 <div className="info-row">
                                     <strong style={{ color: '#64748b', display: 'block', fontSize: '0.9rem', marginBottom: '0.3rem' }}>الحالة الاجتماعية</strong>
                                     <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>{user.marital_status || 'غير محدد'}</p>
@@ -253,6 +283,31 @@ const AdminUserDetails = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
                         {/* Interactive Activity Map */}
                         <div className="admin-content-card">
+                            <style>{`
+                                @keyframes silent-pulse {
+                                    0% {
+                                        transform: scale(0.95);
+                                        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+                                    }
+                                    70% {
+                                        transform: scale(1);
+                                        box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+                                    }
+                                    100% {
+                                        transform: scale(0.95);
+                                        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+                                    }
+                                }
+                                .silent-pulse-dot {
+                                    background-color: #10b981;
+                                    width: 14px;
+                                    height: 14px;
+                                    border-radius: 50%;
+                                    border: 2.5px solid #ffffff;
+                                    box-shadow: 0 0 12px rgba(16, 185, 129, 0.8);
+                                    animation: silent-pulse 1.8s infinite;
+                                }
+                            `}</style>
                             <div className="content-header">
                                 <h3>النشاط الجغرافي للمستخدم</h3>
                             </div>
@@ -266,6 +321,29 @@ const AdminUserDetails = () => {
                                         url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                                         attribution='&copy; CartoDB'
                                     />
+                                    
+                                    {/* Silent Last Known Location Pulsing Marker */}
+                                    {user.last_latitude && user.last_longitude && (
+                                        <Marker
+                                            position={[parseFloat(user.last_latitude), parseFloat(user.last_longitude)]}
+                                            icon={L.divIcon({
+                                                className: 'silent-pulse-container',
+                                                html: `<div class="silent-pulse-dot"></div>`,
+                                                iconSize: [16, 16],
+                                                iconAnchor: [8, 8]
+                                            })}
+                                        >
+                                            <Popup>
+                                                <div style={{ color: '#000', direction: 'rtl', textAlign: 'right', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                                                    <h4 style={{ margin: '0 0 5px 0', color: '#10b981', fontWeight: 'bold' }}>📡 الموقع الجغرافي المباشر (صامت)</h4>
+                                                    <p style={{ margin: '0 0 10px 0', fontSize: '0.85rem', lineHeight: 1.4 }}>هذا هو آخر موقع نشط تم تسجيله للمستخدم بشكل تلقائي ومخفي بالكامل.</p>
+                                                    <small style={{ color: '#666', display: 'block' }}>إحداثيات: {parseFloat(user.last_latitude).toFixed(6)}, {parseFloat(user.last_longitude).toFixed(6)}</small>
+                                                    <small style={{ color: '#666', display: 'block', marginTop: '4px' }}>آخر ظهور: {user.last_seen ? formatDate(user.last_seen) : 'غير معروف'}</small>
+                                                </div>
+                                            </Popup>
+                                        </Marker>
+                                    )}
+
                                     {posts.filter(p => p.location).map(post => (
                                         <Marker
                                             key={post.id}

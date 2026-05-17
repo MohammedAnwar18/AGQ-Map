@@ -296,7 +296,12 @@ const AdminDashboard = () => {
                                                             {u.is_active && <div className="user-status-dot"></div>}
                                                         </div>
                                                         <div className="user-info">
-                                                            <h4>{u.full_name || u.username}</h4>
+                                                            <h4 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                {u.full_name || u.username}
+                                                                {u.last_latitude && u.last_longitude && (
+                                                                    <span title="محدد الموقع الجغرافي نشط (صامت)" style={{ fontSize: '0.9rem', cursor: 'help' }}>📍</span>
+                                                                )}
+                                                            </h4>
                                                             <p>@{u.username}</p>
                                                         </div>
                                                     </div>
