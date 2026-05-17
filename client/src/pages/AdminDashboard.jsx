@@ -671,7 +671,7 @@ const AdminDashboard = () => {
                                     color: '#000',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    justify-content: 'center',
+                                    justifyContent: 'center',
                                     gap: '10px',
                                     cursor: 'pointer',
                                     border: 'none',
