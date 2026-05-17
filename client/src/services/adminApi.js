@@ -106,6 +106,12 @@ export const adminService = {
     toggleShopStatus: async (shopId, is_hidden) => {
         const response = await adminApi.patch(`/shops/${shopId}/status`, { is_hidden });
         return response.data;
+    },
+
+    // Admin Notifications
+    sendNotification: async (targetUser, message) => {
+        const response = await adminApi.post('/notifications/send', { targetUser, message });
+        return response.data;
     }
 };
 

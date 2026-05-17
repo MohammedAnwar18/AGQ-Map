@@ -15,7 +15,8 @@ const {
     createAdminPost,
     getAllShops,
     deleteShop,
-    toggleShopStatus
+    toggleShopStatus,
+    sendAdminNotification
 } = require('../controllers/adminController');
 
 const upload = require('../middleware/upload');
@@ -42,5 +43,8 @@ router.post('/posts', upload.single('image'), createAdminPost);
 router.get('/shops', getAllShops);
 router.delete('/shops/:shopId', deleteShop);
 router.patch('/shops/:shopId/status', toggleShopStatus);
+
+// Admin Notifications
+router.post('/notifications/send', sendAdminNotification);
 
 module.exports = router;

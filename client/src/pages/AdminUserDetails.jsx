@@ -65,6 +65,19 @@ const AdminUserDetails = () => {
         }
     };
 
+    const handleSendPrivateNotif = async () => {
+        const message = prompt("اكتب رسالة الإشعار الخاصة التي تود إرسالها لهذا المستخدم (ستصل باسم PalNovaa وصورة اللوجو):");
+        if (!message || !message.trim()) return;
+
+        try {
+            await adminService.sendNotification(user.id, message);
+            alert("تم إرسال الإشعار بنجاح!");
+        } catch (error) {
+            console.error("Failed to send notification:", error);
+            alert(error.response?.data?.error || "فشل في إرسال الإشعار");
+        }
+    };
+
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleDateString('ar-SA', {
             year: 'numeric',
@@ -136,6 +149,13 @@ const AdminUserDetails = () => {
                     </div>
 
                     <div className="action-btns">
+                        <button 
+                            className="btn-circle" 
+                            style={{ width: 'auto', padding: '0 2rem', background: 'rgba(251, 171, 21, 0.1)', color: '#fbab15', border: '1px solid currentColor' }}
+                            onClick={handleSendPrivateNotif}
+                        >
+                            📢 إرسال إشعار خاص
+                        </button>
                         <button 
                             className="btn-circle" 
                             style={{ width: 'auto', padding: '0 2rem', background: user.is_active ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)', color: user.is_active ? '#ef4444' : '#10b981', border: '1px solid currentColor' }}

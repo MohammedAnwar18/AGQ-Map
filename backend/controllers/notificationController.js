@@ -13,9 +13,18 @@ const getNotifications = async (req, res) => {
                 n.message,
                 n.is_read,
                 n.created_at,
-                u.id as sender_id,
-                u.username as sender_name,
-                u.profile_picture as sender_picture,
+                CASE 
+                    WHEN n.type = 'admin_alert' THEN NULL
+                    ELSE u.id 
+                END as sender_id,
+                CASE 
+                    WHEN n.type = 'admin_alert' THEN 'PalNovaa'
+                    ELSE COALESCE(u.username, 'PalNovaa')
+                END as sender_name,
+                CASE 
+                    WHEN n.type = 'admin_alert' THEN '/logo.png'
+                    ELSE COALESCE(u.profile_picture, '/logo.png')
+                END as sender_picture,
                 u.date_of_birth,
                 u.gender,
                 u.marital_status,

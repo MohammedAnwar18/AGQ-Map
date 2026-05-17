@@ -21,6 +21,12 @@ const AdminDashboard = () => {
     // Bulk selection states
     const [selectedUsers, setSelectedUsers] = useState([]);
 
+    // Admin Notifications states
+    const [notifTarget, setNotifTarget] = useState('all');
+    const [notifTargetUserId, setNotifTargetUserId] = useState('');
+    const [notifMessage, setNotifMessage] = useState('');
+    const [notifSending, setNotifSending] = useState(false);
+
     // Check admin permissions
     useEffect(() => {
         if (!user || user.role !== 'admin') {
@@ -55,6 +61,9 @@ const AdminDashboard = () => {
                 const shopsData = await adminService.getAllShops(searchQuery, currentPage, 15);
                 setShops(shopsData.shops);
                 setPagination(shopsData.pagination);
+            } else if (activeTab === 'notifications') {
+                const usersData = await adminService.getAllUsers('', 1, 100);
+                setUsers(usersData.users);
             }
         } catch (error) {
             console.error('Failed to load data:', error);
@@ -138,6 +147,40 @@ const AdminDashboard = () => {
         });
     };
 
+    const handleSendAdminNotif = async (e) => {
+        e.preventDefault();
+        
+        const target = notifTarget === 'all' ? 'all' : notifTargetUserId;
+        if (!target) {
+            alert('يرجى تحديد المستخدم المستهدف أولاً');
+            return;
+        }
+
+        if (!notifMessage.trim()) {
+            alert('يرجى كتابة محتوى الرسالة');
+            return;
+        }
+
+        const confirmMsg = notifTarget === 'all' 
+            ? 'هل أنت متأكد من إرسال هذا التنبيه البرودكاست لجميع مستخدمي المنصة المفعّلين؟' 
+            : 'هل أنت متأكد من إرسال هذا التنبيه لهذا المستخدم؟';
+
+        if (!window.confirm(confirmMsg)) return;
+
+        setNotifSending(true);
+        try {
+            const result = await adminService.sendNotification(target, notifMessage);
+            alert(result.message || 'تم إرسال الإشعار بنجاح!');
+            setNotifMessage('');
+            setNotifTargetUserId('');
+        } catch (error) {
+            console.error('Failed to send admin notification:', error);
+            alert(error.response?.data?.error || 'فشل في إرسال الإشعار');
+        } finally {
+            setNotifSending(false);
+        }
+    };
+
     if (!user || user.role !== 'admin') return null;
 
     return (
@@ -157,6 +200,7 @@ const AdminDashboard = () => {
                         { id: 'data', icon: '📝', label: 'كل البيانات' },
                         { id: 'files', icon: '📁', label: 'ملفات الوسائط' },
                         { id: 'map', icon: '🌏', label: 'خارطة النشاط' },
+                        { id: 'notifications', icon: '📢', label: 'إرسال إشعارات' },
                     ].map(tab => (
                         <a
                             key={tab.id}
@@ -187,7 +231,8 @@ const AdminDashboard = () => {
                                 activeTab === 'users' ? 'إدارة الحسابات' :
                                     activeTab === 'shops' ? 'إدارة المحلات والمؤسسات' :
                                         activeTab === 'data' ? 'إدارة المحتوى والبيانات' :
-                                            activeTab === 'files' ? 'مكتبة الوسائط' : 'خارطة النشاط الموحدة'
+                                            activeTab === 'files' ? 'مكتبة الوسائط' :
+                                                activeTab === 'notifications' ? 'إرسال التنبيهات والبرودكاست' : 'خارطة النشاط الموحدة'
                         }</h2>
                         <p>مرحباً بك يا {user.full_name || user.username} • {new Date().toLocaleDateString('ar-SA', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                     </div>
@@ -521,6 +566,128 @@ const AdminDashboard = () => {
                                 يتم حالياً دمج طبقات البيانات الجغرافية المتقدمة لتمكينك من مراقبة النشاط الحي للمستخدمين والبيانات في الوقت الفعلي.
                             </p>
                         </div>
+                    </div>
+                )}
+
+                {/* Admin Notifications Tab */}
+                {activeTab === 'notifications' && (
+                    <div className="admin-content-card" style={{ maxWidth: '800px', margin: '0 auto', padding: '3rem' }}>
+                        <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+                            <div style={{ fontSize: '4.5rem', marginBottom: '1.5rem', filter: 'drop-shadow(0 0 20px rgba(251, 171, 21, 0.3))' }}>📢</div>
+                            <h3 style={{ fontSize: '2rem', marginBottom: '0.8rem', fontWeight: 800 }}>مركز الإشعارات والبرودكاست العام</h3>
+                            <p style={{ opacity: 0.7, fontSize: '1.05rem', lineHeight: 1.6 }}>
+                                كمدير عام، يمكنك إرسال تنبيهات عامة لجميع المستخدمين دفعة واحدة أو تنبيهات خاصة لشخص محدد. 
+                                <br />
+                                <strong>تنبيه:</strong> سيصل الإشعار للمتلقين باسم <strong style={{ color: 'var(--accent)' }}>PalNovaa</strong> وصورة الشعار الرسمية لضمان السرية والخصوصية التامة.
+                            </p>
+                        </div>
+
+                        <form onSubmit={handleSendAdminNotif} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                            <div className="info-row" style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                <label style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--accent)' }}>🎯 جهة الاستقبال (Target User):</label>
+                                <select 
+                                    value={notifTarget} 
+                                    onChange={(e) => setNotifTarget(e.target.value)}
+                                    style={{
+                                        padding: '1.2rem',
+                                        borderRadius: '16px',
+                                        background: 'rgba(255,255,255,0.03)',
+                                        border: '1px solid var(--glass-border)',
+                                        color: '#fff',
+                                        fontSize: '1rem',
+                                        cursor: 'pointer',
+                                        outline: 'none'
+                                    }}
+                                >
+                                    <option value="all" style={{ background: '#020617' }}>📢 كافة مستخدمي المنصة المفعّلين</option>
+                                    <option value="single" style={{ background: '#020617' }}>👤 مستخدم واحد محدد</option>
+                                </select>
+                            </div>
+
+                            {notifTarget === 'single' && (
+                                <div className="info-row" style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                    <label style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--accent)' }}>👤 اختر المستخدم المستهدف:</label>
+                                    <select 
+                                        value={notifTargetUserId} 
+                                        onChange={(e) => setNotifTargetUserId(e.target.value)}
+                                        style={{
+                                            padding: '1.2rem',
+                                            borderRadius: '16px',
+                                            background: 'rgba(255,255,255,0.03)',
+                                            border: '1px solid var(--glass-border)',
+                                            color: '#fff',
+                                            fontSize: '1rem',
+                                            cursor: 'pointer',
+                                            outline: 'none'
+                                        }}
+                                        required
+                                    >
+                                        <option value="" style={{ background: '#020617' }}>-- اختر المستخدم --</option>
+                                        {users.map(u => (
+                                            <option key={u.id} value={u.id} style={{ background: '#020617' }}>
+                                                {u.full_name || u.username} (@{u.username}) • معرف #{u.id}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
+                            <div className="info-row" style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                <label style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--accent)' }}>📝 محتوى رسالة التنبيه:</label>
+                                <textarea
+                                    placeholder="اكتب هنا الرسالة التي تود إرسالها..."
+                                    value={notifMessage}
+                                    onChange={(e) => setNotifMessage(e.target.value)}
+                                    maxLength={250}
+                                    style={{
+                                        padding: '1.5rem',
+                                        borderRadius: '18px',
+                                        background: 'rgba(255,255,255,0.03)',
+                                        border: '1px solid var(--glass-border)',
+                                        color: '#fff',
+                                        fontSize: '1rem',
+                                        minHeight: '150px',
+                                        resize: 'vertical',
+                                        outline: 'none',
+                                        fontFamily: 'inherit',
+                                        lineHeight: 1.6
+                                    }}
+                                    required
+                                />
+                                <small style={{ opacity: 0.5, textAlign: 'left' }}>{notifMessage.length} / 250 حرف</small>
+                            </div>
+
+                            <button 
+                                type="submit" 
+                                className="btn-circle" 
+                                disabled={notifSending}
+                                style={{ 
+                                    width: '100%', 
+                                    padding: '1.5rem', 
+                                    borderRadius: '18px', 
+                                    fontSize: '1.15rem', 
+                                    fontWeight: 'bold',
+                                    background: 'var(--accent)',
+                                    color: '#000',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justify-content: 'center',
+                                    gap: '10px',
+                                    cursor: 'pointer',
+                                    border: 'none',
+                                    transition: 'all 0.3s ease'
+                                }}
+                            >
+                                {notifSending ? (
+                                    <>
+                                        <div className="spinner" style={{ width: '20px', height: '20px', margin: 0 }}></div>
+                                        جاري إرسال التنبيه...
+                                    </>
+                                ) : (
+                                    <>🚀 إرسال التنبيه الآن</>
+                                )}
+                            </button>
+                        </form>
                     </div>
                 )}
             </div>

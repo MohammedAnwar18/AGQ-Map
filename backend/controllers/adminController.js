@@ -357,6 +357,88 @@ const toggleShopStatus = async (req, res) => {
     }
 };
 
+/**
+ * إرسال إشعار من الإدارة للمستخدمين (صامت وباسم PalNovaa)
+ */
+const sendAdminNotification = async (req, res) => {
+    try {
+        const { targetUser, message } = req.body;
+
+        if (!message || message.trim() === '') {
+            return res.status(400).json({ error: 'محتوى الرسالة مطلوب' });
+        }
+
+        const { sendPushNotification } = require('../utils/pushHelper');
+
+        // دالة مساعدة لإدخال وإرسال الإشعار لمستخدم واحد
+        const deliverNotification = async (userId) => {
+            // إدخال في قاعدة البيانات
+            await pool.query(
+                "INSERT INTO notifications (user_id, sender_id, type, message) VALUES ($1, NULL, 'admin_alert', $2)",
+                [userId, message]
+            );
+
+            // إرسال تنبيه Push للهاتف (إن وجد)
+            try {
+                const subResult = await pool.query(
+                    'SELECT id, subscription FROM push_subscriptions WHERE user_id = $1',
+                    [userId]
+                );
+
+                if (subResult.rows.length > 0) {
+                    const payload = {
+                        title: '📢 تنبيه من PalNovaa',
+                        body: message,
+                        icon: '/logo.png',
+                        data: {
+                            url: '/notifications',
+                            type: 'admin_alert'
+                        }
+                    };
+
+                    subResult.rows.forEach(async (row) => {
+                        const sendResult = await sendPushNotification(row.subscription, payload);
+                        if (sendResult.expired) {
+                            await pool.query('DELETE FROM push_subscriptions WHERE id = $1', [row.id]);
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn(`Failed to push notification to user ${userId}:`, e.message);
+            }
+        };
+
+        if (targetUser === 'all') {
+            // جلب كافة المستخدمين النشطين
+            const usersResult = await pool.query('SELECT id FROM users WHERE is_active = TRUE');
+            const userIds = usersResult.rows.map(row => row.id);
+
+            // إرسال الإشعار للجميع بالتوازي
+            await Promise.all(userIds.map(userId => deliverNotification(userId)));
+
+            res.json({ success: true, message: `تم إرسال الإشعار بنجاح إلى ${userIds.length} مستخدم.` });
+        } else {
+            // إرسال لمستخدم محدد
+            const userId = parseInt(targetUser);
+            if (isNaN(userId)) {
+                return res.status(400).json({ error: 'معرف المستخدم غير صحيح' });
+            }
+
+            // التأكد من وجود المستخدم
+            const userCheck = await pool.query('SELECT id FROM users WHERE id = $1', [userId]);
+            if (userCheck.rows.length === 0) {
+                return res.status(404).json({ error: 'المستخدم المطلوب غير موجود' });
+            }
+
+            await deliverNotification(userId);
+            res.json({ success: true, message: 'تم إرسال الإشعار للمستخدم بنجاح.' });
+        }
+    } catch (error) {
+        console.error('Send admin notification error:', error);
+        res.status(500).json({ error: 'خطأ في السيرفر أثناء إرسال الإشعار' });
+    }
+};
+
 module.exports = {
     getDashboardStats,
     getAllUsers,
@@ -368,5 +450,6 @@ module.exports = {
     createAdminPost,
     getAllShops,
     deleteShop,
-    toggleShopStatus
+    toggleShopStatus,
+    sendAdminNotification
 };
