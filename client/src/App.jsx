@@ -100,9 +100,7 @@ function App() {
         };
     }, []);
 
-    if (!isOnline) {
-        return <OfflinePage />;
-    }
+
 
     return (
         <BrowserRouter>
