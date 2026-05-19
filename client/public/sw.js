@@ -1,4 +1,4 @@
-const CACHE_NAME = 'palnovaa-shell-v2';
+const CACHE_NAME = 'palnovaa-shell-v3';
 
 // App shell: files that make the app load instantly from home screen
 const APP_SHELL = [
@@ -6,6 +6,8 @@ const APP_SHELL = [
     '/manifest.json',
     '/logo.png',
     '/favicon.png',
+    'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+    'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
 ];
 
 // ─── Install: cache app shell ───────────────────────────────────────────────
@@ -37,7 +39,13 @@ self.addEventListener('fetch', (event) => {
     if (request.method !== 'GET') return;
 
     // Never cache API calls (auth, user data, etc.)
-    if (url.pathname.startsWith('/api/') || url.hostname !== self.location.hostname) return;
+    if (url.pathname.startsWith('/api/')) return;
+
+    // By default, bypass caching for external hostnames, EXCEPT Leaflet CDNs and Tile servers
+    if (url.hostname !== self.location.hostname) {
+        const isAllowedExternal = url.hostname.includes('unpkg.com') || url.hostname.includes('openstreetmap.org');
+        if (!isAllowedExternal) return;
+    }
 
     // Navigation (page load) → network first, fall back to cached shell
     if (request.mode === 'navigate') {
@@ -60,7 +68,8 @@ self.addEventListener('fetch', (event) => {
         url.pathname.startsWith('/images/') ||
         url.pathname.startsWith('/assets/') ||
         url.pathname === '/logo.png' ||
-        url.pathname === '/favicon.png'
+        url.pathname === '/favicon.png' ||
+        url.hostname.includes('openstreetmap.org')
     ) {
         event.respondWith(
             caches.match(request).then(cached => {
@@ -68,7 +77,7 @@ self.addEventListener('fetch', (event) => {
                     const clone = response.clone();
                     caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
                     return response;
-                });
+                }).catch(() => { /* ignore offline fetch errors */ });
                 return cached || networkFetch;
             })
         );
@@ -76,7 +85,7 @@ self.addEventListener('fetch', (event) => {
     }
 
     // JS/CSS bundles → network first with cache fallback (so updates apply)
-    if (request.destination === 'script' || request.destination === 'style') {
+    if (request.destination === 'script' || request.destination === 'style' || url.hostname.includes('unpkg.com')) {
         event.respondWith(
             fetch(request)
                 .then(response => {

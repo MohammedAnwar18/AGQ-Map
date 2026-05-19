@@ -178,6 +178,226 @@ const MapComponent = () => {
     // Live Tracking State
     const [isTracking, setIsTracking] = useState(false);
 
+    // Online/Offline Detection & GPS Mode Fallback
+    const [isOnline, setIsOnline] = useState(navigator.onLine);
+    const offlineMapRef = useRef(null);
+    const offlineMarkerRef = useRef(null);
+    const offlineCircleRef = useRef(null);
+    const offlineLastPosRef = useRef(null);
+    const [offlineMetrics, setOfflineMetrics] = useState({
+        lat: '--',
+        lon: '--',
+        accuracy: '--',
+        speed: '0 كم/س',
+        statusMsg: 'جاري البحث عن إشارات الأقمار الصناعية (GPS)... الرجاء التأكد من تفعيل الموقع.'
+    });
+
+    useEffect(() => {
+        const handleOnline = () => setIsOnline(true);
+        const handleOffline = () => setIsOnline(false);
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
+
+    // Offline Geolocation Leaflet Map Handler
+    useEffect(() => {
+        if (isOnline) {
+            if (offlineMapRef.current) {
+                try {
+                    offlineMapRef.current.remove();
+                } catch (e) {
+                    console.error(e);
+                }
+                offlineMapRef.current = null;
+                offlineMarkerRef.current = null;
+                offlineCircleRef.current = null;
+            }
+            return;
+        }
+
+        // Wait a small bit to ensure script is fully loaded and DOM element is ready
+        const timer = setTimeout(() => {
+            if (!window.L) {
+                console.error("Leaflet library not loaded yet.");
+                return;
+            }
+
+            const mapEl = document.getElementById('offline-leaflet-map');
+            if (!mapEl) return;
+
+            let initialCoords = [31.7683, 35.2137]; // Default Jerusalem
+            const storedLoc = localStorage.getItem('last_user_location');
+            if (storedLoc) {
+                try {
+                    const parsed = JSON.parse(storedLoc);
+                    if (parsed && parsed.latitude && parsed.longitude) {
+                        initialCoords = [parsed.latitude, parsed.longitude];
+                    }
+                } catch (e) {}
+            }
+
+            // Clean up any existing instance first
+            if (offlineMapRef.current) {
+                try {
+                    offlineMapRef.current.remove();
+                } catch (e) {}
+            }
+
+            const leafletMap = window.L.map('offline-leaflet-map', {
+                zoomControl: true
+            }).setView(initialCoords, 13);
+
+            window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(leafletMap);
+
+            leafletMap.zoomControl.setPosition('topright');
+            offlineMapRef.current = leafletMap;
+
+            const customPulserIcon = window.L.divIcon({
+                className: 'offline-user-marker-icon',
+                html: '<div class="offline-pulse-ring"></div><div class="offline-pulse-dot-center"></div>',
+                iconSize: [16, 16],
+                iconAnchor: [8, 8]
+            });
+
+            // Set marker at initial location
+            offlineLastPosRef.current = initialCoords;
+            setOfflineMetrics(prev => ({
+                ...prev,
+                lat: initialCoords[0].toFixed(5),
+                lon: initialCoords[1].toFixed(5)
+            }));
+            offlineMarkerRef.current = window.L.marker(initialCoords, { icon: customPulserIcon }).addTo(leafletMap);
+            leafletMap.flyTo(initialCoords, 16, { duration: 1.5 });
+
+            const geoOptions = {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            };
+
+            const onLocationSuccess = (position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                const accuracy = position.coords.accuracy;
+                const speed = position.coords.speed;
+                const newPos = [lat, lon];
+                offlineLastPosRef.current = newPos;
+
+                let speedLabel = '0 كم/س';
+                if (speed !== null && speed !== undefined && speed > 0) {
+                    speedLabel = `${(speed * 3.6).toFixed(1)} كم/س`;
+                }
+
+                setOfflineMetrics({
+                    lat: lat.toFixed(5),
+                    lon: lon.toFixed(5),
+                    accuracy: `± ${accuracy.toFixed(1)} م`,
+                    speed: speedLabel,
+                    statusMsg: `🟢 إشارة GPS قوية ونشطة (تحديث حي). دقة التحديد: ± ${accuracy.toFixed(1)} متر.`
+                });
+
+                if (offlineMarkerRef.current) {
+                    offlineMarkerRef.current.setLatLng(newPos);
+                } else {
+                    offlineMarkerRef.current = window.L.marker(newPos, { icon: customPulserIcon }).addTo(leafletMap);
+                    leafletMap.flyTo(newPos, 16, { duration: 1.5 });
+                }
+
+                if (offlineCircleRef.current) {
+                    offlineCircleRef.current.setLatLng(newPos).setRadius(accuracy);
+                } else {
+                    offlineCircleRef.current = window.L.circle(newPos, {
+                        radius: accuracy,
+                        color: '#fbab15',
+                        fillColor: '#fbab15',
+                        fillOpacity: 0.15,
+                        weight: 1
+                    }).addTo(leafletMap);
+                }
+
+                localStorage.setItem('last_user_location', JSON.stringify({ latitude: lat, longitude: lon }));
+            };
+
+            const onLocationError = (error) => {
+                console.error("GPS Error: ", error);
+                let errorMessage = "تعذر تحديد الموقع الجغرافي.";
+                switch (error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage = "❌ تم رفض إذن الوصول للموقع. يرجى تفعيل الـ GPS والسماح للمتصفح بالوصول.";
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage = "⚠️ إشارة الموقع غير متوفرة (قد تكون داخل مبنى مغلق).";
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage = "⏳ انتهت مهلة البحث عن إشارة GPS. جاري إعادة المحاولة...";
+                        break;
+                }
+                setOfflineMetrics(prev => ({
+                    ...prev,
+                    statusMsg: errorMessage
+                }));
+            };
+
+            let watchId = null;
+            if (navigator.geolocation) {
+                watchId = navigator.geolocation.watchPosition(onLocationSuccess, onLocationError, geoOptions);
+            } else {
+                setOfflineMetrics(prev => ({
+                    ...prev,
+                    statusMsg: "❌ جهازك لا يدعم تحديد الموقع (Geolocation API)."
+                }));
+            }
+
+            // Return clean-up handler
+            leafletMap._cleanupWatch = () => {
+                if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+            };
+
+        }, 150);
+
+        return () => {
+            clearTimeout(timer);
+            if (offlineMapRef.current) {
+                if (offlineMapRef.current._cleanupWatch) {
+                    offlineMapRef.current._cleanupWatch();
+                }
+                try {
+                    offlineMapRef.current.remove();
+                } catch (e) {}
+                offlineMapRef.current = null;
+                offlineMarkerRef.current = null;
+                offlineCircleRef.current = null;
+            }
+        };
+    }, [isOnline]);
+
+    const handleOfflineCenter = () => {
+        if (offlineLastPosRef.current && offlineMapRef.current) {
+            offlineMapRef.current.flyTo(offlineLastPosRef.current, 17, { duration: 1.2 });
+        } else {
+            alert("جاري جلب إحداثيات موقعك حالياً، يرجى الانتظار ثانية.");
+        }
+    };
+
+    const handleOfflineClearCache = () => {
+        if (window.confirm("هل تريد مسح ملفات الخريطة المخزنة وإعادة التحميل لتحديث البيانات؟")) {
+            caches.keys().then(names => {
+                for (let name of names) {
+                    caches.delete(name);
+                }
+            }).then(() => {
+                window.location.reload(true);
+            });
+        }
+    };
+
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
         return () => clearInterval(timer);
@@ -1519,7 +1739,52 @@ const MapComponent = () => {
 
             {/* Main Content Area */}
             <div className="map-container-wrapper" style={{ height: '100%', width: '100%' }}>
-                {/* Community Header Overlay */}
+                {!isOnline ? (
+                    <>
+                        {/* Offline Leaflet Map container */}
+                        <div id="offline-leaflet-map"></div>
+
+                        {/* Offline Status Header */}
+                        <div className="offline-header">
+                            <h1>📍 PalNovaa <span style={{ fontWeight: 300, fontSize: '13px' }}>مستكشف GPS بدون إنترنت</span></h1>
+                            <div className="offline-status-badge">
+                                <span className="offline-status-dot"></span>
+                                <span>يعمل بدون إنترنت (أوفلاين)</span>
+                            </div>
+                        </div>
+
+                        {/* Offline controls */}
+                        <div className="offline-controls-group">
+                            <button className="offline-circle-btn" onClick={handleOfflineCenter} title="تركيز الموقع">🎯</button>
+                            <button className="offline-circle-btn sec-btn" onClick={handleOfflineClearCache} title="تحديث الخريطة ومسح الكاش">🔄</button>
+                        </div>
+
+                        {/* Offline HUD */}
+                        <div className="offline-dashboard-hud">
+                            <div className="offline-hud-card">
+                                <div className="offline-hud-label">دائرة العرض (Lat)</div>
+                                <div className="offline-hud-value">{offlineMetrics.lat}</div>
+                            </div>
+                            <div className="offline-hud-card">
+                                <div className="offline-hud-label">خط الطول (Lon)</div>
+                                <div className="offline-hud-value">{offlineMetrics.lon}</div>
+                            </div>
+                            <div className="offline-hud-card">
+                                <div className="offline-hud-label">الدقة (Accuracy)</div>
+                                <div className="offline-hud-value">{offlineMetrics.accuracy}</div>
+                            </div>
+                            <div className="offline-hud-card">
+                                <div className="offline-hud-label">السرعة (Speed)</div>
+                                <div className="offline-hud-value">{offlineMetrics.speed}</div>
+                            </div>
+                            <div className="offline-gps-alert">
+                                {offlineMetrics.statusMsg}
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        {/* Community Header Overlay */}
                 {currentCommunity && (
                     <div style={{
                         position: 'absolute', top: '75px', left: '50%', transform: 'translateX(-50%)',
@@ -1877,6 +2142,8 @@ const MapComponent = () => {
                     })}
 
                 </Map>
+                    </>
+                )}
             </div>
 
             {/* Bottom Navigation Panel - Instagram Style */}
