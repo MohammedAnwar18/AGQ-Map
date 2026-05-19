@@ -24,13 +24,15 @@ const OnboardingManager = () => {
 
     useEffect(() => {
         if (isAuthenticated && user && !user.profile_picture) {
-            const seen = sessionStorage.getItem('profile_setup_shown');
+            const seen = localStorage.getItem(`profile_setup_shown_${user.id}`);
             if (!seen) setShow(true);
         }
     }, [isAuthenticated, user]);
 
     const handleClose = () => {
-        sessionStorage.setItem('profile_setup_shown', '1');
+        if (user && user.id) {
+            localStorage.setItem(`profile_setup_shown_${user.id}`, '1');
+        }
         setShow(false);
     };
 

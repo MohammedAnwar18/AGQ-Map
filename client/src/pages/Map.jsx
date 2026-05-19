@@ -1299,7 +1299,15 @@ const MapComponent = () => {
 
     // Birzeit University Geofencing Notification
     useEffect(() => {
-        if (!userLocation || !user) return;
+        if (!userLocation || !user || !followedShopsMap) return;
+        
+        // Check if user is following Birzeit University
+        const isFollowingBirzeit = followedShopsMap.some(shop => {
+            const name = String(shop.name || '').toLowerCase();
+            return name.includes('birzeit') || name.includes('بيرزيت');
+        });
+        
+        if (!isFollowingBirzeit) return;
         
         // Ray casting point-in-polygon check
         const isInside = isPointInPolygon([userLocation.longitude, userLocation.latitude], BIRZEIT_POLYGON);
@@ -1341,7 +1349,7 @@ const MapComponent = () => {
                     } else if (Notification.permission !== 'denied') {
                         Notification.requestPermission().then(permission => {
                             if (permission === 'granted') {
-                                triggerSystemNotification();
+                                                triggerSystemNotification();
                             }
                         });
                     }
@@ -1353,7 +1361,7 @@ const MapComponent = () => {
                 });
             }
         }
-    }, [userLocation, user]);
+    }, [userLocation, user, followedShopsMap]);
 
     // Public Map Data (Shops & University Facilities) - Always Fetch for everyone
     useEffect(() => {
