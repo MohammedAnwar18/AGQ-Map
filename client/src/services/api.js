@@ -278,6 +278,10 @@ export const notificationService = {
     markAllAsRead: async () => {
         const response = await api.put('/notifications/read-all');
         return response.data;
+    },
+    createGeofenceNotification: async () => {
+        const response = await api.post('/notifications/geofence');
+        return response.data;
     }
 };
 

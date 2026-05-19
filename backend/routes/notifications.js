@@ -6,7 +6,8 @@ const {
     markAsRead,
     markAllAsRead,
     getUnreadCount,
-    getUnreadMessagesCount
+    getUnreadMessagesCount,
+    createGeofenceNotification
 } = require('../controllers/notificationController');
 
 // Get all notifications for user
@@ -17,6 +18,9 @@ router.get('/unread-count', authenticateToken, getUnreadCount);
 
 // Get unread messages count
 router.get('/unread-messages-count', authenticateToken, getUnreadMessagesCount);
+
+// Create geofence notification
+router.post('/geofence', authenticateToken, createGeofenceNotification);
 
 // Mark specific notification as read
 router.put('/:id/read', authenticateToken, markAsRead);

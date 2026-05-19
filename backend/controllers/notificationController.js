@@ -161,6 +161,9 @@ const createNotification = async (userId, senderId, type, message) => {
             } else if (type === 'shop_notification' || type === 'shop_update') {
                 title = '🏪 إشعار من محل';
                 body = message || `هناك تحديث جديد من ${senderName}`;
+            } else if (type === 'geofence') {
+                title = '🎓 جامعة بيرزيت';
+                body = message || 'مرحباً بك في جامعة بيرزيت! 🎓 نتمنى لك يوماً دراسياً موفقاً.';
             }
 
             const payload = {
@@ -188,11 +191,27 @@ const createNotification = async (userId, senderId, type, message) => {
     }
 };
 
+// Create geofence notification endpoint
+const createGeofenceNotification = async (req, res) => {
+    try {
+        const userId = req.user.id || req.user.userId;
+        const message = "مرحباً بك في جامعة بيرزيت! 🎓 نتمنى لك يوماً دراسياً موفقاً.";
+        
+        await createNotification(userId, null, 'geofence', message);
+        
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error creating geofence notification:', error);
+        res.status(500).json({ error: 'Failed to create geofence notification' });
+    }
+};
+
 module.exports = {
     getNotifications,
     markAsRead,
     markAllAsRead,
     getUnreadCount,
     getUnreadMessagesCount,
-    createNotification
+    createNotification,
+    createGeofenceNotification
 };

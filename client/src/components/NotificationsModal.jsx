@@ -93,11 +93,12 @@ const NotificationsModal = ({ onClose, onNotificationClick }) => {
 
     const getNotificationIcon = (type) => {
         if (type === 'admin_alert') return '📢';
+        if (type === 'geofence') return '🎓';
         return '🔔'; // Simple bell icon for all as user requested no emojis or cluttered look
     };
 
     const getNotificationMessage = (notification) => {
-        if (notification.type === 'admin_alert') {
+        if (notification.type === 'admin_alert' || notification.type === 'geofence') {
             return notification.message;
         }
 

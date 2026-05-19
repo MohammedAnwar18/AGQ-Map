@@ -231,15 +231,50 @@ const MapComponent = () => {
 
 
     // View State for 3D Map
-    const [viewState, setViewState] = useState({
-        longitude: 35.2034,
-        latitude: 31.9038,
-        zoom: 14,
-        pitch: 0,
-        bearing: 0
+    const [viewState, setViewState] = useState(() => {
+        try {
+            const saved = localStorage.getItem('last_user_location');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                return {
+                    longitude: parsed.longitude,
+                    latitude: parsed.latitude,
+                    zoom: 17,
+                    pitch: 45,
+                    bearing: 0
+                };
+            }
+        } catch (e) {}
+        return {
+            longitude: 35.2034,
+            latitude: 31.9038,
+            zoom: 14,
+            pitch: 0,
+            bearing: 0
+        };
     });
 
-    const [userLocation, setUserLocation] = useState(null);
+    const [userLocation, setUserLocation] = useState(() => {
+        try {
+            const saved = localStorage.getItem('last_user_location');
+            return saved ? JSON.parse(saved) : null;
+        } catch (e) {
+            return null;
+        }
+    });
+
+    const updateUserLocation = (coords) => {
+        setUserLocation(coords);
+        try {
+            localStorage.setItem('last_user_location', JSON.stringify({
+                latitude: coords.latitude,
+                longitude: coords.longitude
+            }));
+            localStorage.setItem('gps_permission_granted', 'true');
+        } catch (e) {
+            console.error("Failed to save location to localStorage", e);
+        }
+    };
 
     // UI States
     const [showSearch, setShowSearch] = useState(false);
@@ -678,7 +713,7 @@ const MapComponent = () => {
                     latitude: position.coords.latitude,
                     longitude: position.coords.longitude
                 };
-                setUserLocation(newLoc);
+                updateUserLocation(newLoc);
                 mapRef.current?.flyTo({
                     center: [newLoc.longitude, newLoc.latitude],
                     zoom: 17,
@@ -933,7 +968,7 @@ const MapComponent = () => {
             const startWatching = () => {
                 watchId = navigator.geolocation.watchPosition(
                     (pos) => {
-                        setUserLocation({
+                        updateUserLocation({
                             latitude: pos.coords.latitude,
                             longitude: pos.coords.longitude,
                             speed: pos.coords.speed,
@@ -963,7 +998,7 @@ const MapComponent = () => {
             // Proactively request current position to trigger OS permission prompt immediately
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
-                    setUserLocation({
+                    updateUserLocation({
                         latitude: pos.coords.latitude,
                         longitude: pos.coords.longitude,
                         accuracy: pos.coords.accuracy,
@@ -1043,18 +1078,62 @@ const MapComponent = () => {
 
 
     // Birzeit University Geofencing Notification
-    const hasWelcomedBirzeit = useRef(false);
     useEffect(() => {
-        if (!userLocation || hasWelcomedBirzeit.current) return;
+        if (!userLocation || !user) return;
         
         // Ray casting point-in-polygon check
         const isInside = isPointInPolygon([userLocation.longitude, userLocation.latitude], BIRZEIT_POLYGON);
         
         if (isInside) {
-            alert("مرحباً بك في جامعة بيرزيت! 🎓\nنتمنى لك يوماً دراسياً موفقاً.");
-            hasWelcomedBirzeit.current = true;
+            const todayStr = new Date().toDateString();
+            const storageKey = `birzeit_notified_date_${user.id}`;
+            const lastNotified = localStorage.getItem(storageKey);
+            
+            if (lastNotified !== todayStr) {
+                // Save immediately to avoid race conditions
+                localStorage.setItem(storageKey, todayStr);
+                
+                const notifTitle = "جامعة بيرزيت 🎓";
+                const notifBody = "مرحباً بك في جامعة بيرزيت! 🎓 نتمنى لك يوماً دراسياً موفقاً.";
+                
+                // Helper to trigger system notification on the device itself
+                const triggerSystemNotification = () => {
+                    if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+                        navigator.serviceWorker.ready.then(registration => {
+                            registration.showNotification(notifTitle, {
+                                body: notifBody,
+                                icon: '/logo_orange.svg',
+                                badge: '/logo_orange.svg',
+                                vibrate: [200, 100, 200]
+                            });
+                        }).catch(e => {
+                            new Notification(notifTitle, { body: notifBody, icon: '/logo_orange.svg' });
+                        });
+                    } else {
+                        new Notification(notifTitle, { body: notifBody, icon: '/logo_orange.svg' });
+                    }
+                };
+
+                // Trigger Notification
+                if ('Notification' in window) {
+                    if (Notification.permission === 'granted') {
+                        triggerSystemNotification();
+                    } else if (Notification.permission !== 'denied') {
+                        Notification.requestPermission().then(permission => {
+                            if (permission === 'granted') {
+                                triggerSystemNotification();
+                            }
+                        });
+                    }
+                }
+                
+                // Call backend geofence notification endpoint to persist and trigger push message
+                notificationService.createGeofenceNotification().catch(err => {
+                    console.error("Failed to create geofence notification on backend", err);
+                });
+            }
         }
-    }, [userLocation]);
+    }, [userLocation, user]);
 
     // Public Map Data (Shops & University Facilities) - Always Fetch for everyone
     useEffect(() => {
