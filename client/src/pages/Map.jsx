@@ -1756,7 +1756,6 @@ const MapComponent = () => {
                         {/* Offline controls */}
                         <div className="offline-controls-group">
                             <button className="offline-circle-btn" onClick={handleOfflineCenter} title="تركيز الموقع">🎯</button>
-                            <button className="offline-circle-btn sec-btn" onClick={handleOfflineClearCache} title="تحديث الخريطة ومسح الكاش">🔄</button>
                         </div>
 
                         {/* Offline HUD */}
