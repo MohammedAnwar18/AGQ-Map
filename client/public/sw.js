@@ -41,9 +41,11 @@ self.addEventListener('fetch', (event) => {
     // Never cache API calls (auth, user data, etc.)
     if (url.pathname.startsWith('/api/')) return;
 
-    // By default, bypass caching for external hostnames, EXCEPT Leaflet CDNs and Tile servers
+    // By default, bypass caching for external hostnames, EXCEPT Leaflet CDNs and Tile servers (including Google Satellite)
     if (url.hostname !== self.location.hostname) {
-        const isAllowedExternal = url.hostname.includes('unpkg.com') || url.hostname.includes('openstreetmap.org');
+        const isAllowedExternal = url.hostname.includes('unpkg.com') || 
+                                  url.hostname.includes('openstreetmap.org') || 
+                                  url.hostname.includes('google.com');
         if (!isAllowedExternal) return;
     }
 
@@ -69,7 +71,8 @@ self.addEventListener('fetch', (event) => {
         url.pathname.startsWith('/assets/') ||
         url.pathname === '/logo.png' ||
         url.pathname === '/favicon.png' ||
-        url.hostname.includes('openstreetmap.org')
+        url.hostname.includes('openstreetmap.org') ||
+        url.hostname.includes('google.com')
     ) {
         event.respondWith(
             caches.match(request).then(cached => {

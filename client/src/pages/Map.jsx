@@ -251,9 +251,9 @@ const MapComponent = () => {
                 zoomControl: true
             }).setView(initialCoords, 13);
 
-            window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '© OpenStreetMap contributors'
+            window.L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+                maxZoom: 22,
+                attribution: '© Google Satellite'
             }).addTo(leafletMap);
 
             leafletMap.zoomControl.setPosition('topright');

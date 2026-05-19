@@ -821,9 +821,9 @@
     z-index: 100;
 }
 
-/* Dark mode filter for Leaflet map tiles */
+/* Google Satellite map tiles (displayed in natural colors) */
 #offline-leaflet-map .leaflet-tile {
-    filter: brightness(0.65) invert(1) contrast(2.8) hue-rotate(200deg) saturate(0.35) !important;
+    /* No inversion filter applied to preserve satellite view */
 }
 
 /* Header style for offline */
