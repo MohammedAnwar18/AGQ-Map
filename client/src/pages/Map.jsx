@@ -1671,15 +1671,6 @@ const MapComponent = () => {
                             </div>
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
-                        <button onClick={() => { setShowMunicipalities(true); setShowMoreMenu(false); }}>
-                            <div className="menu-item-content">
-                                <div className="menu-icon-wrapper" style={{ background: 'rgba(250, 171, 21, 0.1)', color: '#fbab15' }}>
-                                    <span style={{ fontSize: '1.4rem' }}>🏩</span>
-                                </div>
-                                <span>البلديات</span>
-                            </div>
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
-                        </button>
                         <button onClick={() => { setShowFriends(true); setShowMoreMenu(false); }}>
                             <div className="menu-item-content">
                                 <div className="menu-icon-wrapper">

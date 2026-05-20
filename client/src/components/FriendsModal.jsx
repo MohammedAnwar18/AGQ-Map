@@ -67,6 +67,9 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
     const [showMarketDesign, setShowMarketDesign] = useState(false);
     const [pendingDesign, setPendingDesign] = useState(null);
 
+    // Sub-tab inside shops mode: 'shops' or 'municipalities'
+    const [shopSubTab, setShopSubTab] = useState('shops');
+
     useEffect(() => {
         loadData();
     }, [activeTab, isShopsMode]); // Re-run when tab changes
@@ -352,6 +355,26 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                             style={activeTab === 'shops' ? { color: '#fbab15', borderBottomColor: '#fbab15' } : {}}
                         >
                             المحلات التي أتابعها ({followedShops.length})
+                        </button>
+                    </div>
+                )}
+
+                {/* Sub-tabs inside Shops Mode: المحلات / البلديات */}
+                {isShopsMode && !isCreatingShop && !isCreatingUniversity && !showCreateOptions && (
+                    <div className="modal-tabs" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                        <button
+                            className={`tab ${shopSubTab === 'shops' ? 'active' : ''}`}
+                            onClick={() => setShopSubTab('shops')}
+                            style={shopSubTab === 'shops' ? { color: '#fbab15', borderBottomColor: '#fbab15' } : {}}
+                        >
+                            🏪 المحلات والمؤسسات
+                        </button>
+                        <button
+                            className={`tab ${shopSubTab === 'municipalities' ? 'active' : ''}`}
+                            onClick={() => setShopSubTab('municipalities')}
+                            style={shopSubTab === 'municipalities' ? { color: '#fbab15', borderBottomColor: '#fbab15' } : {}}
+                        >
+                            🏛️ البلديات
                         </button>
                     </div>
                 )}
@@ -643,7 +666,107 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                         </div>
                                     ) : (
                                         <>
-                                            <form onSubmit={handleShopSearch} style={{ padding: '15px', position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 10, borderBottom: '1px solid var(--bg-tertiary)' }}>
+                                            {/* Sub-tab content switcher */}
+                                            {isShopsMode && shopSubTab === 'municipalities' ? (
+                                                /* ===== MUNICIPALITIES VIEW ===== */
+                                                <div className="user-list">
+                                                    <h4 style={{ padding: '10px 15px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                                        البلديات المتابعة
+                                                    </h4>
+                                                    {followedShops.filter(s => {
+                                                        const c = (s.category || '').toLowerCase().trim();
+                                                        return c === 'بلدية' || c === 'municipality';
+                                                    }).length === 0 ? (
+                                                        <div className="empty-state">
+                                                            <p>لا تتابع أي بلدية حالياً</p>
+                                                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '6px' }}>ابحث عن بلدية وتابعها لتظهر هنا</p>
+                                                        </div>
+                                                    ) : (
+                                                        followedShops
+                                                            .filter(s => {
+                                                                const c = (s.category || '').toLowerCase().trim();
+                                                                return c === 'بلدية' || c === 'municipality';
+                                                            })
+                                                            .map(shop => (
+                                                                <div key={shop.id} className="user-item" onClick={() => onShopClick && onShopClick(shop)} style={{ cursor: 'pointer' }}>
+                                                                    <div className="chat-avatar" style={{
+                                                                        background: shop.profile_picture ? 'transparent' : 'linear-gradient(135deg, #fbab15, #92400e)',
+                                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                        borderRadius: '12px', overflow: 'hidden', flexShrink: 0,
+                                                                        width: '50px', height: '50px', border: '1px solid rgba(250,171,21,0.3)'
+                                                                    }}>
+                                                                        {shop.profile_picture ? (
+                                                                            <img src={getImageUrl(shop.profile_picture)} alt={shop.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                                        ) : (
+                                                                            <span style={{ fontSize: '1.5rem' }}>🏛️</span>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="chat-info" style={{ flex: 1, minWidth: 0 }}>
+                                                                        <div className="chat-name" style={{ fontWeight: '700' }}>{shop.name}</div>
+                                                                        <div className="chat-last-message" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                                                            📍 بلدية رسمية
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="user-item-actions">
+                                                                        <button
+                                                                            className="btn-small btn-reject"
+                                                                            onClick={(e) => { e.stopPropagation(); handleUnfollowShop(shop.id); }}
+                                                                            style={{ border: '1px solid var(--error)', color: 'var(--error)' }}
+                                                                        >
+                                                                            إلغاء المتابعة
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            ))
+                                                    )}
+                                                    {/* Search bar for municipalities */}
+                                                    <form onSubmit={handleShopSearch} style={{ padding: '15px', borderTop: '1px solid var(--bg-tertiary)', marginTop: '10px' }}>
+                                                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: 'var(--bg-tertiary)', borderRadius: '12px', padding: '5px 15px' }}>
+                                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--text-muted)' }}><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                                            <input
+                                                                type="text"
+                                                                placeholder="ابحث عن بلدية..."
+                                                                value={shopSearchQuery}
+                                                                onChange={(e) => setShopSearchQuery(e.target.value)}
+                                                                style={{ flex: 1, padding: '10px', background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-primary)', fontSize: '0.95rem', fontFamily: 'inherit' }}
+                                                            />
+                                                            {isSearchingShop && <div className="spinner-small"></div>}
+                                                        </div>
+                                                    </form>
+                                                    {shopSearchResults.filter(s => {
+                                                        const c = (s.category || '').toLowerCase().trim();
+                                                        return c === 'بلدية' || c === 'municipality';
+                                                    }).length > 0 && (
+                                                        <div className="user-list" style={{ paddingTop: 0 }}>
+                                                            <h4 style={{ padding: '10px 15px 5px', fontSize: '0.85rem', color: 'var(--primary)' }}>نتائج البحث</h4>
+                                                            {shopSearchResults.filter(s => {
+                                                                const c = (s.category || '').toLowerCase().trim();
+                                                                return c === 'بلدية' || c === 'municipality';
+                                                            }).map(shop => (
+                                                                <div key={`sr-${shop.id}`} className="user-item" onClick={() => onShopClick && onShopClick(shop)} style={{ cursor: 'pointer' }}>
+                                                                    <div className="chat-avatar" style={{ background: 'linear-gradient(135deg,#fbab15,#92400e)', borderRadius: '12px', width: '50px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                                        <span style={{ fontSize: '1.5rem' }}>🏛️</span>
+                                                                    </div>
+                                                                    <div className="chat-info" style={{ flex: 1 }}>
+                                                                        <div className="chat-name" style={{ fontWeight: '700' }}>{shop.name}</div>
+                                                                        <div className="chat-last-message" style={{ fontSize: '0.8rem' }}>بلدية رسمية</div>
+                                                                    </div>
+                                                                    <div className="user-item-actions">
+                                                                        {isFollowingShop(shop.id) ? (
+                                                                            <span style={{ color: 'var(--success)', fontSize: '0.85rem', fontWeight: 'bold' }}>متابع ✓</span>
+                                                                        ) : (
+                                                                            <button className="btn-small btn-accept" onClick={(e) => { e.stopPropagation(); handleFollowShop(shop); }}>متابعة</button>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                            /* ===== ORIGINAL SHOPS VIEW ===== */
+                                            <>
+                                                <form onSubmit={handleShopSearch} style={{ padding: '15px', position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 10, borderBottom: '1px solid var(--bg-tertiary)' }}>
                                                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: 'var(--bg-tertiary)', borderRadius: '12px', padding: '5px 15px' }}>
                                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)' }}>
                                                         <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -781,6 +904,8 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                     ))
                                                 )}
                                             </div>
+                                            </> 
+                                            )}
                                         </>
                                     )}
                                 </div>
