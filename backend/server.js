@@ -46,10 +46,23 @@ io.on('connection', (socket) => {
 
     // Authentication middleware for socket (optional but recommended)
     // Here we handle registration after connection
-    socket.on('register', (userId) => {
+    socket.on('register', async (userId) => {
         socket.userId = userId;
         socket.join(`user_${userId}`);
         console.log(`User ${userId} registered to room user_${userId}`);
+
+        // Mark user as online in DB and broadcast to all connected sockets
+        try {
+            const pool = require('./config/database');
+            await pool.query(
+                'UPDATE users SET is_online = true, last_seen = CURRENT_TIMESTAMP WHERE id = $1',
+                [userId]
+            );
+            // Broadcast to all other clients so friend lists update
+            socket.broadcast.emit('user_online', { userId });
+        } catch (err) {
+            console.warn('Failed to set user online:', err.message);
+        }
     });
 
     // Real-time Messaging
@@ -129,8 +142,21 @@ io.on('connection', (socket) => {
 
 
 
-    socket.on('disconnect', () => {
-        console.log('User disconnected');
+    socket.on('disconnect', async () => {
+        console.log('User disconnected:', socket.userId);
+        if (socket.userId) {
+            try {
+                const pool = require('./config/database');
+                await pool.query(
+                    'UPDATE users SET is_online = false, last_seen = CURRENT_TIMESTAMP WHERE id = $1',
+                    [socket.userId]
+                );
+                // Broadcast offline to all other clients
+                socket.broadcast.emit('user_offline', { userId: socket.userId });
+            } catch (err) {
+                console.warn('Failed to set user offline:', err.message);
+            }
+        }
     });
 });
 

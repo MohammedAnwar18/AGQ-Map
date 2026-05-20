@@ -2431,6 +2431,7 @@ const MapComponent = () => {
                 onClose={() => setShowSidebar(false)}
                 currentUser={user}
                 logout={logout}
+                socket={socket}
                 followedShops={followedShopsMap}
                 onNavigate={(action, payload) => {
                     if (action === 'home') {

@@ -2,16 +2,43 @@ import React, { useState, useEffect } from 'react';
 import { userService, getImageUrl } from '../services/api';
 import './ProfileSidebar.css';
 
-const ProfileSidebar = ({ isOpen, onClose, currentUser, onNavigate, followedShops = [], logout }) => {
+const ProfileSidebar = ({ isOpen, onClose, currentUser, onNavigate, followedShops = [], logout, socket }) => {
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeSection, setActiveSection] = useState('menu'); // 'menu' or 'liked'
+    const [isOnline, setIsOnline] = useState(true); // Always true for current user (they're using the app)
+    const [onlineUsers, setOnlineUsers] = useState(new Set());
 
     useEffect(() => {
         if (isOpen && currentUser) {
             loadUserProfile();
+            setActiveSection('menu'); // Reset to menu on open
         }
     }, [isOpen, currentUser]);
+
+    // Listen to real-time online/offline events from socket
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleUserOnline = ({ userId }) => {
+            setOnlineUsers(prev => new Set([...prev, String(userId)]));
+        };
+        const handleUserOffline = ({ userId }) => {
+            setOnlineUsers(prev => {
+                const next = new Set(prev);
+                next.delete(String(userId));
+                return next;
+            });
+        };
+
+        socket.on('user_online', handleUserOnline);
+        socket.on('user_offline', handleUserOffline);
+
+        return () => {
+            socket.off('user_online', handleUserOnline);
+            socket.off('user_offline', handleUserOffline);
+        };
+    }, [socket]);
 
     const loadUserProfile = async () => {
         try {
@@ -40,36 +67,40 @@ const ProfileSidebar = ({ isOpen, onClose, currentUser, onNavigate, followedShop
         return cat !== 'بلدية' && cat !== 'municipality';
     });
 
+    const displayName = profile?.full_name || currentUser?.full_name || currentUser?.username || 'مستخدم PalNovaa';
+    const avatarSrc = profile?.profile_picture
+        ? getImageUrl(profile.profile_picture)
+        : currentUser?.profile_picture
+        ? getImageUrl(currentUser.profile_picture)
+        : null;
+
     return (
         <div className="sidebar-overlay" onClick={onClose}>
             <div className={`sidebar-container ${isOpen ? 'active' : ''}`} onClick={e => e.stopPropagation()}>
-                
+
                 {/* Close button inside sidebar */}
-                <button className="sidebar-close-btn" onClick={onClose} title="إغلاق">
-                    ✕
-                </button>
+                <button className="sidebar-close-btn" onClick={onClose} title="إغلاق">✕</button>
 
                 {/* Profile Header */}
                 <div className="sidebar-profile-header">
                     <div className="sidebar-avatar-wrapper">
-                        {profile?.profile_picture ? (
-                            <img 
-                                src={getImageUrl(profile.profile_picture)} 
-                                alt={profile.full_name || profile.username} 
-                                className="sidebar-avatar" 
-                            />
+                        {avatarSrc ? (
+                            <img src={avatarSrc} alt={displayName} className="sidebar-avatar" />
                         ) : (
                             <div className="sidebar-avatar-placeholder">
-                                {profile?.full_name ? profile.full_name.charAt(0).toUpperCase() : 'P'}
+                                {displayName.charAt(0).toUpperCase()}
                             </div>
                         )}
-                        <span className="online-indicator"></span>
+                        {/* Real online indicator - current user is always online when app is open */}
+                        <span className="online-indicator" title="متصل الآن"></span>
                     </div>
-                    
+
                     <div className="sidebar-user-details">
-                        <h3 className="sidebar-user-name">
-                            {profile?.full_name || currentUser?.full_name || currentUser?.username || 'مستخدم PalNovaa'}
-                        </h3>
+                        <h3 className="sidebar-user-name">{displayName}</h3>
+                        <p className="sidebar-user-online-status">
+                            <span className="status-dot"></span>
+                            متصل الآن
+                        </p>
                         <p className="sidebar-user-followers">
                             👥 {profile?.friends_count || 0} أصدقاء
                         </p>
@@ -79,10 +110,12 @@ const ProfileSidebar = ({ isOpen, onClose, currentUser, onNavigate, followedShop
                 {/* Horizontal divider */}
                 <div className="sidebar-divider"></div>
 
-                {/* Dynamic Content: Main Menu or Liked Section */}
+                {/* Dynamic Content */}
                 <div className="sidebar-content">
                     {activeSection === 'menu' ? (
                         <div className="sidebar-menu-list">
+
+                            {/* Home */}
                             <button className="sidebar-menu-item active-item" onClick={() => { onNavigate('home'); onClose(); }}>
                                 <div className="item-icon-box">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -93,6 +126,7 @@ const ProfileSidebar = ({ isOpen, onClose, currentUser, onNavigate, followedShop
                                 <span className="item-label">الرئيسية</span>
                             </button>
 
+                            {/* Search */}
                             <button className="sidebar-menu-item" onClick={() => { onNavigate('search'); onClose(); }}>
                                 <div className="item-icon-box">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -103,16 +137,22 @@ const ProfileSidebar = ({ isOpen, onClose, currentUser, onNavigate, followedShop
                                 <span className="item-label">البحث</span>
                             </button>
 
+                            {/* Liked / Followed — Fixed bookmark icon */}
                             <button className="sidebar-menu-item" onClick={() => setActiveSection('liked')}>
                                 <div className="item-icon-box">
+                                    {/* Bell icon = Following/Subscriptions — visually clear */}
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.77-8.77 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                                        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                                     </svg>
                                 </div>
-                                <span className="item-label">المعجب بها والمتابعة</span>
-                                <span className="badge-count">{followedShops.length}</span>
+                                <span className="item-label">المتابعات</span>
+                                {followedShops.length > 0 && (
+                                    <span className="badge-count">{followedShops.length}</span>
+                                )}
                             </button>
 
+                            {/* Profile */}
                             <button className="sidebar-menu-item" onClick={() => { onNavigate('profile'); onClose(); }}>
                                 <div className="item-icon-box">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -123,23 +163,25 @@ const ProfileSidebar = ({ isOpen, onClose, currentUser, onNavigate, followedShop
                                 <span className="item-label">الملف الشخصي</span>
                             </button>
 
+                            {/* Settings */}
                             <button className="sidebar-menu-item" onClick={() => { onNavigate('settings'); onClose(); }}>
                                 <div className="item-icon-box">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                                         <circle cx="12" cy="12" r="3" />
-                                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
                                     </svg>
                                 </div>
-                                <span className="item-label">الإعدادات</span>
+                                <span className="item-label">الإعدادات والخصوصية</span>
                             </button>
                         </div>
                     ) : (
+                        /* Liked/Followed sub-section */
                         <div className="liked-items-view">
                             <div className="liked-header">
                                 <button className="back-to-menu-btn" onClick={() => setActiveSection('menu')}>
                                     ← العودة للقائمة
                                 </button>
-                                <h4>المتابعات والمعجب بها 🔔</h4>
+                                <h4>المتابعات 🔔</h4>
                             </div>
 
                             <div className="liked-scroll-list">
@@ -159,10 +201,13 @@ const ProfileSidebar = ({ isOpen, onClose, currentUser, onNavigate, followedShop
                                     <div className="liked-category-block">
                                         <h5>المحلات والمؤسسات ({followedRegularShops.length})</h5>
                                         {followedRegularShops.map(shop => {
-                                            const isUni = (shop.category || '').toLowerCase().trim() === 'university';
+                                            const cat = (shop.category || '').toLowerCase().trim();
+                                            const isUni = cat === 'university' || cat === 'جامعة';
+                                            const isMedical = cat === 'medical' || cat === 'طبي';
+                                            const emoji = isUni ? '🎓' : isMedical ? '🏥' : '🏪';
                                             return (
                                                 <div key={shop.id} className="liked-item-row" onClick={() => { onNavigate('shop', shop); onClose(); }}>
-                                                    <span className="liked-item-emoji">{isUni ? '🎓' : '🏪'}</span>
+                                                    <span className="liked-item-emoji">{emoji}</span>
                                                     <span className="liked-item-name">{shop.name}</span>
                                                 </div>
                                             );
@@ -172,7 +217,9 @@ const ProfileSidebar = ({ isOpen, onClose, currentUser, onNavigate, followedShop
 
                                 {followedShops.length === 0 && (
                                     <div className="empty-liked-state">
-                                        <p>لا توجد بلديات أو محلات متابعة حالياً.</p>
+                                        <div style={{ fontSize: '2.5rem', marginBottom: '10px' }}>🔔</div>
+                                        <p>لا توجد متابعات بعد.</p>
+                                        <p style={{ fontSize: '0.78rem', marginTop: '4px', color: '#475569' }}>تابع بلديات أو محلات لتظهر هنا</p>
                                     </div>
                                 )}
                             </div>
@@ -180,11 +227,11 @@ const ProfileSidebar = ({ isOpen, onClose, currentUser, onNavigate, followedShop
                     )}
                 </div>
 
-                {/* Footer Section with Version and Logout */}
+                {/* Footer */}
                 <div className="sidebar-footer">
                     {logout && (
                         <button className="sidebar-logout-btn" onClick={() => { logout(); onClose(); }}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="18" height="18" style={{ transform: 'rotate(180deg)' }}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="18" height="18">
                                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                                 <polyline points="16 17 21 12 16 7" />
                                 <line x1="21" y1="12" x2="9" y2="12" />
@@ -192,7 +239,7 @@ const ProfileSidebar = ({ isOpen, onClose, currentUser, onNavigate, followedShop
                             <span>تسجيل الخروج</span>
                         </button>
                     )}
-                    <span className="sidebar-version">النسخة 2.1.340</span>
+                    <span className="sidebar-version">النسخة 2.1.341 · PalNovaa</span>
                 </div>
 
             </div>
