@@ -1,0 +1,395 @@
+.muni-modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: flex; justify-content: center; align-items: flex-end;
+    z-index: 9999;
+}
+
+.muni-fade-in { animation: muniFadeIn 0.3s ease forwards; }
+.muni-slide-up { animation: muniSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+@keyframes muniFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes muniSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+.muni-modal-container {
+    width: 100%; max-width: 650px; height: 95vh;
+    background: #0f172a; /* Deep Slate/Navy background */
+    border-radius: 28px 28px 0 0;
+    display: flex; flex-direction: column; 
+    overflow-y: scroll; overflow-x: hidden;
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.4);
+    font-family: 'Tajawal', sans-serif;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.muni-modal-container::-webkit-scrollbar {
+    width: 6px;
+}
+.muni-modal-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+/* Header & Cover */
+.muni-cover-section {
+    position: relative; 
+    height: 300px; 
+    width: 100%;
+    flex-shrink: 0;
+    border-bottom: 2px solid rgba(232, 181, 71, 0.15); /* Gold-tinted separator */
+}
+.muni-cover-img {
+    width: 100%; height: 100%; object-fit: cover;
+}
+.muni-cover-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(to top, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.5) 60%, rgba(15, 23, 42, 0.1) 100%);
+}
+.muni-close-btn {
+    position: absolute;
+    top: calc(max(env(safe-area-inset-top), 12px) + 10px);
+    left: 20px;
+    z-index: 10;
+    background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: white;
+    width: 40px; height: 40px; border-radius: 50%;
+    font-size: 1.2rem; cursor: pointer; backdrop-filter: blur(5px);
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s ease;
+}
+.muni-close-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.05);
+}
+
+.muni-profile-info {
+    position: absolute; bottom: 20px; width: 100%; padding: 0 24px;
+    display: flex; align-items: flex-end; gap: 15px; z-index: 10;
+    transition: all 0.3s ease;
+}
+.muni-logo-wrapper {
+    width: 90px; height: 90px; border-radius: 20px;
+    background: #1e293b; padding: 6px; box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+    border: 1px solid rgba(232, 181, 71, 0.2);
+}
+.muni-logo-img { width: 100%; height: 100%; object-fit: contain; border-radius: 14px; }
+
+.muni-title-section { flex: 1; color: white; text-align: right; }
+.muni-name { margin: 0 0 5px 0; font-size: 1.7rem; font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.6); color: #f8fafc; }
+.muni-category { margin: 0; font-size: 0.9rem; color: #e2e8f0; font-weight: 500; display: inline-flex; align-items: center; gap: 5px; }
+
+.muni-follow-btn {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white; border: none; border-radius: 12px;
+    padding: 10px 22px; font-weight: bold; font-family: inherit;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+    cursor: pointer; transition: all 0.2s ease;
+}
+.muni-follow-btn:hover {
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+    transform: translateY(-1px);
+}
+.muni-follow-btn:active { transform: scale(0.95); }
+
+.muni-follow-btn.is-unfollow {
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: none;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #e2e8f0;
+}
+.muni-follow-btn.is-unfollow:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* Tabs */
+.muni-tabs {
+    display: flex; 
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1); 
+    background: #0f172a; 
+    padding: 5px 15px 0;
+    position: sticky; top: 0; z-index: 20;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+.muni-tab {
+    flex: 1; padding: 15px 0; background: none; border: none;
+    font-size: 1rem; color: #94a3b8; font-weight: 600;
+    border-bottom: 3px solid transparent; cursor: pointer; font-family: inherit; transition: all 0.2s ease;
+}
+.muni-tab:hover {
+    color: #e2e8f0;
+}
+.muni-tab.active { 
+    color: #fbab15; /* Gold active tab for municipality styling */
+    border-bottom-color: #fbab15; 
+}
+
+.muni-content-area { 
+    flex: none; 
+    padding: 20px; 
+    background: #0b0f19; /* Darker bottom body for contrast */
+    min-height: 450px; 
+    color: #f8fafc;
+}
+
+/* Overview Card styling */
+.muni-about-card {
+    background: #0f172a; padding: 22px; border-radius: 20px; margin-bottom: 20px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15); border: 1px solid rgba(255, 255, 255, 0.05);
+    text-align: right;
+}
+.muni-about-card h3 { margin: 0 0 12px 0; font-size: 1.15rem; color: #fbab15; display: flex; align-items: center; gap: 8px; justify-content: flex-start; flex-direction: row-reverse; }
+.muni-about-card p { margin: 0; font-size: 0.95rem; line-height: 1.7; color: #cbd5e1; }
+
+/* Stats box for institutional pride */
+.muni-stats-section {
+    margin-bottom: 20px;
+}
+.muni-quick-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.muni-stat-box {
+    background: #0f172a; padding: 16px 10px; border-radius: 18px;
+    text-align: center; border: 1px solid rgba(232, 181, 71, 0.1);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    transition: all 0.2s ease;
+}
+.muni-stat-box:hover {
+    border-color: rgba(232, 181, 71, 0.25);
+    transform: translateY(-2px);
+}
+.muni-stat-value {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #fbab15;
+    margin-bottom: 4px;
+}
+.muni-stat-label {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    font-weight: 600;
+}
+
+/* Services and Landmarks Grid */
+.muni-sections-grid { 
+    display: grid; 
+    grid-template-columns: repeat(2, 1fr); 
+    gap: 16px; 
+}
+.muni-section-card {
+    background: #0f172a; 
+    border: 1px solid rgba(255, 255, 255, 0.05); 
+    border-radius: 24px;
+    padding: 24px 20px; 
+    text-align: center; 
+    cursor: pointer; 
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    position: relative;
+    overflow: hidden;
+}
+.muni-section-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, transparent, #fbab15, transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.muni-section-card:hover { 
+    transform: translateY(-4px); 
+    box-shadow: 0 12px 25px rgba(0,0,0,0.25); 
+    border-color: rgba(232, 181, 71, 0.2);
+}
+.muni-section-card:hover::after {
+    opacity: 1;
+}
+.muni-section-icon { 
+    font-size: 2.8rem; 
+    margin-bottom: 12px; 
+    display: block;
+    transition: transform 0.3s ease;
+}
+.muni-section-card:hover .muni-section-icon {
+    transform: scale(1.1);
+}
+.muni-section-card h4 { margin: 0 0 6px 0; font-size: 1.1rem; color: #f1f5f9; font-weight: 700; }
+.muni-section-card span { 
+    font-size: 0.8rem; 
+    color: #fbab15; 
+    background: rgba(250, 171, 21, 0.1); 
+    padding: 3px 12px; 
+    border-radius: 100px;
+    font-weight: 600;
+}
+
+/* Category Slider/Panel */
+.muni-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 12px;
+}
+.muni-back-btn {
+    background: none; border: none; color: #fbab15; font-weight: bold;
+    font-family: inherit; font-size: 0.95rem; cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+    transition: all 0.2s ease;
+}
+.muni-back-btn:hover {
+    color: #f59e0b;
+    transform: translateX(3px);
+}
+.muni-panel-title {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #f8fafc;
+}
+
+.muni-items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.muni-item-card {
+    background: #0f172a;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    text-align: right;
+}
+.muni-item-card:hover {
+    border-color: rgba(232, 181, 71, 0.2);
+}
+.muni-item-image {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.muni-item-body {
+    padding: 16px;
+}
+.muni-item-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+    gap: 12px;
+}
+.muni-item-name {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #f8fafc;
+}
+.muni-item-desc {
+    margin: 0 0 16px 0;
+    font-size: 0.9rem;
+    color: #cbd5e1;
+    line-height: 1.5;
+}
+.muni-item-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding-top: 12px;
+}
+.muni-item-btn-go {
+    background: linear-gradient(135deg, #fbab15, #f59e0b);
+    color: #0f172a;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-family: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.muni-item-btn-go:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+.muni-btn-delete {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.muni-btn-delete:hover {
+    background: rgba(239, 68, 68, 0.25);
+}
+
+/* Custom design modifications for mobile view */
+@media (max-width: 768px) {
+    .muni-modal-container {
+        height: 100vh;
+        border-radius: 0;
+        max-width: 100%;
+        animation: muniSlideUpMobile 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes muniSlideUpMobile { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+    .muni-cover-section { 
+        height: 260px; 
+    }
+    
+    .muni-profile-info {
+        padding: 0 16px;
+        bottom: 16px;
+        gap: 12px;
+    }
+
+    .muni-logo-wrapper {
+        width: 75px;
+        height: 75px;
+        border-radius: 16px;
+        padding: 4px;
+    }
+    
+    .muni-name { 
+        font-size: 1.35rem; 
+    }
+
+    .muni-follow-btn {
+        padding: 8px 16px;
+        font-size: 0.85rem;
+    }
+
+    .muni-tab {
+        font-size: 0.9rem;
+    }
+
+    .muni-sections-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .muni-section-card {
+        padding: 18px 15px;
+    }
+
+    .muni-stat-value {
+        font-size: 1.45rem;
+    }
+}

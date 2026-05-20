@@ -23,6 +23,8 @@ import ShopProfileModal from '../components/ShopProfileModal';
 import MedicalCenterProfileModal from '../components/MedicalCenterProfileModal';
 import UniversityProfileModal from '../components/UniversityProfileModal';
 import FacilityProfileModal from '../components/FacilityProfileModal';
+import MunicipalitiesModal from '../components/MunicipalitiesModal';
+import MunicipalityProfileModal from '../components/MunicipalityProfileModal';
 import HistoricalTimelinePanel from '../components/HistoricalTimelinePanel';
 import SpatialReelsModal from '../components/SpatialReelsModal';
 import MagazineModal from '../components/MagazineModal';
@@ -501,6 +503,7 @@ const MapComponent = () => {
     const [showNotifications, setShowNotifications] = useState(false);
     const [showFriends, setShowFriends] = useState(false);
     const [showShops, setShowShops] = useState(false);
+    const [showMunicipalities, setShowMunicipalities] = useState(false);
     const [showProfile, setShowProfile] = useState(false);
     const [showCreatePost, setShowCreatePost] = useState(false);
     const [isUserInfoExpanded, setIsUserInfoExpanded] = useState(false);
@@ -556,6 +559,10 @@ const MapComponent = () => {
     const [selectedUniFacilities, setSelectedUniFacilities] = useState([]);
     const [followedFacilitiesMap, setFollowedFacilitiesMap] = useState([]);
 
+    // Municipality Profile State
+    const [showMunicipalityProfile, setShowMunicipalityProfile] = useState(false);
+    const [selectedMunicipalityProfile, setSelectedMunicipalityProfile] = useState(null);
+
     // Facility Profile State
     const [showFacilityProfile, setShowFacilityProfile] = useState(false);
     const [selectedFacilityId, setSelectedFacilityId] = useState(null);
@@ -577,6 +584,18 @@ const MapComponent = () => {
         if (shop.type === 'facility') {
             setSelectedFacilityId(shop.id);
             setShowFacilityProfile(true);
+            return;
+        }
+
+        const isMuni = catRaw === 'بلدية' || catRaw === 'municipality';
+        if (isMuni) {
+            const enrichedShop = {
+                ...shop,
+                is_followed: followedShopsMap.some(fs => fs.id === shop.id)
+            };
+            setSelectedMunicipalityProfile(enrichedShop);
+            setShowMunicipalityProfile(true);
+            setSelectedUniFacilities([]);
             return;
         }
 
@@ -1275,7 +1294,7 @@ const MapComponent = () => {
         // 2. We haven't centered yet (ref is false)
         // 3. The map reference is ready
         // 4. We are NOT currently viewing a specific destination or profile (avoids interrupting search)
-        const isInteractingWithPlace = destination || showShopProfile || showUniversityProfile || showFacilityProfile || showMedicalProfile;
+        const isInteractingWithPlace = destination || showShopProfile || showUniversityProfile || showFacilityProfile || showMedicalProfile || showMunicipalityProfile;
         
         if (userLocation && !hasCenteredRef.current && mapRef.current && !isInteractingWithPlace) {
             mapRef.current.flyTo({
@@ -1287,7 +1306,7 @@ const MapComponent = () => {
             });
             hasCenteredRef.current = true;
         }
-    }, [userLocation, destination, showShopProfile, showUniversityProfile, showFacilityProfile, showMedicalProfile]);
+    }, [userLocation, destination, showShopProfile, showUniversityProfile, showFacilityProfile, showMedicalProfile, showMunicipalityProfile]);
 
     // Live Follow Mode: Follow the user as they move ONLY if tracking is explicitly enabled
     useEffect(() => {
@@ -1642,6 +1661,15 @@ const MapComponent = () => {
                                     <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 0 1-8 0" /></svg>
                                 </div>
                                 <span>المحلات والمؤسسات</span>
+                            </div>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+                        </button>
+                        <button onClick={() => { setShowMunicipalities(true); setShowMoreMenu(false); }}>
+                            <div className="menu-item-content">
+                                <div className="menu-icon-wrapper" style={{ background: 'rgba(250, 171, 21, 0.1)', color: '#fbab15' }}>
+                                    <span style={{ fontSize: '1.4rem' }}>🏩</span>
+                                </div>
+                                <span>البلديات</span>
                             </div>
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
@@ -2316,6 +2344,31 @@ const MapComponent = () => {
                     });
                 }}
             />}
+            {showMunicipalities && <MunicipalitiesModal
+                onClose={() => setShowMunicipalities(false)}
+                currentUser={user}
+                followedShops={followedShopsMap}
+                onShopFollowed={handleShopFollowed}
+                onShopClick={(shop) => {
+                    handleOpenShopProfile(shop);
+                    setShowMunicipalities(false);
+                    mapRef.current?.flyTo({ 
+                        center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], 
+                        zoom: 18.5, 
+                        pitch: 45,
+                        duration: 1500
+                    });
+                }}
+            />}
+            {showMunicipalityProfile && selectedMunicipalityProfile && (
+                <MunicipalityProfileModal
+                    shop={selectedMunicipalityProfile}
+                    currentUser={user}
+                    onClose={() => setShowMunicipalityProfile(false)}
+                    onFollowChange={handleShopFollowed}
+                    userLocation={userLocation}
+                />
+            )}
             {showShopProfile && selectedShopProfile && (
                 <ShopProfileModal
                     shop={selectedShopProfile}
