@@ -2701,6 +2701,22 @@
 }
 .hydro-btn.primary:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(6,214,242,0.4); }
 .hydro-btn.warn:hover { background: rgba(245,166,35,0.3); }
+.hydro-btn.success {
+  background: linear-gradient(135deg, #10B981, #047857);
+  border-color: transparent; color: white;
+}
+.hydro-btn.success:hover {
+  background: linear-gradient(135deg, #34D399, #059669);
+  color: white;
+}
+.hydro-btn:disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 .hydro-body {
   flex: 1; min-height: 0;
   display: grid;

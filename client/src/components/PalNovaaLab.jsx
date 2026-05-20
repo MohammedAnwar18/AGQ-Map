@@ -152,6 +152,7 @@ const PalNovaaLab = ({ onClose }) => {
         GRID: 128,
         h: null,
         terrain: null,
+        baseTerrain: null,
         barriers: null,
         flux: null,
         drawPoints: [],
@@ -163,7 +164,8 @@ const PalNovaaLab = ({ onClose }) => {
         maxFlow: 0,
         program: null,
         vbo: null,
-        waterTexture: null
+        waterTexture: null,
+        simBounds: null
     });
 
     useEffect(() => {
@@ -289,6 +291,27 @@ const PalNovaaLab = ({ onClose }) => {
                     }
                 });
 
+                // Add 3D structures source and layer
+                s.map.addSource('hydro-structures', {
+                    type: 'geojson',
+                    data: {
+                        type: 'FeatureCollection',
+                        features: []
+                    }
+                });
+
+                s.map.addLayer({
+                    id: 'hydro-structures-layer',
+                    type: 'fill-extrusion',
+                    source: 'hydro-structures',
+                    paint: {
+                        'fill-extrusion-color': ['get', 'color'],
+                        'fill-extrusion-height': ['get', 'height'],
+                        'fill-extrusion-base-height': 0,
+                        'fill-extrusion-opacity': 0.85
+                    }
+                });
+
                 // Hide symbol labels
                 s.map.getStyle().layers.forEach(l => {
                     if (l.type === 'symbol') s.map.setLayoutProperty(l.id, 'visibility', 'none');
@@ -300,18 +323,32 @@ const PalNovaaLab = ({ onClose }) => {
                 initDrawingCanvas();
                 startSimulationLoop();
 
-                // Mouse coordinates listener
+                // Auto-sync terrain after 1 second to load elevation grid
+                setTimeout(syncTerrainFromMap, 1000);
+
+                // Mouse interaction listeners (click and drag)
+                let isMouseDown = false;
+
+                s.map.on('mousedown', e => {
+                    if (s.mode === 'water' || s.mode === 'erase') {
+                        isMouseDown = true;
+                        if (s.mode === 'water') addWaterAtCoordinates(e.lngLat);
+                        else if (s.mode === 'erase') eraseWaterAtCoordinates(e.lngLat);
+                    }
+                });
+
                 s.map.on('mousemove', e => {
                     const el = document.getElementById('hbar-coords');
                     if (el) el.textContent = e.lngLat.lat.toFixed(4) + '°N, ' + e.lngLat.lng.toFixed(4) + '°E';
+
+                    if (isMouseDown && (s.mode === 'water' || s.mode === 'erase')) {
+                        if (s.mode === 'water') addWaterAtCoordinates(e.lngLat);
+                        else if (s.mode === 'erase') eraseWaterAtCoordinates(e.lngLat);
+                    }
                 });
 
-                s.map.on('click', e => {
-                    if (s.mode === 'water') {
-                        addWaterAtCoordinates(e.point.x, e.point.y);
-                    } else if (s.mode === 'erase') {
-                        eraseWaterAtCoordinates(e.point.x, e.point.y);
-                    }
+                s.map.on('mouseup', () => {
+                    isMouseDown = false;
                 });
             });
 
@@ -324,6 +361,7 @@ const PalNovaaLab = ({ onClose }) => {
             const N = s.GRID;
             s.h = new Float32Array(N * N);
             s.terrain = new Float32Array(N * N);
+            s.baseTerrain = new Float32Array(N * N);
             s.barriers = new Uint8Array(N * N);
             s.flux = new Float32Array(N * N * 4);
             s.structures = [];
@@ -344,8 +382,160 @@ const PalNovaaLab = ({ onClose }) => {
                     elev += (ex * ex + ey * ey) * 0.15;
                     const valleyX = Math.abs(nx - 0.5);
                     elev -= Math.max(0, 0.12 - valleyX * 0.8);
-                    s.terrain[idx] = Math.max(0, elev) * 80;
+                    const finalElev = Math.max(0, elev) * 80;
+                    s.baseTerrain[idx] = finalElev;
+                    s.terrain[idx] = finalElev;
                 }
+            }
+        };
+
+        const syncTerrainFromMap = () => {
+            const s = hydroStateRef.current;
+            if (!s.map || !s.terrain) return;
+            const N = s.GRID;
+            
+            // Get current bounds
+            const bounds = s.map.getBounds();
+            const lngMin = bounds.getWest();
+            const lngMax = bounds.getEast();
+            const latMin = bounds.getSouth();
+            const latMax = bounds.getNorth();
+            s.simBounds = { lngMin, lngMax, latMin, latMax };
+            
+            // Load elevation grid
+            const lngStep = (lngMax - lngMin) / (N - 1);
+            const latStep = (latMax - latMin) / (N - 1);
+            
+            for (let j = 0; j < N; j++) {
+                for (let i = 0; i < N; i++) {
+                    const idx = j * N + i;
+                    const lng = lngMin + i * lngStep;
+                    const lat = latMax - j * latStep;
+                    let elev = s.map.queryTerrainElevation([lng, lat]);
+                    if (elev === null || elev === undefined || isNaN(elev)) {
+                        elev = 0;
+                    }
+                    s.baseTerrain[idx] = elev;
+                    s.terrain[idx] = elev;
+                }
+            }
+
+            // Reset water states
+            s.h.fill(0);
+            s.flux.fill(0);
+            s.tick = 0;
+            s.totalWaterCells = 0;
+            s.maxDepth = 0;
+            s.maxFlow = 0;
+
+            // Re-apply existing structures onto the new terrain grid
+            rebuildBarrierGridFromBase();
+
+            // Set up or update the Mapbox canvas source
+            const wc = s.wCanvas;
+            if (wc) {
+                const source = s.map.getSource('water-canvas-source');
+                if (source) {
+                    source.setCoordinates([
+                        [lngMin, latMax],
+                        [lngMax, latMax],
+                        [lngMax, latMin],
+                        [lngMin, latMin]
+                    ]);
+                } else {
+                    s.map.addSource('water-canvas-source', {
+                        type: 'canvas',
+                        canvas: wc,
+                        coordinates: [
+                            [lngMin, latMax],
+                            [lngMax, latMax],
+                            [lngMax, latMin],
+                            [lngMin, latMin]
+                        ],
+                        animate: true
+                    });
+                    s.map.addLayer({
+                        id: 'water-raster-layer',
+                        type: 'raster',
+                        source: 'water-canvas-source',
+                        paint: {
+                            'raster-opacity': 0.85,
+                            'raster-fade-duration': 0
+                        }
+                    });
+                }
+            }
+            
+            updateStatsDOM();
+        };
+
+        const rebuildBarrierGridFromBase = () => {
+            const s = hydroStateRef.current;
+            const N = s.GRID;
+            s.barriers.fill(0);
+            
+            // Restore natural elevation
+            s.terrain.set(s.baseTerrain);
+
+            // Re-apply structures
+            const geojsonFeatures = [];
+
+            s.structures.forEach(struct => {
+                // Rasterize into barriers and elevate terrain
+                const yMin = Math.max(0, Math.min(...struct.gridPts.map(p => p.y)));
+                const yMax = Math.min(N - 1, Math.max(...struct.gridPts.map(p => p.y)));
+
+                for (let y = yMin; y <= yMax; y++) {
+                    const intersections = [];
+                    for (let i = 0; i < struct.gridPts.length; i++) {
+                        const a = struct.gridPts[i], b = struct.gridPts[(i + 1) % struct.gridPts.length];
+                        if ((a.y <= y && b.y > y) || (b.y <= y && a.y > y)) {
+                            const x = a.x + (y - a.y) / (b.y - a.y) * (b.x - a.x);
+                            intersections.push(Math.round(x));
+                        }
+                    }
+                    intersections.sort((a, b) => a - b);
+                    for (let k = 0; k + 1 < intersections.length; k += 2) {
+                        const x0 = Math.max(0, intersections[k]);
+                        const x1 = Math.min(N - 1, intersections[k + 1]);
+                        for (let x = x0; x <= x1; x++) {
+                            const idx = y * N + x;
+                            s.barriers[idx] = 1;
+                            s.terrain[idx] += struct.height;
+                            s.h[idx] = 0;
+                        }
+                    }
+                }
+
+                // Add to 3D GeoJSON source
+                if (struct.geoPoints) {
+                    const polyRing = struct.geoPoints.map(p => [p.lng, p.lat]);
+                    // Close the polygon ring
+                    if (polyRing.length > 0) {
+                        polyRing.push([polyRing[0][0], polyRing[0][1]]);
+                    }
+                    geojsonFeatures.push({
+                        type: 'Feature',
+                        geometry: {
+                            type: 'Polygon',
+                            coordinates: [polyRing]
+                        },
+                        properties: {
+                            id: struct.id,
+                            color: struct.color.replace(', 0.9)', ', 1)'),
+                            height: struct.height
+                        }
+                    });
+                }
+            });
+
+            // Update Mapbox source
+            const src = s.map ? s.map.getSource('hydro-structures') : null;
+            if (src) {
+                src.setData({
+                    type: 'FeatureCollection',
+                    features: geojsonFeatures
+                });
             }
         };
 
@@ -354,29 +544,15 @@ const PalNovaaLab = ({ onClose }) => {
             const wrap = document.getElementById('hydro-map-wrap');
             if (!wrap) return;
 
-            // Remove if already exists
+            // Remove if already exists in DOM (if we previously appended it)
             const existing = document.getElementById('hydro-water-canvas');
             if (existing) existing.remove();
 
             const wc = document.createElement('canvas');
             wc.id = 'hydro-water-canvas';
-            wc.style.cssText = `
-                position:absolute; inset:0; z-index:8;
-                pointer-events:none;
-                mix-blend-mode: screen;
-                opacity: 0.85;
-            `;
-            const drawCanvas = document.getElementById('hydro-draw-canvas');
-            wrap.insertBefore(wc, drawCanvas);
+            wc.width = 512;
+            wc.height = 512;
             s.wCanvas = wc;
-
-            const resizeWc = () => {
-                if (wc) {
-                    wc.width = wrap.clientWidth;
-                    wc.height = wrap.clientHeight;
-                }
-            };
-            resizeWc();
 
             s.gl = wc.getContext('webgl', { premultipliedAlpha: false });
             if (!s.gl) {
@@ -410,18 +586,44 @@ const PalNovaaLab = ({ onClose }) => {
                 uniform sampler2D u_water;
                 uniform float u_time;
                 void main() {
+                    // Read water texture
+                    // R = depth, G = speed, B = flow angle, A = mask
                     vec4 w = texture2D(u_water, v_uv);
                     float depth = w.r;
                     if (depth < 0.002) discard;
-                    vec3 deepColor = vec3(0.0, 0.06, 0.5);
-                    vec3 shallowColor = vec3(0.25, 0.65, 1.0);
-                    float t = clamp(depth * 6.0, 0.0, 1.0);
+
+                    // Unpack flow direction from B channel (angle mapped from [-PI, PI] to [0, 1])
+                    float angle = w.b * 6.2831853 - 3.14159265;
+                    vec2 flowDir = vec2(cos(angle), sin(angle));
+                    float speed = w.g;
+
+                    // Flow animation coordinates
+                    vec2 uvFlow1 = v_uv * 16.0 - flowDir * (u_time * 0.4 * (speed + 0.05));
+                    vec2 uvFlow2 = v_uv * 16.0 - flowDir * (u_time * 0.4 * (speed + 0.05) + 0.5);
+
+                    // High-frequency waves for fine shimmer
+                    float wave1 = sin(uvFlow1.x * 3.0 + uvFlow1.y * 2.0) * cos(uvFlow1.y * 3.0 - uvFlow1.x * 2.0);
+                    float wave2 = sin(uvFlow2.x * 3.0 + uvFlow2.y * 2.0) * cos(uvFlow2.y * 3.0 - uvFlow2.x * 2.0);
+                    float shimmer = 0.5 + 0.5 * mix(wave1, wave2, 0.5);
+
+                    // Deep/shallow color blending
+                    vec3 deepColor = vec3(0.01, 0.08, 0.42);
+                    vec3 shallowColor = vec3(0.18, 0.58, 0.88);
+                    float t = clamp(depth * 5.0, 0.0, 1.0);
                     vec3 waterColor = mix(shallowColor, deepColor, t);
-                    float shimmer = 0.5 + 0.5 * sin(u_time * 3.0 + v_uv.x * 40.0 + v_uv.y * 30.0);
-                    waterColor += vec3(shimmer * 0.07 * (1.0 - t));
-                    float spec = pow(shimmer, 8.0) * 0.4;
+
+                    // White foam rapids in high velocity areas
+                    float foamIntensity = smoothstep(0.15, 0.6, speed);
+                    float foamPattern = sin(v_uv.x * 120.0 - u_time * 12.0) * cos(v_uv.y * 120.0 + u_time * 10.0);
+                    float foam = foamIntensity * (0.4 + 0.6 * smoothstep(0.0, 0.5, foamPattern));
+                    waterColor = mix(waterColor, vec3(0.85, 0.93, 1.0), foam * 0.7);
+
+                    // Highlight reflections
+                    waterColor += vec3(shimmer * 0.12 * (1.0 - foam) * (1.0 - t));
+                    float spec = pow(shimmer, 6.0) * (0.2 + speed * 0.5);
                     waterColor += vec3(spec);
-                    float alpha = 0.55 + t * 0.35;
+
+                    float alpha = 0.65 + t * 0.25;
                     gl_FragColor = vec4(waterColor * alpha, alpha);
                 }
             `;
@@ -559,57 +761,44 @@ const PalNovaaLab = ({ onClose }) => {
         const bakeStructureIntoGrid = (screenPts) => {
             const s = hydroStateRef.current;
             const N = s.GRID;
-            const wrap = document.getElementById('hydro-map-wrap');
-            if (!wrap) return;
-            const W = wrap.clientWidth, H = wrap.clientHeight;
 
-            const gridPts = screenPts.map(p => ({
-                x: Math.floor((p.x / W) * N),
-                y: Math.floor((p.y / H) * N)
-            }));
+            // Map screen coordinates to geographic coordinates
+            const geoPoints = screenPts.map(p => {
+                const lngLat = s.map.unproject([p.x, p.y]);
+                return { lng: lngLat.lng, lat: lngLat.lat };
+            });
 
-            rasterizePolygon(gridPts);
+            // Map geographic coordinates to 128x128 grid coordinates
+            let gridPts = [];
+            if (s.simBounds) {
+                const b = s.simBounds;
+                gridPts = geoPoints.map(gp => ({
+                    x: Math.floor(((gp.lng - b.lngMin) / (b.lngMax - b.lngMin)) * N),
+                    y: Math.floor(((b.latMax - gp.lat) / (b.latMax - b.latMin)) * N)
+                }));
+            } else {
+                const wrap = document.getElementById('hydro-map-wrap');
+                if (wrap) {
+                    const W = wrap.clientWidth, H = wrap.clientHeight;
+                    gridPts = screenPts.map(p => ({
+                        x: Math.floor((p.x / W) * N),
+                        y: Math.floor((p.y / H) * N)
+                    }));
+                }
+            }
 
             const struct = {
                 id: s.nextStructId++,
                 type: s.structType,
                 color: getStructureColor(s.structType),
                 height: s.structHeight,
-                gridPts
+                gridPts,
+                geoPoints
             };
             s.structures.push(struct);
+            
+            rebuildBarrierGridFromBase();
             updateStructuresListDOM();
-        };
-
-        const rasterizePolygon = (pts) => {
-            const s = hydroStateRef.current;
-            const N = s.GRID;
-            if (pts.length < 3) return;
-
-            const yMin = Math.max(0, Math.min(...pts.map(p => p.y)));
-            const yMax = Math.min(N - 1, Math.max(...pts.map(p => p.y)));
-
-            for (let y = yMin; y <= yMax; y++) {
-                const intersections = [];
-                for (let i = 0; i < pts.length; i++) {
-                    const a = pts[i], b = pts[(i + 1) % pts.length];
-                    if ((a.y <= y && b.y > y) || (b.y <= y && a.y > y)) {
-                        const x = a.x + (y - a.y) / (b.y - a.y) * (b.x - a.x);
-                        intersections.push(Math.round(x));
-                    }
-                }
-                intersections.sort((a, b) => a - b);
-                for (let k = 0; k + 1 < intersections.length; k += 2) {
-                    const x0 = Math.max(0, intersections[k]);
-                    const x1 = Math.min(N - 1, intersections[k + 1]);
-                    for (let x = x0; x <= x1; x++) {
-                        const idx = y * N + x;
-                        s.barriers[idx] = 1;
-                        s.terrain[idx] += s.structHeight;
-                        s.h[idx] = 0;
-                    }
-                }
-            }
         };
 
         const updateStructuresListDOM = () => {
@@ -640,54 +829,20 @@ const PalNovaaLab = ({ onClose }) => {
         const removeStructureById = (id) => {
             const s = hydroStateRef.current;
             s.structures = s.structures.filter(st => st.id !== id);
-            rebuildBarrierGrid();
+            rebuildBarrierGridFromBase();
             updateStructuresListDOM();
         };
 
-        const rebuildBarrierGrid = () => {
+        const addWaterAtCoordinates = (lngLat) => {
             const s = hydroStateRef.current;
+            if (!s.simBounds) return;
             const N = s.GRID;
-            s.barriers.fill(0);
-            initGridArrays(); // re-init random terrain
-
-            s.structures.forEach(struct => {
-                const yMin = Math.max(0, Math.min(...struct.gridPts.map(p => p.y)));
-                const yMax = Math.min(N - 1, Math.max(...struct.gridPts.map(p => p.y)));
-
-                for (let y = yMin; y <= yMax; y++) {
-                    const intersections = [];
-                    for (let i = 0; i < struct.gridPts.length; i++) {
-                        const a = struct.gridPts[i], b = struct.gridPts[(i + 1) % struct.gridPts.length];
-                        if ((a.y <= y && b.y > y) || (b.y <= y && a.y > y)) {
-                            const x = a.x + (y - a.y) / (b.y - a.y) * (b.x - a.x);
-                            intersections.push(Math.round(x));
-                        }
-                    }
-                    intersections.sort((a, b) => a - b);
-                    for (let k = 0; k + 1 < intersections.length; k += 2) {
-                        const x0 = Math.max(0, intersections[k]);
-                        const x1 = Math.min(N - 1, intersections[k + 1]);
-                        for (let x = x0; x <= x1; x++) {
-                            const idx = y * N + x;
-                            s.barriers[idx] = 1;
-                            s.terrain[idx] += struct.height;
-                            s.h[idx] = 0;
-                        }
-                    }
-                }
-            });
-        };
-
-        const addWaterAtCoordinates = (screenX, screenY) => {
-            const s = hydroStateRef.current;
-            const N = s.GRID;
-            const wrap = document.getElementById('hydro-map-wrap');
-            if (!wrap) return;
-            const W = wrap.clientWidth, H = wrap.clientHeight;
-            const gx = Math.floor((screenX / W) * N);
-            const gy = Math.floor((screenY / H) * N);
-            const r = 8;
-            const vol = s.waterVolume;
+            const b = s.simBounds;
+            
+            const gx = Math.floor(((lngLat.lng - b.lngMin) / (b.lngMax - b.lngMin)) * N);
+            const gy = Math.floor(((b.latMax - lngLat.lat) / (b.latMax - b.latMin)) * N);
+            const r = 4;
+            const vol = s.waterVolume * 0.4; // adjusted scale since it adds on move/drag
 
             for (let dy = -r; dy <= r; dy++) {
                 for (let dx = -r; dx <= r; dx++) {
@@ -703,15 +858,15 @@ const PalNovaaLab = ({ onClose }) => {
             }
         };
 
-        const eraseWaterAtCoordinates = (screenX, screenY) => {
+        const eraseWaterAtCoordinates = (lngLat) => {
             const s = hydroStateRef.current;
+            if (!s.simBounds) return;
             const N = s.GRID;
-            const wrap = document.getElementById('hydro-map-wrap');
-            if (!wrap) return;
-            const W = wrap.clientWidth, H = wrap.clientHeight;
-            const gx = Math.floor((screenX / W) * N);
-            const gy = Math.floor((screenY / H) * N);
-            const r = 12;
+            const b = s.simBounds;
+            
+            const gx = Math.floor(((lngLat.lng - b.lngMin) / (b.lngMax - b.lngMin)) * N);
+            const gy = Math.floor(((b.latMax - lngLat.lat) / (b.latMax - b.latMin)) * N);
+            const r = 6;
 
             for (let dy = -r; dy <= r; dy++) {
                 for (let dx = -r; dx <= r; dx++) {
@@ -824,15 +979,44 @@ const PalNovaaLab = ({ onClose }) => {
             gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
             const texData = new Uint8Array(N * N * 4);
-            const maxH = 10;
-            for (let i = 0; i < N * N; i++) {
-                const val = Math.min(1, s.h[i] / maxH);
-                const b = Math.floor(val * 255);
-                texData[i * 4 + 0] = b;
-                texData[i * 4 + 1] = Math.floor(val * 180);
-                texData[i * 4 + 2] = Math.floor(val * 80);
-                texData[i * 4 + 3] = b > 2 ? 255 : 0;
+            const maxH = 10.0;
+            const h = s.h;
+            const flux = s.flux;
+
+            for (let j = 0; j < N; j++) {
+                for (let i = 0; i < N; i++) {
+                    const idx = j * N + i;
+                    const waterDepth = h[idx];
+                    
+                    if (waterDepth < 0.001) {
+                        texData[idx * 4 + 0] = 0;
+                        texData[idx * 4 + 1] = 0;
+                        texData[idx * 4 + 2] = 0;
+                        texData[idx * 4 + 3] = 0;
+                        continue;
+                    }
+
+                    // Calculate speed and direction of flow
+                    const outN = flux[idx * 4 + 0], outS = flux[idx * 4 + 1];
+                    const outW = flux[idx * 4 + 2], outE = flux[idx * 4 + 3];
+                    const flowX = outE - outW;
+                    const flowY = outS - outN;
+                    const speed = Math.sqrt(flowX * flowX + flowY * flowY);
+                    
+                    const depthNormalized = Math.min(1.0, waterDepth / maxH);
+                    const speedNormalized = Math.min(1.0, speed * 2.0);
+
+                    // Flow angle in [-PI, PI], map to [0, 1]
+                    const angle = Math.atan2(flowY, flowX);
+                    const angleNormalized = (angle + Math.PI) / (Math.PI * 2.0);
+
+                    texData[idx * 4 + 0] = Math.floor(depthNormalized * 255);
+                    texData[idx * 4 + 1] = Math.floor(speedNormalized * 255);
+                    texData[idx * 4 + 2] = Math.floor(angleNormalized * 255);
+                    texData[idx * 4 + 3] = 255;
+                }
             }
+
             gl.bindTexture(gl.TEXTURE_2D, s.waterTexture);
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, N, N, 0, gl.RGBA, gl.UNSIGNED_BYTE, texData);
 
@@ -849,6 +1033,11 @@ const PalNovaaLab = ({ onClose }) => {
             gl.uniform1i(gl.getUniformLocation(s.program, 'u_water'), 0);
             gl.uniform1f(gl.getUniformLocation(s.program, 'u_time'), timestamp * 0.001);
             gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+            // Force Mapbox to repaint the screen to display the updated canvas source texture
+            if (s.map) {
+                s.map.triggerRepaint();
+            }
         };
 
         const render2DWaterFallback = () => {
@@ -1051,7 +1240,28 @@ const PalNovaaLab = ({ onClose }) => {
                     s.totalWaterCells = 0;
                     s.maxDepth = 0;
                     s.maxFlow = 0;
+                    rebuildBarrierGridFromBase();
                     updateStatsDOM();
+                };
+            }
+
+            // Sync Terrain & Bounds
+            const syncBtn = document.getElementById('hydro-sync-btn');
+            if (syncBtn) {
+                syncBtn.onclick = () => {
+                    const originalText = syncBtn.innerHTML;
+                    syncBtn.innerHTML = `
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style="margin-right: 4px; animation: spin 1s linear infinite;">
+                            <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                        </svg>
+                        جاري المزامنة...
+                    `;
+                    syncBtn.disabled = true;
+                    setTimeout(() => {
+                        syncTerrainFromMap();
+                        syncBtn.innerHTML = originalText;
+                        syncBtn.disabled = false;
+                    }, 600);
                 };
             }
 
@@ -4525,6 +4735,13 @@ const PalNovaaLab = ({ onClose }) => {
                         </div>
 
                         <div className="hydro-topbar-divider"></div>
+
+                        <button className="hydro-btn success" id="hydro-sync-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '4px' }}>
+                                <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                            </svg>
+                            مزامنة التضاريس
+                        </button>
 
                         <button className="hydro-btn warn" id="hydro-reset-btn">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '4px' }}>
