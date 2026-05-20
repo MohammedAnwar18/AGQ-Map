@@ -2604,3 +2604,381 @@
   transform: translateY(-1px);
   box-shadow: 0 0 16px rgba(6,214,242,0.4) !important;
 }
+
+/* ===== HYDROSTUDIO SIMULATION STYLES ===== */
+#hydro-studio {
+  position: fixed; inset: 0;
+  z-index: 9999;
+  background: #040D18;
+  display: flex; flex-direction: column;
+}
+.hydro-topbar {
+  display: flex; align-items: center;
+  height: 56px; flex-shrink: 0;
+  padding: 0 20px;
+  background: rgba(4, 13, 24, 0.95);
+  border-bottom: 1px solid rgba(6, 214, 242, 0.15);
+  backdrop-filter: blur(20px);
+  gap: 14px;
+  z-index: 10;
+}
+.hydro-brand {
+  display: flex; align-items: center; gap: 12px;
+}
+.hydro-brand-icon {
+  width: 38px; height: 38px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #0099CC, #006B9F);
+  display: grid; place-items: center;
+  box-shadow: 0 0 20px rgba(6, 214, 242, 0.5), 0 4px 12px rgba(0,0,0,0.4);
+  position: relative; overflow: hidden;
+}
+.hydro-brand-icon::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, transparent 30%, rgba(255,255,255,0.25) 50%, transparent 70%);
+  animation: shine 3s infinite;
+}
+.hydro-brand-icon svg { width: 22px; height: 22px; color: white; z-index: 1; position: relative; }
+.hydro-brand-text strong {
+  font-size: 15px; font-weight: 800;
+  background: linear-gradient(135deg, #fff, #06D6F2);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  display: block;
+}
+.hydro-brand-text small {
+  font-size: 10px; font-weight: 700;
+  color: #06D6F2; letter-spacing: 2px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.hydro-topbar-divider { width: 1px; height: 28px; background: rgba(255,255,255,0.08); }
+.hydro-topbar-spacer { flex: 1; }
+.hydro-slider-group {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+}
+.hydro-slider-group label {
+  font-size: 11px; font-weight: 700;
+  color: rgba(255,255,255,0.5);
+  white-space: nowrap;
+}
+.hydro-slider-group input[type=range] {
+  width: 90px; cursor: pointer;
+  accent-color: #06D6F2;
+  height: 4px;
+}
+.hydro-slider-group span {
+  font-size: 11px; font-weight: 700;
+  color: #06D6F2;
+  font-family: 'JetBrains Mono', monospace;
+  min-width: 28px;
+}
+.hydro-btn {
+  height: 34px; padding: 0 14px;
+  display: inline-flex; align-items: center; gap: 7px;
+  border-radius: 9px;
+  font-size: 12px; font-weight: 700;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.7);
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.hydro-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: white;
+  border-color: rgba(255,255,255,0.2);
+}
+.hydro-btn svg { width: 14px; height: 14px; }
+.hydro-btn.danger:hover { background: rgba(239,68,68,0.15); border-color: #EF4444; color: #EF4444; }
+.hydro-btn.primary {
+  background: linear-gradient(135deg, #0099CC, #006B9F);
+  border-color: transparent; color: white;
+  box-shadow: 0 4px 14px rgba(6,214,242,0.3);
+}
+.hydro-btn.primary:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(6,214,242,0.4); }
+.hydro-btn.warn:hover { background: rgba(245,166,35,0.3); }
+.hydro-body {
+  flex: 1; min-height: 0;
+  display: grid;
+  grid-template-columns: 200px 1fr 240px;
+  position: relative;
+  direction: rtl;
+}
+.hydro-tools {
+  background: rgba(4, 13, 24, 0.9);
+  border-left: 1px solid rgba(6, 214, 242, 0.1);
+  padding: 16px 12px;
+  display: flex; flex-direction: column; gap: 6px;
+  overflow-y: auto;
+  z-index: 5;
+}
+.hydro-tools::-webkit-scrollbar { width: 0; }
+.hydro-section-title {
+  font-size: 9px; font-weight: 800;
+  letter-spacing: 2px;
+  color: rgba(255,255,255,0.3);
+  text-transform: uppercase;
+  padding: 10px 8px 6px;
+}
+.hydro-tool-btn {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid transparent;
+  color: rgba(255,255,255,0.55);
+  font-size: 12px; font-weight: 600;
+  transition: all 0.2s;
+  cursor: pointer;
+  text-align: right;
+}
+.hydro-tool-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+.hydro-tool-btn:hover {
+  background: rgba(255,255,255,0.07);
+  color: white;
+}
+.hydro-tool-btn.active {
+  background: linear-gradient(135deg, rgba(6,214,242,0.18), rgba(6,214,242,0.06));
+  border-color: rgba(6,214,242,0.35);
+  color: #06D6F2;
+  box-shadow: 0 0 16px rgba(6,214,242,0.15);
+}
+.hydro-tool-btn.water-btn.active {
+  background: linear-gradient(135deg, rgba(0,100,255,0.2), rgba(0,50,200,0.1));
+  border-color: rgba(60,130,255,0.4);
+  color: #60AFFF;
+  box-shadow: 0 0 16px rgba(60,130,255,0.2);
+}
+.hydro-tool-btn.erase-btn.active {
+  background: rgba(239,68,68,0.12);
+  border-color: rgba(239,68,68,0.35);
+  color: #EF4444;
+}
+.hydro-tool-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.06);
+  margin: 6px 0;
+}
+.hydro-param {
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  margin-top: 4px;
+}
+.hydro-param label {
+  display: block;
+  font-size: 10px; font-weight: 700;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.hydro-param .param-row {
+  display: flex; align-items: center; gap: 8px;
+}
+.hydro-param input[type=range] {
+  flex: 1; accent-color: #06D6F2; cursor: pointer;
+}
+.hydro-param .param-val {
+  font-size: 11px; font-weight: 700;
+  color: #06D6F2;
+  font-family: 'JetBrains Mono', monospace;
+  min-width: 36px; text-align: left;
+}
+.struct-types {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 5px;
+  margin-top: 6px;
+}
+.struct-type {
+  padding: 7px 6px;
+  border-radius: 7px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  font-size: 10px; font-weight: 700;
+  color: rgba(255,255,255,0.45);
+  cursor: pointer; text-align: center;
+  transition: all 0.2s;
+}
+.struct-type:hover { background: rgba(255,255,255,0.08); color: white; }
+.struct-type.active {
+  background: rgba(6,214,242,0.15);
+  border-color: rgba(6,214,242,0.4);
+  color: #06D6F2;
+}
+.hydro-map-wrap {
+  position: relative; overflow: hidden;
+  background: #040D18;
+}
+#hydro-map {
+  position: absolute; inset: 0;
+}
+#hydro-draw-canvas {
+  position: absolute; inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+#hydro-draw-canvas.drawing { pointer-events: all; cursor: crosshair; }
+.hydro-map-wrap.water-mode { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='8' fill='rgba(60,130,255,0.7)' stroke='white' stroke-width='2'/%3E%3Cline x1='16' y1='4' x2='16' y2='12' stroke='white' stroke-width='2'/%3E%3Cline x1='16' y1='20' x2='16' y2='28' stroke='white' stroke-width='2'/%3E%3Cline x1='4' y1='16' x2='12' y2='16' stroke='white' stroke-width='2'/%3E%3Cline x1='20' y1='16' x2='28' y2='16' stroke='white' stroke-width='2'/%3E%3C/svg%3E") 16 16, crosshair; }
+.hydro-map-bar {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 36px;
+  background: rgba(4, 13, 24, 0.85);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(6,214,242,0.1);
+  display: flex; align-items: center;
+  padding: 0 14px; gap: 16px;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: rgba(255,255,255,0.4);
+  z-index: 15;
+}
+.hydro-map-bar .hbar-item { display: flex; align-items: center; gap: 5px; }
+.hydro-map-bar .hbar-item svg { width: 11px; height: 11px; color: #06D6F2; }
+.hydro-map-bar .hbar-val { color: #06D6F2; font-weight: 700; }
+.hydro-map-bar .hbar-spacer { flex: 1; }
+.hydro-hint {
+  position: absolute;
+  top: 16px; left: 50%; transform: translateX(-50%);
+  padding: 10px 20px;
+  background: rgba(6,214,242,0.15);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(6,214,242,0.35);
+  border-radius: 10px;
+  font-size: 12px; font-weight: 700;
+  color: #06D6F2;
+  z-index: 20;
+  display: none;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 4px 20px rgba(6,214,242,0.2);
+}
+.hydro-hint.show { display: block; }
+.hydro-stats {
+  background: rgba(4, 13, 24, 0.9);
+  border-right: 1px solid rgba(6, 214, 242, 0.1);
+  padding: 16px 14px;
+  display: flex; flex-direction: column; gap: 10px;
+  overflow-y: auto;
+  z-index: 5;
+}
+.hydro-stats::-webkit-scrollbar { width: 0; }
+.hstat-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.hstat-card.blue-glow {
+  background: rgba(6, 214, 242, 0.05);
+  border-color: rgba(6, 214, 242, 0.15);
+}
+.hstat-card.water-glow {
+  background: rgba(30, 100, 255, 0.06);
+  border-color: rgba(60, 130, 255, 0.2);
+}
+.hstat-label {
+  font-size: 9px; font-weight: 800;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  color: rgba(255,255,255,0.3);
+  margin-bottom: 8px;
+  display: flex; align-items: center; gap: 6px;
+}
+.hstat-label svg { width: 11px; height: 11px; color: #06D6F2; }
+.hstat-val {
+  font-size: 24px; font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  color: #06D6F2;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+.hstat-val.water { color: #60AFFF; }
+.hstat-unit {
+  font-size: 10px; color: rgba(255,255,255,0.3);
+  font-family: 'JetBrains Mono', monospace;
+}
+.hstat-bar {
+  height: 4px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 4px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+.hstat-bar-fill {
+  height: 100%; border-radius: 4px;
+  background: linear-gradient(90deg, #06D6F2, #0066CC);
+  transition: width 0.4s ease;
+}
+.hstat-bar-fill.water { background: linear-gradient(90deg, #60AFFF, #0040AA); }
+.hstruct-list { display: flex; flex-direction: column; gap: 5px; margin-top: 4px; }
+.hstruct-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 8px;
+  font-size: 11px;
+}
+.hstruct-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+.hstruct-name { flex: 1; color: rgba(255,255,255,0.65); }
+.hstruct-h { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #06D6F2; }
+.hstruct-del {
+  width: 18px; height: 18px;
+  border-radius: 4px;
+  color: rgba(255,255,255,0.2);
+  display: grid; place-items: center;
+  font-size: 12px; cursor: pointer;
+  transition: all 0.15s;
+}
+.hstruct-del:hover { background: rgba(239,68,68,0.15); color: #EF4444; }
+.hydro-legend {
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 10px;
+}
+.hydro-legend-title {
+  font-size: 9px; font-weight: 800;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: rgba(255,255,255,0.25);
+  margin-bottom: 8px;
+}
+.legend-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 3px 0;
+  font-size: 11px; color: rgba(255,255,255,0.5);
+}
+.legend-swatch {
+  width: 16px; height: 8px;
+  border-radius: 2px; flex-shrink: 0;
+}
+.hydro-sim-status {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 11px; font-weight: 700;
+  margin-top: auto;
+}
+.hydro-sim-status.running {
+  background: rgba(16,217,160,0.1);
+  color: #10D9A0;
+  border: 1px solid rgba(16,217,160,0.2);
+}
+.hydro-sim-status.idle {
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.3);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.hydro-sim-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+}
+.hydro-sim-status.running .hydro-sim-dot {
+  background: #10D9A0;
+  box-shadow: 0 0 8px #10D9A0;
+  animation: blink 1s infinite;
+}
+.hydro-sim-status.idle .hydro-sim-dot { background: rgba(255,255,255,0.2); }
+@keyframes blink { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }

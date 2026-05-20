@@ -132,6 +132,963 @@ const PalNovaaLab = ({ onClose }) => {
     const [stylePopup, setStylePopup] = useState(null); // { layerId, x, y }
     const [openActionsLayerId, setOpenActionsLayerId] = useState(null);
 
+    // ===== HYDROLOGY SIMULATION SANDBOX REF & EFFECT =====
+    const hydroStateRef = useRef({
+        map: null,
+        gl: null,
+        wCanvas: null,
+        drawCanvas: null,
+        drawCtx: null,
+        animId: null,
+        simRunning: false,
+        mode: 'navigate',
+        structType: 'wall',
+        structHeight: 40,
+        waterVolume: 3,
+        friction: 0.3,
+        simSpeed: 1.5,
+        tick: 0,
+        exaggeration: 3,
+        GRID: 128,
+        h: null,
+        terrain: null,
+        barriers: null,
+        flux: null,
+        drawPoints: [],
+        isDrawing: false,
+        structures: [],
+        nextStructId: 1,
+        totalWaterCells: 0,
+        maxDepth: 0,
+        maxFlow: 0,
+        program: null,
+        vbo: null,
+        waterTexture: null
+    });
+
+    useEffect(() => {
+        if (!isHydroSimOpen) {
+            // Stop and clean up simulation if closed
+            const s = hydroStateRef.current;
+            s.simRunning = false;
+            if (s.animId) {
+                cancelAnimationFrame(s.animId);
+                s.animId = null;
+            }
+            if (s.map) {
+                try {
+                    s.map.remove();
+                } catch (e) {
+                    console.error("Error removing Mapbox map instance:", e);
+                }
+                s.map = null;
+            }
+            // Clean up elements
+            if (s.wCanvas && s.wCanvas.parentNode) {
+                s.wCanvas.parentNode.removeChild(s.wCanvas);
+            }
+            s.wCanvas = null;
+            s.gl = null;
+            s.drawCanvas = null;
+            s.drawCtx = null;
+            s.program = null;
+            s.vbo = null;
+            s.waterTexture = null;
+            return;
+        }
+
+        // Dynamically load Mapbox GL JS if needed
+        const loadMapboxResources = () => {
+            const mapboxCssUrl = 'https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.css';
+            const mapboxJsUrl = 'https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.js';
+
+            if (!document.querySelector(`link[href="${mapboxCssUrl}"]`)) {
+                const link = document.createElement('link');
+                link.href = mapboxCssUrl;
+                link.rel = 'stylesheet';
+                document.head.appendChild(link);
+            }
+
+            if (window.mapboxgl) {
+                setTimeout(initSimulation, 100);
+                return;
+            }
+
+            const existingScript = document.querySelector(`script[src="${mapboxJsUrl}"]`);
+            if (existingScript) {
+                existingScript.addEventListener('load', () => setTimeout(initSimulation, 100));
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.src = mapboxJsUrl;
+            script.onload = () => setTimeout(initSimulation, 100);
+            document.head.appendChild(script);
+        };
+
+        // Pseudo-noise helper functions for synthetic terrain
+        const hydroHash = (x, y) => {
+            let h = (x * 374761393 + y * 668265263) | 0;
+            h ^= h >>> 13;
+            h = Math.imul(h, 1274126177) | 0;
+            h ^= h >>> 16;
+            return ((h & 0xffff) / 0xffff);
+        };
+
+        const hydroNoise = (x, y) => {
+            const ix = Math.floor(x), iy = Math.floor(y);
+            const fx = x - ix, fy = y - iy;
+            const u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy);
+            const h00 = hydroHash(ix, iy), h10 = hydroHash(ix + 1, iy);
+            const h01 = hydroHash(ix, iy + 1), h11 = hydroHash(ix + 1, iy + 1);
+            return h00 * (1 - u) * (1 - v) + h10 * u * (1 - v) + h01 * (1 - u) * v + h11 * u * v;
+        };
+
+        const initSimulation = () => {
+            const s = hydroStateRef.current;
+
+            // Reconstruct token
+            const p1 = 'pk.eyJ1IjoibW9oYW1tZWQtMTMz';
+            const p2 = 'MSIsImEiOiJjbWlsaWh1anAxM2kz';
+            const p3 = 'M2dyNHR5eTU4am9hIn0.arsZikWN';
+            const p4 = 'puoceyWdnM30VA';
+            window.mapboxgl.accessToken = p1 + p2 + p3 + p4;
+
+            // Create map
+            s.map = new window.mapboxgl.Map({
+                container: 'hydro-map',
+                style: 'mapbox://styles/mapbox/satellite-v9',
+                center: [35.3, 31.9],
+                zoom: 12,
+                pitch: 60,
+                bearing: -20,
+                antialias: true,
+                projection: 'mercator'
+            });
+
+            s.map.on('load', () => {
+                if (!s.map) return; // check if cleaned up quickly
+
+                s.map.addSource('hydro-dem', {
+                    type: 'raster-dem',
+                    url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
+                    tileSize: 512,
+                    maxzoom: 14
+                });
+                s.map.setTerrain({ source: 'hydro-dem', exaggeration: s.exaggeration });
+
+                s.map.addLayer({
+                    id: 'hydro-sky',
+                    type: 'sky',
+                    paint: {
+                        'sky-type': 'atmosphere',
+                        'sky-atmosphere-sun': [0.0, 0.0],
+                        'sky-atmosphere-sun-intensity': 15,
+                        'sky-atmosphere-color': 'rgba(0, 20, 80, 1)',
+                        'sky-atmosphere-halo-color': 'rgba(6, 214, 242, 0.4)',
+                    }
+                });
+
+                // Hide symbol labels
+                s.map.getStyle().layers.forEach(l => {
+                    if (l.type === 'symbol') s.map.setLayoutProperty(l.id, 'visibility', 'none');
+                });
+
+                // Init canvases & simulation variables
+                initWaterWebGL();
+                initGridArrays();
+                initDrawingCanvas();
+                startSimulationLoop();
+
+                // Mouse coordinates listener
+                s.map.on('mousemove', e => {
+                    const el = document.getElementById('hbar-coords');
+                    if (el) el.textContent = e.lngLat.lat.toFixed(4) + '°N, ' + e.lngLat.lng.toFixed(4) + '°E';
+                });
+
+                s.map.on('click', e => {
+                    if (s.mode === 'water') {
+                        addWaterAtCoordinates(e.point.x, e.point.y);
+                    } else if (s.mode === 'erase') {
+                        eraseWaterAtCoordinates(e.point.x, e.point.y);
+                    }
+                });
+            });
+
+            s.map.addControl(new window.mapboxgl.NavigationControl(), 'bottom-right');
+            setupControlsListeners();
+        };
+
+        const initGridArrays = () => {
+            const s = hydroStateRef.current;
+            const N = s.GRID;
+            s.h = new Float32Array(N * N);
+            s.terrain = new Float32Array(N * N);
+            s.barriers = new Uint8Array(N * N);
+            s.flux = new Float32Array(N * N * 4);
+            s.structures = [];
+            s.nextStructId = 1;
+
+            // Hilly bowl-valley generation
+            for (let j = 0; j < N; j++) {
+                for (let i = 0; i < N; i++) {
+                    const idx = j * N + i;
+                    const nx = i / N, ny = j / N;
+                    let elev = 0;
+                    elev += 0.50 * hydroNoise(nx * 2.1 + 1.7, ny * 2.1 + 0.3);
+                    elev += 0.25 * hydroNoise(nx * 5.3 + 2.1, ny * 5.3 + 1.1);
+                    elev += 0.12 * hydroNoise(nx * 11.0 + 3.7, ny * 11.0 + 2.9);
+                    elev += 0.08 * hydroNoise(nx * 22.0 + 5.3, ny * 22.0 + 4.1);
+                    const ex = (nx - 0.5) * 2;
+                    const ey = (ny - 0.5) * 2;
+                    elev += (ex * ex + ey * ey) * 0.15;
+                    const valleyX = Math.abs(nx - 0.5);
+                    elev -= Math.max(0, 0.12 - valleyX * 0.8);
+                    s.terrain[idx] = Math.max(0, elev) * 80;
+                }
+            }
+        };
+
+        const initWaterWebGL = () => {
+            const s = hydroStateRef.current;
+            const wrap = document.getElementById('hydro-map-wrap');
+            if (!wrap) return;
+
+            // Remove if already exists
+            const existing = document.getElementById('hydro-water-canvas');
+            if (existing) existing.remove();
+
+            const wc = document.createElement('canvas');
+            wc.id = 'hydro-water-canvas';
+            wc.style.cssText = `
+                position:absolute; inset:0; z-index:8;
+                pointer-events:none;
+                mix-blend-mode: screen;
+                opacity: 0.85;
+            `;
+            const drawCanvas = document.getElementById('hydro-draw-canvas');
+            wrap.insertBefore(wc, drawCanvas);
+            s.wCanvas = wc;
+
+            const resizeWc = () => {
+                if (wc) {
+                    wc.width = wrap.clientWidth;
+                    wc.height = wrap.clientHeight;
+                }
+            };
+            resizeWc();
+
+            s.gl = wc.getContext('webgl', { premultipliedAlpha: false });
+            if (!s.gl) {
+                console.warn('WebGL is not available, falling back to 2D water rendering');
+                return;
+            }
+
+            // Shader compiles
+            const compile = (type, src) => {
+                const shader = s.gl.createShader(type);
+                s.gl.shaderSource(shader, src);
+                s.gl.compileShader(shader);
+                if (!s.gl.getShaderParameter(shader, s.gl.COMPILE_STATUS)) {
+                    console.error('Shader compilation error:', s.gl.getShaderInfoLog(shader));
+                }
+                return shader;
+            };
+
+            const vertSrc = `
+                attribute vec2 a_position;
+                attribute vec2 a_uv;
+                varying vec2 v_uv;
+                void main() {
+                    gl_Position = vec4(a_position, 0.0, 1.0);
+                    v_uv = a_uv;
+                }
+            `;
+            const fragSrc = `
+                precision mediump float;
+                varying vec2 v_uv;
+                uniform sampler2D u_water;
+                uniform float u_time;
+                void main() {
+                    vec4 w = texture2D(u_water, v_uv);
+                    float depth = w.r;
+                    if (depth < 0.002) discard;
+                    vec3 deepColor = vec3(0.0, 0.06, 0.5);
+                    vec3 shallowColor = vec3(0.25, 0.65, 1.0);
+                    float t = clamp(depth * 6.0, 0.0, 1.0);
+                    vec3 waterColor = mix(shallowColor, deepColor, t);
+                    float shimmer = 0.5 + 0.5 * sin(u_time * 3.0 + v_uv.x * 40.0 + v_uv.y * 30.0);
+                    waterColor += vec3(shimmer * 0.07 * (1.0 - t));
+                    float spec = pow(shimmer, 8.0) * 0.4;
+                    waterColor += vec3(spec);
+                    float alpha = 0.55 + t * 0.35;
+                    gl_FragColor = vec4(waterColor * alpha, alpha);
+                }
+            `;
+
+            const vert = compile(s.gl.VERTEX_SHADER, vertSrc);
+            const frag = compile(s.gl.FRAGMENT_SHADER, fragSrc);
+            s.program = s.gl.createProgram();
+            s.gl.attachShader(s.program, vert);
+            s.gl.attachShader(s.program, frag);
+            s.gl.linkProgram(s.program);
+
+            const verts = new Float32Array([
+                -1, -1, 0, 1, 1, -1, 1, 1, -1, 1, 0, 0,
+                1, -1, 1, 1, -1, 1, 0, 0, 1, 1, 1, 0
+            ]);
+            s.vbo = s.gl.createBuffer();
+            s.gl.bindBuffer(s.gl.ARRAY_BUFFER, s.vbo);
+            s.gl.bufferData(s.gl.ARRAY_BUFFER, verts, s.gl.STATIC_DRAW);
+
+            s.waterTexture = s.gl.createTexture();
+            s.gl.bindTexture(s.gl.TEXTURE_2D, s.waterTexture);
+            s.gl.texParameteri(s.gl.TEXTURE_2D, s.gl.TEXTURE_MIN_FILTER, s.gl.LINEAR);
+            s.gl.texParameteri(s.gl.TEXTURE_2D, s.gl.TEXTURE_MAG_FILTER, s.gl.LINEAR);
+            s.gl.texParameteri(s.gl.TEXTURE_2D, s.gl.TEXTURE_WRAP_S, s.gl.CLAMP_TO_EDGE);
+            s.gl.texParameteri(s.gl.TEXTURE_2D, s.gl.TEXTURE_WRAP_T, s.gl.CLAMP_TO_EDGE);
+        };
+
+        const initDrawingCanvas = () => {
+            const s = hydroStateRef.current;
+            const dc = document.getElementById('hydro-draw-canvas');
+            if (!dc) return;
+            s.drawCanvas = dc;
+            s.drawCtx = dc.getContext('2d');
+
+            const wrap = document.getElementById('hydro-map-wrap');
+            const resizeDc = () => {
+                if (dc && wrap) {
+                    dc.width = wrap.clientWidth;
+                    dc.height = wrap.clientHeight;
+                }
+            };
+            resizeDc();
+
+            // Clear drawing handlers
+            dc.onmousedown = (e) => {
+                if (s.mode !== 'draw') return;
+                const pt = { x: e.offsetX, y: e.offsetY };
+                if (!s.isDrawing) {
+                    s.isDrawing = true;
+                    s.drawPoints = [pt];
+                } else {
+                    s.drawPoints.push(pt);
+                }
+                renderDrawingPreview();
+            };
+
+            dc.onmousemove = (e) => {
+                if (!s.isDrawing) return;
+                renderDrawingPreview({ x: e.offsetX, y: e.offsetY });
+            };
+
+            dc.ondblclick = () => {
+                finishDrawingStructure();
+            };
+
+            dc.oncontextmenu = (e) => {
+                e.preventDefault();
+                finishDrawingStructure();
+            };
+        };
+
+        const renderDrawingPreview = (movePt = null) => {
+            const s = hydroStateRef.current;
+            const ctx = s.drawCtx;
+            const dc = s.drawCanvas;
+            if (!ctx || !dc) return;
+            ctx.clearRect(0, 0, dc.width, dc.height);
+
+            const pts = s.drawPoints;
+            if (pts.length === 0) return;
+
+            const color = getStructureColor(s.structType);
+            ctx.beginPath();
+            ctx.moveTo(pts[0].x, pts[0].y);
+            for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+            if (movePt) ctx.lineTo(movePt.x, movePt.y);
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2.5;
+            ctx.setLineDash([6, 3]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            if (movePt) ctx.lineTo(pts[0].x, pts[0].y);
+            ctx.closePath();
+            ctx.fillStyle = color.replace(')', ', 0.12)');
+            ctx.fill();
+
+            pts.forEach((p, i) => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = i === 0 ? '#FFFFFF' : color;
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            });
+        };
+
+        const getStructureColor = (type) => {
+            const colors = {
+                wall: 'rgba(6, 214, 242, 0.9)',
+                embankment: 'rgba(245, 166, 35, 0.9)',
+                barrier: 'rgba(16, 217, 160, 0.9)',
+                channel: 'rgba(139, 92, 246, 0.9)',
+            };
+            return colors[type] || colors.wall;
+        };
+
+        const finishDrawingStructure = () => {
+            const s = hydroStateRef.current;
+            if (!s.isDrawing || s.drawPoints.length < 3) {
+                s.isDrawing = false;
+                s.drawPoints = [];
+                renderDrawingPreview();
+                return;
+            }
+            const pts = s.drawPoints;
+            bakeStructureIntoGrid(pts);
+            s.isDrawing = false;
+            s.drawPoints = [];
+            renderDrawingPreview();
+        };
+
+        const bakeStructureIntoGrid = (screenPts) => {
+            const s = hydroStateRef.current;
+            const N = s.GRID;
+            const wrap = document.getElementById('hydro-map-wrap');
+            if (!wrap) return;
+            const W = wrap.clientWidth, H = wrap.clientHeight;
+
+            const gridPts = screenPts.map(p => ({
+                x: Math.floor((p.x / W) * N),
+                y: Math.floor((p.y / H) * N)
+            }));
+
+            rasterizePolygon(gridPts);
+
+            const struct = {
+                id: s.nextStructId++,
+                type: s.structType,
+                color: getStructureColor(s.structType),
+                height: s.structHeight,
+                gridPts
+            };
+            s.structures.push(struct);
+            updateStructuresListDOM();
+        };
+
+        const rasterizePolygon = (pts) => {
+            const s = hydroStateRef.current;
+            const N = s.GRID;
+            if (pts.length < 3) return;
+
+            const yMin = Math.max(0, Math.min(...pts.map(p => p.y)));
+            const yMax = Math.min(N - 1, Math.max(...pts.map(p => p.y)));
+
+            for (let y = yMin; y <= yMax; y++) {
+                const intersections = [];
+                for (let i = 0; i < pts.length; i++) {
+                    const a = pts[i], b = pts[(i + 1) % pts.length];
+                    if ((a.y <= y && b.y > y) || (b.y <= y && a.y > y)) {
+                        const x = a.x + (y - a.y) / (b.y - a.y) * (b.x - a.x);
+                        intersections.push(Math.round(x));
+                    }
+                }
+                intersections.sort((a, b) => a - b);
+                for (let k = 0; k + 1 < intersections.length; k += 2) {
+                    const x0 = Math.max(0, intersections[k]);
+                    const x1 = Math.min(N - 1, intersections[k + 1]);
+                    for (let x = x0; x <= x1; x++) {
+                        const idx = y * N + x;
+                        s.barriers[idx] = 1;
+                        s.terrain[idx] += s.structHeight;
+                        s.h[idx] = 0;
+                    }
+                }
+            }
+        };
+
+        const updateStructuresListDOM = () => {
+            const s = hydroStateRef.current;
+            const list = document.getElementById('structs-list');
+            const totalCountEl = document.getElementById('stat-structs');
+            if (!list) return;
+
+            list.innerHTML = '';
+            s.structures.forEach(struct => {
+                const item = document.createElement('div');
+                item.className = 'hstruct-item';
+                const name = struct.type === 'wall' ? 'جدار' : struct.type === 'embankment' ? 'سد ترابي' : struct.type === 'barrier' ? 'حاجز' : 'قناة';
+                item.innerHTML = `
+                    <div class="hstruct-dot" style="background:${struct.color.replace(', 0.9)', ', 1)')}"></div>
+                    <span class="hstruct-name">${name}</span>
+                    <span class="hstruct-h">${struct.height}م</span>
+                    <button class="hstruct-del" data-id="${struct.id}" title="حذف">✕</button>
+                `;
+                const delBtn = item.querySelector('.hstruct-del');
+                delBtn.onclick = () => removeStructureById(struct.id);
+                list.appendChild(item);
+            });
+
+            if (totalCountEl) totalCountEl.textContent = s.structures.length;
+        };
+
+        const removeStructureById = (id) => {
+            const s = hydroStateRef.current;
+            s.structures = s.structures.filter(st => st.id !== id);
+            rebuildBarrierGrid();
+            updateStructuresListDOM();
+        };
+
+        const rebuildBarrierGrid = () => {
+            const s = hydroStateRef.current;
+            const N = s.GRID;
+            s.barriers.fill(0);
+            initGridArrays(); // re-init random terrain
+
+            s.structures.forEach(struct => {
+                const yMin = Math.max(0, Math.min(...struct.gridPts.map(p => p.y)));
+                const yMax = Math.min(N - 1, Math.max(...struct.gridPts.map(p => p.y)));
+
+                for (let y = yMin; y <= yMax; y++) {
+                    const intersections = [];
+                    for (let i = 0; i < struct.gridPts.length; i++) {
+                        const a = struct.gridPts[i], b = struct.gridPts[(i + 1) % struct.gridPts.length];
+                        if ((a.y <= y && b.y > y) || (b.y <= y && a.y > y)) {
+                            const x = a.x + (y - a.y) / (b.y - a.y) * (b.x - a.x);
+                            intersections.push(Math.round(x));
+                        }
+                    }
+                    intersections.sort((a, b) => a - b);
+                    for (let k = 0; k + 1 < intersections.length; k += 2) {
+                        const x0 = Math.max(0, intersections[k]);
+                        const x1 = Math.min(N - 1, intersections[k + 1]);
+                        for (let x = x0; x <= x1; x++) {
+                            const idx = y * N + x;
+                            s.barriers[idx] = 1;
+                            s.terrain[idx] += struct.height;
+                            s.h[idx] = 0;
+                        }
+                    }
+                }
+            });
+        };
+
+        const addWaterAtCoordinates = (screenX, screenY) => {
+            const s = hydroStateRef.current;
+            const N = s.GRID;
+            const wrap = document.getElementById('hydro-map-wrap');
+            if (!wrap) return;
+            const W = wrap.clientWidth, H = wrap.clientHeight;
+            const gx = Math.floor((screenX / W) * N);
+            const gy = Math.floor((screenY / H) * N);
+            const r = 8;
+            const vol = s.waterVolume;
+
+            for (let dy = -r; dy <= r; dy++) {
+                for (let dx = -r; dx <= r; dx++) {
+                    if (dx * dx + dy * dy > r * r) continue;
+                    const ix = gx + dx, iy = gy + dy;
+                    if (ix < 0 || iy < 0 || ix >= N || iy >= N) continue;
+                    const idx = iy * N + ix;
+                    if (s.barriers[idx]) continue;
+                    const dist = Math.sqrt(dx * dx + dy * dy) / r;
+                    const amount = vol * (1.0 - dist * 0.7);
+                    s.h[idx] = Math.min(s.h[idx] + amount, 50);
+                }
+            }
+        };
+
+        const eraseWaterAtCoordinates = (screenX, screenY) => {
+            const s = hydroStateRef.current;
+            const N = s.GRID;
+            const wrap = document.getElementById('hydro-map-wrap');
+            if (!wrap) return;
+            const W = wrap.clientWidth, H = wrap.clientHeight;
+            const gx = Math.floor((screenX / W) * N);
+            const gy = Math.floor((screenY / H) * N);
+            const r = 12;
+
+            for (let dy = -r; dy <= r; dy++) {
+                for (let dx = -r; dx <= r; dx++) {
+                    if (dx * dx + dy * dy > r * r) continue;
+                    const ix = gx + dx, iy = gy + dy;
+                    if (ix < 0 || iy < 0 || ix >= N || iy >= N) continue;
+                    s.h[iy * N + ix] = 0;
+                }
+            }
+        };
+
+        // Shallow water physics solver (Saint-Venant equations)
+        const simulatePhysicsStep = () => {
+            const s = hydroStateRef.current;
+            const N = s.GRID;
+            const h = s.h;
+            const terrain = s.terrain;
+            const barriers = s.barriers;
+            const flux = s.flux;
+            const g = 9.8;
+            const dt = 0.016 * s.simSpeed;
+            const dx = 1.0;
+            const A = dx * dx;
+            const pipe_len = dx;
+            const friction = 1.0 - s.friction * dt;
+
+            // Outflow flux
+            for (let j = 1; j < N - 1; j++) {
+                for (let i = 1; i < N - 1; i++) {
+                    const idx = j * N + i;
+                    if (barriers[idx]) {
+                        flux[idx * 4] = flux[idx * 4 + 1] = flux[idx * 4 + 2] = flux[idx * 4 + 3] = 0;
+                        continue;
+                    }
+                    const water_height = h[idx] + terrain[idx];
+                    const neighbors = [
+                        [j - 1, i], // N
+                        [j + 1, i], // S
+                        [j, i - 1], // W
+                        [j, i + 1]  // E
+                    ];
+
+                    let totalOut = 0;
+                    for (let d = 0; d < 4; d++) {
+                        const [nj, ni] = neighbors[d];
+                        if (nj < 0 || nj >= N || ni < 0 || ni >= N) {
+                            flux[idx * 4 + d] = 0;
+                            continue;
+                        }
+                        const nidx = nj * N + ni;
+                        const nWH = h[nidx] + terrain[nidx];
+                        const dh = water_height - nWH;
+                        const f = Math.max(0, flux[idx * 4 + d] * friction + dt * A * g * dh / pipe_len);
+                        flux[idx * 4 + d] = f;
+                        totalOut += f;
+                    }
+
+                    const available = h[idx] * A;
+                    if (totalOut > available && totalOut > 1e-10) {
+                        const scale = available / totalOut;
+                        for (let d = 0; d < 4; d++) flux[idx * 4 + d] *= scale;
+                    }
+                }
+            }
+
+            // Update water height
+            let totalWater = 0, maxDepth = 0, maxFlow = 0;
+            for (let j = 1; j < N - 1; j++) {
+                for (let i = 1; i < N - 1; i++) {
+                    const idx = j * N + i;
+                    if (barriers[idx]) continue;
+
+                    const outN = flux[idx * 4 + 0], outS = flux[idx * 4 + 1];
+                    const outW = flux[idx * 4 + 2], outE = flux[idx * 4 + 3];
+
+                    const inN = flux[((j - 1) * N + i) * 4 + 1];
+                    const inS = flux[((j + 1) * N + i) * 4 + 0];
+                    const inW = flux[(j * N + (i - 1)) * 4 + 3];
+                    const inE = flux[(j * N + (i + 1)) * 4 + 2];
+
+                    const netFlow = (inN + inS + inW + inE - outN - outS - outW - outE);
+                    h[idx] = Math.max(0, h[idx] + dt * netFlow / A);
+
+                    if (h[idx] > 0.01) totalWater++;
+                    if (h[idx] > maxDepth) maxDepth = h[idx];
+                    const flowMag = Math.sqrt((outE - outW) * (outE - outW) + (outS - outN) * (outS - outN));
+                    if (flowMag > maxFlow) maxFlow = flowMag;
+                }
+            }
+
+            s.totalWaterCells = totalWater;
+            s.maxDepth = maxDepth;
+            s.maxFlow = maxFlow;
+        };
+
+        const renderWebGLWater = (timestamp) => {
+            const s = hydroStateRef.current;
+            const gl = s.gl;
+            if (!gl) {
+                render2DWaterFallback();
+                return;
+            }
+
+            const N = s.GRID;
+            const wc = s.wCanvas;
+            gl.viewport(0, 0, wc.width, wc.height);
+            gl.clearColor(0, 0, 0, 0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.enable(gl.BLEND);
+            gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+            const texData = new Uint8Array(N * N * 4);
+            const maxH = 10;
+            for (let i = 0; i < N * N; i++) {
+                const val = Math.min(1, s.h[i] / maxH);
+                const b = Math.floor(val * 255);
+                texData[i * 4 + 0] = b;
+                texData[i * 4 + 1] = Math.floor(val * 180);
+                texData[i * 4 + 2] = Math.floor(val * 80);
+                texData[i * 4 + 3] = b > 2 ? 255 : 0;
+            }
+            gl.bindTexture(gl.TEXTURE_2D, s.waterTexture);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, N, N, 0, gl.RGBA, gl.UNSIGNED_BYTE, texData);
+
+            gl.useProgram(s.program);
+
+            const aPos = gl.getAttribLocation(s.program, 'a_position');
+            const aUV = gl.getAttribLocation(s.program, 'a_uv');
+            gl.bindBuffer(gl.ARRAY_BUFFER, s.vbo);
+            gl.enableVertexAttribArray(aPos);
+            gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 16, 0);
+            gl.enableVertexAttribArray(aUV);
+            gl.vertexAttribPointer(aUV, 2, gl.FLOAT, false, 16, 8);
+
+            gl.uniform1i(gl.getUniformLocation(s.program, 'u_water'), 0);
+            gl.uniform1f(gl.getUniformLocation(s.program, 'u_time'), timestamp * 0.001);
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+        };
+
+        const render2DWaterFallback = () => {
+            const s = hydroStateRef.current;
+            if (!s.wCanvas) return;
+            const ctx = s.wCanvas.getContext('2d');
+            if (!ctx) return;
+            const N = s.GRID;
+            const W = s.wCanvas.width, H = s.wCanvas.height;
+            const cw = W / N, ch = H / N;
+            ctx.clearRect(0, 0, W, H);
+
+            for (let j = 0; j < N; j++) {
+                for (let i = 0; i < N; i++) {
+                    const depth = s.h[j * N + i];
+                    if (depth < 0.01) continue;
+                    const t = Math.min(1, depth / 8);
+                    const a = 0.3 + t * 0.5;
+                    const b = Math.floor(200 - t * 150);
+                    ctx.fillStyle = `rgba(${Math.floor(30 * t)}, ${Math.floor(100 + 30 * (1 - t))}, ${b}, ${a})`;
+                    ctx.fillRect(i * cw, j * ch, cw + 0.5, ch + 0.5);
+                }
+            }
+        };
+
+        const animationLoop = (timestamp) => {
+            const s = hydroStateRef.current;
+            if (!s.simRunning) return;
+
+            const steps = Math.max(1, Math.floor(s.simSpeed));
+            for (let st = 0; st < steps; st++) simulatePhysicsStep();
+
+            renderWebGLWater(timestamp);
+            updateStatsDOM();
+
+            s.tick++;
+            s.animId = requestAnimationFrame(animationLoop);
+        };
+
+        const startSimulationLoop = () => {
+            const s = hydroStateRef.current;
+            if (s.simRunning) return;
+            s.simRunning = true;
+
+            const status = document.getElementById('hydro-sim-status');
+            const text = document.getElementById('hydro-sim-status-text');
+            if (status) status.className = 'hydro-sim-status running';
+            if (text) text.textContent = 'المحاكاة جارية';
+
+            s.animId = requestAnimationFrame(animationLoop);
+        };
+
+        const updateStatsDOM = () => {
+            const s = hydroStateRef.current;
+            if (s.tick % 3 !== 0) return;
+            const el = id => document.getElementById(id);
+
+            if (el('stat-tick')) el('stat-tick').textContent = s.tick;
+            if (el('stat-water')) el('stat-water').textContent = s.totalWaterCells;
+            if (el('stat-water-bar')) el('stat-water-bar').style.width = Math.min(100, s.totalWaterCells / 10) + '%';
+            if (el('stat-depth')) el('stat-depth').textContent = s.maxDepth.toFixed(2);
+            if (el('stat-depth-bar')) el('stat-depth-bar').style.width = Math.min(100, s.maxDepth * 5) + '%';
+            if (el('stat-flow')) el('stat-flow').textContent = s.maxFlow.toFixed(3);
+            if (el('hbar-wvol')) el('hbar-wvol').textContent = s.totalWaterCells;
+        };
+
+        const setSimulatorMode = (mode) => {
+            const s = hydroStateRef.current;
+            s.mode = mode;
+            const modes = ['navigate', 'draw', 'water', 'erase'];
+            modes.forEach(m => {
+                const btn = document.getElementById('mode-' + m);
+                if (btn) btn.classList.toggle('active', m === mode);
+            });
+
+            const dc = document.getElementById('hydro-draw-canvas');
+            const wrap = document.getElementById('hydro-map-wrap');
+            const hint = document.getElementById('hydro-hint');
+
+            if (mode === 'navigate') {
+                if (s.map) { s.map.dragPan.enable(); s.map.scrollZoom.enable(); }
+                if (dc) dc.classList.remove('drawing');
+                if (wrap) wrap.classList.remove('water-mode');
+                if (hint) hint.classList.remove('show');
+                s.isDrawing = false;
+                s.drawPoints = [];
+                renderDrawingPreview();
+            } else if (mode === 'draw') {
+                if (s.map) { s.map.dragPan.disable(); s.map.scrollZoom.disable(); }
+                if (dc) dc.classList.add('drawing');
+                if (wrap) wrap.classList.remove('water-mode');
+                if (hint) {
+                    hint.classList.add('show');
+                    hint.textContent = 'انقر لإضافة نقاط — انقر مرتين أو كليك يمين لإغلاق الشكل';
+                }
+            } else if (mode === 'water') {
+                if (s.map) { s.map.dragPan.enable(); s.map.scrollZoom.enable(); }
+                if (dc) dc.classList.remove('drawing');
+                if (wrap) wrap.classList.add('water-mode');
+                if (hint) {
+                    hint.classList.add('show');
+                    hint.textContent = 'انقر على الخريطة لإضافة مياه';
+                }
+            } else if (mode === 'erase') {
+                if (s.map) { s.map.dragPan.enable(); s.map.scrollZoom.enable(); }
+                if (dc) dc.classList.remove('drawing');
+                if (wrap) wrap.classList.remove('water-mode');
+                if (hint) {
+                    hint.classList.add('show');
+                    hint.textContent = 'انقر على الخريطة لمسح المياه';
+                }
+            }
+        };
+
+        const setupControlsListeners = () => {
+            const s = hydroStateRef.current;
+
+            // Sliders
+            const exagInput = document.getElementById('hydro-exag');
+            const structHInput = document.getElementById('hydro-struct-h');
+            const waterVolInput = document.getElementById('hydro-water-vol');
+            const frictionInput = document.getElementById('hydro-friction-input');
+            const simSpeedInput = document.getElementById('hydro-simspeed-input');
+
+            if (exagInput) {
+                exagInput.oninput = (e) => {
+                    const v = parseFloat(e.target.value);
+                    s.exaggeration = v;
+                    const valText = document.getElementById('hydro-exag-val');
+                    if (valText) valText.textContent = v + '×';
+                    if (s.map && s.map.getTerrain()) {
+                        s.map.setTerrain({ source: 'hydro-dem', exaggeration: v });
+                    }
+                };
+            }
+
+            if (structHInput) {
+                structHInput.oninput = (e) => {
+                    const v = parseFloat(e.target.value);
+                    s.structHeight = v;
+                    const valText = document.getElementById('hydro-struct-h-val');
+                    if (valText) valText.textContent = v + 'م';
+                };
+            }
+
+            if (waterVolInput) {
+                waterVolInput.oninput = (e) => {
+                    const v = parseFloat(e.target.value);
+                    s.waterVolume = v;
+                    const valText = document.getElementById('hydro-water-vol-val');
+                    if (valText) valText.textContent = v;
+                };
+            }
+
+            if (frictionInput) {
+                frictionInput.oninput = (e) => {
+                    const v = parseFloat(e.target.value);
+                    s.friction = v;
+                    const valText = document.getElementById('hydro-friction-val');
+                    if (valText) valText.textContent = v.toFixed(2);
+                };
+            }
+
+            if (simSpeedInput) {
+                simSpeedInput.oninput = (e) => {
+                    const v = parseFloat(e.target.value);
+                    s.simSpeed = v;
+                    const valText = document.getElementById('hydro-simspeed-val');
+                    if (valText) valText.textContent = v.toFixed(1) + '×';
+                };
+            }
+
+            // Modes buttons
+            const btnNav = document.getElementById('mode-navigate');
+            const btnDraw = document.getElementById('mode-draw');
+            const btnWater = document.getElementById('mode-water');
+            const btnErase = document.getElementById('mode-erase');
+
+            if (btnNav) btnNav.onclick = () => setSimulatorMode('navigate');
+            if (btnDraw) btnDraw.onclick = () => setSimulatorMode('draw');
+            if (btnWater) btnWater.onclick = () => setSimulatorMode('water');
+            if (btnErase) btnErase.onclick = () => setSimulatorMode('erase');
+
+            // Structure Types buttons
+            document.querySelectorAll('.struct-type').forEach(btn => {
+                btn.onclick = (e) => {
+                    document.querySelectorAll('.struct-type').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    s.structType = e.target.getAttribute('data-type');
+                };
+            });
+
+            // Reset
+            const resetBtn = document.getElementById('hydro-reset-btn');
+            if (resetBtn) {
+                resetBtn.onclick = () => {
+                    s.h.fill(0);
+                    s.flux.fill(0);
+                    s.tick = 0;
+                    s.totalWaterCells = 0;
+                    s.maxDepth = 0;
+                    s.maxFlow = 0;
+                    updateStatsDOM();
+                };
+            }
+
+            // Close
+            const closeBtn = document.getElementById('hydro-close-btn');
+            if (closeBtn) {
+                closeBtn.onclick = () => setIsHydroSimOpen(false);
+            }
+        };
+
+        // Esc key press
+        const handleKeyDown = (e) => {
+            const s = hydroStateRef.current;
+            if (e.key === 'Escape') {
+                if (s.isDrawing) {
+                    s.isDrawing = false;
+                    s.drawPoints = [];
+                    renderDrawingPreview();
+                } else {
+                    setIsHydroSimOpen(false);
+                }
+            }
+            if (e.key === 'n' || e.key === 'N') setSimulatorMode('navigate');
+            if (e.key === 'd' || e.key === 'D') setSimulatorMode('draw');
+            if (e.key === 'w' || e.key === 'W') setSimulatorMode('water');
+            if (e.key === 'e' || e.key === 'E') setSimulatorMode('erase');
+            if (e.key === 'Enter' && s.isDrawing) finishDrawingStructure();
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        loadMapboxResources();
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [isHydroSimOpen]);
+
     // Join/Link Data State
     const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
     const [joinTargetLayerId, setJoinTargetLayerId] = useState(null); // The GeoJSON layer to receive data
@@ -3519,90 +4476,258 @@ const PalNovaaLab = ({ onClose }) => {
                     </div>
                 )}
             </div>
+
+            {/* ===== HYDRO SIM MODAL ===== */}
+            {isHydroSimOpen && (
+                <div id="hydro-studio">
+                    {/* TOP BAR */}
+                    <div className="hydro-topbar">
+                        <div className="hydro-brand">
+                            <div className="hydro-brand-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M12 2C6 8 4 12 4 15a8 8 0 0 0 16 0c0-3-2-7-8-13z"/>
+                                </svg>
+                            </div>
+                            <div className="hydro-brand-text">
+                                <strong>محاكي الهيدرولوجيا 3D</strong>
+                                <small>PALNOVAA · HYDROSTUDIO</small>
+                            </div>
+                        </div>
+
+                        <div className="hydro-topbar-divider"></div>
+
+                        {/* Terrain Exaggeration */}
+                        <div className="hydro-slider-group">
+                            <label>تضخيم التضاريس</label>
+                            <input type="range" id="hydro-exag" min="1" max="8" step="0.5" defaultValue="3" />
+                            <span id="hydro-exag-val">3×</span>
+                        </div>
+
+                        {/* Structure Height */}
+                        <div className="hydro-slider-group">
+                            <label>ارتفاع الهيكل</label>
+                            <input type="range" id="hydro-struct-h" min="5" max="200" step="5" defaultValue="40" />
+                            <span id="hydro-struct-h-val">40م</span>
+                        </div>
+
+                        {/* Water Volume */}
+                        <div className="hydro-slider-group">
+                            <label>حجم المياه</label>
+                            <input type="range" id="hydro-water-vol" min="1" max="10" step="0.5" defaultValue="3" />
+                            <span id="hydro-water-vol-val">3</span>
+                        </div>
+
+                        <div className="hydro-topbar-divider"></div>
+
+                        <button className="hydro-btn warn" id="hydro-reset-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '4px' }}>
+                                <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.49"/>
+                            </svg>
+                            إعادة تعيين
+                        </button>
+
+                        <button className="hydro-btn danger" id="hydro-close-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '4px' }}>
+                                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                            إغلاق
+                        </button>
+                    </div>
+
+                    {/* BODY */}
+                    <div className="hydro-body">
+                        {/* LEFT: Tools Panel */}
+                        <div className="hydro-tools">
+                            <div className="hydro-section-title">وضع التشغيل</div>
+
+                            <button className="hydro-tool-btn active" id="mode-navigate">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px' }}>
+                                    <path d="M5 3l3.057-3 11.943 11.943-4.057.057L13 16.943l-3 3L5 3z"/>
+                                </svg>
+                                التنقل
+                            </button>
+
+                            <button className="hydro-tool-btn" id="mode-draw">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px' }}>
+                                    <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/>
+                                </svg>
+                                رسم هيكل
+                            </button>
+
+                            <button className="hydro-tool-btn water-btn" id="mode-water">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px' }}>
+                                    <path d="M12 2C6 8 4 12 4 15a8 8 0 0 0 16 0c0-3-2-7-8-13z"/>
+                                </svg>
+                                إضافة مياه
+                            </button>
+
+                            <button className="hydro-tool-btn erase-btn" id="mode-erase">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px' }}>
+                                    <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                </svg>
+                                مسح المياه
+                            </button>
+
+                            <div className="hydro-tool-divider"></div>
+                            <div className="hydro-section-title">نوع الهيكل</div>
+
+                            <div className="struct-types">
+                                <button className="struct-type active" data-type="wall">جدار</button>
+                                <button className="struct-type" data-type="embankment">سد ترابي</button>
+                                <button className="struct-type" data-type="barrier">حاجز</button>
+                                <button className="struct-type" data-type="channel">قناة</button>
+                            </div>
+
+                            <div className="hydro-tool-divider"></div>
+                            <div className="hydro-section-title">التضاريس</div>
+
+                            <div className="hydro-param">
+                                <label>معامل الاحتكاك</label>
+                                <div className="param-row">
+                                    <input type="range" id="hydro-friction-input" min="0" max="1" step="0.05" defaultValue="0.3" />
+                                    <span className="param-val" id="hydro-friction-val">0.30</span>
+                                </div>
+                            </div>
+
+                            <div className="hydro-param">
+                                <label>سرعة المحاكاة</label>
+                                <div className="param-row">
+                                    <input type="range" id="hydro-simspeed-input" min="0.5" max="4" step="0.5" defaultValue="1.5" />
+                                    <span className="param-val" id="hydro-simspeed-val">1.5×</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* CENTER: Map */}
+                        <div className="hydro-map-wrap" id="hydro-map-wrap">
+                            <div id="hydro-map"></div>
+                            <canvas id="hydro-draw-canvas"></canvas>
+
+                            <div className="hydro-hint" id="hydro-hint">انقر لإضافة نقاط — انقر مرتين لإغلاق الشكل</div>
+
+                            <div className="hydro-map-bar">
+                                <div className="hbar-item">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '4px' }}>
+                                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                    </svg>
+                                    <span id="hbar-coords">--°N, --°E</span>
+                                </div>
+                                <div className="hbar-item">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '4px' }}>
+                                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                                    </svg>
+                                    <span>تضاريس DEM 3D</span>
+                                </div>
+                                <div className="hbar-item">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '4px' }}>
+                                        <path d="M12 2C6 8 4 12 4 15a8 8 0 0 0 16 0c0-3-2-7-8-13z"/>
+                                    </svg>
+                                    خلايا المياه: <span className="hbar-val" id="hbar-wvol">0</span> خلية
+                                </div>
+                                <div className="hbar-spacer"></div>
+                                <div className="hbar-item">⚡ لا يتأثر الحفظ الرئيسي</div>
+                            </div>
+                        </div>
+
+                        {/* RIGHT: Stats Panel */}
+                        <div className="hydro-stats">
+                            <div className="hydro-section-title">إحصائيات التشغيل</div>
+
+                            <div className="hstat-card blue-glow">
+                                <div className="hstat-label">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '4px' }}>
+                                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                                    </svg>
+                                    الخطوة الزمنية
+                                </div>
+                                <div className="hstat-val" id="stat-tick">0</div>
+                                <div className="hstat-unit">frame</div>
+                            </div>
+
+                            <div className="hstat-card water-glow">
+                                <div className="hstat-label">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '4px' }}>
+                                        <path d="M12 2C6 8 4 12 4 15a8 8 0 0 0 16 0c0-3-2-7-8-13z"/>
+                                    </svg>
+                                    خلايا المياه
+                                </div>
+                                <div className="hstat-val water" id="stat-water">0</div>
+                                <div className="hstat-unit">خلية نشطة</div>
+                                <div className="hstat-bar">
+                                    <div className="hstat-bar-fill water" id="stat-water-bar" style={{ width: '0%' }}></div>
+                                </div>
+                            </div>
+
+                            <div className="hstat-card">
+                                <div className="hstat-label">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '4px' }}>
+                                        <path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/>
+                                    </svg>
+                                    أقصى عمق
+                                </div>
+                                <div className="hstat-val" id="stat-depth">0.00</div>
+                                <div className="hstat-unit">وحدة ارتفاع</div>
+                                <div className="hstat-bar">
+                                    <div className="hstat-bar-fill" id="stat-depth-bar" style={{ width: '0%' }}></div>
+                                </div>
+                            </div>
+
+                            <div className="hstat-card">
+                                <div className="hstat-label">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '4px' }}>
+                                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                                    </svg>
+                                    سرعة الجريان
+                                </div>
+                                <div className="hstat-val" id="stat-flow">0.000</div>
+                                <div className="hstat-unit">وحدة/ثانية</div>
+                            </div>
+
+                            <div className="hstat-card">
+                                <div className="hstat-label">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '4px' }}>
+                                        <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/>
+                                    </svg>
+                                    الهياكل السدية
+                                </div>
+                                <div className="hstat-val" id="stat-structs">0</div>
+                                <div className="hstat-unit">هيكل مرسوم</div>
+                                <div className="hstruct-list" id="structs-list"></div>
+                            </div>
+
+                            <div className="hydro-legend">
+                                <div className="hydro-legend-title">دليل الألوان</div>
+                                <div className="legend-row">
+                                    <div className="legend-swatch" style={{ background: 'linear-gradient(90deg, #001166, #0033DD)' }}></div>
+                                    مياه عميقة
+                                </div>
+                                <div className="legend-row">
+                                    <div className="legend-swatch" style={{ background: 'linear-gradient(90deg, #0055FF, #55AAFF)' }}></div>
+                                    مياه متوسطة
+                                </div>
+                                <div className="legend-row">
+                                    <div className="legend-swatch" style={{ background: 'rgba(100,180,255,0.4)' }}></div>
+                                    مياه ضحلة
+                                </div>
+                                <div className="legend-row">
+                                    <div className="legend-swatch" style={{ background: '#06D6F2' }}></div>
+                                    جدار / حاجز
+                                </div>
+                                <div className="legend-row">
+                                    <div className="legend-swatch" style={{ background: '#F5A623' }}></div>
+                                    سد ترابي
+                                </div>
+                            </div>
+
+                            <div className="hydro-sim-status idle" id="hydro-sim-status">
+                                <div className="hydro-sim-dot"></div>
+                                <span id="hydro-sim-status-text">المحاكاة متوقفة</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
-
-        {/* ===== HYDRO SIM MODAL ===== */}
-        {isHydroSimOpen && (
-            <div style={{
-                position: 'fixed', inset: 0, zIndex: 9999,
-                background: 'rgba(5,15,30,0.97)',
-                display: 'flex', flexDirection: 'column',
-                fontFamily: "'Tajawal','JetBrains Mono',sans-serif"
-            }}>
-                {/* Topbar */}
-                <div style={{
-                    display: 'flex', alignItems: 'center', gap: '16px',
-                    padding: '0 20px', height: '52px', flexShrink: 0,
-                    background: 'rgba(6,214,242,0.05)',
-                    borderBottom: '1px solid rgba(6,214,242,0.2)'
-                }}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="#06D6F2" strokeWidth="2" style={{ width: '22px', height: '22px' }}>
-                        <path d="M12 2C6 8 4 12 4 15a8 8 0 0 0 16 0c0-3-2-7-8-13z"/>
-                    </svg>
-                    <span style={{ color: '#06D6F2', fontWeight: 700, fontSize: '15px', letterSpacing: '0.05em' }}>
-                        PALNOVAA HYDROLOGY SIMULATOR — محاكاة هيدرولوجية تفاعلية
-                    </span>
-                    <span style={{ marginRight: 'auto' }} />
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>اضغط Esc للخروج</span>
-                        <button
-                            onClick={() => setIsHydroSimOpen(false)}
-                            style={{
-                                background: 'rgba(255,50,50,0.15)', border: '1px solid rgba(255,80,80,0.3)',
-                                color: '#ff6b6b', borderRadius: '8px', padding: '6px 16px',
-                                cursor: 'pointer', fontWeight: 700, fontSize: '13px'
-                            }}
-                        >✕ إغلاق</button>
-                    </div>
-                </div>
-
-                {/* Info message */}
-                <div style={{
-                    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexDirection: 'column', gap: '24px', padding: '40px'
-                }}>
-                    <div style={{
-                        width: '80px', height: '80px', borderRadius: '50%',
-                        background: 'rgba(6,214,242,0.1)',
-                        border: '2px solid rgba(6,214,242,0.4)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="#06D6F2" strokeWidth="1.5" style={{ width: '44px', height: '44px' }}>
-                            <path d="M12 2C6 8 4 12 4 15a8 8 0 0 0 16 0c0-3-2-7-8-13z"/>
-                            <path d="M8 15s1.5 2 4 2 4-2 4-2" stroke="#06D6F2" opacity="0.6"/>
-                        </svg>
-                    </div>
-                    <div style={{ textAlign: 'center', maxWidth: '500px' }}>
-                        <h2 style={{ color: '#06D6F2', fontSize: '1.6rem', marginBottom: '12px' }}>محاكاة هيدرولوجية 3D</h2>
-                        <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '1rem', lineHeight: 1.7 }}>
-                            قريباً — هذه الميزة قيد التطوير وستُدمج مباشرة داخل المختبر.
-                            ارسم هياكل على الخريطة الحقيقية وأضف مياهاً تتفاعل مع التضاريس الفعلية.
-                        </p>
-                    </div>
-                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                        {['رسم الهياكل والسدود','إضافة مياه تفاعلية','فيزياء Saint-Venant','تضخيم التضاريس 3D','إحصائيات فورية'].map(f => (
-                            <span key={f} style={{
-                                padding: '6px 14px', borderRadius: '20px',
-                                background: 'rgba(6,214,242,0.1)',
-                                border: '1px solid rgba(6,214,242,0.3)',
-                                color: '#06D6F2', fontSize: '12px', fontWeight: 600
-                            }}>{f}</span>
-                        ))}
-                    </div>
-                    <button
-                        onClick={() => setIsHydroSimOpen(false)}
-                        style={{
-                            marginTop: '16px',
-                            background: 'rgba(6,214,242,0.15)',
-                            border: '1px solid rgba(6,214,242,0.4)',
-                            color: '#06D6F2', borderRadius: '12px',
-                            padding: '12px 32px', cursor: 'pointer',
-                            fontWeight: 700, fontSize: '14px'
-                        }}
-                    >العودة للمختبر</button>
-                </div>
-            </div>
-        )}
     );
 };
 
