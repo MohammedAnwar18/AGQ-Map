@@ -195,6 +195,17 @@ const createNotification = async (userId, senderId, type, message) => {
 const createGeofenceNotification = async (req, res) => {
     try {
         const userId = req.user.id || req.user.userId;
+
+        // Check if user was already notified today
+        const checkResult = await pool.query(
+            "SELECT id FROM notifications WHERE user_id = $1 AND type = 'geofence' AND created_at::date = CURRENT_DATE",
+            [userId]
+        );
+
+        if (checkResult.rows.length > 0) {
+            return res.json({ success: true, message: 'Already notified today' });
+        }
+
         const message = "مرحباً بك في جامعة بيرزيت! 🎓 نتمنى لك يوماً دراسياً موفقاً.";
         
         await createNotification(userId, null, 'geofence', message);

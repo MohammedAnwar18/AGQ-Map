@@ -1169,6 +1169,14 @@ const MapComponent = () => {
 
     // Native-Grade Geolocation Tracking
     useEffect(() => {
+        // If we already have a saved location in localStorage, and tracking/navigation is not active,
+        // do NOT start tracking / requesting GPS automatically
+        const savedLoc = localStorage.getItem('last_user_location');
+        if (savedLoc && !isTracking && !destination) {
+            console.log("Location already saved, skipping geolocation request on load.");
+            return;
+        }
+
         let watchId;
         let retryTimeout;
 
@@ -1241,7 +1249,7 @@ const MapComponent = () => {
             if (watchId) navigator.geolocation.clearWatch(watchId);
             if (retryTimeout) clearTimeout(retryTimeout);
         };
-    }, []);
+    }, [isTracking, destination]);
 
     // Sync Location
     const locationRef = useRef(null);
