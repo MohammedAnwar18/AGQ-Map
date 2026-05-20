@@ -2858,6 +2858,13 @@ const PalNovaaLab = ({ onClose }) => {
                         </svg>
                     </button>
 
+                    <button className={`tool hydro-tool-trigger ${isHydroSimOpen ? 'active' : ''}`} data-tip="محاكاة هيدرولوجية 3D (Hydro Sim)" onClick={() => setIsHydroSimOpen(true)}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#06D6F2' }}>
+                            <path d="M12 2C6 8 4 12 4 15a8 8 0 0 0 16 0c0-3-2-7-8-13z"/>
+                            <path d="M12 15c0-2 1-4 1-4s1 2 1 4a2 2 0 0 1-4 0z" fill="currentColor" opacity="0.5"/>
+                        </svg>
+                    </button>
+
                     <div className="sidebar-bottom">
                         <button
                             key="btn-design-studio-v4"
