@@ -2593,3 +2593,14 @@
     padding-top: 15px;
     border-top: 1px solid var(--border);
   }
+
+/* ===== Hydro Sim Statusbar Button Animation ===== */
+@keyframes hydroBarPulse {
+  0% { border-color: rgba(6,214,242,0.3); box-shadow: none; }
+  100% { border-color: rgba(6,214,242,0.7); box-shadow: 0 0 10px rgba(6,214,242,0.3); }
+}
+#hydro-sim-statusbar-btn:hover {
+  background: linear-gradient(135deg,rgba(6,155,215,0.5),rgba(0,80,160,0.4)) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 0 16px rgba(6,214,242,0.4) !important;
+}

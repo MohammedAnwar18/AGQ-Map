@@ -96,6 +96,7 @@ const PalNovaaLab = ({ onClose }) => {
     const [geoLayers, setGeoLayers] = useState([]);
     const [activeTableLayerId, setActiveTableLayerId] = useState(null);
     const [isDesignStudioOpen, setIsDesignStudioOpen] = useState(false);
+    const [isHydroSimOpen, setIsHydroSimOpen] = useState(false);
     const [activeDsCategory, setActiveDsCategory] = useState('layouts');
     const [builderTab, setBuilderTab] = useState('basic'); // 'basic', 'components', 'icons'
     const [isMagicPromptOpen, setIsMagicPromptOpen] = useState(false);
@@ -2631,6 +2632,26 @@ const PalNovaaLab = ({ onClose }) => {
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
                         <span>{new Date().toLocaleTimeString()}</span>
                     </div>
+                    <div className="status-divider"></div>
+                    <button
+                        id="hydro-sim-statusbar-btn"
+                        onClick={() => setIsHydroSimOpen(true)}
+                        title="محاكاة هيدرولوجية ثلاثية الأبعاد"
+                        style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '6px',
+                            padding: '3px 12px', height: '24px', borderRadius: '6px',
+                            background: 'linear-gradient(135deg,rgba(6,155,215,0.25),rgba(0,80,160,0.2))',
+                            border: '1px solid rgba(6,214,242,0.5)', color: '#06D6F2',
+                            fontSize: '11px', fontWeight: 700, fontFamily: "'JetBrains Mono',monospace",
+                            cursor: 'pointer', animation: 'hydroBarPulse 2.5s ease-in-out infinite alternate'
+                        }}
+                    >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '13px', height: '13px' }}>
+                            <path d="M12 2C6 8 4 12 4 15a8 8 0 0 0 16 0c0-3-2-7-8-13z"/>
+                            <path d="M12 15c0-2 1-4 1-4s1 2 1 4a2 2 0 0 1-4 0z" fill="currentColor" opacity="0.5"/>
+                        </svg>
+                        Hydro Sim 3D
+                    </button>
                 </footer>
             </div>
 
@@ -3499,6 +3520,89 @@ const PalNovaaLab = ({ onClose }) => {
                 )}
             </div>
         </div>
+
+        {/* ===== HYDRO SIM MODAL ===== */}
+        {isHydroSimOpen && (
+            <div style={{
+                position: 'fixed', inset: 0, zIndex: 9999,
+                background: 'rgba(5,15,30,0.97)',
+                display: 'flex', flexDirection: 'column',
+                fontFamily: "'Tajawal','JetBrains Mono',sans-serif"
+            }}>
+                {/* Topbar */}
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: '16px',
+                    padding: '0 20px', height: '52px', flexShrink: 0,
+                    background: 'rgba(6,214,242,0.05)',
+                    borderBottom: '1px solid rgba(6,214,242,0.2)'
+                }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#06D6F2" strokeWidth="2" style={{ width: '22px', height: '22px' }}>
+                        <path d="M12 2C6 8 4 12 4 15a8 8 0 0 0 16 0c0-3-2-7-8-13z"/>
+                    </svg>
+                    <span style={{ color: '#06D6F2', fontWeight: 700, fontSize: '15px', letterSpacing: '0.05em' }}>
+                        PALNOVAA HYDROLOGY SIMULATOR — محاكاة هيدرولوجية تفاعلية
+                    </span>
+                    <span style={{ marginRight: 'auto' }} />
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>اضغط Esc للخروج</span>
+                        <button
+                            onClick={() => setIsHydroSimOpen(false)}
+                            style={{
+                                background: 'rgba(255,50,50,0.15)', border: '1px solid rgba(255,80,80,0.3)',
+                                color: '#ff6b6b', borderRadius: '8px', padding: '6px 16px',
+                                cursor: 'pointer', fontWeight: 700, fontSize: '13px'
+                            }}
+                        >✕ إغلاق</button>
+                    </div>
+                </div>
+
+                {/* Info message */}
+                <div style={{
+                    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexDirection: 'column', gap: '24px', padding: '40px'
+                }}>
+                    <div style={{
+                        width: '80px', height: '80px', borderRadius: '50%',
+                        background: 'rgba(6,214,242,0.1)',
+                        border: '2px solid rgba(6,214,242,0.4)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#06D6F2" strokeWidth="1.5" style={{ width: '44px', height: '44px' }}>
+                            <path d="M12 2C6 8 4 12 4 15a8 8 0 0 0 16 0c0-3-2-7-8-13z"/>
+                            <path d="M8 15s1.5 2 4 2 4-2 4-2" stroke="#06D6F2" opacity="0.6"/>
+                        </svg>
+                    </div>
+                    <div style={{ textAlign: 'center', maxWidth: '500px' }}>
+                        <h2 style={{ color: '#06D6F2', fontSize: '1.6rem', marginBottom: '12px' }}>محاكاة هيدرولوجية 3D</h2>
+                        <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '1rem', lineHeight: 1.7 }}>
+                            قريباً — هذه الميزة قيد التطوير وستُدمج مباشرة داخل المختبر.
+                            ارسم هياكل على الخريطة الحقيقية وأضف مياهاً تتفاعل مع التضاريس الفعلية.
+                        </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                        {['رسم الهياكل والسدود','إضافة مياه تفاعلية','فيزياء Saint-Venant','تضخيم التضاريس 3D','إحصائيات فورية'].map(f => (
+                            <span key={f} style={{
+                                padding: '6px 14px', borderRadius: '20px',
+                                background: 'rgba(6,214,242,0.1)',
+                                border: '1px solid rgba(6,214,242,0.3)',
+                                color: '#06D6F2', fontSize: '12px', fontWeight: 600
+                            }}>{f}</span>
+                        ))}
+                    </div>
+                    <button
+                        onClick={() => setIsHydroSimOpen(false)}
+                        style={{
+                            marginTop: '16px',
+                            background: 'rgba(6,214,242,0.15)',
+                            border: '1px solid rgba(6,214,242,0.4)',
+                            color: '#06D6F2', borderRadius: '12px',
+                            padding: '12px 32px', cursor: 'pointer',
+                            fontWeight: 700, fontSize: '14px'
+                        }}
+                    >العودة للمختبر</button>
+                </div>
+            </div>
+        )}
     );
 };
 
