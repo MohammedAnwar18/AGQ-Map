@@ -12,6 +12,7 @@ import ChatModal from '../components/ChatModal';
 import FriendsModal from '../components/FriendsModal';
 import SearchModal from '../components/SearchModal';
 import ProfileModal from '../components/ProfileModal';
+import ProfileSidebar from '../components/ProfileSidebar';
 import NotificationsModal from '../components/NotificationsModal';
 import AIChatModal from '../components/AIChatModal';
 import CommunitiesModal from '../components/CommunitiesModal';
@@ -505,6 +506,7 @@ const MapComponent = () => {
     const [showShops, setShowShops] = useState(false);
     const [showMunicipalities, setShowMunicipalities] = useState(false);
     const [showProfile, setShowProfile] = useState(false);
+    const [showSidebar, setShowSidebar] = useState(false);
     const [showCreatePost, setShowCreatePost] = useState(false);
     const [isUserInfoExpanded, setIsUserInfoExpanded] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -1555,15 +1557,20 @@ const MapComponent = () => {
             <div className="top-bar">
                 <div className="top-bar-left" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                     <button
-                        className={`top-nav-icon profile-top-icon ${showProfile ? 'active' : ''}`}
-                        onClick={() => { setShowProfile(true); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); setShowChat(false); }}
-                        style={{ padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex' }}
+                        className={`top-nav-icon profile-top-icon ${showSidebar ? 'active' : ''}`}
+                        onClick={() => { setShowSidebar(true); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); setShowChat(false); }}
+                        style={{ padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', position: 'relative' }}
+                        title="القائمة والملف الشخصي"
                     >
                         <img
                             src={getImageUrl(user?.profile_picture) || '/default-avatar.png'}
                             alt="Profile"
                             style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #fbab15', boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }}
                         />
+                        {/* Three-line icon hint */}
+                        <span style={{ position: 'absolute', bottom: '-3px', right: '-3px', width: '16px', height: '16px', background: '#fbab15', borderRadius: '50%', display: 'grid', placeItems: 'center', border: '2px solid #0a0f1e' }}>
+                            <svg viewBox="0 0 10 8" width="8" height="8" fill="white"><rect y="0" width="10" height="1.5" rx="0.75"/><rect y="3.25" width="10" height="1.5" rx="0.75"/><rect y="6.5" width="10" height="1.5" rx="0.75"/></svg>
+                        </span>
                     </button>
                     <div className="app-logo">
                         <svg version="1.0" xmlns="http://www.w3.org/2000/svg"
@@ -2418,6 +2425,37 @@ const MapComponent = () => {
                 />
             )}
             {showSearch && <SearchModal onClose={() => setShowSearch(false)} />}
+            {/* ProfileSidebar - Social-media style profile drawer */}
+            <ProfileSidebar
+                isOpen={showSidebar}
+                onClose={() => setShowSidebar(false)}
+                currentUser={user}
+                logout={logout}
+                followedShops={followedShopsMap}
+                onNavigate={(action, payload) => {
+                    if (action === 'home') {
+                        setShowSidebar(false);
+                    } else if (action === 'search') {
+                        setShowSearch(true);
+                        setShowSidebar(false);
+                    } else if (action === 'profile') {
+                        setShowProfile(true);
+                        setShowSidebar(false);
+                    } else if (action === 'settings') {
+                        setShowProfile(true); // Opens profile which includes settings/privacy
+                        setShowSidebar(false);
+                    } else if (action === 'shop' && payload) {
+                        handleOpenShopProfile(payload);
+                        mapRef.current?.flyTo({
+                            center: [parseFloat(payload.longitude), parseFloat(payload.latitude)],
+                            zoom: 18.5,
+                            pitch: 45,
+                            duration: 1500
+                        });
+                        setShowSidebar(false);
+                    }
+                }}
+            />
             {showProfile && <ProfileModal userId={user.id} onClose={() => setShowProfile(false)} />}
             {showNotifications && <NotificationsModal onClose={() => setShowNotifications(false)} onNotificationClick={(data) => {
                 if (data.shopId) {
