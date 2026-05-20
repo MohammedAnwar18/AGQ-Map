@@ -795,6 +795,47 @@
     50% { opacity: 0.3; }
   }
 
+  /* ===== زر Hydro Sim في البار السفلي ===== */
+  #hydro-statusbar-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 12px;
+    height: 24px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, rgba(6,155,215,0.25), rgba(0,80,160,0.2));
+    border: 1px solid rgba(6,214,242,0.45);
+    color: #06D6F2;
+    font-size: 11px; font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+    animation: hydroBarPulse 2.5s ease-in-out infinite alternate;
+  }
+  #hydro-statusbar-btn svg {
+    width: 13px; height: 13px; flex-shrink: 0;
+  }
+  #hydro-statusbar-btn:hover {
+    background: linear-gradient(135deg, rgba(6,155,215,0.5), rgba(0,80,160,0.4));
+    border-color: #06D6F2;
+    box-shadow: 0 0 16px rgba(6,214,242,0.4);
+    transform: translateY(-1px);
+  }
+  #hydro-statusbar-btn::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(6,214,242,0.15), transparent);
+    animation: hydroSweep 2s ease-in-out infinite;
+  }
+  @keyframes hydroBarPulse {
+    0% { border-color: rgba(6,214,242,0.3); box-shadow: none; }
+    100% { border-color: rgba(6,214,242,0.7); box-shadow: 0 0 10px rgba(6,214,242,0.3); }
+  }
+  @keyframes hydroSweep {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
   /* ============================================================
      RESPONSIVE
      ============================================================ */
@@ -1283,6 +1324,16 @@
       <span>4 طبقات · 1,247 ميزة</span>
     </div>
     <div class="status-spacer"></div>
+
+    <!-- ===== زر محاكاة هيدرولوجية في البار السفلي ===== -->
+    <button id="hydro-statusbar-btn" onclick="openHydroSim()" title="محاكاة هيدرولوجية 3D">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2C6 8 4 12 4 15a8 8 0 0 0 16 0c0-3-2-7-8-13z"/>
+        <path d="M12 15c0-2 1-4 1-4s1 2 1 4a2 2 0 0 1-4 0z" fill="currentColor" opacity="0.5"/>
+      </svg>
+      Hydro Sim
+    </button>
+
     <div class="status-pill">المختبر متصل</div>
   </footer>
 
