@@ -2975,6 +2975,18 @@
   border-color: rgba(239,68,68,0.35);
   color: #EF4444;
 }
+.hydro-tool-btn.source-btn.active {
+  background: linear-gradient(135deg, rgba(6,214,242,0.18), rgba(6,214,242,0.06));
+  border-color: rgba(6,214,242,0.35);
+  color: #06D6F2;
+  box-shadow: 0 0 16px rgba(6,214,242,0.15);
+}
+.hydro-tool-btn.fill-btn.active {
+  background: linear-gradient(135deg, rgba(245,166,35,0.2), rgba(245,166,35,0.08));
+  border-color: rgba(245,166,35,0.4);
+  color: #F5A623;
+  box-shadow: 0 0 16px rgba(245,166,35,0.2);
+}
 
 .hydro-tool-divider {
   height: 1px;
@@ -3052,6 +3064,8 @@
 
 /* Crosshair cursor for water mode */
 .hydro-map-wrap.water-mode { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='8' fill='rgba(60,130,255,0.7)' stroke='white' stroke-width='2'/%3E%3Cline x1='16' y1='4' x2='16' y2='12' stroke='white' stroke-width='2'/%3E%3Cline x1='16' y1='20' x2='16' y2='28' stroke='white' stroke-width='2'/%3E%3Cline x1='4' y1='16' x2='12' y2='16' stroke='white' stroke-width='2'/%3E%3Cline x1='20' y1='16' x2='28' y2='16' stroke='white' stroke-width='2'/%3E%3C/svg%3E") 16 16, crosshair; }
+.hydro-map-wrap.source-mode { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='8' fill='rgba(6,214,242,0.7)' stroke='white' stroke-width='2'/%3E%3Cline x1='16' y1='4' x2='16' y2='12' stroke='white' stroke-width='2'/%3E%3Cline x1='16' y1='20' x2='16' y2='28' stroke='white' stroke-width='2'/%3E%3Cline x1='4' y1='16' x2='12' y2='16' stroke='white' stroke-width='2'/%3E%3Cline x1='20' y1='16' x2='28' y2='16' stroke='white' stroke-width='2'/%3E%3C/svg%3E") 16 16, crosshair; }
+.hydro-map-wrap.fill_select-mode { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='8' fill='rgba(245,166,35,0.7)' stroke='white' stroke-width='2'/%3E%3Cline x1='16' y1='4' x2='16' y2='12' stroke='white' stroke-width='2'/%3E%3Cline x1='16' y1='20' x2='16' y2='28' stroke='white' stroke-width='2'/%3E%3Cline x1='4' y1='16' x2='12' y2='16' stroke='white' stroke-width='2'/%3E%3Cline x1='20' y1='16' x2='28' y2='16' stroke='white' stroke-width='2'/%3E%3C/svg%3E") 16 16, crosshair; }
 
 /* Map overlay info bar at bottom */
 .hydro-map-bar {
@@ -3313,6 +3327,16 @@
         إضافة مياه
       </button>
 
+      <button class="hydro-tool-btn source-btn" id="mode-source" onclick="hydroSetMode('source')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6 8 4 12 4 15a8 8 0 0 0 16 0c0-3-2-7-8-13z"/><path d="M12 6v12M6 12h12"/></svg>
+        إضافة نبع تدفق
+      </button>
+
+      <button class="hydro-tool-btn fill-btn" id="mode-fill_select" onclick="hydroSetMode('fill_select')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        تعبئة حوض مائي
+      </button>
+
       <button class="hydro-tool-btn erase-btn" id="mode-erase" onclick="hydroSetMode('erase')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         مسح المياه
@@ -3344,6 +3368,33 @@
         <div class="param-row">
           <input type="range" min="0.5" max="4" step="0.5" value="1.5" oninput="hydroState.simSpeed=parseFloat(this.value); this.nextElementSibling.textContent=parseFloat(this.value).toFixed(1)+'×'">
           <span class="param-val">1.5×</span>
+        </div>
+      </div>
+
+      <div class="hydro-tool-divider"></div>
+      <div class="hydro-section-title">السعة والتعبئة</div>
+
+      <div class="hydro-param">
+        <label>تدفق النبع المستمر</label>
+        <div class="param-row">
+          <input type="range" id="hydro-source-inflow" min="5" max="500" step="5" value="50" oninput="hydroUpdateSourceInflow(this.value)">
+          <span class="param-val" id="hydro-source-inflow-val">50م³/ث</span>
+        </div>
+      </div>
+
+      <div class="hydro-param">
+        <label>معدل تساقط الأمطار</label>
+        <div class="param-row">
+          <input type="range" id="hydro-rain-rate" min="0" max="100" step="5" value="0" oninput="hydroUpdateRainRate(this.value)">
+          <span class="param-val" id="hydro-rain-rate-val">0 ملم/س</span>
+        </div>
+      </div>
+
+      <div class="hydro-param">
+        <label>منسوب التعبئة المستهدف</label>
+        <div class="param-row">
+          <input type="range" id="hydro-fill-elev" min="0" max="1000" step="1" value="100" oninput="hydroUpdateFillElev(this.value)">
+          <span class="param-val" id="hydro-fill-elev-val">100م</span>
         </div>
       </div>
     </div>
@@ -3396,13 +3447,49 @@
         <div class="hstat-bar"><div class="hstat-bar-fill water" id="stat-water-bar" style="width:0%"></div></div>
       </div>
 
+      <div class="hstat-card water-glow">
+        <div class="hstat-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6 8 4 12 4 15a8 8 0 0 0 16 0c0-3-2-7-8-13z"/></svg>
+          السعة التخزينية للمياه
+        </div>
+        <div class="hstat-val water" id="stat-storage-vol">0</div>
+        <div class="hstat-unit" id="stat-storage-vol-unit">متر مكعب (m³)</div>
+      </div>
+
+      <div class="hstat-card">
+        <div class="hstat-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
+          المساحة السطحية للمياه
+        </div>
+        <div class="hstat-val" id="stat-storage-area">0</div>
+        <div class="hstat-unit" id="stat-storage-area-unit">هكتار (ha)</div>
+      </div>
+
+      <div class="hstat-card">
+        <div class="hstat-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/></svg>
+          أقصى منسوب مائي
+        </div>
+        <div class="hstat-val" id="stat-storage-elev">0.0</div>
+        <div class="hstat-unit">متر فوق سطح البحر</div>
+      </div>
+
+      <div class="hstat-card">
+        <div class="hstat-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+          دقة شبكة التضاريس
+        </div>
+        <div class="hstat-val" id="stat-resolution">--م × --م</div>
+        <div class="hstat-unit">حجم الخلية الواحدة</div>
+      </div>
+
       <div class="hstat-card">
         <div class="hstat-label">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/></svg>
           أقصى عمق
         </div>
         <div class="hstat-val" id="stat-depth">0.00</div>
-        <div class="hstat-unit">وحدة ارتفاع</div>
+        <div class="hstat-unit">متر (m)</div>
         <div class="hstat-bar"><div class="hstat-bar-fill" id="stat-depth-bar" style="width:0%"></div></div>
       </div>
 
@@ -3412,7 +3499,17 @@
           سرعة الجريان
         </div>
         <div class="hstat-val" id="stat-flow">0.000</div>
-        <div class="hstat-unit">وحدة/ثانية</div>
+        <div class="hstat-unit">متر/ثانية</div>
+      </div>
+
+      <div class="hstat-card">
+        <div class="hstat-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 6v12M6 12h12"/></svg>
+          مصادر التدفق النشطة
+        </div>
+        <div class="hstat-val" id="stat-sources-count">0</div>
+        <div class="hstat-unit">مصادر مياه مستمرة</div>
+        <div class="hstruct-list" id="sources-list"></div>
       </div>
 
       <div class="hstat-card">
@@ -3489,6 +3586,14 @@ const hydroState = {
   program: null,
   vbo: null,
   waterTexture: null,
+
+  // Storage Capacity & Filling Sim
+  waterSources: [],
+  nextSourceId: 1,
+  sourceInflowRate: 50,
+  rainfallRate: 0,
+  targetFillElev: 100,
+  fillStartPoint: null,
 };
 
 function openHydroSim() {
@@ -3551,6 +3656,40 @@ function hydroInit() {
       }
     });
 
+    map.addSource('hydro-sources', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] }
+    });
+    map.addLayer({
+      id: 'hydro-sources-layer',
+      type: 'circle',
+      source: 'hydro-sources',
+      paint: {
+        'circle-radius': 9,
+        'circle-color': '#06D6F2',
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#ffffff',
+        'circle-opacity': 0.9
+      }
+    });
+
+    map.addSource('hydro-fill-point', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] }
+    });
+    map.addLayer({
+      id: 'hydro-fill-point-layer',
+      type: 'circle',
+      source: 'hydro-fill-point',
+      paint: {
+        'circle-radius': 11,
+        'circle-color': '#F5A623',
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#ffffff',
+        'circle-opacity': 0.95
+      }
+    });
+
     hydroInitWaterCanvas();
     hydroInitGrid();
     hydroInitDrawCanvas();
@@ -3592,6 +3731,10 @@ function hydroInit() {
         map.dragPan.disable();
         if (mode === 'water') hydroAddWaterAtCoords(e.lngLat);
         else hydroEraseWaterAtCoords(e.lngLat);
+      } else if (mode === 'source') {
+        hydroAddSourceAtCoords(e.lngLat);
+      } else if (mode === 'fill_select') {
+        hydroSetFillStartPoint(e.lngLat);
       }
     });
     map.on('mousemove', e => {
@@ -3745,6 +3888,16 @@ function hydroSyncTerrainFromMap() {
     ]);
   }
   hydroRebuildBarrierGridFromBase();
+
+  const range = hydroCalculateElevationRange();
+  const fillSlider = document.getElementById('hydro-fill-elev');
+  if (fillSlider) {
+    fillSlider.min = Math.floor(range.minElev);
+    fillSlider.max = Math.ceil(range.maxElev + 80);
+    fillSlider.value = Math.ceil(range.minElev + (range.maxElev - range.minElev) * 0.15);
+    hydroState.targetFillElev = parseFloat(fillSlider.value);
+    document.getElementById('hydro-fill-elev-val').textContent = fillSlider.value + 'م';
+  }
 }
 
 function hydroRebuildBarrierGridFromBase() {
@@ -3950,12 +4103,38 @@ function hydroSimStep() {
   const terrain = hydroState.terrain;
   const barriers = hydroState.barriers;
   const flux = hydroState.flux;
-  const g = 9.8;
+  const g = 9.81;
+
+  const metrics = hydroGetPhysicalMetrics();
+  const dx = metrics.dx;
+  const dy = metrics.dy;
+  const cellArea = metrics.cellArea;
+  const L = (dx + dy) / 2;
+
   const dt = 0.016 * hydroState.simSpeed;
-  const dx = 1.0;
-  const A = dx * dx;
-  const pipe_len = dx;
   const friction = 1.0 - hydroState.friction * dt;
+
+  // Add water from continuous sources
+  if (hydroState.waterSources && hydroState.waterSources.length > 0) {
+    hydroState.waterSources.forEach(src => {
+      const idx = src.gy * N + src.gx;
+      if (idx >= 0 && idx < N * N && !barriers[idx]) {
+        const dh = (src.inflowRate * dt) / cellArea;
+        h[idx] = Math.min(h[idx] + dh, 100.0);
+      }
+    });
+  }
+
+  // Add water from global rainfall
+  if (hydroState.rainfallRate > 0) {
+    const rainMPerS = (hydroState.rainfallRate / 1000.0) / 3600.0;
+    const dh = rainMPerS * dt;
+    for (let i = 0; i < N * N; i++) {
+      if (!barriers[i]) {
+        h[i] = Math.min(h[i] + dh, 100.0);
+      }
+    }
+  }
 
   // Step 1: Update flux
   for (let j = 1; j < N - 1; j++) {
@@ -3981,14 +4160,21 @@ function hydroSimStep() {
         }
         const nidx = nj * N + ni;
         const nWH = h[nidx] + terrain[nidx];
-        const dh = water_height - nWH;
-        const f = Math.max(0, flux[idx * 4 + d] * friction + dt * A * g * dh / pipe_len);
+        const dh_elev = water_height - nWH;
+
+        // Flow cross-section depth: we use the water depth of the source cell, 
+        // but only if flow is outgoing (dh_elev > 0). If flow is incoming, it is handled by the neighbor.
+        const h_flow = dh_elev > 0 ? h[idx] : 0;
+
+        const f = Math.max(0, flux[idx * 4 + d] * friction + dt * g * h_flow * dh_elev);
         flux[idx * 4 + d] = f;
         totalOut += f;
       }
-      const available = h[idx] * A;
-      if (totalOut > available && totalOut > 1e-10) {
-        const scale = available / totalOut;
+
+      // Prevent draining more water than exists in the cell during dt
+      const maxVolumeOut = (h[idx] * cellArea) / dt;
+      if (totalOut > maxVolumeOut && totalOut > 1e-10) {
+        const scale = maxVolumeOut / totalOut;
         for (let d = 0; d < 4; d++) flux[idx * 4 + d] *= scale;
       }
     }
@@ -4010,7 +4196,7 @@ function hydroSimStep() {
       const inE = flux[(j * N + (i + 1)) * 4 + 2];
 
       const netFlow = (inN + inS + inW + inE - outN - outS - outW - outE);
-      h[idx] = Math.max(0, h[idx] + dt * netFlow / A);
+      h[idx] = Math.max(0, h[idx] + dt * netFlow / cellArea);
 
       if (h[idx] > 0.01) totalWater++;
       if (h[idx] > maxDepth) maxDepth = h[idx];
@@ -4142,11 +4328,63 @@ function hydroUpdateStats(ts) {
   if (el('stat-depth-bar')) el('stat-depth-bar').style.width = Math.min(100, hydroState.maxDepth * 5) + '%';
   if (el('stat-flow')) el('stat-flow').textContent = hydroState.maxFlow.toFixed(3);
   if (el('hbar-wvol')) el('hbar-wvol').textContent = hydroState.totalWaterCells;
+
+  // New Storage Capacity and Physical Metrics
+  const metrics = hydroGetPhysicalMetrics();
+  const N = hydroState.GRID;
+  const h = hydroState.h;
+
+  let totalWaterVolume = 0;
+  let totalWaterArea = 0;
+  let maxWaterElev = -9999;
+
+  for (let i = 0; i < N * N; i++) {
+    const depth = h[i];
+    if (depth > 0.01) {
+      totalWaterArea += metrics.cellArea;
+      totalWaterVolume += depth * metrics.cellArea;
+      const elev = hydroState.terrain[i] + depth;
+      if (elev > maxWaterElev) {
+        maxWaterElev = elev;
+      }
+    }
+  }
+
+  if (maxWaterElev === -9999) maxWaterElev = 0;
+
+  if (el('stat-storage-vol')) {
+    if (totalWaterVolume >= 1000000) {
+      el('stat-storage-vol').textContent = (totalWaterVolume / 1000000).toFixed(2);
+      el('stat-storage-vol-unit').textContent = 'مليون متر مكعب (Mm³)';
+    } else {
+      el('stat-storage-vol').textContent = totalWaterVolume.toLocaleString(undefined, {maximumFractionDigits: 0});
+      el('stat-storage-vol-unit').textContent = 'متر مكعب (m³)';
+    }
+  }
+
+  if (el('stat-storage-area')) {
+    const hectares = totalWaterArea / 10000;
+    if (hectares >= 100) {
+      el('stat-storage-area').textContent = (hectares / 100).toFixed(2);
+      el('stat-storage-area-unit').textContent = 'كيلومتر مربع (km²)';
+    } else {
+      el('stat-storage-area').textContent = hectares.toFixed(1);
+      el('stat-storage-area-unit').textContent = 'هكتار (ha)';
+    }
+  }
+
+  if (el('stat-storage-elev')) {
+    el('stat-storage-elev').textContent = maxWaterElev.toFixed(1);
+  }
+
+  if (el('stat-resolution')) {
+    el('stat-resolution').textContent = `${metrics.dx.toFixed(1)}م × ${metrics.dy.toFixed(1)}م`;
+  }
 }
 
 function hydroSetMode(mode) {
   hydroState.mode = mode;
-  const modes = ['navigate', 'draw', 'water', 'erase'];
+  const modes = ['navigate', 'draw', 'water', 'source', 'fill_select', 'erase'];
   modes.forEach(m => {
     const btn = document.getElementById('mode-' + m);
     if (btn) btn.classList.toggle('active', m === mode);
@@ -4157,10 +4395,11 @@ function hydroSetMode(mode) {
   const hint = document.getElementById('hydro-hint');
   const map = hydroState.map;
 
+  wrap.classList.remove('water-mode', 'source-mode', 'fill_select-mode');
+
   if (mode === 'navigate') {
     if (map) { map.dragPan.enable(); map.scrollZoom.enable(); }
     if (dc) dc.classList.remove('drawing');
-    wrap.classList.remove('water-mode');
     if (hint) hint.classList.remove('show');
     hydroState.isDrawing = false;
     hydroState.drawPoints = [];
@@ -4168,7 +4407,6 @@ function hydroSetMode(mode) {
   } else if (mode === 'draw') {
     if (map) { map.dragPan.disable(); map.scrollZoom.disable(); }
     if (dc) dc.classList.add('drawing');
-    wrap.classList.remove('water-mode');
     if (hint) hint.classList.add('show');
     hint.textContent = 'انقر لإضافة نقاط — انقر مرتين أو كليك يمين لإغلاق الشكل';
   } else if (mode === 'water') {
@@ -4177,10 +4415,21 @@ function hydroSetMode(mode) {
     wrap.classList.add('water-mode');
     if (hint) hint.classList.add('show');
     hint.textContent = 'انقر واسحب على الخريطة لإضافة مياه';
+  } else if (mode === 'source') {
+    if (map) { map.dragPan.enable(); map.scrollZoom.enable(); }
+    if (dc) dc.classList.remove('drawing');
+    wrap.classList.add('source-mode');
+    if (hint) hint.classList.add('show');
+    hint.textContent = 'انقر على الخريطة لوضع نبع مائي يتدفق باستمرار';
+  } else if (mode === 'fill_select') {
+    if (map) { map.dragPan.enable(); map.scrollZoom.enable(); }
+    if (dc) dc.classList.remove('drawing');
+    wrap.classList.add('fill_select-mode');
+    if (hint) hint.classList.add('show');
+    hint.textContent = 'انقر لتحديد منخفض أو حوض مائي لبدء التعبئة التلقائية';
   } else if (mode === 'erase') {
     if (map) { map.dragPan.enable(); map.scrollZoom.enable(); }
     if (dc) dc.classList.remove('drawing');
-    wrap.classList.remove('water-mode');
     if (hint) hint.classList.add('show');
     hint.textContent = 'انقر واسحب على الخريطة لمسح المياه';
   }
@@ -4219,8 +4468,260 @@ function hydroReset() {
   hydroState.totalWaterCells = 0;
   hydroState.maxDepth = 0;
   hydroState.maxFlow = 0;
+  hydroState.waterSources = [];
+  hydroState.fillStartPoint = null;
+  hydroUpdateSourcesGeoJSON();
+  hydroUpdateSourcesList();
+  hydroUpdateFillPointGeoJSON();
   hydroRebuildBarrierGridFromBase();
   hydroUpdateStats(0);
+}
+
+function hydroGetPhysicalMetrics() {
+  if (!hydroState.simBounds) {
+    return { dx: 30, dy: 30, cellArea: 900 };
+  }
+  const b = hydroState.simBounds;
+
+  function getDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  const centerLat = (b.latMin + b.latMax) / 2;
+  const widthMeters = getDistance(centerLat, b.lngMin, centerLat, b.lngMax);
+  const heightMeters = getDistance(b.latMin, b.lngMin, b.latMax, b.lngMin);
+
+  const N = hydroState.GRID;
+  const dx = widthMeters / N;
+  const dy = heightMeters / N;
+  const cellArea = dx * dy;
+
+  return { dx, dy, cellArea, widthMeters, heightMeters };
+}
+
+function hydroCalculateElevationRange() {
+  const N = hydroState.GRID;
+  let minElev = 99999;
+  let maxElev = -99999;
+  for (let i = 0; i < N * N; i++) {
+    const e = hydroState.baseTerrain[i];
+    if (e < minElev) minElev = e;
+    if (e > maxElev) maxElev = e;
+  }
+  return { minElev, maxElev };
+}
+
+function hydroAddSourceAtCoords(lngLat) {
+  const b = hydroState.simBounds, N = hydroState.GRID;
+  if (!b) return;
+  const gx = Math.floor(((lngLat.lng - b.lngMin) / (b.lngMax - b.lngMin)) * N);
+  const gy = Math.floor(((b.latMax - lngLat.lat) / (b.latMax - b.latMin)) * N);
+
+  if (gx >= 0 && gx < N && gy >= 0 && gy < N) {
+    if (!hydroState.waterSources) hydroState.waterSources = [];
+    if (!hydroState.nextSourceId) hydroState.nextSourceId = 1;
+
+    hydroState.waterSources.push({
+      id: hydroState.nextSourceId++,
+      gx,
+      gy,
+      lng: lngLat.lng,
+      lat: lngLat.lat,
+      inflowRate: hydroState.sourceInflowRate || 50.0
+    });
+
+    hydroUpdateSourcesGeoJSON();
+    hydroUpdateSourcesList();
+  }
+}
+
+function hydroUpdateSourcesGeoJSON() {
+  if (!hydroState.map) return;
+  const features = (hydroState.waterSources || []).map(src => ({
+    type: 'Feature',
+    geometry: {
+      type: 'Point',
+      coordinates: [src.lng, src.lat]
+    },
+    properties: {
+      id: src.id,
+      inflowRate: src.inflowRate
+    }
+  }));
+
+  const source = hydroState.map.getSource('hydro-sources');
+  if (source) {
+    source.setData({
+      type: 'FeatureCollection',
+      features: features
+    });
+  }
+}
+
+function hydroUpdateSourcesList() {
+  const list = document.getElementById('sources-list');
+  if (!list) return;
+  list.innerHTML = '';
+  const sources = hydroState.waterSources || [];
+  sources.forEach(src => {
+    const item = document.createElement('div');
+    item.className = 'hstruct-item';
+    item.innerHTML = `<div class="hstruct-dot" style="background:#00F0FF; box-shadow:0 0 6px #00F0FF"></div>
+                      <span class="hstruct-name">نبع #${src.id} (${src.inflowRate} م³/ث)</span>
+                      <button class="hstruct-del" onclick="hydroRemoveSource(${src.id})">✕</button>`;
+    list.appendChild(item);
+  });
+
+  const countEl = document.getElementById('stat-sources-count');
+  if (countEl) countEl.textContent = sources.length;
+}
+
+function hydroRemoveSource(id) {
+  hydroState.waterSources = (hydroState.waterSources || []).filter(src => src.id !== id);
+  hydroUpdateSourcesGeoJSON();
+  hydroUpdateSourcesList();
+}
+
+function hydroSetFillStartPoint(lngLat) {
+  const b = hydroState.simBounds, N = hydroState.GRID;
+  if (!b) return;
+  const gx = Math.floor(((lngLat.lng - b.lngMin) / (b.lngMax - b.lngMin)) * N);
+  const gy = Math.floor(((b.latMax - lngLat.lat) / (b.latMax - b.latMin)) * N);
+
+  if (gx >= 0 && gx < N && gy >= 0 && gy < N) {
+    const startElev = hydroState.baseTerrain[gy * N + gx];
+    hydroState.fillStartPoint = { gx, gy, lng: lngLat.lng, lat: lngLat.lat, elevation: startElev };
+
+    hydroUpdateFillPointGeoJSON();
+
+    const fillSlider = document.getElementById('hydro-fill-elev');
+    if (fillSlider) {
+      fillSlider.min = Math.floor(startElev);
+      let maxGridElev = -9999;
+      for (let i = 0; i < N * N; i++) {
+        if (hydroState.baseTerrain[i] > maxGridElev) maxGridElev = hydroState.baseTerrain[i];
+      }
+      fillSlider.max = Math.ceil(Math.max(maxGridElev, startElev + 100));
+      fillSlider.value = Math.ceil(startElev + 15);
+
+      hydroState.targetFillElev = parseFloat(fillSlider.value);
+      document.getElementById('hydro-fill-elev-val').textContent = fillSlider.value + 'م';
+
+      hydroFillBasin(gx, gy, hydroState.targetFillElev);
+    }
+
+    hydroSetMode('navigate');
+  }
+}
+
+function hydroUpdateFillPointGeoJSON() {
+  if (!hydroState.map) return;
+  const features = [];
+  if (hydroState.fillStartPoint) {
+    features.push({
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: [hydroState.fillStartPoint.lng, hydroState.fillStartPoint.lat]
+      },
+      properties: {
+        name: 'Fill Start Point'
+      }
+    });
+  }
+
+  const source = hydroState.map.getSource('hydro-fill-point');
+  if (source) {
+    source.setData({
+      type: 'FeatureCollection',
+      features: features
+    });
+  }
+}
+
+function hydroFillBasin(startI, startJ, targetElev) {
+  const N = hydroState.GRID;
+  const terrain = hydroState.terrain;
+  const barriers = hydroState.barriers;
+  const h = hydroState.h;
+
+  h.fill(0);
+
+  const startIdx = startJ * N + startI;
+  if (terrain[startIdx] >= targetElev) {
+    return;
+  }
+
+  const visited = new Uint8Array(N * N);
+  const queue = [];
+
+  queue.push(startIdx);
+  visited[startIdx] = 1;
+
+  let head = 0;
+  while (head < queue.length) {
+    const idx = queue[head++];
+    const cy = Math.floor(idx / N);
+    const cx = idx % N;
+
+    h[idx] = Math.max(0, targetElev - terrain[idx]);
+
+    const neighbors = [
+      [cy - 1, cx],
+      [cy + 1, cx],
+      [cy, cx - 1],
+      [cy, cx + 1]
+    ];
+
+    for (let d = 0; d < 4; d++) {
+      const [ny, nx] = neighbors[d];
+      if (ny >= 0 && ny < N && nx >= 0 && nx < N) {
+        const nidx = ny * N + nx;
+        if (!visited[nidx] && !barriers[nidx]) {
+          if (terrain[nidx] < targetElev) {
+            visited[nidx] = 1;
+            queue.push(nidx);
+          }
+        }
+      }
+    }
+  }
+
+  hydroState.flux.fill(0);
+  if (hydroState.map) {
+    hydroState.map.triggerRepaint();
+  }
+}
+
+function hydroUpdateSourceInflow(val) {
+  const v = parseFloat(val);
+  hydroState.sourceInflowRate = v;
+  document.getElementById('hydro-source-inflow-val').textContent = v + 'م³/ث';
+  if (hydroState.waterSources) {
+    hydroState.waterSources.forEach(src => src.inflowRate = v);
+  }
+}
+
+function hydroUpdateRainRate(val) {
+  const v = parseFloat(val);
+  hydroState.rainfallRate = v;
+  document.getElementById('hydro-rain-rate-val').textContent = v + ' ملم/س';
+}
+
+function hydroUpdateFillElev(val) {
+  const v = parseFloat(val);
+  hydroState.targetFillElev = v;
+  document.getElementById('hydro-fill-elev-val').textContent = v + 'م';
+  if (hydroState.fillStartPoint) {
+    hydroFillBasin(hydroState.fillStartPoint.gx, hydroState.fillStartPoint.gy, v);
+  }
 }
 
 document.addEventListener('keydown', e => {
@@ -4237,12 +4738,14 @@ document.addEventListener('keydown', e => {
   if (e.key === 'n' || e.key === 'N') hydroSetMode('navigate');
   if (e.key === 'd' || e.key === 'D') hydroSetMode('draw');
   if (e.key === 'w' || e.key === 'W') hydroSetMode('water');
+  if (e.key === 's' || e.key === 'S') hydroSetMode('source');
+  if (e.key === 'f' || e.key === 'F') hydroSetMode('fill_select');
   if (e.key === 'e' || e.key === 'E') hydroSetMode('erase');
   if (e.key === 'r' || e.key === 'R') hydroReset();
   if (e.key === 'Enter' && hydroState.isDrawing) hydroDrawFinish();
 });
 
-console.log('[PalNovaa Hydro] Simulation engine loaded — v1.0');
+console.log('[PalNovaa Hydro] Simulation engine loaded — v2.0 with Storage Capacity & Connected Fill');
 </script>
 
 </body>
