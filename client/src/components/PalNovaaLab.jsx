@@ -4392,9 +4392,7 @@ out geom;`;
                             <div className="tab-content" style={{ display: 'flex', flexDirection: 'column', gap: '20px', height: '100%', overflowY: 'auto' }}>
                                 <div className="panel-section">
                                     <div className="panel-section-title">استخراج شوارع PalStreet 🛣️</div>
-                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.5', marginBottom: '15px' }}>
-                                        قم بجلب الشوارع وتصنيفاتها مباشرة من OpenStreetMap لطبقة تفاعلية ذكية.
-                                    </p>
+
 
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                         <button
