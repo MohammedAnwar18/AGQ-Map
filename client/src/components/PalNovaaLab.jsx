@@ -4171,7 +4171,7 @@ const PalNovaaLab = ({ onClose }) => {
                             <path d="M12 2C6 8 4 12 4 15a8 8 0 0 0 16 0c0-3-2-7-8-13z"/>
                             <path d="M12 15c0-2 1-4 1-4s1 2 1 4a2 2 0 0 1-4 0z" fill="currentColor" opacity="0.5"/>
                         </svg>
-                        Hydro Sim 3D
+                        HYDROSTUDIO
                     </button>
                 </footer>
             </div>
@@ -5053,8 +5053,8 @@ const PalNovaaLab = ({ onClose }) => {
                                 </svg>
                             </div>
                             <div className="hydro-brand-text">
-                                <strong>محاكي الهيدرولوجيا 3D</strong>
-                                <small>PALNOVAA · HYDROSTUDIO</small>
+                                <strong>HYDROSTUDIO</strong>
+                                <small>PALNOVAA</small>
                             </div>
                         </div>
 
@@ -5112,50 +5112,50 @@ const PalNovaaLab = ({ onClose }) => {
                             <div className="hydro-section-title">وضع التشغيل</div>
 
                             <button className="hydro-tool-btn active" id="mode-navigate">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px' }}>
-                                    <path d="M5 3l3.057-3 11.943 11.943-4.057.057L13 16.943l-3 3L5 3z"/>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
+                                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
                                 </svg>
                                 التنقل
                             </button>
 
                             <button className="hydro-tool-btn" id="mode-draw">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px' }}>
-                                    <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
+                                    <path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/>
                                 </svg>
                                 رسم هيكل
                             </button>
 
                             <button className="hydro-tool-btn source-btn" id="mode-source">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px' }}>
-                                    <path d="M12 2C6 8 4 12 4 15a8 8 0 0 0 16 0c0-3-2-7-8-13z"/><path d="M12 6v12M6 12h12"/>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
+                                    <path d="M12 22a8 8 0 0 0 8-8c0-4.418-8-12-8-12S4 9.582 4 14a8 8 0 0 0 8 8z"/><path d="M12 10v4"/><path d="M10 12h4"/>
                                 </svg>
                                 إضافة نبع تدفق
                             </button>
 
                             <button className="hydro-tool-btn fill-btn" id="mode-fill_select">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px' }}>
-                                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
+                                    <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><line x1="16" y1="8" x2="2" y2="22"/><line x1="17.5" y1="15" x2="9" y2="6.5"/>
                                 </svg>
                                 تعبئة حوض مائي
                             </button>
 
                             <button className="hydro-tool-btn water-btn" id="mode-water">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px' }}>
-                                    <path d="M12 2C6 8 4 12 4 15a8 8 0 0 0 16 0c0-3-2-7-8-13z"/>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
+                                    <path d="M12 22a8 8 0 0 0 8-8c0-4.418-8-12-8-12S4 9.582 4 14a8 8 0 0 0 8 8z"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/>
                                 </svg>
                                 إضافة مياه
                             </button>
 
                             <button className="hydro-tool-btn inject-btn" id="mode-inject">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px' }}>
-                                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
+                                    <path d="M14.5 9.5L9.5 14.5"/><path d="M3.5 20.5L9 15"/><path d="M15 9l5.5-5.5a2.121 2.121 0 0 0-3-3L12 6"/><path d="M8 10l6 6"/><path d="M12 6l6 6"/>
                                 </svg>
                                 حقن حجم محدد
                             </button>
 
                             <button className="hydro-tool-btn erase-btn" id="mode-erase">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px' }}>
-                                    <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
+                                    <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/>
                                 </svg>
                                 مسح المياه
                             </button>
