@@ -171,37 +171,12 @@ const PalNovaaLab = ({ onClose }) => {
         sourceInflowRate: 50,
         rainfallRate: 0,
         targetFillElev: 100,
-        fillStartPoint: null
+        fillStartPoint: null,
+        injectVolume: 10000
     });
 
     useEffect(() => {
         if (!isHydroSimOpen) {
-            // Stop and clean up simulation if closed
-            const s = hydroStateRef.current;
-            s.simRunning = false;
-            if (s.animId) {
-                cancelAnimationFrame(s.animId);
-                s.animId = null;
-            }
-            if (s.map) {
-                try {
-                    s.map.remove();
-                } catch (e) {
-                    console.error("Error removing Mapbox map instance:", e);
-                }
-                s.map = null;
-            }
-            // Clean up elements
-            if (s.wCanvas && s.wCanvas.parentNode) {
-                s.wCanvas.parentNode.removeChild(s.wCanvas);
-            }
-            s.wCanvas = null;
-            s.gl = null;
-            s.drawCanvas = null;
-            s.drawCtx = null;
-            s.program = null;
-            s.vbo = null;
-            s.waterTexture = null;
             return;
         }
 
@@ -331,8 +306,14 @@ const PalNovaaLab = ({ onClose }) => {
                     if (s.mode === 'water' || s.mode === 'erase') {
                         isMouseDown = true;
                         s.map.dragPan.disable();
-                        if (s.mode === 'water') addWaterAtCoordinates(e.lngLat);
-                        else if (s.mode === 'erase') eraseWaterAtCoordinates(e.lngLat);
+                        if (s.mode === 'water') {
+                            s.lastWaterAdd = performance.now();
+                            addWaterAtCoordinates(e.lngLat);
+                        } else if (s.mode === 'erase') {
+                            eraseWaterAtCoordinates(e.lngLat);
+                        }
+                    } else if (s.mode === 'inject') {
+                        injectWaterAtCoordinates(e.lngLat);
                     } else if (s.mode === 'source') {
                         const b = s.simBounds;
                         if (!b) return;
@@ -445,6 +426,7 @@ const PalNovaaLab = ({ onClose }) => {
             const lngStep = (lngMax - lngMin) / (N - 1);
             const latStep = (latMax - latMin) / (N - 1);
             
+            // Pass 1: query all terrain elevations
             for (let j = 0; j < N; j++) {
                 for (let i = 0; i < N; i++) {
                     const idx = j * N + i;
@@ -452,11 +434,42 @@ const PalNovaaLab = ({ onClose }) => {
                     const lat = latMax - j * latStep;
                     let elev = s.map.queryTerrainElevation([lng, lat]);
                     if (elev === null || elev === undefined || isNaN(elev)) {
-                        elev = 0;
+                        s.baseTerrain[idx] = NaN;
+                    } else {
+                        s.baseTerrain[idx] = elev;
                     }
-                    s.baseTerrain[idx] = elev;
-                    s.terrain[idx] = elev;
                 }
+            }
+
+            // Pass 2: interpolate NaN values from neighbors to fix 0-elevation pits
+            for (let pass = 0; pass < 3; pass++) {
+                let hasNaN = false;
+                for (let idx = 0; idx < N * N; idx++) {
+                    if (isNaN(s.baseTerrain[idx])) {
+                        hasNaN = true;
+                        let sum = 0;
+                        let count = 0;
+                        const r = Math.floor(idx / N);
+                        const c = idx % N;
+                        if (r > 0 && !isNaN(s.baseTerrain[(r - 1) * N + c])) { sum += s.baseTerrain[(r - 1) * N + c]; count++; }
+                        if (r < N - 1 && !isNaN(s.baseTerrain[(r + 1) * N + c])) { sum += s.baseTerrain[(r + 1) * N + c]; count++; }
+                        if (c > 0 && !isNaN(s.baseTerrain[r * N + c - 1])) { sum += s.baseTerrain[r * N + c - 1]; count++; }
+                        if (c < N - 1 && !isNaN(s.baseTerrain[r * N + c + 1])) { sum += s.baseTerrain[r * N + c + 1]; count++; }
+                        
+                        if (count > 0) {
+                            s.baseTerrain[idx] = sum / count;
+                        }
+                    }
+                }
+                if (!hasNaN) break;
+            }
+
+            // Fallback for any remaining NaN cells
+            for (let idx = 0; idx < N * N; idx++) {
+                if (isNaN(s.baseTerrain[idx])) {
+                    s.baseTerrain[idx] = 0;
+                }
+                s.terrain[idx] = s.baseTerrain[idx];
             }
 
             // Reset water states
@@ -878,10 +891,16 @@ const PalNovaaLab = ({ onClose }) => {
             const N = s.GRID;
             const b = s.simBounds;
             
+            const now = performance.now();
+            const lastTime = s.lastWaterAdd || now;
+            s.lastWaterAdd = now;
+            const deltaSec = Math.min((now - lastTime) / 1000, 0.1);
+            const dtSec = deltaSec > 0 ? deltaSec : 0.016;
+            
             const gx = Math.floor(((lngLat.lng - b.lngMin) / (b.lngMax - b.lngMin)) * N);
             const gy = Math.floor(((b.latMax - lngLat.lat) / (b.latMax - b.latMin)) * N);
             const r = 4;
-            const vol = s.waterVolume * 0.4; // adjusted scale since it adds on move/drag
+            const vol = s.waterVolume * 0.8 * dtSec * s.simSpeed;
 
             for (let dy = -r; dy <= r; dy++) {
                 for (let dx = -r; dx <= r; dx++) {
@@ -894,6 +913,74 @@ const PalNovaaLab = ({ onClose }) => {
                     const amount = vol * (1.0 - dist * 0.7);
                     s.h[idx] = Math.min(s.h[idx] + amount, 50);
                 }
+            }
+        };
+
+        const injectWaterAtCoordinates = (lngLat) => {
+            const s = hydroStateRef.current;
+            if (!s.simBounds) return;
+            const N = s.GRID;
+            const b = s.simBounds;
+            const metrics = getPhysicalMetrics();
+            
+            const gx = Math.floor(((lngLat.lng - b.lngMin) / (b.lngMax - b.lngMin)) * N);
+            const gy = Math.floor(((b.latMax - lngLat.lat) / (b.latMax - b.latMin)) * N);
+            const r = 5;
+            
+            const affectedCells = [];
+            let totalWeight = 0;
+            
+            for (let dy = -r; dy <= r; dy++) {
+                for (let dx = -r; dx <= r; dx++) {
+                    if (dx * dx + dy * dy > r * r) continue;
+                    const ix = gx + dx, iy = gy + dy;
+                    if (ix < 0 || iy < 0 || ix >= N || iy >= N) continue;
+                    const idx = iy * N + ix;
+                    if (s.barriers[idx]) continue;
+                    
+                    const dist = Math.sqrt(dx * dx + dy * dy) / r;
+                    const weight = 1.0 - dist * 0.7;
+                    affectedCells.push({ idx, weight });
+                    totalWeight += weight;
+                }
+            }
+            
+            if (totalWeight > 0) {
+                const targetVol = s.injectVolume || 10000;
+                affectedCells.forEach(cell => {
+                    const cellVol = targetVol * (cell.weight / totalWeight);
+                    const dh = cellVol / metrics.cellArea;
+                    s.h[cell.idx] = Math.min(s.h[cell.idx] + dh, 50);
+                });
+                updateStatsDOM();
+            }
+        };
+
+        const distributeWaterEvenly = () => {
+            const s = hydroStateRef.current;
+            if (!s.h) return;
+            const N = s.GRID;
+            const metrics = getPhysicalMetrics();
+            
+            const activeIndices = [];
+            for (let j = 1; j < N - 1; j++) {
+                for (let i = 1; i < N - 1; i++) {
+                    const idx = j * N + i;
+                    if (!s.barriers[idx]) {
+                        activeIndices.push(idx);
+                    }
+                }
+            }
+            
+            if (activeIndices.length > 0) {
+                const targetVol = s.injectVolume || 10000;
+                const cellVol = targetVol / activeIndices.length;
+                const dh = cellVol / metrics.cellArea;
+                
+                activeIndices.forEach(idx => {
+                    s.h[idx] = Math.min(s.h[idx] + dh, 50);
+                });
+                updateStatsDOM();
             }
         };
 
@@ -1057,7 +1144,7 @@ const PalNovaaLab = ({ onClose }) => {
                             continue;
                         }
                         const nidx = nj * N + ni;
-                        const dh_elev = water_height - (h[nidx] + terrain[nidx]);
+                        const dh_elev = (water_height - (h[nidx] + terrain[nidx])) * s.exaggeration;
                         const h_flow = dh_elev > 0 ? h[idx] : 0;
                         const f = Math.max(0, flux[idx * 4 + d] * friction + dt * g * h_flow * dh_elev);
                         flux[idx * 4 + d] = f;
@@ -1289,7 +1376,7 @@ const PalNovaaLab = ({ onClose }) => {
         const setSimulatorMode = (mode) => {
             const s = hydroStateRef.current;
             s.mode = mode;
-            const modes = ['navigate', 'draw', 'water', 'erase'];
+            const modes = ['navigate', 'draw', 'water', 'erase', 'inject', 'source', 'fill_select'];
             modes.forEach(m => {
                 const btn = document.getElementById('mode-' + m);
                 if (btn) btn.classList.toggle('active', m === mode);
@@ -1299,10 +1386,13 @@ const PalNovaaLab = ({ onClose }) => {
             const wrap = document.getElementById('hydro-map-wrap');
             const hint = document.getElementById('hydro-hint');
 
+            if (wrap) {
+                wrap.classList.remove('water-mode', 'inject-mode', 'source-mode', 'fill_select-mode');
+            }
+
             if (mode === 'navigate') {
                 if (s.map) { s.map.dragPan.enable(); s.map.scrollZoom.enable(); }
                 if (dc) dc.classList.remove('drawing');
-                if (wrap) wrap.classList.remove('water-mode');
                 if (hint) hint.classList.remove('show');
                 s.isDrawing = false;
                 s.drawPoints = [];
@@ -1310,7 +1400,6 @@ const PalNovaaLab = ({ onClose }) => {
             } else if (mode === 'draw') {
                 if (s.map) { s.map.dragPan.disable(); s.map.scrollZoom.disable(); }
                 if (dc) dc.classList.add('drawing');
-                if (wrap) wrap.classList.remove('water-mode');
                 if (hint) {
                     hint.classList.add('show');
                     hint.textContent = 'انقر لإضافة نقاط — انقر مرتين أو كليك يمين لإغلاق الشكل';
@@ -1321,15 +1410,38 @@ const PalNovaaLab = ({ onClose }) => {
                 if (wrap) wrap.classList.add('water-mode');
                 if (hint) {
                     hint.classList.add('show');
-                    hint.textContent = 'انقر على الخريطة لإضافة مياه';
+                    hint.textContent = 'انقر واسحب لإضافة مياه تدريجياً';
                 }
             } else if (mode === 'erase') {
                 if (s.map) { s.map.dragPan.enable(); s.map.scrollZoom.enable(); }
                 if (dc) dc.classList.remove('drawing');
-                if (wrap) wrap.classList.remove('water-mode');
                 if (hint) {
                     hint.classList.add('show');
                     hint.textContent = 'انقر على الخريطة لمسح المياه';
+                }
+            } else if (mode === 'inject') {
+                if (s.map) { s.map.dragPan.enable(); s.map.scrollZoom.enable(); }
+                if (dc) dc.classList.remove('drawing');
+                if (wrap) wrap.classList.add('inject-mode');
+                if (hint) {
+                    hint.classList.add('show');
+                    hint.textContent = 'انقر على الخريطة لحقن حجم المياه المحدد';
+                }
+            } else if (mode === 'source') {
+                if (s.map) { s.map.dragPan.enable(); s.map.scrollZoom.enable(); }
+                if (dc) dc.classList.remove('drawing');
+                if (wrap) wrap.classList.add('source-mode');
+                if (hint) {
+                    hint.classList.add('show');
+                    hint.textContent = 'انقر على الخريطة لوضع نبع مائي يتدفق باستمرار';
+                }
+            } else if (mode === 'fill_select') {
+                if (s.map) { s.map.dragPan.enable(); s.map.scrollZoom.enable(); }
+                if (dc) dc.classList.remove('drawing');
+                if (wrap) wrap.classList.add('fill_select-mode');
+                if (hint) {
+                    hint.classList.add('show');
+                    hint.textContent = 'انقر لتحديد منخفض أو حوض مائي لبدء التعبئة التلقائية';
                 }
             }
         };
@@ -1397,11 +1509,36 @@ const PalNovaaLab = ({ onClose }) => {
             const btnDraw = document.getElementById('mode-draw');
             const btnWater = document.getElementById('mode-water');
             const btnErase = document.getElementById('mode-erase');
+            const btnInject = document.getElementById('mode-inject');
+            const btnSource = document.getElementById('mode-source');
+            const btnFill = document.getElementById('mode-fill_select');
 
             if (btnNav) btnNav.onclick = () => setSimulatorMode('navigate');
             if (btnDraw) btnDraw.onclick = () => setSimulatorMode('draw');
             if (btnWater) btnWater.onclick = () => setSimulatorMode('water');
             if (btnErase) btnErase.onclick = () => setSimulatorMode('erase');
+            if (btnInject) btnInject.onclick = () => setSimulatorMode('inject');
+            if (btnSource) btnSource.onclick = () => setSimulatorMode('source');
+            if (btnFill) btnFill.onclick = () => setSimulatorMode('fill_select');
+
+            // Inject volume control
+            const injectVolInput = document.getElementById('hydro-inject-vol');
+            if (injectVolInput) {
+                injectVolInput.oninput = (e) => {
+                    const v = parseFloat(e.target.value);
+                    if (!isNaN(v) && v >= 0) {
+                        s.injectVolume = v;
+                    }
+                };
+            }
+
+            // Distribute evenly control
+            const distributeBtn = document.getElementById('hydro-distribute-btn');
+            if (distributeBtn) {
+                distributeBtn.onclick = () => {
+                    distributeWaterEvenly();
+                };
+            }
 
             // Structure Types buttons
             document.querySelectorAll('.struct-type').forEach(btn => {
@@ -1470,6 +1607,7 @@ const PalNovaaLab = ({ onClose }) => {
             if (e.key === 'd' || e.key === 'D') setSimulatorMode('draw');
             if (e.key === 'w' || e.key === 'W') setSimulatorMode('water');
             if (e.key === 'e' || e.key === 'E') setSimulatorMode('erase');
+            if (e.key === 'i' || e.key === 'I') setSimulatorMode('inject');
             if (e.key === 'Enter' && s.isDrawing) finishDrawingStructure();
         };
 
@@ -1478,6 +1616,33 @@ const PalNovaaLab = ({ onClose }) => {
 
         return () => {
             document.removeEventListener('keydown', handleKeyDown);
+            
+            // Stop and clean up simulation
+            const s = hydroStateRef.current;
+            s.simRunning = false;
+            if (s.animId) {
+                cancelAnimationFrame(s.animId);
+                s.animId = null;
+            }
+            if (s.map) {
+                try {
+                    s.map.remove();
+                } catch (e) {
+                    console.error("Error removing Mapbox map instance:", e);
+                }
+                s.map = null;
+            }
+            if (s.wCanvas && s.wCanvas.parentNode) {
+                s.wCanvas.parentNode.removeChild(s.wCanvas);
+            }
+            s.wCanvas = null;
+            s.gl = null;
+            s.drawCanvas = null;
+            s.drawCtx = null;
+            s.program = null;
+            s.vbo = null;
+            s.waterTexture = null;
+            delete window.hydroRemoveSource;
         };
     }, [isHydroSimOpen]);
 
@@ -4909,9 +5074,9 @@ const PalNovaaLab = ({ onClose }) => {
                             <span id="hydro-struct-h-val">40م</span>
                         </div>
 
-                        {/* Water Volume */}
+                        {/* Brush Intensity */}
                         <div className="hydro-slider-group">
-                            <label>حجم المياه</label>
+                            <label>شدة تدفق الفرشاة</label>
                             <input type="range" id="hydro-water-vol" min="1" max="10" step="0.5" defaultValue="3" />
                             <span id="hydro-water-vol-val">3</span>
                         </div>
@@ -4960,32 +5125,14 @@ const PalNovaaLab = ({ onClose }) => {
                                 رسم هيكل
                             </button>
 
-                            <button className="hydro-tool-btn source-btn" id="mode-source" onClick={() => {
-                                const s = hydroStateRef.current;
-                                s.mode = 'source';
-                                document.querySelectorAll('.hydro-tool-btn').forEach(b => b.classList.remove('active'));
-                                document.getElementById('mode-source').classList.add('active');
-                                const wrap = document.getElementById('hydro-map-wrap');
-                                if (wrap) { wrap.classList.remove('water-mode', 'fill_select-mode'); wrap.classList.add('source-mode'); }
-                                const hint = document.getElementById('hydro-hint');
-                                if (hint) { hint.classList.add('show'); hint.textContent = 'انقر على الخريطة لوضع نبع مائي يتدفق باستمرار'; }
-                            }}>
+                            <button className="hydro-tool-btn source-btn" id="mode-source">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px' }}>
                                     <path d="M12 2C6 8 4 12 4 15a8 8 0 0 0 16 0c0-3-2-7-8-13z"/><path d="M12 6v12M6 12h12"/>
                                 </svg>
                                 إضافة نبع تدفق
                             </button>
 
-                            <button className="hydro-tool-btn fill-btn" id="mode-fill_select" onClick={() => {
-                                const s = hydroStateRef.current;
-                                s.mode = 'fill_select';
-                                document.querySelectorAll('.hydro-tool-btn').forEach(b => b.classList.remove('active'));
-                                document.getElementById('mode-fill_select').classList.add('active');
-                                const wrap = document.getElementById('hydro-map-wrap');
-                                if (wrap) { wrap.classList.remove('water-mode', 'source-mode'); wrap.classList.add('fill_select-mode'); }
-                                const hint = document.getElementById('hydro-hint');
-                                if (hint) { hint.classList.add('show'); hint.textContent = 'انقر لتحديد منخفض أو حوض مائي لبدء التعبئة التلقائية'; }
-                            }}>
+                            <button className="hydro-tool-btn fill-btn" id="mode-fill_select">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px' }}>
                                     <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
                                 </svg>
@@ -4997,6 +5144,13 @@ const PalNovaaLab = ({ onClose }) => {
                                     <path d="M12 2C6 8 4 12 4 15a8 8 0 0 0 16 0c0-3-2-7-8-13z"/>
                                 </svg>
                                 إضافة مياه
+                            </button>
+
+                            <button className="hydro-tool-btn inject-btn" id="mode-inject">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px' }}>
+                                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+                                </svg>
+                                حقن حجم محدد
                             </button>
 
                             <button className="hydro-tool-btn erase-btn" id="mode-erase">
@@ -5031,6 +5185,14 @@ const PalNovaaLab = ({ onClose }) => {
                                         e.target.nextElementSibling.textContent = v + ' ملم/س';
                                     }} />
                                     <span className="param-val" id="hydro-rain-rate-val">0 ملم/س</span>
+                                </div>
+                            </div>
+
+                            <div className="hydro-param">
+                                <label>حجم حقن المياه (م³)</label>
+                                <div className="param-row" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    <input type="number" id="hydro-inject-vol" min="100" max="10000000" defaultValue="10000" step="100" style={{ flex: 1, background: '#0d1e36', border: '1px solid rgba(6, 214, 242, 0.2)', color: 'white', padding: '6px 8px', borderRadius: '6px', fontSize: '13px', minWidth: '0' }} />
+                                    <button className="hydro-btn success small" id="hydro-distribute-btn" style={{ padding: '6px 10px', fontSize: '11px', whiteSpace: 'nowrap', height: '31px', borderRadius: '6px' }}>توزيع بالتساوي</button>
                                 </div>
                             </div>
 
