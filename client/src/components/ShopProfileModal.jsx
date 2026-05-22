@@ -244,6 +244,322 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     const isLabDesign = design.menu_layout === 'lab' || shop.name.toLowerCase().includes('coffee lab') || shop.name.includes('لاب');
     const isCoffeeLabApp = shop.name.toLowerCase().includes('coffee lab') || shop.name.includes('كوفي لاب') || design.layout === 'coffeelab';
 
+    const coverUrl = shopData.cover_picture
+        ? getImageUrl(shopData.cover_picture)
+        : 'linear-gradient(135deg, #6366f1, #a855f7)';
+
+    const profileUrl = getImageUrl(shopData.profile_picture);
+
+    const avatarStyles = useMemo(() => {
+        const shape = design.avatar_shape || 'circle';
+        const hasGlow = design.avatar_glow;
+        const accentColor = design.palette?.colors[3] || 'var(--primary)';
+        const baseColor = design.palette?.colors[0] || 'var(--bg-primary)';
+
+        // Shape CSS mapping
+        let shapeCss = {};
+        if (shape === 'rounded') {
+            shapeCss = { borderRadius: '24px' };
+        } else if (shape === 'hexagon') {
+            shapeCss = { clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' };
+        } else if (shape === 'diamond') {
+            shapeCss = { transform: 'rotate(45deg)', borderRadius: '12px' };
+        } else if (shape === 'shield') {
+            shapeCss = { borderRadius: '12px 12px 50% 50%' };
+        } else {
+            shapeCss = { borderRadius: '50%' }; // default circle
+        }
+
+        // Glow filter or box shadow
+        const shadowFilter = hasGlow 
+            ? `drop-shadow(0 0 15px ${accentColor})` 
+            : 'drop-shadow(0 4px 10px rgba(0,0,0,0.2))';
+
+        const fallbackBg = design.palette ? `linear-gradient(135deg, ${design.palette.colors[3]}, ${design.palette.colors[2]})` : '#fbab15';
+
+        return {
+            wrapper: {
+                width: 120,
+                height: 120,
+                position: 'relative',
+                filter: shadowFilter,
+                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+            },
+            avatar: {
+                width: '100%',
+                height: '100%',
+                border: `3px solid ${baseColor}`,
+                background: (profileUrl && shape !== 'diamond') ? `url(${profileUrl}) center/cover` : (shape !== 'diamond' ? fallbackBg : 'transparent'),
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '3rem',
+                color: 'white',
+                overflow: 'hidden',
+                transition: 'all 0.4s',
+                ...shapeCss
+            },
+            inner: shape === 'diamond' ? {
+                transform: 'rotate(-45deg) scale(1.4)',
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: profileUrl ? `url(${profileUrl}) center/cover` : fallbackBg,
+            } : {
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+            }
+        };
+    }, [design.avatar_shape, design.avatar_glow, design.palette, profileUrl]);
+
+    const getCardWrapperStyle = (design, layoutType) => {
+        const cardBg = design.palette ? design.palette.colors[1] : (layoutType === 'vanilla' ? '#ffffff' : 'var(--bg-primary)');
+        const borderCol = design.palette ? design.palette.colors[2] : 'var(--bg-tertiary)';
+        const accentColor = design.palette ? design.palette.colors[3] : 'var(--primary)';
+        const textCol = design.palette ? design.palette.colors[4] : 'var(--text-primary)';
+        const hasGlow = design.card_glow;
+
+        let borderStyle = {};
+        let shadow = 'none';
+
+        if (design.border_style === 'double') {
+            borderStyle = { border: `4px double ${borderCol}` };
+        } else if (design.border_style === 'embroidered') {
+            borderStyle = { border: `2px dashed #C8324A` };
+            shadow = `0 0 0 2px #0B102A, 0 0 0 4px #E8B547`;
+        } else if (design.border_style === 'neon') {
+            borderStyle = { border: `1.5px solid ${accentColor}`, animation: 'pulseNeon 2.5s infinite' };
+        } else if (design.border_style === 'gold-lux') {
+            borderStyle = { border: `1px solid #D4AF37` };
+            shadow = '0 0 8px rgba(212, 175, 55, 0.2)';
+        } else {
+            borderStyle = { border: design.palette ? `1px solid ${design.palette.colors[2]}40` : '1px solid var(--bg-tertiary)' };
+        }
+
+        // Apply glow if enabled and not already overridden by specific embroidery shadow
+        if (hasGlow) {
+            const glowShadow = `0 0 15px ${accentColor}25`;
+            if (shadow !== 'none') {
+                shadow = `${shadow}, ${glowShadow}`;
+            } else {
+                shadow = glowShadow;
+            }
+        } else if (shadow === 'none') {
+            if (layoutType === 'default') {
+                shadow = '0 4px 12px rgba(0,0,0,0.08)';
+            } else if (layoutType === 'restaurant_modern') {
+                shadow = '0 2px 8px rgba(0,0,0,0.03)';
+            }
+        }
+
+        return {
+            background: cardBg,
+            borderRadius: design.border_radius || '16px',
+            boxShadow: shadow,
+            color: textCol,
+            ...borderStyle
+        };
+    };
+
+    const renderParticles = (effect) => {
+        if (!effect || effect === 'none') return null;
+        let emoji = '✨';
+        let count = 12;
+        if (effect === 'sparkles') emoji = '✨';
+        else if (effect === 'confetti') {
+            const emojis = ['🎉', '✨', '💛', '🔴', '🟩', '🔵'];
+            return (
+                <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 1 }}>
+                    {Array.from({ length: 15 }).map((_, i) => {
+                        const randomEmoji = emojis[i % emojis.length];
+                        const left = `${Math.random() * 100}%`;
+                        const delay = `${Math.random() * 6}s`;
+                        const duration = `${4 + Math.random() * 4}s`;
+                        return (
+                            <span 
+                                key={i} 
+                                style={{
+                                    position: 'absolute',
+                                    top: '-20px',
+                                    left,
+                                    fontSize: '0.8rem',
+                                    animation: `fallRotate ${duration} linear infinite`,
+                                    animationDelay: delay,
+                                    opacity: 0.65
+                                }}
+                            >
+                                {randomEmoji}
+                            </span>
+                        );
+                    })}
+                </div>
+            );
+        }
+        else if (effect === 'leaves') emoji = '🍃';
+        else if (effect === 'bubbles') emoji = '🫧';
+        else if (effect === 'matrix') {
+            return (
+                <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 1, opacity: 0.18 }}>
+                    <div style={{
+                        width: '100%',
+                        height: '100%',
+                        background: 'linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 240, 255, 0.2) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.05), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.05))',
+                        backgroundSize: '100% 4px, 6px 100%',
+                        animation: 'scanline 15s linear infinite'
+                    }} />
+                    {Array.from({ length: 8 }).map((_, i) => {
+                        const left = `${Math.random() * 95}%`;
+                        const delay = `${Math.random() * 5}s`;
+                        const duration = `${3 + Math.random() * 5}s`;
+                        return (
+                            <div
+                                key={i}
+                                style={{
+                                    position: 'absolute',
+                                    top: '-40px',
+                                    left,
+                                    color: '#00F0FF',
+                                    fontFamily: 'monospace',
+                                    fontSize: '0.6rem',
+                                    whiteSpace: 'nowrap',
+                                    writingMode: 'vertical-rl',
+                                    animation: `fallRain ${duration} linear infinite`,
+                                    animationDelay: delay,
+                                    opacity: 0.75
+                                }}
+                            >
+                                {['1','0','1','0','N','O','V','A'][i % 8]}
+                            </div>
+                        );
+                    })}
+                </div>
+            );
+        }
+
+        const animationName = effect === 'bubbles' ? 'floatUp' : 'floatDown';
+        return (
+            <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 1 }}>
+                {Array.from({ length: count }).map((_, i) => {
+                    const left = `${Math.random() * 95}%`;
+                    const delay = `${Math.random() * 6}s`;
+                    const duration = `${5 + Math.random() * 5}s`;
+                    const size = `${0.6 + Math.random() * 0.7}rem`;
+                    return (
+                        <span
+                            key={i}
+                            style={{
+                                position: 'absolute',
+                                [effect === 'bubbles' ? 'bottom' : 'top']: '-30px',
+                                left,
+                                fontSize: size,
+                                animation: `${animationName} ${duration} ease-in-out infinite`,
+                                animationDelay: delay,
+                                opacity: 0.6
+                            }}
+                        >
+                            {emoji}
+                        </span>
+                    );
+                })}
+            </div>
+        );
+    };
+
+    const getCardHoverClass = (design) => {
+        if (!design.hover_animation || design.hover_animation === 'none') return 'hvr-none';
+        return `hvr-${design.hover_animation}`;
+    };
+
+    const renderContactFAB = () => {
+        if (!design.contact_fab_enabled) return null;
+        
+        const hasWhatsapp = !!design.contact_whatsapp;
+        const hasPhone = !!design.contact_phone;
+        const hasInstagram = !!design.contact_instagram;
+        
+        if (!hasWhatsapp && !hasPhone && !hasInstagram) return null;
+
+        const cleanWhatsApp = design.contact_whatsapp ? design.contact_whatsapp.replace(/\D/g, '') : '';
+        const whatsappUrl = `https://wa.me/${cleanWhatsApp}`;
+        const phoneUrl = `tel:${design.contact_phone}`;
+        const instagramUrl = design.contact_instagram 
+            ? (design.contact_instagram.startsWith('http') ? design.contact_instagram : `https://instagram.com/${design.contact_instagram.replace('@', '')}`)
+            : '';
+
+        return (
+            <div style={{
+                position: 'fixed',
+                bottom: '30px',
+                left: '30px',
+                zIndex: 2200,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                pointerEvents: 'auto'
+            }} className="contact-fab-container">
+                {hasInstagram && (
+                    <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="contact-fab-btn hvr-scale-up" style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '50%',
+                        background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)',
+                        color: '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        transition: 'transform 0.2s',
+                        fontSize: '1.4rem',
+                        textDecoration: 'none'
+                    }} title="إنستغرام">
+                        📸
+                    </a>
+                )}
+                {hasPhone && (
+                    <a href={phoneUrl} className="contact-fab-btn hvr-scale-up" style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '50%',
+                        background: '#3b82f6',
+                        color: '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        transition: 'transform 0.2s',
+                        fontSize: '1.4rem',
+                        textDecoration: 'none'
+                    }} title="اتصال هاتفي">
+                        📞
+                    </a>
+                )}
+                {hasWhatsapp && (
+                    <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="contact-fab-btn hvr-scale-up" style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '50%',
+                        background: '#25D366',
+                        color: '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        transition: 'transform 0.2s',
+                        fontSize: '1.4rem',
+                        textDecoration: 'none'
+                    }} title="واتساب">
+                        💬
+                    </a>
+                )}
+            </div>
+        );
+    };
+
     // Search State
     const [productSearchQuery, setProductSearchQuery] = useState('');
 
@@ -283,6 +599,51 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     const [editingName, setEditingName] = useState(false);
     const [editingCategory, setEditingCategory] = useState(false);
     const [categoryInput, setCategoryInput] = useState('');
+
+    // Music Engine
+    const [isPlayingMusic, setIsPlayingMusic] = useState(false);
+    const audioRef = useRef(null);
+
+    useEffect(() => {
+        if (design.music_enabled && design.music_url) {
+            audioRef.current = new Audio(design.music_url);
+            audioRef.current.loop = true;
+            return () => {
+                if (audioRef.current) {
+                    audioRef.current.pause();
+                    audioRef.current = null;
+                    setIsPlayingMusic(false);
+                }
+            };
+        } else {
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current = null;
+                setIsPlayingMusic(false);
+            }
+        }
+    }, [design.music_enabled, design.music_url]);
+
+    const toggleAmbientMusic = () => {
+        if (!audioRef.current) {
+            if (design.music_url) {
+                audioRef.current = new Audio(design.music_url);
+                audioRef.current.loop = true;
+            } else {
+                return;
+            }
+        }
+        if (isPlayingMusic) {
+            audioRef.current.pause();
+            setIsPlayingMusic(false);
+        } else {
+            audioRef.current.play()
+                .then(() => setIsPlayingMusic(true))
+                .catch(err => {
+                    console.error("Audio playback failed:", err);
+                });
+        }
+    };
 
 
 
@@ -802,16 +1163,12 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     }
 
 
-    const coverUrl = shopData.cover_picture
-        ? getImageUrl(shopData.cover_picture)
-        : 'linear-gradient(135deg, #6366f1, #a855f7)';
-
-    const profileUrl = getImageUrl(shopData.profile_picture);
-
     return (
         <div className="modal-overlay" onClick={onClose}>
+            {design.custom_css && <style>{design.custom_css}</style>}
             <div className="modal-container"
                 style={{
+                    position: 'relative',
                     overflowY: 'auto',
                     background: design.palette ? design.palette.colors[0] : 'var(--bg-primary)',
                     color: design.palette ? design.palette.colors[4] : 'var(--text-primary)',
@@ -820,6 +1177,8 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                     fontFamily: design.font ? design.font.fontFamily : 'inherit'
                 }}
                 onClick={e => e.stopPropagation()}>
+                {renderParticles(design.particles_effect)}
+                {renderContactFAB()}
 
                 {/* Standard Modal Header */}
                 <div className="modal-header" style={{ position: 'sticky', top: 0, zIndex: 1000, background: 'var(--bg-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 15px' }}>
@@ -853,6 +1212,91 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
 
                 {/* Body wrapper to match standard formatting and flex flow */}
                 <div style={{ flex: 1, padding: 0, display: 'block', overflowY: 'auto' }}>
+                    <style>{`
+                        @keyframes spin {
+                            from { transform: rotate(0deg); }
+                            to { transform: rotate(360deg); }
+                        }
+                        @keyframes pulseNeon {
+                            0% { box-shadow: 0 0 5px ${design.palette ? design.palette.colors[3] : 'var(--primary)'}30, inset 0 0 5px ${design.palette ? design.palette.colors[3] : 'var(--primary)'}10; }
+                            50% { box-shadow: 0 0 20px ${design.palette ? design.palette.colors[3] : 'var(--primary)'}80, inset 0 0 10px ${design.palette ? design.palette.colors[3] : 'var(--primary)'}20; }
+                            100% { box-shadow: 0 0 5px ${design.palette ? design.palette.colors[3] : 'var(--primary)'}30, inset 0 0 5px ${design.palette ? design.palette.colors[3] : 'var(--primary)'}10; }
+                        }
+                        @keyframes floatUp {
+                            0% { transform: translateY(0) scale(1) rotate(0deg); opacity: 0; }
+                            10% { opacity: 0.6; }
+                            90% { opacity: 0.6; }
+                            100% { transform: translateY(-100vh) scale(1.2) rotate(360deg); opacity: 0; }
+                        }
+                        @keyframes floatDown {
+                            0% { transform: translateY(0) scale(1) rotate(0deg); opacity: 0; }
+                            10% { opacity: 0.6; }
+                            90% { opacity: 0.6; }
+                            100% { transform: translateY(100vh) scale(1.2) rotate(360deg); opacity: 0; }
+                        }
+                        @keyframes fallRotate {
+                            0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+                            10% { opacity: 0.7; }
+                            90% { opacity: 0.7; }
+                            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+                        }
+                        @keyframes fallRain {
+                            0% { transform: translateY(-100px); opacity: 0; }
+                            10% { opacity: 1; }
+                            90% { opacity: 1; }
+                            100% { transform: translateY(100vh); opacity: 0; }
+                        }
+                        @keyframes scanline {
+                            0% { background-position: 0 0; }
+                            100% { background-position: 0 100%; }
+                        }
+                        
+                        /* Hover Classes */
+                        .hvr-scale-up {
+                            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease !important;
+                        }
+                        .hvr-scale-up:hover {
+                            transform: translateY(-6px) scale(1.02) !important;
+                            box-shadow: 0 12px 24px rgba(0,0,0,0.15) !important;
+                        }
+                        
+                        .hvr-glow-pulse {
+                            transition: box-shadow 0.3s ease, transform 0.3s ease !important;
+                        }
+                        .hvr-glow-pulse:hover {
+                            transform: translateY(-2px) !important;
+                            box-shadow: 0 0 25px ${design.palette ? design.palette.colors[3] : 'var(--primary)'}a0 !important;
+                        }
+                        
+                        .hvr-glitch-tilt {
+                            transition: transform 0.15s ease !important;
+                        }
+                        .hvr-glitch-tilt:hover {
+                            transform: rotate(-1.5deg) scale(1.01) skewX(1deg) !important;
+                        }
+                        
+                        .hvr-none {
+                            transition: none !important;
+                        }
+                        
+                        /* Marquee Styles */
+                        .marquee-container {
+                            overflow: hidden;
+                            white-space: nowrap;
+                            display: flex;
+                            align-items: center;
+                            width: 100%;
+                        }
+                        .marquee-text {
+                            display: inline-block;
+                            padding-left: 100%;
+                            animation: marqueeText 20s linear infinite;
+                        }
+                        @keyframes marqueeText {
+                            0% { transform: translate3d(0, 0, 0); }
+                            100% { transform: translate3d(-100%, 0, 0); }
+                        }
+                    `}</style>
                     {/* Header / Hero */}
                     <div style={{
                         height: '250px',
@@ -861,6 +1305,40 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                             : (design.pattern ? design.pattern.bg : coverUrl),
                         position: 'relative'
                     }}>
+                        {design.music_enabled && (
+                            <button
+                                onClick={toggleAmbientMusic}
+                                style={{
+                                    position: 'absolute',
+                                    left: '20px',
+                                    top: '20px',
+                                    background: 'rgba(255, 255, 255, 0.1)',
+                                    backdropFilter: 'blur(10px)',
+                                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                                    color: 'white',
+                                    padding: '8px 16px',
+                                    borderRadius: '20px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 8,
+                                    zIndex: 10,
+                                    fontWeight: 'bold',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                    transition: 'all 0.2s ease'
+                                }}
+                                onMouseOver={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'}
+                                onMouseOut={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+                            >
+                                <span style={{ animation: isPlayingMusic ? 'spin 3s linear infinite' : 'none', display: 'inline-block' }}>
+                                    {isPlayingMusic ? '💿' : '🎵'}
+                                </span>
+                                {isPlayingMusic 
+                                    ? `إيقاف (${design.music_title || 'الموسيقى'})` 
+                                    : `تشغيل (${design.music_title || 'الموسيقى'})`
+                                }
+                            </button>
+                        )}
 
 
                         {canEditShop && (
@@ -891,14 +1369,12 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                             zIndex: 10
                         }}>
                             <div style={{ position: 'relative' }}>
-                                <div style={{
-                                    width: 120, height: 120, borderRadius: '50%',
-                                    border: '2px solid var(--bg-primary)',
-                                    background: profileUrl ? `url(${profileUrl}) center/cover` : '#fbab15',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontSize: '3rem', color: 'white', boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
-                                }}>
-                                    {!profileUrl && shopData.name[0]}
+                                <div style={avatarStyles.wrapper}>
+                                    <div style={avatarStyles.avatar}>
+                                        <div style={avatarStyles.inner}>
+                                            {!profileUrl && (shopData.name ? shopData.name[0] : '🏪')}
+                                        </div>
+                                    </div>
                                 </div>
                                 {canEditShop && (
                                     <button onClick={() => profileInputRef.current.click()} style={{
@@ -1075,6 +1551,51 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                             </div>
                         </div>
                     </div>
+
+                    {/* Announcement Noticeboard widget */}
+                    {design.noticeboard_enabled && design.noticeboard_text && (
+                        <div style={{
+                            margin: '20px 30px 5px',
+                            background: design.palette ? `${design.palette.colors[1]}60` : 'rgba(255, 255, 255, 0.03)',
+                            border: `1px dashed ${design.palette ? design.palette.colors[3] : 'var(--primary)'}60`,
+                            borderRadius: '12px',
+                            padding: '14px 20px',
+                            fontSize: '0.9rem',
+                            lineHeight: '1.6',
+                            color: design.palette ? design.palette.colors[4] : 'var(--text-primary)',
+                            position: 'relative',
+                            overflow: 'hidden',
+                            boxShadow: design.card_glow ? `0 0 15px ${design.palette ? design.palette.colors[3] : 'var(--primary)'}10` : 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            backdropFilter: 'blur(5px)'
+                        }}>
+                            <div style={{
+                                position: 'absolute',
+                                top: 0,
+                                right: 0,
+                                bottom: 0,
+                                width: '4px',
+                                background: design.palette ? design.palette.colors[3] : 'var(--primary)'
+                            }} />
+                            {design.noticeboard_type === 'marquee' ? (
+                                <div className="marquee-container" style={{ flex: 1 }}>
+                                    <span style={{ fontSize: '1.3rem', flexShrink: 0, marginLeft: '8px' }}>{design.noticeboard_icon || '📢'}</span>
+                                    <div className="marquee-text" style={{ display: 'inline-block', fontWeight: '500' }}>
+                                        {design.noticeboard_text}
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <span style={{ fontSize: '1.3rem', flexShrink: 0 }}>{design.noticeboard_icon || '📢'}</span>
+                                    <div style={{ flex: 1, fontWeight: '500' }}>
+                                        {design.noticeboard_text}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
 
                     {/* Driver Dashboard Removed */}
 
@@ -1960,20 +2481,16 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                                     cartService.addItem({ ...product, shop_name: shopData.name });
                                                                     setCartCount(cartService.getItemCount());
                                                                 }}
+                                                                className={getCardHoverClass(design)}
                                                                 style={{
                                                                     display: 'flex',
-                                                                    background: 'var(--bg-primary)',
-                                                                    borderRadius: '16px',
+                                                                    ...getCardWrapperStyle(design, 'restaurant_modern'),
                                                                     padding: '12px',
-                                                                    border: '1px solid var(--bg-tertiary)',
-                                                                    boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
                                                                     cursor: 'pointer',
-                                                                    transition: 'transform 0.2s',
+                                                                    transition: 'all 0.2s ease',
                                                                     gap: '15px',
                                                                     alignItems: 'center'
                                                                 }}
-                                                                onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-                                                                onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
                                                             >
                                                                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                                                     <h4 style={{ margin: '0 0 6px', fontSize: '1.15rem', color: 'var(--text-primary)', fontWeight: 'bold' }}>{product.name}</h4>
@@ -2020,12 +2537,11 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                                     cartService.addItem({ ...product, shop_name: shopData.name });
                                                                     setCartCount(cartService.getItemCount());
                                                                 }}
+                                                                className={getCardHoverClass(design)}
                                                                 style={{
                                                                     flexShrink: 0,
                                                                     width: '260px',
-                                                                    background: 'white',
-                                                                    border: '1px solid rgba(42,42,44,0.1)',
-                                                                    borderRadius: '18px',
+                                                                    ...getCardWrapperStyle(design, 'lab'),
                                                                     padding: '16px',
                                                                     display: 'flex',
                                                                     flexDirection: 'column',
@@ -2035,8 +2551,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                                     transition: 'all 0.2s',
                                                                     textAlign: 'right'
                                                                 }}
-                                                                onMouseOver={e => e.currentTarget.style.transform = 'translateY(-4px)'}
-                                                                onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
                                                             >
                                                                 <div style={{
                                                                     position: 'absolute', top: 12, left: 12,
@@ -2088,20 +2602,16 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                                     cartService.addItem({ ...product, shop_name: shopData.name });
                                                                     setCartCount(cartService.getItemCount());
                                                                 }}
+                                                                className={getCardHoverClass(design)}
                                                                 style={{
-                                                                    background: '#ffffff',
-                                                                    borderRadius: '16px',
+                                                                    ...getCardWrapperStyle(design, 'vanilla'),
                                                                     padding: '25px',
                                                                     display: 'flex',
                                                                     flexDirection: 'column',
                                                                     alignItems: 'center',
-                                                                    border: '1px solid rgba(0,0,0,0.04)',
-                                                                    boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
-                                                                    transition: 'transform 0.2s',
+                                                                    transition: 'all 0.2s ease',
                                                                     cursor: 'pointer'
                                                                 }}
-                                                                onMouseOver={e => e.currentTarget.style.transform = 'translateY(-5px)'}
-                                                                onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
                                                             >
                                                                 {product.image_url ? (
                                                                     <div style={{ height: '180px', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '20px' }}>
@@ -2128,7 +2638,14 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
 
                                                     // Default Design
                                                     return (
-                                                        <div key={product.id} style={{ background: 'var(--bg-primary)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', transition: 'transform 0.2s' }}>
+                                                        <div key={product.id} 
+                                                            className={getCardHoverClass(design)}
+                                                            style={{ 
+                                                                ...getCardWrapperStyle(design, 'default'),
+                                                                overflow: 'hidden', 
+                                                                transition: 'all 0.2s ease' 
+                                                            }}
+                                                        >
                                                             <div style={{ aspectRatio: '1/1', background: '#f3f4f6', position: 'relative', borderBottom: '1px solid var(--bg-tertiary)' }}>
                                                                 {product.image_urls && product.image_urls.length > 0 ? (
                                                                     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -2154,9 +2671,9 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                                 )}
                                                             </div>
                                                             <div style={{ padding: 15 }}>
-                                                                <h4 style={{ margin: '0 0 8px', fontSize: '1.1rem' }}>{product.name}</h4>
+                                                                <h4 style={{ margin: '0 0 8px', fontSize: '1.1rem', color: design.palette ? design.palette.colors[4] : 'var(--text-primary)' }}>{product.name}</h4>
                                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 5 }}>
-                                                                    <div style={{ color: 'var(--primary)', fontWeight: 'bold', fontSize: '1.2rem' }}>{product.price} شيكل</div>
+                                                                    <div style={{ color: design.palette ? design.palette.colors[3] : 'var(--primary)', fontWeight: 'bold', fontSize: '1.2rem' }}>{product.price} شيكل</div>
                                                                     {product.old_price && parseFloat(product.old_price) > parseFloat(product.price) && (
                                                                         <div style={{ color: 'var(--text-muted)', textDecoration: 'line-through', fontSize: '0.9rem' }}>{product.old_price} شيكل</div>
                                                                     )}
@@ -2167,7 +2684,18 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                                         cartService.addItem({ ...product, shop_name: shopData.name });
                                                                         alert('تمت الإضافة للسلة');
                                                                     }}
-                                                                    style={{ width: '100%', padding: '10px', marginTop: '10px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+                                                                    style={{ 
+                                                                        width: '100%', 
+                                                                        padding: '10px', 
+                                                                        marginTop: '10px', 
+                                                                        background: design.palette ? `linear-gradient(135deg, ${design.palette.colors[3]}, ${design.palette.colors[2]})` : 'var(--primary)', 
+                                                                        color: design.palette ? design.palette.colors[0] : 'white', 
+                                                                        border: 'none', 
+                                                                        borderRadius: '8px', 
+                                                                        cursor: 'pointer', 
+                                                                        fontWeight: 'bold',
+                                                                        boxShadow: design.card_glow ? `0 4px 10px ${design.palette ? design.palette.colors[3] : 'var(--primary)'}30` : 'none'
+                                                                    }}
                                                                 >
                                                                     اضافة للسلة
                                                                 </button>
