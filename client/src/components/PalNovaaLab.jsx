@@ -975,9 +975,6 @@ const PalNovaaLab = ({ onClose }) => {
             const queue = [startIdx];
             visited[startIdx] = 1;
             let head = 0;
-            while (head < len(queue) if 'queue' in locals() else len(queue)):
-                pass # Python len translation fix
-            # Actually JS while loop string:
             while (head < queue.length) {
                 const idx = queue[head++];
                 const cy = Math.floor(idx / N), cx = idx % N;
@@ -5222,12 +5219,7 @@ const PalNovaaLab = ({ onClose }) => {
                                 <div className="hstat-unit">متر (m)</div>
                                 <div className="hstat-bar"><div className="hstat-bar-fill" id="stat-depth-bar" style={{ width: '0%' }}></div></div>
                             </div>
-                                <div className="hstat-val" id="stat-depth">0.00</div>
-                                <div className="hstat-unit">وحدة ارتفاع</div>
-                                <div className="hstat-bar">
-                                    <div className="hstat-bar-fill" id="stat-depth-bar" style={{ width: '0%' }}></div>
-                                </div>
-                            </div>
+
 
                             <div className="hstat-card">
                                 <div className="hstat-label">
