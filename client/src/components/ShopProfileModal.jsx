@@ -1164,6 +1164,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
 
 
     return (
+        <>
         <div className="modal-overlay" onClick={onClose}>
             {design.custom_css && <style>{design.custom_css}</style>}
             <div className="modal-container"
@@ -3575,21 +3576,22 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                             />
                         )}
 
-                        {showDesignStudio && (
-                            <PalNovaaMarketDesign
-                                onClose={() => setShowDesignStudio(false)}
-                                initialDesign={{
-                                    ...design,
-                                    shopName: shopData.name,
-                                    category: shopData.category
-                                }}
-                                onSelectShop={handleSaveDesign}
-                            />
-                        )}
                     </div>
                 </div>
             </div>
         </div>
+        {showDesignStudio && (
+            <PalNovaaMarketDesign
+                onClose={() => setShowDesignStudio(false)}
+                initialDesign={{
+                    ...design,
+                    shopName: shopData.name,
+                    category: shopData.category
+                }}
+                onSelectShop={handleSaveDesign}
+            />
+        )}
+        </>
     );
 
 };
