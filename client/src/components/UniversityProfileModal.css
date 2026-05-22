@@ -424,3 +424,19 @@
 .uni-tour-section {
     padding-bottom: 50px;
 }
+
+/* Full-Screen on Desktop overrides for University modal */
+@media (min-width: 1024px) {
+    .university-modal-overlay {
+        align-items: center !important;
+        padding: 0 !important;
+    }
+    .university-modal-container {
+        max-width: 100vw !important;
+        max-height: 100vh !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        border-radius: 0 !important;
+        border: none !important;
+    }
+}

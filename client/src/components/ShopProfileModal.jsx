@@ -1165,7 +1165,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
 
     return (
         <>
-        <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-overlay profile-modal-overlay" onClick={onClose}>
             {design.custom_css && <style>{design.custom_css}</style>}
             <div className="modal-container"
                 style={{

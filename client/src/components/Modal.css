@@ -840,3 +840,18 @@
     0%, 100% { box-shadow: 0 2px 8px rgba(255, 165, 0, 0.5); }
     50% { box-shadow: 0 2px 16px rgba(255, 165, 0, 0.9), 0 0 0 4px rgba(255, 215, 0, 0.15); }
 }
+
+/* Full-Screen on Desktop overrides for profile modals */
+@media (min-width: 1024px) {
+    .profile-modal-overlay {
+        padding: 0 !important;
+    }
+    .profile-modal-overlay .modal-container {
+        max-width: 100vw !important;
+        max-height: 100vh !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        border-radius: 0 !important;
+        border: none !important;
+    }
+}

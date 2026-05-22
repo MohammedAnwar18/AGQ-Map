@@ -132,6 +132,11 @@ const PalNovaaLab = ({ onClose }) => {
     const [stylePopup, setStylePopup] = useState(null); // { layerId, x, y }
     const [openActionsLayerId, setOpenActionsLayerId] = useState(null);
 
+    // PalStreet States
+    const [palStreetLoading, setPalStreetLoading] = useState(false);
+    const [palStreetProgress, setPalStreetProgress] = useState('');
+    const [palStreetStats, setPalStreetStats] = useState(null);
+
     // ===== HYDROLOGY SIMULATION SANDBOX REF & EFFECT =====
     const hydroStateRef = useRef({
         map: null,
@@ -1736,7 +1741,244 @@ const PalNovaaLab = ({ onClose }) => {
         return R * c;
     };
 
+    const fetchPalStreetOSM = async (south, west, north, east, polygonFilterCoords = null) => {
+        const latDim = Math.abs(north - south);
+        const lngDim = Math.abs(east - west);
+        const area = latDim * lngDim;
+        if (area > 0.05) {
+            alert("⚠️ النطاق المحدد واسع جداً! يرجى تكبير الخريطة أو تحديد منطقة أصغر لتجنب بطء الاستجابة.");
+            return;
+        }
+
+        setPalStreetLoading(true);
+        setPalStreetProgress("جاري الاتصال بخادم OpenStreetMap...");
+        setPalStreetStats(null);
+
+        const query = `[out:json][timeout:30];
+(
+  way["highway"](${south},${west},${north},${east});
+);
+out geom;`;
+
+        const overpassEndpoints = [
+            "https://overpass-api.de/api/interpreter",
+            "https://lz4.overpass-api.de/api/interpreter",
+            "https://z.overpass-api.de/api/interpreter"
+        ];
+        
+        let fetchedData = null;
+        let fetchError = null;
+
+        for (const url of overpassEndpoints) {
+            try {
+                setPalStreetProgress(`جاري سحب الشوارع من الخادم (${url.split('/')[2]})...`);
+                const response = await axios.post(url, `data=${encodeURIComponent(query)}`, {
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                });
+                if (response.data && response.data.elements) {
+                    fetchedData = response.data.elements;
+                    break;
+                }
+            } catch (err) {
+                console.warn(`Failed fetching OSM from ${url}:`, err);
+                fetchError = err;
+            }
+        }
+
+        if (!fetchedData) {
+            setPalStreetLoading(false);
+            setPalStreetProgress("");
+            alert(`❌ فشل جلب البيانات من خوادم OpenStreetMap. خطأ: ${fetchError?.message || "خطأ غير معروف"}`);
+            return;
+        }
+
+        setPalStreetProgress("جاري معالجة وتصنيف مسارات الشوارع...");
+        
+        const features = [];
+        const stats = {
+            motorway: 0,
+            trunk: 0,
+            primary: 0,
+            secondary: 0,
+            tertiary: 0,
+            residential: 0,
+            service: 0,
+            footway: 0,
+            other: 0
+        };
+
+        const isPointInPolygon = (point, vs) => {
+            const x = point[0], y = point[1];
+            let inside = false;
+            for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+                const xi = vs[i][0], yi = vs[i][1];
+                const xj = vs[j][0], yj = vs[j][1];
+                const intersect = ((yi > y) !== (yj > y))
+                    && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
+        };
+
+        fetchedData.forEach(element => {
+            if (element.type === 'way' && element.geometry) {
+                const coords = element.geometry.map(pt => [pt.lon, pt.lat]);
+                
+                if (polygonFilterCoords && polygonFilterCoords[0]) {
+                    const outerRing = polygonFilterCoords[0];
+                    const isInside = coords.some(pt => isPointInPolygon(pt, outerRing));
+                    if (!isInside) return;
+                }
+
+                const tags = element.tags || {};
+                const hw = tags.highway || 'other';
+                
+                if (stats.hasOwnProperty(hw)) {
+                    stats[hw]++;
+                } else if (['motorway_link'].includes(hw)) {
+                    stats.motorway++;
+                } else if (['trunk_link'].includes(hw)) {
+                    stats.trunk++;
+                } else if (['primary_link'].includes(hw)) {
+                    stats.primary++;
+                } else if (['secondary_link'].includes(hw)) {
+                    stats.secondary++;
+                } else if (['tertiary_link'].includes(hw)) {
+                    stats.tertiary++;
+                } else if (['pedestrian', 'path', 'cycleway', 'living_street'].includes(hw)) {
+                    stats.footway++;
+                } else {
+                    stats.other++;
+                }
+
+                features.push({
+                    type: 'Feature',
+                    id: element.id,
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: coords
+                    },
+                    properties: {
+                        id: element.id,
+                        name: tags.name || tags.name_ar || tags.name_en || 'شارع بدون اسم',
+                        highway: hw,
+                        surface: tags.surface || 'غير معروف',
+                        oneway: tags.oneway || 'no',
+                        maxspeed: tags.maxspeed || 'غير محدد',
+                        ref: tags.ref || '',
+                        ...tags
+                    }
+                });
+            }
+        });
+
+        if (features.length === 0) {
+            setPalStreetLoading(false);
+            setPalStreetProgress("");
+            alert("⚠️ لم يتم العثور على شوارع في المنطقة المحددة. يرجى تجربة منطقة أخرى.");
+            return;
+        }
+
+        const newLayerId = `palstreet-${Date.now()}`;
+        const layerName = `شوارع PalStreet [${features.length}]`;
+        const geojson = {
+            type: 'FeatureCollection',
+            features: features
+        };
+
+        setGeoLayers(prev => [...prev, {
+            id: newLayerId,
+            name: layerName,
+            data: geojson,
+            isPalStreet: true,
+            color: '#10D9A0',
+            isVisible: true
+        }]);
+
+        setLayerStyles(prev => ({
+            ...prev,
+            [newLayerId]: {
+                color: '#10D9A0',
+                outlineColor: '#ffffff',
+                outlineWidth: 2.5,
+                opacity: 1,
+                isPalStreet: true
+            }
+        }));
+
+        setPalStreetStats(stats);
+        setPalStreetLoading(false);
+        setPalStreetProgress("");
+        alert(`✅ تم رسم ${features.length} شارع بنجاح وتصنيفها كطبقة حية!`);
+    };
+
+    const handleExportLayer = (layer) => {
+        try {
+            if (layer.type === 'table') {
+                if (!layer.data || layer.data.length === 0) {
+                    alert("⚠️ لا توجد بيانات لتصديرها.");
+                    return;
+                }
+                const headers = Object.keys(layer.data[0]);
+                const csvRows = [];
+                csvRows.push(headers.join(','));
+                layer.data.forEach(row => {
+                    const values = headers.map(header => {
+                        const escaped = ('' + (row[header] ?? '')).replace(/"/g, '""');
+                        return `"${escaped}"`;
+                    });
+                    csvRows.push(values.join(','));
+                });
+                const csvString = csvRows.join('\n');
+                const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.setAttribute("href", url);
+                link.setAttribute("download", `${layer.name || 'layer'}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                if (!layer.data) {
+                    alert("⚠️ لا توجد بيانات لتصديرها.");
+                    return;
+                }
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(layer.data, null, 2));
+                const downloadAnchor = document.createElement('a');
+                downloadAnchor.setAttribute("href", dataStr);
+                downloadAnchor.setAttribute("download", `${layer.name || 'layer'}.geojson`);
+                downloadAnchor.style.visibility = 'hidden';
+                document.body.appendChild(downloadAnchor);
+                downloadAnchor.click();
+                document.body.removeChild(downloadAnchor);
+            }
+        } catch (err) {
+            console.error("Failed to export layer:", err);
+            alert("❌ فشل تصدير الطبقة.");
+        }
+    };
+
     const finishDrawing = () => {
+        if (drawingMode === 'palstreet_poly') {
+            if (draftCoordinates.length > 2) {
+                const polygonCoords = [[...draftCoordinates, draftCoordinates[0]]];
+                let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+                draftCoordinates.forEach(([lng, lat]) => {
+                    if (lng < minLng) minLng = lng;
+                    if (lng > maxLng) maxLng = lng;
+                    if (lat < minLat) minLat = lat;
+                    if (lat > maxLat) maxLat = lat;
+                });
+                fetchPalStreetOSM(minLat, minLng, maxLat, maxLng, polygonCoords);
+            } else {
+                alert("⚠️ يرجى رسم مضلع يحتوي على 3 نقاط على الأقل.");
+            }
+            setDraftCoordinates([]);
+            setDrawingMode(null);
+            return;
+        }
+
         if (draftCoordinates.length > 1) {
             let geometryType = drawingMode === 'polygon' && draftCoordinates.length > 2 ? 'Polygon' : 'LineString';
             let coords = geometryType === 'Polygon' ? [[...draftCoordinates, draftCoordinates[0]]] : draftCoordinates;
@@ -1924,7 +2166,7 @@ const PalNovaaLab = ({ onClose }) => {
                 }));
 
                 setDrawingMode(null);
-            } else if (drawingMode === 'line' || drawingMode === 'measure' || drawingMode === 'polygon') {
+            } else if (drawingMode === 'line' || drawingMode === 'measure' || drawingMode === 'polygon' || drawingMode === 'palstreet_poly') {
                 setDraftCoordinates(prev => {
                     const newCoords = [...prev, coord];
                     if (drawingMode === 'measure' && prev.length > 0) {
@@ -3422,6 +3664,12 @@ const PalNovaaLab = ({ onClose }) => {
                         </svg>
                     </button>
 
+                    <button className={`tool ${activeTab === 'palstreet' ? 'active' : ''}`} data-tip="استخراج شوارع PalStreet 🛣️" onClick={() => { setActiveTab('palstreet'); setDrawingMode(null); }}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#ffca28' }}>
+                            <path d="M6 3v18M18 3v18M12 3v4M12 10v4M12 17v4" />
+                        </svg>
+                    </button>
+
                     <div className="sidebar-bottom">
                         <button
                             key="btn-design-studio-v4"
@@ -3516,8 +3764,32 @@ const PalNovaaLab = ({ onClose }) => {
                                             type="line"
                                             filter={['==', '$type', 'LineString']}
                                             paint={{
-                                                'line-color': style.color,
-                                                'line-width': (style.outlineWidth ?? 2) * 2,
+                                                'line-color': layer.isPalStreet ? [
+                                                    'match',
+                                                    ['coalesce', ['get', 'highway'], ''],
+                                                    'motorway', '#ef5350', 'motorway_link', '#ef5350',
+                                                    'trunk', '#ff7043', 'trunk_link', '#ff7043',
+                                                    'primary', '#ffca28', 'primary_link', '#ffca28',
+                                                    'secondary', '#66bb6a', 'secondary_link', '#66bb6a',
+                                                    'tertiary', '#26c6da', 'tertiary_link', '#26c6da',
+                                                    'residential', '#42a5f5',
+                                                    'service', '#b0bec5',
+                                                    'footway', '#ab47bc', 'pedestrian', '#ab47bc', 'path', '#ab47bc', 'cycleway', '#ab47bc',
+                                                    style.color || '#10D9A0'
+                                                ] : style.color,
+                                                'line-width': layer.isPalStreet ? [
+                                                    'match',
+                                                    ['coalesce', ['get', 'highway'], ''],
+                                                    'motorway', 6.0,
+                                                    'trunk', 5.0,
+                                                    'primary', 4.5,
+                                                    'secondary', 3.5,
+                                                    'tertiary', 2.5,
+                                                    'residential', 2.0,
+                                                    'service', 1.5,
+                                                    'footway', 1.2, 'pedestrian', 1.2, 'path', 1.0, 'cycleway', 1.0,
+                                                    (style.outlineWidth ?? 2) * 2
+                                                ] : (style.outlineWidth ?? 2) * 2,
                                                 'line-opacity': style.opacity ?? 1
                                             }}
                                         />
@@ -3564,6 +3836,55 @@ const PalNovaaLab = ({ onClose }) => {
                                         }}
                                     />
                                 </Source>
+                            )}
+
+                            {selectedFeatureInfo && (
+                                <Popup
+                                    longitude={selectedFeatureInfo.longitude}
+                                    latitude={selectedFeatureInfo.latitude}
+                                    anchor="bottom"
+                                    onClose={() => setSelectedFeatureInfo(null)}
+                                    closeOnClick={false}
+                                    className="custom-popup"
+                                >
+                                    <div className="popup-content" style={{ direction: 'rtl', textAlign: 'right', color: 'white', minWidth: '180px' }}>
+                                        <h4 style={{ margin: '0 0 8px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px', color: '#06D6F2' }}>
+                                            {selectedFeatureInfo.properties.name || selectedFeatureInfo.properties.name_ar || selectedFeatureInfo.properties.name_en || 'شارع بدون اسم'}
+                                        </h4>
+                                        <div className="popup-body" style={{ fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                            {selectedFeatureInfo.properties.highway ? (
+                                                <>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                        <span style={{ color: '#94a3b8' }}>التصنيف:</span>
+                                                        <span style={{ color: '#fbab15', fontWeight: 'bold' }}>{selectedFeatureInfo.properties.highway}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                        <span style={{ color: '#94a3b8' }}>السرعة القصوى:</span>
+                                                        <span>{selectedFeatureInfo.properties.maxspeed || 'غير محدد'}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                        <span style={{ color: '#94a3b8' }}>السطح:</span>
+                                                        <span>{selectedFeatureInfo.properties.surface || 'غير معروف'}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                        <span style={{ color: '#94a3b8' }}>اتجاه واحد:</span>
+                                                        <span>{selectedFeatureInfo.properties.oneway === 'yes' ? 'نعم' : 'لا'}</span>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                Object.entries(selectedFeatureInfo.properties)
+                                                    .filter(([key]) => !['id', 'name', 'color', 'isPalStreet'].includes(key))
+                                                    .slice(0, 4)
+                                                    .map(([key, val]) => (
+                                                        <div key={key} style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
+                                                            <span style={{ color: '#94a3b8' }}>{key}:</span>
+                                                            <span style={{ wordBreak: 'break-all', textAlign: 'left' }}>{String(val)}</span>
+                                                        </div>
+                                                    ))
+                                            )}
+                                        </div>
+                                    </div>
+                                </Popup>
                             )}
 
                             {draftGeoJson && (
@@ -3801,6 +4122,10 @@ const PalNovaaLab = ({ onClose }) => {
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
                             <span>حقن البيانات</span>
                         </div>
+                        <div className={`panel-tab ${activeTab === 'palstreet' ? 'active' : ''}`} onClick={() => setActiveTab('palstreet')}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 3v18M18 3v18M12 3v4M12 10v4M12 17v4" /></svg>
+                            <span>PalStreet</span>
+                        </div>
                     </div>
 
                     <div className="panel-content">
@@ -3950,6 +4275,9 @@ const PalNovaaLab = ({ onClose }) => {
                                                                 }} title="عرض البيانات الوصفية">
                                                                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
                                                                 </button>
+                                                                <button style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '6px' }} onClick={() => handleExportLayer(layer)} title={isTable ? "تصدير كملف CSV" : "تصدير كملف GeoJSON"}>
+                                                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                                                                </button>
                                                                 <button className="delete" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', borderRadius: '8px', padding: '6px' }} onClick={() => { setGeoLayers(prev => prev.filter(l => l.id !== layer.id)); setLayerStyles(prev => { const n = { ...prev }; delete n[layer.id]; return n; }); if (activeTableLayerId === layer.id) { setActiveTableLayerId(null); setShowBottomTable(false); } }} title="حذف الطبقة">
                                                                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
                                                                 </button>
@@ -4053,6 +4381,109 @@ const PalNovaaLab = ({ onClose }) => {
                                         سيتم دمج الطبقات المختارة داخل ملف الـ HTML المرفوع مع الحفاظ على تصميمه الأصلي وتحديث بياناته برمجياً.
                                     </p>
                                 </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'palstreet' && (
+                            <div className="tab-content" style={{ display: 'flex', flexDirection: 'column', gap: '20px', height: '100%', overflowY: 'auto' }}>
+                                <div className="panel-section">
+                                    <div className="panel-section-title">استخراج شوارع PalStreet 🛣️</div>
+                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.5', marginBottom: '15px' }}>
+                                        قم بجلب الشوارع وتصنيفاتها مباشرة من OpenStreetMap لطبقة تفاعلية ذكية.
+                                    </p>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                        <button
+                                            className="ds-btn secondary w-100"
+                                            disabled={palStreetLoading}
+                                            onClick={() => {
+                                                const map = mapRef.current?.getMap();
+                                                if (map) {
+                                                    const bounds = map.getBounds();
+                                                    fetchPalStreetOSM(bounds.getSouth(), bounds.getWest(), bounds.getNorth(), bounds.getEast());
+                                                }
+                                            }}
+                                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px' }}
+                                        >
+                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+                                            جلب من حدود الشاشة الحالية
+                                        </button>
+
+                                        <button
+                                            className={`ds-btn ${drawingMode === 'palstreet_poly' ? 'primary' : 'outline'} w-100`}
+                                            disabled={palStreetLoading}
+                                            onClick={() => {
+                                                if (drawingMode === 'palstreet_poly') {
+                                                    setDrawingMode(null);
+                                                    setDraftCoordinates([]);
+                                                } else {
+                                                    setDrawingMode('palstreet_poly');
+                                                    setDraftCoordinates([]);
+                                                }
+                                            }}
+                                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px' }}
+                                        >
+                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/></svg>
+                                            {drawingMode === 'palstreet_poly' ? 'إلغاء الرسم المخصص' : 'رسم منطقة مخصصة (مضلع)'}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {palStreetLoading && (
+                                    <div className="palstreet-progress-card" style={{ padding: '15px', background: 'rgba(6, 214, 242, 0.05)', border: '1px solid rgba(6, 214, 242, 0.2)', borderRadius: '12px', textAlign: 'center' }}>
+                                        <div className="loader-ring-small" style={{ margin: '0 auto 10px auto', width: '30px', height: '30px', border: '3px solid rgba(6, 214, 242, 0.1)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'ring-spin 1s linear infinite' }}></div>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 'bold' }}>{palStreetProgress}</div>
+                                    </div>
+                                )}
+
+                                {palStreetStats && (
+                                    <div className="panel-section palstreet-stats-panel">
+                                        <div className="panel-section-title">دليل وإحصائيات الشوارع 📊</div>
+                                        <div className="stats-grid" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+                                            {[
+                                                { key: 'motorway', label: 'طرق سريعة (Motorway)', color: '#ef5350' },
+                                                { key: 'trunk', label: 'طرق شريانية كبرى (Trunk)', color: '#ff7043' },
+                                                { key: 'primary', label: 'طرق رئيسية (Primary)', color: '#ffca28' },
+                                                { key: 'secondary', label: 'طرق ثانوية (Secondary)', color: '#66bb6a' },
+                                                { key: 'tertiary', label: 'طرق فرعية (Tertiary)', color: '#26c6da' },
+                                                { key: 'residential', label: 'شوارع سكنية (Residential)', color: '#42a5f5' },
+                                                { key: 'service', label: 'طرق خدمات ومواقف (Service)', color: '#b0bec5' },
+                                                { key: 'footway', label: 'ممرات مشاة وتراسات (Footway/Paths)', color: '#ab47bc' },
+                                                { key: 'other', label: 'أخرى (Other)', color: '#e0e0e0' }
+                                            ].map(item => (
+                                                <div key={item.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', background: item.color, boxShadow: `0 0 8px ${item.color}` }}></span>
+                                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{item.label}</span>
+                                                    </div>
+                                                    <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>{palStreetStats[item.key] || 0}</span>
+                                                </div>
+                                            ))}
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px', borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '8px', fontWeight: 'bold' }}>
+                                                <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>مجموع الشوارع المستخرجة:</span>
+                                                <span style={{ color: 'var(--primary)' }}>
+                                                    {Object.values(palStreetStats).reduce((a, b) => a + b, 0)}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            className="ds-btn primary w-100"
+                                            style={{ marginTop: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                                            onClick={() => {
+                                                const palLayer = geoLayers.find(l => l.isPalStreet);
+                                                if (palLayer) {
+                                                    handleExportLayer(palLayer);
+                                                } else {
+                                                    alert("⚠️ لم يتم العثور على طبقة PalStreet للتصدير.");
+                                                }
+                                            }}
+                                        >
+                                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                                            تصدير طبقة الشوارع (GeoJSON)
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>

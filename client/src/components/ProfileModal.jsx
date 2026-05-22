@@ -268,7 +268,7 @@ const ProfileModal = ({ userId, onClose }) => {
     const showUsername = isOwnProfile || !isAdmin;
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-overlay profile-modal-overlay" onClick={onClose}>
             <div className="modal-container" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
                     <h2>الملف الشخصي</h2>

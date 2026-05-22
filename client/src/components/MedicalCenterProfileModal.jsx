@@ -572,7 +572,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
     const profileUrl = getImageUrl(shopData.profile_picture);
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-overlay profile-modal-overlay" onClick={onClose}>
             <div className="modal-container"
                 style={{
                     overflowY: 'auto',

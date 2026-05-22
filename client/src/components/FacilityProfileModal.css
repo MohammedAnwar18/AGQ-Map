@@ -264,3 +264,18 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* Full-Screen on Desktop overrides for Facility modal */
+@media (min-width: 1024px) {
+    .facility-modal-overlay {
+        padding: 0 !important;
+    }
+    .facility-modal-container {
+        max-width: 100vw !important;
+        max-height: 100vh !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        border-radius: 0 !important;
+        border: none !important;
+    }
+}
