@@ -137,6 +137,9 @@ const PalNovaaLab = ({ onClose }) => {
     const [palStreetProgress, setPalStreetProgress] = useState('');
     const [palStreetStats, setPalStreetStats] = useState(null);
 
+    // Hydro Grid Resolution
+    const [gridResolution, setGridResolution] = useState(256);
+
     // ===== HYDROLOGY SIMULATION SANDBOX REF & EFFECT =====
     const hydroStateRef = useRef({
         map: null,
@@ -154,7 +157,7 @@ const PalNovaaLab = ({ onClose }) => {
         simSpeed: 1.5,
         tick: 0,
         exaggeration: 3,
-        GRID: 128,
+        GRID: 256,
         h: null,
         terrain: null,
         baseTerrain: null,
@@ -328,6 +331,7 @@ const PalNovaaLab = ({ onClose }) => {
                             s.waterSources.push({ id: s.nextSourceId++, gx, gy, lng: e.lngLat.lng, lat: e.lngLat.lat, inflowRate: s.sourceInflowRate || 50 });
                             updateSourcesGeoJSON();
                             updateStatsDOM();
+                            startSimulationLoop();
                         }
                     } else if (s.mode === 'fill_select') {
                         const b = s.simBounds;
@@ -5679,6 +5683,27 @@ out geom;`;
 
                             <div className="hydro-tool-divider"></div>
                             <div className="hydro-section-title">التضاريس</div>
+
+                            <div className="hydro-param">
+                                <label>دقة شبكة التضاريس (حجم الخلية)</label>
+                                <div className="param-row">
+                                    <select 
+                                        className="hydro-select-input" 
+                                        value={gridResolution} 
+                                        onChange={(e) => {
+                                            const val = parseInt(e.target.value);
+                                            setGridResolution(val);
+                                            hydroStateRef.current.GRID = val;
+                                        }}
+                                        style={{ flex: 1, background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid rgba(6,214,242,0.3)', borderRadius: '6px', padding: '6px', outline: 'none' }}
+                                    >
+                                        <option value={64} style={{background: '#040d18'}}>64 × 64 (أداء فائق، دقة منخفضة)</option>
+                                        <option value={128} style={{background: '#040d18'}}>128 × 128 (متوازن)</option>
+                                        <option value={256} style={{background: '#040d18'}}>256 × 256 (دقة عالية، الافتراضي)</option>
+                                        <option value={512} style={{background: '#040d18'}}>512 × 512 (دقة فائقة جداً)</option>
+                                    </select>
+                                </div>
+                            </div>
 
                             <div className="hydro-param">
                                 <label>معامل الاحتكاك</label>
