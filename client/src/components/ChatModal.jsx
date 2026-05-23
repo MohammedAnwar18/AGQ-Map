@@ -6,160 +6,199 @@ import DefaultAvatar from './DefaultAvatar';
 import './Modal.css';
 import './ChatModalStyles.css';
 
-// Premium Visual Custom Voice Player for Voice Notes
+// Real-waveform Voice Player using Web Audio API
 const VoicePlayer = ({ src }) => {
     const audioRef = useRef(null);
-    const [isPlaying, setIsPlaying] = useState(false);
+    const [isPlaying, setIsPlaying]   = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
-    const [duration, setDuration] = useState(0);
+    const [duration, setDuration]     = useState(0);
+    const BARS = 40;
+    // Start with flat placeholder bars (equal height) while audio loads
+    const [barHeights, setBarHeights] = useState(() => Array(BARS).fill(0.4));
+    const [waveReady, setWaveReady]   = useState(false);
 
+    // ── 1. Analyze real audio waveform ────────────────────────────────────
+    useEffect(() => {
+        let cancelled = false;
+        setWaveReady(false);
+        setBarHeights(Array(BARS).fill(0.4));
+
+        const analyzeAudio = async () => {
+            try {
+                const res = await fetch(src, { mode: 'cors' });
+                const arrayBuffer = await res.arrayBuffer();
+                if (cancelled) return;
+
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) throw new Error('No AudioContext');
+
+                const ctx = new AudioCtx();
+                const decoded = await ctx.decodeAudioData(arrayBuffer);
+                ctx.close();
+                if (cancelled) return;
+
+                // Use first channel raw PCM data
+                const raw = decoded.getChannelData(0);
+                const step = Math.max(1, Math.floor(raw.length / BARS));
+
+                const heights = Array.from({ length: BARS }, (_, i) => {
+                    const start = i * step;
+                    const end   = Math.min(start + step, raw.length);
+                    let rms = 0;
+                    for (let j = start; j < end; j++) rms += raw[j] * raw[j];
+                    return Math.sqrt(rms / (end - start));
+                });
+
+                // Normalize to 0–1, enforce minimum bar of 0.07
+                const max = Math.max(...heights, 0.0001);
+                const normalized = heights.map(h => Math.max(h / max, 0.07));
+
+                if (!cancelled) {
+                    setBarHeights(normalized);
+                    setWaveReady(true);
+                }
+            } catch (err) {
+                // CORS or decode failure → smooth pseudo-random fallback
+                if (cancelled) return;
+                let seed = 0;
+                for (let i = 0; i < src.length; i++) seed += src.charCodeAt(i);
+                const fallback = Array.from({ length: BARS }, (_, i) => {
+                    const v = Math.abs(Math.sin((seed + i * 13.7) * 0.37) * Math.cos((seed + i * 7.3) * 0.19));
+                    const bell = 1 - Math.pow((i / (BARS - 1)) * 2 - 1, 2) * 0.35;
+                    return Math.max(0.07, v * bell);
+                });
+                setBarHeights(fallback);
+                setWaveReady(true);
+            }
+        };
+
+        analyzeAudio();
+        return () => { cancelled = true; };
+    }, [src]);
+
+    // ── 2. Audio element event listeners ──────────────────────────────────
     useEffect(() => {
         const audio = audioRef.current;
         if (!audio) return;
 
-        const onTimeUpdate = () => setCurrentTime(audio.currentTime);
-        const onLoadedMetadata = () => {
-            if (audio.duration && !isNaN(audio.duration) && audio.duration !== Infinity) {
-                setDuration(audio.duration);
-            }
+        const onTimeUpdate    = () => setCurrentTime(audio.currentTime);
+        const onLoadedMeta    = () => {
+            if (audio.duration && isFinite(audio.duration)) setDuration(audio.duration);
         };
         const onDurationChange = () => {
-            if (audio.duration && !isNaN(audio.duration) && audio.duration !== Infinity) {
-                setDuration(audio.duration);
-            }
+            if (audio.duration && isFinite(audio.duration)) setDuration(audio.duration);
         };
         const onEnded = () => { setIsPlaying(false); setCurrentTime(0); };
 
-        // Fetch duration if initially Infinity (common for chunked streams like webm)
-        if (audio.duration && !isNaN(audio.duration) && audio.duration !== Infinity) {
-            setDuration(audio.duration);
-        }
+        if (audio.duration && isFinite(audio.duration)) setDuration(audio.duration);
 
-        audio.addEventListener('timeupdate', onTimeUpdate);
-        audio.addEventListener('loadedmetadata', onLoadedMetadata);
+        audio.addEventListener('timeupdate',     onTimeUpdate);
+        audio.addEventListener('loadedmetadata', onLoadedMeta);
         audio.addEventListener('durationchange', onDurationChange);
-        audio.addEventListener('ended', onEnded);
-
+        audio.addEventListener('ended',          onEnded);
         return () => {
-            audio.removeEventListener('timeupdate', onTimeUpdate);
-            audio.removeEventListener('loadedmetadata', onLoadedMetadata);
+            audio.removeEventListener('timeupdate',     onTimeUpdate);
+            audio.removeEventListener('loadedmetadata', onLoadedMeta);
             audio.removeEventListener('durationchange', onDurationChange);
-            audio.removeEventListener('ended', onEnded);
+            audio.removeEventListener('ended',          onEnded);
         };
     }, [src]);
 
+    // ── 3. Play / Pause ───────────────────────────────────────────────────
     const togglePlay = (e) => {
         e.stopPropagation();
         const audio = audioRef.current;
         if (!audio) return;
-
         if (isPlaying) {
             audio.pause();
             setIsPlaying(false);
         } else {
-            const playPromise = audio.play();
-            if (playPromise !== undefined) {
-                playPromise.then(() => {
-                    setIsPlaying(true);
-                }).catch(err => {
-                    console.error("Audio playback error:", err);
-                    setIsPlaying(false);
-                    alert('عذراً، تنسيق الصوت غير مدعوم في متصفحك أو الملف تالف.');
-                });
+            const p = audio.play();
+            if (p !== undefined) {
+                p.then(() => setIsPlaying(true))
+                 .catch(err => {
+                     console.error('Audio playback error:', err);
+                     setIsPlaying(false);
+                 });
             } else {
                 setIsPlaying(true);
             }
         }
     };
 
-    const formatTime = (time) => {
-        if (isNaN(time) || time === Infinity || time === 0) return '0:00';
-        const mins = Math.floor(time / 60);
-        const secs = Math.floor(time % 60);
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    const formatTime = (t) => {
+        if (!t || !isFinite(t)) return '0:00';
+        const m = Math.floor(t / 60);
+        const s = Math.floor(t % 60);
+        return `${m}:${s.toString().padStart(2, '0')}`;
     };
-
-    // Generate pseudo-random waveform bar heights seeded from src url
-    const BARS = 38;
-    const barHeights = React.useMemo(() => {
-        let seed = 0;
-        for (let i = 0; i < src.length; i++) seed += src.charCodeAt(i);
-        return Array.from({ length: BARS }, (_, i) => {
-            const pseudo = Math.abs(Math.sin((seed + i * 13.7) * 0.37) * Math.cos((seed + i * 7.3) * 0.19));
-            // natural bell-shape boost in the center
-            const center = 1 - Math.pow((i / (BARS - 1)) * 2 - 1, 2) * 0.4;
-            return 0.15 + pseudo * 0.85 * center;
-        });
-    }, [src]);
 
     const progress = duration > 0 ? Math.min(currentTime / duration, 1) : 0;
 
+    // ── 4. Render ─────────────────────────────────────────────────────────
     return (
         <div
             className="voice-player-container"
             style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '10px',
-                background: 'rgba(255,255,255,0.08)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
-                padding: '7px 10px 7px 8px',
-                borderRadius: '14px',
+                gap: '8px',
                 width: '100%',
-                minWidth: '180px',
                 maxWidth: '100%',
                 boxSizing: 'border-box',
+                padding: '6px 8px',
+                borderRadius: '12px',
+                background: 'rgba(255,255,255,0.07)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
                 direction: 'ltr',
+                overflow: 'hidden',
             }}
         >
-            <audio ref={audioRef} src={src} preload="metadata" />
+            <audio ref={audioRef} src={src} preload="metadata" crossOrigin="anonymous" />
 
-            {/* Play/Pause Button */}
+            {/* Play / Pause */}
             <button
                 type="button"
                 onClick={togglePlay}
                 style={{
-                    background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 50%, #3b82f6 100%)',
-                    border: 'none',
-                    borderRadius: '50%',
-                    width: '34px',
-                    height: '34px',
-                    minWidth: '34px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    cursor: 'pointer',
                     flexShrink: 0,
-                    boxShadow: '0 2px 10px rgba(99,102,241,0.55)',
-                    transition: 'transform 0.15s',
+                    width: '32px', height: '32px',
+                    borderRadius: '50%',
+                    border: 'none',
+                    background: 'rgba(255,255,255,0.22)',
+                    color: 'white',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+                    transition: 'transform 0.15s, background 0.15s',
                 }}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.1)'; }}
-                onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.32)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.22)'}
             >
                 {isPlaying ? (
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
-                        <rect x="5" y="4" width="5" height="16" rx="1.5"></rect>
-                        <rect x="14" y="4" width="5" height="16" rx="1.5"></rect>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                        <rect x="5" y="4" width="5" height="16" rx="1.5"/>
+                        <rect x="14" y="4" width="5" height="16" rx="1.5"/>
                     </svg>
                 ) : (
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: '2px' }}>
-                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: '2px' }}>
+                        <polygon points="5 3 19 12 5 21 5 3"/>
                     </svg>
                 )}
             </button>
 
-            {/* Waveform Bars — clickable to seek */}
+            {/* Real Waveform Bars */}
             <div
                 style={{
                     flex: 1,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '2px',
-                    height: '40px',
+                    height: '36px',
+                    gap: '1.5px',
                     cursor: 'pointer',
-                    position: 'relative',
+                    overflow: 'hidden',
+                    minWidth: 0,
                 }}
                 onClick={(e) => {
                     e.stopPropagation();
@@ -172,49 +211,59 @@ const VoicePlayer = ({ src }) => {
                 }}
             >
                 {barHeights.map((h, i) => {
-                    const barProg = i / BARS;
-                    const isPlayed = barProg < progress;
-                    const isHead = Math.abs(barProg - progress) < 1 / BARS && progress > 0;
-                    const t = i / (BARS - 1);
-                    const r = Math.round(139 + (59 - 139) * t);
-                    const g = Math.round(92 + (130 - 92) * t);
-                    const b = 246;
-                    const barH = Math.round(8 + h * 32);
+                    const barFrac = i / (BARS - 1);       // 0 → 1
+                    const isPlayed = barFrac < progress;
+                    const isHead   = isPlaying && Math.abs(barFrac - progress) < 1.5 / BARS;
+
+                    // Gradient: white-purple → indigo → blue depending on position
+                    const t  = barFrac;
+                    const r  = Math.round(255 - (255 - 99)  * t);   // 255 → 99
+                    const g  = Math.round(255 - (255 - 102) * t);   // 255 → 102
+                    const bv = Math.round(255 - (255 - 241) * t);   // 255 → 241
+
+                    // Max bar height is 32px (fits in 36px container with centering)
+                    const barH = Math.round(4 + h * 28);
+
                     return (
                         <div
                             key={i}
                             style={{
-                                width: '3px',
-                                height: `${barH}px`,
+                                flex: '1 1 0',
+                                maxWidth: '4px',
+                                height: `${isHead ? Math.min(barH * 1.3, 36) : barH}px`,
                                 borderRadius: '99px',
-                                flexShrink: 0,
                                 background: isPlayed || isHead
-                                    ? `rgb(${r},${g},${b})`
-                                    : `rgba(${r},${g},${b},0.25)`,
-                                boxShadow: isPlayed ? `0 0 5px rgba(${r},${g},${b},0.6)` : 'none',
-                                transform: isHead && isPlaying ? 'scaleY(1.3)' : 'scaleY(1)',
-                                transition: 'background 0.12s, transform 0.1s, box-shadow 0.12s',
+                                    ? `rgb(${r},${g},${bv})`
+                                    : `rgba(${r},${g},${bv},0.28)`,
+                                boxShadow: isPlayed
+                                    ? `0 0 4px rgba(${r},${g},${bv},0.7)`
+                                    : 'none',
+                                transition: waveReady
+                                    ? 'height 0.25s ease, background 0.1s, box-shadow 0.1s'
+                                    : 'none',
+                                willChange: 'height',
                             }}
                         />
                     );
                 })}
             </div>
 
-            {/* Duration */}
+            {/* Time */}
             <span style={{
-                fontSize: '0.68rem',
-                color: 'rgba(255,255,255,0.5)',
-                fontFamily: 'monospace',
                 flexShrink: 0,
-                minWidth: '28px',
+                fontSize: '0.66rem',
+                color: 'rgba(255,255,255,0.7)',
+                fontFamily: 'monospace',
+                minWidth: '30px',
                 textAlign: 'right',
-                letterSpacing: '0.02em',
+                letterSpacing: '0.03em',
             }}>
-                {formatTime(duration > 0 ? (currentTime > 0 ? currentTime : duration) : 0)}
+                {formatTime(currentTime > 0 ? currentTime : duration)}
             </span>
         </div>
     );
 };
+
 
 const ChatModal = ({ onClose }) => {
     const { user, socket } = useAuth();
