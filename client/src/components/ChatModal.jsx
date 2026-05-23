@@ -790,27 +790,136 @@ const ChatModal = ({ onClose }) => {
                                         )}
                                     </div>
                                     <div
-                                        className="message-bubble"
+                                        className={`message-bubble ${
+                                            (message.image_url && (
+                                                message.content === '🎤 رسالة صوتية' ||
+                                                message.image_url.includes('.webm') ||
+                                                message.image_url.includes('.mp3') ||
+                                                message.image_url.includes('.wav') ||
+                                                message.image_url.includes('.ogg') ||
+                                                message.image_url.includes('.m4a') ||
+                                                message.image_url.includes('.mp4') ||
+                                                message.image_url.includes('.aac')
+                                            )) ? 'voice-message-bubble' : ''
+                                        }`}
                                         onDoubleClick={() => handleLike(message)}
                                         onClick={(e) => {
-                                            if (e.target.tagName !== 'A' && e.target.tagName !== 'IMG' && !e.target.closest('.message-delete-btn')) {
+                                            if (e.target.tagName !== 'A' && e.target.tagName !== 'IMG' && !e.target.closest('.message-delete-btn') && !e.target.closest('.voice-player-container')) {
                                                 handleDeleteMessage(message.id);
                                             }
                                         }}
-                                        style={{ position: 'relative', display: 'flex', flexDirection: 'column', cursor: 'pointer' }}
+                                        style={{
+                                            position: 'relative',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            cursor: 'pointer',
+                                            ...(message.image_url && (
+                                                message.content === '🎤 رسالة صوتية' ||
+                                                message.image_url.includes('.webm') ||
+                                                message.image_url.includes('.mp3') ||
+                                                message.image_url.includes('.wav') ||
+                                                message.image_url.includes('.ogg') ||
+                                                message.image_url.includes('.m4a') ||
+                                                message.image_url.includes('.mp4') ||
+                                                message.image_url.includes('.aac')
+                                            ) ? {
+                                                background: message.sender_id === user.id
+                                                    ? 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 55%, #2563eb 100%)'
+                                                    : 'linear-gradient(135deg, #1e1b4b 0%, #312e81 55%, #1e3a8a 100%)',
+                                                padding: '10px 12px 8px 12px',
+                                                borderRadius: message.sender_id === user.id
+                                                    ? '18px 4px 18px 18px'
+                                                    : '4px 18px 18px 18px',
+                                                boxShadow: '0 4px 20px rgba(99,102,241,0.35)',
+                                                border: '1px solid rgba(139,92,246,0.25)',
+                                                backdropFilter: 'blur(8px)',
+                                            } : {})
+                                        }}
                                     >
                                         {message.image_url && (
-                                            (message.content === '🎤 رسالة صوتية' || 
-                                             message.image_url.includes('.webm') || 
-                                             message.image_url.includes('.mp3') || 
-                                             message.image_url.includes('.wav') || 
-                                             message.image_url.includes('.ogg') || 
+                                            (message.content === '🎤 رسالة صوتية' ||
+                                             message.image_url.includes('.webm') ||
+                                             message.image_url.includes('.mp3') ||
+                                             message.image_url.includes('.wav') ||
+                                             message.image_url.includes('.ogg') ||
                                              message.image_url.includes('.m4a') ||
                                              message.image_url.includes('.mp4') ||
                                              message.image_url.includes('.aac')) ? (
-                                                <div className="message-audio-wrapper" style={{ marginTop: '5px', marginBottom: (message.content && message.content !== '🎤 رسالة صوتية') ? '8px' : '0' }}>
-                                                    <VoicePlayer src={message.image_url} />
-                                                </div>
+                                                <>
+                                                    {/* Voice Player */}
+                                                    <div style={{ marginBottom: '6px' }}>
+                                                        <VoicePlayer src={message.image_url} />
+                                                    </div>
+
+                                                    {/* Voice message footer: delete | time | status */}
+                                                    <div style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'flex-end',
+                                                        gap: '6px',
+                                                        marginTop: '2px',
+                                                    }}>
+                                                        {/* Delete */}
+                                                        <button
+                                                            type="button"
+                                                            className="message-delete-btn"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleDeleteMessage(message.id);
+                                                            }}
+                                                            title="حذف الرسالة"
+                                                            style={{
+                                                                background: 'rgba(255,255,255,0.12)',
+                                                                border: 'none',
+                                                                borderRadius: '50%',
+                                                                width: '22px',
+                                                                height: '22px',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                cursor: 'pointer',
+                                                                color: 'rgba(255,255,255,0.7)',
+                                                                padding: 0,
+                                                                flexShrink: 0,
+                                                            }}
+                                                        >
+                                                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                                <polyline points="3 6 5 6 21 6"></polyline>
+                                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                                            </svg>
+                                                        </button>
+
+                                                        {/* Time */}
+                                                        <span style={{
+                                                            fontSize: '0.68rem',
+                                                            color: 'rgba(255,255,255,0.65)',
+                                                            fontFamily: 'monospace',
+                                                            letterSpacing: '0.02em',
+                                                        }}>
+                                                            {formatMessageTime(message.created_at)}
+                                                        </span>
+
+                                                        {/* Read status (only for sender) */}
+                                                        {message.sender_id === user.id && (
+                                                            <span style={{ display: 'flex', alignItems: 'center' }}>
+                                                                {message.status === 'failed' ? (
+                                                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fca5a5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                        <circle cx="12" cy="12" r="10"></circle>
+                                                                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                                                                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                                                    </svg>
+                                                                ) : (
+                                                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                                                                        stroke={message.is_read ? '#a5f3fc' : 'rgba(255,255,255,0.5)'}
+                                                                        strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                                                        <path d="M20 6L9 17l-5-5"></path>
+                                                                        <path d="M20 12L13 19l-2-2" style={{ opacity: message.is_read ? 1 : 0.6 }}></path>
+                                                                    </svg>
+                                                                )}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </>
                                             ) : (
                                                 <img
                                                     src={message.image_url}
@@ -847,41 +956,53 @@ const ChatModal = ({ onClose }) => {
                                                 </svg>
                                             </div>
                                         )}
-                                        <div className="message-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '5px', marginTop: '4px' }}>
-                                            <button 
-                                                type="button" 
-                                                className="message-delete-btn" 
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleDeleteMessage(message.id);
-                                                }}
-                                                title="حذف الرسالة"
-                                            >
-                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                    <polyline points="3 6 5 6 21 6"></polyline>
-                                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                                </svg>
-                                            </button>
-                                            <span className="message-time">
-                                                {formatMessageTime(message.created_at)}
-                                            </span>
-                                            {message.sender_id === user.id && (
-                                                <span className="message-status" title={message.status === 'failed' ? 'لم تصل' : (message.is_read ? 'تمت القراءة' : 'تم الاستلام')} style={{ display: 'flex', alignItems: 'center' }}>
-                                                    {message.status === 'failed' ? (
-                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                            <circle cx="12" cy="12" r="10"></circle>
-                                                            <line x1="12" y1="8" x2="12" y2="12"></line>
-                                                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                                                        </svg>
-                                                    ) : (
-                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={message.is_read ? "#10b981" : "#ef4444"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                            <path d="M20 6L9 17l-5-5"></path>
-                                                            <path d="M20 12L13 19l-2-2" style={{ opacity: message.is_read ? 1 : 0.7 }}></path>
-                                                        </svg>
-                                                    )}
+                                        {/* Normal message footer (non-voice) */}
+                                        {!(message.image_url && (
+                                            message.content === '🎤 رسالة صوتية' ||
+                                            message.image_url.includes('.webm') ||
+                                            message.image_url.includes('.mp3') ||
+                                            message.image_url.includes('.wav') ||
+                                            message.image_url.includes('.ogg') ||
+                                            message.image_url.includes('.m4a') ||
+                                            message.image_url.includes('.mp4') ||
+                                            message.image_url.includes('.aac')
+                                        )) && (
+                                            <div className="message-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '5px', marginTop: '4px' }}>
+                                                <button
+                                                    type="button"
+                                                    className="message-delete-btn"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDeleteMessage(message.id);
+                                                    }}
+                                                    title="حذف الرسالة"
+                                                >
+                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                                    </svg>
+                                                </button>
+                                                <span className="message-time">
+                                                    {formatMessageTime(message.created_at)}
                                                 </span>
-                                            )}
-                                        </div>
+                                                {message.sender_id === user.id && (
+                                                    <span className="message-status" title={message.status === 'failed' ? 'لم تصل' : (message.is_read ? 'تمت القراءة' : 'تم الاستلام')} style={{ display: 'flex', alignItems: 'center' }}>
+                                                        {message.status === 'failed' ? (
+                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                <circle cx="12" cy="12" r="10"></circle>
+                                                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                                            </svg>
+                                                        ) : (
+                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={message.is_read ? "#10b981" : "#ef4444"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                <path d="M20 6L9 17l-5-5"></path>
+                                                                <path d="M20 12L13 19l-2-2" style={{ opacity: message.is_read ? 1 : 0.7 }}></path>
+                                                            </svg>
+                                                        )}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             ))}
