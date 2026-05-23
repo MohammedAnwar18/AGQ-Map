@@ -533,6 +533,20 @@
     overflow-x: hidden;
 }
 
+/* Add a visual safe area top bar to separate phone from app */
+.more-menu-dropdown::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: env(safe-area-inset-top, 25px);
+    background: #0a1226;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 10000;
+    pointer-events: none;
+}
+
 .more-menu-dropdown::before {
     content: "";
     position: absolute;
