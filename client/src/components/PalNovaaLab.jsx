@@ -4186,116 +4186,120 @@ out geom;`;
                                             const currentStyle = layerStyles[layer.id] || { color: layer.color };
                                             return (
                                                 <div key={layer.id} className={`layer-item active ${isTable ? 'table-layer' : ''}`}>
-                                                    <div className="layer-main-info">
-                                                        <div
-                                                            className="layer-color-btn"
-                                                            onClick={(e) => {
-                                                                if (isTable) return;
-                                                                const rect = e.currentTarget.getBoundingClientRect();
-                                                                setStylePopup({
-                                                                    layerId: layer.id,
-                                                                    x: window.innerWidth - 360, // Right side position
-                                                                    y: Math.max(20, Math.min(window.innerHeight - 600, rect.top - 40))
-                                                                });
-                                                            }}
-                                                            style={{ 
-                                                                background: isTable ? 'rgba(16, 217, 160, 0.2)' : (currentStyle.color || layer.color),
-                                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                                            }}
-                                                            title={isTable ? "جدول بيانات" : "تعديل النمط والرموز"}
-                                                        >
-                                                            {isTable && (
-                                                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#10D9A0" strokeWidth="2.5">
-                                                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                                                                    <line x1="3" y1="9" x2="21" y2="9" />
-                                                                    <line x1="9" y1="21" x2="9" y2="9" />
-                                                                </svg>
-                                                            )}
+                                                    <div className="layer-main-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '12px' }}>
+                                                        <div className="layer-main-info">
+                                                            <div
+                                                                className="layer-color-btn"
+                                                                onClick={(e) => {
+                                                                    if (isTable) return;
+                                                                    const rect = e.currentTarget.getBoundingClientRect();
+                                                                    setStylePopup({
+                                                                        layerId: layer.id,
+                                                                        x: window.innerWidth - 360, // Right side position
+                                                                        y: Math.max(20, Math.min(window.innerHeight - 600, rect.top - 40))
+                                                                    });
+                                                                }}
+                                                                style={{ 
+                                                                    background: isTable ? 'rgba(16, 217, 160, 0.2)' : (currentStyle.color || layer.color),
+                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                                }}
+                                                                title={isTable ? "جدول بيانات" : "تعديل النمط والرموز"}
+                                                            >
+                                                                {isTable && (
+                                                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#10D9A0" strokeWidth="2.5">
+                                                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                                                        <line x1="3" y1="9" x2="21" y2="9" />
+                                                                        <line x1="9" y1="21" x2="9" y2="9" />
+                                                                    </svg>
+                                                                )}
+                                                            </div>
+                                                            <div className="layer-text">
+                                                                {editingLayerId === layer.id ? (
+                                                                    <input
+                                                                        autoFocus
+                                                                        className="rename-input" maxLength={19}
+                                                                        value={tempLayerName}
+                                                                        onChange={(e) => setTempLayerName(e.target.value)}
+                                                                        onBlur={() => handleRenameLayer(layer.id, tempLayerName)}
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter') {
+                                                                                e.preventDefault();
+                                                                                handleRenameLayer(layer.id, tempLayerName);
+                                                                            }
+                                                                            if (e.key === 'Escape') setEditingLayerId(null);
+                                                                        }}
+                                                                    />
+                                                                ) : (
+                                                                    <h5 onDoubleClick={() => { setEditingLayerId(layer.id); setTempLayerName(layer.name); }}>
+                                                                        {layer.name}
+                                                                    </h5>
+                                                                )}
+                                                                <small>
+                                                                    {isTable 
+                                                                        ? `${layer.data?.length || 0} سجل بيانات` 
+                                                                        : `${layer.data?.features?.length || 0} معلم جغرافي`}
+                                                                </small>
+                                                            </div>
                                                         </div>
-                                                        <div className="layer-text">
-                                                            {editingLayerId === layer.id ? (
-                                                                <input
-                                                                    autoFocus
-                                                                    className="rename-input" maxLength={19}
-                                                                    value={tempLayerName}
-                                                                    onChange={(e) => setTempLayerName(e.target.value)}
-                                                                    onBlur={() => handleRenameLayer(layer.id, tempLayerName)}
-                                                                    onKeyDown={(e) => {
-                                                                        if (e.key === 'Enter') {
-                                                                            e.preventDefault();
-                                                                            handleRenameLayer(layer.id, tempLayerName);
-                                                                        }
-                                                                        if (e.key === 'Escape') setEditingLayerId(null);
-                                                                    }}
-                                                                />
-                                                            ) : (
-                                                                <h5 onDoubleClick={() => { setEditingLayerId(layer.id); setTempLayerName(layer.name); }}>
-                                                                    {layer.name}
-                                                                </h5>
-                                                            )}
-                                                            <small>
-                                                                {isTable 
-                                                                    ? `${layer.data?.length || 0} سجل بيانات` 
-                                                                    : `${layer.data?.features?.length || 0} معلم جغرافي`}
-                                                            </small>
-                                                        </div>
-                                                    </div>
-                                                    <div className="layer-actions">
-                                                        {openActionsLayerId === layer.id ? (
-                                                            <div className="expanded-actions" style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                                        {openActionsLayerId !== layer.id && (
+                                                            <div className="layer-actions">
                                                                 <button 
-                                                                    className={`visibility-btn ${layer.isVisible !== false ? 'active' : ''}`} 
-                                                                    onClick={() => {
-                                                                        setGeoLayers(prev => prev.map(l => l.id === layer.id ? { ...l, isVisible: !l.isVisible } : l));
+                                                                    onClick={() => setOpenActionsLayerId(layer.id)}
+                                                                    className="more-actions-btn"
+                                                                    style={{ 
+                                                                        width: '32px', height: '32px', borderRadius: '8px', 
+                                                                        display: 'grid', placeItems: 'center', 
+                                                                        background: 'rgba(255,255,255,0.04)', color: 'var(--text-muted)' 
                                                                     }}
-                                                                    style={{ background: 'rgba(255,255,255,0.05)', border: 'none', cursor: 'pointer', color: layer.isVisible !== false ? 'var(--primary)' : '#666', display: 'flex', alignItems: 'center', padding: '6px', borderRadius: '8px' }}
-                                                                    title={layer.isVisible !== false ? "إخفاء من الخريطة" : "إظهار على الخريطة"}
+                                                                    title="خيارات إضافية"
                                                                 >
-                                                                    {layer.isVisible !== false ? (
-                                                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
-                                                                    ) : (
-                                                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
-                                                                    )}
-                                                                </button>
-                                                                <button className="edit" style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '6px' }} onClick={() => { setEditingLayerId(layer.id); setTempLayerName(layer.name); }} title="إعادة تسمية">
-                                                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
-                                                                </button>
-                                                                <button style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '6px' }} onClick={() => { 
-                                                                    setActiveTableLayerId(layer.id); 
-                                                                    setShowBottomTable(true);
-                                                                    setGeoLayers(prev => prev.map(l => l.id === layer.id ? { ...l, isVisible: true } : l));
-                                                                }} title="عرض البيانات الوصفية">
-                                                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
-                                                                </button>
-                                                                <button style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '6px' }} onClick={() => handleExportLayer(layer)} title={isTable ? "تصدير كملف CSV" : "تصدير كملف GeoJSON"}>
-                                                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                                                                </button>
-                                                                <button className="delete" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', borderRadius: '8px', padding: '6px' }} onClick={() => { setGeoLayers(prev => prev.filter(l => l.id !== layer.id)); setLayerStyles(prev => { const n = { ...prev }; delete n[layer.id]; return n; }); if (activeTableLayerId === layer.id) { setActiveTableLayerId(null); setShowBottomTable(false); } }} title="حذف الطبقة">
-                                                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
-                                                                </button>
-                                                                <button onClick={() => setOpenActionsLayerId(null)} style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '8px', padding: '6px' }}>
-                                                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                                                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                                        <circle cx="12" cy="12" r="1" />
+                                                                        <circle cx="12" cy="5" r="1" />
+                                                                        <circle cx="12" cy="19" r="1" />
+                                                                    </svg>
                                                                 </button>
                                                             </div>
-                                                        ) : (
-                                                            <button 
-                                                                onClick={() => setOpenActionsLayerId(layer.id)}
-                                                                className="more-actions-btn"
-                                                                style={{ 
-                                                                    width: '32px', height: '32px', borderRadius: '8px', 
-                                                                    display: 'grid', placeItems: 'center', 
-                                                                    background: 'rgba(255,255,255,0.04)', color: 'var(--text-muted)' 
-                                                                }}
-                                                                title="خيارات إضافية"
-                                                            >
-                                                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                                                    <circle cx="12" cy="12" r="1" />
-                                                                    <circle cx="12" cy="5" r="1" />
-                                                                    <circle cx="12" cy="19" r="1" />
-                                                                </svg>
-                                                            </button>
                                                         )}
                                                     </div>
+
+                                                    {openActionsLayerId === layer.id && (
+                                                        <div className="expanded-actions" style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', width: '100%', marginTop: '8px', justifyContent: 'space-around' }}>
+                                                            <button 
+                                                                className={`visibility-btn ${layer.isVisible !== false ? 'active' : ''}`} 
+                                                                onClick={() => {
+                                                                    setGeoLayers(prev => prev.map(l => l.id === layer.id ? { ...l, isVisible: !l.isVisible } : l));
+                                                                }}
+                                                                style={{ background: 'rgba(255,255,255,0.05)', border: 'none', cursor: 'pointer', color: layer.isVisible !== false ? 'var(--primary)' : '#666', display: 'flex', alignItems: 'center', padding: '6px', borderRadius: '8px' }}
+                                                                title={layer.isVisible !== false ? "إخفاء من الخريطة" : "إظهار على الخريطة"}
+                                                            >
+                                                                {layer.isVisible !== false ? (
+                                                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                                                                ) : (
+                                                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
+                                                                )}
+                                                            </button>
+                                                            <button className="edit" style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '6px' }} onClick={() => { setEditingLayerId(layer.id); setTempLayerName(layer.name); }} title="إعادة تسمية">
+                                                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                                                            </button>
+                                                            <button style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '6px' }} onClick={() => { 
+                                                                setActiveTableLayerId(layer.id); 
+                                                                setShowBottomTable(true);
+                                                                setGeoLayers(prev => prev.map(l => l.id === layer.id ? { ...l, isVisible: true } : l));
+                                                            }} title="عرض البيانات الوصفية">
+                                                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
+                                                            </button>
+                                                            <button style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '6px' }} onClick={() => handleExportLayer(layer)} title={isTable ? "تصدير كملف CSV" : "تصدير كملف GeoJSON"}>
+                                                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                                                            </button>
+                                                            <button className="delete" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', borderRadius: '8px', padding: '6px' }} onClick={() => { setGeoLayers(prev => prev.filter(l => l.id !== layer.id)); setLayerStyles(prev => { const n = { ...prev }; delete n[layer.id]; return n; }); if (activeTableLayerId === layer.id) { setActiveTableLayerId(null); setShowBottomTable(false); } }} title="حذف الطبقة">
+                                                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                                                            </button>
+                                                            <button onClick={() => setOpenActionsLayerId(null)} style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '8px', padding: '6px' }}>
+                                                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             );
                                         })}
