@@ -2338,20 +2338,23 @@
 /* Sidebar - Manage Layers (Left Side) */
 .sidebar {
   position: absolute;
-  top: calc(var(--topbar-h) + 16px);
-  left: 16px;
-  bottom: calc(var(--statusbar-h) + 16px);
+  top: var(--topbar-h);
+  left: 0;
+  bottom: var(--statusbar-h);
   width: var(--panel-w);
-  background: rgba(10, 20, 38, 0.78) !important;
+  background: rgba(10, 20, 38, 0.8) !important;
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-radius: 18px !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  border-left: none !important;
+  border-radius: 0 !important;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   z-index: 1001;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  box-shadow: 10px 0 40px rgba(0,0,0,0.4);
   transition: all 0.3s var(--transition);
 }
 

@@ -4118,17 +4118,14 @@ out geom;`;
 
                 <aside className="sidebar">
                     <div className="panel-tabs">
-                        <div className={`panel-tab ${activeTab === 'layers' ? 'active' : ''}`} onClick={() => setActiveTab('layers')}>
+                        <div className={`panel-tab ${activeTab === 'layers' ? 'active' : ''}`} onClick={() => setActiveTab('layers')} title="إدارة الطبقات">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg>
-                            <span>إدارة الطبقات</span>
                         </div>
-                        <div className={`panel-tab ${activeTab === 'injection' ? 'active' : ''}`} onClick={() => setActiveTab('injection')}>
+                        <div className={`panel-tab ${activeTab === 'injection' ? 'active' : ''}`} onClick={() => setActiveTab('injection')} title="حقن البيانات">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-                            <span>حقن البيانات</span>
                         </div>
-                        <div className={`panel-tab ${activeTab === 'palstreet' ? 'active' : ''}`} onClick={() => setActiveTab('palstreet')}>
+                        <div className={`panel-tab ${activeTab === 'palstreet' ? 'active' : ''}`} onClick={() => setActiveTab('palstreet')} title="PalStreet">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 3v18M18 3v18M12 3v4M12 10v4M12 17v4" /></svg>
-                            <span>PalStreet</span>
                         </div>
                     </div>
 
