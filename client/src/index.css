@@ -71,20 +71,18 @@ body {
   background: linear-gradient(135deg, var(--bg-primary) 0%, #1a2332 100%);
   color: var(--text-primary);
   
-  /* حل مشكلة الطول في وضع التطبيق */
-  height: 100%;
-  min-height: 100vh;
-  min-height: 100dvh;
+  /* Force body to fill absolute viewport on iOS to prevent bottom black bar */
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
   
-  /* ضبط هوامش الأمان للكاميرا والحواف (Notch) */
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: 0;
-  padding-left: env(safe-area-inset-left, 0px);
-  padding-right: env(safe-area-inset-right, 0px);
+  /* Layout viewport extends edge-to-edge; page layouts handle safe areas individually */
+  padding: 0;
   
   overflow: hidden;
-  position: fixed; /* يمنع التمرير العشوائي لخلفية الموقع في وضع التطبيق */
-  width: 100%;
   
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
