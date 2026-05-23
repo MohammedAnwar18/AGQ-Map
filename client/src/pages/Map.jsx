@@ -1191,9 +1191,6 @@ const MapComponent = () => {
 
     // Native-Grade Geolocation Tracking
     useEffect(() => {
-        // We removed the block that skipped geolocation if savedLoc existed, 
-        // because the user wants their live location updated as soon as the app opens.
-
         // 🚀 Hybrid Native/Web Geolocation Setup
         if (isNative()) {
             console.log("📱 Running inside native app. Initializing native background geolocation...");
@@ -1221,6 +1218,23 @@ const MapComponent = () => {
             if (!navigator.geolocation) {
                 console.error("Geolocation is not supported by this device.");
                 return;
+            }
+
+            try {
+                if (navigator.permissions) {
+                    const permission = await navigator.permissions.query({ name: 'geolocation' });
+                    const savedLoc = localStorage.getItem('last_user_location');
+                    
+                    // If the browser hasn't permanently saved the 'Allow' decision (state is 'prompt' or 'denied'),
+                    // AND we already have a saved location from a previous visit,
+                    // we skip auto-prompting so the user isn't annoyed with a popup on every single visit.
+                    if (permission.state !== 'granted' && savedLoc && !isTracking && !destination) {
+                        console.log("Permission requires prompt. Using saved location to avoid annoying popup on load.");
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.warn("Permissions API not supported or error", e);
             }
 
             // High-Precision Options for App-like experience
