@@ -855,3 +855,51 @@
         border: none !important;
     }
 }
+
+/* Mobile responsive overrides for profile modals to prevent phone status bar overlap */
+@media (max-width: 768px) {
+    .profile-modal-overlay .modal-container {
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+        width: 100vw !important;
+        border-radius: 0 !important;
+        background: var(--bg-primary) !important; /* solid background for native app look */
+    }
+
+    .profile-modal-overlay .modal-header {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important; /* Center the title */
+        position: relative !important;
+        padding-top: calc(env(safe-area-inset-top, 44px) + 12px) !important;
+        padding-bottom: 12px !important;
+        background: var(--bg-secondary) !important; /* solid top bar */
+        border-bottom: 1px solid var(--bg-tertiary) !important;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3) !important;
+        z-index: 200 !important;
+    }
+
+    .profile-modal-overlay .modal-header h2 {
+        font-size: 1.2rem !important;
+        font-weight: 800 !important;
+        margin: 0 !important;
+        text-align: center !important;
+        width: 100% !important;
+    }
+
+    .profile-modal-overlay .modal-header .btn-close {
+        position: absolute !important;
+        left: 16px !important;
+        bottom: 10px !important; /* Pushed below safe area */
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 0.95rem !important;
+        border-radius: 50% !important;
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin: 0 !important;
+    }
+}
