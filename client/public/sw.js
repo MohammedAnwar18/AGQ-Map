@@ -1,4 +1,4 @@
-const CACHE_NAME = 'palnovaa-shell-v3';
+const CACHE_NAME = 'palnovaa-shell-v4';
 
 // App shell: files that make the app load instantly from home screen
 const APP_SHELL = [
