@@ -4155,27 +4155,18 @@ out geom;`;
 
                                     <div className="link-import-section">
                                         <div className="panel-section-title">استيراد من رابط (URL)</div>
-                                        <div className="link-input-group" style={{ display: 'flex', gap: '8px' }}>
+                                        <div className="link-input-group">
                                             <input
                                                 type="text"
                                                 placeholder="رابط ArcGIS أو GeoJSON..."
                                                 value={importLink}
                                                 onChange={(e) => setImportLink(e.target.value)}
-                                                style={{
-                                                    flex: 1, background: 'rgba(255,255,255,0.05)',
-                                                    border: '1px solid var(--border)', borderRadius: '8px',
-                                                    padding: '8px 12px', color: 'white', fontSize: '0.8rem'
-                                                }}
+                                                className="link-import-input"
                                             />
                                             <button
                                                 onClick={handleImportLink}
                                                 disabled={isImporting}
-                                                style={{
-                                                    background: 'var(--primary)', color: 'black',
-                                                    border: 'none', borderRadius: '8px', padding: '0 15px',
-                                                    fontWeight: 'bold', cursor: 'pointer',
-                                                    opacity: isImporting ? 0.5 : 1
-                                                }}
+                                                className="link-import-btn"
                                             >
                                                 {isImporting ? '...' : 'جلب'}
                                             </button>
