@@ -32,6 +32,7 @@ import MagazineModal from '../components/MagazineModal';
 import PalNovaaLab from '../components/PalNovaaLab';
 import SplashLoading from '../components/SplashLoading';
 import { postService, friendService, authService, notificationService, communityService, shopService, getImageUrl } from '../services/api';
+import { isNative, startNativeTracking, stopNativeTracking } from '../utils/nativeLocation';
 import './Map.css';
 
 // Helper: Smart Smoothing (Low-Impact Chaikin)
@@ -1198,6 +1199,26 @@ const MapComponent = () => {
             return;
         }
 
+        // 🚀 Hybrid Native/Web Geolocation Setup
+        if (isNative()) {
+            console.log("📱 Running inside native app. Initializing native background geolocation...");
+            startNativeTracking(
+                (coords) => {
+                    updateUserLocation(coords);
+                },
+                (err) => {
+                    console.error("Native Geolocation Error:", err);
+                    setGpsErrorType('generic');
+                    setShowGPSGuide(true);
+                }
+            );
+
+            return () => {
+                stopNativeTracking();
+            };
+        }
+
+        console.log("🌐 Running in standard browser. Initializing browser geolocation...");
         let watchId;
         let retryTimeout;
 
@@ -1322,6 +1343,46 @@ const MapComponent = () => {
             });
         }
     }, [userLocation, isTracking]);
+
+    // 🔒 Screen Wake Lock API to keep GPS active by preventing device sleep
+    useEffect(() => {
+        let wakeLock = null;
+        
+        const requestWakeLock = async () => {
+            try {
+                if ('wakeLock' in navigator && (isTracking || !isOnline)) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('🔒 Screen Wake Lock is active (keeping GPS running)');
+                }
+            } catch (err) {
+                console.warn(`⚠️ Wake Lock request failed: ${err.name}, ${err.message}`);
+            }
+        };
+
+        if (isTracking || !isOnline) {
+            requestWakeLock();
+        }
+
+        // Re-acquire lock when page becomes visible again
+        const handleVisibilityChange = () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') {
+                requestWakeLock();
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            if (wakeLock !== null) {
+                wakeLock.release()
+                    .then(() => {
+                        console.log('🔓 Screen Wake Lock released');
+                    })
+                    .catch((err) => console.error('Error releasing Wake Lock:', err));
+            }
+        };
+    }, [isTracking, isOnline]);
 
     const [isInitialDataLoaded, setIsInitialDataLoaded] = useState(true);
 

@@ -1,0 +1,6 @@
+{
+  "appId": "com.palnovaa.app",
+  "appName": "PalNovaa",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}

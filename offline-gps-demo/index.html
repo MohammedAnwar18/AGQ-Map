@@ -451,6 +451,27 @@
         // Start Watching continuous location
         if (navigator.geolocation) {
             navigator.geolocation.watchPosition(onLocationSuccess, onLocationError, geoOptions);
+            
+            // 🔒 Screen Wake Lock to keep GPS tracking active on mobile screen
+            let wakeLock = null;
+            async function requestWakeLock() {
+                try {
+                    if ('wakeLock' in navigator) {
+                        wakeLock = await navigator.wakeLock.request('screen');
+                        console.log('🔒 Screen Wake Lock is active (keeping GPS running)');
+                    }
+                } catch (err) {
+                    console.warn(`⚠️ Wake Lock failed: ${err.name}, ${err.message}`);
+                }
+            }
+            requestWakeLock();
+            
+            // Re-acquire lock if page becomes visible again
+            document.addEventListener('visibilitychange', () => {
+                if (wakeLock !== null && document.visibilityState === 'visible') {
+                    requestWakeLock();
+                }
+            });
         } else {
             gpsStatusBar.textContent = "❌ جهازك لا يدعم تحديد الموقع (Geolocation API).";
         }
