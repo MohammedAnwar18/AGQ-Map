@@ -28,7 +28,7 @@ const VoicePlayer = ({ src }) => {
                 setDuration(audio.duration);
             }
         };
-        const onEnded = () => setIsPlaying(false);
+        const onEnded = () => { setIsPlaying(false); setCurrentTime(0); };
 
         // Fetch duration if initially Infinity (common for chunked streams like webm)
         if (audio.duration && !isNaN(audio.duration) && audio.duration !== Infinity) {
@@ -57,101 +57,162 @@ const VoicePlayer = ({ src }) => {
             audio.pause();
             setIsPlaying(false);
         } else {
-            audio.play().catch(err => console.error("Audio playback error:", err));
-            setIsPlaying(true);
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    setIsPlaying(true);
+                }).catch(err => {
+                    console.error("Audio playback error:", err);
+                    setIsPlaying(false);
+                    alert('عذراً، تنسيق الصوت غير مدعوم في متصفحك أو الملف تالف.');
+                });
+            } else {
+                setIsPlaying(true);
+            }
         }
     };
 
-    const handleSeek = (e) => {
-        e.stopPropagation();
-        const audio = audioRef.current;
-        if (!audio || !duration) return;
-        const seekTime = (parseFloat(e.target.value) / 100) * duration;
-        audio.currentTime = seekTime;
-        setCurrentTime(seekTime);
-    };
-
     const formatTime = (time) => {
-        if (isNaN(time) || time === Infinity) return '0:00';
+        if (isNaN(time) || time === Infinity || time === 0) return '0:00';
         const mins = Math.floor(time / 60);
         const secs = Math.floor(time % 60);
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
+    // Generate pseudo-random waveform bar heights seeded from src url
+    const BARS = 38;
+    const barHeights = React.useMemo(() => {
+        let seed = 0;
+        for (let i = 0; i < src.length; i++) seed += src.charCodeAt(i);
+        return Array.from({ length: BARS }, (_, i) => {
+            const pseudo = Math.abs(Math.sin((seed + i * 13.7) * 0.37) * Math.cos((seed + i * 7.3) * 0.19));
+            // natural bell-shape boost in the center
+            const center = 1 - Math.pow((i / (BARS - 1)) * 2 - 1, 2) * 0.4;
+            return 0.15 + pseudo * 0.85 * center;
+        });
+    }, [src]);
+
+    const progress = duration > 0 ? Math.min(currentTime / duration, 1) : 0;
+
     return (
-        <div className="voice-player-container" style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            background: 'rgba(255, 255, 255, 0.08)',
-            padding: '8px 12px',
-            borderRadius: '16px',
-            width: '230px',
-            maxWidth: '100%',
-            boxSizing: 'border-box',
-            direction: 'rtl'
-        }}>
+        <div
+            className="voice-player-container"
+            style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '10px',
+                background: 'rgba(255,255,255,0.06)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                padding: '7px 12px 7px 8px',
+                borderRadius: '22px',
+                maxWidth: '270px',
+                width: '270px',
+                boxSizing: 'border-box',
+                direction: 'ltr',
+                border: '1px solid rgba(139,92,246,0.18)',
+                boxShadow: '0 2px 16px rgba(139,92,246,0.08)',
+            }}
+        >
             <audio ref={audioRef} src={src} preload="metadata" />
-            
-            <button 
+
+            {/* Play/Pause Button */}
+            <button
                 type="button"
-                onClick={togglePlay} 
+                onClick={togglePlay}
                 style={{
-                    background: '#fbab15',
+                    background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 50%, #3b82f6 100%)',
                     border: 'none',
                     borderRadius: '50%',
-                    width: '32px',
-                    height: '32px',
+                    width: '34px',
+                    height: '34px',
+                    minWidth: '34px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: 'white',
                     cursor: 'pointer',
-                    flexShrink: 0
+                    flexShrink: 0,
+                    boxShadow: '0 2px 10px rgba(99,102,241,0.55)',
+                    transition: 'transform 0.15s',
                 }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.1)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
             >
                 {isPlaying ? (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                        <rect x="6" y="4" width="4" height="16" rx="1"></rect>
-                        <rect x="14" y="4" width="4" height="16" rx="1"></rect>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                        <rect x="5" y="4" width="5" height="16" rx="1.5"></rect>
+                        <rect x="14" y="4" width="5" height="16" rx="1.5"></rect>
                     </svg>
                 ) : (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style={{ transform: 'scaleX(-1)', marginRight: '2px' }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: '2px' }}>
                         <polygon points="5 3 19 12 5 21 5 3"></polygon>
                     </svg>
                 )}
             </button>
 
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                <input 
-                    type="range" 
-                    min="0" 
-                    max="100" 
-                    value={duration ? (currentTime / duration) * 100 : 0} 
-                    onChange={handleSeek}
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                        width: '100%',
-                        height: '4px',
-                        borderRadius: '2px',
-                        background: 'rgba(255,255,255,0.2)',
-                        outline: 'none',
-                        cursor: 'pointer',
-                        accentColor: '#fbab15',
-                        margin: 0,
-                        padding: 0
-                    }}
-                />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', fontFamily: 'monospace' }}>
-                    <span>{formatTime(currentTime)}</span>
-                    <span>{formatTime(duration || 0)}</span>
-                </div>
+            {/* Waveform Bars — clickable to seek */}
+            <div
+                style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '2px',
+                    height: '40px',
+                    cursor: 'pointer',
+                    position: 'relative',
+                }}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                    const audio = audioRef.current;
+                    if (!audio || !duration) return;
+                    audio.currentTime = ratio * duration;
+                    setCurrentTime(ratio * duration);
+                }}
+            >
+                {barHeights.map((h, i) => {
+                    const barProg = i / BARS;
+                    const isPlayed = barProg < progress;
+                    const isHead = Math.abs(barProg - progress) < 1 / BARS && progress > 0;
+                    const t = i / (BARS - 1);
+                    const r = Math.round(139 + (59 - 139) * t);
+                    const g = Math.round(92 + (130 - 92) * t);
+                    const b = 246;
+                    const barH = Math.round(8 + h * 32);
+                    return (
+                        <div
+                            key={i}
+                            style={{
+                                width: '3px',
+                                height: `${barH}px`,
+                                borderRadius: '99px',
+                                flexShrink: 0,
+                                background: isPlayed || isHead
+                                    ? `rgb(${r},${g},${b})`
+                                    : `rgba(${r},${g},${b},0.25)`,
+                                boxShadow: isPlayed ? `0 0 5px rgba(${r},${g},${b},0.6)` : 'none',
+                                transform: isHead && isPlaying ? 'scaleY(1.3)' : 'scaleY(1)',
+                                transition: 'background 0.12s, transform 0.1s, box-shadow 0.12s',
+                            }}
+                        />
+                    );
+                })}
             </div>
-            
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: 'rgba(255,255,255,0.4)', flexShrink: 0 }}>
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-            </svg>
+
+            {/* Duration */}
+            <span style={{
+                fontSize: '0.68rem',
+                color: 'rgba(255,255,255,0.5)',
+                fontFamily: 'monospace',
+                flexShrink: 0,
+                minWidth: '28px',
+                textAlign: 'right',
+                letterSpacing: '0.02em',
+            }}>
+                {formatTime(duration > 0 ? (currentTime > 0 ? currentTime : duration) : 0)}
+            </span>
         </div>
     );
 };
@@ -190,19 +251,8 @@ const ChatModal = ({ onClose }) => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             
-            // Check supported mime types dynamically
-            let options = {};
-            if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('audio/webm')) {
-                options = { mimeType: 'audio/webm' };
-            } else if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('audio/mp4')) {
-                options = { mimeType: 'audio/mp4' };
-            } else if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('audio/ogg')) {
-                options = { mimeType: 'audio/ogg' };
-            } else if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('audio/wav')) {
-                options = { mimeType: 'audio/wav' };
-            }
-
-            const mediaRecorder = new MediaRecorder(stream, options);
+            // Let the browser choose its native default supported audio codec
+            const mediaRecorder = new MediaRecorder(stream);
             mediaRecorderRef.current = mediaRecorder;
             audioChunksRef.current = [];
 
