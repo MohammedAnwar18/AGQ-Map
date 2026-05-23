@@ -6,6 +6,156 @@ import DefaultAvatar from './DefaultAvatar';
 import './Modal.css';
 import './ChatModalStyles.css';
 
+// Premium Visual Custom Voice Player for Voice Notes
+const VoicePlayer = ({ src }) => {
+    const audioRef = useRef(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [duration, setDuration] = useState(0);
+
+    useEffect(() => {
+        const audio = audioRef.current;
+        if (!audio) return;
+
+        const onTimeUpdate = () => setCurrentTime(audio.currentTime);
+        const onLoadedMetadata = () => {
+            if (audio.duration && !isNaN(audio.duration) && audio.duration !== Infinity) {
+                setDuration(audio.duration);
+            }
+        };
+        const onDurationChange = () => {
+            if (audio.duration && !isNaN(audio.duration) && audio.duration !== Infinity) {
+                setDuration(audio.duration);
+            }
+        };
+        const onEnded = () => setIsPlaying(false);
+
+        // Fetch duration if initially Infinity (common for chunked streams like webm)
+        if (audio.duration && !isNaN(audio.duration) && audio.duration !== Infinity) {
+            setDuration(audio.duration);
+        }
+
+        audio.addEventListener('timeupdate', onTimeUpdate);
+        audio.addEventListener('loadedmetadata', onLoadedMetadata);
+        audio.addEventListener('durationchange', onDurationChange);
+        audio.addEventListener('ended', onEnded);
+
+        return () => {
+            audio.removeEventListener('timeupdate', onTimeUpdate);
+            audio.removeEventListener('loadedmetadata', onLoadedMetadata);
+            audio.removeEventListener('durationchange', onDurationChange);
+            audio.removeEventListener('ended', onEnded);
+        };
+    }, [src]);
+
+    const togglePlay = (e) => {
+        e.stopPropagation();
+        const audio = audioRef.current;
+        if (!audio) return;
+
+        if (isPlaying) {
+            audio.pause();
+            setIsPlaying(false);
+        } else {
+            audio.play().catch(err => console.error("Audio playback error:", err));
+            setIsPlaying(true);
+        }
+    };
+
+    const handleSeek = (e) => {
+        e.stopPropagation();
+        const audio = audioRef.current;
+        if (!audio || !duration) return;
+        const seekTime = (parseFloat(e.target.value) / 100) * duration;
+        audio.currentTime = seekTime;
+        setCurrentTime(seekTime);
+    };
+
+    const formatTime = (time) => {
+        if (isNaN(time) || time === Infinity) return '0:00';
+        const mins = Math.floor(time / 60);
+        const secs = Math.floor(time % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    return (
+        <div className="voice-player-container" style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            background: 'rgba(255, 255, 255, 0.08)',
+            padding: '8px 12px',
+            borderRadius: '16px',
+            width: '230px',
+            maxWidth: '100%',
+            boxSizing: 'border-box',
+            direction: 'rtl'
+        }}>
+            <audio ref={audioRef} src={src} preload="metadata" />
+            
+            <button 
+                type="button"
+                onClick={togglePlay} 
+                style={{
+                    background: '#fbab15',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    cursor: 'pointer',
+                    flexShrink: 0
+                }}
+            >
+                {isPlaying ? (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                        <rect x="6" y="4" width="4" height="16" rx="1"></rect>
+                        <rect x="14" y="4" width="4" height="16" rx="1"></rect>
+                    </svg>
+                ) : (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style={{ transform: 'scaleX(-1)', marginRight: '2px' }}>
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                )}
+            </button>
+
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <input 
+                    type="range" 
+                    min="0" 
+                    max="100" 
+                    value={duration ? (currentTime / duration) * 100 : 0} 
+                    onChange={handleSeek}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                        width: '100%',
+                        height: '4px',
+                        borderRadius: '2px',
+                        background: 'rgba(255,255,255,0.2)',
+                        outline: 'none',
+                        cursor: 'pointer',
+                        accentColor: '#fbab15',
+                        margin: 0,
+                        padding: 0
+                    }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', fontFamily: 'monospace' }}>
+                    <span>{formatTime(currentTime)}</span>
+                    <span>{formatTime(duration || 0)}</span>
+                </div>
+            </div>
+            
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: 'rgba(255,255,255,0.4)', flexShrink: 0 }}>
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            </svg>
+        </div>
+    );
+};
+
 const ChatModal = ({ onClose }) => {
     const { user, socket } = useAuth();
     const navigate = useNavigate();
@@ -39,7 +189,20 @@ const ChatModal = ({ onClose }) => {
     const startRecording = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const mediaRecorder = new MediaRecorder(stream);
+            
+            // Check supported mime types dynamically
+            let options = {};
+            if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('audio/webm')) {
+                options = { mimeType: 'audio/webm' };
+            } else if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('audio/mp4')) {
+                options = { mimeType: 'audio/mp4' };
+            } else if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('audio/ogg')) {
+                options = { mimeType: 'audio/ogg' };
+            } else if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('audio/wav')) {
+                options = { mimeType: 'audio/wav' };
+            }
+
+            const mediaRecorder = new MediaRecorder(stream, options);
             mediaRecorderRef.current = mediaRecorder;
             audioChunksRef.current = [];
 
@@ -55,11 +218,23 @@ const ChatModal = ({ onClose }) => {
                 if (audioChunksRef.current.length === 0) return;
                 if (mediaRecorder.discarded) return;
 
-                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                const recordedMimeType = mediaRecorder.mimeType || 'audio/webm';
+                let extension = 'webm';
+                if (recordedMimeType.includes('mp4') || recordedMimeType.includes('aac')) {
+                    extension = 'mp4';
+                } else if (recordedMimeType.includes('ogg')) {
+                    extension = 'ogg';
+                } else if (recordedMimeType.includes('wav')) {
+                    extension = 'wav';
+                } else if (recordedMimeType.includes('mpeg') || recordedMimeType.includes('mp3')) {
+                    extension = 'mp3';
+                }
+
+                const audioBlob = new Blob(audioChunksRef.current, { type: recordedMimeType });
                 setUploading(true);
                 try {
                     const formData = new FormData();
-                    formData.append('image', audioBlob, `voice-note-${Date.now()}.webm`);
+                    formData.append('image', audioBlob, `voice-note-${Date.now()}.${extension}`);
                     
                     const response = await friendService.uploadChatImage(formData);
 
@@ -580,15 +755,11 @@ const ChatModal = ({ onClose }) => {
                                              message.image_url.includes('.mp3') || 
                                              message.image_url.includes('.wav') || 
                                              message.image_url.includes('.ogg') || 
-                                             message.image_url.includes('.m4a')) ? (
-                                                <div className="message-audio-wrapper" style={{ marginTop: '5px', minWidth: '220px', marginBottom: (message.content && message.content !== '🎤 رسالة صوتية') ? '8px' : '0' }}>
-                                                    <audio
-                                                        src={message.image_url}
-                                                        controls
-                                                        controlsList="nodownload"
-                                                        onPlay={() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })}
-                                                        style={{ width: '100%', height: '40px', borderRadius: '20px' }}
-                                                    />
+                                             message.image_url.includes('.m4a') ||
+                                             message.image_url.includes('.mp4') ||
+                                             message.image_url.includes('.aac')) ? (
+                                                <div className="message-audio-wrapper" style={{ marginTop: '5px', marginBottom: (message.content && message.content !== '🎤 رسالة صوتية') ? '8px' : '0' }}>
+                                                    <VoicePlayer src={message.image_url} />
                                                 </div>
                                             ) : (
                                                 <img
@@ -693,12 +864,10 @@ const ChatModal = ({ onClose }) => {
                                 </svg>
                             </button>
 
-                            {/* 2. Text Input / Recording Indicator (Middle) */}
                             {isRecording ? (
                                 <div className="recording-status">
                                     <span className="recording-dot"></span>
                                     <span className="recording-timer">{formatTime(recordingTime)}</span>
-                                    <span>جاري تسجيل الصوت...</span>
                                 </div>
                             ) : (
                                 <input
