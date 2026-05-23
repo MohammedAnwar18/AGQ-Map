@@ -75,7 +75,83 @@ const sendMessage = async (req, res) => {
     }
 };
 
+/**
+ * حذف رسالة واحدة
+ */
+const deleteMessage = async (req, res) => {
+    try {
+        const { messageId } = req.params;
+        const userId = req.user.id || req.user.userId;
+
+        // التحقق من وجود الرسالة
+        const msgResult = await pool.query(
+            'SELECT * FROM messages WHERE id = $1',
+            [messageId]
+        );
+
+        if (msgResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Message not found' });
+        }
+
+        const message = msgResult.rows[0];
+
+        // فقط المرسل أو المستقبل يمكنه حذف الرسالة
+        if (message.sender_id !== userId && message.receiver_id !== userId) {
+            return res.status(403).json({ error: 'Not authorized to delete this message' });
+        }
+
+        // حذف من قاعدة البيانات
+        await pool.query(
+            'DELETE FROM messages WHERE id = $1',
+            [messageId]
+        );
+
+        // إرسال البث للطرف الآخر عبر WebSockets
+        const targetUserId = message.sender_id === userId ? message.receiver_id : message.sender_id;
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`user_${targetUserId}`).emit('message-deleted', { messageId });
+        }
+
+        res.json({ message: 'Message deleted successfully', messageId });
+    } catch (error) {
+        console.error('Error deleting message:', error);
+        res.status(500).json({ error: 'Failed to delete message' });
+    }
+};
+
+/**
+ * حذف المحادثة كاملة مع صديق
+ */
+const deleteConversation = async (req, res) => {
+    try {
+        const { friendId } = req.params;
+        const userId = req.user.id || req.user.userId;
+
+        // حذف كافة الرسائل بين الطرفين
+        await pool.query(
+            `DELETE FROM messages 
+             WHERE (sender_id = $1 AND receiver_id = $2)
+             OR (sender_id = $2 AND receiver_id = $1)`,
+            [userId, friendId]
+        );
+
+        // إعلام الطرف الآخر بحذف المحادثة
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`user_${friendId}`).emit('conversation-deleted', { friendId: userId });
+        }
+
+        res.json({ message: 'Conversation deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting conversation:', error);
+        res.status(500).json({ error: 'Failed to delete conversation' });
+    }
+};
+
 module.exports = {
     getMessages,
-    sendMessage
+    sendMessage,
+    deleteMessage,
+    deleteConversation
 };

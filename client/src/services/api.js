@@ -294,6 +294,14 @@ export const messageService = {
     sendMessage: async (data) => {
         const response = await api.post('/messages', data);
         return response.data;
+    },
+    deleteMessage: async (messageId) => {
+        const response = await api.delete(`/messages/${messageId}`);
+        return response.data;
+    },
+    deleteConversation: async (friendId) => {
+        const response = await api.delete(`/messages/conversation/${friendId}`);
+        return response.data;
     }
 };
 

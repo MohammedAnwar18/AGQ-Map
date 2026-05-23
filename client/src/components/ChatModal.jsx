@@ -20,6 +20,8 @@ const ChatModal = ({ onClose }) => {
     const [lightboxImage, setLightboxImage] = useState(null);
     const messagesEndRef = useRef(null);
     const typingTimeoutRef = useRef(null);
+    const pressTimerRef = useRef(null);
+    const isLongPressRef = useRef(false);
 
     const playNotificationSound = () => {
         try {
@@ -120,6 +122,22 @@ const ChatModal = ({ onClose }) => {
             ));
         });
 
+        socket.on('message-deleted', ({ messageId }) => {
+            setMessages(prev => prev.filter(m => m.id != messageId));
+        });
+
+        socket.on('conversation-deleted', ({ friendId }) => {
+            if (selectedFriend && selectedFriend.id == friendId) {
+                setMessages([]);
+            }
+            setFriends(prev => prev.map(f => {
+                if (f.id == friendId) {
+                    return { ...f, has_chatted: false, unread_count: 0 };
+                }
+                return f;
+            }));
+        });
+
         return () => {
             socket.off('receive-message');
             socket.off('message-updated');
@@ -127,6 +145,8 @@ const ChatModal = ({ onClose }) => {
             socket.off('user-stop-typing');
             socket.off('user_online');
             socket.off('user_offline');
+            socket.off('message-deleted');
+            socket.off('conversation-deleted');
         };
     }, [socket, selectedFriend, user?.id]);
 
@@ -164,6 +184,56 @@ const ChatModal = ({ onClose }) => {
             console.error('Failed to load messages:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDeleteMessage = async (messageId) => {
+        if (window.confirm('هل تريد حذف هذه الرسالة؟')) {
+            try {
+                await messageService.deleteMessage(messageId);
+                setMessages(prev => prev.filter(m => m.id !== messageId));
+            } catch (error) {
+                console.error('Failed to delete message:', error);
+                alert('فشل حذف الرسالة');
+            }
+        }
+    };
+
+    const handlePressStart = (friend) => {
+        isLongPressRef.current = false;
+        pressTimerRef.current = setTimeout(() => {
+            isLongPressRef.current = true;
+            confirmDeleteConversation(friend);
+        }, 800);
+    };
+
+    const handlePressEnd = (friend) => {
+        if (pressTimerRef.current) {
+            clearTimeout(pressTimerRef.current);
+        }
+        if (!isLongPressRef.current) {
+            loadMessages(friend);
+        }
+    };
+
+    const confirmDeleteConversation = async (friend) => {
+        const name = friend.full_name || friend.username;
+        if (window.confirm(`هل تريد حذف المحادثة بالكامل مع ${name}؟`)) {
+            try {
+                await messageService.deleteConversation(friend.id);
+                setFriends(prev => prev.map(f => {
+                    if (f.id === friend.id) {
+                        return { ...f, has_chatted: false, unread_count: 0 };
+                    }
+                    return f;
+                }));
+                if (selectedFriend && selectedFriend.id === friend.id) {
+                    setSelectedFriend(null);
+                }
+            } catch (error) {
+                console.error('Failed to delete conversation:', error);
+                alert('فشل حذف المحادثة');
+            }
         }
     };
 
@@ -317,7 +387,17 @@ const ChatModal = ({ onClose }) => {
                                             <div
                                                 key={friend.id}
                                                 className="chat-item"
-                                                onClick={() => loadMessages(friend)}
+                                                onMouseDown={() => handlePressStart(friend)}
+                                                onMouseUp={() => handlePressEnd(friend)}
+                                                onTouchStart={() => handlePressStart(friend)}
+                                                onTouchEnd={() => handlePressEnd(friend)}
+                                                onTouchMove={() => {
+                                                    if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
+                                                }}
+                                                onMouseLeave={() => {
+                                                    if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
+                                                }}
+                                                style={{ userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer' }}
                                             >
                                                 <div className="chat-avatar">
                                                     {friend.profile_picture ? (
@@ -393,7 +473,12 @@ const ChatModal = ({ onClose }) => {
                                     <div
                                         className="message-bubble"
                                         onDoubleClick={() => handleLike(message)}
-                                        style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}
+                                        onClick={(e) => {
+                                            if (e.target.tagName !== 'A' && e.target.tagName !== 'IMG' && !e.target.closest('.message-delete-btn')) {
+                                                handleDeleteMessage(message.id);
+                                            }
+                                        }}
+                                        style={{ position: 'relative', display: 'flex', flexDirection: 'column', cursor: 'pointer' }}
                                     >
                                         {message.image_url && (
                                             <img
@@ -431,6 +516,20 @@ const ChatModal = ({ onClose }) => {
                                             </div>
                                         )}
                                         <div className="message-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '5px', marginTop: '4px' }}>
+                                            <button 
+                                                type="button" 
+                                                className="message-delete-btn" 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDeleteMessage(message.id);
+                                                }}
+                                                title="حذف الرسالة"
+                                            >
+                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                                </svg>
+                                            </button>
                                             <span className="message-time">
                                                 {formatMessageTime(message.created_at)}
                                             </span>

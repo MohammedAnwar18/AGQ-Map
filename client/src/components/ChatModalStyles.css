@@ -197,3 +197,32 @@
 @keyframes zoomInLightbox {
     to { transform: scale(1); }
 }
+
+/* Chat Message Delete Button Styles */
+.message-delete-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    opacity: 0.4;
+    cursor: pointer;
+    padding: 2px;
+    display: inline-flex;
+    align-items: center;
+    transition: all 0.2s ease;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
+.message-delete-btn:hover {
+    color: #ef4444 !important;
+    opacity: 1;
+    transform: scale(1.15);
+}
+
+.message-item.own .message-delete-btn {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.message-item.own .message-delete-btn:hover {
+    color: #fee2e2 !important;
+}
