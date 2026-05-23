@@ -155,7 +155,7 @@ const VoicePlayer = ({ src }) => {
                 overflow: 'hidden',
             }}
         >
-            <audio ref={audioRef} src={src} preload="metadata" crossOrigin="anonymous" />
+            <audio ref={audioRef} src={src} preload="metadata" />
 
             {/* Play / Pause */}
             <button
