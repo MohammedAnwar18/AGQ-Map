@@ -11,10 +11,15 @@ const upload = multer({
         fileSize: 10 * 1024 * 1024, // 10MB كحد أقصى لكل ملف
     },
     fileFilter: (req, file, cb) => {
-        if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/') || file.mimetype === 'image/svg+xml') {
+        if (
+            file.mimetype.startsWith('image/') ||
+            file.mimetype.startsWith('video/') ||
+            file.mimetype.startsWith('audio/') ||
+            file.mimetype === 'image/svg+xml'
+        ) {
             cb(null, true);
         } else {
-            cb(new Error('Only images and videos are allowed'), false);
+            cb(new Error('Only images, videos, and audio are allowed'), false);
         }
     }
 });

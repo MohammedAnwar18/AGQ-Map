@@ -18,10 +18,104 @@ const ChatModal = ({ onClose }) => {
     const [uploading, setUploading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [lightboxImage, setLightboxImage] = useState(null);
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordingTime, setRecordingTime] = useState(0);
     const messagesEndRef = useRef(null);
     const typingTimeoutRef = useRef(null);
     const pressTimerRef = useRef(null);
     const isLongPressRef = useRef(false);
+    const mediaRecorderRef = useRef(null);
+    const audioChunksRef = useRef([]);
+    const recordingTimerRef = useRef(null);
+
+    useEffect(() => {
+        return () => {
+            if (recordingTimerRef.current) {
+                clearInterval(recordingTimerRef.current);
+            }
+        };
+    }, []);
+
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream);
+            mediaRecorderRef.current = mediaRecorder;
+            audioChunksRef.current = [];
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunksRef.current.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = async () => {
+                stream.getTracks().forEach(track => track.stop());
+
+                if (audioChunksRef.current.length === 0) return;
+                if (mediaRecorder.discarded) return;
+
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                setUploading(true);
+                try {
+                    const formData = new FormData();
+                    formData.append('image', audioBlob, `voice-note-${Date.now()}.webm`);
+                    
+                    const response = await friendService.uploadChatImage(formData);
+
+                    const apiResponse = await messageService.sendMessage({
+                        receiverId: selectedFriend.id,
+                        content: '🎤 رسالة صوتية',
+                        imageUrl: response.imageUrl
+                    });
+
+                    setMessages(prev => [...prev, apiResponse.message]);
+                } catch (error) {
+                    console.error('Error uploading voice note:', error);
+                    alert('فشل إرسال الرسالة الصوتية');
+                } finally {
+                    setUploading(false);
+                }
+            };
+
+            mediaRecorder.start();
+            setIsRecording(true);
+            setRecordingTime(0);
+
+            recordingTimerRef.current = setInterval(() => {
+                setRecordingTime(prev => prev + 1);
+            }, 1000);
+
+        } catch (err) {
+            console.error('Error accessing microphone:', err);
+            alert('يرجى السماح بالوصول إلى الميكروفون للتسجيل');
+        }
+    };
+
+    const stopAndSendRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            clearInterval(recordingTimerRef.current);
+            mediaRecorderRef.current.discarded = false;
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+        }
+    };
+
+    const cancelRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            clearInterval(recordingTimerRef.current);
+            mediaRecorderRef.current.discarded = true;
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+            audioChunksRef.current = [];
+        }
+    };
+
+    const formatTime = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
 
     const playNotificationSound = () => {
         try {
@@ -481,20 +575,37 @@ const ChatModal = ({ onClose }) => {
                                         style={{ position: 'relative', display: 'flex', flexDirection: 'column', cursor: 'pointer' }}
                                     >
                                         {message.image_url && (
-                                            <img
-                                                src={message.image_url}
-                                                alt="مرفق"
-                                                onLoad={() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })}
-                                                style={{
-                                                    maxWidth: '100%',
-                                                    borderRadius: '8px',
-                                                    marginBottom: message.content ? '8px' : '0',
-                                                    cursor: 'pointer'
-                                                }}
-                                                onClick={() => setLightboxImage(message.image_url)}
-                                            />
+                                            (message.content === '🎤 رسالة صوتية' || 
+                                             message.image_url.includes('.webm') || 
+                                             message.image_url.includes('.mp3') || 
+                                             message.image_url.includes('.wav') || 
+                                             message.image_url.includes('.ogg') || 
+                                             message.image_url.includes('.m4a')) ? (
+                                                <div className="message-audio-wrapper" style={{ marginTop: '5px', minWidth: '220px', marginBottom: (message.content && message.content !== '🎤 رسالة صوتية') ? '8px' : '0' }}>
+                                                    <audio
+                                                        src={message.image_url}
+                                                        controls
+                                                        controlsList="nodownload"
+                                                        onPlay={() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })}
+                                                        style={{ width: '100%', height: '40px', borderRadius: '20px' }}
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <img
+                                                    src={message.image_url}
+                                                    alt="مرفق"
+                                                    onLoad={() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })}
+                                                    style={{
+                                                        maxWidth: '100%',
+                                                        borderRadius: '8px',
+                                                        marginBottom: (message.content && message.content !== '🎤 رسالة صوتية') ? '8px' : '0',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                    onClick={() => setLightboxImage(message.image_url)}
+                                                />
+                                            )
                                         )}
-                                        {message.content && (
+                                        {message.content && message.content !== '🎤 رسالة صوتية' && (
                                             <div className="message-text">
                                                 {renderMessageContent(message.content)}
                                             </div>
@@ -564,38 +675,130 @@ const ChatModal = ({ onClose }) => {
                         </div>
 
                         <form onSubmit={sendMessage} className="message-input-container">
+                            {/* 1. Send Button (Right) */}
                             <button
-                                type="button"
-                                className="btn-icon"
+                                type="submit"
+                                className="send-button"
+                                disabled={!newMessage.trim()}
                                 style={{
-                                    background: '#fbab15',
-                                    border: 'none',
-                                    color: 'white',
-                                    cursor: 'pointer',
-                                    width: '42px',
-                                    height: '42px',
-                                    borderRadius: '50%',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    transition: 'all 0.2s',
-                                    flexShrink: 0,
-                                    opacity: uploading ? 0.7 : 1
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    width: '42px', height: '42px', padding: 0, borderRadius: '12px',
+                                    flexShrink: 0
                                 }}
-                                title="إرسال صورة"
-                                onClick={() => !uploading && document.getElementById('chat-image-input').click()}
-                                disabled={uploading}
+                                title="إرسال"
                             >
-                                {uploading ? (
-                                    <div className="spinner" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></div>
-                                ) : (
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                                        <polyline points="21 15 16 10 5 21"></polyline>
-                                    </svg>
-                                )}
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px', height: '20px' }}>
+                                    <path d="M22 2L11 13" />
+                                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                </svg>
                             </button>
+
+                            {/* 2. Text Input / Recording Indicator (Middle) */}
+                            {isRecording ? (
+                                <div className="recording-status">
+                                    <span className="recording-dot"></span>
+                                    <span className="recording-timer">{formatTime(recordingTime)}</span>
+                                    <span>جاري تسجيل الصوت...</span>
+                                </div>
+                            ) : (
+                                <input
+                                    type="text"
+                                    value={newMessage}
+                                    onChange={handleTyping}
+                                    className="input"
+                                    placeholder="اكتب رسالة..."
+                                    autoFocus
+                                />
+                            )}
+
+                            {/* 3. Actions / Media (Left) */}
+                            <div className="input-actions" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
+                                {isRecording ? (
+                                    <>
+                                        <button
+                                            type="button"
+                                            className="btn-record-cancel"
+                                            onClick={cancelRecording}
+                                            title="إلغاء"
+                                        >
+                                            ✕
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="btn-record-send"
+                                            onClick={stopAndSendRecording}
+                                            title="إرسال التسجيل"
+                                        >
+                                            ✓
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        {/* Voice Note Recorder Button */}
+                                        <button
+                                            type="button"
+                                            className="btn-icon btn-voice"
+                                            style={{
+                                                background: '#10b981',
+                                                border: 'none',
+                                                color: 'white',
+                                                cursor: 'pointer',
+                                                width: '42px',
+                                                height: '42px',
+                                                borderRadius: '50%',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                transition: 'all 0.2s'
+                                            }}
+                                            onClick={startRecording}
+                                            title="تسجيل صوتي"
+                                        >
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                                                <line x1="12" y1="19" x2="12" y2="23"></line>
+                                                <line x1="8" y1="23" x2="16" y2="23"></line>
+                                            </svg>
+                                        </button>
+
+                                        {/* Image Upload Button */}
+                                        <button
+                                            type="button"
+                                            className="btn-icon"
+                                            style={{
+                                                background: '#fbab15',
+                                                border: 'none',
+                                                color: 'white',
+                                                cursor: 'pointer',
+                                                width: '42px',
+                                                height: '42px',
+                                                borderRadius: '50%',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                transition: 'all 0.2s',
+                                                flexShrink: 0,
+                                                opacity: uploading ? 0.7 : 1
+                                            }}
+                                            title="إرسال صورة"
+                                            onClick={() => !uploading && document.getElementById('chat-image-input').click()}
+                                            disabled={uploading}
+                                        >
+                                            {uploading ? (
+                                                <div className="spinner" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></div>
+                                            ) : (
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                                    <polyline points="21 15 16 10 5 21"></polyline>
+                                                </svg>
+                                            )}
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+
                             <input
                                 type="file"
                                 id="chat-image-input"
@@ -628,29 +831,6 @@ const ChatModal = ({ onClose }) => {
                                     }
                                 }}
                             />
-                            <input
-                                type="text"
-                                value={newMessage}
-                                onChange={handleTyping}
-                                className="input"
-                                placeholder="اكتب رسالة..."
-                                autoFocus
-                            />
-                            <button
-                                type="submit"
-                                className="send-button"
-                                disabled={!newMessage.trim()}
-                                style={{
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    width: '42px', height: '42px', padding: 0, borderRadius: '12px',
-                                    flexShrink: 0
-                                }}
-                            >
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px', height: '20px' }}>
-                                    <path d="M22 2L11 13" />
-                                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                                </svg>
-                            </button>
                         </form>
                     </div>
                 )}
