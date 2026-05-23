@@ -1191,13 +1191,8 @@ const MapComponent = () => {
 
     // Native-Grade Geolocation Tracking
     useEffect(() => {
-        // If we already have a saved location in localStorage, and tracking/navigation is not active,
-        // do NOT start tracking / requesting GPS automatically
-        const savedLoc = localStorage.getItem('last_user_location');
-        if (savedLoc && !isTracking && !destination) {
-            console.log("Location already saved, skipping geolocation request on load.");
-            return;
-        }
+        // We removed the block that skipped geolocation if savedLoc existed, 
+        // because the user wants their live location updated as soon as the app opens.
 
         // 🚀 Hybrid Native/Web Geolocation Setup
         if (isNative()) {
