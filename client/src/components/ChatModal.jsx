@@ -98,20 +98,19 @@ const VoicePlayer = ({ src }) => {
         <div
             className="voice-player-container"
             style={{
-                display: 'inline-flex',
+                display: 'flex',
                 alignItems: 'center',
                 gap: '10px',
-                background: 'rgba(255,255,255,0.06)',
+                background: 'rgba(255,255,255,0.08)',
                 backdropFilter: 'blur(12px)',
                 WebkitBackdropFilter: 'blur(12px)',
-                padding: '7px 12px 7px 8px',
-                borderRadius: '22px',
-                maxWidth: '270px',
-                width: '270px',
+                padding: '7px 10px 7px 8px',
+                borderRadius: '14px',
+                width: '100%',
+                minWidth: '180px',
+                maxWidth: '100%',
                 boxSizing: 'border-box',
                 direction: 'ltr',
-                border: '1px solid rgba(139,92,246,0.18)',
-                boxShadow: '0 2px 16px rgba(139,92,246,0.08)',
             }}
         >
             <audio ref={audioRef} src={src} preload="metadata" />
@@ -833,6 +832,11 @@ const ChatModal = ({ onClose }) => {
                                                 boxShadow: '0 4px 20px rgba(99,102,241,0.35)',
                                                 border: '1px solid rgba(139,92,246,0.25)',
                                                 backdropFilter: 'blur(8px)',
+                                                width: '260px',
+                                                maxWidth: '260px',
+                                                minWidth: '0',
+                                                boxSizing: 'border-box',
+                                                overflow: 'hidden',
                                             } : {})
                                         }}
                                     >
