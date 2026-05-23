@@ -69,7 +69,7 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         if (!user || !token) return;
 
-        const newSocket = io(import.meta.env.VITE_WS_URL || 'http://localhost:5000', {
+        const newSocket = io(import.meta.env.VITE_WS_URL || window.location.origin || 'http://localhost:5000', {
             auth: { token },
             reconnection: true,
             reconnectionAttempts: Infinity,

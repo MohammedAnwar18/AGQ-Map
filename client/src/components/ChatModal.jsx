@@ -16,8 +16,42 @@ const ChatModal = ({ onClose }) => {
     const [loading, setLoading] = useState(true);
     const [isTyping, setIsTyping] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [lightboxImage, setLightboxImage] = useState(null);
     const messagesEndRef = useRef(null);
     const typingTimeoutRef = useRef(null);
+
+    const playNotificationSound = () => {
+        try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc1 = audioCtx.createOscillator();
+            const osc2 = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            osc1.type = 'sine';
+            osc2.type = 'triangle';
+            
+            osc1.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+            osc1.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.08); // E5
+            
+            osc2.frequency.setValueAtTime(659.25, audioCtx.currentTime); // E5
+            osc2.frequency.setValueAtTime(880.00, audioCtx.currentTime + 0.08); // A5
+            
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+            
+            osc1.connect(gainNode);
+            osc2.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            osc1.start();
+            osc2.start();
+            osc1.stop(audioCtx.currentTime + 0.25);
+            osc2.stop(audioCtx.currentTime + 0.25);
+        } catch (e) {
+            console.warn('Audio Context failed to play notification sound', e);
+        }
+    };
 
     useEffect(() => {
         loadFriends();
@@ -35,7 +69,26 @@ const ChatModal = ({ onClose }) => {
                     return [...prev, message];
                 });
                 // If we receive a message from them, they stopped typing
-                if (message.sender_id === selectedFriend.id) setIsTyping(false);
+                if (message.sender_id === selectedFriend.id) {
+                    setIsTyping(false);
+                    // Mark as read immediately on server
+                    socket.emit('get-messages', { friendId: selectedFriend.id, userId: user?.id });
+                }
+            } else {
+                // If message is from someone else, play sound and update friend's unread_count and has_chatted
+                if (message.sender_id !== user?.id) {
+                    playNotificationSound();
+                    setFriends(prev => prev.map(f => {
+                        if (f.id === message.sender_id) {
+                            return {
+                                ...f,
+                                has_chatted: true,
+                                unread_count: (f.unread_count || 0) + 1
+                            };
+                        }
+                        return f;
+                    }));
+                }
             }
         });
 
@@ -55,13 +108,13 @@ const ChatModal = ({ onClose }) => {
             }
         });
 
-        socket.on('user-online', (userId) => {
+        socket.on('user_online', ({ userId }) => {
             setFriends(prev => prev.map(f =>
                 f.id === userId ? { ...f, is_online: true } : f
             ));
         });
 
-        socket.on('user-offline', (userId) => {
+        socket.on('user_offline', ({ userId }) => {
             setFriends(prev => prev.map(f =>
                 f.id === userId ? { ...f, is_online: false } : f
             ));
@@ -72,10 +125,10 @@ const ChatModal = ({ onClose }) => {
             socket.off('message-updated');
             socket.off('user-typing');
             socket.off('user-stop-typing');
-            socket.off('user-online');
-            socket.off('user-offline');
+            socket.off('user_online');
+            socket.off('user_offline');
         };
-    }, [socket, selectedFriend]);
+    }, [socket, selectedFriend, user?.id]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -96,6 +149,8 @@ const ChatModal = ({ onClose }) => {
         setSelectedFriend(friend);
         setMessages([]);
         setLoading(true);
+        // Clear unread count locally for this friend immediately
+        setFriends(prev => prev.map(f => f.id === friend.id ? { ...f, unread_count: 0 } : f));
 
         try {
             const data = await messageService.getMessages(friend.id);
@@ -152,7 +207,7 @@ const ChatModal = ({ onClose }) => {
         }
 
         try {
-            // Send via API (primary persistence)
+            // Send via API (primary persistence and socket broadcast)
             const response = await messageService.sendMessage({
                 receiverId: selectedFriend.id,
                 content: messageContent
@@ -160,15 +215,6 @@ const ChatModal = ({ onClose }) => {
 
             // Update UI with the real saved message
             setMessages(prev => [...prev, response.message]);
-
-            // Also emit via socket for immediate real-time delivery if socket is connected
-            if (socket) {
-                socket.emit('send-message', {
-                    receiverId: selectedFriend.id,
-                    content: messageContent,
-                    senderId: user.id
-                });
-            }
         } catch (error) {
             console.error('Failed to send message:', error);
             alert('فشل إرسال الرسالة، يرجى المحاولة لاحقاً');
@@ -212,6 +258,16 @@ const ChatModal = ({ onClose }) => {
         });
     };
 
+    const filteredFriends = friends.filter(friend => {
+        if (!searchQuery.trim()) {
+            return friend.has_chatted;
+        }
+        const query = searchQuery.toLowerCase().trim();
+        const usernameMatch = friend.username?.toLowerCase().includes(query);
+        const fullNameMatch = friend.full_name?.toLowerCase().includes(query);
+        return usernameMatch || fullNameMatch;
+    });
+
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-container chat-modal-container" onClick={(e) => e.stopPropagation()}>
@@ -226,41 +282,67 @@ const ChatModal = ({ onClose }) => {
                             <div style={{ padding: '2rem', textAlign: 'center' }}>
                                 <div className="spinner"></div>
                             </div>
-                        ) : friends.length === 0 ? (
-                            <div className="empty-state">
-                                <span className="empty-state-icon">👥</span>
-                                <p>ليس لديك أصدقاء بعد</p>
-                                <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>
-                                    أضف أصدقاء لبدء المحادثات
-                                </p>
-                            </div>
                         ) : (
-                            <div className="chat-list">
-                                {friends.map(friend => (
-                                    <div
-                                        key={friend.id}
-                                        className="chat-item"
-                                        onClick={() => loadMessages(friend)}
-                                    >
-                                        <div className="chat-avatar">
-                                            {friend.profile_picture ? (
-                                                <img src={friend.profile_picture} alt={friend.username} />
-                                            ) : (
-                                                <DefaultAvatar gender={friend.gender} size={50} uid={String(friend.id)} />
-                                            )}
-                                            {friend.is_online && <div className="online-indicator" />}
-                                        </div>
-                                        <div className="chat-info">
-                                            <div className="chat-name">
-                                                {friend.full_name || friend.username}
-                                            </div>
-                                            <div className="chat-last-message">
-                                                {friend.is_online ? 'متصل الآن' : 'غير متصل'}
-                                            </div>
-                                        </div>
+                            <>
+                                <div className="chat-search-container">
+                                    <span className="chat-search-icon">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <circle cx="11" cy="11" r="8"></circle>
+                                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                        </svg>
+                                    </span>
+                                    <input
+                                        type="text"
+                                        className="chat-search-input"
+                                        placeholder="ابحث عن صديق مضاف..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    />
+                                    {searchQuery && (
+                                        <button className="chat-search-clear" onClick={() => setSearchQuery('')}>✕</button>
+                                    )}
+                                </div>
+
+                                {filteredFriends.length === 0 ? (
+                                    <div className="empty-state">
+                                        <span className="empty-state-icon">👥</span>
+                                        <p>{searchQuery.trim() ? 'لم يتم العثور على صديق يطابق البحث' : 'لا توجد محادثات نشطة بعد'}</p>
+                                        <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>
+                                            {searchQuery.trim() ? 'تأكد من كتابة الاسم بشكل صحيح' : 'ابحث عن صديق مضاف بالأعلى للبدء بمحادثة معه'}
+                                        </p>
                                     </div>
-                                ))}
-                            </div>
+                                ) : (
+                                    <div className="chat-list">
+                                        {filteredFriends.map(friend => (
+                                            <div
+                                                key={friend.id}
+                                                className="chat-item"
+                                                onClick={() => loadMessages(friend)}
+                                            >
+                                                <div className="chat-avatar">
+                                                    {friend.profile_picture ? (
+                                                        <img src={friend.profile_picture} alt={friend.username} />
+                                                    ) : (
+                                                        <DefaultAvatar gender={friend.gender} size={50} uid={String(friend.id)} />
+                                                    )}
+                                                    {friend.is_online && <div className="online-indicator" />}
+                                                </div>
+                                                <div className="chat-info">
+                                                    <div className="chat-name">
+                                                        {friend.full_name || friend.username}
+                                                    </div>
+                                                    <div className="chat-last-message">
+                                                        {friend.is_online ? 'متصل الآن' : 'غير متصل'}
+                                                    </div>
+                                                </div>
+                                                {friend.unread_count > 0 && (
+                                                    <span className="unread-badge">{friend.unread_count}</span>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 ) : (
@@ -324,7 +406,7 @@ const ChatModal = ({ onClose }) => {
                                                     marginBottom: message.content ? '8px' : '0',
                                                     cursor: 'pointer'
                                                 }}
-                                                onClick={() => window.open(message.image_url, '_blank')}
+                                                onClick={() => setLightboxImage(message.image_url)}
                                             />
                                         )}
                                         {message.content && (
@@ -437,16 +519,6 @@ const ChatModal = ({ onClose }) => {
                                             });
 
                                             setMessages(prev => [...prev, apiResponse.message]);
-
-                                            // Also emit via socket
-                                            if (socket) {
-                                                socket.emit('send-message', {
-                                                    receiverId: selectedFriend.id,
-                                                    content: '',
-                                                    imageUrl: response.imageUrl,
-                                                    senderId: user.id
-                                                });
-                                            }
                                         } catch (error) {
                                             console.error('Error uploading image:', error);
                                             alert('فشل رفع الصورة');
@@ -481,6 +553,12 @@ const ChatModal = ({ onClose }) => {
                                 </svg>
                             </button>
                         </form>
+                    </div>
+                )}
+                {lightboxImage && (
+                    <div className="lightbox-overlay" onClick={() => setLightboxImage(null)}>
+                        <button className="lightbox-close" onClick={() => setLightboxImage(null)}>✕</button>
+                        <img src={lightboxImage} alt="عرض الصورة" className="lightbox-image" onClick={(e) => e.stopPropagation()} />
                     </div>
                 )}
             </div>

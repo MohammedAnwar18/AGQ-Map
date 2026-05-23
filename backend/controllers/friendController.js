@@ -355,7 +355,14 @@ const getFriends = async (req, res) => {
             WHEN ((f.user1_id = $1 AND f.user2_shares_location) OR (f.user2_id = $1 AND f.user1_shares_location))
             THEN u.last_longitude 
             ELSE NULL 
-        END as last_longitude
+        END as last_longitude,
+        (SELECT EXISTS (
+            SELECT 1 FROM messages 
+            WHERE (sender_id = $1 AND receiver_id = u.id) 
+               OR (sender_id = u.id AND receiver_id = $1)
+        )) as has_chatted,
+        (SELECT COUNT(*)::int FROM messages 
+         WHERE sender_id = u.id AND receiver_id = $1 AND is_read = false) as unread_count
        FROM users u
        JOIN friendships f ON (
          (f.user1_id = $1 AND f.user2_id = u.id) OR
