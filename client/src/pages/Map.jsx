@@ -1701,9 +1701,161 @@ const MapComponent = () => {
                         </svg>
                     </button>
 
+                    <button className={`top-nav-icon ${showMoreMenu ? 'active' : ''}`} onClick={() => setShowMoreMenu(!showMoreMenu)}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line>
+                        </svg>
+                    </button>
                 </div>
             </div>
 
+            {/* More Menu Dropdown & Backdrop */}
+            {showMoreMenu && (
+                <>
+                    <div
+                        className="menu-backdrop"
+                        onClick={() => setShowMoreMenu(false)}
+                        style={{
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            zIndex: 2500,
+                            background: 'transparent' // Capture clicks everywhere
+                        }}
+                    />
+                    <div className="more-menu-dropdown slide-down">
+                        <div className="menu-header">
+                            <h3>القائمة الرئيسية</h3>
+                        </div>
+                        <button onClick={() => { setShowCommunities(true); setShowMoreMenu(false); }}>
+                            <div className="menu-item-content">
+                                <div className="menu-icon-wrapper">
+                                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+                                </div>
+                                <span>المجتمعات</span>
+                            </div>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+                        </button>
+                        <button onClick={() => { setShowShops(true); setShowMoreMenu(false); }}>
+                            <div className="menu-item-content">
+                                <div className="menu-icon-wrapper">
+                                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 0 1-8 0" /></svg>
+                                </div>
+                                <span>المحلات والمؤسسات</span>
+                            </div>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+                        </button>
+                        <button onClick={() => { setShowFriends(true); setShowMoreMenu(false); }}>
+                            <div className="menu-item-content">
+                                <div className="menu-icon-wrapper">
+                                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" y1="8" x2="19" y2="14" /><line x1="22" y1="11" x2="16" y2="11" /></svg>
+                                </div>
+                                <span>الأصدقاء</span>
+                            </div>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+                        </button>
+                        <button onClick={() => { setShowNews(true); setShowMoreMenu(false); }}>
+                            <div className="menu-item-content">
+                                <div className="menu-icon-wrapper">
+                                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2" /><path d="M18 14h-8" /><path d="M15 18h-5" /><path d="M10 6h8v4h-8V6Z" /></svg>
+                                </div>
+                                <span>الأخبار</span>
+                            </div>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+                        </button>
+
+                        {/* PalNovaa Lab - Restricted to Desktop */}
+                        <button 
+                            onClick={() => { 
+                                if (isMobileDevice) {
+                                    alert("عذراً، مختبر بالنوفا متاح فقط على أجهزة الحاسوب واللابتوب لضمان أفضل تجربة أداء.");
+                                    return;
+                                }
+                                setShowLabModal(true); 
+                                setShowMoreMenu(false); 
+                            }}
+                            style={isMobileDevice ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
+                        >
+                            <div className="menu-item-content">
+                                <div className="menu-icon-wrapper" style={{ color: isMobileDevice ? '#94a3b8' : '#fbab15' }}>
+                                    {isMobileDevice ? (
+                                        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg">
+                                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                        </svg>
+                                    ) : (
+                                        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg">
+                                            <path d="M10 2v7.31"></path>
+                                            <path d="M14 9.3V1.99"></path>
+                                            <path d="M8.5 2h7"></path>
+                                            <path d="M14 9.3a6.5 6.5 0 1 1-4 0"></path>
+                                            <path d="M5.52 16h12.96"></path>
+                                        </svg>
+                                    )}
+                                </div>
+                                <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                    <span>مختبر بالنوفا</span>
+                                    {isMobileDevice && <span style={{ fontSize: '10px', color: '#94a3b8' }}>متاح للحاسوب فقط</span>}
+                                </span>
+                            </div>
+                            {isMobileDevice ? (
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#94a3b8" strokeWidth="2.5">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                </svg>
+                            ) : (
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <polyline points="9 18 15 12 9 6" />
+                                </svg>
+                            )}
+                        </button>
+
+                        {/* PalNovaa Spatial Magazine - Hidden as requested
+                        <button onClick={() => { setShowMagazine(true); setShowMoreMenu(false); }}>
+                            <div className="menu-item-content">
+                                <div className="menu-icon-wrapper">
+                                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg">
+                                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                                    </svg>
+                                </div>
+                                <span>مجلة بالنوفا المكانية</span>
+                            </div>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+                        </button>
+                        */}
+                        {user?.role === 'admin' && (
+                            <button onClick={() => window.location.href = '/admin'}>
+                                <div className="menu-item-content">
+                                    <div className="menu-icon-wrapper" style={{ color: '#fbab15' }}>
+                                        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+                                    </div>
+                                    <span>لوحة الإدارة</span>
+                                </div>
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+                            </button>
+                        )}
+                        <div className="menu-divider"></div>
+                        <button onClick={logout} className="logout-btn">
+                            <div className="menu-item-content">
+                                <div className="menu-icon-wrapper">
+                                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#ff6b6b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="menu-icon-svg">
+                                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                        <polyline points="16 17 21 12 16 7"></polyline>
+                                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                                    </svg>
+                                </div>
+                                <span style={{ fontWeight: '700' }}>تسجيل خروج</span>
+                            </div>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ff6b6b" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+                        </button>
+                    </div>
+                </>
+            )}
 
             {/* Main Content Area */}
             <div className="map-container-wrapper" style={{ height: '100%', width: '100%' }}>
