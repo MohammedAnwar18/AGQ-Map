@@ -1639,7 +1639,7 @@ const MapComponent = () => {
     // (Logic included in main fetch effect above via dependency)
 
     if (!isGuestMode && !user) return <SplashLoading />;
-    if (!isInitialDataLoaded) return <SplashLoading />;
+    if (!isGuestMode && !isInitialDataLoaded) return <SplashLoading />;
 
     return (
         <div className="map-page" style={{ position: 'relative', height: '100dvh', width: '100vw', overflow: 'hidden' }}>
@@ -2504,7 +2504,7 @@ const MapComponent = () => {
                             </svg>
                         </div>
                         
-                        <h3 style={{ fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '15px', color: '#fbab15' }}>انضم إلى بالنوفا! ✨</h3>
+                        <h3 style={{ fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '15px', color: '#fbab15' }}>انضم إلى بالنوفا!</h3>
                         <p style={{ fontSize: '0.95rem', color: '#cbd5e1', lineHeight: '1.6', marginBottom: '30px' }}>
                             لرؤية تفاصيل هذا المحل، العروض الحصرية، والتفاعل مع الآخرين على الخريطة الاجتماعية، يرجى إنشاء حساب جديد أو تسجيل الدخول.
                         </p>
@@ -2533,7 +2533,7 @@ const MapComponent = () => {
                                     e.currentTarget.style.boxShadow = '0 4px 15px rgba(251, 171, 21, 0.3)';
                                 }}
                             >
-                                إنشاء حساب جديد 🚀
+                                إنشاء حساب جديد
                             </button>
                             
                             <button 
