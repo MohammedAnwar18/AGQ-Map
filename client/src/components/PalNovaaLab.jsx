@@ -554,8 +554,15 @@ const PalNovaaLab = ({ onClose }) => {
 
             s.structures.forEach(struct => {
                 // Rasterize into barriers and elevate terrain
-                const yMin = Math.max(0, Math.min(...struct.gridPts.map(p => p.y)));
-                const yMax = Math.min(N - 1, Math.max(...struct.gridPts.map(p => p.y)));
+                let yMinVal = N - 1;
+                let yMaxVal = 0;
+                for (let i = 0; i < struct.gridPts.length; i++) {
+                    const py = struct.gridPts[i].y;
+                    if (py < yMinVal) yMinVal = py;
+                    if (py > yMaxVal) yMaxVal = py;
+                }
+                const yMin = Math.max(0, yMinVal);
+                const yMax = Math.min(N - 1, yMaxVal);
 
                 for (let y = yMin; y <= yMax; y++) {
                     const intersections = [];
@@ -1756,7 +1763,7 @@ const PalNovaaLab = ({ onClose }) => {
         return R * c;
     };
 
-    const generateDemRaster = (results, gridSize, south, west, north, east, colorRamp = 'classic') => {
+    const generateDemRaster = (results, gridSize, south, west, north, east, colorRamp = 'classic', heightParam = null) => {
         const canvas = document.createElement('canvas');
         const width = 256;
         const height = 256;
@@ -1764,9 +1771,15 @@ const PalNovaaLab = ({ onClose }) => {
         canvas.height = height;
         const ctx = canvas.getContext('2d');
 
-        const elevations = results.map(r => r.elevation || 0);
-        const minElev = Math.min(...elevations);
-        const maxElev = Math.max(...elevations);
+        const isFlatArray = (typeof results[0] === 'number');
+
+        let minElev = Infinity;
+        let maxElev = -Infinity;
+        for (let i = 0; i < results.length; i++) {
+            const val = isFlatArray ? results[i] : (results[i]?.elevation || 0);
+            if (val < minElev) minElev = val;
+            if (val > maxElev) maxElev = val;
+        }
         const range = maxElev - minElev || 1;
 
         const getColorForElevation = (elev) => {
@@ -1834,34 +1847,37 @@ const PalNovaaLab = ({ onClose }) => {
         };
 
         const imgData = ctx.createImageData(width, height);
+        const gridWidth = gridSize;
+        const gridHeight = heightParam !== null ? heightParam : gridSize;
+
         const grid = [];
-        for (let r = 0; r < gridSize; r++) {
+        for (let r = 0; r < gridHeight; r++) {
             grid[r] = [];
         }
-        for (let r = 0; r < gridSize; r++) {
-            for (let c = 0; c < gridSize; c++) {
-                const index = r * gridSize + c;
-                grid[gridSize - 1 - r][c] = results[index] ? (results[index].elevation || 0) : 0;
+        for (let r = 0; r < gridHeight; r++) {
+            for (let c = 0; c < gridWidth; c++) {
+                const index = r * gridWidth + c;
+                grid[gridHeight - 1 - r][c] = isFlatArray ? (results[index] || 0) : (results[index] ? (results[index].elevation || 0) : 0);
             }
         }
 
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
-                const gx = (x / (width - 1)) * (gridSize - 1);
-                const gy = (y / (height - 1)) * (gridSize - 1);
+                const gx = (x / (width - 1)) * (gridWidth - 1);
+                const gy = (y / (height - 1)) * (gridHeight - 1);
 
                 const x0 = Math.floor(gx);
-                const x1 = Math.min(x0 + 1, gridSize - 1);
+                const x1 = Math.min(x0 + 1, gridWidth - 1);
                 const y0 = Math.floor(gy);
-                const y1 = Math.min(y0 + 1, gridSize - 1);
+                const y1 = Math.min(y0 + 1, gridHeight - 1);
 
                 const tx = gx - x0;
                 const ty = gy - y0;
 
-                const e00 = grid[y0][x0];
-                const e10 = grid[y0][x1];
-                const e01 = grid[y1][x0];
-                const e11 = grid[y1][x1];
+                const e00 = grid[y0][x0] || 0;
+                const e10 = grid[y0][x1] || 0;
+                const e01 = grid[y1][x0] || 0;
+                const e11 = grid[y1][x1] || 0;
 
                 const eTop = e00 + tx * (e10 - e00);
                 const eBottom = e01 + tx * (e11 - e01);
@@ -1875,6 +1891,78 @@ const PalNovaaLab = ({ onClose }) => {
                 imgData.data[pixelIdx + 1] = rgb[1];
                 imgData.data[pixelIdx + 2] = rgb[2];
                 imgData.data[pixelIdx + 3] = 220;
+            }
+        }
+
+        ctx.putImageData(imgData, 0, 0);
+        return {
+            url: canvas.toDataURL(),
+            coordinates: [
+                [west, north],
+                [east, north],
+                [east, south],
+                [west, south]
+            ]
+        };
+    };
+
+    const generateTerrariumDem = (results, gridSize, south, west, north, east, heightParam = null) => {
+        const canvas = document.createElement('canvas');
+        const width = 256;
+        const height = 256;
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        const isFlatArray = (typeof results[0] === 'number');
+        const imgData = ctx.createImageData(width, height);
+        const gridWidth = gridSize;
+        const gridHeight = heightParam !== null ? heightParam : gridSize;
+
+        const grid = [];
+        for (let r = 0; r < gridHeight; r++) {
+            grid[r] = [];
+        }
+        for (let r = 0; r < gridHeight; r++) {
+            for (let c = 0; c < gridWidth; c++) {
+                const index = r * gridWidth + c;
+                grid[gridHeight - 1 - r][c] = isFlatArray ? (results[index] || 0) : (results[index] ? (results[index].elevation || 0) : 0);
+            }
+        }
+
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const gx = (x / (width - 1)) * (gridWidth - 1);
+                const gy = (y / (height - 1)) * (gridHeight - 1);
+
+                const x0 = Math.floor(gx);
+                const x1 = Math.min(x0 + 1, gridWidth - 1);
+                const y0 = Math.floor(gy);
+                const y1 = Math.min(y0 + 1, gridHeight - 1);
+
+                const tx = gx - x0;
+                const ty = gy - y0;
+
+                const e00 = grid[y0][x0] || 0;
+                const e10 = grid[y0][x1] || 0;
+                const e01 = grid[y1][x0] || 0;
+                const e11 = grid[y1][x1] || 0;
+
+                const eTop = e00 + tx * (e10 - e00);
+                const eBottom = e01 + tx * (e11 - e01);
+                const elev = eTop + ty * (eBottom - eTop);
+
+                // Terrarium encoding
+                const val = elev + 32768;
+                const r = Math.floor(val / 256);
+                const g = Math.floor(val % 256);
+                const b = Math.round((val % 1) * 256);
+
+                const pixelIdx = (y * width + x) * 4;
+                imgData.data[pixelIdx] = Math.max(0, Math.min(255, r));
+                imgData.data[pixelIdx + 1] = Math.max(0, Math.min(255, g));
+                imgData.data[pixelIdx + 2] = Math.max(0, Math.min(255, b));
+                imgData.data[pixelIdx + 3] = 255;
             }
         }
 
@@ -1934,8 +2022,13 @@ const PalNovaaLab = ({ onClose }) => {
                 throw new Error("لم يتم إرجاع أي بيانات");
             }
 
-            const minElev = Math.min(...results.map(r => r.elevation || 0));
-            const maxElev = Math.max(...results.map(r => r.elevation || 0));
+            let minElev = Infinity;
+            let maxElev = -Infinity;
+            for (let i = 0; i < results.length; i++) {
+                const val = results[i].elevation || 0;
+                if (val < minElev) minElev = val;
+                if (val > maxElev) maxElev = val;
+            }
 
             const features = results.map((res, index) => {
                 return {
@@ -1963,12 +2056,14 @@ const PalNovaaLab = ({ onClose }) => {
 
             if (asterViewType === 'raster') {
                 const rasterData = generateDemRaster(results, gridSize, south, west, north, east, 'classic');
+                const demData = generateTerrariumDem(results, gridSize, south, west, north, east);
                 
                 newLayers.push({
                     id: `${newLayerId}-raster`,
                     name: `${layerName} (Raster)`,
                     type: 'raster',
                     url: rasterData.url,
+                    demUrl: demData.url,
                     coordinates: rasterData.coordinates,
                     isRemoteSensing: true,
                     minElevation: minElev,
@@ -2096,45 +2191,82 @@ const PalNovaaLab = ({ onClose }) => {
 
     const exportAsterToGeoTIFF = (layer) => {
         if (!layer) return;
+        
         let targetLayer = layer;
         if (layer.type === 'raster') {
             const pointsLayerId = layer.id.replace('-raster', '-points');
             targetLayer = geoLayers.find(l => l.id === pointsLayerId) || layer;
         }
-        if (!targetLayer.data || !targetLayer.data.features) {
-            alert("⚠️ لا توجد بيانات نقاط ارتفاع صالحة لتصدير GeoTIFF.");
-            return;
-        }
-        const features = targetLayer.data.features;
-        if (features.length === 0) return;
-        
+
         try {
-            const lats = features.map(f => f.geometry.coordinates[1]);
-            const lngs = features.map(f => f.geometry.coordinates[0]);
-            const west = Math.min(...lngs);
-            const east = Math.max(...lngs);
-            const south = Math.min(...lats);
-            const north = Math.max(...lats);
-            
-            const uniqueLats = [...new Set(lats)].sort((a, b) => b - a);
-            const uniqueLngs = [...new Set(lngs)].sort((a, b) => a - b);
-            const gridSize = uniqueLats.length;
-            
-            const grid = [];
-            for (let r = 0; r < gridSize; r++) {
-                grid[r] = [];
-                const lat = uniqueLats[r];
-                for (let c = 0; c < gridSize; c++) {
-                    const lng = uniqueLngs[c];
-                    const f = features.find(feat => 
-                        Math.abs(feat.geometry.coordinates[1] - lat) < 0.0001 && 
-                        Math.abs(feat.geometry.coordinates[0] - lng) < 0.0001
-                    );
-                    grid[r][c] = f ? (f.properties.elevation || 0) : 0;
+            let gridWidth = 0;
+            let gridHeight = 0;
+            let west = 0;
+            let east = 0;
+            let south = 0;
+            let north = 0;
+            let elevations = null;
+
+            if (targetLayer.elevations) {
+                // Optimized path for local GeoTIFF and ASTER layers with Float32Array elevations
+                gridWidth = targetLayer.gridWidth || targetLayer.gridSize;
+                gridHeight = targetLayer.gridHeight || gridWidth;
+                west = targetLayer.west;
+                east = targetLayer.east;
+                south = targetLayer.south;
+                north = targetLayer.north;
+                elevations = targetLayer.elevations;
+            } else {
+                if (!targetLayer.data || !targetLayer.data.features) {
+                    alert("⚠️ لا توجد بيانات نقاط ارتفاع صالحة لتصدير GeoTIFF.");
+                    return;
+                }
+                const features = targetLayer.data.features;
+                if (features.length === 0) return;
+
+                // Safe min/max scan without spread operator
+                let minLng = Infinity, maxLng = -Infinity;
+                let minLat = Infinity, maxLat = -Infinity;
+                for (let i = 0; i < features.length; i++) {
+                    const coords = features[i].geometry.coordinates;
+                    if (coords[0] < minLng) minLng = coords[0];
+                    if (coords[0] > maxLng) maxLng = coords[0];
+                    if (coords[1] < minLat) minLat = coords[1];
+                    if (coords[1] > maxLat) maxLat = coords[1];
+                }
+                west = minLng;
+                east = maxLng;
+                south = minLat;
+                north = maxLat;
+
+                const lats = features.map(f => f.geometry.coordinates[1]);
+                const lngs = features.map(f => f.geometry.coordinates[0]);
+                const uniqueLats = [...new Set(lats)].sort((a, b) => b - a);
+                const uniqueLngs = [...new Set(lngs)].sort((a, b) => a - b);
+                
+                gridWidth = uniqueLngs.length;
+                gridHeight = uniqueLats.length;
+
+                // Pre-build index for fast lookup
+                const coordMap = new Map();
+                for (let i = 0; i < features.length; i++) {
+                    const f = features[i];
+                    const key = `${f.geometry.coordinates[1].toFixed(5)},${f.geometry.coordinates[0].toFixed(5)}`;
+                    coordMap.set(key, f.properties.elevation || 0);
+                }
+
+                elevations = new Float32Array(gridWidth * gridHeight);
+                for (let r = 0; r < gridHeight; r++) {
+                    const lat = uniqueLats[r];
+                    for (let c = 0; c < gridWidth; c++) {
+                        const lng = uniqueLngs[c];
+                        const key = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+                        elevations[r * gridWidth + c] = coordMap.get(key) || 0;
+                    }
                 }
             }
-            
-            const pixelDataSize = gridSize * gridSize * 4;
+
+            const pixelDataSize = gridWidth * gridHeight * 4;
             const headerSize = 8;
             
             const offsetPixelScale = 176;
@@ -2163,14 +2295,14 @@ const PalNovaaLab = ({ onClose }) => {
                 offset += 12;
             };
             
-            writeEntry(256, 4, 1, gridSize);
-            writeEntry(257, 4, 1, gridSize);
+            writeEntry(256, 4, 1, gridWidth);
+            writeEntry(257, 4, 1, gridHeight);
             writeEntry(258, 3, 1, 32);
             writeEntry(259, 3, 1, 1);
             writeEntry(262, 3, 1, 1);
             writeEntry(273, 4, 1, offsetPixelData);
             writeEntry(277, 3, 1, 1);
-            writeEntry(278, 4, 1, gridSize);
+            writeEntry(278, 4, 1, gridHeight);
             writeEntry(279, 4, 1, pixelDataSize);
             writeEntry(339, 3, 1, 3);
             writeEntry(33550, 12, 3, offsetPixelScale);
@@ -2179,8 +2311,8 @@ const PalNovaaLab = ({ onClose }) => {
             
             view.setUint32(offset, 0, true);
             
-            const scaleX = gridSize > 1 ? (east - west) / (gridSize - 1) : 0.0001;
-            const scaleY = gridSize > 1 ? (north - south) / (gridSize - 1) : 0.0001;
+            const scaleX = gridWidth > 1 ? (east - west) / (gridWidth - 1) : 0.0001;
+            const scaleY = gridHeight > 1 ? (north - south) / (gridHeight - 1) : 0.0001;
             view.setFloat64(offsetPixelScale, scaleX, true);
             view.setFloat64(offsetPixelScale + 8, scaleY, true);
             view.setFloat64(offsetPixelScale + 16, 0.0, true);
@@ -2205,11 +2337,9 @@ const PalNovaaLab = ({ onClose }) => {
             }
             
             let pixelOffset = offsetPixelData;
-            for (let r = 0; r < gridSize; r++) {
-                for (let c = 0; c < gridSize; c++) {
-                    view.setFloat32(pixelOffset, grid[r][c], true);
-                    pixelOffset += 4;
-                }
+            for (let i = 0; i < elevations.length; i++) {
+                view.setFloat32(pixelOffset, elevations[i], true);
+                pixelOffset += 4;
             }
             
             const blob = new Blob([buffer], { type: 'image/tiff' });
@@ -2263,20 +2393,55 @@ const PalNovaaLab = ({ onClose }) => {
         if (is3dActive) {
             if (map) {
                 map.setTerrain(null);
+                try {
+                    if (map.getSource(`terrain-dem-${baseId}`)) {
+                        map.removeSource(`terrain-dem-${baseId}`);
+                    }
+                } catch (e) {
+                    console.error("Error removing terrain-dem source:", e);
+                }
             }
             setActive3dLayerId(null);
         } else {
             if (map) {
-                if (!map.getSource('terrain-dem')) {
-                    map.addSource('terrain-dem', {
-                        type: 'raster-dem',
-                        tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
-                        encoding: 'terrarium',
-                        tileSize: 256,
-                        maxzoom: 15
-                    });
+                // If there's an existing custom terrain active, clean it up first
+                if (active3dLayerId) {
+                    try {
+                        map.setTerrain(null);
+                        if (map.getSource(`terrain-dem-${active3dLayerId}`)) {
+                            map.removeSource(`terrain-dem-${active3dLayerId}`);
+                        }
+                    } catch (e) {
+                        console.error("Error cleaning up previous terrain:", e);
+                    }
                 }
-                map.setTerrain({ source: 'terrain-dem', exaggeration: exaggeration3d });
+
+                const layer = geoLayers.find(l => l.id === `${baseId}-raster` || l.id === baseId);
+                const sourceId = layer && layer.demUrl ? `terrain-dem-${baseId}` : 'terrain-dem';
+
+                if (layer && layer.demUrl) {
+                    if (!map.getSource(sourceId)) {
+                        map.addSource(sourceId, {
+                            type: 'raster-dem',
+                            tiles: [layer.demUrl],
+                            encoding: 'terrarium',
+                            tileSize: 256,
+                            bounds: [layer.west, layer.south, layer.east, layer.north]
+                        });
+                    }
+                } else {
+                    if (!map.getSource('terrain-dem')) {
+                        map.addSource('terrain-dem', {
+                            type: 'raster-dem',
+                            tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+                            encoding: 'terrarium',
+                            tileSize: 256,
+                            maxzoom: 15
+                        });
+                    }
+                }
+
+                map.setTerrain({ source: sourceId, exaggeration: exaggeration3d });
                 
                 map.easeTo({
                     pitch: 60,
@@ -2293,7 +2458,8 @@ const PalNovaaLab = ({ onClose }) => {
         if (active3dLayerId) {
             const map = mapRef.current?.getMap();
             if (map) {
-                map.setTerrain({ source: 'terrain-dem', exaggeration: newExag });
+                const sourceId = map.getSource(`terrain-dem-${active3dLayerId}`) ? `terrain-dem-${active3dLayerId}` : 'terrain-dem';
+                map.setTerrain({ source: sourceId, exaggeration: newExag });
             }
         }
     };
@@ -2824,9 +2990,57 @@ out geom;`;
                         setShowBottomTable(true);
                     }
                 } else {
-                    setSelectedFeatureInfo(null);
-                    setHighlightFeatures([]);
-                    setSelectedFeatures([]);
+                    // Check for custom raster layers (like imported GeoTIFF or ASTER raster)
+                    let clickedRasterFeature = null;
+                    const rasterLayers = geoLayers.filter(l => l.isVisible && (l.type === 'raster' || l.id.endsWith('-raster')));
+                    for (const rLayer of rasterLayers) {
+                        const { west, south, east, north } = rLayer;
+                        const lat = e.lngLat.lat;
+                        const lng = e.lngLat.lng;
+                        if (lng >= west && lng <= east && lat >= south && lat <= north) {
+                            // Coordinates fall inside the raster bounds!
+                            const w = rLayer.gridSize || rLayer.gridWidth;
+                            const h = rLayer.gridHeight || w; // fallback to gridSize if square
+                            
+                            if (w && h) {
+                                const scaleX = (east - west) / (w - 1);
+                                const scaleY = (north - south) / (h - 1);
+                                const col = Math.round((lng - west) / scaleX);
+                                const row = Math.round((north - lat) / scaleY);
+                                
+                                if (col >= 0 && col < w && row >= 0 && row < h) {
+                                    let elev = 0;
+                                    if (rLayer.elevations) {
+                                        elev = rLayer.elevations[row * w + col];
+                                    } else if (rLayer.rawResults) {
+                                        const resItem = rLayer.rawResults[row * w + col];
+                                        elev = resItem ? (resItem.elevation || 0) : 0;
+                                    }
+                                    
+                                    if (elev !== undefined) {
+                                        clickedRasterFeature = {
+                                            properties: {
+                                                dataset: 'aster30m', // this triggers the elevation format in the Popup
+                                                elevation: elev,
+                                                name: rLayer.name
+                                            },
+                                            longitude: lng,
+                                            latitude: lat
+                                        };
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (clickedRasterFeature) {
+                        setSelectedFeatureInfo(clickedRasterFeature);
+                    } else {
+                        setSelectedFeatureInfo(null);
+                        setHighlightFeatures([]);
+                        setSelectedFeatures([]);
+                    }
                 }
             } catch (err) {
                 console.error("Map click query error:", err);
@@ -2935,91 +3149,59 @@ out geom;`;
                         if (val > maxElev) maxElev = val;
                     }
                     
-                    const results = [];
-                    for (let r = 0; r < height; r++) {
-                        for (let c = 0; c < width; c++) {
-                            const idx = r * width + c;
-                            const lat = north - r * scaleY;
-                            const lng = west + c * scaleX;
-                            results.push({
-                                location: { lat, lng },
-                                elevation: elevations[idx],
-                                dataset: "imported_geotiff"
-                            });
-                        }
-                    }
-                    
-                    const rasterData = generateDemRaster(results, width, south, west, north, east, 'classic');
+                    const rasterData = generateDemRaster(elevations, width, south, west, north, east, 'classic', height);
+                    const demData = generateTerrariumDem(elevations, width, south, west, north, east, height);
                     const newLayerId = `aster-${Date.now()}`;
                     const layerName = file.name.replace(/\.[^/.]+$/, "");
                     
-                    const geojson = {
-                        type: "FeatureCollection",
-                        features: results.map((res, idx) => ({
-                            type: "Feature",
-                            geometry: {
-                                type: "Point",
-                                coordinates: [res.location.lng, res.location.lat]
-                            },
-                            properties: {
-                                id: idx,
-                                elevation: res.elevation,
-                                dataset: "imported"
-                            }
-                        }))
+                    const newLayer = {
+                        id: `${newLayerId}-raster`,
+                        name: `${layerName} (Raster)`,
+                        type: 'raster',
+                        url: rasterData.url,
+                        demUrl: demData.url,
+                        coordinates: rasterData.coordinates,
+                        isRemoteSensing: true,
+                        minElevation: minElev,
+                        maxElevation: maxElev,
+                        isVisible: true,
+                        elevations: elevations, // Float32Array
+                        gridWidth: width,
+                        gridHeight: height,
+                        south: south,
+                        west: west,
+                        north: north,
+                        east: east,
+                        colorRamp: 'classic'
                     };
                     
-                    const newLayers = [
-                        {
-                            id: `${newLayerId}-raster`,
-                            name: `${layerName} (Raster)`,
-                            type: 'raster',
-                            url: rasterData.url,
-                            coordinates: rasterData.coordinates,
+                    setGeoLayers(prev => [...prev, newLayer]);
+                    
+                    setLayerStyles(prev => ({
+                        ...prev,
+                        [newLayer.id]: {
+                            opacity: 0.85,
                             isRemoteSensing: true,
                             minElevation: minElev,
-                            maxElevation: maxElev,
-                            isVisible: true,
-                            rawResults: results,
-                            gridSize: width,
-                            south: south,
-                            west: west,
-                            north: north,
-                            east: east,
-                            colorRamp: 'classic'
-                        },
-                        {
-                            id: `${newLayerId}-points`,
-                            name: `${layerName} (Clickable)`,
-                            data: geojson,
-                            isRemoteSensing: true,
-                            minElevation: minElev,
-                            maxElevation: maxElev,
-                            color: '#fbab15',
-                            isVisible: true,
-                            isHiddenPoints: true,
-                            colorRamp: 'classic'
+                            maxElevation: maxElev
                         }
-                    ];
-                    
-                    setGeoLayers(prev => [...prev, ...newLayers]);
-                    
-                    newLayers.forEach(l => {
-                        setLayerStyles(prev => ({
-                            ...prev,
-                            [l.id]: {
-                                color: '#fbab15',
-                                outlineColor: '#ffffff',
-                                outlineWidth: 1,
-                                opacity: l.isHiddenPoints ? 0.001 : 0.85,
-                                isRemoteSensing: true,
-                                minElevation: minElev,
-                                maxElevation: maxElev
-                            }
-                        }));
-                    });
+                    }));
                     
                     setActiveAsterLayerId(`${newLayerId}-raster`);
+                    
+                    // Zoom to the raster boundaries
+                    if (mapRef.current) {
+                        try {
+                            const map = mapRef.current.getMap();
+                            map.fitBounds(
+                                [[west, south], [east, north]],
+                                { padding: 80, duration: 2000 }
+                            );
+                        } catch (e) {
+                            console.error('Fit bounds error for tiff:', e);
+                        }
+                    }
+
                     alert(`✅ تم استيراد راستر الارتفاعات GeoTIFF "${file.name}" بنجاح وجدولته على الخريطة!`);
                 } catch (err) {
                     console.error("Failed to parse GeoTIFF:", err);
@@ -3119,10 +3301,17 @@ out geom;`;
                                 };
                                 extractCoords(json);
                                 if (coordinates.length > 0) {
-                                    const lons = coordinates.map(c => c[0]);
-                                    const lats = coordinates.map(c => c[1]);
+                                    let minLng = Infinity, maxLng = -Infinity;
+                                    let minLat = Infinity, maxLat = -Infinity;
+                                    for (let i = 0; i < coordinates.length; i++) {
+                                        const pt = coordinates[i];
+                                        if (pt[0] < minLng) minLng = pt[0];
+                                        if (pt[0] > maxLng) maxLng = pt[0];
+                                        if (pt[1] < minLat) minLat = pt[1];
+                                        if (pt[1] > maxLat) maxLat = pt[1];
+                                    }
                                     mapRef.current.fitBounds(
-                                        [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]],
+                                        [[minLng, minLat], [maxLng, maxLat]],
                                         { padding: 80, duration: 2000 }
                                     );
                                 }
@@ -3226,10 +3415,17 @@ out geom;`;
                         };
                         extractCoords(response.data.geojson);
                         if (coordinates.length > 0) {
-                            const lons = coordinates.map(c => c[0]);
-                            const lats = coordinates.map(c => c[1]);
+                            let minLng = Infinity, maxLng = -Infinity;
+                            let minLat = Infinity, maxLat = -Infinity;
+                            for (let i = 0; i < coordinates.length; i++) {
+                                const pt = coordinates[i];
+                                if (pt[0] < minLng) minLng = pt[0];
+                                if (pt[0] > maxLng) maxLng = pt[0];
+                                if (pt[1] < minLat) minLat = pt[1];
+                                if (pt[1] > maxLat) maxLat = pt[1];
+                            }
                             mapRef.current.fitBounds(
-                                [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]],
+                                [[minLng, minLat], [maxLng, maxLat]],
                                 { padding: 80, duration: 2000 }
                             );
                         }
@@ -3859,7 +4055,7 @@ out geom;`;
         const layersListHTML = exportLayers.map(l =>
             `<div class="cel-layer-row" onclick="map.fitBounds(${JSON.stringify(
                 l.data?.features?.length > 0
-                    ? (() => { try { const coords = (l.data?.features || []).flatMap(f => f.geometry?.type === 'Point' ? [f.geometry.coordinates] : f.geometry?.coordinates?.flat?.(5) || []); const lngs = coords.map(c => c[0]); const lats = coords.map(c => c[1]); return [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]]; } catch (e) { return null; } })()
+                    ? (() => { try { const coords = (l.data?.features || []).flatMap(f => f.geometry?.type === 'Point' ? [f.geometry.coordinates] : f.geometry?.coordinates?.flat?.(5) || []); if (coords.length === 0) return null; let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity; for (let i = 0; i < coords.length; i++) { const pt = coords[i]; if (pt && pt[0] < minLng) minLng = pt[0]; if (pt && pt[0] > maxLng) maxLng = pt[0]; if (pt && pt[1] < minLat) minLat = pt[1]; if (pt && pt[1] > maxLat) maxLat = pt[1]; } return [[minLng, minLat], [maxLng, maxLat]]; } catch (e) { return null; } })()
                     : null
             )}, {padding:40})"><div class="cel-layer-dot" style="background:${l.style?.color || l.color}"></div><span>${l.name}</span></div>`
         ).join('');
@@ -3931,9 +4127,16 @@ out geom;`;
                 }
             });
             if (allCoords.length > 0) {
-                const lngs = allCoords.map(c => c[0]);
-                const lats = allCoords.map(c => c[1]);
-                finalBounds = [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]];
+                let minLng = Infinity, maxLng = -Infinity;
+                let minLat = Infinity, maxLat = -Infinity;
+                for (let i = 0; i < allCoords.length; i++) {
+                    const pt = allCoords[i];
+                    if (pt[0] < minLng) minLng = pt[0];
+                    if (pt[0] > maxLng) maxLng = pt[0];
+                    if (pt[1] < minLat) minLat = pt[1];
+                    if (pt[1] > maxLat) maxLat = pt[1];
+                }
+                finalBounds = [[minLng, minLat], [maxLng, maxLat]];
             }
         } catch (e) { console.error("Bounds calc error", e); }
 
