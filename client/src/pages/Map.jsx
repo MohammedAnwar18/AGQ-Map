@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams, useNavigate } from 'react-router-dom';
 import Map, { Marker, Popup, NavigationControl, Source, Layer } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -122,6 +122,13 @@ const BIRZEIT_POLYGON = [[35.18513515866644,31.957184076802875],[35.182098437430
 
 const MapComponent = () => {
     const { user, logout, socket } = useAuth();
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const shopIdQuery = searchParams.get('shopId');
+    const facilityIdQuery = searchParams.get('facilityId');
+    const isGuestMode = !user && (!!shopIdQuery || !!facilityIdQuery);
+    const [showGuestRedirectModal, setShowGuestRedirectModal] = useState(false);
+
     const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
 
@@ -1046,6 +1053,7 @@ const MapComponent = () => {
 
     // Initial Data Fetch
     useEffect(() => {
+        if (isGuestMode) return;
         const fetchData = async () => {
             // Note: Location handling moved to dedicated effect below
             try {
@@ -1091,7 +1099,7 @@ const MapComponent = () => {
         }, 30000);
 
         return () => clearInterval(interval);
-    }, [user, currentCommunity]);
+    }, [user, currentCommunity, isGuestMode]);
 
     // Fetch followed university facilities
     useEffect(() => {
@@ -1133,20 +1141,23 @@ const MapComponent = () => {
         return () => clearInterval(interval);
     }, [user, followedShopsMap]);
 
-    const [searchParams] = useSearchParams();
-
     // Deep Link Handler (Shop/Place Share Link)
     useEffect(() => {
         const shopId = searchParams.get('shopId');
         const facilityId = searchParams.get('facilityId');
         
-        if ((shopId || facilityId) && user) {
+        if ((shopId || facilityId) && (user || isGuestMode)) {
             const handleDeepLink = async () => {
                 try {
                     if (shopId) {
                         const data = await shopService.getProfile(shopId);
                         if (data && data.shop) {
                             const shop = data.shop;
+                            // Ensure the shop is in allShopsMap so it gets rendered
+                            setAllShopsMap(prev => {
+                                if (prev.some(s => String(s.id) === String(shop.id))) return prev;
+                                return [...prev, shop];
+                            });
                             // Fly to shop position
                             if (mapRef.current) {
                                 mapRef.current.flyTo({
@@ -1157,13 +1168,20 @@ const MapComponent = () => {
                                     essential: true
                                 });
                             }
-                            // Open appropriate profile modal
-                            handleOpenShopProfile(shop);
+                            // Open appropriate profile modal only if not in guest mode
+                            if (!isGuestMode) {
+                                handleOpenShopProfile(shop);
+                            }
                         }
                     } else if (facilityId) {
                         const data = await shopService.getFacilityProfile(facilityId);
                         if (data && data.facility) {
                             const fac = data.facility;
+                            // Ensure the facility is in allFacilitiesMap so it gets rendered
+                            setAllFacilitiesMap(prev => {
+                                if (prev.some(f => String(f.id) === String(fac.id))) return prev;
+                                return [...prev, fac];
+                            });
                             // Fly to facility position
                             if (mapRef.current) {
                                 mapRef.current.flyTo({
@@ -1174,9 +1192,11 @@ const MapComponent = () => {
                                     essential: true
                                 });
                             }
-                            // Open facility modal
-                            setSelectedFacilityId(facilityId);
-                            setShowFacilityProfile(true);
+                            // Open facility modal only if not in guest mode
+                            if (!isGuestMode) {
+                                setSelectedFacilityId(facilityId);
+                                setShowFacilityProfile(true);
+                            }
                         }
                     }
                 } catch (e) {
@@ -1187,7 +1207,7 @@ const MapComponent = () => {
             const timer = setTimeout(handleDeepLink, 1000);
             return () => clearTimeout(timer);
         }
-    }, [searchParams, user]);
+    }, [searchParams, user, isGuestMode]);
 
     // Native-Grade Geolocation Tracking
     useEffect(() => {
@@ -1618,13 +1638,15 @@ const MapComponent = () => {
     // Refresh posts when mode changes or interval
     // (Logic included in main fetch effect above via dependency)
 
-    if (!user || !isInitialDataLoaded) return <SplashLoading />;
+    if (!isGuestMode && !user) return <SplashLoading />;
+    if (!isInitialDataLoaded) return <SplashLoading />;
 
     return (
         <div className="map-page" style={{ position: 'relative', height: '100dvh', width: '100vw', overflow: 'hidden' }}>
 
             {/* Top Bar - Clean & Minimalist */}
-            <div className="top-bar">
+            {!isGuestMode && (
+                <div className="top-bar">
                 <div className="top-bar-left" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                     <button
                         className={`top-nav-icon profile-top-icon ${showProfile ? 'active' : ''}`}
@@ -1698,6 +1720,7 @@ const MapComponent = () => {
                     </button>
                 </div>
             </div>
+            )}
 
             {/* More Menu Dropdown & Backdrop */}
             {showMoreMenu && (
@@ -2011,7 +2034,7 @@ const MapComponent = () => {
                     {/* Removed Taxi Route Line and Markers */}
 
                     {/* Posts Markers - Visible from City/Neighborhood level (zoom 12+) and hidden at Regional level */}
-                    {viewState.zoom >= 12 && posts.map(post => (
+                    {!isGuestMode && viewState.zoom >= 12 && posts.map(post => (
                         <Marker
                             key={post.id}
                             longitude={parseFloat(post.location.longitude)}
@@ -2036,7 +2059,7 @@ const MapComponent = () => {
 
 
                     {/* Friends Markers (Hide in Community Mode) - Green Pulse Design */}
-                    {!currentCommunity && friendsMap.map(friend => (
+                    {!isGuestMode && !currentCommunity && friendsMap.map(friend => (
                         <Marker
                             key={`friend-${friend.id}`}
                             longitude={parseFloat(friend.last_longitude)}
@@ -2076,6 +2099,10 @@ const MapComponent = () => {
                     {!currentCommunity && allShopsMap.filter(shop => {
                         if (shop.latitude == null || shop.longitude == null || isNaN(parseFloat(shop.latitude))) return false;
 
+                        if (isGuestMode) {
+                            return String(shop.id) === String(shopIdQuery);
+                        }
+
                         // Standardizing ALL shops and institutions to appear from Zoom 12+
                         // This matches the university scale for uniform early discovery.
                         return viewState.zoom >= 12;
@@ -2088,7 +2115,11 @@ const MapComponent = () => {
                             style={{ cursor: 'pointer', zIndex: 50 }}
                             onClick={e => {
                                 e.originalEvent.stopPropagation();
-                                handleOpenShopProfile(shop);
+                                if (isGuestMode) {
+                                    setShowGuestRedirectModal(true);
+                                } else {
+                                    handleOpenShopProfile(shop);
+                                }
                             }}
                         >
                             <div style={{
@@ -2132,7 +2163,7 @@ const MapComponent = () => {
                         </Marker>,
 
                         // Active Drivers
-                        ...(shop.active_drivers || []).filter(driver => driver.latitude && driver.longitude).map(driver => (
+                        ...(isGuestMode ? [] : (shop.active_drivers || [])).filter(driver => driver.latitude && driver.longitude).map(driver => (
                             <Marker
                                 key={`driver-${driver.id}`}
                                 longitude={parseFloat(driver.longitude)}
@@ -2176,7 +2207,7 @@ const MapComponent = () => {
                     )}
 
                     {/* Palestinian Cities Labels (Hide when route is active to keep map clean as requested) */}
-                    {activeMapType === 'satellite' && !routePath && viewState.zoom <= 13.5 && PALESTINIAN_CITIES.map((city, index) => (
+                    {activeMapType === 'satellite' && !routePath && !isGuestMode && viewState.zoom <= 13.5 && PALESTINIAN_CITIES.map((city, index) => (
                         <Marker key={`city-${index}`} longitude={city.lon} latitude={city.lat} anchor="bottom">
                             <div style={{
                                 color: (routePath && activeMapType !== 'satellite') ? '#1e293b' : 'white',
@@ -2201,7 +2232,7 @@ const MapComponent = () => {
                     ))}
 
                     {/* University Facilities Markers - Visible when zoomed in close (>= 15.5) */}
-                    {!currentCommunity && viewState.zoom >= 15.5 && allFacilitiesMap.map(fac => {
+                    {!currentCommunity && (isGuestMode ? (facilityIdQuery ? allFacilitiesMap.filter(f => String(f.id) === String(facilityIdQuery)) : []) : (viewState.zoom >= 15.5 ? allFacilitiesMap : [])).map(fac => {
                         const isFollowedUni = followedShopsMap.some(s => s.id === fac.parent_shop_id);
                         return (
                             <Marker
@@ -2211,8 +2242,12 @@ const MapComponent = () => {
                                 anchor="bottom"
                                 onClick={e => {
                                     e.originalEvent.stopPropagation();
-                                    setSelectedFacilityId(fac.id);
-                                    setShowFacilityProfile(true);
+                                    if (isGuestMode) {
+                                        setShowGuestRedirectModal(true);
+                                    } else {
+                                        setSelectedFacilityId(fac.id);
+                                        setShowFacilityProfile(true);
+                                    }
                                 }}
                             >
                                 <div className="facility-map-marker" style={{
@@ -2254,7 +2289,8 @@ const MapComponent = () => {
             </div>
 
             {/* Bottom Navigation Panel - Instagram Style */}
-            <nav className="bottom-nav">
+            {!isGuestMode && (
+                <nav className="bottom-nav">
                 <button
                     className={`nav-item ${!showSearch && !showAIChat && !showProfile && !showCommunities && !showChat ? 'active' : ''}`}
                     onClick={() => {
@@ -2320,6 +2356,7 @@ const MapComponent = () => {
                     </div>
                 </button>
             </nav>
+            )}
 
             {/* Floating Info Overlays for Navigation */}
 
@@ -2432,6 +2469,109 @@ const MapComponent = () => {
                     onFollowChange={handleShopFollowed}
                     userLocation={userLocation}
                 />
+            )}
+            {showGuestRedirectModal && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(5, 11, 22, 0.85)',
+                    backdropFilter: 'blur(10px)',
+                    zIndex: 9999,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '20px',
+                    animation: 'fadeIn 0.3s ease-out'
+                }}>
+                    <div style={{
+                        background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%)',
+                        border: '1px solid rgba(251, 171, 21, 0.3)',
+                        borderRadius: '24px',
+                        padding: '35px 25px',
+                        maxWidth: '420px',
+                        width: '100%',
+                        textAlign: 'center',
+                        boxShadow: '0 20px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)',
+                        color: 'white',
+                        fontFamily: 'Tajawal, Cairo, sans-serif'
+                    }}>
+                        <div style={{ marginBottom: '20px' }}>
+                            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#fbab15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ filter: 'drop-shadow(0 0 8px rgba(251, 171, 21, 0.4))' }}>
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                                <circle cx="8.5" cy="7" r="4" />
+                                <line x1="20" y1="8" x2="20" y2="14" />
+                                <line x1="23" y1="11" x2="17" y2="11" />
+                            </svg>
+                        </div>
+                        
+                        <h3 style={{ fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '15px', color: '#fbab15' }}>انضم إلى بالنوفا! ✨</h3>
+                        <p style={{ fontSize: '0.95rem', color: '#cbd5e1', lineHeight: '1.6', marginBottom: '30px' }}>
+                            لرؤية تفاصيل هذا المحل، العروض الحصرية، والتفاعل مع الآخرين على الخريطة الاجتماعية، يرجى إنشاء حساب جديد أو تسجيل الدخول.
+                        </p>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <button 
+                                onClick={() => navigate('/login', { state: { mode: 'register' } })}
+                                style={{
+                                    background: 'linear-gradient(135deg, #fbab15 0%, #f97316 100%)',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '14px',
+                                    padding: '14px 20px',
+                                    fontSize: '1rem',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 4px 15px rgba(251, 171, 21, 0.3)',
+                                    transition: 'transform 0.2s, box-shadow 0.2s'
+                                }}
+                                onMouseOver={e => {
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(251, 171, 21, 0.4)';
+                                }}
+                                onMouseOut={e => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = '0 4px 15px rgba(251, 171, 21, 0.3)';
+                                }}
+                            >
+                                إنشاء حساب جديد 🚀
+                            </button>
+                            
+                            <button 
+                                onClick={() => navigate('/login', { state: { mode: 'login' } })}
+                                style={{
+                                    background: 'rgba(255, 255, 255, 0.08)',
+                                    color: 'white',
+                                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                                    borderRadius: '14px',
+                                    padding: '12px 20px',
+                                    fontSize: '0.95rem',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    transition: 'background-color 0.2s'
+                                }}
+                                onMouseOver={e => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)'}
+                                onMouseOut={e => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)'}
+                            >
+                                تسجيل الدخول
+                            </button>
+                            
+                            <button 
+                                onClick={() => setShowGuestRedirectModal(false)}
+                                style={{
+                                    background: 'transparent',
+                                    color: '#94a3b8',
+                                    border: 'none',
+                                    marginTop: '5px',
+                                    fontSize: '0.85rem',
+                                    cursor: 'pointer',
+                                    textDecoration: 'underline'
+                                }}
+                            >
+                                إغلاق والرجوع للخريطة
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
             {showShopProfile && selectedShopProfile && (
                 <ShopProfileModal

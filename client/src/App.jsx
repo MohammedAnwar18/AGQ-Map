@@ -45,6 +45,13 @@ const ProtectedRoute = ({ children }) => {
 
     if (loading) return <SplashLoading />;
 
+    const searchParams = new URLSearchParams(window.location.search);
+    const hasSharedItem = searchParams.has('shopId') || searchParams.has('facilityId');
+
+    if (hasSharedItem) {
+        return children;
+    }
+
     return isAuthenticated ? children : <Navigate to="/login" />;
 };
 
