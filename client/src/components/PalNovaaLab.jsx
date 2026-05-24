@@ -1787,6 +1787,8 @@ const PalNovaaLab = ({ onClose }) => {
         const grid = [];
         for (let r = 0; r < gridSize; r++) {
             grid[r] = [];
+        }
+        for (let r = 0; r < gridSize; r++) {
             for (let c = 0; c < gridSize; c++) {
                 const index = r * gridSize + c;
                 grid[gridSize - 1 - r][c] = results[index].elevation || 0;
