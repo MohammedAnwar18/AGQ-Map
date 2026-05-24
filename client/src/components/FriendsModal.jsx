@@ -41,6 +41,7 @@ const ShopAvatar = ({ shop }) => {
 };
 
 const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, currentUser, onShopClick, onShopFollowed, followedShops: propFollowedShops }) => {
+    console.log("FriendsModal Render:", { activeTab: isShopsMode ? 'shops' : initialTab, isShopsMode });
     const [activeTab, setActiveTab] = useState(isShopsMode ? 'shops' : initialTab);
     const [friends, setFriends] = useState([]);
     const [requests, setRequests] = useState([]);
@@ -365,6 +366,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                         <button
                             className={`tab ${shopSubTab === 'shops' ? 'active' : ''}`}
                             onClick={() => {
+                                console.log("Subtab clicked: shops");
                                 setShopSubTab('shops');
                                 setShopSearchQuery('');
                                 setShopSearchResults([]);
@@ -376,6 +378,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                         <button
                             className={`tab ${shopSubTab === 'municipalities' ? 'active' : ''}`}
                             onClick={() => {
+                                console.log("Subtab clicked: municipalities");
                                 setShopSubTab('municipalities');
                                 setShopSearchQuery('');
                                 setShopSearchResults([]);
