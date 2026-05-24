@@ -2927,8 +2927,13 @@ out geom;`;
                     const south = north - (height - 1) * scaleY;
                     const east = west + (width - 1) * scaleX;
                     
-                    const minElev = Math.min(...elevations);
-                    const maxElev = Math.max(...elevations);
+                    let minElev = Infinity;
+                    let maxElev = -Infinity;
+                    for (let i = 0; i < elevations.length; i++) {
+                        const val = elevations[i];
+                        if (val < minElev) minElev = val;
+                        if (val > maxElev) maxElev = val;
+                    }
                     
                     const results = [];
                     for (let r = 0; r < height; r++) {
