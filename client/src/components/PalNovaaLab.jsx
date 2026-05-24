@@ -5286,7 +5286,7 @@ out geom;`;
                         {activeTab === 'palremotesensing' && (
                             <div className="tab-content" style={{ display: 'flex', flexDirection: 'column', gap: '20px', height: '100%', overflowY: 'auto' }}>
                                 <div className="panel-section">
-                                    <div className="panel-section-title">الاستشعار عن بعد (ASTER GDEM 30m) 🛰️</div>
+                                    <div className="panel-section-title">الاستشعار عن بعد (ASTER GDEM 30m)</div>
                                     <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.5', marginBottom: '15px' }}>
                                         يقوم هذا النظام بجلب بيانات الارتفاع الرقمية العالمية بدقة 30 متر من أطلس ASTER (التابع لوكالة ناسا ووزارة الاقتصاد اليابانية) للمنطقة المعروضة حالياً على الخريطة.
                                     </p>
@@ -5324,8 +5324,8 @@ out geom;`;
                                                 color: 'white', outline: 'none'
                                             }}
                                         >
-                                            <option value="raster">راستر مستمر (DEM Raster - Bilinear) 🗺️</option>
-                                            <option value="points">شبكة نقاط ملونة (Point Grid) 📍</option>
+                                            <option value="raster">راستر مستمر (DEM Raster - Bilinear)</option>
+                                            <option value="points">شبكة نقاط ملونة (Point Grid)</option>
                                         </select>
                                     </div>
 
@@ -5392,7 +5392,7 @@ out geom;`;
                                                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', fontSize: '0.85rem' }}
                                                 >
                                                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
-                                                    تحميل البيانات كملف CSV 📊
+                                                    تحميل البيانات كملف CSV
                                                 </button>
                                                 <button
                                                     className="ds-btn secondary w-100"
@@ -5400,7 +5400,7 @@ out geom;`;
                                                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', fontSize: '0.85rem' }}
                                                 >
                                                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                                                    تحميل البيانات كملف GeoJSON 📥
+                                                    تحميل البيانات كملف GeoJSON
                                                 </button>
                                                 <button
                                                     className="ds-btn secondary w-100"
@@ -5408,7 +5408,7 @@ out geom;`;
                                                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', fontSize: '0.85rem' }}
                                                 >
                                                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                                                    تحميل البيانات كملف GeoTIFF (.tif) 💾
+                                                    تحميل البيانات كملف GeoTIFF (.tif)
                                                 </button>
                                             </div>
 
@@ -5424,7 +5424,7 @@ out geom;`;
                                                                 className={`ds-btn ${is3d ? 'primary' : 'secondary'} small`}
                                                                 style={{ padding: '6px 12px', fontSize: '0.8rem' }}
                                                             >
-                                                                {is3d ? 'إيقاف 3D' : 'تشغيل 3D 🏔️'}
+                                                                {is3d ? 'إيقاف 3D' : 'تشغيل 3D'}
                                                             </button>
                                                         </div>
                                                         
