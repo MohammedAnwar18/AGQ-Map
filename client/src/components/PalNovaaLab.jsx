@@ -147,6 +147,8 @@ const PalNovaaLab = ({ onClose }) => {
     const [asterGridSize, setAsterGridSize] = useState(10);
     const [activeAsterLayerId, setActiveAsterLayerId] = useState(null);
     const [asterViewType, setAsterViewType] = useState('raster'); // 'points' or 'raster'
+    const [active3dLayerId, setActive3dLayerId] = useState(null);
+    const [exaggeration3d, setExaggeration3d] = useState(2);
 
     // ===== HYDROLOGY SIMULATION SANDBOX REF & EFFECT =====
     const hydroStateRef = useRef({
@@ -1753,7 +1755,7 @@ const PalNovaaLab = ({ onClose }) => {
         return R * c;
     };
 
-    const generateDemRaster = (results, gridSize, south, west, north, east) => {
+    const generateDemRaster = (results, gridSize, south, west, north, east, colorRamp = 'classic') => {
         const canvas = document.createElement('canvas');
         const width = 256;
         const height = 256;
@@ -1767,20 +1769,67 @@ const PalNovaaLab = ({ onClose }) => {
         const range = maxElev - minElev || 1;
 
         const getColorForElevation = (elev) => {
-            const t = (elev - minElev) / range;
+            const t = Math.max(0, Math.min(1, (elev - minElev) / range));
             let r, g, b;
-            if (t < 0.5) {
-                const factor = t * 2;
-                r = Math.round(49 + (16 - 49) * factor);
-                g = Math.round(46 + (185 - 46) * factor);
-                b = Math.round(129 + (129 - 129) * factor);
+            
+            if (colorRamp === 'grayscale') {
+                const val = Math.round(t * 255);
+                return `rgb(${val},${val},${val})`;
+            } else if (colorRamp === 'viridis') {
+                if (t < 0.5) {
+                    const f = t * 2;
+                    r = Math.round(68 + (33 - 68) * f);
+                    g = Math.round(1 + (145 - 1) * f);
+                    b = Math.round(84 + (140 - 84) * f);
+                } else {
+                    const f = (t - 0.5) * 2;
+                    r = Math.round(33 + (253 - 33) * f);
+                    g = Math.round(145 + (231 - 145) * f);
+                    b = Math.round(140 + (37 - 140) * f);
+                }
+                return `rgb(${r},${g},${b})`;
+            } else if (colorRamp === 'terrain') {
+                if (t < 0.5) {
+                    const f = t * 2;
+                    r = Math.round(34 + (234 - 34) * f);
+                    g = Math.round(197 + (179 - 197) * f);
+                    b = Math.round(94 + (8 - 94) * f);
+                } else {
+                    const f = (t - 0.5) * 2;
+                    r = Math.round(234 + (255 - 234) * f);
+                    g = Math.round(179 + (255 - 179) * f);
+                    b = Math.round(8 + (255 - 8) * f);
+                }
+                return `rgb(${r},${g},${b})`;
+            } else if (colorRamp === 'rainbow') {
+                if (t < 0.25) {
+                    const f = t * 4;
+                    return `rgb(0, ${Math.round(f * 255)}, 255)`;
+                } else if (t < 0.5) {
+                    const f = (t - 0.25) * 4;
+                    return `rgb(0, 255, ${Math.round((1 - f) * 255)})`;
+                } else if (t < 0.75) {
+                    const f = (t - 0.5) * 4;
+                    return `rgb(${Math.round(f * 255)}, 255, 0)`;
+                } else {
+                    const f = (t - 0.75) * 4;
+                    return `rgb(255, ${Math.round((1 - f) * 255)}, 0)`;
+                }
             } else {
-                const factor = (t - 0.5) * 2;
-                r = Math.round(16 + (239 - 16) * factor);
-                g = Math.round(185 + (68 - 185) * factor);
-                b = Math.round(129 + (68 - 129) * factor);
+                // Classic
+                if (t < 0.5) {
+                    const factor = t * 2;
+                    r = Math.round(49 + (16 - 49) * factor);
+                    g = Math.round(46 + (185 - 46) * factor);
+                    b = Math.round(129 + (129 - 129) * factor);
+                } else {
+                    const factor = (t - 0.5) * 2;
+                    r = Math.round(16 + (239 - 16) * factor);
+                    g = Math.round(185 + (68 - 185) * factor);
+                    b = Math.round(129 + (68 - 129) * factor);
+                }
+                return `rgb(${r},${g},${b})`;
             }
-            return `rgb(${r},${g},${b})`;
         };
 
         const imgData = ctx.createImageData(width, height);
@@ -1791,7 +1840,7 @@ const PalNovaaLab = ({ onClose }) => {
         for (let r = 0; r < gridSize; r++) {
             for (let c = 0; c < gridSize; c++) {
                 const index = r * gridSize + c;
-                grid[gridSize - 1 - r][c] = results[index].elevation || 0;
+                grid[gridSize - 1 - r][c] = results[index] ? (results[index].elevation || 0) : 0;
             }
         }
 
@@ -1912,7 +1961,7 @@ const PalNovaaLab = ({ onClose }) => {
             const newLayers = [];
 
             if (asterViewType === 'raster') {
-                const rasterData = generateDemRaster(results, gridSize, south, west, north, east);
+                const rasterData = generateDemRaster(results, gridSize, south, west, north, east, 'classic');
                 
                 newLayers.push({
                     id: `${newLayerId}-raster`,
@@ -1923,7 +1972,14 @@ const PalNovaaLab = ({ onClose }) => {
                     isRemoteSensing: true,
                     minElevation: minElev,
                     maxElevation: maxElev,
-                    isVisible: true
+                    isVisible: true,
+                    rawResults: results,
+                    gridSize: gridSize,
+                    south: south,
+                    west: west,
+                    north: north,
+                    east: east,
+                    colorRamp: 'classic'
                 });
 
                 newLayers.push({
@@ -1935,7 +1991,8 @@ const PalNovaaLab = ({ onClose }) => {
                     maxElevation: maxElev,
                     color: '#fbab15',
                     isVisible: true,
-                    isHiddenPoints: true
+                    isHiddenPoints: true,
+                    colorRamp: 'classic'
                 });
             } else {
                 newLayers.push({
@@ -1946,7 +2003,8 @@ const PalNovaaLab = ({ onClose }) => {
                     minElevation: minElev,
                     maxElevation: maxElev,
                     color: '#fbab15',
-                    isVisible: true
+                    isVisible: true,
+                    colorRamp: 'classic'
                 });
             }
 
@@ -2033,6 +2091,487 @@ const PalNovaaLab = ({ onClose }) => {
         document.body.appendChild(downloadAnchor);
         downloadAnchor.click();
         document.body.removeChild(downloadAnchor);
+    };
+
+    const exportAsterToGeoTIFF = (layer) => {
+        if (!layer) return;
+        let targetLayer = layer;
+        if (layer.type === 'raster') {
+            const pointsLayerId = layer.id.replace('-raster', '-points');
+            targetLayer = geoLayers.find(l => l.id === pointsLayerId) || layer;
+        }
+        if (!targetLayer.data || !targetLayer.data.features) {
+            alert("⚠️ لا توجد بيانات نقاط ارتفاع صالحة لتصدير GeoTIFF.");
+            return;
+        }
+        const features = targetLayer.data.features;
+        if (features.length === 0) return;
+        
+        try {
+            const lats = features.map(f => f.geometry.coordinates[1]);
+            const lngs = features.map(f => f.geometry.coordinates[0]);
+            const west = Math.min(...lngs);
+            const east = Math.max(...lngs);
+            const south = Math.min(...lats);
+            const north = Math.max(...lats);
+            
+            const uniqueLats = [...new Set(lats)].sort((a, b) => b - a);
+            const uniqueLngs = [...new Set(lngs)].sort((a, b) => a - b);
+            const gridSize = uniqueLats.length;
+            
+            const grid = [];
+            for (let r = 0; r < gridSize; r++) {
+                grid[r] = [];
+                const lat = uniqueLats[r];
+                for (let c = 0; c < gridSize; c++) {
+                    const lng = uniqueLngs[c];
+                    const f = features.find(feat => 
+                        Math.abs(feat.geometry.coordinates[1] - lat) < 0.0001 && 
+                        Math.abs(feat.geometry.coordinates[0] - lng) < 0.0001
+                    );
+                    grid[r][c] = f ? (f.properties.elevation || 0) : 0;
+                }
+            }
+            
+            const pixelDataSize = gridSize * gridSize * 4;
+            const headerSize = 8;
+            
+            const offsetPixelScale = 176;
+            const offsetTiepoint = 200;
+            const offsetGeoKeys = 248;
+            const offsetPixelData = 296;
+            
+            const bufferSize = offsetPixelData + pixelDataSize;
+            const buffer = new ArrayBuffer(bufferSize);
+            const view = new DataView(buffer);
+            
+            view.setUint8(0, 0x49); // 'I'
+            view.setUint8(1, 0x49); // 'I'
+            view.setUint16(2, 42, true);
+            view.setUint32(4, 8, true);
+            
+            let offset = 8;
+            view.setUint16(offset, 13, true);
+            offset += 2;
+            
+            const writeEntry = (tag, type, count, valOrOffset) => {
+                view.setUint16(offset, tag, true);
+                view.setUint16(offset + 2, type, true);
+                view.setUint32(offset + 4, count, true);
+                view.setUint32(offset + 8, valOrOffset, true);
+                offset += 12;
+            };
+            
+            writeEntry(256, 4, 1, gridSize);
+            writeEntry(257, 4, 1, gridSize);
+            writeEntry(258, 3, 1, 32);
+            writeEntry(259, 3, 1, 1);
+            writeEntry(262, 3, 1, 1);
+            writeEntry(273, 4, 1, offsetPixelData);
+            writeEntry(277, 3, 1, 1);
+            writeEntry(278, 4, 1, gridSize);
+            writeEntry(279, 4, 1, pixelDataSize);
+            writeEntry(339, 3, 1, 3);
+            writeEntry(33550, 12, 3, offsetPixelScale);
+            writeEntry(33922, 12, 6, offsetTiepoint);
+            writeEntry(34735, 3, 24, offsetGeoKeys);
+            
+            view.setUint32(offset, 0, true);
+            
+            const scaleX = gridSize > 1 ? (east - west) / (gridSize - 1) : 0.0001;
+            const scaleY = gridSize > 1 ? (north - south) / (gridSize - 1) : 0.0001;
+            view.setFloat64(offsetPixelScale, scaleX, true);
+            view.setFloat64(offsetPixelScale + 8, scaleY, true);
+            view.setFloat64(offsetPixelScale + 16, 0.0, true);
+            
+            view.setFloat64(offsetTiepoint, 0.0, true);
+            view.setFloat64(offsetTiepoint + 8, 0.0, true);
+            view.setFloat64(offsetTiepoint + 16, 0.0, true);
+            view.setFloat64(offsetTiepoint + 24, west, true);
+            view.setFloat64(offsetTiepoint + 32, north, true);
+            view.setFloat64(offsetTiepoint + 40, 0.0, true);
+            
+            const geoKeys = [
+                1, 1, 0, 5,
+                1024, 0, 1, 2,
+                1025, 0, 1, 1,
+                2048, 0, 1, 4326,
+                2054, 0, 1, 9102,
+                3072, 0, 1, 4326
+            ];
+            for (let i = 0; i < geoKeys.length; i++) {
+                view.setUint16(offsetGeoKeys + i * 2, geoKeys[i], true);
+            }
+            
+            let pixelOffset = offsetPixelData;
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
+                    view.setFloat32(pixelOffset, grid[r][c], true);
+                    pixelOffset += 4;
+                }
+            }
+            
+            const blob = new Blob([buffer], { type: 'image/tiff' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `${layer.name.replace(' (Raster)', '')}.tif`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (err) {
+            console.error("Error generating GeoTIFF:", err);
+            alert("❌ خطأ أثناء تصدير GeoTIFF: " + err.message);
+        }
+    };
+
+    const parseTiff = (arrayBuffer) => {
+        const view = new DataView(arrayBuffer);
+        const isLittleEndian = view.getUint8(0) === 0x49; // 'II'
+        const magic = view.getUint16(2, isLittleEndian);
+        if (magic !== 42) {
+            throw new Error("ملف TIFF غير صالح (سحر مفقود)");
+        }
+        const firstIfdOffset = view.getUint32(4, isLittleEndian);
+        
+        let offset = firstIfdOffset;
+        const numEntries = view.getUint16(offset, isLittleEndian);
+        offset += 2;
+        
+        let width = 0;
+        let height = 0;
+        let stripOffset = 0;
+        let stripByteCount = 0;
+        let sampleFormat = 1;
+        let pixelScaleOffset = 0;
+        let tiepointOffset = 0;
+        
+        for (let i = 0; i < numEntries; i++) {
+            const tag = view.getUint16(offset, isLittleEndian);
+            const type = view.getUint16(offset + 2, isLittleEndian);
+            const count = view.getUint32(offset + 4, isLittleEndian);
+            const valOrOffset = view.getUint32(offset + 8, isLittleEndian);
+            
+            if (tag === 256) width = valOrOffset;
+            else if (tag === 257) height = valOrOffset;
+            else if (tag === 273) stripOffset = valOrOffset;
+            else if (tag === 279) stripByteCount = valOrOffset;
+            else if (tag === 339) sampleFormat = valOrOffset;
+            else if (tag === 33550) pixelScaleOffset = valOrOffset;
+            else if (tag === 33922) tiepointOffset = valOrOffset;
+            
+            offset += 12;
+        }
+        
+        if (!width || !height || !stripOffset) {
+            throw new Error("بيانات GeoTIFF الأساسية مفقودة من الملف");
+        }
+        
+        let scaleX = 0.0001, scaleY = 0.0001;
+        if (pixelScaleOffset) {
+            scaleX = view.getFloat64(pixelScaleOffset, isLittleEndian);
+            scaleY = view.getFloat64(pixelScaleOffset + 8, isLittleEndian);
+        }
+        
+        let west = 35.2, north = 31.9;
+        if (tiepointOffset) {
+            west = view.getFloat64(tiepointOffset + 24, isLittleEndian);
+            north = view.getFloat64(tiepointOffset + 32, isLittleEndian);
+        }
+        
+        const elevations = new Float32Array(width * height);
+        for (let i = 0; i < width * height; i++) {
+            if (stripOffset + i * 4 + 4 <= view.byteLength) {
+                elevations[i] = view.getFloat32(stripOffset + i * 4, isLittleEndian);
+            } else {
+                elevations[i] = 0;
+            }
+        }
+        
+        return { width, height, scaleX, scaleY, west, north, elevations };
+    };
+
+    const generate3dMeshGeoJSON = (results, gridSize, south, west, north, east, colorRamp, exaggeration) => {
+        const elevations = results.map(r => r.elevation || 0);
+        const minElev = Math.min(...elevations);
+        const maxElev = Math.max(...elevations);
+        const range = maxElev - minElev || 1;
+        
+        const getColorForElevationLocal = (elev) => {
+            const t = Math.max(0, Math.min(1, (elev - minElev) / range));
+            let r, g, b;
+            if (colorRamp === 'grayscale') {
+                const val = Math.round(t * 255);
+                return `rgb(${val},${val},${val})`;
+            } else if (colorRamp === 'viridis') {
+                if (t < 0.5) {
+                    const f = t * 2;
+                    r = Math.round(68 + (33 - 68) * f);
+                    g = Math.round(1 + (145 - 1) * f);
+                    b = Math.round(84 + (140 - 84) * f);
+                } else {
+                    const f = (t - 0.5) * 2;
+                    r = Math.round(33 + (253 - 33) * f);
+                    g = Math.round(145 + (231 - 145) * f);
+                    b = Math.round(140 + (37 - 140) * f);
+                }
+                return `rgb(${r},${g},${b})`;
+            } else if (colorRamp === 'terrain') {
+                if (t < 0.5) {
+                    const f = t * 2;
+                    r = Math.round(34 + (234 - 34) * f);
+                    g = Math.round(197 + (179 - 197) * f);
+                    b = Math.round(94 + (8 - 94) * f);
+                } else {
+                    const f = (t - 0.5) * 2;
+                    r = Math.round(234 + (255 - 234) * f);
+                    g = Math.round(179 + (255 - 179) * f);
+                    b = Math.round(8 + (255 - 8) * f);
+                }
+                return `rgb(${r},${g},${b})`;
+            } else if (colorRamp === 'rainbow') {
+                if (t < 0.25) {
+                    const f = t * 4;
+                    return `rgb(0, ${Math.round(f * 255)}, 255)`;
+                } else if (t < 0.5) {
+                    const f = (t - 0.25) * 4;
+                    return `rgb(0, 255, ${Math.round((1 - f) * 255)})`;
+                } else if (t < 0.75) {
+                    const f = (t - 0.5) * 4;
+                    return `rgb(${Math.round(f * 255)}, 255, 0)`;
+                } else {
+                    const f = (t - 0.75) * 4;
+                    return `rgb(255, ${Math.round((1 - f) * 255)}, 0)`;
+                }
+            } else {
+                if (t < 0.5) {
+                    const factor = t * 2;
+                    r = Math.round(49 + (16 - 49) * factor);
+                    g = Math.round(46 + (185 - 46) * factor);
+                    b = Math.round(129 + (129 - 129) * factor);
+                } else {
+                    const factor = (t - 0.5) * 2;
+                    r = Math.round(16 + (239 - 16) * factor);
+                    g = Math.round(185 + (68 - 185) * factor);
+                    b = Math.round(129 + (68 - 129) * factor);
+                }
+                return `rgb(${r},${g},${b})`;
+            }
+        };
+        
+        const grid = [];
+        for (let r = 0; r < gridSize; r++) {
+            grid[r] = [];
+        }
+        for (let r = 0; r < gridSize; r++) {
+            for (let c = 0; c < gridSize; c++) {
+                const index = r * gridSize + c;
+                grid[gridSize - 1 - r][c] = results[index] ? (results[index].elevation || 0) : 0;
+            }
+        }
+        
+        const latStep = (north - south) / (gridSize - 1 || 1);
+        const lngStep = (east - west) / (gridSize - 1 || 1);
+        
+        const features = [];
+        for (let r = 0; r < gridSize - 1; r++) {
+            const latTop = north - r * latStep;
+            const latBottom = north - (r + 1) * latStep;
+            
+            for (let c = 0; c < gridSize - 1; c++) {
+                const lngLeft = west + c * lngStep;
+                const lngRight = west + (c + 1) * lngStep;
+                
+                const eTL = grid[r][c];
+                const eTR = grid[r][c+1];
+                const eBL = grid[r+1][c];
+                const eBR = grid[r+1][c+1];
+                const avgElev = (eTL + eTR + eBL + eBR) / 4;
+                
+                const color = getColorForElevationLocal(avgElev);
+                
+                const polyCoords = [
+                    [lngLeft, latTop],
+                    [lngRight, latTop],
+                    [lngRight, latBottom],
+                    [lngLeft, latBottom],
+                    [lngLeft, latTop]
+                ];
+                
+                features.push({
+                    type: "Feature",
+                    geometry: {
+                        type: "Polygon",
+                        coordinates: [polyCoords]
+                    },
+                    properties: {
+                        elevation: avgElev,
+                        height: Math.max(0, avgElev * exaggeration),
+                        color: color
+                    }
+                });
+            }
+        }
+        
+        return {
+            type: "FeatureCollection",
+            features: features
+        };
+    };
+
+    const toggle3dModel = (baseId) => {
+        const is3dActive = active3dLayerId === baseId;
+        if (is3dActive) {
+            setGeoLayers(prev => {
+                const filtered = prev.filter(l => l.id !== `${baseId}-3d`);
+                return filtered.map(l => {
+                    if (l.id === `${baseId}-raster` || l.id === `${baseId}-points` || l.id === baseId) {
+                        return { ...l, isVisible: true };
+                    }
+                    return l;
+                });
+            });
+            setActive3dLayerId(null);
+        } else {
+            const rasterLayer = geoLayers.find(l => l.id === `${baseId}-raster`) || geoLayers.find(l => l.id === baseId);
+            if (!rasterLayer) return;
+            
+            let rawResults = rasterLayer.rawResults;
+            let gridSize = rasterLayer.gridSize;
+            let south = rasterLayer.south;
+            let west = rasterLayer.west;
+            let north = rasterLayer.north;
+            let east = rasterLayer.east;
+            let colorRamp = rasterLayer.colorRamp || 'classic';
+            
+            if (!rawResults && rasterLayer.data && rasterLayer.data.features) {
+                const features = rasterLayer.data.features;
+                const lats = features.map(f => f.geometry.coordinates[1]);
+                const lngs = features.map(f => f.geometry.coordinates[0]);
+                west = Math.min(...lngs);
+                east = Math.max(...lngs);
+                south = Math.min(...lats);
+                north = Math.max(...lats);
+                const uniqueLats = [...new Set(lats)].sort((a,b) => b-a);
+                const uniqueLngs = [...new Set(lngs)].sort((a,b) => a-b);
+                gridSize = uniqueLats.length;
+                rawResults = [];
+                for (let r = 0; r < gridSize; r++) {
+                    const lat = uniqueLats[r];
+                    for (let c = 0; c < gridSize; c++) {
+                        const lng = uniqueLngs[c];
+                        const f = features.find(feat => 
+                            Math.abs(feat.geometry.coordinates[1] - lat) < 0.0001 && 
+                            Math.abs(feat.geometry.coordinates[0] - lng) < 0.0001
+                        );
+                        rawResults.push({
+                            location: { lat, lng },
+                            elevation: f ? (f.properties.elevation || 0) : 0
+                        });
+                    }
+                }
+            }
+            
+            if (!rawResults) {
+                alert("⚠️ لا يمكن العثور على بيانات الارتفاع الخام لهذه الطبقة.");
+                return;
+            }
+            
+            const meshData = generate3dMeshGeoJSON(rawResults, gridSize, south, west, north, east, colorRamp, exaggeration3d);
+            
+            const new3dLayer = {
+                id: `${baseId}-3d`,
+                name: `${rasterLayer.name.replace(' (Raster)', '')} (3D)`,
+                type: '3d-mesh',
+                data: meshData,
+                isRemoteSensing: true,
+                isVisible: true,
+                baseId: baseId
+            };
+            
+            setGeoLayers(prev => {
+                const mapped = prev.map(l => {
+                    if (l.id === `${baseId}-raster` || l.id === `${baseId}-points` || l.id === baseId) {
+                        return { ...l, isVisible: false };
+                    }
+                    return l;
+                });
+                return [...mapped, new3dLayer];
+            });
+            
+            setLayerStyles(prev => ({
+                ...prev,
+                [`${baseId}-3d`]: {
+                    opacity: 0.85
+                }
+            }));
+            
+            setActive3dLayerId(baseId);
+            
+            if (mapRef.current) {
+                mapRef.current.easeTo({
+                    pitch: 60,
+                    bearing: -15,
+                    duration: 1000
+                });
+            }
+        }
+    };
+
+    const handleExaggerationChange = (newExag) => {
+        setExaggeration3d(newExag);
+        if (active3dLayerId) {
+            const baseId = active3dLayerId;
+            const rasterLayer = geoLayers.find(l => l.id === `${baseId}-raster`) || geoLayers.find(l => l.id === baseId);
+            if (!rasterLayer) return;
+            
+            let rawResults = rasterLayer.rawResults;
+            let gridSize = rasterLayer.gridSize;
+            let south = rasterLayer.south;
+            let west = rasterLayer.west;
+            let north = rasterLayer.north;
+            let east = rasterLayer.east;
+            let colorRamp = rasterLayer.colorRamp || 'classic';
+            
+            if (!rawResults && rasterLayer.data && rasterLayer.data.features) {
+                const features = rasterLayer.data.features;
+                const lats = features.map(f => f.geometry.coordinates[1]);
+                const lngs = features.map(f => f.geometry.coordinates[0]);
+                west = Math.min(...lngs);
+                east = Math.max(...lngs);
+                south = Math.min(...lats);
+                north = Math.max(...lats);
+                const uniqueLats = [...new Set(lats)].sort((a,b) => b-a);
+                const uniqueLngs = [...new Set(lngs)].sort((a,b) => a-b);
+                gridSize = uniqueLats.length;
+                rawResults = [];
+                for (let r = 0; r < gridSize; r++) {
+                    const lat = uniqueLats[r];
+                    for (let c = 0; c < gridSize; c++) {
+                        const lng = uniqueLngs[c];
+                        const f = features.find(feat => 
+                            Math.abs(feat.geometry.coordinates[1] - lat) < 0.0001 && 
+                            Math.abs(feat.geometry.coordinates[0] - lng) < 0.0001
+                        );
+                        rawResults.push({
+                            location: { lat, lng },
+                            elevation: f ? (f.properties.elevation || 0) : 0
+                        });
+                    }
+                }
+            }
+            
+            if (rawResults) {
+                const meshData = generate3dMeshGeoJSON(rawResults, gridSize, south, west, north, east, colorRamp, newExag);
+                setGeoLayers(prev => prev.map(l => {
+                    if (l.id === `${baseId}-3d`) {
+                        return { ...l, data: meshData };
+                    }
+                    return l;
+                }));
+            }
+        }
     };
 
     const fetchPalStreetOSM = async (south, west, north, east, polygonFilterCoords = null) => {
@@ -2208,6 +2747,10 @@ out geom;`;
 
     const handleExportLayer = (layer) => {
         try {
+            if (layer.isRemoteSensing) {
+                exportAsterToGeoTIFF(layer);
+                return;
+            }
             if (layer.type === 'table') {
                 if (!layer.data || layer.data.length === 0) {
                     alert("⚠️ لا توجد بيانات لتصديرها.");
@@ -2648,6 +3191,116 @@ out geom;`;
         if (!file) return;
 
         const isCsv = file.name.endsWith('.csv');
+        const isTiff = file.name.endsWith('.tif') || file.name.endsWith('.tiff');
+        
+        if (isTiff) {
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                try {
+                    const parsed = parseTiff(event.target.result);
+                    const { width, height, scaleX, scaleY, west, north, elevations } = parsed;
+                    
+                    const south = north - (height - 1) * scaleY;
+                    const east = west + (width - 1) * scaleX;
+                    
+                    const minElev = Math.min(...elevations);
+                    const maxElev = Math.max(...elevations);
+                    
+                    const results = [];
+                    for (let r = 0; r < height; r++) {
+                        for (let c = 0; c < width; c++) {
+                            const idx = r * width + c;
+                            const lat = north - r * scaleY;
+                            const lng = west + c * scaleX;
+                            results.push({
+                                location: { lat, lng },
+                                elevation: elevations[idx],
+                                dataset: "imported_geotiff"
+                            });
+                        }
+                    }
+                    
+                    const rasterData = generateDemRaster(results, width, south, west, north, east, 'classic');
+                    const newLayerId = `aster-${Date.now()}`;
+                    const layerName = file.name.replace(/\.[^/.]+$/, "");
+                    
+                    const geojson = {
+                        type: "FeatureCollection",
+                        features: results.map((res, idx) => ({
+                            type: "Feature",
+                            geometry: {
+                                type: "Point",
+                                coordinates: [res.location.lng, res.location.lat]
+                            },
+                            properties: {
+                                id: idx,
+                                elevation: res.elevation,
+                                dataset: "imported"
+                            }
+                        }))
+                    };
+                    
+                    const newLayers = [
+                        {
+                            id: `${newLayerId}-raster`,
+                            name: `${layerName} (Raster)`,
+                            type: 'raster',
+                            url: rasterData.url,
+                            coordinates: rasterData.coordinates,
+                            isRemoteSensing: true,
+                            minElevation: minElev,
+                            maxElevation: maxElev,
+                            isVisible: true,
+                            rawResults: results,
+                            gridSize: width,
+                            south: south,
+                            west: west,
+                            north: north,
+                            east: east,
+                            colorRamp: 'classic'
+                        },
+                        {
+                            id: `${newLayerId}-points`,
+                            name: `${layerName} (Clickable)`,
+                            data: geojson,
+                            isRemoteSensing: true,
+                            minElevation: minElev,
+                            maxElevation: maxElev,
+                            color: '#fbab15',
+                            isVisible: true,
+                            isHiddenPoints: true,
+                            colorRamp: 'classic'
+                        }
+                    ];
+                    
+                    setGeoLayers(prev => [...prev, ...newLayers]);
+                    
+                    newLayers.forEach(l => {
+                        setLayerStyles(prev => ({
+                            ...prev,
+                            [l.id]: {
+                                color: '#fbab15',
+                                outlineColor: '#ffffff',
+                                outlineWidth: 1,
+                                opacity: l.isHiddenPoints ? 0.001 : 0.85,
+                                isRemoteSensing: true,
+                                minElevation: minElev,
+                                maxElevation: maxElev
+                            }
+                        }));
+                    });
+                    
+                    setActiveAsterLayerId(`${newLayerId}-raster`);
+                    alert(`✅ تم استيراد راستر الارتفاعات GeoTIFF "${file.name}" بنجاح وجدولته على الخريطة!`);
+                } catch (err) {
+                    console.error("Failed to parse GeoTIFF:", err);
+                    alert("❌ فشل استيراد ملف GeoTIFF: " + err.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+            return;
+        }
+
         const reader = new FileReader();
         reader.onload = async (event) => {
             try {
@@ -4015,6 +4668,23 @@ out geom;`;
                                     fillOpacity: 0.3
                                 };
 
+                                if (layer.type === '3d-mesh') {
+                                    return (
+                                        <Source key={layer.id} id={`src-${layer.id}`} type="geojson" data={layer.data}>
+                                            <Layer
+                                                id={`extrusion-${layer.id}`}
+                                                type="fill-extrusion"
+                                                paint={{
+                                                    'fill-extrusion-color': ['get', 'color'],
+                                                    'fill-extrusion-height': ['get', 'height'],
+                                                    'fill-extrusion-base-height': 0,
+                                                    'fill-extrusion-opacity': style.opacity ?? 0.85
+                                                }}
+                                            />
+                                        </Source>
+                                    );
+                                }
+
                                 if (layer.type === 'raster') {
                                     return (
                                         <Source key={layer.id} id={`src-${layer.id}`} type="image" url={layer.url} coordinates={layer.coordinates}>
@@ -4102,14 +4772,35 @@ out geom;`;
                                                     14, 12,
                                                     17, 30
                                                 ] : 7,
-                                                'circle-color': layer.isRemoteSensing ? [
-                                                    'interpolate',
-                                                    ['linear'],
-                                                    ['get', 'elevation'],
-                                                    layer.minElevation || 0, '#312e81',
-                                                    (layer.minElevation + layer.maxElevation)/2 || 100, '#10b981',
-                                                    layer.maxElevation || 500, '#ef4444'
-                                                ] : style.color,
+                                                'circle-color': layer.isRemoteSensing ? (
+                                                    layer.colorRamp === 'grayscale' ? [
+                                                        'interpolate', ['linear'], ['get', 'elevation'],
+                                                        layer.minElevation || 0, '#000000',
+                                                        layer.maxElevation || 500, '#ffffff'
+                                                    ] : layer.colorRamp === 'viridis' ? [
+                                                        'interpolate', ['linear'], ['get', 'elevation'],
+                                                        layer.minElevation || 0, '#440154',
+                                                        (layer.minElevation + layer.maxElevation)/2 || 100, '#21918c',
+                                                        layer.maxElevation || 500, '#fde725'
+                                                    ] : layer.colorRamp === 'terrain' ? [
+                                                        'interpolate', ['linear'], ['get', 'elevation'],
+                                                        layer.minElevation || 0, '#22c55e',
+                                                        (layer.minElevation + layer.maxElevation)/2 || 100, '#eab308',
+                                                        layer.maxElevation || 500, '#ffffff'
+                                                    ] : layer.colorRamp === 'rainbow' ? [
+                                                        'interpolate', ['linear'], ['get', 'elevation'],
+                                                        layer.minElevation || 0, '#0000ff',
+                                                        layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.25 || 100, '#00ffff',
+                                                        layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.5 || 200, '#00ff00',
+                                                        layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.75 || 300, '#ffff00',
+                                                        layer.maxElevation || 500, '#ff0000'
+                                                    ] : [
+                                                        'interpolate', ['linear'], ['get', 'elevation'],
+                                                        layer.minElevation || 0, '#312e81',
+                                                        (layer.minElevation + layer.maxElevation)/2 || 100, '#10b981',
+                                                        layer.maxElevation || 500, '#ef4444'
+                                                    ]
+                                                ) : style.color,
                                                 'circle-stroke-width': style.outlineWidth,
                                                 'circle-stroke-color': style.outlineColor,
                                                 'circle-opacity': style.opacity ?? 1,
@@ -4461,7 +5152,7 @@ out geom;`;
                                     <div className="panel-section-title">إضافة بيانات</div>
 
                                     <div className="upload-box" onClick={() => document.getElementById('geo-upload').click()}>
-                                        <input id="geo-upload" type="file" accept=".geojson,.json,.csv" onChange={handleFileUpload} style={{ display: 'none' }} />
+                                        <input id="geo-upload" type="file" accept=".geojson,.json,.csv,.tif,.tiff" onChange={handleFileUpload} style={{ display: 'none' }} />
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
                                         </svg>
@@ -4625,15 +5316,19 @@ out geom;`;
                                                                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
                                                             </button>
                                                             <button className="delete" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', borderRadius: '8px', padding: '6px' }} onClick={() => { 
-                                                                const baseId = layer.id.replace('-raster', '').replace('-points', '');
-                                                                setGeoLayers(prev => prev.filter(l => l.id !== layer.id && l.id !== `${baseId}-points` && l.id !== `${baseId}-raster`)); 
+                                                                const baseId = layer.id.replace('-raster', '').replace('-points', '').replace('-3d', '');
+                                                                setGeoLayers(prev => prev.filter(l => l.id !== layer.id && l.id !== `${baseId}-points` && l.id !== `${baseId}-raster` && l.id !== `${baseId}-3d`)); 
                                                                 setLayerStyles(prev => { 
                                                                     const n = { ...prev }; 
                                                                     delete n[layer.id]; 
                                                                     delete n[`${baseId}-points`]; 
                                                                     delete n[`${baseId}-raster`]; 
+                                                                    delete n[`${baseId}-3d`];
                                                                     return n; 
                                                                 }); 
+                                                                if (active3dLayerId === baseId) {
+                                                                    setActive3dLayerId(null);
+                                                                }
                                                                 if (activeTableLayerId === layer.id || activeTableLayerId?.startsWith(baseId)) { 
                                                                     setActiveTableLayerId(null); 
                                                                     setShowBottomTable(false); 
@@ -4946,7 +5641,52 @@ out geom;`;
                                                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
                                                     تحميل البيانات كملف GeoJSON 📥
                                                 </button>
+                                                <button
+                                                    className="ds-btn secondary w-100"
+                                                    onClick={() => exportAsterToGeoTIFF(activeLayer)}
+                                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', fontSize: '0.85rem' }}
+                                                >
+                                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                                                    تحميل البيانات كملف GeoTIFF (.tif) 💾
+                                                </button>
                                             </div>
+
+                                            {(() => {
+                                                const baseId = activeLayer.id.replace('-raster', '').replace('-points', '').replace('-3d', '');
+                                                const is3d = active3dLayerId === baseId;
+                                                return (
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '15px' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                            <span style={{ fontSize: '0.85rem', color: 'white' }}>النمذجة ثلاثية الأبعاد (3D Model)</span>
+                                                            <button
+                                                                onClick={() => toggle3dModel(baseId)}
+                                                                className={`ds-btn ${is3d ? 'primary' : 'secondary'} small`}
+                                                                style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                                                            >
+                                                                {is3d ? 'إيقاف 3D' : 'تشغيل 3D 🏔️'}
+                                                            </button>
+                                                        </div>
+                                                        
+                                                        {is3d && (
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                                                    <span>مبالغة الارتفاع:</span>
+                                                                    <span>{exaggeration3d}x</span>
+                                                                </div>
+                                                                <input
+                                                                    type="range"
+                                                                    min="0.5"
+                                                                    max="10"
+                                                                    step="0.5"
+                                                                    value={exaggeration3d}
+                                                                    onChange={(e) => handleExaggerationChange(parseFloat(e.target.value))}
+                                                                    style={{ width: '100%' }}
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                     );
                                 })()}
@@ -4975,62 +5715,137 @@ out geom;`;
                                 <button onClick={() => setStylePopup(null)}>✕</button>
                             </div>
                             <div className="style-editor-body">
-                                <div className="style-section">
-                                    <label>لون التعبئة / الأساس</label>
-                                    <div className="color-row">
-                                        <input type="color" value={style.color} onChange={(e) => updateStyle('color', e.target.value)} />
-                                        <input type="text" value={style.color} onChange={(e) => updateStyle('color', e.target.value)} className="mono-input" />
-                                    </div>
-                                </div>
-
-                                <div className="style-section">
-                                    <label>لون الإطار (Outline)</label>
-                                    <div className="color-row">
-                                        <input type="color" value={style.outlineColor} onChange={(e) => updateStyle('outlineColor', e.target.value)} />
-                                        <input type="text" value={style.outlineColor} onChange={(e) => updateStyle('outlineColor', e.target.value)} className="mono-input" />
-                                    </div>
-                                </div>
-
-                                <div className="style-section">
-                                    <div className="label-row">
-                                        <label>سمك الإطار / الخط</label>
-                                        <span>{style.outlineWidth}px</span>
-                                    </div>
-                                    <input type="range" min="0" max="10" step="0.5" value={style.outlineWidth} onChange={(e) => updateStyle('outlineWidth', parseFloat(e.target.value))} />
-                                </div>
-
-                                <div className="style-section">
-                                    <div className="label-row">
-                                        <label>الشفافية الكلية</label>
-                                        <span>{Math.round(style.opacity * 100)}%</span>
-                                    </div>
-                                    <input type="range" min="0" max="1" step="0.05" value={style.opacity} onChange={(e) => updateStyle('opacity', parseFloat(e.target.value))} />
-                                </div>
-
-                                <div className="style-section">
-                                    <div className="label-row">
-                                        <label>شفافية التعبئة</label>
-                                        <span>{Math.round(style.fillOpacity * 100)}%</span>
-                                    </div>
-                                    <input type="range" min="0" max="1" step="0.05" value={style.fillOpacity} onChange={(e) => updateStyle('fillOpacity', parseFloat(e.target.value))} />
-                                </div>
-
-                                {/* Symbol Picker for Points */}
-                                <div className="style-section">
-                                    <label>شكل المعلم (الرموز)</label>
-                                    <div className="symbol-grid">
-                                        {pointShapes.map(shape => (
-                                            <div
-                                                key={shape.id}
-                                                className={`symbol-item ${style.shape === shape.id ? 'active' : ''}`}
-                                                onClick={() => updateStyle('shape', shape.id)}
-                                                title={shape.name}
+                                {layer?.isRemoteSensing ? (
+                                    <>
+                                        <div className="style-section">
+                                            <label>مخطط الألوان (Color Ramp)</label>
+                                            <select 
+                                                value={layer.colorRamp || 'classic'} 
+                                                onChange={(e) => {
+                                                    const newRamp = e.target.value;
+                                                    const baseId = layer.id.replace('-raster', '').replace('-points', '').replace('-3d', '');
+                                                    setGeoLayers(prev => prev.map(l => {
+                                                        if (l.id === `${baseId}-raster` && l.rawResults) {
+                                                            const updatedUrl = generateDemRaster(l.rawResults, l.gridSize, l.south, l.west, l.north, l.east, newRamp);
+                                                            return { ...l, colorRamp: newRamp, url: updatedUrl.url };
+                                                        }
+                                                        if (l.id === `${baseId}-points` || l.id === baseId) {
+                                                            return { ...l, colorRamp: newRamp };
+                                                        }
+                                                        if (l.id === `${baseId}-3d`) {
+                                                            const rasterL = prev.find(rl => rl.id === `${baseId}-raster`) || prev.find(rl => rl.id === baseId);
+                                                            if (rasterL && rasterL.rawResults) {
+                                                                const newMeshData = generate3dMeshGeoJSON(rasterL.rawResults, rasterL.gridSize, rasterL.south, rasterL.west, rasterL.north, rasterL.east, newRamp, exaggeration3d);
+                                                                return { ...l, colorRamp: newRamp, data: newMeshData };
+                                                            }
+                                                        }
+                                                        return l;
+                                                    }));
+                                                }}
+                                                style={{
+                                                    width: '100%',
+                                                    background: '#1e293b',
+                                                    color: 'white',
+                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                    padding: '8px',
+                                                    borderRadius: '8px',
+                                                    marginTop: '4px',
+                                                    fontFamily: 'Tajawal, sans-serif'
+                                                }}
                                             >
-                                                {shape.icon}
+                                                <option value="classic">كلاسيكي (أزرق - أخضر - أحمر)</option>
+                                                <option value="viridis">فيريديس (بنفسجي - فيروزي - أصفر)</option>
+                                                <option value="terrain">تضاريس الطبيعة (أخضر - بني - أبيض)</option>
+                                                <option value="grayscale">تدرج الرمادي (أسود - أبيض)</option>
+                                                <option value="rainbow">قوس قزح (كاملا)</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="style-section">
+                                            <div className="label-row">
+                                                <label>الشفافية الكلية</label>
+                                                <span>{Math.round((style.opacity ?? 0.85) * 100)}%</span>
                                             </div>
-                                        ))}
-                                    </div>
-                                </div>
+                                            <input 
+                                                type="range" 
+                                                min="0" 
+                                                max="1" 
+                                                step="0.05" 
+                                                value={style.opacity ?? 0.85} 
+                                                onChange={(e) => {
+                                                    const val = parseFloat(e.target.value);
+                                                    const baseId = layer.id.replace('-raster', '').replace('-points', '').replace('-3d', '');
+                                                    setLayerStyles(prev => ({
+                                                        ...prev,
+                                                        [`${baseId}-raster`]: { ...prev[`${baseId}-raster`], opacity: val },
+                                                        [`${baseId}-points`]: { ...prev[`${baseId}-points`], opacity: val },
+                                                        [`${baseId}-3d`]: { ...prev[`${baseId}-3d`], opacity: val },
+                                                        [layer.id]: { ...style, opacity: val }
+                                                    }));
+                                                }} 
+                                            />
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="style-section">
+                                            <label>لون التعبئة / الأساس</label>
+                                            <div className="color-row">
+                                                <input type="color" value={style.color} onChange={(e) => updateStyle('color', e.target.value)} />
+                                                <input type="text" value={style.color} onChange={(e) => updateStyle('color', e.target.value)} className="mono-input" />
+                                            </div>
+                                        </div>
+
+                                        <div className="style-section">
+                                            <label>لون الإطار (Outline)</label>
+                                            <div className="color-row">
+                                                <input type="color" value={style.outlineColor} onChange={(e) => updateStyle('outlineColor', e.target.value)} />
+                                                <input type="text" value={style.outlineColor} onChange={(e) => updateStyle('outlineColor', e.target.value)} className="mono-input" />
+                                            </div>
+                                        </div>
+
+                                        <div className="style-section">
+                                            <div className="label-row">
+                                                <label>سمك الإطار / الخط</label>
+                                                <span>{style.outlineWidth}px</span>
+                                            </div>
+                                            <input type="range" min="0" max="10" step="0.5" value={style.outlineWidth} onChange={(e) => updateStyle('outlineWidth', parseFloat(e.target.value))} />
+                                        </div>
+
+                                        <div className="style-section">
+                                            <div className="label-row">
+                                                <label>الشفافية الكلية</label>
+                                                <span>{Math.round(style.opacity * 100)}%</span>
+                                            </div>
+                                            <input type="range" min="0" max="1" step="0.05" value={style.opacity} onChange={(e) => updateStyle('opacity', parseFloat(e.target.value))} />
+                                        </div>
+
+                                        <div className="style-section">
+                                            <div className="label-row">
+                                                <label>شفافية التعبئة</label>
+                                                <span>{Math.round(style.fillOpacity * 100)}%</span>
+                                            </div>
+                                            <input type="range" min="0" max="1" step="0.05" value={style.fillOpacity} onChange={(e) => updateStyle('fillOpacity', parseFloat(e.target.value))} />
+                                        </div>
+
+                                        {/* Symbol Picker for Points */}
+                                        <div className="style-section">
+                                            <label>شكل المعلم (الرموز)</label>
+                                            <div className="symbol-grid">
+                                                {pointShapes.map(shape => (
+                                                    <div
+                                                        key={shape.id}
+                                                        className={`symbol-item ${style.shape === shape.id ? 'active' : ''}`}
+                                                        onClick={() => updateStyle('shape', shape.id)}
+                                                        title={shape.name}
+                                                    >
+                                                        {shape.icon}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
 
                                 <div className="style-footer">
                                     <button className="ds-btn primary small w-100" onClick={() => setStylePopup(null)}>تطبيق التنسيق</button>
