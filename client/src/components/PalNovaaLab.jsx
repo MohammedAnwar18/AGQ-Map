@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import axios from 'axios';
 import Map, { Source, Layer, NavigationControl, Popup } from 'react-map-gl/maplibre';
 import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './PalNovaaLab.css';
 
@@ -1779,9 +1780,7 @@ const PalNovaaLab = ({ onClose }) => {
                 setAsterProgress(`جاري جلب الارتفاعات (المجموعة ${i + 1} من ${batches.length})...`);
                 
                 const locString = batches[i].map(loc => `${loc.lat.toFixed(6)},${loc.lng.toFixed(6)}`).join('|');
-                const url = `https://api.opentopodata.org/v1/aster30m?locations=${locString}`;
-                
-                const response = await axios.get(url);
+                const response = await api.get(`/remote-sensing/aster30m?locations=${locString}`);
                 if (response.data && response.data.results) {
                     results.push(...response.data.results);
                 } else {
