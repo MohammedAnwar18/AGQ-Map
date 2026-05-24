@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import axios from 'axios';
 import Map, { Source, Layer, NavigationControl, Popup } from 'react-map-gl/maplibre';
+import * as GeoTIFF from 'geotiff';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -2226,67 +2227,29 @@ const PalNovaaLab = ({ onClose }) => {
         }
     };
 
-    const parseTiff = (arrayBuffer) => {
-        const view = new DataView(arrayBuffer);
-        const isLittleEndian = view.getUint8(0) === 0x49; // 'II'
-        const magic = view.getUint16(2, isLittleEndian);
-        if (magic !== 42) {
-            throw new Error("ملف TIFF غير صالح (سحر مفقود)");
-        }
-        const firstIfdOffset = view.getUint32(4, isLittleEndian);
-        
-        let offset = firstIfdOffset;
-        const numEntries = view.getUint16(offset, isLittleEndian);
-        offset += 2;
-        
-        let width = 0;
-        let height = 0;
-        let stripOffset = 0;
-        let stripByteCount = 0;
-        let sampleFormat = 1;
-        let pixelScaleOffset = 0;
-        let tiepointOffset = 0;
-        
-        for (let i = 0; i < numEntries; i++) {
-            const tag = view.getUint16(offset, isLittleEndian);
-            const type = view.getUint16(offset + 2, isLittleEndian);
-            const count = view.getUint32(offset + 4, isLittleEndian);
-            const valOrOffset = view.getUint32(offset + 8, isLittleEndian);
-            
-            if (tag === 256) width = valOrOffset;
-            else if (tag === 257) height = valOrOffset;
-            else if (tag === 273) stripOffset = valOrOffset;
-            else if (tag === 279) stripByteCount = valOrOffset;
-            else if (tag === 339) sampleFormat = valOrOffset;
-            else if (tag === 33550) pixelScaleOffset = valOrOffset;
-            else if (tag === 33922) tiepointOffset = valOrOffset;
-            
-            offset += 12;
-        }
-        
-        if (!width || !height || !stripOffset) {
-            throw new Error("بيانات GeoTIFF الأساسية مفقودة من الملف");
-        }
+    const parseTiff = async (arrayBuffer) => {
+        const tiff = await GeoTIFF.fromArrayBuffer(arrayBuffer);
+        const image = await tiff.getImage();
+        const width = image.getWidth();
+        const height = image.getHeight();
+        const fd = image.getFileDirectory();
         
         let scaleX = 0.0001, scaleY = 0.0001;
-        if (pixelScaleOffset) {
-            scaleX = view.getFloat64(pixelScaleOffset, isLittleEndian);
-            scaleY = view.getFloat64(pixelScaleOffset + 8, isLittleEndian);
+        if (fd.ModelPixelScale) {
+            scaleX = fd.ModelPixelScale[0];
+            scaleY = fd.ModelPixelScale[1];
         }
         
         let west = 35.2, north = 31.9;
-        if (tiepointOffset) {
-            west = view.getFloat64(tiepointOffset + 24, isLittleEndian);
-            north = view.getFloat64(tiepointOffset + 32, isLittleEndian);
+        if (fd.ModelTiepoint) {
+            west = fd.ModelTiepoint[3];
+            north = fd.ModelTiepoint[4];
         }
         
-        const elevations = new Float32Array(width * height);
-        for (let i = 0; i < width * height; i++) {
-            if (stripOffset + i * 4 + 4 <= view.byteLength) {
-                elevations[i] = view.getFloat32(stripOffset + i * 4, isLittleEndian);
-            } else {
-                elevations[i] = 0;
-            }
+        const rasters = await image.readRasters();
+        let elevations = rasters[0];
+        if (!(elevations instanceof Float32Array)) {
+            elevations = new Float32Array(elevations);
         }
         
         return { width, height, scaleX, scaleY, west, north, elevations };
@@ -2958,7 +2921,7 @@ out geom;`;
             const reader = new FileReader();
             reader.onload = async (event) => {
                 try {
-                    const parsed = parseTiff(event.target.result);
+                    const parsed = await parseTiff(event.target.result);
                     const { width, height, scaleX, scaleY, west, north, elevations } = parsed;
                     
                     const south = north - (height - 1) * scaleY;
