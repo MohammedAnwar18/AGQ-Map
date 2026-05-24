@@ -140,6 +140,12 @@ const PalNovaaLab = ({ onClose }) => {
     // Hydro Grid Resolution
     const [gridResolution, setGridResolution] = useState(256);
 
+    // PalRemoteSensing (ASTER GDEM) States
+    const [asterLoading, setAsterLoading] = useState(false);
+    const [asterProgress, setAsterProgress] = useState('');
+    const [asterGridSize, setAsterGridSize] = useState(10);
+    const [activeAsterLayerId, setActiveAsterLayerId] = useState(null);
+
     // ===== HYDROLOGY SIMULATION SANDBOX REF & EFFECT =====
     const hydroStateRef = useRef({
         map: null,
@@ -1743,6 +1749,153 @@ const PalNovaaLab = ({ onClose }) => {
             Math.sin(dLon / 2) * Math.sin(dLon / 2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
+    };
+
+    const fetchAsterGDEM = async (south, west, north, east, gridSize) => {
+        setAsterLoading(true);
+        setAsterProgress("جاري إنشاء شبكة النقاط...");
+
+        const latStep = (north - south) / (gridSize - 1);
+        const lngStep = (east - west) / (gridSize - 1);
+
+        const locations = [];
+        for (let r = 0; r < gridSize; r++) {
+            for (let c = 0; c < gridSize; c++) {
+                const lat = south + r * latStep;
+                const lng = west + c * lngStep;
+                locations.push({ lat, lng });
+            }
+        }
+
+        const batchSize = 100;
+        const batches = [];
+        for (let i = 0; i < locations.length; i += batchSize) {
+            batches.push(locations.slice(i, i + batchSize));
+        }
+
+        const results = [];
+        try {
+            for (let i = 0; i < batches.length; i++) {
+                setAsterProgress(`جاري جلب الارتفاعات (المجموعة ${i + 1} من ${batches.length})...`);
+                
+                const locString = batches[i].map(loc => `${loc.lat.toFixed(6)},${loc.lng.toFixed(6)}`).join('|');
+                const url = `https://api.opentopodata.org/v1/aster30m?locations=${locString}`;
+                
+                const response = await axios.get(url);
+                if (response.data && response.data.results) {
+                    results.push(...response.data.results);
+                } else {
+                    throw new Error("تنسيق بيانات الـ API غير صالح");
+                }
+
+                if (i < batches.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 1100));
+                }
+            }
+
+            if (results.length === 0) {
+                throw new Error("لم يتم إرجاع أي بيانات");
+            }
+
+            const minElev = Math.min(...results.map(r => r.elevation || 0));
+            const maxElev = Math.max(...results.map(r => r.elevation || 0));
+
+            const features = results.map((res, index) => {
+                return {
+                    type: "Feature",
+                    geometry: {
+                        type: "Point",
+                        coordinates: [res.location.lng, res.location.lat]
+                    },
+                    properties: {
+                        id: index,
+                        elevation: res.elevation,
+                        dataset: res.dataset
+                    }
+                };
+            });
+
+            const geojson = {
+                type: "FeatureCollection",
+                features: features
+            };
+
+            const newLayerId = `aster-${Date.now()}`;
+            const layerName = `ASTER GDEM (${gridSize}x${gridSize}) - ${new Date().toLocaleTimeString()}`;
+
+            setGeoLayers(prev => [...prev, {
+                id: newLayerId,
+                name: layerName,
+                data: geojson,
+                isRemoteSensing: true,
+                minElevation: minElev,
+                maxElevation: maxElev,
+                color: '#fbab15',
+                isVisible: true
+            }]);
+
+            setLayerStyles(prev => ({
+                ...prev,
+                [newLayerId]: {
+                    color: '#fbab15',
+                    outlineColor: '#ffffff',
+                    outlineWidth: 1,
+                    opacity: 0.85,
+                    isRemoteSensing: true,
+                    minElevation: minElev,
+                    maxElevation: maxElev
+                }
+            }));
+
+            setActiveAsterLayerId(newLayerId);
+            setAsterLoading(false);
+            setAsterProgress("");
+            alert(`✅ تم جلب ${results.length} نقطة ارتفاع بنجاح وتلوينها بناءً على الارتفاع!`);
+
+        } catch (error) {
+            console.error("Error fetching ASTER GDEM:", error);
+            setAsterLoading(false);
+            setAsterProgress("");
+            alert(`❌ فشل جلب البيانات: ${error.message || error}`);
+        }
+    };
+
+    const exportAsterToCSV = (layer) => {
+        if (!layer || !layer.data || !layer.data.features) return;
+        const features = layer.data.features;
+        const headers = ['Longitude', 'Latitude', 'Elevation_m', 'Dataset'];
+        const csvRows = [headers.join(',')];
+        
+        features.forEach(f => {
+            const lng = f.geometry.coordinates[0];
+            const lat = f.geometry.coordinates[1];
+            const elev = f.properties.elevation;
+            const dataset = f.properties.dataset;
+            csvRows.push(`${lng},${lat},${elev},${dataset}`);
+        });
+        
+        const csvString = csvRows.join('\n');
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `${layer.name}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const exportAsterToGeoJSON = (layer) => {
+        if (!layer || !layer.data) return;
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(layer.data, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `${layer.name}.geojson`);
+        downloadAnchor.style.visibility = 'hidden';
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        document.body.removeChild(downloadAnchor);
     };
 
     const fetchPalStreetOSM = async (south, west, north, east, polygonFilterCoords = null) => {
@@ -3804,8 +3957,22 @@ out geom;`;
                                             type="circle"
                                             filter={['==', '$type', 'Point']}
                                             paint={{
-                                                'circle-radius': 7,
-                                                'circle-color': style.color,
+                                                'circle-radius': layer.isRemoteSensing ? [
+                                                    'interpolate',
+                                                    ['linear'],
+                                                    ['zoom'],
+                                                    10, 4,
+                                                    14, 12,
+                                                    17, 30
+                                                ] : 7,
+                                                'circle-color': layer.isRemoteSensing ? [
+                                                    'interpolate',
+                                                    ['linear'],
+                                                    ['get', 'elevation'],
+                                                    layer.minElevation || 0, '#312e81',
+                                                    (layer.minElevation + layer.maxElevation)/2 || 100, '#10b981',
+                                                    layer.maxElevation || 500, '#ef4444'
+                                                ] : style.color,
                                                 'circle-stroke-width': style.outlineWidth,
                                                 'circle-stroke-color': style.outlineColor,
                                                 'circle-opacity': style.opacity ?? 1,
@@ -3853,10 +4020,25 @@ out geom;`;
                                 >
                                     <div className="popup-content" style={{ direction: 'rtl', textAlign: 'right', color: 'white', minWidth: '180px' }}>
                                         <h4 style={{ margin: '0 0 8px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px', color: '#06D6F2' }}>
-                                            {selectedFeatureInfo.properties.name || selectedFeatureInfo.properties.name_ar || selectedFeatureInfo.properties.name_en || 'شارع بدون اسم'}
+                                            {selectedFeatureInfo.properties.dataset === 'aster30m' ? 'نقطة ارتفاع (ASTER GDEM)' : (selectedFeatureInfo.properties.name || selectedFeatureInfo.properties.name_ar || selectedFeatureInfo.properties.name_en || 'شارع بدون اسم')}
                                         </h4>
                                         <div className="popup-body" style={{ fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                            {selectedFeatureInfo.properties.highway ? (
+                                            {selectedFeatureInfo.properties.dataset === 'aster30m' ? (
+                                                <>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '15px' }}>
+                                                        <span style={{ color: '#94a3b8' }}>الارتفاع:</span>
+                                                        <span style={{ color: '#fbab15', fontWeight: 'bold' }}>{selectedFeatureInfo.properties.elevation?.toFixed(1)} م</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '15px' }}>
+                                                        <span style={{ color: '#94a3b8' }}>خط العرض:</span>
+                                                        <span>{selectedFeatureInfo.latitude.toFixed(6)}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '15px' }}>
+                                                        <span style={{ color: '#94a3b8' }}>خط الطول:</span>
+                                                        <span>{selectedFeatureInfo.longitude.toFixed(6)}</span>
+                                                    </div>
+                                                </>
+                                            ) : selectedFeatureInfo.properties.highway ? (
                                                 <>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                                         <span style={{ color: '#94a3b8' }}>التصنيف:</span>
@@ -4127,6 +4309,12 @@ out geom;`;
                         <div className={`panel-tab ${activeTab === 'palstreet' ? 'active' : ''}`} onClick={() => setActiveTab('palstreet')} title="PalStreet">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 3v18M18 3v18M12 3v4M12 10v4M12 17v4" /></svg>
                         </div>
+                        <div className={`panel-tab ${activeTab === 'palremotesensing' ? 'active' : ''}`} onClick={() => { setActiveTab('palremotesensing'); setDrawingMode(null); }} title="PalRemoteSensing (استشعار عن بعد)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="11" width="18" height="6" rx="2" />
+                                <path d="M12 2v9M8 2h8M12 17v5M5 11V7a3 3 0 0 1 6 0v4M13 11V7a3 3 0 0 1 6 0v4" />
+                            </svg>
+                        </div>
                     </div>
 
                     <div className="panel-content">
@@ -4238,6 +4426,11 @@ out geom;`;
                                                                     {isTable 
                                                                         ? `${layer.data?.length || 0} سجل بيانات` 
                                                                         : `${layer.data?.features?.length || 0} معلم جغرافي`}
+                                                                    {layer.isRemoteSensing && (
+                                                                        <span style={{ display: 'block', marginTop: '4px', color: '#fbab15' }}>
+                                                                            الارتفاع: {layer.minElevation?.toFixed(0)}م - {layer.maxElevation?.toFixed(0)}م
+                                                                        </span>
+                                                                    )}
                                                                 </small>
                                                             </div>
                                                         </div>
@@ -4478,6 +4671,116 @@ out geom;`;
                                         </button>
                                     </div>
                                 )}
+                            </div>
+                        )}
+
+                        {activeTab === 'palremotesensing' && (
+                            <div className="tab-content" style={{ display: 'flex', flexDirection: 'column', gap: '20px', height: '100%', overflowY: 'auto' }}>
+                                <div className="panel-section">
+                                    <div className="panel-section-title">الاستشعار عن بعد (ASTER GDEM 30m) 🛰️</div>
+                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.5', marginBottom: '15px' }}>
+                                        يقوم هذا النظام بجلب بيانات الارتفاع الرقمية العالمية بدقة 30 متر من أطلس ASTER (التابع لوكالة ناسا ووزارة الاقتصاد اليابانية) للمنطقة المعروضة حالياً على الخريطة.
+                                    </p>
+
+                                    <div className="form-group" style={{ marginBottom: '15px' }}>
+                                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '8px', color: 'var(--text-secondary)' }}>دقة شبكة النقاط (أبعاد الشبكة):</label>
+                                        <select 
+                                            value={asterGridSize} 
+                                            onChange={(e) => setAsterGridSize(parseInt(e.target.value))}
+                                            style={{
+                                                width: '100%', padding: '10px', background: 'rgba(255,255,255,0.05)',
+                                                border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px',
+                                                color: 'white', outline: 'none'
+                                            }}
+                                        >
+                                            <option value={8}>8x8 (64 نقطة - سريع جداً)</option>
+                                            <option value={10}>10x10 (100 نقطة - سريع)</option>
+                                            <option value={12}>12x12 (144 نقطة - 2 طلبات ثانية واحدة)</option>
+                                            <option value={15}>15x15 (225 نقطة - 3 طلبات ثانيتين)</option>
+                                            <option value={20}>20x20 (400 نقطة - 4 طلبات 3 ثوانٍ)</option>
+                                        </select>
+                                        <small style={{ display: 'block', marginTop: '6px', color: 'var(--text-muted)', fontSize: '0.7rem' }}>
+                                            * يتم تقسيم النقاط إلى مجموعات لعدم تخطي حد الـ API المجاني.
+                                        </small>
+                                    </div>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                        <button
+                                            className="ds-btn primary w-100"
+                                            disabled={asterLoading}
+                                            onClick={() => {
+                                                const map = mapRef.current?.getMap();
+                                                if (map) {
+                                                    const bounds = map.getBounds();
+                                                    fetchAsterGDEM(bounds.getSouth(), bounds.getWest(), bounds.getNorth(), bounds.getEast(), asterGridSize);
+                                                }
+                                            }}
+                                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px' }}
+                                        >
+                                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                                                <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                                                <line x1="12" y1="22.08" x2="12" y2="12" />
+                                            </svg>
+                                            {asterLoading ? 'جاري جلب البيانات...' : 'جلب بيانات الارتفاع للمنطقة الحالية'}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {asterLoading && (
+                                    <div style={{ padding: '15px', background: 'rgba(251, 171, 21, 0.05)', border: '1px solid rgba(251, 171, 21, 0.2)', borderRadius: '12px', textAlign: 'center' }}>
+                                        <div className="loader-ring-small" style={{ margin: '0 auto 10px auto', width: '30px', height: '30px', border: '3px solid rgba(251, 171, 21, 0.1)', borderTopColor: '#fbab15', borderRadius: '50%', animation: 'ring-spin 1s linear infinite' }}></div>
+                                        <div style={{ fontSize: '0.85rem', color: 'white', fontWeight: 'bold' }}>{asterProgress}</div>
+                                    </div>
+                                )}
+
+                                {(() => {
+                                    const activeLayer = geoLayers.find(l => l.id === activeAsterLayerId) || geoLayers.find(l => l.isRemoteSensing);
+                                    if (!activeLayer) return null;
+
+                                    return (
+                                        <div className="panel-section" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '15px' }}>
+                                            <div className="panel-section-title" style={{ color: '#fbab15', marginBottom: '12px' }}>الطبقة النشطة: {activeLayer.name.split(' - ')[0]}</div>
+                                            
+                                            <div style={{ marginBottom: '18px' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '6px' }}>
+                                                    <span>الحد الأدنى: {activeLayer.minElevation?.toFixed(1)}م</span>
+                                                    <span>الحد الأقصى: {activeLayer.maxElevation?.toFixed(1)}م</span>
+                                                </div>
+                                                <div style={{
+                                                    height: '12px',
+                                                    background: 'linear-gradient(to left, #312e81, #10b981, #ef4444)',
+                                                    borderRadius: '6px',
+                                                    boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.5)'
+                                                }}></div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px', padding: '0 5px' }}>
+                                                    <span>منخفض</span>
+                                                    <span>متوسط</span>
+                                                    <span>مرتفع</span>
+                                                </div>
+                                            </div>
+
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                <button
+                                                    className="ds-btn secondary w-100"
+                                                    onClick={() => exportAsterToCSV(activeLayer)}
+                                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', fontSize: '0.85rem' }}
+                                                >
+                                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
+                                                    تحميل البيانات كملف CSV 📊
+                                                </button>
+                                                <button
+                                                    className="ds-btn secondary w-100"
+                                                    onClick={() => exportAsterToGeoJSON(activeLayer)}
+                                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', fontSize: '0.85rem' }}
+                                                >
+                                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                                                    تحميل البيانات كملف GeoJSON 📥
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         )}
                     </div>
