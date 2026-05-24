@@ -290,7 +290,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
     };
 
     const isFollowingShop = (shopId) => {
-        return followedShops.some(s => s.id == shopId);
+        return followedShops.some(s => s && s.id == shopId);
     };
 
     const formatTime = (timestamp) => {
@@ -364,17 +364,25 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                     <div className="modal-tabs" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                         <button
                             className={`tab ${shopSubTab === 'shops' ? 'active' : ''}`}
-                            onClick={() => setShopSubTab('shops')}
+                            onClick={() => {
+                                setShopSubTab('shops');
+                                setShopSearchQuery('');
+                                setShopSearchResults([]);
+                            }}
                             style={shopSubTab === 'shops' ? { color: '#fbab15', borderBottomColor: '#fbab15' } : {}}
                         >
-                            🏪 المحلات والمؤسسات
+                            المحلات والمؤسسات
                         </button>
                         <button
                             className={`tab ${shopSubTab === 'municipalities' ? 'active' : ''}`}
-                            onClick={() => setShopSubTab('municipalities')}
+                            onClick={() => {
+                                setShopSubTab('municipalities');
+                                setShopSearchQuery('');
+                                setShopSearchResults([]);
+                            }}
                             style={shopSubTab === 'municipalities' ? { color: '#fbab15', borderBottomColor: '#fbab15' } : {}}
                         >
-                            🏛️ البلديات
+                            البلديات
                         </button>
                     </div>
                 )}
@@ -674,7 +682,8 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                         البلديات المتابعة
                                                     </h4>
                                                     {followedShops.filter(s => {
-                                                        const c = (s.category || '').toLowerCase().trim();
+                                                        if (!s) return false;
+                                                        const c = String(s.category || '').toLowerCase().trim();
                                                         return c === 'بلدية' || c === 'municipality';
                                                     }).length === 0 ? (
                                                         <div className="empty-state">
@@ -684,7 +693,8 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                     ) : (
                                                         followedShops
                                                             .filter(s => {
-                                                                const c = (s.category || '').toLowerCase().trim();
+                                                                if (!s) return false;
+                                                                const c = String(s.category || '').toLowerCase().trim();
                                                                 return c === 'بلدية' || c === 'municipality';
                                                             })
                                                             .map(shop => (
@@ -734,13 +744,15 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                         </div>
                                                     </form>
                                                     {shopSearchResults.filter(s => {
-                                                        const c = (s.category || '').toLowerCase().trim();
+                                                        if (!s) return false;
+                                                        const c = String(s.category || '').toLowerCase().trim();
                                                         return c === 'بلدية' || c === 'municipality';
                                                     }).length > 0 && (
                                                         <div className="user-list" style={{ paddingTop: 0 }}>
                                                             <h4 style={{ padding: '10px 15px 5px', fontSize: '0.85rem', color: 'var(--primary)' }}>نتائج البحث</h4>
                                                             {shopSearchResults.filter(s => {
-                                                                const c = (s.category || '').toLowerCase().trim();
+                                                                if (!s) return false;
+                                                                const c = String(s.category || '').toLowerCase().trim();
                                                                 return c === 'بلدية' || c === 'municipality';
                                                             }).map(shop => (
                                                                 <div key={`sr-${shop.id}`} className="user-item" onClick={() => onShopClick && onShopClick(shop)} style={{ cursor: 'pointer' }}>
@@ -783,10 +795,10 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                 </div>
                                             </form>
 
-                                            {shopSearchResults.length > 0 && (
+                                            {shopSearchResults.filter(Boolean).length > 0 && (
                                                 <div className="user-list">
                                                     <h4 style={{ padding: '10px 15px', fontSize: '0.9rem', color: 'var(--primary)' }}>نتائج البحث</h4>
-                                                    {shopSearchResults.map(shop => (
+                                                    {shopSearchResults.filter(Boolean).map(shop => (
                                                         <div key={`${shop.type}-${shop.id}`} className="user-item" onClick={() => onShopClick && onShopClick(shop)} style={{ cursor: 'pointer' }}>
                                                             <div className="chat-avatar" style={{
                                                                 background: shop.type === 'facility' ? '#1e293b' : 'linear-gradient(135deg, #fbab15, #f59e0b)',
@@ -839,12 +851,12 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
 
                                             <div className="user-list">
                                                 <h4 style={{ padding: '10px 15px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>المحلات التي أتابعها</h4>
-                                                {followedShops.length === 0 ? (
+                                                {followedShops.filter(Boolean).length === 0 ? (
                                                     <div className="empty-state">
                                                         <p>لا تتابع أي محل حالياً</p>
                                                     </div>
                                                 ) : (
-                                                    followedShops.map(shop => (
+                                                    followedShops.filter(Boolean).map(shop => (
                                                         <div key={shop.id} className="user-item" onClick={() => onShopClick && onShopClick(shop)} style={{ cursor: 'pointer' }}>
                                                             <div className="chat-avatar" style={{
                                                                 background: shop.profile_picture ? 'transparent' : 'linear-gradient(135deg, #fbab15, #f59e0b)',
