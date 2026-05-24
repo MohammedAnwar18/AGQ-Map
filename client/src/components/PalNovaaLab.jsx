@@ -146,6 +146,7 @@ const PalNovaaLab = ({ onClose }) => {
     const [asterProgress, setAsterProgress] = useState('');
     const [asterGridSize, setAsterGridSize] = useState(10);
     const [activeAsterLayerId, setActiveAsterLayerId] = useState(null);
+    const [asterViewType, setAsterViewType] = useState('raster'); // 'points' or 'raster'
 
     // ===== HYDROLOGY SIMULATION SANDBOX REF & EFFECT =====
     const hydroStateRef = useRef({
@@ -1752,6 +1753,91 @@ const PalNovaaLab = ({ onClose }) => {
         return R * c;
     };
 
+    const generateDemRaster = (results, gridSize, south, west, north, east) => {
+        const canvas = document.createElement('canvas');
+        const width = 256;
+        const height = 256;
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        const elevations = results.map(r => r.elevation || 0);
+        const minElev = Math.min(...elevations);
+        const maxElev = Math.max(...elevations);
+        const range = maxElev - minElev || 1;
+
+        const getColorForElevation = (elev) => {
+            const t = (elev - minElev) / range;
+            let r, g, b;
+            if (t < 0.5) {
+                const factor = t * 2;
+                r = Math.round(49 + (16 - 49) * factor);
+                g = Math.round(46 + (185 - 46) * factor);
+                b = Math.round(129 + (129 - 129) * factor);
+            } else {
+                const factor = (t - 0.5) * 2;
+                r = Math.round(16 + (239 - 16) * factor);
+                g = Math.round(185 + (68 - 185) * factor);
+                b = Math.round(129 + (68 - 129) * factor);
+            }
+            return `rgb(${r},${g},${b})`;
+        };
+
+        const imgData = ctx.createImageData(width, height);
+        const grid = [];
+        for (let r = 0; r < gridSize; r++) {
+            grid[r] = [];
+            for (let c = 0; c < gridSize; c++) {
+                const index = r * gridSize + c;
+                grid[gridSize - 1 - r][c] = results[index].elevation || 0;
+            }
+        }
+
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const gx = (x / (width - 1)) * (gridSize - 1);
+                const gy = (y / (height - 1)) * (gridSize - 1);
+
+                const x0 = Math.floor(gx);
+                const x1 = Math.min(x0 + 1, gridSize - 1);
+                const y0 = Math.floor(gy);
+                const y1 = Math.min(y0 + 1, gridSize - 1);
+
+                const tx = gx - x0;
+                const ty = gy - y0;
+
+                const e00 = grid[y0][x0];
+                const e10 = grid[y0][x1];
+                const e01 = grid[y1][x0];
+                const e11 = grid[y1][x1];
+
+                const eTop = e00 + tx * (e10 - e00);
+                const eBottom = e01 + tx * (e11 - e01);
+                const elev = eTop + ty * (eBottom - eTop);
+
+                const colorStr = getColorForElevation(elev);
+                const rgb = colorStr.match(/\d+/g).map(Number);
+
+                const pixelIdx = (y * width + x) * 4;
+                imgData.data[pixelIdx] = rgb[0];
+                imgData.data[pixelIdx + 1] = rgb[1];
+                imgData.data[pixelIdx + 2] = rgb[2];
+                imgData.data[pixelIdx + 3] = 220;
+            }
+        }
+
+        ctx.putImageData(imgData, 0, 0);
+        return {
+            url: canvas.toDataURL(),
+            coordinates: [
+                [west, north],
+                [east, north],
+                [east, south],
+                [west, south]
+            ]
+        };
+    };
+
     const fetchAsterGDEM = async (south, west, north, east, gridSize) => {
         setAsterLoading(true);
         setAsterProgress("جاري إنشاء شبكة النقاط...");
@@ -1821,35 +1907,73 @@ const PalNovaaLab = ({ onClose }) => {
 
             const newLayerId = `aster-${Date.now()}`;
             const layerName = `ASTER GDEM (${gridSize}x${gridSize}) - ${new Date().toLocaleTimeString()}`;
+            const newLayers = [];
 
-            setGeoLayers(prev => [...prev, {
-                id: newLayerId,
-                name: layerName,
-                data: geojson,
-                isRemoteSensing: true,
-                minElevation: minElev,
-                maxElevation: maxElev,
-                color: '#fbab15',
-                isVisible: true
-            }]);
-
-            setLayerStyles(prev => ({
-                ...prev,
-                [newLayerId]: {
-                    color: '#fbab15',
-                    outlineColor: '#ffffff',
-                    outlineWidth: 1,
-                    opacity: 0.85,
+            if (asterViewType === 'raster') {
+                const rasterData = generateDemRaster(results, gridSize, south, west, north, east);
+                
+                newLayers.push({
+                    id: `${newLayerId}-raster`,
+                    name: `${layerName} (Raster)`,
+                    type: 'raster',
+                    url: rasterData.url,
+                    coordinates: rasterData.coordinates,
                     isRemoteSensing: true,
                     minElevation: minElev,
-                    maxElevation: maxElev
-                }
-            }));
+                    maxElevation: maxElev,
+                    isVisible: true
+                });
 
-            setActiveAsterLayerId(newLayerId);
+                newLayers.push({
+                    id: `${newLayerId}-points`,
+                    name: `${layerName} (Clickable)`,
+                    data: geojson,
+                    isRemoteSensing: true,
+                    minElevation: minElev,
+                    maxElevation: maxElev,
+                    color: '#fbab15',
+                    isVisible: true,
+                    isHiddenPoints: true
+                });
+            } else {
+                newLayers.push({
+                    id: newLayerId,
+                    name: layerName,
+                    data: geojson,
+                    isRemoteSensing: true,
+                    minElevation: minElev,
+                    maxElevation: maxElev,
+                    color: '#fbab15',
+                    isVisible: true
+                });
+            }
+
+            setGeoLayers(prev => [...prev, ...newLayers]);
+
+            newLayers.forEach(l => {
+                setLayerStyles(prev => ({
+                    ...prev,
+                    [l.id]: {
+                        color: '#fbab15',
+                        outlineColor: '#ffffff',
+                        outlineWidth: 1,
+                        opacity: l.isHiddenPoints ? 0.001 : 0.85,
+                        isRemoteSensing: true,
+                        minElevation: minElev,
+                        maxElevation: maxElev
+                    }
+                }));
+            });
+
+            if (asterViewType === 'raster') {
+                setActiveAsterLayerId(`${newLayerId}-raster`);
+            } else {
+                setActiveAsterLayerId(newLayerId);
+            }
+
             setAsterLoading(false);
             setAsterProgress("");
-            alert(`✅ تم جلب ${results.length} نقطة ارتفاع بنجاح وتلوينها بناءً على الارتفاع!`);
+            alert(`✅ تم جلب ${results.length} نقطة ارتفاع بنجاح وتولينها على الخريطة!`);
 
         } catch (error) {
             console.error("Error fetching ASTER GDEM:", error);
@@ -1860,8 +1984,14 @@ const PalNovaaLab = ({ onClose }) => {
     };
 
     const exportAsterToCSV = (layer) => {
-        if (!layer || !layer.data || !layer.data.features) return;
-        const features = layer.data.features;
+        if (!layer) return;
+        let targetLayer = layer;
+        if (layer.type === 'raster') {
+            const pointsLayerId = layer.id.replace('-raster', '-points');
+            targetLayer = geoLayers.find(l => l.id === pointsLayerId) || layer;
+        }
+        if (!targetLayer.data || !targetLayer.data.features) return;
+        const features = targetLayer.data.features;
         const headers = ['Longitude', 'Latitude', 'Elevation_m', 'Dataset'];
         const csvRows = [headers.join(',')];
         
@@ -1886,8 +2016,14 @@ const PalNovaaLab = ({ onClose }) => {
     };
 
     const exportAsterToGeoJSON = (layer) => {
-        if (!layer || !layer.data) return;
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(layer.data, null, 2));
+        if (!layer) return;
+        let targetLayer = layer;
+        if (layer.type === 'raster') {
+            const pointsLayerId = layer.id.replace('-raster', '-points');
+            targetLayer = geoLayers.find(l => l.id === pointsLayerId) || layer;
+        }
+        if (!targetLayer.data) return;
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(targetLayer.data, null, 2));
         const downloadAnchor = document.createElement('a');
         downloadAnchor.setAttribute("href", dataStr);
         downloadAnchor.setAttribute("download", `${layer.name}.geojson`);
@@ -4368,7 +4504,7 @@ out geom;`;
                                             <button onClick={() => { setGeoLayers([]); setLayerStyles({}); }} style={{ color: '#EF4444' }}>إزالة الكل</button>
                                         </div>
 
-                                        {geoLayers.map(layer => {
+                                        {geoLayers.filter(l => !l.isHiddenPoints).map(layer => {
                                             const isTable = layer.type === 'table';
                                             const currentStyle = layerStyles[layer.id] || { color: layer.color };
                                             return (
@@ -4460,7 +4596,9 @@ out geom;`;
                                                             <button 
                                                                 className={`visibility-btn ${layer.isVisible !== false ? 'active' : ''}`} 
                                                                 onClick={() => {
-                                                                    setGeoLayers(prev => prev.map(l => l.id === layer.id ? { ...l, isVisible: !l.isVisible } : l));
+                                                                    const baseId = layer.id.replace('-raster', '').replace('-points', '');
+                                                                    const targetVisible = !(layer.isVisible !== false);
+                                                                    setGeoLayers(prev => prev.map(l => (l.id === layer.id || l.id === `${baseId}-points` || l.id === `${baseId}-raster`) ? { ...l, isVisible: targetVisible } : l));
                                                                 }}
                                                                 style={{ background: 'rgba(255,255,255,0.05)', border: 'none', cursor: 'pointer', color: layer.isVisible !== false ? 'var(--primary)' : '#666', display: 'flex', alignItems: 'center', padding: '6px', borderRadius: '8px' }}
                                                                 title={layer.isVisible !== false ? "إخفاء من الخريطة" : "إظهار على الخريطة"}
@@ -4484,7 +4622,21 @@ out geom;`;
                                                             <button style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '6px' }} onClick={() => handleExportLayer(layer)} title={isTable ? "تصدير كملف CSV" : "تصدير كملف GeoJSON"}>
                                                                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
                                                             </button>
-                                                            <button className="delete" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', borderRadius: '8px', padding: '6px' }} onClick={() => { setGeoLayers(prev => prev.filter(l => l.id !== layer.id)); setLayerStyles(prev => { const n = { ...prev }; delete n[layer.id]; return n; }); if (activeTableLayerId === layer.id) { setActiveTableLayerId(null); setShowBottomTable(false); } }} title="حذف الطبقة">
+                                                            <button className="delete" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', borderRadius: '8px', padding: '6px' }} onClick={() => { 
+                                                                const baseId = layer.id.replace('-raster', '').replace('-points', '');
+                                                                setGeoLayers(prev => prev.filter(l => l.id !== layer.id && l.id !== `${baseId}-points` && l.id !== `${baseId}-raster`)); 
+                                                                setLayerStyles(prev => { 
+                                                                    const n = { ...prev }; 
+                                                                    delete n[layer.id]; 
+                                                                    delete n[`${baseId}-points`]; 
+                                                                    delete n[`${baseId}-raster`]; 
+                                                                    return n; 
+                                                                }); 
+                                                                if (activeTableLayerId === layer.id || activeTableLayerId?.startsWith(baseId)) { 
+                                                                    setActiveTableLayerId(null); 
+                                                                    setShowBottomTable(false); 
+                                                                } 
+                                                            }} title="حذف الطبقة">
                                                                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
                                                             </button>
                                                             <button onClick={() => setOpenActionsLayerId(null)} style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '8px', padding: '6px' }}>
@@ -4701,6 +4853,22 @@ out geom;`;
                                         <small style={{ display: 'block', marginTop: '6px', color: 'var(--text-muted)', fontSize: '0.7rem' }}>
                                             * يتم تقسيم النقاط إلى مجموعات لعدم تخطي حد الـ API المجاني.
                                         </small>
+                                    </div>
+
+                                    <div className="form-group" style={{ marginBottom: '15px' }}>
+                                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '8px', color: 'var(--text-secondary)' }}>طريقة العرض على الخريطة:</label>
+                                        <select 
+                                            value={asterViewType} 
+                                            onChange={(e) => setAsterViewType(e.target.value)}
+                                            style={{
+                                                width: '100%', padding: '10px', background: 'rgba(255,255,255,0.05)',
+                                                border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px',
+                                                color: 'white', outline: 'none'
+                                            }}
+                                        >
+                                            <option value="raster">راستر مستمر (DEM Raster - Bilinear) 🗺️</option>
+                                            <option value="points">شبكة نقاط ملونة (Point Grid) 📍</option>
+                                        </select>
                                     </div>
 
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
