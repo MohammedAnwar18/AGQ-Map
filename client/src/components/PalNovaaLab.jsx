@@ -2292,284 +2292,45 @@ const PalNovaaLab = ({ onClose }) => {
         return { width, height, scaleX, scaleY, west, north, elevations };
     };
 
-    const generate3dMeshGeoJSON = (results, gridSize, south, west, north, east, colorRamp, exaggeration) => {
-        const elevations = results.map(r => r.elevation || 0);
-        const minElev = Math.min(...elevations);
-        const maxElev = Math.max(...elevations);
-        const range = maxElev - minElev || 1;
-        
-        const getColorForElevationLocal = (elev) => {
-            const t = Math.max(0, Math.min(1, (elev - minElev) / range));
-            let r, g, b;
-            if (colorRamp === 'grayscale') {
-                const val = Math.round(t * 255);
-                return `rgb(${val},${val},${val})`;
-            } else if (colorRamp === 'viridis') {
-                if (t < 0.5) {
-                    const f = t * 2;
-                    r = Math.round(68 + (33 - 68) * f);
-                    g = Math.round(1 + (145 - 1) * f);
-                    b = Math.round(84 + (140 - 84) * f);
-                } else {
-                    const f = (t - 0.5) * 2;
-                    r = Math.round(33 + (253 - 33) * f);
-                    g = Math.round(145 + (231 - 145) * f);
-                    b = Math.round(140 + (37 - 140) * f);
-                }
-                return `rgb(${r},${g},${b})`;
-            } else if (colorRamp === 'terrain') {
-                if (t < 0.5) {
-                    const f = t * 2;
-                    r = Math.round(34 + (234 - 34) * f);
-                    g = Math.round(197 + (179 - 197) * f);
-                    b = Math.round(94 + (8 - 94) * f);
-                } else {
-                    const f = (t - 0.5) * 2;
-                    r = Math.round(234 + (255 - 234) * f);
-                    g = Math.round(179 + (255 - 179) * f);
-                    b = Math.round(8 + (255 - 8) * f);
-                }
-                return `rgb(${r},${g},${b})`;
-            } else if (colorRamp === 'rainbow') {
-                if (t < 0.25) {
-                    const f = t * 4;
-                    return `rgb(0, ${Math.round(f * 255)}, 255)`;
-                } else if (t < 0.5) {
-                    const f = (t - 0.25) * 4;
-                    return `rgb(0, 255, ${Math.round((1 - f) * 255)})`;
-                } else if (t < 0.75) {
-                    const f = (t - 0.5) * 4;
-                    return `rgb(${Math.round(f * 255)}, 255, 0)`;
-                } else {
-                    const f = (t - 0.75) * 4;
-                    return `rgb(255, ${Math.round((1 - f) * 255)}, 0)`;
-                }
-            } else {
-                if (t < 0.5) {
-                    const factor = t * 2;
-                    r = Math.round(49 + (16 - 49) * factor);
-                    g = Math.round(46 + (185 - 46) * factor);
-                    b = Math.round(129 + (129 - 129) * factor);
-                } else {
-                    const factor = (t - 0.5) * 2;
-                    r = Math.round(16 + (239 - 16) * factor);
-                    g = Math.round(185 + (68 - 185) * factor);
-                    b = Math.round(129 + (68 - 129) * factor);
-                }
-                return `rgb(${r},${g},${b})`;
-            }
-        };
-        
-        const grid = [];
-        for (let r = 0; r < gridSize; r++) {
-            grid[r] = [];
-        }
-        for (let r = 0; r < gridSize; r++) {
-            for (let c = 0; c < gridSize; c++) {
-                const index = r * gridSize + c;
-                grid[gridSize - 1 - r][c] = results[index] ? (results[index].elevation || 0) : 0;
-            }
-        }
-        
-        const latStep = (north - south) / (gridSize - 1 || 1);
-        const lngStep = (east - west) / (gridSize - 1 || 1);
-        
-        const features = [];
-        for (let r = 0; r < gridSize - 1; r++) {
-            const latTop = north - r * latStep;
-            const latBottom = north - (r + 1) * latStep;
-            
-            for (let c = 0; c < gridSize - 1; c++) {
-                const lngLeft = west + c * lngStep;
-                const lngRight = west + (c + 1) * lngStep;
-                
-                const eTL = grid[r][c];
-                const eTR = grid[r][c+1];
-                const eBL = grid[r+1][c];
-                const eBR = grid[r+1][c+1];
-                const avgElev = (eTL + eTR + eBL + eBR) / 4;
-                
-                const color = getColorForElevationLocal(avgElev);
-                
-                const polyCoords = [
-                    [lngLeft, latTop],
-                    [lngRight, latTop],
-                    [lngRight, latBottom],
-                    [lngLeft, latBottom],
-                    [lngLeft, latTop]
-                ];
-                
-                features.push({
-                    type: "Feature",
-                    geometry: {
-                        type: "Polygon",
-                        coordinates: [polyCoords]
-                    },
-                    properties: {
-                        elevation: avgElev,
-                        height: Math.max(0, avgElev * exaggeration),
-                        color: color
-                    }
-                });
-            }
-        }
-        
-        return {
-            type: "FeatureCollection",
-            features: features
-        };
-    };
 
     const toggle3dModel = (baseId) => {
         const is3dActive = active3dLayerId === baseId;
+        const map = mapRef.current?.getMap();
+        
         if (is3dActive) {
-            setGeoLayers(prev => {
-                const filtered = prev.filter(l => l.id !== `${baseId}-3d`);
-                return filtered.map(l => {
-                    if (l.id === `${baseId}-raster` || l.id === `${baseId}-points` || l.id === baseId) {
-                        return { ...l, isVisible: true };
-                    }
-                    return l;
-                });
-            });
+            if (map) {
+                map.setTerrain(null);
+            }
             setActive3dLayerId(null);
         } else {
-            const rasterLayer = geoLayers.find(l => l.id === `${baseId}-raster`) || geoLayers.find(l => l.id === baseId);
-            if (!rasterLayer) return;
-            
-            let rawResults = rasterLayer.rawResults;
-            let gridSize = rasterLayer.gridSize;
-            let south = rasterLayer.south;
-            let west = rasterLayer.west;
-            let north = rasterLayer.north;
-            let east = rasterLayer.east;
-            let colorRamp = rasterLayer.colorRamp || 'classic';
-            
-            if (!rawResults && rasterLayer.data && rasterLayer.data.features) {
-                const features = rasterLayer.data.features;
-                const lats = features.map(f => f.geometry.coordinates[1]);
-                const lngs = features.map(f => f.geometry.coordinates[0]);
-                west = Math.min(...lngs);
-                east = Math.max(...lngs);
-                south = Math.min(...lats);
-                north = Math.max(...lats);
-                const uniqueLats = [...new Set(lats)].sort((a,b) => b-a);
-                const uniqueLngs = [...new Set(lngs)].sort((a,b) => a-b);
-                gridSize = uniqueLats.length;
-                rawResults = [];
-                for (let r = 0; r < gridSize; r++) {
-                    const lat = uniqueLats[r];
-                    for (let c = 0; c < gridSize; c++) {
-                        const lng = uniqueLngs[c];
-                        const f = features.find(feat => 
-                            Math.abs(feat.geometry.coordinates[1] - lat) < 0.0001 && 
-                            Math.abs(feat.geometry.coordinates[0] - lng) < 0.0001
-                        );
-                        rawResults.push({
-                            location: { lat, lng },
-                            elevation: f ? (f.properties.elevation || 0) : 0
-                        });
-                    }
+            if (map) {
+                if (!map.getSource('terrain-dem')) {
+                    map.addSource('terrain-dem', {
+                        type: 'raster-dem',
+                        tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+                        encoding: 'terrarium',
+                        tileSize: 256,
+                        maxzoom: 15
+                    });
                 }
-            }
-            
-            if (!rawResults) {
-                alert("⚠️ لا يمكن العثور على بيانات الارتفاع الخام لهذه الطبقة.");
-                return;
-            }
-            
-            const meshData = generate3dMeshGeoJSON(rawResults, gridSize, south, west, north, east, colorRamp, exaggeration3d);
-            
-            const new3dLayer = {
-                id: `${baseId}-3d`,
-                name: `${rasterLayer.name.replace(' (Raster)', '')} (3D)`,
-                type: '3d-mesh',
-                data: meshData,
-                isRemoteSensing: true,
-                isVisible: true,
-                baseId: baseId
-            };
-            
-            setGeoLayers(prev => {
-                const mapped = prev.map(l => {
-                    if (l.id === `${baseId}-raster` || l.id === `${baseId}-points` || l.id === baseId) {
-                        return { ...l, isVisible: false };
-                    }
-                    return l;
-                });
-                return [...mapped, new3dLayer];
-            });
-            
-            setLayerStyles(prev => ({
-                ...prev,
-                [`${baseId}-3d`]: {
-                    opacity: 0.85
-                }
-            }));
-            
-            setActive3dLayerId(baseId);
-            
-            if (mapRef.current) {
-                mapRef.current.easeTo({
+                map.setTerrain({ source: 'terrain-dem', exaggeration: exaggeration3d });
+                
+                map.easeTo({
                     pitch: 60,
                     bearing: -15,
                     duration: 1000
                 });
             }
+            setActive3dLayerId(baseId);
         }
     };
 
     const handleExaggerationChange = (newExag) => {
         setExaggeration3d(newExag);
         if (active3dLayerId) {
-            const baseId = active3dLayerId;
-            const rasterLayer = geoLayers.find(l => l.id === `${baseId}-raster`) || geoLayers.find(l => l.id === baseId);
-            if (!rasterLayer) return;
-            
-            let rawResults = rasterLayer.rawResults;
-            let gridSize = rasterLayer.gridSize;
-            let south = rasterLayer.south;
-            let west = rasterLayer.west;
-            let north = rasterLayer.north;
-            let east = rasterLayer.east;
-            let colorRamp = rasterLayer.colorRamp || 'classic';
-            
-            if (!rawResults && rasterLayer.data && rasterLayer.data.features) {
-                const features = rasterLayer.data.features;
-                const lats = features.map(f => f.geometry.coordinates[1]);
-                const lngs = features.map(f => f.geometry.coordinates[0]);
-                west = Math.min(...lngs);
-                east = Math.max(...lngs);
-                south = Math.min(...lats);
-                north = Math.max(...lats);
-                const uniqueLats = [...new Set(lats)].sort((a,b) => b-a);
-                const uniqueLngs = [...new Set(lngs)].sort((a,b) => a-b);
-                gridSize = uniqueLats.length;
-                rawResults = [];
-                for (let r = 0; r < gridSize; r++) {
-                    const lat = uniqueLats[r];
-                    for (let c = 0; c < gridSize; c++) {
-                        const lng = uniqueLngs[c];
-                        const f = features.find(feat => 
-                            Math.abs(feat.geometry.coordinates[1] - lat) < 0.0001 && 
-                            Math.abs(feat.geometry.coordinates[0] - lng) < 0.0001
-                        );
-                        rawResults.push({
-                            location: { lat, lng },
-                            elevation: f ? (f.properties.elevation || 0) : 0
-                        });
-                    }
-                }
-            }
-            
-            if (rawResults) {
-                const meshData = generate3dMeshGeoJSON(rawResults, gridSize, south, west, north, east, colorRamp, newExag);
-                setGeoLayers(prev => prev.map(l => {
-                    if (l.id === `${baseId}-3d`) {
-                        return { ...l, data: meshData };
-                    }
-                    return l;
-                }));
+            const map = mapRef.current?.getMap();
+            if (map) {
+                map.setTerrain({ source: 'terrain-dem', exaggeration: newExag });
             }
         }
     };
@@ -5731,13 +5492,6 @@ out geom;`;
                                                         }
                                                         if (l.id === `${baseId}-points` || l.id === baseId) {
                                                             return { ...l, colorRamp: newRamp };
-                                                        }
-                                                        if (l.id === `${baseId}-3d`) {
-                                                            const rasterL = prev.find(rl => rl.id === `${baseId}-raster`) || prev.find(rl => rl.id === baseId);
-                                                            if (rasterL && rasterL.rawResults) {
-                                                                const newMeshData = generate3dMeshGeoJSON(rasterL.rawResults, rasterL.gridSize, rasterL.south, rasterL.west, rasterL.north, rasterL.east, newRamp, exaggeration3d);
-                                                                return { ...l, colorRamp: newRamp, data: newMeshData };
-                                                            }
                                                         }
                                                         return l;
                                                     }));
