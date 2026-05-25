@@ -55,7 +55,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
 
     // Create Shop State
     const [isCreatingShop, setIsCreatingShop] = useState(false);
-    const [newShopData, setNewShopData] = useState({ name: '', category: 'General', lat: '', lon: '', menu_layout: 'default' });
+    const [newShopData, setNewShopData] = useState({ name: '', category: 'General', lat: '', lon: '', menu_layout: 'default', stream_url: '', crop_position: 'full' });
     const [isSubmittingShop, setIsSubmittingShop] = useState(false);
 
     // Create University State
@@ -217,26 +217,52 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
 
         setIsSubmittingShop(true);
         try {
-            const createdShop = await shopService.create({
-                name: newShopData.name,
-                category: newShopData.category,
-                latitude: parseFloat(newShopData.lat),
-                longitude: parseFloat(newShopData.lon),
-                custom_design: {
-                    ...(pendingDesign || {}),
-                    menu_layout: newShopData.menu_layout || 'default'
+            if (newShopData.category === 'Camera') {
+                if (!newShopData.stream_url) {
+                    alert("يرجى تعبئة رابط البث المباشر الكاميرا");
+                    setIsSubmittingShop(false);
+                    return;
                 }
-            });
 
-            alert("تم إنشاء المحل بنجاح مع التصميم الخاص!");
-            setIsCreatingShop(false);
-            setNewShopData({ name: '', category: 'General', lat: '', lon: '', menu_layout: 'default' });
-            setPendingDesign(null);
-            await handleFollowShop(createdShop);
+                const createdCamera = await cameraService.create({
+                    name: newShopData.name,
+                    stream_url: newShopData.stream_url,
+                    latitude: parseFloat(newShopData.lat),
+                    longitude: parseFloat(newShopData.lon),
+                    crop_position: newShopData.crop_position || 'full'
+                });
+
+                alert("تم إضافة الكاميرا بنجاح!");
+                setIsCreatingShop(false);
+                setNewShopData({ name: '', category: 'General', lat: '', lon: '', menu_layout: 'default', stream_url: '', crop_position: 'full' });
+                
+                if (onCameraAdded) {
+                    onCameraAdded(createdCamera);
+                } else if (onShopFollowed) {
+                    onShopFollowed();
+                }
+            } else {
+                const createdShop = await shopService.create({
+                    name: newShopData.name,
+                    category: newShopData.category,
+                    latitude: parseFloat(newShopData.lat),
+                    longitude: parseFloat(newShopData.lon),
+                    custom_design: {
+                        ...(pendingDesign || {}),
+                        menu_layout: newShopData.menu_layout || 'default'
+                    }
+                });
+
+                alert("تم إنشاء المحل بنجاح مع التصميم الخاص!");
+                setIsCreatingShop(false);
+                setNewShopData({ name: '', category: 'General', lat: '', lon: '', menu_layout: 'default', stream_url: '', crop_position: 'full' });
+                setPendingDesign(null);
+                await handleFollowShop(createdShop);
+            }
         } catch (error) {
             console.error("Create shop failed", error);
             const errorMsg = error.response?.data?.error || "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.";
-            alert(`فشل إنشاء المحل: ${errorMsg}`);
+            alert(`فشل إنشاء المحل أو الكاميرا: ${errorMsg}`);
         } finally {
             setIsSubmittingShop(false);
         }
@@ -545,7 +571,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                 <button 
                                                     className="btn-accept" 
                                                     style={{ padding: '15px', borderRadius: '12px', fontSize: '1rem', background: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
-                                                    onClick={() => { setShowCreateOptions(false); setIsCreatingCamera(true); }}
+                                                    onClick={() => { setShowCreateOptions(false); setIsCreatingShop(true); setNewShopData(prev => ({ ...prev, category: 'Camera', stream_url: '', crop_position: 'full' })); }}
                                                 >
                                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 7a2 2 0 0 0-2-2h-4l-3-3H10L7 5H3a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V7z"></path><path d="M12 10a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"></path></svg>
                                                     إضافة كاميرا بث مباشر
@@ -604,91 +630,21 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                 </div>
                                             </form>
                                         </div>
-                                    ) : isCreatingCamera ? (
-                                        <div style={{ padding: '20px' }}>
-                                            <h3 style={{ marginBottom: '15px', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                📹 إضافة كاميرا بث مباشر جديدة
-                                            </h3>
-                                            <form onSubmit={handleCreateCamera} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                                <div>
-                                                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>اسم الكاميرا</label>
-                                                    <input
-                                                        type="text"
-                                                        value={newCameraData.name}
-                                                        onChange={e => setNewCameraData({ ...newCameraData, name: e.target.value })}
-                                                        placeholder="مثلاً: دوار المنارة - بث مباشر"
-                                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '1rem' }}
-                                                        required
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>رابط البث (HLS / m3u8)</label>
-                                                    <input
-                                                        type="url"
-                                                        value={newCameraData.stream_url}
-                                                        onChange={e => setNewCameraData({ ...newCameraData, stream_url: e.target.value })}
-                                                        placeholder="https://example.com/stream.m3u8"
-                                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '1rem' }}
-                                                        required
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>منطقة الاقتصاص (التقسيم 4-في-1)</label>
-                                                    <select
-                                                        value={newCameraData.crop_position}
-                                                        onChange={e => setNewCameraData({ ...newCameraData, crop_position: e.target.value })}
-                                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-                                                    >
-                                                        <option value="full">كامل الشاشة (بدون اقتصاص)</option>
-                                                        <option value="cam1">الكاميرا 1 (أعلى يسار)</option>
-                                                        <option value="cam2">الكاميرا 2 (أعلى يمين)</option>
-                                                        <option value="cam3">الكاميرا 3 (أسفل يسار)</option>
-                                                        <option value="cam4">الكاميرا 4 (أسفل يمين)</option>
-                                                    </select>
-                                                </div>
-                                                <div>
-                                                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>الموقع الجغرافي</label>
-                                                    <div style={{ display: 'flex', gap: '10px' }}>
-                                                        <input
-                                                            type="number" step="any" placeholder="خط العرض"
-                                                            value={newCameraData.lat}
-                                                            onChange={e => setNewCameraData({ ...newCameraData, lat: e.target.value })}
-                                                            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-                                                            required
-                                                        />
-                                                        <input
-                                                            type="number" step="any" placeholder="خط الطول"
-                                                            value={newCameraData.lon}
-                                                            onChange={e => setNewCameraData({ ...newCameraData, lon: e.target.value })}
-                                                            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-                                                            required
-                                                        />
-                                                    </div>
-                                                    <button 
-                                                        type="button" className="btn-small" 
-                                                        onClick={() => getCurrentLocation('camera')}
-                                                        style={{ marginTop: '10px', width: '100%', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none' }}
-                                                    >
-                                                        📍 استخدام موقع الكاميرا الحالي
-                                                    </button>
-                                                </div>
-                                                <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-                                                    <button type="button" onClick={() => { setIsCreatingCamera(false); setShowCreateOptions(true); }} className="btn-small" style={{ flex: 1, background: 'transparent', border: '1px solid var(--text-muted)' }}>الخلف</button>
-                                                    <button type="submit" disabled={isSubmittingShop} className="btn-small btn-accept" style={{ flex: 2, background: '#ef4444' }}>{isSubmittingShop ? 'جاري الحفظ...' : 'إضافة الكاميرا'}</button>
-                                                </div>
-                                            </form>
-                                        </div>
                                     ) : isCreatingShop ? (
                                         <div style={{ padding: '20px' }}>
-                                            <h3 style={{ marginBottom: '15px' }}>تسجيل محل جديد</h3>
+                                            <h3 style={{ marginBottom: '15px' }}>
+                                                {newShopData.category === 'Camera' ? '🎥 إضافة كاميرا بث مباشر جديدة' : 'تسجيل محل جديد'}
+                                            </h3>
                                             <form onSubmit={handleCreateShop} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                                 <div>
-                                                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>اسم المحل</label>
+                                                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>
+                                                        {newShopData.category === 'Camera' ? 'اسم الكاميرا' : 'اسم المحل'}
+                                                    </label>
                                                     <input
                                                         type="text"
                                                         value={newShopData.name}
                                                         onChange={e => setNewShopData({ ...newShopData, name: e.target.value })}
-                                                        placeholder="مثلاً: مطعم القدس"
+                                                        placeholder={newShopData.category === 'Camera' ? 'مثلاً: دوار المنارة - بث مباشر' : 'مثلاً: مطعم القدس'}
                                                         style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '1rem' }}
                                                         required
                                                     />
@@ -701,6 +657,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                         style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                                                     >
                                                         <option value="General">عام</option>
+                                                        <option value="Camera">كاميرا بث مباشر 📹</option>
                                                         <option value="مركز طبي">مركز طبي 🏥</option>
                                                         <option value="مستشفى">مستشفى 🏨</option>
                                                         <option value="عيادة">عيادة 🩺</option>
@@ -714,10 +671,38 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                         <option value="Clothing">ملابس</option>
                                                         <option value="Electronics">إلكترونيات</option>
                                                         <option value="Supermarket">سوبرماركت</option>
-
                                                         <option value="Service">خدمات</option>
                                                     </select>
                                                 </div>
+                                                {newShopData.category === 'Camera' && (
+                                                    <>
+                                                        <div>
+                                                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>رابط البث (HLS / m3u8)</label>
+                                                            <input
+                                                                type="url"
+                                                                value={newShopData.stream_url || ''}
+                                                                onChange={e => setNewShopData({ ...newShopData, stream_url: e.target.value })}
+                                                                placeholder="https://example.com/stream.m3u8"
+                                                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '1rem' }}
+                                                                required
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>منطقة الاقتصاص (التقسيم 4-في-1)</label>
+                                                            <select
+                                                                value={newShopData.crop_position || 'full'}
+                                                                onChange={e => setNewShopData({ ...newShopData, crop_position: e.target.value })}
+                                                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                                                            >
+                                                                <option value="full">كامل الشاشة (بدون اقتصاص)</option>
+                                                                <option value="cam1">الكاميرا 1 (أعلى يسار)</option>
+                                                                <option value="cam2">الكاميرا 2 (أعلى يمين)</option>
+                                                                <option value="cam3">الكاميرا 3 (أسفل يسار)</option>
+                                                                <option value="cam4">الكاميرا 4 (أسفل يمين)</option>
+                                                            </select>
+                                                        </div>
+                                                    </>
+                                                )}
                                                 {(newShopData.category === 'Restaurant' || newShopData.category === 'Cafe') && (
                                                     <div>
                                                         <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>تصميم قائمة الطعام المخصص</label>
@@ -750,15 +735,15 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                     </div>
                                                     <button 
                                                         type="button" className="btn-small" 
-                                                        onClick={() => getCurrentLocation(false)}
+                                                        onClick={() => getCurrentLocation(newShopData.category === 'Camera' ? 'camera' : 'shop')}
                                                         style={{ marginTop: '10px', width: '100%', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none' }}
                                                     >
-                                                        📍 استخدام موقعي الحالي
+                                                        📍 {newShopData.category === 'Camera' ? 'استخدام موقع الكاميرا الحالي' : 'استخدام موقعي الحالي'}
                                                     </button>
                                                 </div>
                                                 <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
                                                     <button type="button" onClick={() => { setIsCreatingShop(false); setShowCreateOptions(true); }} className="btn-small" style={{ flex: 1, background: 'transparent', border: '1px solid var(--text-muted)' }}>الخلف</button>
-                                                    <button type="submit" disabled={isSubmittingShop} className="btn-small btn-accept" style={{ flex: 2 }}>{isSubmittingShop ? 'جاري الحفظ...' : 'إنشاء المحل'}</button>
+                                                    <button type="submit" disabled={isSubmittingShop} className="btn-small btn-accept" style={{ flex: 2 }}>{isSubmittingShop ? 'جاري الحفظ...' : (newShopData.category === 'Camera' ? 'إضافة الكاميرا' : 'إنشاء المحل')}</button>
                                                 </div>
                                             </form>
                                         </div>
