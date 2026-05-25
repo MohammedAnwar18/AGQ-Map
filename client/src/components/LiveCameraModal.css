@@ -224,6 +224,10 @@
         flex-direction: column !important;
     }
     
+    .fullscreen-video-btn {
+        display: none !important;
+    }
+    
     .camera-modal-header {
         padding: 14px 18px !important;
     }
