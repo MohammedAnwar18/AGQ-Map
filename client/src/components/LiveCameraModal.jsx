@@ -14,6 +14,7 @@ const LiveCameraModal = ({ camera, onClose, isAdmin, onCameraUpdated }) => {
     const [currentCrop, setCurrentCrop] = useState(camera?.crop_position || 'full');
     const [isSaving, setIsSaving] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isPseudoFullscreen, setIsPseudoFullscreen] = useState(false);
 
     // Zoom and pan state
     const [zoomScale, setZoomScale] = useState(1);
@@ -21,23 +22,42 @@ const LiveCameraModal = ({ camera, onClose, isAdmin, onCameraUpdated }) => {
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
+    // Pinch-to-zoom states
+    const [isPinching, setIsPinching] = useState(false);
+    const [initialTouchDistance, setInitialTouchDistance] = useState(0);
+    const [initialZoomScale, setInitialZoomScale] = useState(1);
+
     useEffect(() => {
         if (camera) {
             setCurrentCrop(camera.crop_position || 'full');
             setZoomScale(1);
             setPanOffset({ x: 0, y: 0 });
+            setIsPseudoFullscreen(false);
         }
     }, [camera]);
 
-    const adjustZoom = (amount) => {
-        setZoomScale(prev => {
-            const next = Math.min(Math.max(prev + amount, 1), 4);
-            if (next === 1) {
-                setPanOffset({ x: 0, y: 0 });
-            } else {
-                // Adjust pan offsets to keep it within new limits
-                const wrapper = wrapperRef.current;
-                if (wrapper) {
+    useEffect(() => {
+        // Unlock orientation on unmount
+        return () => {
+            if (window.screen && window.screen.orientation && window.screen.orientation.unlock) {
+                try { window.screen.orientation.unlock(); } catch (e) {}
+            }
+        };
+    }, []);
+
+    // Wheel zoom listener for desktop scroll
+    useEffect(() => {
+        const wrapper = wrapperRef.current;
+        if (!wrapper) return;
+
+        const handleWheelEvent = (e) => {
+            e.preventDefault();
+            const delta = -e.deltaY * 0.003;
+            setZoomScale(prev => {
+                const next = Math.min(Math.max(prev + delta, 1), 4);
+                if (next === 1) {
+                    setPanOffset({ x: 0, y: 0 });
+                } else {
                     const maxPanX = (wrapper.clientWidth * (next - 1)) / 2;
                     const maxPanY = (wrapper.clientHeight * (next - 1)) / 2;
                     setPanOffset(current => ({
@@ -45,10 +65,15 @@ const LiveCameraModal = ({ camera, onClose, isAdmin, onCameraUpdated }) => {
                         y: Math.min(Math.max(current.y, -maxPanY), maxPanY)
                     }));
                 }
-            }
-            return next;
-        });
-    };
+                return next;
+            });
+        };
+
+        wrapper.addEventListener('wheel', handleWheelEvent, { passive: false });
+        return () => {
+            wrapper.removeEventListener('wheel', handleWheelEvent);
+        };
+    }, []);
 
     const resetZoom = () => {
         setZoomScale(1);
@@ -112,17 +137,30 @@ const LiveCameraModal = ({ camera, onClose, isAdmin, onCameraUpdated }) => {
     };
 
     const handleTouchStart = (e) => {
-        if (zoomScale <= 1 || e.touches.length !== 1) return;
-        
-        setIsDragging(true);
-        const touch = e.touches[0];
-        setDragStart({
-            x: touch.clientX - panOffset.x,
-            y: touch.clientY - panOffset.y
-        });
-        
         const wrapper = wrapperRef.current;
-        if (wrapper) {
+        if (!wrapper) return;
+
+        if (e.touches.length === 2) {
+            // Pinch-to-zoom mode
+            setIsPinching(true);
+            setIsDragging(false);
+            
+            const dist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            setInitialTouchDistance(dist);
+            setInitialZoomScale(zoomScale);
+        } else if (e.touches.length === 1) {
+            // Drag-to-pan mode (only works if zoomed in)
+            setIsDragging(true);
+            setIsPinching(false);
+            const touch = e.touches[0];
+            setDragStart({
+                x: touch.clientX - panOffset.x,
+                y: touch.clientY - panOffset.y
+            });
+            
             wrapper.dataset.draggedDist = '0';
             wrapper.dataset.startX = String(touch.clientX);
             wrapper.dataset.startY = String(touch.clientY);
@@ -130,41 +168,69 @@ const LiveCameraModal = ({ camera, onClose, isAdmin, onCameraUpdated }) => {
     };
 
     const handleTouchMove = (e) => {
-        if (!isDragging || e.touches.length !== 1) return;
-        
-        const touch = e.touches[0];
         const wrapper = wrapperRef.current;
         if (!wrapper) return;
 
-        const maxPanX = (wrapper.clientWidth * (zoomScale - 1)) / 2;
-        const maxPanY = (wrapper.clientHeight * (zoomScale - 1)) / 2;
+        if (e.touches.length === 2 && isPinching) {
+            e.preventDefault(); // Prevent page scroll
+            const currentDist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            if (initialTouchDistance > 0) {
+                const factor = currentDist / initialTouchDistance;
+                const nextScale = Math.min(Math.max(initialZoomScale * factor, 1), 4);
+                setZoomScale(nextScale);
+                
+                if (nextScale === 1) {
+                    setPanOffset({ x: 0, y: 0 });
+                } else {
+                    const maxPanX = (wrapper.clientWidth * (nextScale - 1)) / 2;
+                    const maxPanY = (wrapper.clientHeight * (nextScale - 1)) / 2;
+                    setPanOffset(current => ({
+                        x: Math.min(Math.max(current.x, -maxPanX), maxPanX),
+                        y: Math.min(Math.max(current.y, -maxPanY), maxPanY)
+                    }));
+                }
+            }
+        } else if (e.touches.length === 1 && isDragging && zoomScale > 1) {
+            e.preventDefault(); // Prevent page scroll / swipe
+            const touch = e.touches[0];
+            const maxPanX = (wrapper.clientWidth * (zoomScale - 1)) / 2;
+            const maxPanY = (wrapper.clientHeight * (zoomScale - 1)) / 2;
 
-        const newX = Math.min(Math.max(touch.clientX - dragStart.x, -maxPanX), maxPanX);
-        const newY = Math.min(Math.max(touch.clientY - dragStart.y, -maxPanY), maxPanY);
+            const newX = Math.min(Math.max(touch.clientX - dragStart.x, -maxPanX), maxPanX);
+            const newY = Math.min(Math.max(touch.clientY - dragStart.y, -maxPanY), maxPanY);
 
-        setPanOffset({ x: newX, y: newY });
-        
-        const startX = parseFloat(wrapper.dataset.startX || '0');
-        const startY = parseFloat(wrapper.dataset.startY || '0');
-        const dist = Math.sqrt(Math.pow(touch.clientX - startX, 2) + Math.pow(touch.clientY - startY, 2));
-        wrapper.dataset.draggedDist = String(dist);
+            setPanOffset({ x: newX, y: newY });
+            
+            const startX = parseFloat(wrapper.dataset.startX || '0');
+            const startY = parseFloat(wrapper.dataset.startY || '0');
+            const dist = Math.sqrt(Math.pow(touch.clientX - startX, 2) + Math.pow(touch.clientY - startY, 2));
+            wrapper.dataset.draggedDist = String(dist);
+        }
     };
 
     const handleTouchEnd = (e) => {
-        if (!isDragging) return;
-        setIsDragging(false);
-
-        const wrapper = wrapperRef.current;
-        if (!wrapper) return;
-
-        const draggedDist = parseFloat(wrapper.dataset.draggedDist || '0');
-        if (draggedDist < 5) {
-            handleFullscreen();
+        if (isPinching && e.touches.length < 2) {
+            setIsPinching(false);
+            setInitialTouchDistance(0);
+        }
+        
+        if (isDragging && e.touches.length === 0) {
+            setIsDragging(false);
+            const wrapper = wrapperRef.current;
+            if (wrapper) {
+                const draggedDist = parseFloat(wrapper.dataset.draggedDist || '0');
+                if (draggedDist < 5 && zoomScale <= 1) {
+                    handleFullscreen();
+                }
+            }
         }
     };
 
     const handleWrapperClick = (e) => {
-        if (e.target.closest('button') || e.target.closest('select') || e.target.closest('.camera-zoom-controls')) {
+        if (e.target.closest('button') || e.target.closest('select')) {
             return;
         }
         if (zoomScale <= 1) {
@@ -306,24 +372,50 @@ const LiveCameraModal = ({ camera, onClose, isAdmin, onCameraUpdated }) => {
         const wrapper = wrapperRef.current;
         if (!wrapper) return;
 
+        // Detect if iOS (iPhone/iPad/iPod)
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+        if (isIOS) {
+            setIsPseudoFullscreen(prev => {
+                const next = !prev;
+                setIsFullscreen(next);
+                
+                if (next && window.screen && window.screen.orientation && window.screen.orientation.lock) {
+                    window.screen.orientation.lock('landscape').catch(err => console.log(err));
+                } else if (!next && window.screen && window.screen.orientation && window.screen.orientation.unlock) {
+                    try { window.screen.orientation.unlock(); } catch (e) {}
+                }
+                return next;
+            });
+            return;
+        }
+
         try {
             if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.mozFullScreenElement && !document.msFullscreenElement) {
-                // Request fullscreen on the wrapper to keep the CSS crop active!
+                let success = false;
                 if (wrapper.requestFullscreen) {
                     await wrapper.requestFullscreen();
+                    success = true;
                 } else if (wrapper.webkitRequestFullscreen) { /* Safari */
                     await wrapper.webkitRequestFullscreen();
+                    success = true;
                 } else if (wrapper.mozRequestFullScreen) { /* Firefox */
                     await wrapper.mozRequestFullScreen();
+                    success = true;
                 } else if (wrapper.msRequestFullscreen) { /* IE11 */
                     await wrapper.msRequestFullscreen();
+                    success = true;
                 }
 
-                // Attempt to rotate screen horizontally (landscape) on mobile
-                if (window.screen && window.screen.orientation && window.screen.orientation.lock) {
-                    await window.screen.orientation.lock('landscape').catch(err => {
-                        console.log("Orientation lock not supported or failed:", err);
-                    });
+                if (success) {
+                    if (window.screen && window.screen.orientation && window.screen.orientation.lock) {
+                        await window.screen.orientation.lock('landscape').catch(err => {
+                            console.log("Orientation lock not supported or failed:", err);
+                        });
+                    }
+                } else {
+                    setIsPseudoFullscreen(true);
+                    setIsFullscreen(true);
                 }
             } else {
                 if (document.exitFullscreen) {
@@ -335,9 +427,15 @@ const LiveCameraModal = ({ camera, onClose, isAdmin, onCameraUpdated }) => {
                 } else if (document.msExitFullscreen) {
                     await document.msExitFullscreen();
                 }
+                setIsPseudoFullscreen(false);
             }
         } catch (err) {
-            console.error("Fullscreen error:", err);
+            console.error("Fullscreen error, falling back to pseudo fullscreen:", err);
+            setIsPseudoFullscreen(prev => {
+                const next = !prev;
+                setIsFullscreen(next);
+                return next;
+            });
         }
     };
 
@@ -443,7 +541,7 @@ const LiveCameraModal = ({ camera, onClose, isAdmin, onCameraUpdated }) => {
                 {/* Video Player Box */}
                 <div className="camera-modal-body">
                     <div 
-                        className={`camera-video-wrapper ${cropClass}`} 
+                        className={`camera-video-wrapper ${cropClass} ${isPseudoFullscreen ? 'pseudo-fullscreen' : ''}`} 
                         ref={wrapperRef}
                         onClick={handleWrapperClick}
                         onMouseDown={handleMouseDown}
@@ -462,7 +560,7 @@ const LiveCameraModal = ({ camera, onClose, isAdmin, onCameraUpdated }) => {
                             style={{
                                 transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomScale})`,
                                 transformOrigin: 'center center',
-                                transition: isDragging ? 'none' : 'transform 0.15s ease-out'
+                                transition: isDragging || isPinching ? 'none' : 'transform 0.15s ease-out'
                             }}
                         >
                             <video 
@@ -475,46 +573,6 @@ const LiveCameraModal = ({ camera, onClose, isAdmin, onCameraUpdated }) => {
                                 }}
                             />
                         </div>
-
-                        {/* Zoom Controls Overlay */}
-                        {!playError && !isLoading && (
-                            <div className="camera-zoom-controls">
-                                <button 
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        adjustZoom(0.25);
-                                    }}
-                                    title="تكبير"
-                                    className="zoom-btn"
-                                >
-                                    ＋
-                                </button>
-                                <span className="zoom-value">{zoomScale.toFixed(2)}x</span>
-                                <button 
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        adjustZoom(-0.25);
-                                    }}
-                                    title="تصغير"
-                                    className="zoom-btn"
-                                    disabled={zoomScale <= 1}
-                                >
-                                    －
-                                </button>
-                                {zoomScale > 1 && (
-                                    <button 
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            resetZoom();
-                                        }}
-                                        title="إعادة تعيين"
-                                        className="zoom-btn reset-btn"
-                                    >
-                                        ↺
-                                    </button>
-                                )}
-                            </div>
-                        )}
 
                         {!playError && !isLoading && (
                             <button 
