@@ -31,7 +31,8 @@ import SpatialReelsModal from '../components/SpatialReelsModal';
 import MagazineModal from '../components/MagazineModal';
 import PalNovaaLab from '../components/PalNovaaLab';
 import SplashLoading from '../components/SplashLoading';
-import { postService, friendService, authService, notificationService, communityService, shopService, getImageUrl } from '../services/api';
+import LiveCameraModal from '../components/LiveCameraModal';
+import { postService, friendService, authService, notificationService, communityService, shopService, cameraService, getImageUrl } from '../services/api';
 import { isNative, startNativeTracking, stopNativeTracking } from '../utils/nativeLocation';
 import './Map.css';
 
@@ -670,6 +671,8 @@ const MapComponent = () => {
     const [followedShopsMap, setFollowedShopsMap] = useState([]);
     const [allShopsMap, setAllShopsMap] = useState([]);
     const [allFacilitiesMap, setAllFacilitiesMap] = useState([]);
+    const [liveCameras, setLiveCameras] = useState([]);
+    const [selectedCamera, setSelectedCamera] = useState(null);
     
     useEffect(() => {
         console.log("Map State - Zoom:", viewState.zoom);
@@ -1572,6 +1575,22 @@ const MapComponent = () => {
         return () => clearInterval(interval);
     }, [user]);
 
+    // Live Cameras Data - Fetch and auto-refresh
+    const fetchLiveCameras = async () => {
+        try {
+            const cameras = await cameraService.getAll();
+            setLiveCameras(cameras || []);
+        } catch (e) {
+            console.error("Error fetching live cameras:", e);
+        }
+    };
+
+    useEffect(() => {
+        fetchLiveCameras();
+        const interval = setInterval(fetchLiveCameras, 30000);
+        return () => clearInterval(interval);
+    }, []);
+
     // Private User Data (Friends, Managed Shops, Following) - Authenticated Only
     useEffect(() => {
         if (!user) {
@@ -2201,6 +2220,34 @@ const MapComponent = () => {
                         </Marker>
                     ))}
 
+                    {/* Live CCTV Cameras Markers - Red Pulsing Design */}
+                    {!currentCommunity && !isEmergencyActive && liveCameras.map(camera => {
+                        if (camera.latitude == null || camera.longitude == null || isNaN(parseFloat(camera.latitude))) return null;
+                        return (
+                            <Marker
+                                key={`camera-${camera.id}`}
+                                longitude={parseFloat(camera.longitude)}
+                                latitude={parseFloat(camera.latitude)}
+                                anchor="center"
+                                style={{ cursor: 'pointer', zIndex: 65 }}
+                                onClick={e => {
+                                    e.originalEvent.stopPropagation();
+                                    setSelectedCamera(camera);
+                                }}
+                            >
+                                <div className="camera-map-marker" title={camera.name}>
+                                    <div className="camera-marker-pulse"></div>
+                                    <div className="camera-icon-wrapper">
+                                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                            <path d="M23 7a2 2 0 0 0-2-2h-4l-3-3H10L7 5H3a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V7z"></path>
+                                            <circle cx="12" cy="13" r="4"></circle>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </Marker>
+                        );
+                    })}
+
                     {/* Managed and Followed Shops/Universities Markers - Visibility based on Zoom */}
                     {!currentCommunity && allShopsMap.filter(shop => {
                         if (shop.latitude == null || shop.longitude == null || isNaN(parseFloat(shop.latitude))) return false;
@@ -2631,6 +2678,7 @@ const MapComponent = () => {
                 onClose={() => setShowFriends(false)}
                 followedShops={followedShopsMap}
                 onShopFollowed={handleShopFollowed}
+                onCameraAdded={fetchLiveCameras}
                 onShopClick={(shop) => {
                     handleOpenShopProfile(shop);
                     setShowFriends(false); // Close friends list to return to map on exit
@@ -2643,6 +2691,7 @@ const MapComponent = () => {
                 currentUser={user}
                 followedShops={followedShopsMap}
                 onShopFollowed={handleShopFollowed}
+                onCameraAdded={fetchLiveCameras}
                 onShopClick={(shop) => {
                     handleOpenShopProfile(shop);
                     setShowShops(false);
@@ -2656,6 +2705,7 @@ const MapComponent = () => {
                     });
                 }}
             />}
+            {selectedCamera && <LiveCameraModal camera={selectedCamera} onClose={() => setSelectedCamera(null)} />}
             {showMunicipalities && <MunicipalitiesModal
                 onClose={() => setShowMunicipalities(false)}
                 currentUser={user}

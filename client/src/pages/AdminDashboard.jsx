@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { adminService } from '../services/adminApi';
+import { cameraService } from '../services/api';
 
 import './AdminDashboard.css';
 
@@ -13,6 +14,7 @@ const AdminDashboard = () => {
     const [users, setUsers] = useState([]);
     const [posts, setPosts] = useState([]);
     const [shops, setShops] = useState([]);
+    const [cameras, setCameras] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
@@ -61,6 +63,10 @@ const AdminDashboard = () => {
                 const shopsData = await adminService.getAllShops(searchQuery, currentPage, 15);
                 setShops(shopsData.shops);
                 setPagination(shopsData.pagination);
+            } else if (activeTab === 'cameras') {
+                const camerasData = await cameraService.getAll();
+                setCameras(camerasData || []);
+                setPagination(null);
             } else if (activeTab === 'notifications') {
                 const usersData = await adminService.getAllUsers('', 1, 100);
                 setUsers(usersData.users);
@@ -125,6 +131,17 @@ const AdminDashboard = () => {
                 loadData();
             } catch (error) {
                 alert('فشل في حذف المحل');
+            }
+        }
+    };
+
+    const handleDeleteCamera = async (cameraId) => {
+        if (window.confirm('هل أنت متأكد من حذف هذه الكاميرا نهائياً من الخريطة؟')) {
+            try {
+                await cameraService.deleteCamera(cameraId);
+                loadData();
+            } catch (error) {
+                alert('فشل في حذف الكاميرا');
             }
         }
     };
@@ -197,6 +214,7 @@ const AdminDashboard = () => {
                         { id: 'overview', icon: '📊', label: 'الرئيسية' },
                         { id: 'users', icon: '👥', label: 'المستخدمين' },
                         { id: 'shops', icon: '🏪', label: 'إدارة المحلات' },
+                        { id: 'cameras', icon: '📹', label: 'إدارة الكاميرات' },
                         { id: 'data', icon: '📝', label: 'كل البيانات' },
                         { id: 'files', icon: '📁', label: 'ملفات الوسائط' },
                         { id: 'map', icon: '🌏', label: 'خارطة النشاط' },
@@ -230,9 +248,10 @@ const AdminDashboard = () => {
                             activeTab === 'overview' ? 'لوحة التحكم العامة' :
                                 activeTab === 'users' ? 'إدارة الحسابات' :
                                     activeTab === 'shops' ? 'إدارة المحلات والمؤسسات' :
-                                        activeTab === 'data' ? 'إدارة المحتوى والبيانات' :
-                                            activeTab === 'files' ? 'مكتبة الوسائط' :
-                                                activeTab === 'notifications' ? 'إرسال التنبيهات والبرودكاست' : 'خارطة النشاط الموحدة'
+                                        activeTab === 'cameras' ? 'إدارة كاميرات البث المباشر' :
+                                            activeTab === 'data' ? 'إدارة المحتوى والبيانات' :
+                                                activeTab === 'files' ? 'مكتبة الوسائط' :
+                                                    activeTab === 'notifications' ? 'إرسال التنبيهات والبرودكاست' : 'خارطة النشاط الموحدة'
                         }</h2>
                         <p>مرحباً بك يا {user.full_name || user.username} • {new Date().toLocaleDateString('ar-SA', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                     </div>
@@ -464,6 +483,76 @@ const AdminDashboard = () => {
                                 ))}
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* Cameras Management */}
+                {activeTab === 'cameras' && (
+                    <div className="admin-content-card">
+                        <div className="content-header">
+                            <h3>إدارة كاميرات البث المباشر على الخريطة</h3>
+                        </div>
+
+                        <div className="admin-table-wrapper">
+                            {loading ? (
+                                <div className="loading-container"><div className="spinner"></div></div>
+                            ) : (
+                                <table className="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>اسم الكاميرا</th>
+                                            <th>رابط البث (m3u8)</th>
+                                            <th>منطقة الاقتصاص</th>
+                                            <th>الإحداثيات</th>
+                                            <th>إجراءات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {cameras.map(cam => (
+                                            <tr key={cam.id}>
+                                                <td>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
+                                                        <span style={{ color: '#ef4444' }}>📹</span>
+                                                        {cam.name}
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span style={{ fontSize: '0.85rem', opacity: 0.8, fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                                                        {cam.stream_url}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span className="status-tag active" style={{ background: 'rgba(6, 182, 212, 0.1)', color: '#06b6d4', border: '1px solid rgba(6, 182, 212, 0.2)' }}>
+                                                        {cam.crop_position === 'full' ? 'كامل الشاشة' : 
+                                                         cam.crop_position === 'cam1' ? 'كاميرا 1 (أعلى يسار)' :
+                                                         cam.crop_position === 'cam2' ? 'كاميرا 2 (أعلى يمين)' :
+                                                         cam.crop_position === 'cam3' ? 'كاميرا 3 (أسفل يسار)' :
+                                                         cam.crop_position === 'cam4' ? 'كاميرا 4 (أسفل يمين)' : cam.crop_position}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span style={{ fontSize: '0.9rem' }}>
+                                                        {parseFloat(cam.latitude).toFixed(5)}, {parseFloat(cam.longitude).toFixed(5)}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div className="action-btns">
+                                                        <button className="btn-circle destructive" title="حذف نهائي" onClick={() => handleDeleteCamera(cam.id)}>🗑️</button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {cameras.length === 0 && (
+                                            <tr>
+                                                <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', opacity: 0.5 }}>
+                                                    لا يوجد كاميرات بث مباشر مضافة حالياً.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
                     </div>
                 )}
 

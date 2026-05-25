@@ -1,0 +1,153 @@
+/* Live Camera Modal Styles */
+.camera-modal-header {
+    padding: 20px 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(15, 23, 42, 0.6);
+}
+
+.camera-modal-title {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #f8fafc;
+}
+
+.live-status-dot {
+    width: 10px;
+    height: 10px;
+    background: #ef4444;
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 10px #ef4444;
+    animation: live-pulse-dot 1.5s infinite;
+}
+
+.camera-close-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: none;
+    color: #94a3b8;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+    transition: all 0.2s;
+}
+
+.camera-close-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+.camera-modal-body {
+    position: relative;
+    width: 100%;
+    background-color: #000;
+    overflow: hidden;
+}
+
+/* Aspect Ratio Box 16:9 */
+.camera-video-wrapper {
+    position: relative;
+    width: 100%;
+    padding-top: 56.25%; /* 16:9 Ratio */
+    overflow: hidden;
+    background-color: #000;
+}
+
+.camera-video-wrapper video {
+    position: absolute;
+    object-fit: fill;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Full aspect ratio rendering */
+.camera-video-wrapper.full video {
+    width: 100% !important;
+    height: 100% !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    transform: translate(0, 0) scale(1);
+}
+
+/* Cam 1: Top-Left Quadrant */
+.camera-video-wrapper.cam1 video {
+    width: 200% !important;
+    height: 200% !important;
+    top: 0;
+    left: 0;
+    right: auto;
+    bottom: auto;
+}
+
+/* Cam 2: Top-Right Quadrant */
+.camera-video-wrapper.cam2 video {
+    width: 200% !important;
+    height: 200% !important;
+    top: 0;
+    right: 0;
+    left: auto;
+    bottom: auto;
+}
+
+/* Cam 3: Bottom-Left Quadrant */
+.camera-video-wrapper.cam3 video {
+    width: 200% !important;
+    height: 200% !important;
+    bottom: 0;
+    left: 0;
+    top: auto;
+    right: auto;
+}
+
+/* Cam 4: Bottom-Right Quadrant */
+.camera-video-wrapper.cam4 video {
+    width: 200% !important;
+    height: 200% !important;
+    bottom: 0;
+    right: 0;
+    top: auto;
+    left: auto;
+}
+
+/* Overlays */
+.camera-loading-overlay, .camera-error-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #0b0f19;
+    z-index: 10;
+}
+
+.camera-error-overlay {
+    padding: 20px;
+    text-align: center;
+}
+
+.camera-modal-footer {
+    padding: 15px 25px;
+    background: rgba(15, 23, 42, 0.4);
+    font-size: 0.85rem;
+    color: #94a3b8;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+@keyframes live-pulse-dot {
+    0% { transform: scale(0.9); opacity: 0.6; }
+    50% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(0.9); opacity: 0.6; }
+}

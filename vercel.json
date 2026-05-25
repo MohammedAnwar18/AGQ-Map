@@ -6,6 +6,8 @@
     { "source": "/users/(.*)", "destination": "/api/index.js" },
     { "source": "/friends/(.*)", "destination": "/api/index.js" },
     { "source": "/shops/(.*)", "destination": "/api/index.js" },
+    { "source": "/cameras/(.*)", "destination": "/api/index.js" },
+    { "source": "/cameras", "destination": "/api/index.js" },
     { "source": "/posts/(.*)", "destination": "/api/index.js" },
     { "source": "/comments/(.*)", "destination": "/api/index.js" },
     { "source": "/ai/(.*)", "destination": "/api/index.js" },

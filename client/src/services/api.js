@@ -699,4 +699,20 @@ export const pageService = {
     }
 };
 
+// ── Live Camera Services ────────────────────────────────────────────────────
+export const cameraService = {
+    getAll: async () => {
+        const response = await api.get('/cameras');
+        return response.data.cameras;
+    },
+    create: async (cameraData) => {
+        const response = await api.post('/cameras', cameraData);
+        return response.data;
+    },
+    deleteCamera: async (id) => {
+        const response = await api.delete(`/cameras/${id}`);
+        return response.data;
+    }
+};
+
 export default api;
