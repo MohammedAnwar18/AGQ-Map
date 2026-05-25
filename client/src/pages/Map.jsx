@@ -1037,7 +1037,7 @@ const MapComponent = () => {
         if (userLocation) {
             mapRef.current?.flyTo({
                 center: [userLocation.longitude, userLocation.latitude],
-                zoom: 14.5,
+                zoom: 13.2,
                 pitch: 45,
                 bearing: 0,
                 duration: 2000
@@ -1053,7 +1053,7 @@ const MapComponent = () => {
                         updateUserLocation(newLoc);
                         mapRef.current?.flyTo({
                             center: [newLoc.longitude, newLoc.latitude],
-                            zoom: 14.5,
+                            zoom: 13.2,
                             pitch: 45,
                             bearing: 0,
                             duration: 2000
@@ -1715,7 +1715,7 @@ const MapComponent = () => {
         <div className="map-page" style={{ position: 'relative', height: '100dvh', width: '100vw', overflow: 'hidden' }}>
 
             {/* Top Bar - Clean & Minimalist */}
-            {!isGuestMode && (
+            {!isGuestMode && !isEmergencyActive && (
                 <div className="top-bar">
                 <div className="top-bar-left" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                     <button
@@ -1856,10 +1856,13 @@ const MapComponent = () => {
                         >
                             <div className="menu-item-content">
                                 <div className="menu-icon-wrapper" style={{ color: '#ef4444' }}>
-                                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg">
-                                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                                        <line x1="12" y1="9" x2="12" y2="13"></line>
-                                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg animate-siren">
+                                        <path d="M4 20h16a1 1 0 0 0 1-1v-2a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2a1 1 0 0 0 1 1z" fill="rgba(239, 68, 68, 0.2)" stroke="#ef4444" strokeWidth="2.2" />
+                                        <path d="M12 4a6 6 0 0 0-6 6v5h12v-5a6 6 0 0 0-6-6z" fill="#ef4444" stroke="#ef4444" strokeWidth="2.2" />
+                                        <path d="M9 10h6" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+                                        <line x1="12" y1="1" x2="12" y2="2.5" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
+                                        <line x1="3.5" y1="4.5" x2="5" y2="6" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
+                                        <line x1="20.5" y1="4.5" x2="19" y2="6" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
                                     </svg>
                                 </div>
                                 <span style={{ color: '#ef4444', fontWeight: 'bold' }}>الطوارئ</span>
@@ -2094,7 +2097,7 @@ const MapComponent = () => {
                                 geometry: {
                                     type: "Polygon",
                                     coordinates: [
-                                        createGeoJSONCircle(userLocation, 2.0)
+                                        createGeoJSONCircle(userLocation, 5.0)
                                     ]
                                 },
                                 properties: {}
@@ -2212,7 +2215,7 @@ const MapComponent = () => {
                             if (!isMedical) return false;
                             if (!userLocation) return true;
                             const dist = haversineDistance(userLocation, { latitude: parseFloat(shop.latitude), longitude: parseFloat(shop.longitude) });
-                            return dist <= 2000;
+                            return dist <= 5000;
                         }
 
                         if (isGuestMode) {
@@ -2231,7 +2234,13 @@ const MapComponent = () => {
                             style={{ cursor: 'pointer', zIndex: 50 }}
                             onClick={e => {
                                 e.originalEvent.stopPropagation();
-                                if (isGuestMode) {
+                                if (isEmergencyActive) {
+                                    fetchRoute({
+                                        latitude: parseFloat(shop.latitude),
+                                        longitude: parseFloat(shop.longitude),
+                                        name: shop.name
+                                    });
+                                } else if (isGuestMode) {
                                     setShowGuestRedirectModal(true);
                                 } else {
                                     handleOpenShopProfile(shop);
@@ -2483,13 +2492,17 @@ const MapComponent = () => {
                                 <span className="emergency-title-pulse-dot"></span>
                                 وضع الطوارئ نشط
                             </div>
-                            <div className="emergency-subtitle">
-                                المراكز الطبية والصيدليات القريبة (ضمن محيط 2 كم)
-                            </div>
                         </div>
                         <button 
                             className="emergency-exit-btn"
-                            onClick={() => setIsEmergencyActive(false)}
+                            onClick={() => {
+                                setIsEmergencyActive(false);
+                                setRoutePath(null);
+                                setRouteStats(null);
+                                setDestination(null);
+                                setActiveCustomStart(null);
+                                setIsTracking(false);
+                            }}
                         >
                             إنهاء الطوارئ
                         </button>
@@ -2497,17 +2510,26 @@ const MapComponent = () => {
 
                     <div className="emergency-calls-grid">
                         <a href="tel:101" className="emergency-call-card ambulance">
-                            <span className="emergency-call-icon">🚑</span>
+                            <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ marginBottom: '6px' }}>
+                                <rect x="10" y="3" width="4" height="18" rx="1" fill="white" stroke="white" />
+                                <rect x="3" y="10" width="18" height="4" rx="1" fill="white" stroke="white" />
+                                <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="2" />
+                            </svg>
                             <span className="emergency-call-name">الإسعاف</span>
                             <span className="emergency-call-number">101</span>
                         </a>
                         <a href="tel:100" className="emergency-call-card police">
-                            <span className="emergency-call-icon">👮</span>
+                            <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ marginBottom: '6px' }}>
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="white" stroke="white" />
+                                <polygon points="12 8 13.5 11 16.5 11 14 13 15 16 12 14.5 9 16 10 13 7.5 11 10.5 11" fill="#2563eb" stroke="#2563eb" strokeWidth="1" />
+                            </svg>
                             <span className="emergency-call-name">الشرطة</span>
                             <span className="emergency-call-number">100</span>
                         </a>
                         <a href="tel:102" className="emergency-call-card civil-defense">
-                            <span className="emergency-call-icon">🚒</span>
+                            <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ marginBottom: '6px' }}>
+                                <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" fill="white" stroke="white" />
+                            </svg>
                             <span className="emergency-call-name">الدفاع المدني</span>
                             <span className="emergency-call-number">102</span>
                         </a>
@@ -2515,24 +2537,61 @@ const MapComponent = () => {
                 </div>
             )}
 
+            {/* Emergency Route HUD - Top Floating Panel */}
+            {isEmergencyActive && routeStats && (
+                <div className="emergency-route-hud">
+                    <div className="emergency-hud-content">
+                        <div className="emergency-hud-dest">
+                            المسار إلى: <span className="dest-name">{destination?.name || "المركز الطبي"}</span>
+                        </div>
+                        <div className="emergency-hud-stats">
+                            <div className="hud-stat-item">
+                                <span className="stat-label">المسافة:</span>
+                                <span className="stat-value">{routeStats.distance}</span>
+                            </div>
+                            <div className="hud-stat-divider"></div>
+                            <div className="hud-stat-item">
+                                <span className="stat-label">الوقت المتوقع:</span>
+                                <span className="stat-value">{routeStats.duration}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button 
+                        className="emergency-hud-close-btn"
+                        onClick={() => {
+                            setRoutePath(null);
+                            setRouteStats(null);
+                            setDestination(null);
+                            setActiveCustomStart(null);
+                            setIsTracking(false);
+                        }}
+                        title="إلغاء المسار"
+                    >
+                        ✕
+                    </button>
+                </div>
+            )}
+
             {/* Floating Info Overlays for Navigation */}
 
             {/* Navigation Panel */}
-            <NavigationPanel
-                destination={destination}
-                routeStats={routeStats}
-                isTracking={isTracking}
-                onToggleTracking={() => setIsTracking(!isTracking)}
-                onStopNavigation={() => {
-                    setRoutePath(null);
-                    setRouteStats(null);
-                    setDestination(null);
-                    setActiveCustomStart(null);
-                    setAiResults([]); // Also clear the destination marker
-                    setIsTracking(false); // Stop tracking when nav ends
-                    setActiveMapType('satellite'); // REVERT TO SATELLITE
-                }}
-            />
+            {!isEmergencyActive && (
+                <NavigationPanel
+                    destination={destination}
+                    routeStats={routeStats}
+                    isTracking={isTracking}
+                    onToggleTracking={() => setIsTracking(!isTracking)}
+                    onStopNavigation={() => {
+                        setRoutePath(null);
+                        setRouteStats(null);
+                        setDestination(null);
+                        setActiveCustomStart(null);
+                        setAiResults([]); // Also clear the destination marker
+                        setIsTracking(false); // Stop tracking when nav ends
+                        setActiveMapType('satellite'); // REVERT TO SATELLITE
+                    }}
+                />
+            )}
 
             {/* Historical Timeline Panel - Atlas Communities Only */}
             {isAtlasCommunity && (
