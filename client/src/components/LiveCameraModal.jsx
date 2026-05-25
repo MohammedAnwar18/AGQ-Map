@@ -15,11 +15,162 @@ const LiveCameraModal = ({ camera, onClose, isAdmin, onCameraUpdated }) => {
     const [isSaving, setIsSaving] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
+    // Zoom and pan state
+    const [zoomScale, setZoomScale] = useState(1);
+    const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
     useEffect(() => {
         if (camera) {
             setCurrentCrop(camera.crop_position || 'full');
+            setZoomScale(1);
+            setPanOffset({ x: 0, y: 0 });
         }
     }, [camera]);
+
+    const adjustZoom = (amount) => {
+        setZoomScale(prev => {
+            const next = Math.min(Math.max(prev + amount, 1), 4);
+            if (next === 1) {
+                setPanOffset({ x: 0, y: 0 });
+            } else {
+                // Adjust pan offsets to keep it within new limits
+                const wrapper = wrapperRef.current;
+                if (wrapper) {
+                    const maxPanX = (wrapper.clientWidth * (next - 1)) / 2;
+                    const maxPanY = (wrapper.clientHeight * (next - 1)) / 2;
+                    setPanOffset(current => ({
+                        x: Math.min(Math.max(current.x, -maxPanX), maxPanX),
+                        y: Math.min(Math.max(current.y, -maxPanY), maxPanY)
+                    }));
+                }
+            }
+            return next;
+        });
+    };
+
+    const resetZoom = () => {
+        setZoomScale(1);
+        setPanOffset({ x: 0, y: 0 });
+    };
+
+    const handleMouseDown = (e) => {
+        if (zoomScale <= 1 || e.button !== 0) return;
+        
+        setIsDragging(true);
+        setDragStart({
+            x: e.clientX - panOffset.x,
+            y: e.clientY - panOffset.y
+        });
+        
+        const wrapper = wrapperRef.current;
+        if (wrapper) {
+            wrapper.dataset.draggedDist = '0';
+            wrapper.dataset.startX = String(e.clientX);
+            wrapper.dataset.startY = String(e.clientY);
+        }
+    };
+
+    const handleMouseMove = (e) => {
+        if (!isDragging) return;
+        
+        const wrapper = wrapperRef.current;
+        if (!wrapper) return;
+
+        const maxPanX = (wrapper.clientWidth * (zoomScale - 1)) / 2;
+        const maxPanY = (wrapper.clientHeight * (zoomScale - 1)) / 2;
+
+        const newX = Math.min(Math.max(e.clientX - dragStart.x, -maxPanX), maxPanX);
+        const newY = Math.min(Math.max(e.clientY - dragStart.y, -maxPanY), maxPanY);
+
+        setPanOffset({ x: newX, y: newY });
+        
+        const startX = parseFloat(wrapper.dataset.startX || '0');
+        const startY = parseFloat(wrapper.dataset.startY || '0');
+        const dist = Math.sqrt(Math.pow(e.clientX - startX, 2) + Math.pow(e.clientY - startY, 2));
+        wrapper.dataset.draggedDist = String(dist);
+    };
+
+    const handleMouseUp = (e) => {
+        if (!isDragging) return;
+        setIsDragging(false);
+
+        const wrapper = wrapperRef.current;
+        if (!wrapper) return;
+
+        const draggedDist = parseFloat(wrapper.dataset.draggedDist || '0');
+        if (draggedDist < 5) {
+            handleFullscreen();
+        }
+    };
+
+    const handleMouseLeave = () => {
+        if (isDragging) {
+            setIsDragging(false);
+        }
+    };
+
+    const handleTouchStart = (e) => {
+        if (zoomScale <= 1 || e.touches.length !== 1) return;
+        
+        setIsDragging(true);
+        const touch = e.touches[0];
+        setDragStart({
+            x: touch.clientX - panOffset.x,
+            y: touch.clientY - panOffset.y
+        });
+        
+        const wrapper = wrapperRef.current;
+        if (wrapper) {
+            wrapper.dataset.draggedDist = '0';
+            wrapper.dataset.startX = String(touch.clientX);
+            wrapper.dataset.startY = String(touch.clientY);
+        }
+    };
+
+    const handleTouchMove = (e) => {
+        if (!isDragging || e.touches.length !== 1) return;
+        
+        const touch = e.touches[0];
+        const wrapper = wrapperRef.current;
+        if (!wrapper) return;
+
+        const maxPanX = (wrapper.clientWidth * (zoomScale - 1)) / 2;
+        const maxPanY = (wrapper.clientHeight * (zoomScale - 1)) / 2;
+
+        const newX = Math.min(Math.max(touch.clientX - dragStart.x, -maxPanX), maxPanX);
+        const newY = Math.min(Math.max(touch.clientY - dragStart.y, -maxPanY), maxPanY);
+
+        setPanOffset({ x: newX, y: newY });
+        
+        const startX = parseFloat(wrapper.dataset.startX || '0');
+        const startY = parseFloat(wrapper.dataset.startY || '0');
+        const dist = Math.sqrt(Math.pow(touch.clientX - startX, 2) + Math.pow(touch.clientY - startY, 2));
+        wrapper.dataset.draggedDist = String(dist);
+    };
+
+    const handleTouchEnd = (e) => {
+        if (!isDragging) return;
+        setIsDragging(false);
+
+        const wrapper = wrapperRef.current;
+        if (!wrapper) return;
+
+        const draggedDist = parseFloat(wrapper.dataset.draggedDist || '0');
+        if (draggedDist < 5) {
+            handleFullscreen();
+        }
+    };
+
+    const handleWrapperClick = (e) => {
+        if (e.target.closest('button') || e.target.closest('select') || e.target.closest('.camera-zoom-controls')) {
+            return;
+        }
+        if (zoomScale <= 1) {
+            handleFullscreen();
+        }
+    };
 
     useEffect(() => {
         const handleFullscreenChange = () => {
@@ -291,19 +442,86 @@ const LiveCameraModal = ({ camera, onClose, isAdmin, onCameraUpdated }) => {
 
                 {/* Video Player Box */}
                 <div className="camera-modal-body">
-                    <div className={`camera-video-wrapper ${cropClass}`} ref={wrapperRef}>
-                        <video 
-                            ref={videoRef} 
-                            muted 
-                            autoPlay 
-                            playsInline 
+                    <div 
+                        className={`camera-video-wrapper ${cropClass}`} 
+                        ref={wrapperRef}
+                        onClick={handleWrapperClick}
+                        onMouseDown={handleMouseDown}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onMouseLeave={handleMouseLeave}
+                        onTouchStart={handleTouchStart}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
+                        style={{
+                            cursor: zoomScale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'pointer'
+                        }}
+                    >
+                        <div 
+                            className="camera-video-zoom-container"
                             style={{
-                                display: playError ? 'none' : 'block'
+                                transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomScale})`,
+                                transformOrigin: 'center center',
+                                transition: isDragging ? 'none' : 'transform 0.15s ease-out'
                             }}
-                        />
+                        >
+                            <video 
+                                ref={videoRef} 
+                                muted 
+                                autoPlay 
+                                playsInline 
+                                style={{
+                                    display: playError ? 'none' : 'block'
+                                }}
+                            />
+                        </div>
+
+                        {/* Zoom Controls Overlay */}
+                        {!playError && !isLoading && (
+                            <div className="camera-zoom-controls">
+                                <button 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        adjustZoom(0.25);
+                                    }}
+                                    title="تكبير"
+                                    className="zoom-btn"
+                                >
+                                    ＋
+                                </button>
+                                <span className="zoom-value">{zoomScale.toFixed(2)}x</span>
+                                <button 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        adjustZoom(-0.25);
+                                    }}
+                                    title="تصغير"
+                                    className="zoom-btn"
+                                    disabled={zoomScale <= 1}
+                                >
+                                    －
+                                </button>
+                                {zoomScale > 1 && (
+                                    <button 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            resetZoom();
+                                        }}
+                                        title="إعادة تعيين"
+                                        className="zoom-btn reset-btn"
+                                    >
+                                        ↺
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
                         {!playError && !isLoading && (
                             <button 
-                                onClick={handleFullscreen}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleFullscreen();
+                                }}
                                 className="fullscreen-video-btn"
                                 title={isFullscreen ? "إنهاء ملء الشاشة" : "ملء الشاشة"}
                                 style={{
