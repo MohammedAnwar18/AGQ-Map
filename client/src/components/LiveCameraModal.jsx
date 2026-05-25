@@ -6,18 +6,55 @@ import './LiveCameraModal.css';
 const LiveCameraModal = ({ camera, onClose, isAdmin, onCameraUpdated }) => {
     const videoRef = useRef(null);
     const hlsRef = useRef(null);
+    const wrapperRef = useRef(null);
     const [isLoading, setIsLoading] = useState(true);
     const [playError, setPlayError] = useState(false);
     
     // Admin editing crop position state
     const [currentCrop, setCurrentCrop] = useState(camera?.crop_position || 'full');
     const [isSaving, setIsSaving] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
 
     useEffect(() => {
         if (camera) {
             setCurrentCrop(camera.crop_position || 'full');
         }
     }, [camera]);
+
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            const isCurrentlyFullscreen = !!(
+                document.fullscreenElement || 
+                document.webkitFullscreenElement || 
+                document.mozFullScreenElement || 
+                document.msFullscreenElement
+            );
+            setIsFullscreen(isCurrentlyFullscreen);
+            
+            // If we exited fullscreen, unlock orientation
+            if (!isCurrentlyFullscreen) {
+                if (window.screen && window.screen.orientation && window.screen.orientation.unlock) {
+                    try {
+                        window.screen.orientation.unlock();
+                    } catch (e) {
+                        console.log("Failed to unlock orientation:", e);
+                    }
+                }
+            }
+        };
+
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+        document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+        return () => {
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+            document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+            document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+        };
+    }, []);
 
     useEffect(() => {
         const video = videoRef.current;
@@ -114,13 +151,52 @@ const LiveCameraModal = ({ camera, onClose, isAdmin, onCameraUpdated }) => {
         }
     };
 
+    const handleFullscreen = async () => {
+        const wrapper = wrapperRef.current;
+        if (!wrapper) return;
+
+        try {
+            if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.mozFullScreenElement && !document.msFullscreenElement) {
+                // Request fullscreen on the wrapper to keep the CSS crop active!
+                if (wrapper.requestFullscreen) {
+                    await wrapper.requestFullscreen();
+                } else if (wrapper.webkitRequestFullscreen) { /* Safari */
+                    await wrapper.webkitRequestFullscreen();
+                } else if (wrapper.mozRequestFullScreen) { /* Firefox */
+                    await wrapper.mozRequestFullScreen();
+                } else if (wrapper.msRequestFullscreen) { /* IE11 */
+                    await wrapper.msRequestFullscreen();
+                }
+
+                // Attempt to rotate screen horizontally (landscape) on mobile
+                if (window.screen && window.screen.orientation && window.screen.orientation.lock) {
+                    await window.screen.orientation.lock('landscape').catch(err => {
+                        console.log("Orientation lock not supported or failed:", err);
+                    });
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    await document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    await document.webkitExitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    await document.mozCancelFullScreen();
+                } else if (document.msExitFullscreen) {
+                    await document.msExitFullscreen();
+                }
+            }
+        } catch (err) {
+            console.error("Fullscreen error:", err);
+        }
+    };
+
     if (!camera) return null;
 
     // The crop class maps to the current crop selected state
     const cropClass = currentCrop;
 
     return (
-        <div className="modal-overlay" onClick={onClose} style={{ zIndex: 11000 }}>
+        <div className="modal-overlay camera-modal-overlay" onClick={onClose} style={{ zIndex: 11000 }}>
             <div 
                 className="modal-container camera-modal-content" 
                 onClick={e => e.stopPropagation()}
@@ -215,7 +291,7 @@ const LiveCameraModal = ({ camera, onClose, isAdmin, onCameraUpdated }) => {
 
                 {/* Video Player Box */}
                 <div className="camera-modal-body">
-                    <div className={`camera-video-wrapper ${cropClass}`}>
+                    <div className={`camera-video-wrapper ${cropClass}`} ref={wrapperRef}>
                         <video 
                             ref={videoRef} 
                             muted 
@@ -225,6 +301,41 @@ const LiveCameraModal = ({ camera, onClose, isAdmin, onCameraUpdated }) => {
                                 display: playError ? 'none' : 'block'
                             }}
                         />
+                        {!playError && !isLoading && (
+                            <button 
+                                onClick={handleFullscreen}
+                                className="fullscreen-video-btn"
+                                title={isFullscreen ? "إنهاء ملء الشاشة" : "ملء الشاشة"}
+                                style={{
+                                    position: 'absolute',
+                                    bottom: '10px',
+                                    right: '10px',
+                                    background: 'rgba(11, 15, 25, 0.6)',
+                                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                                    color: '#ffffff',
+                                    width: '36px',
+                                    height: '36px',
+                                    borderRadius: '8px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    zIndex: 100,
+                                    transition: 'all 0.2s',
+                                    backdropFilter: 'blur(4px)'
+                                }}
+                            >
+                                {isFullscreen ? (
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M4 14h6v6m10-6h-6v6M4 10h6V4m10 6h-6V4"></path>
+                                    </svg>
+                                ) : (
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                                    </svg>
+                                )}
+                            </button>
+                        )}
                     </div>
 
                     {/* Loading status */}

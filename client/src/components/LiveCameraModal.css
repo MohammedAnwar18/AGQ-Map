@@ -151,3 +151,109 @@
     50% { transform: scale(1.2); opacity: 1; }
     100% { transform: scale(0.9); opacity: 0.6; }
 }
+
+/* Fullscreen Styling for CSS Crop Preservation */
+.camera-video-wrapper:fullscreen {
+    width: 100vw !important;
+    height: 100vh !important;
+    padding-top: 0 !important;
+    background-color: #000 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.camera-video-wrapper:-webkit-full-screen {
+    width: 100vw !important;
+    height: 100vh !important;
+    padding-top: 0 !important;
+    background-color: #000 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.camera-video-wrapper:fullscreen video {
+    position: absolute !important;
+}
+
+.camera-video-wrapper:-webkit-full-screen video {
+    position: absolute !important;
+}
+
+/* Align fullscreen exit button */
+.camera-video-wrapper:fullscreen .fullscreen-video-btn {
+    bottom: 24px !important;
+    right: 24px !important;
+    width: 44px !important;
+    height: 44px !important;
+    background: rgba(11, 15, 25, 0.8) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+.camera-video-wrapper:-webkit-full-screen .fullscreen-video-btn {
+    bottom: 24px !important;
+    right: 24px !important;
+    width: 44px !important;
+    height: 44px !important;
+    background: rgba(11, 15, 25, 0.8) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Mobile responsive overrides to keep the camera modal as a floating card instead of full screen */
+@media (max-width: 768px) {
+    .modal-overlay.camera-modal-overlay {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 12px !important;
+        background: rgba(0, 0, 0, 0.75) !important;
+        backdrop-filter: blur(8px) !important;
+    }
+    
+    .modal-container.camera-modal-content {
+        max-height: 92vh !important;
+        height: auto !important;
+        width: 95% !important;
+        border-radius: 20px !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6) !important;
+        margin: auto !important;
+        overflow: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    
+    .camera-modal-header {
+        padding: 14px 18px !important;
+    }
+    
+    .camera-modal-title {
+        font-size: 1rem !important;
+    }
+    
+    .camera-modal-footer {
+        padding: 12px 18px !important;
+        flex-direction: column !important;
+        gap: 6px !important;
+        align-items: flex-start !important;
+    }
+    
+    .admin-crop-controls {
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+    }
+    
+    .admin-crop-controls select {
+        padding: 4px 8px !important;
+        font-size: 0.8rem !important;
+        border-radius: 8px !important;
+    }
+    
+    .admin-crop-controls button {
+        padding: 4px 10px !important;
+        height: 28px !important;
+        font-size: 0.8rem !important;
+        border-radius: 8px !important;
+    }
+}

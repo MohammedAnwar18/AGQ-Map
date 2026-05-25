@@ -2221,7 +2221,7 @@ const MapComponent = () => {
                     ))}
 
                     {/* Live CCTV Cameras Markers - Red Pulsing Design */}
-                    {!currentCommunity && !isEmergencyActive && liveCameras.map(camera => {
+                    {!currentCommunity && !isEmergencyActive && viewState.zoom >= 17 && liveCameras.map(camera => {
                         if (camera.latitude == null || camera.longitude == null || isNaN(parseFloat(camera.latitude))) return null;
                         return (
                             <Marker
