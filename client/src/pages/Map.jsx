@@ -2229,13 +2229,24 @@ const MapComponent = () => {
                                 longitude={parseFloat(camera.longitude)}
                                 latitude={parseFloat(camera.latitude)}
                                 anchor="center"
-                                style={{ cursor: 'pointer', zIndex: 65 }}
+                                style={{ cursor: 'pointer', zIndex: 99 }}
                                 onClick={e => {
-                                    e.originalEvent.stopPropagation();
+                                    if (e && e.originalEvent) {
+                                        e.originalEvent.stopPropagation();
+                                    }
+                                    console.log("Clicked Marker camera:", camera);
                                     setSelectedCamera(camera);
                                 }}
                             >
-                                <div className="camera-map-marker" title={camera.name}>
+                                <div 
+                                    className="camera-map-marker" 
+                                    title={camera.name}
+                                    onClick={e => {
+                                        e.stopPropagation();
+                                        console.log("Clicked inner div camera:", camera);
+                                        setSelectedCamera(camera);
+                                    }}
+                                >
                                     <div className="camera-marker-pulse"></div>
                                     <div className="camera-icon-wrapper">
                                         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5">
