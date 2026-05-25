@@ -104,6 +104,25 @@ const haversineDistance = (coords1, coords2) => {
     return R * c;
 };
 
+// Helper: Create GeoJSON Polygon Circle coordinates around a center point
+const createGeoJSONCircle = (center, radiusInKm, points = 64) => {
+    if (!center) return [];
+    const lat = center.latitude;
+    const lon = center.longitude;
+    const coords = [];
+    const distanceX = radiusInKm / (111.32 * Math.cos((lat * Math.PI) / 180));
+    const distanceY = radiusInKm / 110.57;
+
+    for (let i = 0; i < points; i++) {
+        const theta = (i / points) * (2 * Math.PI);
+        const x = distanceX * Math.cos(theta);
+        const y = distanceY * Math.sin(theta);
+        coords.push([lon + x, lat + y]);
+    }
+    coords.push(coords[0]); // Close polygon
+    return coords;
+};
+
 // Point in Polygon function (Ray Casting)
 const isPointInPolygon = (point, vs) => {
     let x = point[0], y = point[1];
@@ -527,6 +546,7 @@ const MapComponent = () => {
     const [showLabModal, setShowLabModal] = useState(false);
     const [showCommunities, setShowCommunities] = useState(false);
     const [showMoreMenu, setShowMoreMenu] = useState(false);
+    const [isEmergencyActive, setIsEmergencyActive] = useState(false);
     const [hasUnreadCommunity, setHasUnreadCommunity] = useState(false);
     const [showGPSGuide, setShowGPSGuide] = useState(false);
     const [gpsErrorType, setGpsErrorType] = useState(null); // 'denied' or 'generic'
@@ -995,6 +1015,56 @@ const MapComponent = () => {
                 onError,
                 { enableHighAccuracy: true, timeout: 8000 }
             );
+        }
+    };
+
+    // Activate Emergency Mode
+    const handleActivateEmergency = () => {
+        setIsEmergencyActive(true);
+        setShowMoreMenu(false);
+        
+        // Hide other overlays so the screen is completely focused on the emergency map
+        setShowSearch(false);
+        setShowAIChat(false);
+        setShowCommunities(false);
+        setShowChat(false);
+        setShowProfile(false);
+        setShowFriends(false);
+        setShowShops(false);
+        setShowNews(false);
+        setShowSpatialReels(false);
+        
+        if (userLocation) {
+            mapRef.current?.flyTo({
+                center: [userLocation.longitude, userLocation.latitude],
+                zoom: 14.5,
+                pitch: 45,
+                bearing: 0,
+                duration: 2000
+            });
+        } else {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const newLoc = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude
+                        };
+                        updateUserLocation(newLoc);
+                        mapRef.current?.flyTo({
+                            center: [newLoc.longitude, newLoc.latitude],
+                            zoom: 14.5,
+                            pitch: 45,
+                            bearing: 0,
+                            duration: 2000
+                        });
+                    },
+                    (error) => {
+                        console.error("Error getting location for emergency", error);
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            }
         }
     };
 
@@ -1779,26 +1849,36 @@ const MapComponent = () => {
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
 
-                        {/* PalNovaa Lab - Restricted to Desktop */}
+                        {/* الطوارئ (Emergency) */}
                         <button 
-                            onClick={() => { 
-                                if (isMobileDevice) {
-                                    alert("عذراً، مختبر بالنوفا متاح فقط على أجهزة الحاسوب واللابتوب لضمان أفضل تجربة أداء.");
-                                    return;
-                                }
-                                setShowLabModal(true); 
-                                setShowMoreMenu(false); 
-                            }}
-                            style={isMobileDevice ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
+                            onClick={handleActivateEmergency}
+                            className="emergency-menu-item"
                         >
                             <div className="menu-item-content">
-                                <div className="menu-icon-wrapper" style={{ color: isMobileDevice ? '#94a3b8' : '#fbab15' }}>
-                                    {isMobileDevice ? (
-                                        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg">
-                                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                        </svg>
-                                    ) : (
+                                <div className="menu-icon-wrapper" style={{ color: '#ef4444' }}>
+                                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg">
+                                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                    </svg>
+                                </div>
+                                <span style={{ color: '#ef4444', fontWeight: 'bold' }}>الطوارئ</span>
+                            </div>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ef4444" strokeWidth="2.5">
+                                <polyline points="9 18 15 12 9 6" />
+                            </svg>
+                        </button>
+
+                        {/* PalNovaa Lab - Restricted to Desktop */}
+                        {!isMobileDevice && (
+                            <button 
+                                onClick={() => { 
+                                    setShowLabModal(true); 
+                                    setShowMoreMenu(false); 
+                                }}
+                            >
+                                <div className="menu-item-content">
+                                    <div className="menu-icon-wrapper" style={{ color: '#fbab15' }}>
                                         <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg">
                                             <path d="M10 2v7.31"></path>
                                             <path d="M14 9.3V1.99"></path>
@@ -1806,24 +1886,14 @@ const MapComponent = () => {
                                             <path d="M14 9.3a6.5 6.5 0 1 1-4 0"></path>
                                             <path d="M5.52 16h12.96"></path>
                                         </svg>
-                                    )}
-                                </div>
-                                <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                    </div>
                                     <span>مختبر بالنوفا</span>
-                                    {isMobileDevice && <span style={{ fontSize: '10px', color: '#94a3b8' }}>متاح للحاسوب فقط</span>}
-                                </span>
-                            </div>
-                            {isMobileDevice ? (
-                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#94a3b8" strokeWidth="2.5">
-                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                </svg>
-                            ) : (
+                                </div>
                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5">
                                     <polyline points="9 18 15 12 9 6" />
                                 </svg>
-                            )}
-                        </button>
+                            </button>
+                        )}
 
                         {/* PalNovaa Spatial Magazine - Hidden as requested
                         <button onClick={() => { setShowMagazine(true); setShowMoreMenu(false); }}>
@@ -2015,17 +2085,55 @@ const MapComponent = () => {
                         </Source>
                     )}
 
+                    {isEmergencyActive && userLocation && (
+                        <Source 
+                            id="emergency-radius" 
+                            type="geojson" 
+                            data={{
+                                type: "Feature",
+                                geometry: {
+                                    type: "Polygon",
+                                    coordinates: [
+                                        createGeoJSONCircle(userLocation, 2.0)
+                                    ]
+                                },
+                                properties: {}
+                            }}
+                        >
+                            <Layer
+                                id="emergency-radius-fill"
+                                type="fill"
+                                paint={{
+                                    "fill-color": "#ef4444",
+                                    "fill-opacity": 0.08
+                                }}
+                            />
+                            <Layer
+                                id="emergency-radius-stroke"
+                                type="line"
+                                paint={{
+                                    "line-color": "#ef4444",
+                                    "line-width": 2,
+                                    "line-dasharray": [2, 2]
+                                }}
+                            />
+                        </Source>
+                    )}
+
                     {userLocation && (
                         <Marker longitude={userLocation.longitude} latitude={userLocation.latitude} anchor="center">
                             <div 
-                                className="custom-location-marker" 
+                                className={`custom-location-marker ${isEmergencyActive ? 'emergency-pulse' : ''}`}
                                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}
                                 title={`الدقة: ${Math.round(userLocation.accuracy || 0)} متر`}
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
-                                    <circle cx="40" cy="40" r="10" fill="#fbab15" opacity="0.6"><animate attributeName="r" from="10" to="38" dur="2s" repeatCount="indefinite" /><animate attributeName="opacity" from="0.6" to="0" dur="2s" repeatCount="indefinite" /></circle>
+                                    <circle cx="40" cy="40" r="10" fill={isEmergencyActive ? "#ef4444" : "#fbab15"} opacity="0.6">
+                                        <animate attributeName="r" from="10" to="38" dur={isEmergencyActive ? "1s" : "2s"} repeatCount="indefinite" />
+                                        <animate attributeName="opacity" from="0.6" to="0" dur={isEmergencyActive ? "1s" : "2s"} repeatCount="indefinite" />
+                                    </circle>
                                     <circle cx="40" cy="40" r="10" fill="#ffffff" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.3))' }} />
-                                    <circle cx="40" cy="40" r="7" fill="#fbab15" />
+                                    <circle cx="40" cy="40" r="7" fill={isEmergencyActive ? "#ef4444" : "#fbab15"} />
                                 </svg>
                             </div>
                         </Marker>
@@ -2034,7 +2142,7 @@ const MapComponent = () => {
                     {/* Removed Taxi Route Line and Markers */}
 
                     {/* Posts Markers - Visible from City/Neighborhood level (zoom 12+) and hidden at Regional level */}
-                    {!isGuestMode && viewState.zoom >= 12 && posts.map(post => (
+                    {!isGuestMode && !isEmergencyActive && viewState.zoom >= 12 && posts.map(post => (
                         <Marker
                             key={post.id}
                             longitude={parseFloat(post.location.longitude)}
@@ -2059,7 +2167,7 @@ const MapComponent = () => {
 
 
                     {/* Friends Markers (Hide in Community Mode) - Green Pulse Design */}
-                    {!isGuestMode && !currentCommunity && friendsMap.map(friend => (
+                    {!isGuestMode && !currentCommunity && !isEmergencyActive && friendsMap.map(friend => (
                         <Marker
                             key={`friend-${friend.id}`}
                             longitude={parseFloat(friend.last_longitude)}
@@ -2098,6 +2206,14 @@ const MapComponent = () => {
                     {/* Managed and Followed Shops/Universities Markers - Visibility based on Zoom */}
                     {!currentCommunity && allShopsMap.filter(shop => {
                         if (shop.latitude == null || shop.longitude == null || isNaN(parseFloat(shop.latitude))) return false;
+
+                        if (isEmergencyActive) {
+                            const isMedical = shop.category === 'مستشفى' || shop.category === 'مركز طبي' || shop.category === 'عيادة' || shop.category === 'صيدلية';
+                            if (!isMedical) return false;
+                            if (!userLocation) return true;
+                            const dist = haversineDistance(userLocation, { latitude: parseFloat(shop.latitude), longitude: parseFloat(shop.longitude) });
+                            return dist <= 2000;
+                        }
 
                         if (isGuestMode) {
                             return String(shop.id) === String(shopIdQuery);
@@ -2232,7 +2348,7 @@ const MapComponent = () => {
                     ))}
 
                     {/* University Facilities Markers - Visible when zoomed in close (>= 15.5) */}
-                    {!currentCommunity && (isGuestMode ? (facilityIdQuery ? allFacilitiesMap.filter(f => String(f.id) === String(facilityIdQuery)) : []) : (viewState.zoom >= 15.5 ? allFacilitiesMap : [])).map(fac => {
+                    {!currentCommunity && !isEmergencyActive && (isGuestMode ? (facilityIdQuery ? allFacilitiesMap.filter(f => String(f.id) === String(facilityIdQuery)) : []) : (viewState.zoom >= 15.5 ? allFacilitiesMap : [])).map(fac => {
                         const isFollowedUni = followedShopsMap.some(s => s.id === fac.parent_shop_id);
                         return (
                             <Marker
@@ -2289,7 +2405,7 @@ const MapComponent = () => {
             </div>
 
             {/* Bottom Navigation Panel - Instagram Style */}
-            {!isGuestMode && (
+            {!isGuestMode && !isEmergencyActive && (
                 <nav className="bottom-nav">
                 <button
                     className={`nav-item ${!showSearch && !showAIChat && !showProfile && !showCommunities && !showChat ? 'active' : ''}`}
@@ -2356,6 +2472,47 @@ const MapComponent = () => {
                     </div>
                 </button>
             </nav>
+            )}
+
+            {/* Emergency Bottom Bar - Overlay */}
+            {isEmergencyActive && (
+                <div className="emergency-bottom-bar">
+                    <div className="emergency-header-bar">
+                        <div className="emergency-title-group">
+                            <div className="emergency-title">
+                                <span className="emergency-title-pulse-dot"></span>
+                                وضع الطوارئ نشط
+                            </div>
+                            <div className="emergency-subtitle">
+                                المراكز الطبية والصيدليات القريبة (ضمن محيط 2 كم)
+                            </div>
+                        </div>
+                        <button 
+                            className="emergency-exit-btn"
+                            onClick={() => setIsEmergencyActive(false)}
+                        >
+                            إنهاء الطوارئ
+                        </button>
+                    </div>
+
+                    <div className="emergency-calls-grid">
+                        <a href="tel:101" className="emergency-call-card ambulance">
+                            <span className="emergency-call-icon">🚑</span>
+                            <span className="emergency-call-name">الإسعاف</span>
+                            <span className="emergency-call-number">101</span>
+                        </a>
+                        <a href="tel:100" className="emergency-call-card police">
+                            <span className="emergency-call-icon">👮</span>
+                            <span className="emergency-call-name">الشرطة</span>
+                            <span className="emergency-call-number">100</span>
+                        </a>
+                        <a href="tel:102" className="emergency-call-card civil-defense">
+                            <span className="emergency-call-icon">🚒</span>
+                            <span className="emergency-call-name">الدفاع المدني</span>
+                            <span className="emergency-call-number">102</span>
+                        </a>
+                    </div>
+                </div>
             )}
 
             {/* Floating Info Overlays for Navigation */}
