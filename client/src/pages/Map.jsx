@@ -1856,13 +1856,8 @@ const MapComponent = () => {
                         >
                             <div className="menu-item-content">
                                 <div className="menu-icon-wrapper" style={{ color: '#ef4444' }}>
-                                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg animate-siren">
-                                        <path d="M4 20h16a1 1 0 0 0 1-1v-2a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2a1 1 0 0 0 1 1z" fill="rgba(239, 68, 68, 0.2)" stroke="#ef4444" strokeWidth="2.2" />
-                                        <path d="M12 4a6 6 0 0 0-6 6v5h12v-5a6 6 0 0 0-6-6z" fill="#ef4444" stroke="#ef4444" strokeWidth="2.2" />
-                                        <path d="M9 10h6" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-                                        <line x1="12" y1="1" x2="12" y2="2.5" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
-                                        <line x1="3.5" y1="4.5" x2="5" y2="6" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
-                                        <line x1="20.5" y1="4.5" x2="19" y2="6" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="26" height="26" fill="currentColor" className="menu-icon-svg">
+                                        <path d="M200-160v-80h64l79-263q8-26 29.5-41.5T420-560h120q26 0 47.5 15.5T617-503l79 263h64v80H200Zm148-80h264l-72-240H420l-72 240Zm92-400v-200h80v200h-80Zm238 99-57-57 142-141 56 56-141 142Zm42 181v-80h200v80H720ZM282-541 141-683l56-56 142 141-57 57ZM40-360v-80h200v80H40Zm440 120Z"/>
                                     </svg>
                                 </div>
                                 <span style={{ color: '#ef4444', fontWeight: 'bold' }}>الطوارئ</span>
