@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
 import './LiveCameraModal.css';
 
-const LiveCameraModal = ({ camera, onClose }) => {
+const LiveCameraModal = ({ camera, onClose, isAdmin }) => {
     const videoRef = useRef(null);
     const hlsRef = useRef(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -115,7 +115,7 @@ const LiveCameraModal = ({ camera, onClose }) => {
                         </h3>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        {camera.crop_position !== 'full' && (
+                        {isAdmin && camera.crop_position !== 'full' && (
                             <button 
                                 onClick={() => setIsCropped(!isCropped)}
                                 className="crop-toggle-btn"
