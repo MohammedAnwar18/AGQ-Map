@@ -90,9 +90,9 @@ const LiveCameraModal = ({ camera, onClose }) => {
     const cropClass = isCropped ? (camera.crop_position || 'full') : 'full';
 
     return (
-        <div className="modal-backdrop active" onClick={onClose} style={{ zIndex: 11000 }}>
+        <div className="modal-overlay" onClick={onClose} style={{ zIndex: 11000 }}>
             <div 
-                className="modal-content camera-modal-content" 
+                className="modal-container camera-modal-content" 
                 onClick={e => e.stopPropagation()}
                 style={{
                     maxWidth: '800px',
