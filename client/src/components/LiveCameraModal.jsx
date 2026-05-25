@@ -1,13 +1,23 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
+import { cameraService } from '../services/api';
 import './LiveCameraModal.css';
 
-const LiveCameraModal = ({ camera, onClose, isAdmin }) => {
+const LiveCameraModal = ({ camera, onClose, isAdmin, onCameraUpdated }) => {
     const videoRef = useRef(null);
     const hlsRef = useRef(null);
     const [isLoading, setIsLoading] = useState(true);
     const [playError, setPlayError] = useState(false);
-    const [isCropped, setIsCropped] = useState(camera && camera.crop_position !== 'full');
+    
+    // Admin editing crop position state
+    const [currentCrop, setCurrentCrop] = useState(camera?.crop_position || 'full');
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        if (camera) {
+            setCurrentCrop(camera.crop_position || 'full');
+        }
+    }, [camera]);
 
     useEffect(() => {
         const video = videoRef.current;
@@ -84,10 +94,30 @@ const LiveCameraModal = ({ camera, onClose, isAdmin }) => {
         };
     }, [camera]);
 
+    const handleSaveCrop = async () => {
+        setIsSaving(true);
+        try {
+            await cameraService.update(camera.id, { crop_position: currentCrop });
+            alert("تم تحديث وحفظ اقتصاص الكاميرا بنجاح!");
+            
+            // Update local object
+            camera.crop_position = currentCrop;
+            
+            if (onCameraUpdated) {
+                onCameraUpdated();
+            }
+        } catch (error) {
+            console.error("Failed to update crop position:", error);
+            alert("حدث خطأ أثناء حفظ اقتصاص الكاميرا");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     if (!camera) return null;
 
-    // Determine the cropping class based on crop_position & crop state toggle
-    const cropClass = isCropped ? (camera.crop_position || 'full') : 'full';
+    // The crop class maps to the current crop selected state
+    const cropClass = currentCrop;
 
     return (
         <div className="modal-overlay" onClick={onClose} style={{ zIndex: 11000 }}>
@@ -114,25 +144,68 @@ const LiveCameraModal = ({ camera, onClose, isAdmin }) => {
                             {camera.name}
                         </h3>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        {isAdmin && camera.crop_position !== 'full' && (
-                            <button 
-                                onClick={() => setIsCropped(!isCropped)}
-                                className="crop-toggle-btn"
-                                style={{
-                                    background: isCropped ? 'rgba(6, 182, 212, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-                                    border: `1px solid ${isCropped ? '#06b6d4' : 'rgba(255, 255, 255, 0.1)'}`,
-                                    color: isCropped ? '#06b6d4' : '#94a3b8',
-                                    padding: '5px 12px',
-                                    borderRadius: '12px',
-                                    cursor: 'pointer',
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        {isAdmin ? (
+                            <div className="admin-crop-controls" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <select 
+                                    value={currentCrop}
+                                    onChange={e => setCurrentCrop(e.target.value)}
+                                    style={{
+                                        background: 'rgba(255, 255, 255, 0.08)',
+                                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                                        color: '#f8fafc',
+                                        padding: '6px 12px',
+                                        borderRadius: '12px',
+                                        fontSize: '0.85rem',
+                                        cursor: 'pointer',
+                                        outline: 'none',
+                                        transition: 'all 0.2s',
+                                        fontFamily: 'inherit'
+                                    }}
+                                >
+                                    <option value="full" style={{ background: '#0b0f19' }}>كامل الشاشة</option>
+                                    <option value="cam1" style={{ background: '#0b0f19' }}>كاميرا 1 (أعلى يسار)</option>
+                                    <option value="cam2" style={{ background: '#0b0f19' }}>كاميرا 2 (أعلى يمين)</option>
+                                    <option value="cam3" style={{ background: '#0b0f19' }}>كاميرا 3 (أسفل يسار)</option>
+                                    <option value="cam4" style={{ background: '#0b0f19' }}>كاميرا 4 (أسفل يمين)</option>
+                                </select>
+                                <button 
+                                    onClick={handleSaveCrop}
+                                    disabled={isSaving}
+                                    className="btn-small btn-accept"
+                                    style={{
+                                        padding: '6px 15px',
+                                        height: '34px',
+                                        borderRadius: '12px',
+                                        fontSize: '0.85rem',
+                                        fontWeight: 'bold',
+                                        background: 'linear-gradient(135deg, #10b981, #059669)',
+                                        color: '#ffffff',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    {isSaving ? 'جاري الحفظ...' : '💾 حفظ الاقتصاص'}
+                                </button>
+                            </div>
+                        ) : (
+                            camera.crop_position !== 'full' && (
+                                <span style={{
                                     fontSize: '0.8rem',
-                                    fontWeight: 'bold',
-                                    transition: 'all 0.2s'
-                                }}
-                            >
-                                {isCropped ? '🔍 عرض البث الكامل' : '✂️ تفعيل الاقتصاص'}
-                            </button>
+                                    color: '#06b6d4',
+                                    background: 'rgba(6, 182, 212, 0.1)',
+                                    padding: '4px 10px',
+                                    borderRadius: '8px',
+                                    fontWeight: 'bold'
+                                }}>
+                                    🔒 اقتصاص مفروض
+                                </span>
+                            )
                         )}
                         <button onClick={onClose} className="camera-close-btn">
                             ✕

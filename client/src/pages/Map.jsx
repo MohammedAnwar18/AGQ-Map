@@ -2716,7 +2716,7 @@ const MapComponent = () => {
                     });
                 }}
             />}
-            {selectedCamera && <LiveCameraModal camera={selectedCamera} onClose={() => setSelectedCamera(null)} isAdmin={user?.role === 'admin'} />}
+            {selectedCamera && <LiveCameraModal camera={selectedCamera} onClose={() => setSelectedCamera(null)} isAdmin={user?.role === 'admin'} onCameraUpdated={fetchLiveCameras} />}
             {showMunicipalities && <MunicipalitiesModal
                 onClose={() => setShowMunicipalities(false)}
                 currentUser={user}

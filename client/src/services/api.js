@@ -712,6 +712,10 @@ export const cameraService = {
     deleteCamera: async (id) => {
         const response = await api.delete(`/cameras/${id}`);
         return response.data;
+    },
+    update: async (id, cameraData) => {
+        const response = await api.put(`/cameras/${id}`, cameraData);
+        return response.data;
     }
 };
 

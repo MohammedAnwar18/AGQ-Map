@@ -12,4 +12,7 @@ router.post('/', authenticateToken, cameraController.createCamera);
 // Delete a camera (authenticated: creator or admin)
 router.delete('/:id', authenticateToken, cameraController.deleteCamera);
 
+// Update a camera (authenticated: creator or admin)
+router.put('/:id', authenticateToken, cameraController.updateCamera);
+
 module.exports = router;
