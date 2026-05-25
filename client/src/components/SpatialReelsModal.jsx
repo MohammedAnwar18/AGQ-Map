@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import api, { getImageUrl } from '../services/api';
+import api, { getImageUrl, friendService, messageService } from '../services/api';
 import './SpatialReelsModal.css';
 
 // ─── Google Satellite map style (same as main map) ─────────────────────────
@@ -76,7 +76,7 @@ const SatelliteMiniMap = ({ activeReel, allReels, onReelSelect }) => {
             pitch: 0,
             bearing: 0,
             attributionControl: false,
-            interactive: false, // Map only moves when user scrolls the reels
+            interactive: true, // Allow user interaction
         });
 
         map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
@@ -162,7 +162,7 @@ const SatelliteMiniMap = ({ activeReel, allReels, onReelSelect }) => {
             // Fly to reel location
             map.flyTo({
                 center: [lng, lat],
-                zoom: 14,
+                zoom: 11.5,
                 speed: 1.2,
                 curve: 1,
                 essential: true
@@ -567,6 +567,84 @@ const AddReelForm = ({ onClose, onAdded, userLocation, initialData = null }) => 
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// SHARE MODAL COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════════
+const ShareReelModal = ({ onClose, reel, currentUser }) => {
+    const [friends, setFriends] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [sentStatus, setSentStatus] = useState({});
+
+    useEffect(() => {
+        const fetchFriends = async () => {
+            try {
+                const res = await friendService.getFriends();
+                setFriends(res.friends || []);
+            } catch (err) {
+                console.error("Error fetching friends", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchFriends();
+    }, []);
+
+    const handleSend = async (friendId) => {
+        try {
+            setSentStatus(p => ({ ...p, [friendId]: 'sending' }));
+            await messageService.sendMessage({
+                receiverId: friendId,
+                content: `شاهد هذا الريل المكاني! 🎬\n${window.location.origin}/map?reel=${reel.id}\n${reel.title}`
+            });
+            setSentStatus(p => ({ ...p, [friendId]: 'sent' }));
+        } catch (err) {
+            console.error("Send error", err);
+            setSentStatus(p => ({ ...p, [friendId]: 'error' }));
+        }
+    };
+
+    return (
+        <div className="srm-add-form-overlay" onClick={onClose} style={{ zIndex: 6000 }}>
+            <div className="srm-add-form" onClick={e => e.stopPropagation()} style={{ maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}>
+                <div className="srm-add-form-header">
+                    <h3>↗️ إرسال إلى صديق</h3>
+                    <button onClick={onClose} className="srm-add-close">✕</button>
+                </div>
+                <div style={{ padding: '15px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {loading ? (
+                        <div style={{ textAlign: 'center', color: '#fff', padding: '20px' }}>جاري التحميل...</div>
+                    ) : friends.length === 0 ? (
+                        <div style={{ textAlign: 'center', color: '#ccc', padding: '20px' }}>لا يوجد أصدقاء للمشاركة معهم</div>
+                    ) : (
+                        friends.map(friend => (
+                            <div key={friend.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '10px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    {friend.profile_picture ? (
+                                        <img src={getImageUrl(friend.profile_picture)} style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
+                                    ) : (
+                                        <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#333', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>👤</div>
+                                    )}
+                                    <span style={{ color: '#fff', fontWeight: 'bold' }}>{friend.full_name || friend.username}</span>
+                                </div>
+                                <button 
+                                    onClick={() => handleSend(friend.id)}
+                                    disabled={sentStatus[friend.id] === 'sending' || sentStatus[friend.id] === 'sent'}
+                                    style={{
+                                        background: sentStatus[friend.id] === 'sent' ? '#10b981' : '#3b82f6',
+                                        color: '#fff', border: 'none', padding: '6px 16px', borderRadius: '20px', fontWeight: 'bold', cursor: 'pointer', opacity: sentStatus[friend.id] === 'sending' ? 0.7 : 1
+                                    }}
+                                >
+                                    {sentStatus[friend.id] === 'sent' ? 'تم الإرسال ✓' : sentStatus[friend.id] === 'sending' ? '...' : 'إرسال'}
+                                </button>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════════
 const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
@@ -578,6 +656,7 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
     const [isFullScreen, setIsFullScreen] = useState(false);
     const [showAddForm, setShowAddForm] = useState(false);
     const [editingReel, setEditingReel] = useState(null);
+    const [sharingReel, setSharingReel] = useState(null);
     
     // هل المستخدم الحالي أدمن؟
     const isAdmin = currentUser?.role === 'admin';
@@ -861,6 +940,21 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
                                     <span className="srm-action-count">{formatCount(reel.likes_count)}</span>
                                 </button>
 
+                                {/* Share */}
+                                <button
+                                    className={`srm-action-btn share ${!currentUser ? 'disabled' : ''}`}
+                                    onClick={() => { if (currentUser) setSharingReel(reel); }}
+                                    aria-label="مشاركة"
+                                >
+                                    <div className="srm-action-icon">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M22 2L11 13" />
+                                            <path d="M22 2L15 22L11 13L2 9L22 2Z" />
+                                        </svg>
+                                    </div>
+                                    <span className="srm-action-count">مشاركة</span>
+                                </button>
+
                             </div>
 
                             {/* Scroll hint */}
@@ -883,6 +977,15 @@ const SpatialReelsModal = ({ onClose, currentUser, userLocation }) => {
                     onClose={() => { setShowAddForm(false); setEditingReel(null); }}
                     onAdded={handleReelAdded}
                     userLocation={userLocation}
+                />
+            )}
+
+            {/* Share form */}
+            {sharingReel && (
+                <ShareReelModal 
+                    onClose={() => setSharingReel(null)} 
+                    reel={sharingReel} 
+                    currentUser={currentUser} 
                 />
             )}
         </div>

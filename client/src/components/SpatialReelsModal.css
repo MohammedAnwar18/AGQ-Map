@@ -228,6 +228,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
 }
 
 .srm-yt-target {
@@ -237,8 +238,8 @@
 }
 
 .srm-yt-target iframe {
-    width: 105% !important;
-    height: 100% !important;
+    width: 115% !important;
+    height: 115% !important;
     position: absolute;
     top: 50%;
     left: 50%;
@@ -248,7 +249,7 @@
 
 .srm-player-wrapper.is-full .srm-yt-target iframe {
     width: 300% !important; /* Force overflow to fill vertical screen with landscape content */
-    height: 100% !important;
+    height: 115% !important;
 }
 
 /* ── ZOOM BUTTON ────────────────────────────────────────────── */
