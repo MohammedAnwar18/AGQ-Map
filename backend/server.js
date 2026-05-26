@@ -10,7 +10,7 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const pool = require('./config/database');
 
-// Auto-migration: تأكد من وجود جدول ar_contents عند بدء تشغيل السيرفر
+// Auto-migration: تأكد من وجود جدول ar_contents عند بدء تشغيل السيرفر (بدون PostGIS)
 (async () => {
     try {
         await pool.query(`
@@ -23,13 +23,11 @@ const pool = require('./config/database');
                 shape VARCHAR(50) DEFAULT 'crystal',
                 bearing NUMERIC DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-                location GEOGRAPHY(Point, 4326)
+                owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL
             )
         `);
-        await pool.query(`
-            CREATE INDEX IF NOT EXISTS ar_contents_location_idx ON ar_contents USING GIST (location)
-        `);
+        await pool.query(`CREATE INDEX IF NOT EXISTS ar_contents_lat_idx ON ar_contents (latitude)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS ar_contents_lon_idx ON ar_contents (longitude)`);
         console.log('✅ ar_contents table ready');
     } catch (err) {
         console.error('⚠️ ar_contents migration error:', err.message);

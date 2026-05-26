@@ -19,17 +19,23 @@ const getNearbyARContents = async (req, res) => {
             return res.status(400).json({ error: 'Invalid coordinates or radius provided' });
         }
 
-        // استعلام مكاني متقدم لحساب المسافة الدقيقة لكل نقطة وجلب النقاط داخل النطاق المحدد فقط
+        // حساب المسافة بمعادلة Haversine بدون PostGIS
         const sql = `
             SELECT id, latitude, longitude, title, content, shape, bearing, created_at, owner_id,
-                   ROUND(ST_Distance(location, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography)::numeric, 1) as distance_meters
+                   ROUND((6371000 * acos(LEAST(1, GREATEST(-1,
+                       cos(radians($1)) * cos(radians(latitude)) * cos(radians(longitude) - radians($2)) +
+                       sin(radians($1)) * sin(radians(latitude))
+                   ))))::numeric, 1) as distance_meters
             FROM ar_contents
-            WHERE ST_DWithin(location, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, $3)
+            WHERE (6371000 * acos(LEAST(1, GREATEST(-1,
+                       cos(radians($1)) * cos(radians(latitude)) * cos(radians(longitude) - radians($2)) +
+                       sin(radians($1)) * sin(radians(latitude))
+                   )))) <= $3
             ORDER BY distance_meters ASC
             LIMIT 50
         `;
 
-        const result = await pool.query(sql, [longitude, latitude, searchRadius]);
+        const result = await pool.query(sql, [latitude, longitude, searchRadius]);
         res.json({ contents: result.rows });
     } catch (error) {
         console.error('Get nearby AR contents error:', error);
@@ -70,8 +76,8 @@ const createARContent = async (req, res) => {
         }
 
         const sql = `
-            INSERT INTO ar_contents (latitude, longitude, title, content, shape, bearing, owner_id, location)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography)
+            INSERT INTO ar_contents (latitude, longitude, title, content, shape, bearing, owner_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING *, 0.0 as distance_meters
         `;
 
