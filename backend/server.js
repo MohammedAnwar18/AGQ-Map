@@ -16,18 +16,24 @@ const pool = require('./config/database');
         await pool.query(`
             CREATE TABLE IF NOT EXISTS ar_contents (
                 id SERIAL PRIMARY KEY,
-                latitude NUMERIC NOT NULL,
-                longitude NUMERIC NOT NULL,
-                title VARCHAR(255) NOT NULL,
-                content TEXT,
-                shape VARCHAR(50) DEFAULT 'crystal',
-                bearing NUMERIC DEFAULT 0,
+                latitude  NUMERIC(12,8) NOT NULL,
+                longitude NUMERIC(12,8) NOT NULL,
+                title     VARCHAR(255) NOT NULL,
+                content   TEXT,
+                shape     VARCHAR(50)  DEFAULT 'panel',
+                bearing   NUMERIC(7,3) DEFAULT 0,
+                pitch     NUMERIC(7,3) DEFAULT 90,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL
+                owner_id  INTEGER REFERENCES users(id) ON DELETE SET NULL
             )
         `);
-        await pool.query(`CREATE INDEX IF NOT EXISTS ar_contents_lat_idx ON ar_contents (latitude)`);
-        await pool.query(`CREATE INDEX IF NOT EXISTS ar_contents_lon_idx ON ar_contents (longitude)`);
+        // Add pitch column if upgrading from old schema
+        await pool.query(`ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS pitch NUMERIC(7,3) DEFAULT 90`);
+        // Increase coordinate precision if upgrading from old schema
+        await pool.query(`ALTER TABLE ar_contents ALTER COLUMN latitude  TYPE NUMERIC(12,8)`);
+        await pool.query(`ALTER TABLE ar_contents ALTER COLUMN longitude TYPE NUMERIC(12,8)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS ar_contents_lat_idx  ON ar_contents (latitude)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS ar_contents_lon_idx  ON ar_contents (longitude)`);
         console.log('✅ ar_contents table ready');
     } catch (err) {
         console.error('⚠️ ar_contents migration error:', err.message);
