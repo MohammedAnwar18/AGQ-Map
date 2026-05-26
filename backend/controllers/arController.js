@@ -480,6 +480,28 @@ async function createPhotoMarker(req, res) {
 }
 
 // ---------------------------------------------------------------------------
+// GET /api/ar/:id — Get details of a single marker by ID (used by QR scanner)
+// ---------------------------------------------------------------------------
+async function getARContentById(req, res) {
+  try {
+    const { id } = req.params;
+    const { rows } = await pool.query(
+      `SELECT ${RETURNING_FIELDS} FROM ar_contents WHERE id = $1`,
+      [id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'المعلم غير موجود' });
+    }
+
+    return res.json({ content: rows[0] });
+  } catch (err) {
+    console.error('[getARContentById]', err);
+    return res.status(500).json({ error: 'Failed to fetch AR content details' });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
 module.exports = {
@@ -493,4 +515,5 @@ module.exports = {
   getARStats,
   getAllARContents,
   createPhotoMarker,
+  getARContentById,
 };

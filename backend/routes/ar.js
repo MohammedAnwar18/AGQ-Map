@@ -14,6 +14,7 @@ router.post('/story',    authenticateToken, ar.createStory);
 router.post('/nav-point',authenticateToken, ar.createNavPoint);
 router.post('/photo-marker', authenticateToken, upload.single('photo'), ar.createPhotoMarker);
 router.put('/:id',       authenticateToken, ar.updateARContent);
+router.get('/:id',       optionalAuth,    ar.getARContentById);
 router.delete('/:id',    authenticateToken, ar.deleteARContent);
 
 module.exports = router;

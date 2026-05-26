@@ -32,7 +32,6 @@ import MagazineModal from '../components/MagazineModal';
 import PalNovaaLab from '../components/PalNovaaLab';
 import SplashLoading from '../components/SplashLoading';
 import LiveCameraModal from '../components/LiveCameraModal';
-import SpatialARViewer from '../components/SpatialARViewer';
 import { postService, friendService, authService, notificationService, communityService, shopService, cameraService, getImageUrl } from '../services/api';
 import { isNative, startNativeTracking, stopNativeTracking } from '../utils/nativeLocation';
 import './Map.css';
@@ -2917,7 +2916,7 @@ const MapComponent = () => {
                         setShowProfile(true);
                         setShowSidebar(false);
                     } else if (action === 'spatial-ar') {
-                        setShowARViewer(true);
+                        navigate('/ar');
                         setShowSidebar(false);
                     } else if (action === 'settings') {
                         setShowProfile(true); // Opens profile which includes settings/privacy
@@ -3152,13 +3151,7 @@ const MapComponent = () => {
                 </button>
             )}
 
-            {/* Spatial AR Viewer Modal - Legacy (replaced by /ar page) */}
-            {showARViewer && (
-                <SpatialARViewer
-                    onClose={() => setShowARViewer(false)}
-                    user={user}
-                />
-            )}
+            {/* Legacy Spatial AR Viewer removed (replaced by /ar page) */}
         </div>
     );
 };

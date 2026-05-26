@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import QRCode from 'qrcode';
 import './ARAdminPanel.css';
 
 const BASE = import.meta.env.VITE_API_URL || '';
@@ -89,6 +90,81 @@ export default function ARAdminPanel({ onClose }) {
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [message, setMessage] = useState(null); // { type: 'success'|'error', text: string }
+
+  // ─── Secure QR Code states & handlers ───────────────────────────────────────
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [qrTitle, setQrTitle] = useState('');
+  const [qrValue, setQrValue] = useState('');
+
+  const encodePayload = (id) => {
+    const raw = `AGQ_QR:${id}:${Date.now()}`;
+    const base64 = btoa(unescape(encodeURIComponent(raw)));
+    return 'AGQ_' + base64.split('').reverse().join('');
+  };
+
+  const handleGenerateQR = (id, title) => {
+    const val = encodePayload(id);
+    setQrValue(val);
+    setQrTitle(title);
+    setShowQRModal(true);
+  };
+
+  useEffect(() => {
+    if (showQRModal && qrValue) {
+      const canvas = document.getElementById('ar-qr-canvas');
+      if (canvas) {
+        QRCode.toCanvas(canvas, qrValue, {
+          width: 260,
+          margin: 2,
+          color: {
+            dark: '#000814',
+            light: '#ffffff'
+          }
+        }).catch(err => console.error('Error drawing QR:', err));
+      }
+    }
+  }, [showQRModal, qrValue]);
+
+  const handlePrintQR = () => {
+    const canvas = document.getElementById('ar-qr-canvas');
+    if (!canvas) return;
+    const win = window.open('', '_blank');
+    const dataUrl = canvas.toDataURL('image/png');
+    win.document.write(`
+      <html>
+        <head>
+          <title>رمز كاشف آمن - ${qrTitle}</title>
+          <style>
+            body { font-family: system-ui, sans-serif; text-align: center; padding: 40px; direction: rtl; }
+            h1 { margin-bottom: 5px; font-size: 24px; color: #000; }
+            p { font-size: 14px; color: #666; margin-bottom: 20px; }
+            img { width: 300px; height: 300px; border: 1px solid #ccc; padding: 10px; border-radius: 12px; }
+            @media print {
+              button { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <h1>رمز QR آمن: ${qrTitle}</h1>
+          <p>يمكن قراءته فقط من خلال كاشف الموقع في تطبيقنا</p>
+          <img src="${dataUrl}" />
+          <br><br>
+          <button onclick="window.print()">طباعة الرمز 🖨️</button>
+        </body>
+      </html>
+    `);
+    win.document.close();
+  };
+
+  const handleDownloadQR = () => {
+    const canvas = document.getElementById('ar-qr-canvas');
+    if (!canvas) return;
+    const dataUrl = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `QR_${qrTitle.replace(/\s+/g, '_')}.png`;
+    a.click();
+  };
 
   const token = localStorage.getItem('token');
   const authHeaders = {
@@ -543,13 +619,22 @@ export default function ARAdminPanel({ onClose }) {
 
                   <div className="ar-card-footer">
                     <span className="ar-card-id">ID: {(item._id || item.id || '').toString().slice(-8)}</span>
-                    <button
-                      className="ar-delete-btn"
-                      onClick={() => handleDelete(item._id || item.id, item.title)}
-                      title="حذف"
-                    >
-                      🗑️ حذف
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        className="ar-qr-btn"
+                        onClick={() => handleGenerateQR(item.id, item.title)}
+                        title="توليد رمز QR آمن"
+                      >
+                        🖨️ رمز QR
+                      </button>
+                      <button
+                        className="ar-delete-btn"
+                        onClick={() => handleDelete(item._id || item.id, item.title)}
+                        title="حذف"
+                      >
+                        🗑️ حذف
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -557,6 +642,31 @@ export default function ARAdminPanel({ onClose }) {
           </div>
         )}
       </div>
+
+      {/* ─── Secure QR Code Modal ─── */}
+      {showQRModal && (
+        <div className="ar-modal-overlay" onClick={() => setShowQRModal(false)}>
+          <div className="ar-modal-card" onClick={e => e.stopPropagation()}>
+            <button className="ar-modal-close" onClick={() => setShowQRModal(false)}>✕</button>
+            <h3 className="ar-modal-title">رمز QR المخصص الآمن</h3>
+            <p className="ar-modal-subtitle">اسم المعلم: <strong style={{ color: '#00d4ff' }}>{qrTitle}</strong></p>
+            <p className="ar-modal-info">لا يمكن قراءة هذا الرمز من خلال كاميرات الهواتف العادية، فقط من كاشف الموقع لدينا.</p>
+            
+            <div className="ar-qr-container">
+              <canvas id="ar-qr-canvas" />
+            </div>
+
+            <div className="ar-modal-actions">
+              <button onClick={handlePrintQR} className="ar-action-btn print">
+                🖨️ طباعة الرمز
+              </button>
+              <button onClick={handleDownloadQR} className="ar-action-btn download">
+                📥 تحميل كصورة PNG
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
