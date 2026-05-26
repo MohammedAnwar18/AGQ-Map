@@ -45,8 +45,15 @@ const createARContent = async (req, res) => {
         const { latitude, longitude, title, content, shape = 'crystal', bearing = 0 } = req.body;
         const ownerId = req.user?.id || req.user?.userId;
 
-        // التحقق من الصلاحيات
-        if (req.user?.role !== 'admin') {
+        if (!ownerId) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        // التحقق من الصلاحيات ديناميكياً من قاعدة البيانات لتجنب مشكلة الـ JWT القديمة
+        const userCheck = await pool.query('SELECT role FROM users WHERE id = $1', [ownerId]);
+        const dbRole = userCheck.rows[0]?.role;
+
+        if (dbRole !== 'admin') {
             return res.status(403).json({ error: 'Only admins can author Spatial AR Content' });
         }
 
@@ -82,8 +89,17 @@ const createARContent = async (req, res) => {
 const deleteARContent = async (req, res) => {
     try {
         const arId = parseInt(req.params.id);
+        const ownerId = req.user?.id || req.user?.userId;
 
-        if (req.user?.role !== 'admin') {
+        if (!ownerId) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        // التحقق من الصلاحيات ديناميكياً من قاعدة البيانات لتجنب مشكلة الـ JWT القديمة
+        const userCheck = await pool.query('SELECT role FROM users WHERE id = $1', [ownerId]);
+        const dbRole = userCheck.rows[0]?.role;
+
+        if (dbRole !== 'admin') {
             return res.status(403).json({ error: 'Only admins can delete Spatial AR Content' });
         }
 
