@@ -143,7 +143,7 @@ export default function ARView() {
   // ─ Fetch AR content from backend ─────────────────────────────
   const fetchAR = useCallback(async (lat, lng) => {
     try {
-      const base = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const base = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5000`;
       const r = await fetch(`${base}/api/ar/nearby?lat=${lat}&lng=${lng}&radius=500`);
       if (!r.ok) return;
       const data = await r.json();
@@ -158,7 +158,7 @@ export default function ARView() {
     if (!userPos || !createData.title) return;
     setIsSubmitting(true);
     try {
-      const base = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const base = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5000`;
       const token = localStorage.getItem('token');
       
       const endpoint = createData.type === 'building' ? '/api/ar/building' 
@@ -167,6 +167,7 @@ export default function ARView() {
 
       const payload = {
         ...createData,
+        era_year: createData.era_year ? parseInt(createData.era_year, 10) : null,
         latitude: userPos.lat,
         longitude: userPos.lng,
         bearing: compass
@@ -178,7 +179,10 @@ export default function ARView() {
         body: JSON.stringify(payload)
       });
 
-      if (!res.ok) throw new Error('فشل الإضافة');
+      if (!res.ok) {
+        const errData = await res.json().catch(()=>({}));
+        throw new Error(errData.error || `فشل الإضافة (رمز الخطأ: ${res.status})`);
+      }
       const data = await res.json();
       
       if (data.content) setArItems(prev => [...prev, data.content]);
