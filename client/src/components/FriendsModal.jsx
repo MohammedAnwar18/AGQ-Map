@@ -55,7 +55,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
 
     // Create Shop State
     const [isCreatingShop, setIsCreatingShop] = useState(false);
-    const [newShopData, setNewShopData] = useState({ name: '', category: 'General', lat: '', lon: '', menu_layout: 'default', stream_url: '', crop_position: 'full' });
+    const [newShopData, setNewShopData] = useState({ name: '', category: 'General', lat: '', lon: '', menu_layout: 'default', stream_url: '', crop_position: 'full', specialization: '' });
     const [isSubmittingShop, setIsSubmittingShop] = useState(false);
 
     // Create University State
@@ -234,7 +234,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
 
                 alert("تم إضافة الكاميرا بنجاح!");
                 setIsCreatingShop(false);
-                setNewShopData({ name: '', category: 'General', lat: '', lon: '', menu_layout: 'default', stream_url: '', crop_position: 'full' });
+                setNewShopData({ name: '', category: 'General', lat: '', lon: '', menu_layout: 'default', stream_url: '', crop_position: 'full', specialization: '' });
                 
                 if (onCameraAdded) {
                     onCameraAdded(createdCamera);
@@ -242,9 +242,17 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                     onShopFollowed();
                 }
             } else {
+                if (newShopData.category === 'محل تجاري متخصص' && !newShopData.specialization.trim()) {
+                    alert("يرجى كتابة تخصص المحل");
+                    setIsSubmittingShop(false);
+                    return;
+                }
+                const finalCategory = newShopData.category === 'محل تجاري متخصص'
+                    ? `محل تجاري متخصص - ${newShopData.specialization.trim()}`
+                    : newShopData.category;
                 const createdShop = await shopService.create({
                     name: newShopData.name,
-                    category: newShopData.category,
+                    category: finalCategory,
                     latitude: parseFloat(newShopData.lat),
                     longitude: parseFloat(newShopData.lon),
                     custom_design: {
@@ -255,7 +263,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
 
                 alert("تم إنشاء المحل بنجاح مع التصميم الخاص!");
                 setIsCreatingShop(false);
-                setNewShopData({ name: '', category: 'General', lat: '', lon: '', menu_layout: 'default', stream_url: '', crop_position: 'full' });
+                setNewShopData({ name: '', category: 'General', lat: '', lon: '', menu_layout: 'default', stream_url: '', crop_position: 'full', specialization: '' });
                 setPendingDesign(null);
                 await handleFollowShop(createdShop);
             }
@@ -675,8 +683,21 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                         <option value="فندق">فندق</option>
                                                         <option value="مركز ثقافي">مركز ثقافي</option>
                                                         <option value="كرفان">كرفان</option>
+                                                        <option value="محل تجاري متخصص">محل تجاري متخصص</option>
                                                     </select>
                                                 </div>
+                                                {newShopData.category === 'محل تجاري متخصص' && (
+                                                    <div>
+                                                        <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>تخصص المحل</label>
+                                                        <input
+                                                            type="text"
+                                                            value={newShopData.specialization}
+                                                            onChange={e => setNewShopData({ ...newShopData, specialization: e.target.value })}
+                                                            placeholder="مثلاً: بيع الأحذية الرياضية"
+                                                            style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '1rem' }}
+                                                        />
+                                                    </div>
+                                                )}
                                                 {newShopData.category === 'Camera' && (
                                                     <>
                                                         <div>
