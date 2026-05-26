@@ -242,8 +242,8 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
 
     const isVanillaDesign = design.menu_layout === 'vanilla' || shop.name.includes('فاينلا') || shop.name.includes('فانيلا') || shop.name.includes('فاننيلا') || shop.name.toLowerCase().includes('vanilla');
     const isModernRestaurantDesign = design.menu_layout === 'restaurant_modern';
-    const isLabDesign = design.menu_layout === 'lab' || shop.name.toLowerCase().includes('coffee lab') || shop.name.includes('لاب');
-    const isCoffeeLabApp = shop.name.toLowerCase().includes('coffee lab') || shop.name.includes('كوفي لاب') || design.layout === 'coffeelab';
+    const isLabDesign = design.menu_layout === 'lab';
+    const isCoffeeLabApp = design.layout === 'coffeelab';
 
     const coverUrl = shopData.cover_picture
         ? getImageUrl(shopData.cover_picture)
