@@ -143,7 +143,7 @@ const BIRZEIT_POLYGON = [[35.18513515866644,31.957184076802875],[35.182098437430
 const MapComponent = () => {
     const { user, logout, socket } = useAuth();
     const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const shopIdQuery = searchParams.get('shopId');
     const facilityIdQuery = searchParams.get('facilityId');
     const isGuestMode = !user && (!!shopIdQuery || !!facilityIdQuery);
@@ -534,6 +534,7 @@ const MapComponent = () => {
     const [showShops, setShowShops] = useState(false);
     const [showMunicipalities, setShowMunicipalities] = useState(false);
     const [showProfile, setShowProfile] = useState(false);
+    const [selectedProfileId, setSelectedProfileId] = useState(null);
     const [showSidebar, setShowSidebar] = useState(false);
     const [showCreatePost, setShowCreatePost] = useState(false);
     const [isUserInfoExpanded, setIsUserInfoExpanded] = useState(false);
@@ -1285,6 +1286,14 @@ const MapComponent = () => {
             return () => clearTimeout(timer);
         }
     }, [searchParams, user, isGuestMode]);
+
+    // Deep Link Handler for User Profile QR code scanning
+    useEffect(() => {
+        const userId = searchParams.get('userId');
+        if (userId && user) {
+            setSelectedProfileId(userId);
+        }
+    }, [searchParams, user]);
 
     // Native-Grade Geolocation Tracking
     useEffect(() => {
@@ -2933,7 +2942,20 @@ const MapComponent = () => {
                     }
                 }}
             />
-            {showProfile && <ProfileModal userId={user.id} onClose={() => setShowProfile(false)} />}
+            {(showProfile || selectedProfileId) && (
+                <ProfileModal 
+                    userId={selectedProfileId || user.id} 
+                    onClose={() => { 
+                        setShowProfile(false); 
+                        setSelectedProfileId(null); 
+                        setSearchParams(prev => {
+                            const next = new URLSearchParams(prev);
+                            next.delete('userId');
+                            return next;
+                        });
+                    }} 
+                />
+            )}
             {showNotifications && <NotificationsModal onClose={() => setShowNotifications(false)} onNotificationClick={(data) => {
                 if (data.shopId) {
                     const shopMock = {

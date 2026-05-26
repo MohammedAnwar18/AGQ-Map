@@ -6,6 +6,7 @@ import CustomCalendar from './CustomCalendar';
 import FriendButton from './FriendButton';
 import DefaultAvatar from './DefaultAvatar';
 import './Modal.css';
+import QRCode from 'qrcode';
 
 // Admin verification badge - golden shield with checkmark
 const AdminBadge = () => (
@@ -127,11 +128,45 @@ const ProfileModal = ({ userId, onClose }) => {
     const [showCropper, setShowCropper] = useState(false);
     const [tempImageSrc, setTempImageSrc] = useState(null);
     const [showCalendar, setShowCalendar] = useState(false);
+    const [showQRView, setShowQRView] = useState(false);
 
     useEffect(() => {
         loadProfile();
         loadPublishedPages();
     }, [userId]);
+
+    useEffect(() => {
+        if (showQRView && profile) {
+            const canvas = document.getElementById('profile-qr-canvas');
+            if (canvas) {
+                const raw = `AGQ_QR:user_${profile.id}:${Date.now()}`;
+                const base64 = btoa(unescape(encodeURIComponent(raw)));
+                const qrValue = 'AGQ_' + base64.split('').reverse().join('');
+
+                QRCode.toCanvas(canvas, qrValue, {
+                    width: 256,
+                    margin: 1,
+                    color: {
+                        dark: '#000000',
+                        light: '#FFFFFF'
+                    }
+                }).catch(err => console.error('Error drawing profile QR:', err));
+            }
+        }
+    }, [showQRView, profile]);
+
+    const handleDownloadQR = () => {
+        const canvas = document.getElementById('profile-qr-canvas');
+        if (canvas) {
+            const url = canvas.toDataURL('image/png');
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `QR_${profile?.full_name || profile?.username}.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+    };
 
     const loadPublishedPages = async () => {
         try {
@@ -546,7 +581,7 @@ const ProfileModal = ({ userId, onClose }) => {
                                     </div>
                                 ) : (
                                     <>
-                                        {/* Name + Admin Badge */}
+                                        {/* Name + Admin Badge + QR share button */}
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '4px' }}>
                                             <h2 style={{ marginBottom: 0 }}>
                                                 {profile.full_name || profile.username}
@@ -560,6 +595,44 @@ const ProfileModal = ({ userId, onClose }) => {
                                                     style={{ transform: 'translateY(-2px)' }}
                                                 />
                                             )}
+                                            
+                                            {/* QR share button */}
+                                            <button 
+                                                onClick={() => setShowQRView(true)}
+                                                style={{
+                                                    background: 'rgba(255, 255, 255, 0.08)',
+                                                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                                                    borderRadius: '50%',
+                                                    width: '32px',
+                                                    height: '32px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    color: 'var(--text-primary)',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s ease',
+                                                    padding: 0,
+                                                    boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
+                                                }}
+                                                onMouseOver={(e) => {
+                                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                                                    e.currentTarget.style.borderColor = 'var(--primary)';
+                                                    e.currentTarget.style.transform = 'scale(1.08)';
+                                                }}
+                                                onMouseOut={(e) => {
+                                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                                                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                                                    e.currentTarget.style.transform = 'scale(1)';
+                                                }}
+                                                title="عرض رمز QR التعريفي"
+                                            >
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
+                                                    <rect x="3" y="3" width="6" height="6" rx="0.5" />
+                                                    <rect x="15" y="3" width="6" height="6" rx="0.5" />
+                                                    <rect x="3" y="15" width="6" height="6" rx="0.5" />
+                                                    <path d="M16 16h1v1h-1zM19 19h2v2h-2zM15 20h2v1h-2zM20 15h1v2h-1zM10 5h2v2h-2zM10 10h2v2h-2zM5 10h2v2H5zM15 10h3v2h-3zM10 16h2v3h-2z" fill="currentColor" />
+                                                </svg>
+                                            </button>
                                         </div>
 
                                         {/* Username - hidden for admin from others, always visible for self */}
@@ -881,6 +954,125 @@ const ProfileModal = ({ userId, onClose }) => {
                         setTempImageSrc(null);
                     }}
                 />
+            )}
+
+            {/* QR View Overlay */}
+            {showQRView && (
+                <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(6, 13, 31, 0.95)',
+                    backdropFilter: 'blur(10px)',
+                    zIndex: 100,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '2rem',
+                    animation: 'fadeIn 0.3s ease',
+                    borderRadius: 'inherit'
+                }}>
+                    <button 
+                        onClick={() => setShowQRView(false)}
+                        style={{
+                            position: 'absolute',
+                            top: '1.5rem',
+                            right: '1.5rem',
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--text-muted)',
+                            fontSize: '1.5rem',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        ✕
+                    </button>
+
+                    <div style={{
+                        background: 'rgba(255, 255, 255, 0.03)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        borderRadius: '24px',
+                        padding: '2rem',
+                        width: '100%',
+                        maxWidth: '320px',
+                        textAlign: 'center',
+                        boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '1.5rem'
+                    }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                            <div style={{
+                                width: '60px',
+                                height: '60px',
+                                borderRadius: '50%',
+                                border: isAdmin ? '2px solid #FFD700' : '2px solid var(--primary)',
+                                overflow: 'hidden',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                {profile.profile_picture ? (
+                                    <img src={profile.profile_picture} alt={profile.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                ) : (
+                                    <DefaultAvatar gender={profile.gender} size={60} uid={String(profile.id)} />
+                                )}
+                            </div>
+                            <h3 style={{ fontSize: '1.1rem', fontWeight: '800', margin: 0 }}>
+                                {profile.full_name || profile.username}
+                            </h3>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>@{profile.username}</span>
+                        </div>
+
+                        {/* Beautiful QR Canvas Wrapper */}
+                        <div style={{
+                            background: 'white',
+                            borderRadius: '16px',
+                            padding: '12px',
+                            boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '200px',
+                            height: '200px'
+                        }}>
+                            <canvas id="profile-qr-canvas" style={{ width: '100%', height: '100%' }} />
+                        </div>
+
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, padding: '0 10px', direction: 'rtl' }}>
+                            امسح الرمز بكاميرا التطبيق لفتح الملف الشخصي وتأكيد الهوية 📱
+                        </p>
+
+                        <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
+                            <button
+                                onClick={handleDownloadQR}
+                                style={{
+                                    flex: 1,
+                                    padding: '10px 14px',
+                                    borderRadius: '12px',
+                                    background: 'var(--primary)',
+                                    color: '#000',
+                                    fontWeight: 'bold',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    fontSize: '0.85rem',
+                                    transition: 'all 0.2s',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '6px'
+                                }}
+                            >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                                حفظ الرمز
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

@@ -161,6 +161,17 @@ export default function ARView() {
         if (code && code.data) {
           const decoded = QR_PROTOCOL.decode(code.data);
           if (decoded && decoded.id) {
+            if (decoded.id.startsWith('user_')) {
+              const uId = decoded.id.replace('user_', '');
+              try {
+                if (navigator.vibrate) navigator.vibrate(80);
+              } catch {}
+              if (videoRef.current && videoRef.current.srcObject) {
+                videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+              }
+              navigate(`/?userId=${uId}`);
+              return;
+            }
             handleQRDetected(decoded.id);
           } else {
             console.log('Unrecognized standard QR:', code.data);
