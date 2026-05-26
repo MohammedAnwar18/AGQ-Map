@@ -143,7 +143,7 @@ export default function ARView() {
   // ─ Fetch AR content from backend ─────────────────────────────
   const fetchAR = useCallback(async (lat, lng) => {
     try {
-      const base = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5000`;
+      const base = import.meta.env.VITE_API_URL || '';
       const r = await fetch(`${base}/api/ar/nearby?lat=${lat}&lng=${lng}&radius=500`);
       if (!r.ok) return;
       const data = await r.json();
@@ -158,7 +158,7 @@ export default function ARView() {
     if (!userPos || !createData.title) return;
     setIsSubmitting(true);
     try {
-      const base = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5000`;
+      const base = import.meta.env.VITE_API_URL || '';
       const token = localStorage.getItem('token');
       
       const endpoint = createData.type === 'building' ? '/api/ar/building' 
