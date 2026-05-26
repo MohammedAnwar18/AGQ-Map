@@ -238,48 +238,18 @@
 }
 
 .srm-yt-target iframe {
-    width: 135% !important; /* Scaled up to completely crop YouTube logo and titles at the edges */
-    height: 135% !important;
+    width: 115% !important;
+    height: 115% !important;
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    pointer-events: none !important; /* Disable all native YouTube iframe interactions */
 }
 
 .srm-player-wrapper.is-full .srm-yt-target iframe {
-    width: 325% !important; /* Scaled up to fill screen and crop YouTube watermark in full mode */
-    height: 135% !important;
-}
-
-/* ── PLAYER COVER OVERLAY (Instagram reels style transition) ───── */
-.srm-player-cover {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    background: #000;
-    z-index: 2;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-}
-
-.srm-cover-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    filter: brightness(0.75);
-}
-
-.srm-cover-spinner-container {
-    position: absolute;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
+    width: 300% !important; /* Force overflow to fill vertical screen with landscape content */
+    height: 115% !important;
 }
 
 /* ── ZOOM BUTTON ────────────────────────────────────────────── */
