@@ -284,7 +284,8 @@ export default function SpatialARViewer({ onClose, user }) {
       }
     } catch (err) {
       console.error('Failed to create spatial AR content:', err);
-      alert('خطأ أثناء حفظ العلامة المكانية. يرجى التحقق من الصلاحيات.');
+      const msg = err.response?.data?.error || err.message || 'خطأ غير معروف';
+      alert(`خطأ أثناء حفظ العلامة المكانية:\n${msg}`);
     } finally {
       setSubmitting(false);
     }

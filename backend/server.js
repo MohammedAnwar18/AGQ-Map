@@ -8,6 +8,33 @@ const http = require('http');
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
+const pool = require('./config/database');
+
+// Auto-migration: تأكد من وجود جدول ar_contents عند بدء تشغيل السيرفر
+(async () => {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS ar_contents (
+                id SERIAL PRIMARY KEY,
+                latitude NUMERIC NOT NULL,
+                longitude NUMERIC NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                content TEXT,
+                shape VARCHAR(50) DEFAULT 'crystal',
+                bearing NUMERIC DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                location GEOGRAPHY(Point, 4326)
+            )
+        `);
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS ar_contents_location_idx ON ar_contents USING GIST (location)
+        `);
+        console.log('✅ ar_contents table ready');
+    } catch (err) {
+        console.error('⚠️ ar_contents migration error:', err.message);
+    }
+})();
 
 // 1. إنشاء التطبيق
 const app = express();
