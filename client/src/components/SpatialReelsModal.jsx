@@ -231,6 +231,7 @@ const YouTubePlayer = React.memo(({ videoId, isActive, isMuted, isFull, onToggle
     const [isPlaying, setIsPlaying] = useState(false);
     const [progress, setProgress] = useState(0);
     const [isApiReady, setIsApiReady] = useState(false);
+    const [isRevealed, setIsRevealed] = useState(false); // Reveal only when active playing starts
     const lastTapRef = useRef({ time: 0, side: null });
 
     useEffect(() => {
@@ -249,6 +250,11 @@ const YouTubePlayer = React.memo(({ videoId, isActive, isMuted, isFull, onToggle
         return () => document.removeEventListener('youtubeApiReady', handleReady);
     }, []);
 
+    // Reset reveal state on video change
+    useEffect(() => {
+        setIsRevealed(false);
+    }, [videoId, isActive]);
+
     useEffect(() => {
         if (!isApiReady || !videoId || !containerRef.current) return;
         const player = new window.YT.Player(containerRef.current, {
@@ -265,7 +271,8 @@ const YouTubePlayer = React.memo(({ videoId, isActive, isMuted, isFull, onToggle
                 enablejsapi: 1,
                 // Enable loop for a continuous reel experience
                 loop: 1,
-                playlist: videoId
+                playlist: videoId,
+                iv_load_policy: 3
             },
             events: {
                 onReady: (event) => {
@@ -274,6 +281,9 @@ const YouTubePlayer = React.memo(({ videoId, isActive, isMuted, isFull, onToggle
                 },
                 onStateChange: (event) => {
                     setIsPlaying(event.data === 1);
+                    if (event.data === 1) {
+                        setIsRevealed(true); // Show video when active playing starts
+                    }
                     // If video ends and loop didn't catch it, restart manually
                     if (event.data === 0 && playerRef.current) {
                         playerRef.current.seekTo(0, true);
@@ -329,7 +339,7 @@ const YouTubePlayer = React.memo(({ videoId, isActive, isMuted, isFull, onToggle
         } else {
             // Single tap logic
             lastTapRef.current = { time: now, side };
-            // Optional: Toggle play on single tap in center
+            // Toggle play on single tap in center
             if (side === 'center') {
                 if (isPlaying) playerRef.current?.pauseVideo();
                 else playerRef.current?.playVideo();
@@ -358,7 +368,28 @@ const YouTubePlayer = React.memo(({ videoId, isActive, isMuted, isFull, onToggle
     return (
         <div className={`srm-player-wrapper ${isFull ? 'is-full' : ''}`}>
             <div className="srm-player-container">
-                <div ref={containerRef} className="srm-yt-target" />
+                <div 
+                    ref={containerRef} 
+                    className="srm-yt-target" 
+                    style={{ 
+                        opacity: isRevealed ? 1 : 0, 
+                        transition: 'opacity 0.35s ease-in-out' 
+                    }} 
+                />
+                
+                {/* Custom Thumbnail Cover Overlay to hide YouTube black frames / play button / loading spinner */}
+                {!isRevealed && (
+                    <div className="srm-player-cover">
+                        <img 
+                            src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`} 
+                            alt="cover" 
+                            className="srm-cover-img" 
+                        />
+                        <div className="srm-cover-spinner-container">
+                            <span className="srm-spinner-large" />
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Zoom Toggle Button */}
@@ -387,7 +418,7 @@ const YouTubePlayer = React.memo(({ videoId, isActive, isMuted, isFull, onToggle
                     <div className="srm-tap-hint"><span>-10s</span></div>
                 </div>
                 <div className="srm-tap-zone center" onClick={() => handleInteraction('center')}>
-                    {!isPlaying && isActive && (
+                    {!isPlaying && isActive && isRevealed && (
                         <div className="srm-play-icon-overlay">
                             <svg viewBox="0 0 24 24" width="44" height="44" fill="white"><path d="M8 5v14l11-7z" /></svg>
                         </div>
