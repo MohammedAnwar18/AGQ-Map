@@ -1,34 +1,19 @@
 import React from 'react';
 
 const DefaultAvatar = ({ gender, size = 110, uid = 'u', style = {} }) => {
-    const p = `av-${uid}`;
-
     if (gender === 'male') {
         return (
             <svg width={size} height={size} viewBox="0 0 100 100" style={{ borderRadius: '50%', display: 'block', ...style }}>
-                <defs>
-                    <clipPath id={`${p}-clip`}>
-                        <circle cx="50" cy="50" r="45" />
-                    </clipPath>
-                </defs>
-
                 {/* Background */}
                 <circle cx="50" cy="50" r="50" fill="#ffffff" />
                 
                 {/* Outer Ring */}
                 <circle cx="50" cy="50" r="45" fill="none" stroke="#026a9e" strokeWidth="5" />
                 
-                {/* Silhouette clipped inside the circle */}
-                <g fill="#026a9e" clipPath={`url(#${p}-clip)`}>
-                    {/* Head */}
-                    <path d="M50,47 C55.5,47 59.5,42.5 59.5,35 C59.5,27.5 55.5,20.5 50,20.5 C44.5,20.5 40.5,27.5 40.5,35 C40.5,42.5 44.5,47 50,47 Z" />
-                    {/* Hair */}
-                    <path d="M37.5,30 C37,20 42.5,15 50,15 C57.5,15 63,20 62.5,30 C61.5,25.5 58.5,19 50,19 C41.5,19 38.5,25.5 37.5,30 Z" />
-                    {/* Neck */}
-                    <path d="M44.5,46 L44.5,58 L55.5,58 L55.5,46 Z" />
-                    {/* Shoulders */}
-                    <path d="M22,86 C22,68 34,58 42,56 L58,56 C66,58 78,68 78,86 L78,96 L22,96 Z" />
-                </g>
+                {/* Nested Male Symbol SVG */}
+                <svg x="25" y="25" width="50" height="50" viewBox="0 -960 960 960">
+                    <path d="M400-80v-280h-80v-240q0-33 23.5-56.5T400-680h160q33 0 56.5 23.5T640-600v240h-80v280H400Zm80-640q-33 0-56.5-23.5T400-800q0-33 23.5-56.5T480-880q33 0 56.5 23.5T560-800q0 33-23.5 56.5T480-720Z" fill="#026a9e" />
+                </svg>
             </svg>
         );
     }
@@ -36,29 +21,16 @@ const DefaultAvatar = ({ gender, size = 110, uid = 'u', style = {} }) => {
     if (gender === 'female') {
         return (
             <svg width={size} height={size} viewBox="0 0 100 100" style={{ borderRadius: '50%', display: 'block', ...style }}>
-                <defs>
-                    <clipPath id={`${p}-clip`}>
-                        <circle cx="50" cy="50" r="45" />
-                    </clipPath>
-                </defs>
-                
                 {/* Background */}
                 <circle cx="50" cy="50" r="50" fill="#ffffff" />
                 
                 {/* Outer Ring */}
                 <circle cx="50" cy="50" r="45" fill="none" stroke="#c42f6d" strokeWidth="5" />
                 
-                {/* Silhouette clipped inside the circle */}
-                <g fill="#c42f6d" clipPath={`url(#${p}-clip)`}>
-                    {/* Head */}
-                    <path d="M50,47 C55.5,47 59.5,42.5 59.5,36 C59.5,29.5 55.5,22 50,22 C44.5,22 40.5,29.5 40.5,36 C40.5,42.5 44.5,47 50,47 Z" />
-                    {/* Hair */}
-                    <path d="M36,36 C35,24 41,16 50,16 C59,16 65,24 64,36 C63,47 61.5,49 61.5,54 C61.5,49 62,44 61,38 C60,30 56.5,21 50,21 C43.5,21 40,30 39,38 C38,44 38.5,49 38.5,54 C38.5,49 37,47 36,36 Z" />
-                    {/* Neck */}
-                    <path d="M44.5,45 L44.5,59 L55.5,59 L55.5,45 Z" />
-                    {/* Shoulders */}
-                    <path d="M24,86 C24,70 35,61 43,59 L57,59 C65,61 76,70 76,86 L76,96 L24,96 Z" />
-                </g>
+                {/* Nested Female Symbol SVG */}
+                <svg x="25" y="25" width="50" height="50" viewBox="0 -960 960 960">
+                    <path d="M400-80v-240H280l122-308q10-24 31-38t47-14q26 0 47 14t31 38l122 308H560v240H400Zm23.5-663.5Q400-767 400-800t23.5-56.5Q447-880 480-880t56.5 23.5Q560-833 560-800t-23.5 56.5Q513-720 480-720t-56.5-23.5Z" fill="#c42f6d" />
+                </svg>
             </svg>
         );
     }
@@ -66,29 +38,16 @@ const DefaultAvatar = ({ gender, size = 110, uid = 'u', style = {} }) => {
     // Neutral / unknown gender
     return (
         <svg width={size} height={size} viewBox="0 0 100 100" style={{ borderRadius: '50%', display: 'block', ...style }}>
-            <defs>
-                <clipPath id={`${p}-clip`}>
-                    <circle cx="50" cy="50" r="45" />
-                </clipPath>
-            </defs>
-            
             {/* Background */}
             <circle cx="50" cy="50" r="50" fill="#ffffff" />
             
             {/* Outer Ring */}
             <circle cx="50" cy="50" r="45" fill="none" stroke="#64748b" strokeWidth="5" />
             
-            {/* Silhouette clipped inside the circle */}
-            <g fill="#64748b" clipPath={`url(#${p}-clip)`}>
-                {/* Head */}
-                <path d="M50,47 C55.5,47 59.5,42.5 59.5,35 C59.5,27.5 55.5,20.5 50,20.5 C44.5,20.5 40.5,27.5 40.5,35 C40.5,42.5 44.5,47 50,47 Z" />
-                {/* Generic Hair / Cap shape */}
-                <path d="M37.5,32 C37,22 42.5,17 50,17 C57.5,17 63,22 62.5,32 C61.5,27.5 58.5,21 50,21 C41.5,21 38.5,27.5 37.5,32 Z" />
-                {/* Neck */}
-                <path d="M44.5,46 L44.5,58 L55.5,58 L55.5,46 Z" />
-                {/* Shoulders */}
-                <path d="M22,86 C22,68 34,58 42,56 L58,56 C66,58 78,68 78,86 L78,96 L22,96 Z" />
-            </g>
+            {/* Nested Neutral Symbol SVG */}
+            <svg x="25" y="25" width="50" height="50" viewBox="0 -960 960 960">
+                <path d="M480-480q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47ZM160-240v-80q0-33 17-60.5t47-44.5q67-30 136.5-45t139.5-15q70 0 139.5 15t136.5 45q30 17 47 44.5t17 60.5v80H160Z" fill="#64748b" />
+            </svg>
         </svg>
     );
 };
