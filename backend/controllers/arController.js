@@ -389,7 +389,8 @@ async function getARStats(req, res) {
         COUNT(*)                                          AS total,
         COUNT(*) FILTER (WHERE type = 'building')        AS buildings,
         COUNT(*) FILTER (WHERE type = 'story')           AS stories,
-        COUNT(*) FILTER (WHERE type = 'nav_point')       AS nav_points
+        COUNT(*) FILTER (WHERE type = 'nav_point')       AS nav_points,
+        COUNT(*) FILTER (WHERE type = 'photo_marker')    AS photo_markers
       FROM ar_contents
     `);
 
@@ -399,6 +400,7 @@ async function getARStats(req, res) {
       buildings:  parseInt(stats.buildings,  10),
       stories:    parseInt(stats.stories,    10),
       nav_points: parseInt(stats.nav_points, 10),
+      photo_markers: parseInt(stats.photo_markers, 10),
     });
   } catch (err) {
     console.error('[getARStats]', err);
@@ -430,6 +432,54 @@ async function getAllARContents(req, res) {
 }
 
 // ---------------------------------------------------------------------------
+// POST /api/ar/photo-marker — Admin captures photo + GPS + title/desc
+// ---------------------------------------------------------------------------
+async function createPhotoMarker(req, res) {
+  try {
+    const userId = getUserId(req);
+    if (!(await isAdmin(userId))) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { title, content, latitude, longitude, bearing } = req.body;
+
+    if (!latitude || !longitude || !title) {
+      return res.status(400).json({ error: 'latitude, longitude and title are required' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'Image file (photo) is required' });
+    }
+
+    // Upload to Cloudflare R2
+    const { uploadToCloud } = require('../utils/storage');
+    const imageUrl = await uploadToCloud(req.file.buffer, req.file.originalname, req.file.mimetype);
+
+    const { rows } = await pool.query(
+      `INSERT INTO ar_contents
+         (latitude, longitude, title, content,
+          type, image_url, bearing, owner_id)
+       VALUES ($1, $2, $3, $4, 'photo_marker', $5, $6, $7)
+       RETURNING ${RETURNING_FIELDS}`,
+      [
+        parseFloat(latitude),
+        parseFloat(longitude),
+        title,
+        content || null,
+        imageUrl,
+        bearing ? parseFloat(bearing) : 0,
+        userId,
+      ]
+    );
+
+    return res.status(201).json({ content: rows[0] });
+  } catch (err) {
+    console.error('[createPhotoMarker]', err);
+    return res.status(500).json({ error: 'Failed to create photo marker AR content', details: err.message });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
 module.exports = {
@@ -442,4 +492,5 @@ module.exports = {
   deleteARContent,
   getARStats,
   getAllARContents,
+  createPhotoMarker,
 };

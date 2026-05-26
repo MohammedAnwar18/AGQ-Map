@@ -48,6 +48,7 @@ const TYPE_META = {
   building: { icon: '🏛️', label: 'مبنى تاريخي', color: '#00d4ff' },
   story: { icon: '📜', label: 'قصة مكانية', color: '#7c3aed' },
   nav_point: { icon: '🧭', label: 'نقطة توجيه', color: '#059669' },
+  photo_marker: { icon: '📸', label: 'معلم فوتوغرافي', color: '#10b981' },
 };
 
 // ─── Reusable Field Components ─────────────────────────────────────────────────
@@ -83,7 +84,7 @@ export default function ARAdminPanel({ onClose }) {
   const [navForm, setNavForm] = useState(DEFAULT_NAVPOINT);
 
   const [arItems, setArItems] = useState([]);
-  const [stats, setStats] = useState({ buildings: 0, stories: 0, nav_points: 0 });
+  const [stats, setStats] = useState({ buildings: 0, stories: 0, nav_points: 0, photo_markers: 0, total: 0 });
 
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
@@ -112,7 +113,7 @@ export default function ARAdminPanel({ onClose }) {
 
       if (allRes.ok) {
         const data = await allRes.json();
-        setArItems(Array.isArray(data) ? data : data.items || []);
+        setArItems(Array.isArray(data) ? data : (data.contents || data.items || []));
       }
 
       if (statsRes.ok) {
@@ -121,6 +122,8 @@ export default function ARAdminPanel({ onClose }) {
           buildings: sdata.buildings ?? 0,
           stories: sdata.stories ?? 0,
           nav_points: sdata.nav_points ?? 0,
+          photo_markers: sdata.photo_markers ?? 0,
+          total: sdata.total ?? 0,
         });
       }
     } catch (err) {
@@ -247,10 +250,17 @@ export default function ARAdminPanel({ onClose }) {
             <span className="ar-stat-label">نقاط توجيه</span>
           </div>
         </div>
+        <div className="ar-stat-card ar-stat--photo-marker" style={{ borderRight: '4px solid #10b981' }}>
+          <span className="ar-stat-icon">📸</span>
+          <div className="ar-stat-info">
+            <span className="ar-stat-num">{stats.photo_markers || 0}</span>
+            <span className="ar-stat-label">معالم فوتوغرافية</span>
+          </div>
+        </div>
         <div className="ar-stat-card ar-stat--total">
           <span className="ar-stat-icon">📍</span>
           <div className="ar-stat-info">
-            <span className="ar-stat-num">{stats.buildings + stats.stories + stats.nav_points}</span>
+            <span className="ar-stat-num">{stats.total || (stats.buildings + stats.stories + stats.nav_points + (stats.photo_markers || 0))}</span>
             <span className="ar-stat-label">إجمالي النقاط</span>
           </div>
         </div>

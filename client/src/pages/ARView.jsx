@@ -1,431 +1,136 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './ARView.css';
 
 // ═══════════════════════════════════════════════════════════════
-// 📐  GEOSPATIAL ENGINE
+// 📐 GEOSPATIAL MATH UTILITIES
 // ═══════════════════════════════════════════════════════════════
 const GEO = {
-  /** Bearing (0-360) from A → B */
+  /** Calculate Bearing (0-360 degrees) from Point A to Point B */
   bearing(lat1, lng1, lat2, lng2) {
-    const φ1 = lat1 * Math.PI / 180, φ2 = lat2 * Math.PI / 180;
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
     const Δλ = (lng2 - lng1) * Math.PI / 180;
     const y = Math.sin(Δλ) * Math.cos(φ2);
     const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
     return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
   },
-  /** Haversine distance in metres */
+
+  /** Calculate Haversine distance in meters */
   distance(lat1, lng1, lat2, lng2) {
-    const R = 6371000;
-    const φ1 = lat1 * Math.PI / 180, φ2 = lat2 * Math.PI / 180;
-    const Δφ = (lat2 - lat1) * Math.PI / 180, Δλ = (lng2 - lng1) * Math.PI / 180;
+    const R = 6371000; // Earth radius in meters
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lng2 - lng1) * Math.PI / 180;
     const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   },
-  /** GPS → Three.js world offset (metres). East=+X, North=-Z */
-  toWorld(uLat, uLng, tLat, tLng) {
-    const R = 6371000;
-    const avgLat = ((uLat + tLat) / 2) * Math.PI / 180;
-    return {
-      x: (tLng - uLng) * Math.PI / 180 * R * Math.cos(avgLat),
-      z: -(tLat - uLat) * Math.PI / 180 * R,
-    };
-  },
-  /** Signed angle difference -180…180 */
-  angleDiff(a, b) {
-    let d = ((a - b) % 360 + 360) % 360;
+
+  /** Calculate signed angle difference between -180 and 180 */
+  angleDiff(target, current) {
+    let d = ((target - current) % 360 + 360) % 360;
     return d > 180 ? d - 360 : d;
   },
-  /** Is target bearing within fovAngle of deviceHeading? */
-  inFOV(targetBearing, deviceHeading, fovAngle = 25) {
-    return Math.abs(this.angleDiff(targetBearing, deviceHeading)) <= fovAngle;
-  },
-  /** Bearing → screen X % (centre = 50, H_FOV = 60°) */
-  bearingToScreenX(targetBearing, deviceHeading) {
-    const diff = this.angleDiff(targetBearing, deviceHeading);
-    return Math.max(5, Math.min(95, 50 + (diff / 60) * 100));
-  },
-  /** Elevation angle → screen Y % */
-  elevToScreenY(elevM, distM, deviceBeta) {
-    const angleDeg = Math.atan2(elevM || 2, distM) * 180 / Math.PI;
-    const diff = angleDeg - (deviceBeta || 0);
-    return Math.max(8, Math.min(88, 50 - (diff / 45) * 100));
-  },
-  /** Format distance */
-  fmt(m) { return m < 1000 ? `${Math.round(m)} م` : `${(m / 1000).toFixed(1)} كم`; },
+
+  /** Format distance nicely in Arabic */
+  fmt(m) {
+    return m < 1000 ? `${Math.round(m)} متر` : `${(m / 1000).toFixed(1)} كم`;
+  }
 };
 
-// ═══════════════════════════════════════════════════════════════
-// 🎨  HOLOGRAPHIC SHADER MATERIAL
-// ═══════════════════════════════════════════════════════════════
-function makeHoloMaterial(color = 0x00d4ff, opacity = 0.72) {
-  return new THREE.ShaderMaterial({
-    uniforms: {
-      uTime: { value: 0 },
-      uColor: { value: new THREE.Color(color) },
-      uOpacity: { value: opacity },
-    },
-    vertexShader: `
-      varying vec3 vNormal;
-      varying vec3 vPosition;
-      void main(){
-        vNormal   = normalize(normalMatrix * normal);
-        vPosition = position;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
-      }`,
-    fragmentShader: `
-      uniform float uTime;
-      uniform vec3  uColor;
-      uniform float uOpacity;
-      varying vec3 vNormal;
-      varying vec3 vPosition;
-      void main(){
-        float fresnel  = pow(1.0 - abs(dot(vNormal, vec3(0,0,1))), 2.5);
-        float scan     = step(0.92, fract(vPosition.y * 4.0 + uTime * 0.6)) * 0.4;
-        float grid     = step(0.96, fract(vPosition.x * 8.0)) * 0.15
-                       + step(0.96, fract(vPosition.z * 8.0)) * 0.15;
-        float alpha    = uOpacity * (0.25 + fresnel * 0.55 + scan + grid);
-        gl_FragColor   = vec4(uColor + vec3(scan * 0.5), alpha);
-      }`,
-    transparent: true,
-    side: THREE.DoubleSide,
-    depthWrite: false,
-  });
-}
-
-// ═══════════════════════════════════════════════════════════════
-// 🏛️  AR VIEW COMPONENT
-// ═══════════════════════════════════════════════════════════════
 export default function ARView() {
-  const navigate  = useNavigate();
+  const navigate = useNavigate();
   const { user } = useAuth();
 
-  // ─ DOM refs ──────────────────────────────────────────────────
-  const videoRef    = useRef(null);
-  const canvasRef   = useRef(null);
-  const overlayRef  = useRef(null);
+  // ─ DOM Refs ──────────────────────────────────────────────────
+  const videoRef = useRef(null);
+  const fileInputRef = useRef(null);
 
-  // ─ Three.js refs ─────────────────────────────────────────────
-  const sceneRef    = useRef(null);
-  const camRef      = useRef(null);
-  const rendRef     = useRef(null);
-  const clockRef    = useRef(new THREE.Clock());
-  const objMapRef   = useRef({});          // id → THREE.Object3D
-  const holoMatsRef = useRef([]);          // holographic materials to tick
-  const loaderRef   = useRef(new GLTFLoader());
-  const rafRef      = useRef(null);
+  // ─ Sensor States ─────────────────────────────────────────────
+  const [compass, setCompass] = useState(0); // Heading/yaw
+  const [beta, setBeta] = useState(90);      // Pitch/tilt (90 is upright vertical)
+  const [userPos, setUserPos] = useState(null);
+  const [watchId, setWatchId] = useState(null);
 
-  // ─ Sensor refs (avoid re-renders) ────────────────────────────
-  const orientRef = useRef({ alpha: 0, beta: 0, gamma: 0 });
-  const gpsRef    = useRef({ lat: null, lng: null });
-  const watchRef  = useRef(null);
-
-  // ─ State ─────────────────────────────────────────────────────
-  const [phase, setPhase]           = useState('permission'); // permission|loading|active|error
-  const [permMsg, setPermMsg]       = useState('');
-  const [compass, setCompass]       = useState(0);
-  const [beta, setBeta]             = useState(0);
-  const [userPos, setUserPos]       = useState(null);
-  const [arItems, setArItems]       = useState([]);
-  const [visibleItems, setVisible]  = useState([]);
+  // ─ App States ────────────────────────────────────────────────
+  const [phase, setPhase] = useState('permission'); // permission|loading|active|error
+  const [permMsg, setPermMsg] = useState('');
+  const [statusMsg, setStatus] = useState('جارٍ تحديد موقعك الجغرافي...');
+  const [arItems, setArItems] = useState([]);
+  const [visibleItems, setVisibleItems] = useState([]);
   const [activeItem, setActiveItem] = useState(null);
-  const [statusMsg, setStatus]      = useState('جارٍ تحديد موقعك...');
-  const [iOSPerm, setIOSPerm]       = useState(false);
+  const [iOSPerm, setIOSPerm] = useState(false);
 
-  // ─ Admin Creation State ──────────────────────────────────────
+  // ─ Admin Creation Modal State ────────────────────────────────
   const [showCreate, setShowCreate] = useState(false);
-  const [createData, setCreateData] = useState({ type: 'story', title: '', content: '', subtitle: '', image_url: '', era_year: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState('');
+  const [createTitle, setCreateTitle] = useState('');
+  const [createContent, setCreateContent] = useState('');
 
   // ─ Fetch AR content from backend ─────────────────────────────
   const fetchAR = useCallback(async (lat, lng) => {
     try {
       const base = import.meta.env.VITE_API_URL || '';
-      const r = await fetch(`${base}/api/ar/nearby?lat=${lat}&lng=${lng}&radius=500`);
+      // Increased radius to 1000m to catch more historical landmarks
+      const r = await fetch(`${base}/api/ar/nearby?lat=${lat}&lng=${lng}&radius=1000`);
       if (!r.ok) return;
       const data = await r.json();
       setArItems(data.contents || []);
-      setStatus(`وُجد ${data.contents?.length || 0} عناصر AR`);
-    } catch { setStatus('لا يوجد اتصال بالخادم — وضع تجريبي'); }
+      setStatus(`تم العثور على ${data.contents?.length || 0} معلم جغرافي`);
+    } catch {
+      setStatus('لا يوجد اتصال بالخادم — يعمل بالوضع التجريبي المحلي');
+    }
   }, []);
 
-  // ─ Admin Submit Handler ──────────────────────────────────────
-  const handleCreateSubmit = async (e) => {
-    e.preventDefault();
-    if (!userPos || !createData.title) return;
-    setIsSubmitting(true);
-    try {
-      const base = import.meta.env.VITE_API_URL || '';
-      const token = localStorage.getItem('token');
-      
-      const endpoint = createData.type === 'building' ? '/api/ar/building' 
-                     : createData.type === 'nav_point' ? '/api/ar/nav-point' 
-                     : '/api/ar/story';
-
-      const payload = {
-        ...createData,
-        era_year: createData.era_year ? parseInt(createData.era_year, 10) : null,
-        latitude: userPos.lat,
-        longitude: userPos.lng,
-        bearing: compass
-      };
-
-      const res = await fetch(`${base}${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(payload)
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(()=>({}));
-        throw new Error(errData.error || `فشل الإضافة (رمز الخطأ: ${res.status})`);
-      }
-      const data = await res.json();
-      
-      if (data.content) setArItems(prev => [...prev, data.content]);
-      
-      setShowCreate(false);
-      setCreateData({ type: 'story', title: '', content: '', subtitle: '', image_url: '', era_year: '' });
-      setStatus('تمت الإضافة بنجاح! ✅');
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   // ══════════════════════════════════════════════════════════════
-  // 🎥 CAMERA STREAM
+  // 🎥 CAMERA INITIALIZATION
   // ══════════════════════════════════════════════════════════════
   const startCamera = useCallback(async () => {
     try {
+      if (videoRef.current && videoRef.current.srcObject) {
+        return true;
+      }
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false,
       });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+        // Wait for metadata to load to make sure it plays cleanly
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current.play().catch(e => console.error('Play error:', e));
+        };
       }
       return true;
     } catch (e) {
-      setPermMsg('لم نتمكن من فتح الكاميرا — ' + e.message);
+      setPermMsg('لم نتمكن من الوصول إلى كاميرا الهاتف — ' + e.message);
       return false;
     }
   }, []);
 
   // ══════════════════════════════════════════════════════════════
-  // 🗺️  THREE.JS ENGINE
-  // ══════════════════════════════════════════════════════════════
-  const initThree = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const w = canvas.clientWidth || window.innerWidth;
-    const h = canvas.clientHeight || window.innerHeight;
-
-    const scene  = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(70, w / h, 0.05, 2000);
-    camera.position.set(0, 1.6, 0);
-
-    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-    renderer.setSize(w, h, false);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setClearColor(0x000000, 0);
-
-    // Lighting
-    scene.add(new THREE.AmbientLight(0x88aaff, 0.5));
-    const sun = new THREE.DirectionalLight(0xaaddff, 1.2);
-    sun.position.set(5, 10, 5);
-    scene.add(sun);
-
-    sceneRef.current = scene;
-    camRef.current   = camera;
-    rendRef.current  = renderer;
-
-    // Resize
-    const onResize = () => {
-      const W = canvas.clientWidth, H = canvas.clientHeight;
-      renderer.setSize(W, H, false);
-      camera.aspect = W / H;
-      camera.updateProjectionMatrix();
-    };
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-
-  // ── Device orientation → camera quaternion ───────────────────
-  const updateCamera = useCallback(() => {
-    const cam = camRef.current;
-    if (!cam) return;
-    const { alpha, beta: b, gamma: g } = orientRef.current;
-
-    // Standard WebAR quaternion derivation (Three.js DeviceOrientationControls approach)
-    const euler = new THREE.Euler();
-    euler.set(
-      THREE.MathUtils.degToRad(b  || 0),
-      THREE.MathUtils.degToRad(alpha || 0),
-      THREE.MathUtils.degToRad(-(g || 0)),
-      'YXZ'
-    );
-    const q = new THREE.Quaternion().setFromEuler(euler);
-    // Portrait correction: rotate -90° around X
-    const qPortrait = new THREE.Quaternion(-Math.SQRT1_2, 0, 0, Math.SQRT1_2);
-    q.multiply(qPortrait);
-    cam.quaternion.copy(q);
-  }, []);
-
-  // ── Place / update 3-D object for an AR item ─────────────────
-  const placeObject = useCallback((item) => {
-    const scene = sceneRef.current;
-    if (!scene) return;
-    const { lat, lng } = gpsRef.current;
-    if (!lat) return;
-
-    const { x, z } = GEO.toWorld(lat, lng, item.latitude, item.longitude);
-    const y = parseFloat(item.elevation) || 0;
-
-    // Remove existing
-    if (objMapRef.current[item.id]) {
-      scene.remove(objMapRef.current[item.id]);
-      delete objMapRef.current[item.id];
-    }
-
-    if (item.type === 'building') {
-      if (item.model_url) {
-        loaderRef.current.load(
-          item.model_url,
-          (gltf) => {
-            const model = gltf.scene;
-            const mat   = makeHoloMaterial(0x00d4ff, 0.7);
-            holoMatsRef.current.push(mat);
-            model.traverse(c => {
-              if (c.isMesh) {
-                c.material = mat;
-                // Add wireframe overlay
-                const wfMat  = new THREE.MeshBasicMaterial({ color: 0x00aaff, wireframe: true, transparent: true, opacity: 0.25 });
-                const wfMesh = new THREE.Mesh(c.geometry, wfMat);
-                c.add(wfMesh);
-              }
-            });
-            const sx = parseFloat(item.scale_x) || 1;
-            const sy = parseFloat(item.scale_y) || 1;
-            const sz = parseFloat(item.scale_z) || 1;
-            model.scale.set(sx, sy, sz);
-            model.position.set(x, y, z);
-            model.rotation.y = -THREE.MathUtils.degToRad(parseFloat(item.bearing) || 0);
-            scene.add(model);
-            objMapRef.current[item.id] = model;
-          },
-          undefined,
-          () => addPlaceholderBuilding(item, x, y, z)
-        );
-      } else {
-        addPlaceholderBuilding(item, x, y, z);
-      }
-    } else if (item.type === 'nav_point') {
-      addNavArrow3D(item, x, y, z);
-    }
-    // 'story' items are rendered in HTML overlay only
-  }, []);
-
-  const addPlaceholderBuilding = (item, x, y, z) => {
-    const scene = sceneRef.current;
-    if (!scene) return;
-    const group = new THREE.Group();
-
-    // Main body — cuboid
-    const bodyGeo = new THREE.BoxGeometry(8, 12, 8);
-    const holoMat = makeHoloMaterial(0x00d4ff, 0.65);
-    holoMatsRef.current.push(holoMat);
-    const body = new THREE.Mesh(bodyGeo, holoMat);
-    body.position.y = 6;
-    group.add(body);
-
-    // Roof triangle
-    const roofGeo = new THREE.ConeGeometry(6.5, 5, 4);
-    const roofMat = makeHoloMaterial(0x44eeff, 0.55);
-    holoMatsRef.current.push(roofMat);
-    const roof = new THREE.Mesh(roofGeo, roofMat);
-    roof.position.y = 14.5;
-    roof.rotation.y = Math.PI / 4;
-    group.add(roof);
-
-    // Wireframe outlines
-    [body, roof].forEach(mesh => {
-      const wf = new THREE.Mesh(
-        mesh.geometry,
-        new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: true, transparent: true, opacity: 0.3 })
-      );
-      mesh.add(wf);
-    });
-
-    const sx = parseFloat(item.scale_x) || 1;
-    group.scale.set(sx, parseFloat(item.scale_y) || 1, parseFloat(item.scale_z) || 1);
-    group.position.set(x, y, z);
-    group.rotation.y = -THREE.MathUtils.degToRad(parseFloat(item.bearing) || 0);
-    scene.add(group);
-    objMapRef.current[item.id] = group;
-  };
-
-  const addNavArrow3D = (item, x, y, z) => {
-    const scene = sceneRef.current;
-    if (!scene) return;
-    const dir    = new THREE.Vector3(0, 0, -1);
-    const origin = new THREE.Vector3(x, y + 2, z);
-    const arrow  = new THREE.ArrowHelper(dir, origin, 4, 0x00ff88, 1.5, 0.8);
-    scene.add(arrow);
-    objMapRef.current[item.id] = arrow;
-  };
-
-  // ── Update all 3-D object positions when GPS changes ─────────
-  const updateWorldPositions = useCallback(() => {
-    const { lat, lng } = gpsRef.current;
-    if (!lat || !sceneRef.current) return;
-    arItems.forEach(item => {
-      const obj = objMapRef.current[item.id];
-      if (!obj) return;
-      const { x, z } = GEO.toWorld(lat, lng, item.latitude, item.longitude);
-      obj.position.set(x, obj.position.y, z);
-    });
-  }, [arItems]);
-
-  // ── Animate loop ─────────────────────────────────────────────
-  const animate = useCallback(() => {
-    rafRef.current = requestAnimationFrame(animate);
-    const delta = clockRef.current.getDelta();
-    const elapsed = clockRef.current.getElapsedTime();
-
-    // Tick holographic materials
-    holoMatsRef.current.forEach(m => { if (m.uniforms) m.uniforms.uTime.value = elapsed; });
-
-    // Sync camera to device orientation
-    updateCamera();
-
-    if (rendRef.current && sceneRef.current && camRef.current) {
-      rendRef.current.render(sceneRef.current, camRef.current);
-    }
-  }, [updateCamera]);
-
-  // ══════════════════════════════════════════════════════════════
-  // 🧭 SENSORS
+  // 🧭 SENSOR INITIALIZATION (GPS & COMPASS)
   // ══════════════════════════════════════════════════════════════
   const startOrientation = useCallback(() => {
     const handler = (e) => {
+      // webkitCompassHeading is specific to iOS Safari
       const a = e.webkitCompassHeading ?? (e.alpha ? (360 - e.alpha) : 0);
-      orientRef.current = { alpha: a, beta: e.beta || 0, gamma: e.gamma || 0 };
       setCompass(Math.round(a));
-      setBeta(Math.round(e.beta || 0));
+      setBeta(Math.round(e.beta || 90));
     };
+
     if (typeof DeviceOrientationEvent !== 'undefined' &&
         typeof DeviceOrientationEvent.requestPermission === 'function') {
-      // iOS 13+
+      // Flag iOS requiring tap permission
       setIOSPerm(true);
     } else {
       window.addEventListener('deviceorientation', handler, true);
     }
+
     return () => window.removeEventListener('deviceorientation', handler, true);
   }, []);
 
@@ -435,113 +140,221 @@ export default function ARView() {
       if (perm === 'granted') {
         const handler = (e) => {
           const a = e.webkitCompassHeading ?? (360 - (e.alpha || 0));
-          orientRef.current = { alpha: a, beta: e.beta || 0, gamma: e.gamma || 0 };
           setCompass(Math.round(a));
-          setBeta(Math.round(e.beta || 0));
+          setBeta(Math.round(e.beta || 90));
         };
         window.addEventListener('deviceorientation', handler, true);
         setIOSPerm(false);
       }
-    } catch { setIOSPerm(false); }
+    } catch (err) {
+      alert('فشل تفعيل البوصلة: ' + err.message);
+      setIOSPerm(false);
+    }
   };
 
   const startGPS = useCallback(() => {
-    if (!navigator.geolocation) return;
-    const opts = { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 };
-    watchRef.current = navigator.geolocation.watchPosition(
+    if (!navigator.geolocation) {
+      setStatus('جهازك لا يدعم تحديد الموقع الجغرافي (GPS)');
+      return;
+    }
+
+    const opts = { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 };
+    const id = navigator.geolocation.watchPosition(
       (pos) => {
         const { latitude: lat, longitude: lng } = pos.coords;
-        gpsRef.current = { lat, lng };
         setUserPos({ lat, lng });
         fetchAR(lat, lng);
-        updateWorldPositions();
       },
-      (err) => setStatus(`GPS: ${err.message}`),
+      (err) => {
+        setStatus(`خطأ في تحديد الموقع: ${err.message}`);
+      },
       opts
     );
-  }, [fetchAR, updateWorldPositions]);
+    setWatchId(id);
+  }, [fetchAR]);
 
   // ══════════════════════════════════════════════════════════════
   // 🚀 BOOT SEQUENCE
   // ══════════════════════════════════════════════════════════════
   useEffect(() => {
     let cleanupOrientation;
-    (async () => {
-      setPhase('loading');
-      const camOk = await startCamera();
-      if (!camOk) { setPhase('error'); return; }
-      cleanupOrientation = startOrientation();
-      startGPS();
-      const cleanupThree = initThree();
-      animate();
-      setPhase('active');
-      return cleanupThree;
-    })();
+    
+    if (phase === 'loading') {
+      (async () => {
+        const camOk = await startCamera();
+        if (!camOk) {
+          setPhase('error');
+          return;
+        }
+        cleanupOrientation = startOrientation();
+        startGPS();
+        setPhase('active');
+      })();
+    }
 
     return () => {
-      // Cleanup
-      cancelAnimationFrame(rafRef.current);
-      if (watchRef.current) navigator.geolocation.clearWatch(watchRef.current);
-      window.removeEventListener('deviceorientation', () => {}, true);
-      if (videoRef.current?.srcObject) {
-        videoRef.current.srcObject.getTracks().forEach(t => t.stop());
+      if (watchId) {
+        navigator.geolocation.clearWatch(watchId);
       }
-      if (rendRef.current) rendRef.current.dispose();
-      cleanupOrientation?.();
+      if (videoRef.current && videoRef.current.srcObject) {
+        videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+      }
+      if (cleanupOrientation) {
+        cleanupOrientation();
+      }
     };
-  }, []); // eslint-disable-line
-
-  // ── Place 3D objects when items arrive ───────────────────────
-  useEffect(() => {
-    arItems.forEach(item => {
-      if (!objMapRef.current[item.id]) placeObject(item);
-    });
-  }, [arItems, placeObject]);
+  }, [phase]); // eslint-disable-line
 
   // ══════════════════════════════════════════════════════════════
-  // 🖥️  VISIBLE ITEMS CALCULATION (runs per compass update)
+  // 🖥️ VISIBLE MARKERS CALCULATOR
   // ══════════════════════════════════════════════════════════════
   useEffect(() => {
     if (!userPos || arItems.length === 0) return;
+
+    // Filter and project markers onto screen coordinates
     const visible = arItems
       .map(item => {
         const dist = GEO.distance(userPos.lat, userPos.lng, item.latitude, item.longitude);
         const bear = GEO.bearing(userPos.lat, userPos.lng, item.latitude, item.longitude);
-        const fov  = parseInt(item.fov_angle) || 25;
-        const inView = GEO.inFOV(bear, compass, fov);
-        const inRange = dist <= (parseInt(item.trigger_radius) || 50);
-        const screenX = GEO.bearingToScreenX(bear, compass);
-        const screenY = GEO.elevToScreenY(parseFloat(item.elevation) || 2, dist, beta);
-        return { ...item, dist, bear, inView, inRange, screenX, screenY };
-      })
-      .filter(i => i.inRange);
-    setVisible(visible);
-  }, [compass, userPos, arItems, beta]);
+        const diff = GEO.angleDiff(bear, compass); // degrees relative to center
 
-  // ── Compass direction label ───────────────────────────────────
+        // Camera horizontal field of view is about 60 degrees.
+        // A marker is on screen if its relative angle is between -30 and 30 degrees.
+        const inFovX = Math.abs(diff) <= 30;
+
+        // Calculate horizontal screen percentage (0% to 100%)
+        const screenX = 50 + (diff / 30) * 50; 
+
+        // Pitch (beta): 90 is straight upright. Less than 90 is tilted down.
+        // We tilt beta to slide the horizon up/down.
+        const screenY = 50 - (beta - 90) * 1.5; 
+
+        // Vertical screen visibility checks
+        const inFovY = screenY >= 5 && screenY <= 95;
+
+        return {
+          ...item,
+          dist,
+          bear,
+          screenX: Math.max(5, Math.min(95, screenX)),
+          screenY: Math.max(5, Math.min(95, screenY)),
+          inView: inFovX && inFovY,
+          bearingDiff: diff
+        };
+      })
+      // We display all items inside 1000m range
+      .filter(i => i.dist <= 1000);
+
+    setVisibleItems(visible);
+  }, [compass, beta, userPos, arItems]);
+
+  // Compass text representation
   const compassLabel = () => {
-    const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+    const dirs = ['شمال','ش.شرق','شرق','ج.شرق','جنوب','ج.غرب','غرب','ش.غرب'];
     return dirs[Math.round(compass / 45) % 8];
   };
 
   // ══════════════════════════════════════════════════════════════
-  // 🖼️  RENDER
+  // 📸 PHOTO MARKER CREATION HANDLERS
+  // ══════════════════════════════════════════════════════════════
+  const handlePhotoCaptureClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setPhotoFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPhotoPreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCreateSubmit = async (e) => {
+    e.preventDefault();
+    if (!userPos) {
+      alert('عذراً، لم نتمكن من تحديد موقعك الجغرافي الحالي بعد. يرجى التأكد من تشغيل الـ GPS.');
+      return;
+    }
+    if (!photoFile) {
+      alert('يرجى التقاط صورة للمعلم أولاً 📸');
+      return;
+    }
+    if (!createTitle.trim()) {
+      alert('يرجى إدخال اسم المعلم');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const base = import.meta.env.VITE_API_URL || '';
+      const token = localStorage.getItem('token');
+      
+      const formData = new FormData();
+      formData.append('photo', photoFile);
+      formData.append('title', createTitle.trim());
+      formData.append('content', createContent.trim());
+      formData.append('latitude', userPos.lat);
+      formData.append('longitude', userPos.lng);
+      formData.append('bearing', compass);
+
+      const res = await fetch(`${base}/api/ar/photo-marker`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}` 
+        },
+        body: formData
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `فشل الحفظ (رمز الخطأ: ${res.status})`);
+      }
+
+      const data = await res.json();
+      
+      if (data.content) {
+        setArItems(prev => [data.content, ...prev]);
+      }
+      
+      // Reset Modal & Forms
+      setShowCreate(false);
+      setPhotoFile(null);
+      setPhotoPreview('');
+      setCreateTitle('');
+      setCreateContent('');
+      setStatus('تم حفظ المعلم الجديد بنجاح! 📸✅');
+    } catch (err) {
+      console.error(err);
+      alert(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ══════════════════════════════════════════════════════════════
+  // 🖥️ UI RENDERING
   // ══════════════════════════════════════════════════════════════
 
   if (phase === 'permission') {
     return (
       <div className="ar-permission-screen">
         <div className="ar-perm-card">
-          <div className="ar-perm-icon">📡</div>
-          <h2>الواقع المعزز</h2>
-          <p>يحتاج التطبيق إلى صلاحيات:</p>
-          <ul>
-            <li>📷 الكاميرا</li>
-            <li>📍 الموقع الجغرافي</li>
-            <li>🧭 البوصلة</li>
+          <div className="ar-perm-icon">📍</div>
+          <h2>الواقع المعزز الفوتوغرافي</h2>
+          <p>يتطلب هذا النظام الصلاحيات التالية لتشغيل الكاميرا وإسقاط المعالم الجغرافية بموقعها الحقيقي:</p>
+          <ul className="ar-perm-list">
+            <li>📷 كاميرا الهاتف (لالتقاط وعرض المواقع)</li>
+            <li>📍 نظام تحديد المواقع العالمي (GPS)</li>
+            <li>🧭 البوصلة والمستشعرات الحركية</li>
           </ul>
           <button className="ar-perm-btn" onClick={() => setPhase('loading')}>
-            منح الصلاحيات
+            ابدأ الآن
           </button>
         </div>
       </div>
@@ -553,9 +366,9 @@ export default function ARView() {
       <div className="ar-permission-screen">
         <div className="ar-perm-card error">
           <div className="ar-perm-icon">⚠️</div>
-          <h2>تعذّر تشغيل AR</h2>
-          <p>{permMsg || 'تأكد من منح صلاحيات الكاميرا والموقع'}</p>
-          <button className="ar-perm-btn" onClick={() => navigate(-1)}>رجوع</button>
+          <h2>عذراً، فشل تشغيل الـ AR</h2>
+          <p>{permMsg || 'يرجى التحقق من منح صلاحيات الكاميرا والموقع الجغرافي وإعادة المحاولة.'}</p>
+          <button className="ar-perm-btn" onClick={() => navigate(-1)}>رجوع للصفحة السابقة</button>
         </div>
       </div>
     );
@@ -563,238 +376,238 @@ export default function ARView() {
 
   return (
     <div className="ar-root">
-      {/* ── Camera background ── */}
+      {/* 📷 Live Camera Stream Background */}
       <video ref={videoRef} className="ar-video" playsInline muted autoPlay />
 
-      {/* ── Three.js canvas (3-D buildings) ── */}
-      <canvas ref={canvasRef} className="ar-canvas" />
+      {/* 🎛️ HTML Interactive Overlay */}
+      <div className="ar-overlay">
 
-      {/* ── HTML overlay ── */}
-      <div className="ar-overlay" ref={overlayRef}>
-
-        {/* iOS orientation permission banner */}
+        {/* iOS Permission Notification Banner */}
         {iOSPerm && (
           <div className="ar-ios-banner" onClick={requestIOSOrientation}>
-            اضغط لتفعيل البوصلة على iOS 🧭
+            اضغط هنا لتفعيل مستشعر البوصلة والاتجاه 🧭
           </div>
         )}
 
-        {/* ─── TOP HUD ─── */}
+        {/* ─── TOP HUD (Navigation & Status) ─── */}
         <div className="ar-hud-top">
-          <button className="ar-back-btn" onClick={() => navigate(-1)}>
+          <button className="ar-back-btn" onClick={() => navigate(-1)} aria-label="Back">
             ✕
           </button>
 
-          {/* Compass */}
+          {/* Glowing Compass */}
           <div className="ar-compass-ring">
             <div className="ar-compass-needle" style={{ transform: `rotate(${-compass}deg)` }}>
-              <span className="ar-compass-n">N</span>
+              <span className="ar-compass-n">▲</span>
             </div>
             <div className="ar-compass-value">{compass}° {compassLabel()}</div>
           </div>
 
-          {/* Status */}
+          {/* GPS Status Info */}
           <div className="ar-status-pill">
             <span className={`ar-gps-dot ${userPos ? 'active' : ''}`} />
-            {userPos
-              ? `${userPos.lat.toFixed(5)}, ${userPos.lng.toFixed(5)}`
-              : statusMsg}
+            <span className="ar-status-text">
+              {userPos
+                ? `${userPos.lat.toFixed(5)}, ${userPos.lng.toFixed(5)}`
+                : statusMsg}
+            </span>
           </div>
         </div>
 
-        {/* ─── STORY PANELS (HTML AR overlays) ─── */}
+        {/* ─── FLOATING AR LOCATION PIN MARKERS (Only inside FOV) ─── */}
         {visibleItems
-          .filter(i => i.type === 'story' && i.inView)
+          .filter(item => item.inView)
           .map(item => (
             <div
               key={item.id}
-              className="ar-story-panel"
+              className={`ar-location-pin ${activeItem?.id === item.id ? 'active' : ''}`}
               style={{ left: `${item.screenX}%`, top: `${item.screenY}%` }}
               onClick={() => setActiveItem(item)}
             >
-              {item.image_url && (
-                <img className="ar-story-img" src={item.image_url} alt={item.title} />
-              )}
-              <div className="ar-story-body">
-                {item.era_year && <span className="ar-story-year">{item.era_year}</span>}
-                <h3>{item.title}</h3>
-                {item.subtitle && <p className="ar-story-sub">{item.subtitle}</p>}
+              {/* Inner thumbnail image inside the pulsing pin */}
+              <div className="ar-pin-circle">
+                {item.image_url ? (
+                  <img src={item.image_url} alt={item.title} className="ar-pin-thumb" />
+                ) : (
+                  <span className="ar-pin-icon-placeholder">📸</span>
+                )}
+                {/* Glowing Pulse Rings */}
+                <div className="ar-pin-pulse" />
               </div>
-              <div className="ar-story-dist">{GEO.fmt(item.dist)}</div>
-              <div className="ar-story-anchor-line" />
+
+              {/* Tag Info */}
+              <div className="ar-pin-label">
+                <span className="ar-pin-title">{item.title}</span>
+                <span className="ar-pin-distance">{GEO.fmt(item.dist)}</span>
+              </div>
+              <div className="ar-pin-anchor" />
             </div>
           ))}
 
-        {/* ─── NAVIGATION ARROWS (in-view) ─── */}
+        {/* ─── EDGE DIRECTION INDICATORS (For markers outside current FOV) ─── */}
         {visibleItems
-          .filter(i => i.type === 'nav_point' && i.inView)
-          .map(item => (
-            <div
-              key={item.id}
-              className="ar-nav-inview"
-              style={{ left: `${item.screenX}%`, top: '60%' }}
-              onClick={() => setActiveItem(item)}
-            >
-              <div className="ar-nav-arrow-icon">↑</div>
-              <div className="ar-nav-label">{item.title}</div>
-              <div className="ar-nav-dist">{GEO.fmt(item.dist)}</div>
-            </div>
-          ))}
-
-        {/* ─── BUILDING BADGES (in-view) ─── */}
-        {visibleItems
-          .filter(i => i.type === 'building' && i.inView)
-          .map(item => (
-            <div
-              key={item.id}
-              className="ar-building-badge"
-              style={{ left: `${item.screenX}%`, top: `${item.screenY - 10}%` }}
-              onClick={() => setActiveItem(item)}
-            >
-              🏛️ {item.title}
-              {item.era_year && <span className="ar-badge-year"> — {item.era_year}</span>}
-            </div>
-          ))}
-
-        {/* ─── EDGE INDICATORS (out of FOV but in range) ─── */}
-        {visibleItems
-          .filter(i => !i.inView)
+          .filter(item => !item.inView)
           .map(item => {
-            const angle = GEO.angleDiff(item.bear, compass) * Math.PI / 180;
-            const ex = 50 + Math.sin(angle) * 42;
-            const ey = 50 - Math.cos(angle) * 42;
+            const isLeft = item.bearingDiff < 0;
             return (
               <div
                 key={`edge-${item.id}`}
-                className={`ar-edge-indicator ar-edge-${item.type}`}
-                style={{
-                  left: `${Math.max(5, Math.min(90, ex))}%`,
-                  top:  `${Math.max(5, Math.min(88, ey))}%`,
-                  transform: `rotate(${GEO.angleDiff(item.bear, compass)}deg)`,
+                className={`ar-edge-indicator ${isLeft ? 'left' : 'right'}`}
+                onClick={() => {
+                  // Alert user how far to turn
+                  setStatus(`الجه التفت حولك: ${Math.round(Math.abs(item.bearingDiff))}° ${isLeft ? 'يساراً' : 'يميناً'} لرؤية "${item.title}"`);
+                  setActiveItem(item);
                 }}
-                onClick={() => setActiveItem(item)}
               >
-                <span className="ar-edge-arrow">▲</span>
-                <span className="ar-edge-label">{GEO.fmt(item.dist)}</span>
+                <div className="ar-edge-arrow">{isLeft ? '◀' : '▶'}</div>
+                <div className="ar-edge-info">
+                  <span className="ar-edge-title">{item.title}</span>
+                  <span className="ar-edge-dist">{GEO.fmt(item.dist)}</span>
+                </div>
               </div>
             );
           })}
 
-        {/* ─── BOTTOM HUD BAR ─── */}
+        {/* ─── BOTTOM LIST HUD (Horizontal list of all nearby markers) ─── */}
         <div className="ar-hud-bottom">
           {visibleItems.length === 0 ? (
-            <div className="ar-no-items">لا توجد معالم AR في نطاق {500} م</div>
+            <div className="ar-no-items">لا توجد معالم جغرافية قريبة منك حالياً (في نطاق 1 كم)</div>
           ) : (
             <div className="ar-items-strip">
               {visibleItems.map(item => (
                 <div
                   key={`strip-${item.id}`}
-                  className={`ar-strip-item ar-strip-${item.type} ${item.inView ? 'in-view' : ''}`}
-                  onClick={() => setActiveItem(item)}
+                  className={`ar-strip-item ${item.inView ? 'in-view' : ''} ${activeItem?.id === item.id ? 'selected' : ''}`}
+                  onClick={() => {
+                    setActiveItem(item);
+                    // Automatically scroll compass towards the item
+                    setStatus(`المعلم "${item.title}" يبعد ${GEO.fmt(item.dist)} باتجاه ${Math.round(item.bear)}°`);
+                  }}
                 >
-                  <span className="ar-strip-icon">
-                    {item.type === 'building' ? '🏛️' : item.type === 'nav_point' ? '🧭' : '📜'}
-                  </span>
-                  <span className="ar-strip-name">{item.title}</span>
-                  <span className="ar-strip-dist">{GEO.fmt(item.dist)}</span>
+                  {item.image_url ? (
+                    <img src={item.image_url} alt="" className="ar-strip-img" />
+                  ) : (
+                    <div className="ar-strip-img-placeholder">📸</div>
+                  )}
+                  <div className="ar-strip-details">
+                    <span className="ar-strip-name">{item.title}</span>
+                    <span className="ar-strip-dist">📍 {GEO.fmt(item.dist)}</span>
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        {/* ─── ACTIVE ITEM DETAIL PANEL ─── */}
+        {/* ─── DETAIL POPUP BOTTOM SHEET ─── */}
         {activeItem && (
-          <div className="ar-detail-panel" onClick={e => e.target === e.currentTarget && setActiveItem(null)}>
+          <div className="ar-detail-panel" onClick={(e) => e.target === e.currentTarget && setActiveItem(null)}>
             <div className="ar-detail-card">
-              <button className="ar-detail-close" onClick={() => setActiveItem(null)}>✕</button>
+              <button className="ar-detail-close" onClick={() => setActiveItem(null)} aria-label="Close details">✕</button>
 
               {activeItem.image_url && (
                 <div className="ar-detail-img-wrap">
                   <img src={activeItem.image_url} alt={activeItem.title} className="ar-detail-img" />
-                  {activeItem.era_year && (
-                    <div className="ar-detail-era">{activeItem.era_year}</div>
-                  )}
+                  <div className="ar-detail-dist-badge">📍 {GEO.fmt(activeItem.dist)}</div>
                 </div>
               )}
 
               <div className="ar-detail-body">
-                <div className={`ar-detail-type-badge ar-type-${activeItem.type}`}>
-                  {activeItem.type === 'building' ? '🏛️ معلم تاريخي'
-                    : activeItem.type === 'nav_point' ? '🧭 نقطة توجيه'
-                    : '📜 قصة المكان'}
-                </div>
                 <h2 className="ar-detail-title">{activeItem.title}</h2>
-                {activeItem.subtitle && <p className="ar-detail-subtitle">{activeItem.subtitle}</p>}
-                {activeItem.content && <p className="ar-detail-content">{activeItem.content}</p>}
-
                 <div className="ar-detail-meta">
-                  <span>📍 {GEO.fmt(activeItem.dist)}</span>
-                  <span>🧭 {Math.round(activeItem.bear)}°</span>
-                  {activeItem.era_year && <span>📅 {activeItem.era_year}</span>}
+                  <span>الإحداثيات: {activeItem.latitude.toFixed(6)}, {activeItem.longitude.toFixed(6)}</span>
+                  <span>الاتجاه الجغرافي: {Math.round(activeItem.bear)}°</span>
                 </div>
+                {activeItem.content && <p className="ar-detail-content">{activeItem.content}</p>}
               </div>
             </div>
           </div>
         )}
 
-        {/* ─── ADMIN IN-SITU CREATION FAB ─── */}
+        {/* ─── ADMIN FAB BUTTON (ADD MARKER IN SITU) ─── */}
         {user?.role === 'admin' && phase === 'active' && !showCreate && (
           <button className="ar-create-fab" onClick={() => setShowCreate(true)}>
-            <span className="ar-fab-icon">➕</span>
-            <span className="ar-fab-text">إسقاط هنا</span>
+            <span className="ar-fab-icon">📸</span>
+            <span className="ar-fab-text">تصوير وإضافة معلم</span>
           </button>
         )}
 
-        {/* ─── CREATION MODAL ─── */}
+        {/* ─── ADMIN CREATION MODAL ─── */}
         {showCreate && (
-          <div className="ar-create-modal">
+          <div className="ar-create-modal" onClick={(e) => e.target === e.currentTarget && setShowCreate(false)}>
             <div className="ar-create-card">
               <button className="ar-detail-close" onClick={() => setShowCreate(false)}>✕</button>
-              <h3 style={{ margin: '0 0 8px', color: '#00d4ff', fontSize: '20px' }}>إضافة محتوى جديد</h3>
-              <p className="ar-create-hint">سيتم التقاط موقعك واتجاهك الحالي تلقائياً</p>
+              <h3 className="ar-create-title">إضافة معلم فوتوغرافي جديد</h3>
+              <p className="ar-create-subtitle">سيتم تسجيل موقعك الجغرافي واتجاهك الحالي تلقائياً وحفظ الصورة</p>
               
               <form onSubmit={handleCreateSubmit} className="ar-create-form">
-                <select value={createData.type} onChange={e => setCreateData({...createData, type: e.target.value})}>
-                  <option value="story">📜 قصة مكانية</option>
-                  <option value="building">🏛️ مبنى تاريخي</option>
-                  <option value="nav_point">🧭 نقطة توجيه</option>
-                </select>
+                {/* Custom camera capture trigger */}
+                <div className="ar-photo-capture-box" onClick={handlePhotoCaptureClick}>
+                  {photoPreview ? (
+                    <img src={photoPreview} alt="Captured" className="ar-capture-preview" />
+                  ) : (
+                    <div className="ar-capture-placeholder">
+                      <span className="ar-capture-icon">📸</span>
+                      <span className="ar-capture-text">التقط صورة للمعلم بكاميرا الهاتف</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Hidden input for mobile camera */}
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  capture="environment" 
+                  ref={fileInputRef} 
+                  onChange={handleFileChange} 
+                  className="ar-hidden-file-input" 
+                />
                 
-                <input type="text" placeholder="الاسم / العنوان" required value={createData.title} onChange={e => setCreateData({...createData, title: e.target.value})} />
+                <input 
+                  type="text" 
+                  placeholder="اسم المعلم (مثال: باب الخليل)" 
+                  required 
+                  value={createTitle} 
+                  onChange={e => setCreateTitle(e.target.value)} 
+                  className="ar-input"
+                />
                 
-                {createData.type !== 'nav_point' && (
-                  <input type="text" placeholder="العنوان الفرعي (اختياري)" value={createData.subtitle} onChange={e => setCreateData({...createData, subtitle: e.target.value})} />
-                )}
+                <textarea 
+                  placeholder="اكتب نبذة تاريخية أو وصفاً للمعلم..." 
+                  rows="3" 
+                  value={createContent} 
+                  onChange={e => setCreateContent(e.target.value)}
+                  className="ar-textarea"
+                />
                 
-                <textarea placeholder="الوصف والمحتوى..." rows="3" value={createData.content} onChange={e => setCreateData({...createData, content: e.target.value})}></textarea>
-                
-                {createData.type !== 'nav_point' && (
-                  <input type="text" placeholder="رابط صورة (اختياري)" value={createData.image_url} onChange={e => setCreateData({...createData, image_url: e.target.value})} />
-                )}
-                
-                {createData.type !== 'nav_point' && (
-                  <input type="number" placeholder="سنة التاريخ (مثال: 1948)" value={createData.era_year} onChange={e => setCreateData({...createData, era_year: e.target.value})} />
-                )}
-                
-                <div className="ar-create-meta">
-                  <span>📍 {userPos?.lat.toFixed(5)}, {userPos?.lng.toFixed(5)}</span>
-                  <span>🧭 {compass}°</span>
+                <div className="ar-create-metadata-grid">
+                  <div className="ar-meta-item">
+                    <span className="ar-meta-label">📍 خط العرض:</span>
+                    <span className="ar-meta-val">{userPos?.lat.toFixed(6) || 'جاري التحديد...'}</span>
+                  </div>
+                  <div className="ar-meta-item">
+                    <span className="ar-meta-label">📍 خط الطول:</span>
+                    <span className="ar-meta-val">{userPos?.lng.toFixed(6) || 'جاري التحديد...'}</span>
+                  </div>
+                  <div className="ar-meta-item">
+                    <span className="ar-meta-label">🧭 الاتجاه:</span>
+                    <span className="ar-meta-val">{compass}° ({compassLabel()})</span>
+                  </div>
                 </div>
                 
                 <button type="submit" disabled={isSubmitting} className="ar-create-submit">
-                  {isSubmitting ? 'جاري الإضافة...' : 'إسقاط المحتوى هنا 📌'}
+                  {isSubmitting ? 'جاري رفع الصورة ونشر المعلم...' : 'نشر المعلم في هذا الموقع الجغرافي 📌'}
                 </button>
               </form>
             </div>
           </div>
         )}
 
-        {/* ─── LOADING OVERLAY ─── */}
+        {/* ─── LOADER SCREEN OVERLAY ─── */}
         {phase === 'loading' && (
           <div className="ar-loading-overlay">
-            <div className="ar-loading-ring" />
-            <p>جارٍ تهيئة الواقع المعزز...</p>
+            <div className="ar-loading-spinner" />
+            <p>جارٍ تهيئة الواقع المعزز الجغرافي...</p>
           </div>
         )}
       </div>
