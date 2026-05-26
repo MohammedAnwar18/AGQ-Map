@@ -1,15 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken, optionalAuth } = require('../middleware/auth');
-const arController = require('../controllers/arController');
+const ar = require('../controllers/arController');
 
-// جلب علامات الواقع المعزز القريبة جغرافياً (متاح للجميع/الزوار بشكل اختياري)
-router.get('/', optionalAuth, arController.getNearbyARContents);
-
-// إنشاء علامة واقع معزز جديدة (للأدمن فقط)
-router.post('/', authenticateToken, arController.createARContent);
-
-// حذف علامة واقع معزز (للأدمن فقط)
-router.delete('/:id', authenticateToken, arController.deleteARContent);
+router.get('/',          optionalAuth,    ar.getNearbyARContents);
+router.get('/nearby',    optionalAuth,    ar.getNearbyARContents);
+router.get('/all',       authenticateToken, ar.getAllARContents);
+router.get('/stats',     authenticateToken, ar.getARStats);
+router.post('/',         authenticateToken, ar.createARContent);
+router.post('/building', authenticateToken, ar.createBuilding);
+router.post('/story',    authenticateToken, ar.createStory);
+router.post('/nav-point',authenticateToken, ar.createNavPoint);
+router.put('/:id',       authenticateToken, ar.updateARContent);
+router.delete('/:id',    authenticateToken, ar.deleteARContent);
 
 module.exports = router;

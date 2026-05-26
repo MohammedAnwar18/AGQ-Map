@@ -10,31 +10,55 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const pool = require('./config/database');
 
-// Auto-migration: تأكد من وجود جدول ar_contents عند بدء تشغيل السيرفر (بدون PostGIS)
+// Auto-migration: تأكد من وجود جدول ar_contents عند بدء تشغيل السيرفر
 (async () => {
     try {
+        // ── جدول ar_contents الأساسي ─────────────────────────────
         await pool.query(`
             CREATE TABLE IF NOT EXISTS ar_contents (
-                id SERIAL PRIMARY KEY,
-                latitude  NUMERIC(12,8) NOT NULL,
-                longitude NUMERIC(12,8) NOT NULL,
-                title     VARCHAR(255) NOT NULL,
-                content   TEXT,
-                shape     VARCHAR(50)  DEFAULT 'panel',
-                bearing   NUMERIC(7,3) DEFAULT 0,
-                pitch     NUMERIC(7,3) DEFAULT 90,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                owner_id  INTEGER REFERENCES users(id) ON DELETE SET NULL
+                id         SERIAL PRIMARY KEY,
+                latitude   NUMERIC(12,8) NOT NULL,
+                longitude  NUMERIC(12,8) NOT NULL,
+                title      VARCHAR(255)  NOT NULL,
+                content    TEXT,
+                shape      VARCHAR(50)   DEFAULT 'panel',
+                bearing    NUMERIC(7,3)  DEFAULT 0,
+                pitch      NUMERIC(7,3)  DEFAULT 90,
+                created_at TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
+                owner_id   INTEGER REFERENCES users(id) ON DELETE SET NULL
             )
         `);
-        // Add pitch column if upgrading from old schema
-        await pool.query(`ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS pitch NUMERIC(7,3) DEFAULT 90`);
-        // Increase coordinate precision if upgrading from old schema
+
+        // ── ترقية الأعمدة القديمة ────────────────────────────────
         await pool.query(`ALTER TABLE ar_contents ALTER COLUMN latitude  TYPE NUMERIC(12,8)`);
         await pool.query(`ALTER TABLE ar_contents ALTER COLUMN longitude TYPE NUMERIC(12,8)`);
+        await pool.query(`ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS pitch NUMERIC(7,3) DEFAULT 90`);
+
+        // ── أعمدة نظام AR المتقدم (v2) ──────────────────────────
+        const newCols = [
+            `ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS type          VARCHAR(30)   DEFAULT 'story'`,
+            `ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS subtitle      TEXT`,
+            `ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS model_url     TEXT`,
+            `ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS image_url     TEXT`,
+            `ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS trigger_radius INTEGER      DEFAULT 50`,
+            `ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS fov_angle     INTEGER       DEFAULT 25`,
+            `ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS scale_x       FLOAT         DEFAULT 1.0`,
+            `ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS scale_y       FLOAT         DEFAULT 1.0`,
+            `ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS scale_z       FLOAT         DEFAULT 1.0`,
+            `ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS elevation      FLOAT         DEFAULT 0`,
+            `ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS era_year      INTEGER`,
+            `ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS tags          TEXT[]`,
+        ];
+        for (const sql of newCols) {
+            await pool.query(sql);
+        }
+
+        // ── فهارس ────────────────────────────────────────────────
         await pool.query(`CREATE INDEX IF NOT EXISTS ar_contents_lat_idx  ON ar_contents (latitude)`);
         await pool.query(`CREATE INDEX IF NOT EXISTS ar_contents_lon_idx  ON ar_contents (longitude)`);
-        console.log('✅ ar_contents table ready');
+        await pool.query(`CREATE INDEX IF NOT EXISTS ar_contents_type_idx ON ar_contents (type)`);
+
+        console.log('✅ ar_contents table ready (v2 — buildings, stories, nav_points)');
     } catch (err) {
         console.error('⚠️ ar_contents migration error:', err.message);
     }

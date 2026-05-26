@@ -5,6 +5,7 @@ import { adminService } from '../services/adminApi';
 import { cameraService } from '../services/api';
 
 import './AdminDashboard.css';
+import ARAdminPanel from './ARAdminPanel';
 
 const AdminDashboard = () => {
     const { user, logout } = useAuth();
@@ -227,6 +228,7 @@ const AdminDashboard = () => {
                         { id: 'files', icon: '📁', label: 'ملفات الوسائط' },
                         { id: 'map', icon: '🌏', label: 'خارطة النشاط' },
                         { id: 'notifications', icon: '📢', label: 'إرسال إشعارات' },
+                        { id: 'ar', icon: '🕶️', label: 'إدارة الواقع المعزز' },
                     ].map(tab => (
                         <a
                             key={tab.id}
@@ -259,7 +261,8 @@ const AdminDashboard = () => {
                                         activeTab === 'cameras' ? 'إدارة كاميرات البث المباشر' :
                                             activeTab === 'data' ? 'إدارة المحتوى والبيانات' :
                                                 activeTab === 'files' ? 'مكتبة الوسائط' :
-                                                    activeTab === 'notifications' ? 'إرسال التنبيهات والبرودكاست' : 'خارطة النشاط الموحدة'
+                                                    activeTab === 'notifications' ? 'إرسال التنبيهات والبرودكاست' :
+                                                        activeTab === 'ar' ? 'إدارة محتوى الواقع المعزز' : 'خارطة النشاط الموحدة'
                         }</h2>
                         <p>مرحباً بك يا {user.full_name || user.username} • {new Date().toLocaleDateString('ar-SA', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                     </div>
@@ -820,6 +823,11 @@ const AdminDashboard = () => {
                             </button>
                         </form>
                     </div>
+                )}
+
+                {/* AR Content Management */}
+                {activeTab === 'ar' && (
+                    <ARAdminPanel onClose={() => setActiveTab('overview')} />
                 )}
             </div>
         </div>

@@ -3119,7 +3119,7 @@ const MapComponent = () => {
             {/* Floating AR HUD Scanner Trigger - Visible to Everyone (including Guests) */}
             {!isEmergencyActive && (
                 <button
-                    onClick={() => setShowARViewer(true)}
+                    onClick={() => navigate('/ar')}
                     className="floating-ar-trigger"
                     title="الواقع المعزز 🕶️"
                     style={{
@@ -3152,7 +3152,7 @@ const MapComponent = () => {
                 </button>
             )}
 
-            {/* Spatial AR Viewer Modal */}
+            {/* Spatial AR Viewer Modal - Legacy (replaced by /ar page) */}
             {showARViewer && (
                 <SpatialARViewer
                     onClose={() => setShowARViewer(false)}
