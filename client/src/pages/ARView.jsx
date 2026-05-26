@@ -58,7 +58,7 @@ export default function ARView() {
   const [isFallbackMode, setIsFallbackMode] = useState(false);
 
   // ─ App States ────────────────────────────────────────────────
-  const [phase, setPhase] = useState('permission'); // permission|loading|active|error
+  const [phase, setPhase] = useState('loading'); // Instantly start in loading mode to boot camera directly
   const [permMsg, setPermMsg] = useState('');
   const [statusMsg, setStatus] = useState('جارٍ تحديد موقعك الجغرافي...');
   const [arItems, setArItems] = useState([]);
@@ -207,7 +207,15 @@ export default function ARView() {
         // If GPS succeeds, overwrite fallback mode
         setIsFallbackMode(false);
         const { latitude: lat, longitude: lng } = pos.coords;
-        setUserPos({ lat, lng });
+        setUserPos(prev => {
+          if (!prev) return { lat, lng };
+          // Apply low-pass exponential moving average filter to smooth GPS jitter & drift
+          const smoothFactor = 0.25; 
+          return {
+            lat: prev.lat + (lat - prev.lat) * smoothFactor,
+            lng: prev.lng + (lng - prev.lng) * smoothFactor
+          };
+        });
         fetchAR(lat, lng);
       },
       (err) => {
@@ -267,8 +275,13 @@ export default function ARView() {
 
     const visible = arItems
       .map(item => {
-        const dist = GEO.distance(userPos.lat, userPos.lng, item.latitude, item.longitude);
-        const bear = GEO.bearing(userPos.lat, userPos.lng, item.latitude, item.longitude);
+        const itemLat = parseFloat(item.latitude);
+        const itemLng = parseFloat(item.longitude);
+        
+        if (isNaN(itemLat) || isNaN(itemLng)) return null;
+
+        const dist = GEO.distance(userPos.lat, userPos.lng, itemLat, itemLng);
+        const bear = GEO.bearing(userPos.lat, userPos.lng, itemLat, itemLng);
         
         // Use effectiveHeading (compass + drag swipe offset) instead of raw compass
         const diff = GEO.angleDiff(bear, effectiveHeading);
@@ -294,6 +307,7 @@ export default function ARView() {
           bearingDiff: diff
         };
       })
+      .filter(Boolean)
       .filter(i => i.dist <= 1000);
 
     setVisibleItems(visible);
