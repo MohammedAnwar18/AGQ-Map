@@ -57,5 +57,6 @@ module.exports = {
   query: (text, params) => getPool().query(text, params),
   on: (event, handler) => getPool().on(event, handler),
   connect: () => getPool().connect(),
+  end: () => pool ? pool.end() : Promise.resolve(),
   getPool
 };
