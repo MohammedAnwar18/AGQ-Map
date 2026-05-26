@@ -166,13 +166,14 @@ const ProfileSidebar = ({ isOpen, onClose, currentUser, onNavigate, followedShop
                             {/* Spatial AR */}
                             <button className="sidebar-menu-item" onClick={() => { onNavigate('spatial-ar'); onClose(); }}>
                                 <div className="item-icon-box">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                                        <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-                                        <line x1="12" y1="22.08" x2="12" y2="12" />
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                        <rect x="3" y="3" width="6" height="6" rx="0.5" />
+                                        <rect x="15" y="3" width="6" height="6" rx="0.5" />
+                                        <rect x="3" y="15" width="6" height="6" rx="0.5" />
+                                        <path d="M16 16h1v1h-1zM19 19h2v2h-2zM15 20h2v1h-2zM20 15h1v2h-1zM10 5h2v2h-2zM10 10h2v2h-2zM5 10h2v2H5zM15 10h3v2h-3zM10 16h2v3h-2z" fill="currentColor" />
                                     </svg>
                                 </div>
-                                <span className="item-label">الواقع المعزز 🕶️</span>
+                                <span className="item-label">ماسح الرموز 📷</span>
                             </button>
 
                             {/* Settings */}

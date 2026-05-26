@@ -123,33 +123,56 @@ export default function ARView() {
       return;
     }
 
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (video && video.readyState === video.HAVE_ENOUGH_DATA) {
-      const ctx = canvas.getContext('2d');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+    try {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
       
-      // Draw video frame to hidden canvas
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      
-      // Decode QR Code
-      const code = jsQR(imageData.data, imageData.width, imageData.height, {
-        inversionAttempts: 'dontInvert',
-      });
+      // video.readyState >= 2 (HAVE_CURRENT_DATA) is sufficient to copy frames on mobile Safari/Chrome
+      if (video && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+        const ctx = canvas.getContext('2d');
+        
+        let width = video.videoWidth;
+        let height = video.videoHeight;
+        
+        // Scale down canvas for lightning-fast QR decoding on mobile CPUs (max 640px dimension)
+        const maxDim = 640;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
 
-      if (code && code.data) {
-        const decoded = QR_PROTOCOL.decode(code.data);
-        if (decoded && decoded.id) {
-          handleQRDetected(decoded.id);
-        } else {
-          // Standard QR scanned, ignore or warn
-          console.log('Unrecognized standard QR:', code.data);
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Draw downscaled frame
+        ctx.drawImage(video, 0, 0, width, height);
+        const imageData = ctx.getImageData(0, 0, width, height);
+        
+        // Decode QR Code
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: 'dontInvert',
+        });
+
+        if (code && code.data) {
+          const decoded = QR_PROTOCOL.decode(code.data);
+          if (decoded && decoded.id) {
+            handleQRDetected(decoded.id);
+          } else {
+            console.log('Unrecognized standard QR:', code.data);
+          }
         }
       }
+    } catch (err) {
+      console.error('QR Scanner Loop error caught:', err);
     }
-    scanTimerRef.current = setTimeout(scanLoop, 250); // Scan 4 times per second
+    
+    // Always schedule next scan to prevent the loop from freezing on canvas/stream exceptions
+    scanTimerRef.current = setTimeout(scanLoop, 250);
   }, [isScanningPaused, handleQRDetected]);
 
   // ══════════════════════════════════════════════════════════════
