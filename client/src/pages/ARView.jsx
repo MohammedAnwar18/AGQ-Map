@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import './ARView.css';
 
 // ═══════════════════════════════════════════════════════════════
@@ -100,6 +101,7 @@ function makeHoloMaterial(color = 0x00d4ff, opacity = 0.72) {
 // ═══════════════════════════════════════════════════════════════
 export default function ARView() {
   const navigate  = useNavigate();
+  const { user } = useAuth();
 
   // ─ DOM refs ──────────────────────────────────────────────────
   const videoRef    = useRef(null);
@@ -133,6 +135,11 @@ export default function ARView() {
   const [statusMsg, setStatus]      = useState('جارٍ تحديد موقعك...');
   const [iOSPerm, setIOSPerm]       = useState(false);
 
+  // ─ Admin Creation State ──────────────────────────────────────
+  const [showCreate, setShowCreate] = useState(false);
+  const [createData, setCreateData] = useState({ type: 'story', title: '', content: '', subtitle: '', image_url: '', era_year: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   // ─ Fetch AR content from backend ─────────────────────────────
   const fetchAR = useCallback(async (lat, lng) => {
     try {
@@ -144,6 +151,47 @@ export default function ARView() {
       setStatus(`وُجد ${data.contents?.length || 0} عناصر AR`);
     } catch { setStatus('لا يوجد اتصال بالخادم — وضع تجريبي'); }
   }, []);
+
+  // ─ Admin Submit Handler ──────────────────────────────────────
+  const handleCreateSubmit = async (e) => {
+    e.preventDefault();
+    if (!userPos || !createData.title) return;
+    setIsSubmitting(true);
+    try {
+      const base = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const token = localStorage.getItem('token');
+      
+      const endpoint = createData.type === 'building' ? '/api/ar/building' 
+                     : createData.type === 'nav_point' ? '/api/ar/nav-point' 
+                     : '/api/ar/story';
+
+      const payload = {
+        ...createData,
+        latitude: userPos.lat,
+        longitude: userPos.lng,
+        bearing: compass
+      };
+
+      const res = await fetch(`${base}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) throw new Error('فشل الإضافة');
+      const data = await res.json();
+      
+      if (data.content) setArItems(prev => [...prev, data.content]);
+      
+      setShowCreate(false);
+      setCreateData({ type: 'story', title: '', content: '', subtitle: '', image_url: '', era_year: '' });
+      setStatus('تمت الإضافة بنجاح! ✅');
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // ══════════════════════════════════════════════════════════════
   // 🎥 CAMERA STREAM
@@ -682,6 +730,58 @@ export default function ARView() {
                   {activeItem.era_year && <span>📅 {activeItem.era_year}</span>}
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─── ADMIN IN-SITU CREATION FAB ─── */}
+        {user?.role === 'admin' && phase === 'active' && !showCreate && (
+          <button className="ar-create-fab" onClick={() => setShowCreate(true)}>
+            <span className="ar-fab-icon">➕</span>
+            <span className="ar-fab-text">إسقاط هنا</span>
+          </button>
+        )}
+
+        {/* ─── CREATION MODAL ─── */}
+        {showCreate && (
+          <div className="ar-create-modal">
+            <div className="ar-create-card">
+              <button className="ar-detail-close" onClick={() => setShowCreate(false)}>✕</button>
+              <h3 style={{ margin: '0 0 8px', color: '#00d4ff', fontSize: '20px' }}>إضافة محتوى جديد</h3>
+              <p className="ar-create-hint">سيتم التقاط موقعك واتجاهك الحالي تلقائياً</p>
+              
+              <form onSubmit={handleCreateSubmit} className="ar-create-form">
+                <select value={createData.type} onChange={e => setCreateData({...createData, type: e.target.value})}>
+                  <option value="story">📜 قصة مكانية</option>
+                  <option value="building">🏛️ مبنى تاريخي</option>
+                  <option value="nav_point">🧭 نقطة توجيه</option>
+                </select>
+                
+                <input type="text" placeholder="الاسم / العنوان" required value={createData.title} onChange={e => setCreateData({...createData, title: e.target.value})} />
+                
+                {createData.type !== 'nav_point' && (
+                  <input type="text" placeholder="العنوان الفرعي (اختياري)" value={createData.subtitle} onChange={e => setCreateData({...createData, subtitle: e.target.value})} />
+                )}
+                
+                <textarea placeholder="الوصف والمحتوى..." rows="3" value={createData.content} onChange={e => setCreateData({...createData, content: e.target.value})}></textarea>
+                
+                {createData.type !== 'nav_point' && (
+                  <input type="text" placeholder="رابط صورة (اختياري)" value={createData.image_url} onChange={e => setCreateData({...createData, image_url: e.target.value})} />
+                )}
+                
+                {createData.type !== 'nav_point' && (
+                  <input type="number" placeholder="سنة التاريخ (مثال: 1948)" value={createData.era_year} onChange={e => setCreateData({...createData, era_year: e.target.value})} />
+                )}
+                
+                <div className="ar-create-meta">
+                  <span>📍 {userPos?.lat.toFixed(5)}, {userPos?.lng.toFixed(5)}</span>
+                  <span>🧭 {compass}°</span>
+                </div>
+                
+                <button type="submit" disabled={isSubmitting} className="ar-create-submit">
+                  {isSubmitting ? 'جاري الإضافة...' : 'إسقاط المحتوى هنا 📌'}
+                </button>
+              </form>
             </div>
           </div>
         )}
