@@ -47,12 +47,15 @@ export default function ARView() {
   // ─ DOM Refs ──────────────────────────────────────────────────
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
+  const touchStartRef = useRef(null);
 
   // ─ Sensor States ─────────────────────────────────────────────
-  const [compass, setCompass] = useState(0); // Heading/yaw
-  const [beta, setBeta] = useState(90);      // Pitch/tilt (90 is upright vertical)
+  const [compass, setCompass] = useState(0);       // Raw Heading/yaw from sensors
+  const [swipeOffset, setSwipeOffset] = useState(0); // Manual drag swipe rotation (in degrees)
+  const [beta, setBeta] = useState(90);            // Pitch/tilt (90 is upright vertical)
   const [userPos, setUserPos] = useState(null);
   const [watchId, setWatchId] = useState(null);
+  const [isFallbackMode, setIsFallbackMode] = useState(false);
 
   // ─ App States ────────────────────────────────────────────────
   const [phase, setPhase] = useState('permission'); // permission|loading|active|error
@@ -62,6 +65,7 @@ export default function ARView() {
   const [visibleItems, setVisibleItems] = useState([]);
   const [activeItem, setActiveItem] = useState(null);
   const [iOSPerm, setIOSPerm] = useState(false);
+  const [hasCompassSensor, setHasCompassSensor] = useState(false);
 
   // ─ Admin Creation Modal State ────────────────────────────────
   const [showCreate, setShowCreate] = useState(false);
@@ -71,17 +75,46 @@ export default function ARView() {
   const [createTitle, setCreateTitle] = useState('');
   const [createContent, setCreateContent] = useState('');
 
+  // ─ Calculated Heading (Compass + Swipe Offset) ────────────────
+  const effectiveHeading = (compass + swipeOffset + 360) % 360;
+
   // ─ Fetch AR content from backend ─────────────────────────────
-  const fetchAR = useCallback(async (lat, lng) => {
+  const fetchAR = useCallback(async (lat, lng, fallback = false) => {
     try {
       const base = import.meta.env.VITE_API_URL || '';
-      // Increased radius to 1000m to catch more historical landmarks
-      const r = await fetch(`${base}/api/ar/nearby?lat=${lat}&lng=${lng}&radius=1000`);
+      const token = localStorage.getItem('token');
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+      // If we are in indoor/fallback mode, get all contents so we can place virtual coordinates
+      const url = fallback 
+        ? `${base}/api/ar/all` 
+        : `${base}/api/ar/nearby?lat=${lat}&lng=${lng}&radius=1000`;
+
+      const r = await fetch(url, { headers });
       if (!r.ok) return;
       const data = await r.json();
-      setArItems(data.contents || []);
-      setStatus(`تم العثور على ${data.contents?.length || 0} معلم جغرافي`);
-    } catch {
+      const items = data.contents || data.items || [];
+      setArItems(items);
+
+      if (items.length > 0) {
+        if (fallback) {
+          setIsFallbackMode(true);
+          // Set virtual user position exactly ~11 meters south of the first marker
+          // so it appears right in front of them in the camera feed
+          const first = items[0];
+          setUserPos({
+            lat: parseFloat(first.latitude) - 0.0001,
+            lng: parseFloat(first.longitude)
+          });
+          setStatus(`المحاكاة الداخلية: تم تحميل ${items.length} معالم جغرافية 🏠`);
+        } else {
+          setStatus(`تم العثور على ${items.length} معالم جغرافية`);
+        }
+      } else {
+        setStatus('لا توجد معالم منشورة قريبة أو مسجلة');
+      }
+    } catch (err) {
+      console.error(err);
       setStatus('لا يوجد اتصال بالخادم — يعمل بالوضع التجريبي المحلي');
     }
   }, []);
@@ -100,7 +133,6 @@ export default function ARView() {
       });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        // Wait for metadata to load to make sure it plays cleanly
         videoRef.current.onloadedmetadata = () => {
           videoRef.current.play().catch(e => console.error('Play error:', e));
         };
@@ -113,19 +145,25 @@ export default function ARView() {
   }, []);
 
   // ══════════════════════════════════════════════════════════════
-  // 🧭 SENSOR INITIALIZATION (GPS & COMPASS)
+  // 🧭 SENSOR INITIALIZATION (GPS, GYRO & COMPASS)
   // ══════════════════════════════════════════════════════════════
   const startOrientation = useCallback(() => {
     const handler = (e) => {
-      // webkitCompassHeading is specific to iOS Safari
-      const a = e.webkitCompassHeading ?? (e.alpha ? (360 - e.alpha) : 0);
+      // Determine if device orientation actually provides compass heading
+      const absoluteHeading = e.webkitCompassHeading;
+      const alphaHeading = e.alpha ? (360 - e.alpha) : 0;
+      
+      if (absoluteHeading !== undefined || e.alpha !== null) {
+        setHasCompassSensor(true);
+      }
+      
+      const a = absoluteHeading ?? alphaHeading;
       setCompass(Math.round(a));
       setBeta(Math.round(e.beta || 90));
     };
 
     if (typeof DeviceOrientationEvent !== 'undefined' &&
         typeof DeviceOrientationEvent.requestPermission === 'function') {
-      // Flag iOS requiring tap permission
       setIOSPerm(true);
     } else {
       window.addEventListener('deviceorientation', handler, true);
@@ -139,7 +177,12 @@ export default function ARView() {
       const perm = await DeviceOrientationEvent.requestPermission();
       if (perm === 'granted') {
         const handler = (e) => {
-          const a = e.webkitCompassHeading ?? (360 - (e.alpha || 0));
+          const absoluteHeading = e.webkitCompassHeading;
+          const alphaHeading = e.alpha ? (360 - e.alpha) : 0;
+          if (absoluteHeading !== undefined || e.alpha !== null) {
+            setHasCompassSensor(true);
+          }
+          const a = absoluteHeading ?? alphaHeading;
           setCompass(Math.round(a));
           setBeta(Math.round(e.beta || 90));
         };
@@ -161,12 +204,15 @@ export default function ARView() {
     const opts = { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 };
     const id = navigator.geolocation.watchPosition(
       (pos) => {
+        // If GPS succeeds, overwrite fallback mode
+        setIsFallbackMode(false);
         const { latitude: lat, longitude: lng } = pos.coords;
         setUserPos({ lat, lng });
         fetchAR(lat, lng);
       },
       (err) => {
-        setStatus(`خطأ في تحديد الموقع: ${err.message}`);
+        // Fail silently or notify, but let the fallback timer handle indoor simulation
+        console.warn(`GPS Warning: ${err.message}`);
       },
       opts
     );
@@ -174,7 +220,7 @@ export default function ARView() {
   }, [fetchAR]);
 
   // ══════════════════════════════════════════════════════════════
-  // 🚀 BOOT SEQUENCE
+  // 🚀 BOOT SEQUENCE & INDOOR FALLBACK TIMER
   // ══════════════════════════════════════════════════════════════
   useEffect(() => {
     let cleanupOrientation;
@@ -193,17 +239,25 @@ export default function ARView() {
     }
 
     return () => {
-      if (watchId) {
-        navigator.geolocation.clearWatch(watchId);
-      }
+      if (watchId) navigator.geolocation.clearWatch(watchId);
       if (videoRef.current && videoRef.current.srcObject) {
         videoRef.current.srcObject.getTracks().forEach(track => track.stop());
       }
-      if (cleanupOrientation) {
-        cleanupOrientation();
-      }
+      if (cleanupOrientation) cleanupOrientation();
     };
   }, [phase]); // eslint-disable-line
+
+  // Indoor Fallback Trigger: If no GPS position after 4.5 seconds, start simulation mode
+  useEffect(() => {
+    if (phase === 'active' && !userPos) {
+      const timer = setTimeout(() => {
+        if (!userPos) {
+          fetchAR(0, 0, true); // Trigger all markers fetch & virtual coordinate mapping
+        }
+      }, 4500);
+      return () => clearTimeout(timer);
+    }
+  }, [phase, userPos, fetchAR]);
 
   // ══════════════════════════════════════════════════════════════
   // 🖥️ VISIBLE MARKERS CALCULATOR
@@ -211,25 +265,23 @@ export default function ARView() {
   useEffect(() => {
     if (!userPos || arItems.length === 0) return;
 
-    // Filter and project markers onto screen coordinates
     const visible = arItems
       .map(item => {
         const dist = GEO.distance(userPos.lat, userPos.lng, item.latitude, item.longitude);
         const bear = GEO.bearing(userPos.lat, userPos.lng, item.latitude, item.longitude);
-        const diff = GEO.angleDiff(bear, compass); // degrees relative to center
+        
+        // Use effectiveHeading (compass + drag swipe offset) instead of raw compass
+        const diff = GEO.angleDiff(bear, effectiveHeading);
 
         // Camera horizontal field of view is about 60 degrees.
-        // A marker is on screen if its relative angle is between -30 and 30 degrees.
         const inFovX = Math.abs(diff) <= 30;
 
         // Calculate horizontal screen percentage (0% to 100%)
         const screenX = 50 + (diff / 30) * 50; 
 
-        // Pitch (beta): 90 is straight upright. Less than 90 is tilted down.
-        // We tilt beta to slide the horizon up/down.
+        // Pitch (beta): 90 is upright vertical.
         const screenY = 50 - (beta - 90) * 1.5; 
 
-        // Vertical screen visibility checks
         const inFovY = screenY >= 5 && screenY <= 95;
 
         return {
@@ -242,16 +294,58 @@ export default function ARView() {
           bearingDiff: diff
         };
       })
-      // We display all items inside 1000m range
       .filter(i => i.dist <= 1000);
 
     setVisibleItems(visible);
-  }, [compass, beta, userPos, arItems]);
+  }, [effectiveHeading, beta, userPos, arItems]);
 
   // Compass text representation
   const compassLabel = () => {
     const dirs = ['شمال','ش.شرق','شرق','ج.شرق','جنوب','ج.غرب','غرب','ش.غرب'];
-    return dirs[Math.round(compass / 45) % 8];
+    return dirs[Math.round(effectiveHeading / 45) % 8];
+  };
+
+  // ══════════════════════════════════════════════════════════════
+  // 🔄 SWIPE & ALIGNMENT HELPERS
+  // ══════════════════════════════════════════════════════════════
+  const handleTouchStart = (e) => {
+    if (e.touches && e.touches.length > 0) {
+      touchStartRef.current = e.touches[0].clientX;
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (touchStartRef.current !== null && e.touches && e.touches.length > 0) {
+      const currentX = e.touches[0].clientX;
+      const diffX = currentX - touchStartRef.current;
+      // Map drag distance in pixels to rotation angle degrees
+      const rotationStep = (diffX / window.innerWidth) * 75; 
+      setSwipeOffset(prev => (prev - rotationStep + 360) % 360);
+      touchStartRef.current = currentX;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    touchStartRef.current = null;
+  };
+
+  // Automatically align camera view to look directly at the nearest marker
+  const handleRealignClick = () => {
+    if (visibleItems.length === 0 || !userPos) return;
+    // Find nearest item
+    const sorted = [...visibleItems].sort((a, b) => a.dist - b.dist);
+    const nearest = sorted[0];
+    const bear = GEO.bearing(userPos.lat, userPos.lng, nearest.latitude, nearest.longitude);
+    
+    // Set swipeOffset so that (compass + swipeOffset) equals the target bearing
+    const targetOffset = (bear - compass + 360) % 360;
+    setSwipeOffset(targetOffset);
+    setStatus(`تم توجيه الرؤية تلقائياً نحو: "${nearest.title}" 🔄`);
+  };
+
+  // Force enable indoor simulation mode manually
+  const triggerManualSimulation = () => {
+    fetchAR(0, 0, true);
   };
 
   // ══════════════════════════════════════════════════════════════
@@ -278,7 +372,7 @@ export default function ARView() {
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
     if (!userPos) {
-      alert('عذراً، لم نتمكن من تحديد موقعك الجغرافي الحالي بعد. يرجى التأكد من تشغيل الـ GPS.');
+      alert('عذراً، لم نتمكن من تحديد الموقع الجغرافي. يرجى الانتظار لحين تحميل المحاكاة أو الـ GPS.');
       return;
     }
     if (!photoFile) {
@@ -301,7 +395,7 @@ export default function ARView() {
       formData.append('content', createContent.trim());
       formData.append('latitude', userPos.lat);
       formData.append('longitude', userPos.lng);
-      formData.append('bearing', compass);
+      formData.append('bearing', effectiveHeading); // Save with current rotated direction
 
       const res = await fetch(`${base}/api/ar/photo-marker`, {
         method: 'POST',
@@ -322,13 +416,12 @@ export default function ARView() {
         setArItems(prev => [data.content, ...prev]);
       }
       
-      // Reset Modal & Forms
       setShowCreate(false);
       setPhotoFile(null);
       setPhotoPreview('');
       setCreateTitle('');
       setCreateContent('');
-      setStatus('تم حفظ المعلم الجديد بنجاح! 📸✅');
+      setStatus('تم حفظ ونشر المعلم الجديد بنجاح! 📸✅');
     } catch (err) {
       console.error(err);
       alert(err.message);
@@ -345,16 +438,16 @@ export default function ARView() {
     return (
       <div className="ar-permission-screen">
         <div className="ar-perm-card">
-          <div className="ar-perm-icon">📍</div>
-          <h2>الواقع المعزز الفوتوغرافي</h2>
-          <p>يتطلب هذا النظام الصلاحيات التالية لتشغيل الكاميرا وإسقاط المعالم الجغرافية بموقعها الحقيقي:</p>
+          <div className="ar-perm-icon">📸</div>
+          <h2>كاميرا الواقع المعزز الفوتوغرافي</h2>
+          <p>يعرض هذا النظام المعالم المنشورة مباشرة على كاميرا الهاتف بشكل تفاعلي:</p>
           <ul className="ar-perm-list">
-            <li>📷 كاميرا الهاتف (لالتقاط وعرض المواقع)</li>
-            <li>📍 نظام تحديد المواقع العالمي (GPS)</li>
-            <li>🧭 البوصلة والمستشعرات الحركية</li>
+            <li>📷 الكاميرا الحية (لعرض المعالم بالمكان)</li>
+            <li>📍 الموقع الجغرافي (أو وضع المحاكاة داخل المباني)</li>
+            <li>🔄 البوصلة (أو السحب اليدوي على الشاشة للالتفاف)</li>
           </ul>
           <button className="ar-perm-btn" onClick={() => setPhase('loading')}>
-            ابدأ الآن
+            افتح الكاميرا وابدأ
           </button>
         </div>
       </div>
@@ -366,55 +459,68 @@ export default function ARView() {
       <div className="ar-permission-screen">
         <div className="ar-perm-card error">
           <div className="ar-perm-icon">⚠️</div>
-          <h2>عذراً، فشل تشغيل الـ AR</h2>
-          <p>{permMsg || 'يرجى التحقق من منح صلاحيات الكاميرا والموقع الجغرافي وإعادة المحاولة.'}</p>
-          <button className="ar-perm-btn" onClick={() => navigate(-1)}>رجوع للصفحة السابقة</button>
+          <h2>تعذر فتح الكاميرا</h2>
+          <p>{permMsg || 'تأكد من منح صلاحيات الكاميرا والموقع لإظهار معالم الواقع المعزز.'}</p>
+          <button className="ar-perm-btn" onClick={() => navigate(-1)}>رجوع</button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="ar-root">
-      {/* 📷 Live Camera Stream Background */}
+    <div 
+      className="ar-root"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* 📷 Fullscreen Live Camera View */}
       <video ref={videoRef} className="ar-video" playsInline muted autoPlay />
 
-      {/* 🎛️ HTML Interactive Overlay */}
+      {/* 🎛️ Interactive Glass Overlay */}
       <div className="ar-overlay">
 
-        {/* iOS Permission Notification Banner */}
+        {/* iOS Direction Request Banner */}
         {iOSPerm && (
           <div className="ar-ios-banner" onClick={requestIOSOrientation}>
-            اضغط هنا لتفعيل مستشعر البوصلة والاتجاه 🧭
+            اضغط هنا لتفعيل مستشعر الحركة والبوصلة 🧭
           </div>
         )}
 
-        {/* ─── TOP HUD (Navigation & Status) ─── */}
+        {/* ─── TOP HUD: Compass & Status & Realignment ─── */}
         <div className="ar-hud-top">
           <button className="ar-back-btn" onClick={() => navigate(-1)} aria-label="Back">
             ✕
           </button>
 
-          {/* Glowing Compass */}
-          <div className="ar-compass-ring">
-            <div className="ar-compass-needle" style={{ transform: `rotate(${-compass}deg)` }}>
+          {/* Compass / Direction Ring */}
+          <div className="ar-compass-ring" onClick={handleRealignClick} title="اضغط للمحاذاة التلقائية">
+            <div className="ar-compass-needle" style={{ transform: `rotate(${-effectiveHeading}deg)` }}>
               <span className="ar-compass-n">▲</span>
             </div>
-            <div className="ar-compass-value">{compass}° {compassLabel()}</div>
+            <div className="ar-compass-value">{effectiveHeading}° {compassLabel()}</div>
           </div>
 
-          {/* GPS Status Info */}
+          {/* Status badge & Fallback simulation button */}
           <div className="ar-status-pill">
             <span className={`ar-gps-dot ${userPos ? 'active' : ''}`} />
             <span className="ar-status-text">
-              {userPos
-                ? `${userPos.lat.toFixed(5)}, ${userPos.lng.toFixed(5)}`
-                : statusMsg}
+              {isFallbackMode ? '🏠 محاكاة الموقع المغلق' : (userPos ? `${userPos.lat.toFixed(5)}, ${userPos.lng.toFixed(5)}` : statusMsg)}
             </span>
+            {!userPos && (
+              <button onClick={triggerManualSimulation} className="ar-simulate-btn">
+                محاكاة 🏠
+              </button>
+            )}
           </div>
         </div>
 
-        {/* ─── FLOATING AR LOCATION PIN MARKERS (Only inside FOV) ─── */}
+        {/* Swipe screen instruction text helper */}
+        <div className="ar-swipe-hint">
+          <span>👈 اسحب الشاشة يميناً أو يساراً للالتفاف وتوجيه الكاميرا 🔄</span>
+        </div>
+
+        {/* ─── FLOATING LOCATION PIN MARKERS (Only inside FOV) ─── */}
         {visibleItems
           .filter(item => item.inView)
           .map(item => (
@@ -424,18 +530,15 @@ export default function ARView() {
               style={{ left: `${item.screenX}%`, top: `${item.screenY}%` }}
               onClick={() => setActiveItem(item)}
             >
-              {/* Inner thumbnail image inside the pulsing pin */}
               <div className="ar-pin-circle">
                 {item.image_url ? (
                   <img src={item.image_url} alt={item.title} className="ar-pin-thumb" />
                 ) : (
                   <span className="ar-pin-icon-placeholder">📸</span>
                 )}
-                {/* Glowing Pulse Rings */}
                 <div className="ar-pin-pulse" />
               </div>
 
-              {/* Tag Info */}
               <div className="ar-pin-label">
                 <span className="ar-pin-title">{item.title}</span>
                 <span className="ar-pin-distance">{GEO.fmt(item.dist)}</span>
@@ -444,7 +547,7 @@ export default function ARView() {
             </div>
           ))}
 
-        {/* ─── EDGE DIRECTION INDICATORS (For markers outside current FOV) ─── */}
+        {/* ─── EDGE ARROW POINTERS (For markers outside current FOV) ─── */}
         {visibleItems
           .filter(item => !item.inView)
           .map(item => {
@@ -454,8 +557,9 @@ export default function ARView() {
                 key={`edge-${item.id}`}
                 className={`ar-edge-indicator ${isLeft ? 'left' : 'right'}`}
                 onClick={() => {
-                  // Alert user how far to turn
-                  setStatus(`الجه التفت حولك: ${Math.round(Math.abs(item.bearingDiff))}° ${isLeft ? 'يساراً' : 'يميناً'} لرؤية "${item.title}"`);
+                  // Re-align on click
+                  const targetOffset = (item.bear - compass + 360) % 360;
+                  setSwipeOffset(targetOffset);
                   setActiveItem(item);
                 }}
               >
@@ -468,10 +572,10 @@ export default function ARView() {
             );
           })}
 
-        {/* ─── BOTTOM LIST HUD (Horizontal list of all nearby markers) ─── */}
+        {/* ─── BOTTOM HUD STRIP (Horizontal list of all nearby markers) ─── */}
         <div className="ar-hud-bottom">
           {visibleItems.length === 0 ? (
-            <div className="ar-no-items">لا توجد معالم جغرافية قريبة منك حالياً (في نطاق 1 كم)</div>
+            <div className="ar-no-items">لا توجد معالم قريبة منك حالياً (في نطاق 1 كم)</div>
           ) : (
             <div className="ar-items-strip">
               {visibleItems.map(item => (
@@ -480,8 +584,9 @@ export default function ARView() {
                   className={`ar-strip-item ${item.inView ? 'in-view' : ''} ${activeItem?.id === item.id ? 'selected' : ''}`}
                   onClick={() => {
                     setActiveItem(item);
-                    // Automatically scroll compass towards the item
-                    setStatus(`المعلم "${item.title}" يبعد ${GEO.fmt(item.dist)} باتجاه ${Math.round(item.bear)}°`);
+                    // Focus camera direction directly towards the clicked item
+                    const targetOffset = (item.bear - compass + 360) % 360;
+                    setSwipeOffset(targetOffset);
                   }}
                 >
                   {item.image_url ? (
@@ -591,7 +696,7 @@ export default function ARView() {
                   </div>
                   <div className="ar-meta-item">
                     <span className="ar-meta-label">🧭 الاتجاه:</span>
-                    <span className="ar-meta-val">{compass}° ({compassLabel()})</span>
+                    <span className="ar-meta-val">{effectiveHeading}° ({compassLabel()})</span>
                   </div>
                 </div>
                 

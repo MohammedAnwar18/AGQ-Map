@@ -950,3 +950,51 @@
   from { transform: translateY(-50px); opacity: 0; }
   to   { transform: translateY(0); opacity: 1; }
 }
+
+/* Swipe Instructions Hint */
+.ar-swipe-hint {
+  position: absolute;
+  top: 125px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 10, 30, 0.7);
+  border: 1px solid rgba(0, 212, 255, 0.35);
+  padding: 6px 14px;
+  border-radius: 20px;
+  color: #00d4ff;
+  font-size: 11px;
+  font-weight: 700;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  animation: pulse-hint 2.5s infinite;
+  white-space: nowrap;
+  z-index: 100;
+}
+
+@keyframes pulse-hint {
+  0%, 100% { opacity: 0.8; transform: translateX(-50%) scale(0.98); }
+  50%       { opacity: 1; transform: translateX(-50%) scale(1.02); }
+}
+
+/* Simulate Button for Indoors */
+.ar-simulate-btn {
+  background: linear-gradient(135deg, #10b981, #059669);
+  border: none;
+  border-radius: 12px;
+  padding: 4px 10px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-right: auto; /* Push to the opposite side of pill in RTL */
+  margin-left: 0;
+  transition: all 0.2s;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+}
+
+.ar-simulate-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.5);
+}
+
