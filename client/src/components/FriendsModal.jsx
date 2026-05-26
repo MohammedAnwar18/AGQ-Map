@@ -672,6 +672,9 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                         <option value="Electronics">إلكترونيات</option>
                                                         <option value="Supermarket">سوبرماركت</option>
                                                         <option value="Service">خدمات</option>
+                                                        <option value="فندق">فندق</option>
+                                                        <option value="مركز ثقافي">مركز ثقافي</option>
+                                                        <option value="كرفان">كرفان</option>
                                                     </select>
                                                 </div>
                                                 {newShopData.category === 'Camera' && (
