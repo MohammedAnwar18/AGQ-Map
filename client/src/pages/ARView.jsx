@@ -195,65 +195,61 @@ export default function ARView() {
     }
   };
 
-  const startGPS = useCallback(() => {
-    if (!navigator.geolocation) {
-      setStatus('جهازك لا يدعم تحديد الموقع الجغرافي (GPS)');
-      return;
-    }
-
-    const opts = { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 };
-    const id = navigator.geolocation.watchPosition(
-      (pos) => {
-        // If GPS succeeds, overwrite fallback mode
-        setIsFallbackMode(false);
-        const { latitude: lat, longitude: lng } = pos.coords;
-        setUserPos(prev => {
-          if (!prev) return { lat, lng };
-          // Apply low-pass exponential moving average filter to smooth GPS jitter & drift
-          const smoothFactor = 0.25; 
-          return {
-            lat: prev.lat + (lat - prev.lat) * smoothFactor,
-            lng: prev.lng + (lng - prev.lng) * smoothFactor
-          };
-        });
-        fetchAR(lat, lng);
-      },
-      (err) => {
-        // Fail silently or notify, but let the fallback timer handle indoor simulation
-        console.warn(`GPS Warning: ${err.message}`);
-      },
-      opts
-    );
-    setWatchId(id);
-  }, [fetchAR]);
-
   // ══════════════════════════════════════════════════════════════
   // 🚀 BOOT SEQUENCE & INDOOR FALLBACK TIMER
   // ══════════════════════════════════════════════════════════════
   useEffect(() => {
     let cleanupOrientation;
+    let localWatchId = null;
     
-    if (phase === 'loading') {
-      (async () => {
-        const camOk = await startCamera();
-        if (!camOk) {
-          setPhase('error');
-          return;
-        }
-        cleanupOrientation = startOrientation();
-        startGPS();
-        setPhase('active');
-      })();
-    }
+    (async () => {
+      setPhase('loading');
+      const camOk = await startCamera();
+      if (!camOk) {
+        setPhase('error');
+        return;
+      }
+      cleanupOrientation = startOrientation();
+      
+      // Start GPS immediately
+      if (navigator.geolocation) {
+        const opts = { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 };
+        localWatchId = navigator.geolocation.watchPosition(
+          (pos) => {
+            setIsFallbackMode(false);
+            const { latitude: lat, longitude: lng } = pos.coords;
+            setUserPos(prev => {
+              if (!prev) return { lat, lng };
+              // Apply low-pass exponential moving average filter to smooth GPS jitter & drift
+              const smoothFactor = 0.25; 
+              return {
+                lat: prev.lat + (lat - prev.lat) * smoothFactor,
+                lng: prev.lng + (lng - prev.lng) * smoothFactor
+              };
+            });
+            fetchAR(lat, lng);
+          },
+          (err) => {
+            console.warn(`GPS Warning: ${err.message}`);
+          },
+          opts
+        );
+        setWatchId(localWatchId);
+      } else {
+        setStatus('جهازك لا يدعم تحديد الموقع الجغرافي (GPS)');
+      }
+      
+      setPhase('active');
+    })();
 
     return () => {
-      if (watchId) navigator.geolocation.clearWatch(watchId);
+      if (localWatchId) navigator.geolocation.clearWatch(localWatchId);
       if (videoRef.current && videoRef.current.srcObject) {
         videoRef.current.srcObject.getTracks().forEach(track => track.stop());
       }
       if (cleanupOrientation) cleanupOrientation();
     };
-  }, [phase]); // eslint-disable-line
+  }, []); // Run ONLY once on mount to prevent camera resetting on phase changes
 
   // Indoor Fallback Trigger: If no GPS position after 4.5 seconds, start simulation mode
   useEffect(() => {
