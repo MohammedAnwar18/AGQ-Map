@@ -16,6 +16,7 @@ const {
     getAllShops,
     deleteShop,
     toggleShopStatus,
+    toggleShopLock,
     sendAdminNotification
 } = require('../controllers/adminController');
 
@@ -43,6 +44,7 @@ router.post('/posts', upload.single('image'), createAdminPost);
 router.get('/shops', getAllShops);
 router.delete('/shops/:shopId', deleteShop);
 router.patch('/shops/:shopId/status', toggleShopStatus);
+router.patch('/shops/:shopId/lock', toggleShopLock);
 
 // Admin Notifications
 router.post('/notifications/send', sendAdminNotification);

@@ -227,6 +227,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     const [products, setProducts] = useState([]);
     const [activeTab, setActiveTab] = useState((shop.category === 'صراف آلي' || shop.category === 'فرع بنك') ? 'about' : 'products');
     const [loading, setLoading] = useState(true);
+    const [isLocked, setIsLocked] = useState(false);
     const [isFollowing, setIsFollowing] = useState(false);
     const [internalShops, setInternalShops] = useState([]); // Shops inside this mall
 
@@ -734,6 +735,9 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                 }
             }
         } catch (error) {
+            if (error.response?.status === 423) {
+                setIsLocked(true);
+            }
             console.error(error);
         } finally {
             setLoading(false);
@@ -1085,6 +1089,30 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     // --- Render Helpers ---
 
     if (!shopData) return null;
+
+    if (isLocked) {
+        return (
+            <div className="modal-overlay profile-modal-overlay" onClick={onClose}>
+                <div
+                    className="modal-container"
+                    onClick={e => e.stopPropagation()}
+                    style={{ maxWidth: 360, borderRadius: 20, padding: '40px 32px', textAlign: 'center', background: '#1a1a2e' }}
+                >
+                    <div style={{ fontSize: 64, marginBottom: 16 }}>🔒</div>
+                    <h2 style={{ color: '#e2e8f0', marginBottom: 8, fontSize: 20 }}>{shop.name}</h2>
+                    <p style={{ color: '#94a3b8', fontSize: 15, lineHeight: 1.6 }}>
+                        هذا المحل مقفول حالياً من قِبل الإدارة
+                    </p>
+                    <button
+                        onClick={onClose}
+                        style={{ marginTop: 24, padding: '10px 28px', borderRadius: 12, border: 'none', background: '#6366f1', color: '#fff', fontSize: 15, cursor: 'pointer' }}
+                    >
+                        حسناً
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     // No full-screen loading blocker here so the modal opens instantly. Sub-content loads asynchronously in the tabs.
 

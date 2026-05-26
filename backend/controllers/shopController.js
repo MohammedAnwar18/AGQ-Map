@@ -389,6 +389,11 @@ const getShopProfile = async (req, res) => {
             userRole = userRes.rows[0]?.role;
         }
 
+        // Block access to locked shops (admins can still view)
+        if (shop.is_locked && userRole !== 'admin') {
+            return res.status(423).json({ error: 'Shop is locked', is_locked: true });
+        }
+
         const isOwner = currentUserId && (String(shop.owner_id) === String(currentUserId) || userRole === 'admin');
 
         if (shop.is_hidden && !isOwner && userRole !== 'admin') {

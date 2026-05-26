@@ -295,7 +295,7 @@ const getAllShops = async (req, res) => {
         const offset = (page - 1) * limit;
 
         let query = `
-            SELECT id, name, category, profile_picture, created_at, 'shop' as type, is_hidden 
+            SELECT id, name, category, profile_picture, created_at, 'shop' as type, is_hidden, is_locked
             FROM shops
         `;
         let params = [];
@@ -354,6 +354,21 @@ const toggleShopStatus = async (req, res) => {
     } catch (error) {
         console.error('Toggle shop status error:', error);
         res.status(500).json({ error: 'Server error updating shop status' });
+    }
+};
+
+/**
+ * قفل / فتح قفل محل (يبقى على الخريطة لكن لا يمكن فتحه)
+ */
+const toggleShopLock = async (req, res) => {
+    try {
+        const { shopId } = req.params;
+        const { is_locked } = req.body;
+        await pool.query('UPDATE shops SET is_locked = $1 WHERE id = $2', [is_locked, shopId]);
+        res.json({ message: 'Shop lock status updated', is_locked });
+    } catch (error) {
+        console.error('Toggle shop lock error:', error);
+        res.status(500).json({ error: 'Server error updating shop lock' });
     }
 };
 
@@ -451,5 +466,6 @@ module.exports = {
     getAllShops,
     deleteShop,
     toggleShopStatus,
+    toggleShopLock,
     sendAdminNotification
 };

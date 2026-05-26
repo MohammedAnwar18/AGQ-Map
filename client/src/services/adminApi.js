@@ -108,6 +108,11 @@ export const adminService = {
         return response.data;
     },
 
+    toggleShopLock: async (shopId, is_locked) => {
+        const response = await adminApi.patch(`/shops/${shopId}/lock`, { is_locked });
+        return response.data;
+    },
+
     // Admin Notifications
     sendNotification: async (targetUser, message) => {
         const response = await adminApi.post('/notifications/send', { targetUser, message });
