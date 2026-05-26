@@ -6,6 +6,7 @@ import ImageCropper from './ImageCropper';
 
 const ProfileSetupModal = ({ onClose }) => {
     const { user, updateUser } = useAuth();
+    const [gender, setGender] = useState(user?.gender || 'male');
     const [tempImageSrc, setTempImageSrc] = useState(null);
     const [showCropper, setShowCropper] = useState(false);
     const [previewUrl, setPreviewUrl] = useState(null);
@@ -34,16 +35,37 @@ const ProfileSetupModal = ({ onClose }) => {
     };
 
     const handleSave = async () => {
-        if (!croppedFile) return;
         setSaving(true);
         try {
             const formData = new FormData();
-            formData.append('profile_picture', croppedFile);
+            if (croppedFile) {
+                formData.append('profile_picture', croppedFile);
+            }
+            formData.append('gender', gender);
+            
             const data = await userService.updateProfile(formData);
-            updateUser({ profile_picture: data.user?.profile_picture || previewUrl });
+            updateUser({ 
+                profile_picture: data.user?.profile_picture || user?.profile_picture || previewUrl,
+                gender: data.user?.gender || gender
+            });
             onClose();
         } catch {
-            alert('حدث خطأ أثناء رفع الصورة. حاول مرة أخرى.');
+            alert('حدث خطأ أثناء حفظ التعديلات. حاول مرة أخرى.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleSkip = async () => {
+        setSaving(true);
+        try {
+            const formData = new FormData();
+            formData.append('gender', gender);
+            const data = await userService.updateProfile(formData);
+            updateUser({ gender: data.user?.gender || gender });
+            onClose();
+        } catch {
+            onClose();
         } finally {
             setSaving(false);
         }
@@ -85,7 +107,7 @@ const ProfileSetupModal = ({ onClose }) => {
                             {previewUrl ? (
                                 <img src={previewUrl} alt="preview" style={styles.previewImg} />
                             ) : (
-                                <DefaultAvatar gender={user?.gender} size={110} uid={String(user?.id || 'setup')} />
+                                <DefaultAvatar gender={gender} size={110} uid={String(user?.id || 'setup')} />
                             )}
                         </div>
                         <div style={styles.cameraBtn}>
@@ -95,6 +117,31 @@ const ProfileSetupModal = ({ onClose }) => {
                             </svg>
                         </div>
                         <p style={styles.tapHint}>اضغط لاختيار صورة</p>
+                    </div>
+
+                    {/* Gender Selection */}
+                    <div style={styles.genderContainer}>
+                        <p style={styles.genderLabel}>حدد الجنس لتخصيص الهوية الافتراضية:</p>
+                        <div style={styles.genderOptions}>
+                            <button
+                                style={{
+                                    ...styles.genderBtn,
+                                    ...(gender === 'male' ? styles.genderBtnActiveMale : {})
+                                }}
+                                onClick={() => setGender('male')}
+                            >
+                                <span style={{ fontSize: '1.1rem' }}>👨</span> ذكر
+                            </button>
+                            <button
+                                style={{
+                                    ...styles.genderBtn,
+                                    ...(gender === 'female' ? styles.genderBtnActiveFemale : {})
+                                }}
+                                onClick={() => setGender('female')}
+                            >
+                                <span style={{ fontSize: '1.1rem' }}>👩</span> أنثى
+                            </button>
+                        </div>
                     </div>
 
                     <input
@@ -117,8 +164,8 @@ const ProfileSetupModal = ({ onClose }) => {
 
                     {/* Action buttons */}
                     <div style={styles.actions}>
-                        <button style={styles.skipBtn} onClick={onClose} disabled={saving}>
-                            تخطي الآن
+                        <button style={styles.skipBtn} onClick={handleSkip} disabled={saving}>
+                            {saving && !croppedFile ? 'جاري الحفظ...' : 'تخطي الآن'}
                         </button>
                         {croppedFile && (
                             <button style={styles.saveBtn} onClick={handleSave} disabled={saving}>
@@ -350,6 +397,54 @@ const styles = {
         color: '#475569',
         margin: 0,
         textAlign: 'center',
+    },
+    genderContainer: {
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '0.4rem',
+        marginBottom: '1.2rem',
+    },
+    genderLabel: {
+        fontSize: '0.82rem',
+        color: '#64748b',
+        margin: 0,
+        fontWeight: 600,
+    },
+    genderOptions: {
+        display: 'flex',
+        gap: '0.75rem',
+        width: '100%',
+        maxWidth: '280px',
+    },
+    genderBtn: {
+        flex: 1,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '0.4rem',
+        padding: '0.55rem 0',
+        borderRadius: '10px',
+        border: '1px solid rgba(255,255,255,0.06)',
+        background: 'rgba(255,255,255,0.03)',
+        color: '#94a3b8',
+        fontSize: '0.85rem',
+        fontWeight: 600,
+        cursor: 'pointer',
+        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+    },
+    genderBtnActiveMale: {
+        background: 'rgba(56,189,248,0.12)',
+        color: '#38bdf8',
+        border: '1px solid rgba(56,189,248,0.3)',
+        boxShadow: '0 0 12px rgba(56,189,248,0.15)',
+    },
+    genderBtnActiveFemale: {
+        background: 'rgba(244,114,182,0.12)',
+        color: '#f472b6',
+        border: '1px solid rgba(244,114,182,0.3)',
+        boxShadow: '0 0 12px rgba(244,114,182,0.15)',
     },
 };
 

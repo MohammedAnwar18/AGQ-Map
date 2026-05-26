@@ -17,11 +17,12 @@ const searchShops = async (req, res) => {
         if (userId) {
             sql = `
                 SELECT id, name, category, profile_picture, latitude, longitude, floor, 
-                       parent_shop_id, parent_shop_name, is_followed, 'shop' as type
+                       parent_shop_id, parent_shop_name, is_followed, is_locked, 'shop' as type
                 FROM (
                     SELECT s.id, s.name, s.category, s.profile_picture, 
                            s.latitude, s.longitude, s.floor, s.parent_shop_id,
                            parent.name AS parent_shop_name,
+                           s.is_locked,
                            EXISTS(SELECT 1 FROM shop_followers WHERE shop_id = s.id AND user_id = $2::int) as is_followed
                     FROM shops s
                     LEFT JOIN shops parent ON s.parent_shop_id = parent.id
@@ -30,7 +31,7 @@ const searchShops = async (req, res) => {
                 ) s
                 UNION ALL
                 SELECT id, name, category, NULL as profile_picture, latitude, longitude, NULL as floor,
-                       university_id as parent_shop_id, university_name as parent_shop_name, is_followed, 'facility' as type
+                       university_id as parent_shop_id, university_name as parent_shop_name, is_followed, FALSE as is_locked, 'facility' as type
                 FROM (
                     SELECT f.id, f.name, f.category, f.latitude, f.longitude, f.university_id,
                            s.name as university_name,
@@ -46,11 +47,12 @@ const searchShops = async (req, res) => {
         } else {
             sql = `
                 SELECT id, name, category, profile_picture, latitude, longitude, floor, 
-                       parent_shop_id, parent_shop_name, FALSE as is_followed, 'shop' as type
+                       parent_shop_id, parent_shop_name, FALSE as is_followed, is_locked, 'shop' as type
                 FROM (
                     SELECT s.id, s.name, s.category, s.profile_picture, 
                            s.latitude, s.longitude, s.floor, s.parent_shop_id,
-                           parent.name AS parent_shop_name
+                           parent.name AS parent_shop_name,
+                           s.is_locked
                     FROM shops s
                     LEFT JOIN shops parent ON s.parent_shop_id = parent.id
                     WHERE s.name ILIKE $1 AND s.is_hidden = FALSE
@@ -58,7 +60,7 @@ const searchShops = async (req, res) => {
                 ) s
                 UNION ALL
                 SELECT id, name, category, NULL as profile_picture, latitude, longitude, NULL as floor,
-                       university_id as parent_shop_id, university_name as parent_shop_name, FALSE as is_followed, 'facility' as type
+                       university_id as parent_shop_id, university_name as parent_shop_name, FALSE as is_followed, FALSE as is_locked, 'facility' as type
                 FROM (
                     SELECT f.id, f.name, f.category, f.latitude, f.longitude, f.university_id,
                            s.name as university_name
@@ -928,8 +930,8 @@ const getFollowedUniversitiesFacilities = async (req, res) => {
 
 const getAllShopsMap = async (req, res) => {
     try {
-        const shopsRes = await pool.query('SELECT id, name, category, profile_picture, cover_picture, custom_design, hidden_sections, latitude, longitude, floor, parent_shop_id, \'shop\' as type FROM shops WHERE is_hidden = FALSE');
-        const facilitiesRes = await pool.query('SELECT id, name, category, icon, latitude, longitude, university_id as parent_shop_id, \'facility\' as type FROM university_facilities');
+        const shopsRes = await pool.query('SELECT id, name, category, profile_picture, cover_picture, custom_design, hidden_sections, latitude, longitude, floor, parent_shop_id, is_locked, \'shop\' as type FROM shops WHERE is_hidden = FALSE');
+        const facilitiesRes = await pool.query('SELECT id, name, category, icon, latitude, longitude, university_id as parent_shop_id, FALSE as is_locked, \'facility\' as type FROM university_facilities');
 
         res.json({
             shops: shopsRes.rows,

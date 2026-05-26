@@ -600,6 +600,9 @@ const MapComponent = () => {
 
     const handleOpenShopProfile = async (shop) => {
         if (!shop) return;
+        if (shop.is_locked && user?.role !== 'admin') {
+            return;
+        }
         const catRaw = String(shop.category || '').trim().toLowerCase();
         const nameRaw = String(shop.name || '').trim().toLowerCase();
         

@@ -8,66 +8,64 @@ const DefaultAvatar = ({ gender, size = 110, uid = 'u', style = {} }) => {
             <svg width={size} height={size} viewBox="0 0 100 100" style={{ borderRadius: '50%', display: 'block', ...style }}>
                 <defs>
                     <radialGradient id={`${p}-bg`} cx="50%" cy="30%" r="75%">
-                        <stop offset="0%" stopColor="#4f46e5" />
-                        <stop offset="100%" stopColor="#1e1b4b" />
+                        <stop offset="0%" stopColor="#1e293b" />
+                        <stop offset="60%" stopColor="#0f172a" />
+                        <stop offset="100%" stopColor="#020617" />
                     </radialGradient>
-                    <radialGradient id={`${p}-skin`} cx="40%" cy="35%" r="65%">
-                        <stop offset="0%" stopColor="#e8c9a0" />
-                        <stop offset="100%" stopColor="#c8a070" />
-                    </radialGradient>
-                    <radialGradient id={`${p}-shoulder`} cx="50%" cy="10%" r="80%">
-                        <stop offset="0%" stopColor="#3730a3" />
-                        <stop offset="100%" stopColor="#1e1b4b" />
-                    </radialGradient>
+                    <linearGradient id={`${p}-glow`} x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.4" />
+                        <stop offset="100%" stopColor="#818cf8" stopOpacity="0" />
+                    </linearGradient>
+                    <linearGradient id={`${p}-silhouette`} x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="#e2e8f0" />
+                        <stop offset="40%" stopColor="#94a3b8" />
+                        <stop offset="100%" stopColor="#475569" />
+                    </linearGradient>
+                    <linearGradient id={`${p}-border`} x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#38bdf8" />
+                        <stop offset="100%" stopColor="#1e40af" />
+                    </linearGradient>
                 </defs>
 
                 {/* Background */}
                 <circle cx="50" cy="50" r="50" fill={`url(#${p}-bg)`} />
-
-                {/* Decorative rings */}
-                <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1" />
-                <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
-
-                {/* Geometric diamond accent top */}
-                <polygon points="50,10 54,17 50,24 46,17" fill="rgba(129,140,248,0.5)" />
-                <polygon points="50,12 53,17 50,22 47,17" fill="rgba(165,180,252,0.3)" />
-
-                {/* Shoulders */}
-                <ellipse cx="50" cy="97" rx="30" ry="20" fill={`url(#${p}-shoulder)`} />
-
-                {/* Neck */}
-                <rect x="44" y="63" width="12" height="11" rx="5" fill={`url(#${p}-skin)`} />
-
-                {/* Head */}
-                <ellipse cx="50" cy="52" rx="17" ry="19" fill={`url(#${p}-skin)`} />
-
-                {/* Hair - short masculine style */}
-                <path d="M33 48 Q33 29 50 28 Q67 29 67 48 Q65 36 50 35 Q35 36 33 48 Z" fill="#1a1a2e" />
-                {/* Hair side fade */}
-                <path d="M33 48 Q33 40 36 36 L36 44 Z" fill="#1a1a2e" />
-                <path d="M67 48 Q67 40 64 36 L64 44 Z" fill="#1a1a2e" />
-
-                {/* Eyes */}
-                <ellipse cx="43.5" cy="50" rx="2.2" ry="2.5" fill="#5a3e28" />
-                <ellipse cx="56.5" cy="50" rx="2.2" ry="2.5" fill="#5a3e28" />
-                <circle cx="44.2" cy="49.2" r="0.8" fill="rgba(255,255,255,0.4)" />
-                <circle cx="57.2" cy="49.2" r="0.8" fill="rgba(255,255,255,0.4)" />
-
-                {/* Eyebrows */}
-                <path d="M40.5 46.5 Q43.5 45 46.5 46.5" stroke="#5a3e28" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-                <path d="M53.5 46.5 Q56.5 45 59.5 46.5" stroke="#5a3e28" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-
-                {/* Nose */}
-                <path d="M49 52 Q48 55 49.5 56 Q51 56 52 55 Q53 52 52 52" stroke="#b8926a" strokeWidth="0.8" fill="none" strokeLinecap="round" />
-
-                {/* Smile */}
-                <path d="M45.5 58.5 Q50 62 54.5 58.5" stroke="#b8926a" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-
-                {/* Small indigo glow dots */}
-                <circle cx="20" cy="75" r="3" fill="rgba(99,102,241,0.2)" />
-                <circle cx="80" cy="75" r="3" fill="rgba(99,102,241,0.2)" />
-                <circle cx="15" cy="55" r="2" fill="rgba(99,102,241,0.15)" />
-                <circle cx="85" cy="55" r="2" fill="rgba(99,102,241,0.15)" />
+                
+                {/* Glowing Aura */}
+                <circle cx="50" cy="55" r="30" fill={`url(#${p}-glow)`} filter="blur(5px)" />
+                
+                {/* Tech Accent Grid Lines */}
+                <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(56, 189, 248, 0.15)" strokeWidth="1" strokeDasharray="3 3" />
+                <circle cx="50" cy="50" r="38" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
+                
+                {/* Male Silhouette */}
+                <g>
+                    {/* Shoulders / Suit */}
+                    <path d="M 22,85 C 22,68 35,58 43,56 L 45,63 C 46,65 48,66 50,66 C 52,66 54,65 55,63 L 57,56 C 65,58 78,68 78,85 L 78,100 L 22,100 Z" fill={`url(#${p}-silhouette)`} opacity="0.95" />
+                    
+                    {/* V-Neck Shirt Opening */}
+                    <path d="M 44,58 L 50,68 L 56,58 Z" fill="#0f172a" />
+                    
+                    {/* Suit Collar Highlights */}
+                    <path d="M 32,72 L 43,56 L 45,63 Z" fill="rgba(255,255,255,0.15)" />
+                    <path d="M 68,72 L 57,56 L 55,63 Z" fill="rgba(255,255,255,0.15)" />
+                    
+                    {/* Neck */}
+                    <path d="M 43,45 L 43,58 C 43,62 57,62 57,58 L 57,45 Z" fill={`url(#${p}-silhouette)`} opacity="0.9" />
+                    
+                    {/* Head & Hair */}
+                    <path d="M 50,18 C 41.5,18 38.5,24 38.5,33 C 38.5,42 43.5,46.5 50,46.5 C 56.5,46.5 61.5,42 61.5,33 C 61.5,24 58.5,18 50,18 Z" fill={`url(#${p}-silhouette)`} />
+                    
+                    {/* Hair (Sleek, Modern, Professional Haircut) */}
+                    <path d="M 37.5,31 C 37,21 42.5,15.5 50,15.5 C 57.5,15.5 63,21 62.5,31 C 61.5,26 58.5,19.5 50,19.5 C 41.5,19.5 38.5,26 37.5,31 Z" fill="#1e293b" />
+                    
+                    {/* Sleek Glasses or Minimalist Feature hint */}
+                    <circle cx="44" cy="31" r="3" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="0.8" />
+                    <circle cx="56" cy="31" r="3" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="0.8" />
+                    <line x1="47" y1="31" x2="53" y2="31" stroke="rgba(255,255,255,0.25)" strokeWidth="0.8" />
+                </g>
+                
+                {/* Premium Inner Border Ring */}
+                <circle cx="50" cy="50" r="47" fill="none" stroke={`url(#${p}-border)`} strokeWidth="1.5" opacity="0.6" />
             </svg>
         );
     }
@@ -77,79 +75,68 @@ const DefaultAvatar = ({ gender, size = 110, uid = 'u', style = {} }) => {
             <svg width={size} height={size} viewBox="0 0 100 100" style={{ borderRadius: '50%', display: 'block', ...style }}>
                 <defs>
                     <radialGradient id={`${p}-bg`} cx="50%" cy="30%" r="75%">
-                        <stop offset="0%" stopColor="#9333ea" />
-                        <stop offset="100%" stopColor="#4a044e" />
+                        <stop offset="0%" stopColor="#2e1065" />
+                        <stop offset="60%" stopColor="#0f172a" />
+                        <stop offset="100%" stopColor="#020617" />
                     </radialGradient>
-                    <radialGradient id={`${p}-skin`} cx="40%" cy="35%" r="65%">
-                        <stop offset="0%" stopColor="#f5d5be" />
-                        <stop offset="100%" stopColor="#e8b8a0" />
-                    </radialGradient>
-                    <radialGradient id={`${p}-hair`} cx="30%" cy="20%" r="80%">
-                        <stop offset="0%" stopColor="#4a1a6b" />
-                        <stop offset="100%" stopColor="#1a0a26" />
-                    </radialGradient>
-                    <radialGradient id={`${p}-shoulder`} cx="50%" cy="10%" r="80%">
-                        <stop offset="0%" stopColor="#7e22ce" />
-                        <stop offset="100%" stopColor="#4a044e" />
-                    </radialGradient>
+                    <linearGradient id={`${p}-glow`} x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#f472b6" stopOpacity="0.35" />
+                        <stop offset="100%" stopColor="#c084fc" stopOpacity="0" />
+                    </linearGradient>
+                    <linearGradient id={`${p}-silhouette`} x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="#fae8ff" />
+                        <stop offset="40%" stopColor="#f5d0fe" />
+                        <stop offset="100%" stopColor="#d8b4fe" />
+                    </linearGradient>
+                    <linearGradient id={`${p}-border`} x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#f472b6" />
+                        <stop offset="100%" stopColor="#7e22ce" />
+                    </linearGradient>
                 </defs>
 
                 {/* Background */}
                 <circle cx="50" cy="50" r="50" fill={`url(#${p}-bg)`} />
+                
+                {/* Glowing Aura */}
+                <circle cx="50" cy="55" r="30" fill={`url(#${p}-glow)`} filter="blur(5px)" />
+                
+                {/* Tech Accent Grid Lines */}
+                <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(244, 114, 182, 0.15)" strokeWidth="1" strokeDasharray="3 3" />
+                <circle cx="50" cy="50" r="38" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
+                
+                {/* Female Silhouette */}
+                <g>
+                    {/* Hair Back Layer */}
+                    <path d="M 33,36 C 31,48 31,58 33,65 C 36,65 37,58 37,50 Z" fill="#3b0764" />
+                    <path d="M 67,36 C 69,48 69,58 67,65 C 64,65 63,58 63,50 Z" fill="#3b0764" />
 
-                {/* Decorative rings */}
-                <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1" />
-                <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
-
-                {/* Star accent top */}
-                <path d="M50 9 L51.8 14.2 L57.3 14.2 L52.8 17.4 L54.6 22.6 L50 19.4 L45.4 22.6 L47.2 17.4 L42.7 14.2 L48.2 14.2 Z"
-                    fill="rgba(216,180,254,0.6)" />
-
-                {/* Shoulders */}
-                <ellipse cx="50" cy="97" rx="30" ry="20" fill={`url(#${p}-shoulder)`} />
-
-                {/* Long hair - back layer */}
-                <ellipse cx="50" cy="55" rx="22" ry="26" fill={`url(#${p}-hair)`} />
-
-                {/* Neck */}
-                <rect x="44" y="63" width="12" height="11" rx="5" fill={`url(#${p}-skin)`} />
-
-                {/* Head */}
-                <ellipse cx="50" cy="51" rx="16" ry="18" fill={`url(#${p}-skin)`} />
-
-                {/* Hair - top */}
-                <path d="M34 47 Q34 29 50 28 Q66 29 66 47 Q63 33 50 33 Q37 33 34 47 Z" fill={`url(#${p}-hair)`} />
-
-                {/* Hair side curl left */}
-                <path d="M34 47 Q28 55 30 68 Q32 62 35 55 Z" fill={`url(#${p}-hair)`} />
-                {/* Hair side right */}
-                <path d="M66 47 Q72 55 70 68 Q68 62 65 55 Z" fill={`url(#${p}-hair)`} />
-
-                {/* Eyes */}
-                <ellipse cx="43.5" cy="49" rx="2.5" ry="2.8" fill="#4a2e1a" />
-                <ellipse cx="56.5" cy="49" rx="2.5" ry="2.8" fill="#4a2e1a" />
-                <circle cx="44.3" cy="48" r="0.9" fill="rgba(255,255,255,0.45)" />
-                <circle cx="57.3" cy="48" r="0.9" fill="rgba(255,255,255,0.45)" />
-
-                {/* Eyelashes hint */}
-                <path d="M41 46.5 Q43.5 44.5 46 46.5" stroke="#2a1a0a" strokeWidth="1" fill="none" strokeLinecap="round" />
-                <path d="M54 46.5 Q56.5 44.5 59 46.5" stroke="#2a1a0a" strokeWidth="1" fill="none" strokeLinecap="round" />
-
-                {/* Nose */}
-                <path d="M49 51 Q48.5 54 50 55 Q51.5 55 52 54 Q52.5 51 52 51" stroke="#c4967a" strokeWidth="0.7" fill="none" strokeLinecap="round" />
-
-                {/* Smile */}
-                <path d="M46 57.5 Q50 61 54 57.5" stroke="#c4967a" strokeWidth="1.4" fill="none" strokeLinecap="round" />
-
-                {/* Blush */}
-                <circle cx="39" cy="52" r="4.5" fill="rgba(244,114,182,0.18)" />
-                <circle cx="61" cy="52" r="4.5" fill="rgba(244,114,182,0.18)" />
-
-                {/* Small sparkle dots */}
-                <circle cx="20" cy="72" r="2.5" fill="rgba(216,180,254,0.25)" />
-                <circle cx="80" cy="72" r="2.5" fill="rgba(216,180,254,0.25)" />
-                <circle cx="16" cy="52" r="1.8" fill="rgba(216,180,254,0.18)" />
-                <circle cx="84" cy="52" r="1.8" fill="rgba(216,180,254,0.18)" />
+                    {/* Shoulders / Blouse */}
+                    <path d="M 23,85 C 23,70 35,60 43,58 L 45,64 C 46,66 48,67 50,67 C 52,67 54,66 55,64 L 57,58 C 65,60 77,70 77,85 L 77,100 L 23,100 Z" fill={`url(#${p}-silhouette)`} opacity="0.95" />
+                    
+                    {/* V-Neck Blouse Opening */}
+                    <path d="M 44,59 L 50,67 L 56,59 Z" fill="#0f172a" />
+                    
+                    {/* Blouse Highlights */}
+                    <path d="M 33,73 C 38,65 43,58 43,58 Z" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
+                    <path d="M 67,73 C 62,65 57,58 57,58 Z" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
+                    
+                    {/* Neck */}
+                    <path d="M 44,45 L 44,57 C 44,61 56,61 56,57 L 56,45 Z" fill={`url(#${p}-silhouette)`} opacity="0.9" />
+                    
+                    {/* Head & Hair */}
+                    <path d="M 50,19.5 C 42.5,19.5 39.5,25 39.5,33.5 C 39.5,41.5 44,45.5 50,45.5 C 56,45.5 60.5,41.5 60.5,33.5 C 60.5,25 57.5,19.5 50,19.5 Z" fill={`url(#${p}-silhouette)`} />
+                    
+                    {/* Hair (Sleek, Modern, Professional Style) */}
+                    <path d="M 37,34 C 36,22 41,16 50,16 C 59,16 64,22 63,34 C 62,44 61,46 61,50 C 61,45 61.5,41 61,35 C 60,28 56.5,21.5 50,21.5 C 43.5,21.5 40,28 39,35 C 38.5,41 39,45 39,50 C 39,46 38,44 37,34 Z" fill="#3b0764" />
+                    
+                    {/* Sleek Minimalist Eyeglasses hint */}
+                    <circle cx="44.5" cy="31.5" r="2.8" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="0.8" />
+                    <circle cx="55.5" cy="31.5" r="2.8" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="0.8" />
+                    <line x1="47.3" y1="31.5" x2="52.7" y2="31.5" stroke="rgba(255,255,255,0.25)" strokeWidth="0.8" />
+                </g>
+                
+                {/* Premium Inner Border Ring */}
+                <circle cx="50" cy="50" r="47" fill="none" stroke={`url(#${p}-border)`} strokeWidth="1.5" opacity="0.6" />
             </svg>
         );
     }
@@ -159,63 +146,55 @@ const DefaultAvatar = ({ gender, size = 110, uid = 'u', style = {} }) => {
         <svg width={size} height={size} viewBox="0 0 100 100" style={{ borderRadius: '50%', display: 'block', ...style }}>
             <defs>
                 <radialGradient id={`${p}-bg`} cx="50%" cy="30%" r="75%">
-                    <stop offset="0%" stopColor="#f59e0b" />
-                    <stop offset="100%" stopColor="#7c2d12" />
+                    <stop offset="0%" stopColor="#451a03" />
+                    <stop offset="60%" stopColor="#0f172a" />
+                    <stop offset="100%" stopColor="#020617" />
                 </radialGradient>
-                <radialGradient id={`${p}-skin`} cx="40%" cy="35%" r="65%">
-                    <stop offset="0%" stopColor="#edd9b8" />
-                    <stop offset="100%" stopColor="#d4b896" />
-                </radialGradient>
-                <radialGradient id={`${p}-shoulder`} cx="50%" cy="10%" r="80%">
-                    <stop offset="0%" stopColor="#b45309" />
-                    <stop offset="100%" stopColor="#7c2d12" />
-                </radialGradient>
+                <linearGradient id={`${p}-glow`} x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.3" />
+                    <stop offset="100%" stopColor="#b45309" stopOpacity="0" />
+                </linearGradient>
+                <linearGradient id={`${p}-silhouette`} x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#fef3c7" />
+                    <stop offset="40%" stopColor="#fde68a" />
+                    <stop offset="100%" stopColor="#fcd34d" />
+                </linearGradient>
+                <linearGradient id={`${p}-border`} x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#fbbf24" />
+                    <stop offset="100%" stopColor="#d97706" />
+                </linearGradient>
             </defs>
 
             {/* Background */}
             <circle cx="50" cy="50" r="50" fill={`url(#${p}-bg)`} />
-
-            {/* Rings */}
-            <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1" />
-            <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
-
-            {/* Sparkle top */}
-            <circle cx="50" cy="13" r="3" fill="rgba(253,230,138,0.6)" />
-            <circle cx="50" cy="13" r="1.5" fill="rgba(253,230,138,0.9)" />
-            <line x1="50" y1="8" x2="50" y2="18" stroke="rgba(253,230,138,0.4)" strokeWidth="0.8" />
-            <line x1="45" y1="13" x2="55" y2="13" stroke="rgba(253,230,138,0.4)" strokeWidth="0.8" />
-
-            {/* Shoulders */}
-            <ellipse cx="50" cy="97" rx="30" ry="20" fill={`url(#${p}-shoulder)`} />
-
-            {/* Neck */}
-            <rect x="44" y="63" width="12" height="11" rx="5" fill={`url(#${p}-skin)`} />
-
-            {/* Head */}
-            <ellipse cx="50" cy="52" rx="17" ry="19" fill={`url(#${p}-skin)`} />
-
-            {/* Hair - neutral medium */}
-            <path d="M33 49 Q33 30 50 29 Q67 30 67 49 Q64 36 50 35 Q36 36 33 49 Z" fill="#5c3d1e" />
-
-            {/* Eyes */}
-            <ellipse cx="43.5" cy="50" rx="2.2" ry="2.5" fill="#4a3020" />
-            <ellipse cx="56.5" cy="50" rx="2.2" ry="2.5" fill="#4a3020" />
-            <circle cx="44.2" cy="49.2" r="0.8" fill="rgba(255,255,255,0.4)" />
-            <circle cx="57.2" cy="49.2" r="0.8" fill="rgba(255,255,255,0.4)" />
-
-            {/* Eyebrows */}
-            <path d="M40.5 46.5 Q43.5 45 46.5 46.5" stroke="#4a3020" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-            <path d="M53.5 46.5 Q56.5 45 59.5 46.5" stroke="#4a3020" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-
-            {/* Nose */}
-            <path d="M49 52 Q48 55 49.5 56 Q51 56 52 55 Q53 52 52 52" stroke="#b89060" strokeWidth="0.8" fill="none" strokeLinecap="round" />
-
-            {/* Smile */}
-            <path d="M45.5 58.5 Q50 62 54.5 58.5" stroke="#b89060" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-
-            {/* Glow dots */}
-            <circle cx="20" cy="75" r="3" fill="rgba(251,191,36,0.2)" />
-            <circle cx="80" cy="75" r="3" fill="rgba(251,191,36,0.2)" />
+            
+            {/* Glowing Aura */}
+            <circle cx="50" cy="55" r="30" fill={`url(#${p}-glow)`} filter="blur(5px)" />
+            
+            {/* Tech Accent Grid Lines */}
+            <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(251, 191, 36, 0.15)" strokeWidth="1" strokeDasharray="3 3" />
+            <circle cx="50" cy="50" r="38" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
+            
+            {/* Neutral Silhouette */}
+            <g>
+                {/* Shoulders */}
+                <path d="M 24,85 C 24,70 36,60 44,58 L 46,64 C 47,66 48.5,67 50,67 C 51.5,67 53,66 54,64 L 56,58 C 64,60 76,70 76,85 L 76,100 L 24,100 Z" fill={`url(#${p}-silhouette)`} opacity="0.95" />
+                
+                {/* V-Neck Shirt Opening */}
+                <path d="M 45,59 L 50,66 L 55,59 Z" fill="#0f172a" />
+                
+                {/* Neck */}
+                <path d="M 44,46 L 44,57 C 44,61 56,61 56,57 L 56,46 Z" fill={`url(#${p}-silhouette)`} opacity="0.9" />
+                
+                {/* Head */}
+                <path d="M 50,20 C 42.5,20 39.5,25.5 39.5,34 C 39.5,42 44,46 50,46 C 56,46 60.5,42 60.5,34 C 60.5,25.5 57.5,20 50,20 Z" fill={`url(#${p}-silhouette)`} />
+                
+                {/* Abstract tech elements */}
+                <path d="M 49,27 L 51,27 M 48,32 L 52,32 M 49,37 L 51,37" stroke="rgba(15,23,42,0.4)" strokeWidth="1.2" strokeLinecap="round" />
+            </g>
+            
+            {/* Premium Inner Border Ring */}
+            <circle cx="50" cy="50" r="47" fill="none" stroke={`url(#${p}-border)`} strokeWidth="1.5" opacity="0.6" />
         </svg>
     );
 };
