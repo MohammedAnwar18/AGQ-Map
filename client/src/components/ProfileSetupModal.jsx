@@ -6,7 +6,7 @@ import ImageCropper from './ImageCropper';
 
 const ProfileSetupModal = ({ onClose }) => {
     const { user, updateUser } = useAuth();
-    const [gender, setGender] = useState(user?.gender || 'male');
+    const gender = user?.gender || 'male';
     const [tempImageSrc, setTempImageSrc] = useState(null);
     const [showCropper, setShowCropper] = useState(false);
     const [previewUrl, setPreviewUrl] = useState(null);
@@ -35,40 +35,26 @@ const ProfileSetupModal = ({ onClose }) => {
     };
 
     const handleSave = async () => {
+        if (!croppedFile) return;
         setSaving(true);
         try {
             const formData = new FormData();
-            if (croppedFile) {
-                formData.append('profile_picture', croppedFile);
-            }
-            formData.append('gender', gender);
+            formData.append('profile_picture', croppedFile);
             
             const data = await userService.updateProfile(formData);
             updateUser({ 
-                profile_picture: data.user?.profile_picture || user?.profile_picture || previewUrl,
-                gender: data.user?.gender || gender
+                profile_picture: data.user?.profile_picture || previewUrl
             });
             onClose();
         } catch {
-            alert('حدث خطأ أثناء حفظ التعديلات. حاول مرة أخرى.');
+            alert('حدث خطأ أثناء حفظ الصورة. حاول مرة أخرى.');
         } finally {
             setSaving(false);
         }
     };
 
-    const handleSkip = async () => {
-        setSaving(true);
-        try {
-            const formData = new FormData();
-            formData.append('gender', gender);
-            const data = await userService.updateProfile(formData);
-            updateUser({ gender: data.user?.gender || gender });
-            onClose();
-        } catch {
-            onClose();
-        } finally {
-            setSaving(false);
-        }
+    const handleSkip = () => {
+        onClose();
     };
 
     if (showCropper && tempImageSrc) {
@@ -110,38 +96,7 @@ const ProfileSetupModal = ({ onClose }) => {
                                 <DefaultAvatar gender={gender} size={110} uid={String(user?.id || 'setup')} />
                             )}
                         </div>
-                        <div style={styles.cameraBtn}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" width="18" height="18">
-                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                                <circle cx="12" cy="13" r="4" />
-                            </svg>
-                        </div>
                         <p style={styles.tapHint}>اضغط لاختيار صورة</p>
-                    </div>
-
-                    {/* Gender Selection */}
-                    <div style={styles.genderContainer}>
-                        <p style={styles.genderLabel}>حدد الجنس لتخصيص الهوية الافتراضية:</p>
-                        <div style={styles.genderOptions}>
-                            <button
-                                style={{
-                                    ...styles.genderBtn,
-                                    ...(gender === 'male' ? styles.genderBtnActiveMale : {})
-                                }}
-                                onClick={() => setGender('male')}
-                            >
-                                <span style={{ fontSize: '1.1rem' }}>👨</span> ذكر
-                            </button>
-                            <button
-                                style={{
-                                    ...styles.genderBtn,
-                                    ...(gender === 'female' ? styles.genderBtnActiveFemale : {})
-                                }}
-                                onClick={() => setGender('female')}
-                            >
-                                <span style={{ fontSize: '1.1rem' }}>👩</span> أنثى
-                            </button>
-                        </div>
                     </div>
 
                     <input
@@ -165,7 +120,7 @@ const ProfileSetupModal = ({ onClose }) => {
                     {/* Action buttons */}
                     <div style={styles.actions}>
                         <button style={styles.skipBtn} onClick={handleSkip} disabled={saving}>
-                            {saving && !croppedFile ? 'جاري الحفظ...' : 'تخطي الآن'}
+                            تخطي الآن
                         </button>
                         {croppedFile && (
                             <button style={styles.saveBtn} onClick={handleSave} disabled={saving}>
