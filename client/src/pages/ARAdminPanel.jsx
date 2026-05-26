@@ -21,6 +21,7 @@ const DEFAULT_BUILDING = {
   fov_angle: 30,
   model_url: '',
   image_url: '',
+  custom_code: '',
 };
 
 const DEFAULT_STORY = {
@@ -34,6 +35,7 @@ const DEFAULT_STORY = {
   image_url: '',
   trigger_radius: 50,
   fov_angle: 25,
+  custom_code: '',
 };
 
 const DEFAULT_NAVPOINT = {
@@ -42,6 +44,7 @@ const DEFAULT_NAVPOINT = {
   latitude: '',
   longitude: '',
   trigger_radius: 200,
+  custom_code: '',
 };
 
 // ─── Type metadata ─────────────────────────────────────────────────────────────
@@ -102,10 +105,10 @@ export default function ARAdminPanel({ onClose }) {
     return 'AGQ_' + base64.split('').reverse().join('');
   };
 
-  const handleGenerateQR = (id, title) => {
-    const val = encodePayload(id);
+  const handleGenerateQR = (item) => {
+    const val = encodePayload(item.custom_code || item.id);
     setQrValue(val);
-    setQrTitle(title);
+    setQrTitle(item.title);
     setShowQRModal(true);
   };
 
@@ -376,6 +379,10 @@ export default function ARAdminPanel({ onClose }) {
               </Field>
             </TwoCol>
 
+            <Field label="الرمز المخصص لكود الـ QR" hint="مثال: gate_01 (اختياري - يترك فارغاً لاستخدام المعرف التلقائي)">
+              <Input name="custom_code" value={buildingForm.custom_code} onChange={handleChange(setBuildingForm)} placeholder="اكتب رمزاً مخصصاً لـ QR مثل gate_01 أو left_hall" />
+            </Field>
+
             <Field label="المحتوى / الوصف التاريخي">
               <Textarea name="content" value={buildingForm.content} onChange={handleChange(setBuildingForm)} placeholder="اكتب وصفاً تاريخياً تفصيلياً للمبنى..." />
             </Field>
@@ -453,6 +460,10 @@ export default function ARAdminPanel({ onClose }) {
               </Field>
             </TwoCol>
 
+            <Field label="الرمز المخصص لكود الـ QR" hint="مثال: story_pal (اختياري)">
+              <Input name="custom_code" value={storyForm.custom_code} onChange={handleChange(setStoryForm)} placeholder="اكتب رمزاً مخصصاً لـ QR مثل story_pal" />
+            </Field>
+
             <Field label="محتوى القصة">
               <Textarea name="content" value={storyForm.content} onChange={handleChange(setStoryForm)} placeholder="اكتب تفاصيل القصة المكانية..." />
             </Field>
@@ -500,9 +511,14 @@ export default function ARAdminPanel({ onClose }) {
           <form className="ar-form" onSubmit={submitNav}>
             <h2 className="ar-form-title">🧭 إضافة نقطة توجيه</h2>
 
-            <Field label="العنوان *">
-              <Input name="title" value={navForm.title} onChange={handleChange(setNavForm)} required placeholder="اسم النقطة" />
-            </Field>
+            <TwoCol>
+              <Field label="العنوان *">
+                <Input name="title" value={navForm.title} onChange={handleChange(setNavForm)} required placeholder="اسم النقطة" />
+              </Field>
+              <Field label="الرمز المخصص لكود الـ QR" hint="مثال: nav_exit (اختياري)">
+                <Input name="custom_code" value={navForm.custom_code} onChange={handleChange(setNavForm)} placeholder="اكتب رمزاً مخصصاً لـ QR مثل nav_exit" />
+              </Field>
+            </TwoCol>
 
             <Field label="الوصف">
               <Textarea name="content" value={navForm.content} onChange={handleChange(setNavForm)} rows={3} placeholder="وصف النقطة أو التعليمات..." />
@@ -574,6 +590,11 @@ export default function ARAdminPanel({ onClose }) {
                     )}
 
                     <div className="ar-card-meta">
+                      {item.custom_code && (
+                        <span className="ar-meta-chip" style={{ borderColor: 'rgba(0, 212, 255, 0.4)', color: '#00d4ff', fontWeight: 'bold' }}>
+                          🔑 {item.custom_code}
+                        </span>
+                      )}
                       {(item.latitude != null && item.longitude != null) && (
                         <span className="ar-meta-chip ar-meta-chip--coords">
                           📍 {Number(item.latitude).toFixed(4)}, {Number(item.longitude).toFixed(4)}
@@ -622,7 +643,7 @@ export default function ARAdminPanel({ onClose }) {
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button
                         className="ar-qr-btn"
-                        onClick={() => handleGenerateQR(item.id, item.title)}
+                        onClick={() => handleGenerateQR(item)}
                         title="توليد رمز QR آمن"
                       >
                         🖨️ رمز QR

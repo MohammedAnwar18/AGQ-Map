@@ -28,7 +28,8 @@ const RETURNING_FIELDS = `
   era_year,
   tags,
   created_at,
-  owner_id
+  owner_id,
+  custom_code
 `.trim();
 
 async function isAdmin(userId) {
@@ -109,6 +110,7 @@ async function createARContent(req, res) {
       latitude, longitude, title, content, subtitle,
       shape, bearing, pitch,
       image_url, era_year, trigger_radius, fov_angle, tags,
+      custom_code,
     } = req.body;
 
     if (!latitude || !longitude || !title) {
@@ -119,15 +121,15 @@ async function createARContent(req, res) {
       `INSERT INTO ar_contents
          (latitude, longitude, title, content, subtitle,
           shape, bearing, pitch,
-          type, image_url, era_year, trigger_radius, fov_angle, tags, owner_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'story',$9,$10,$11,$12,$13,$14)
+          type, image_url, era_year, trigger_radius, fov_angle, tags, owner_id, custom_code)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'story',$9,$10,$11,$12,$13,$14,$15)
        RETURNING ${RETURNING_FIELDS}`,
       [
         latitude, longitude, title, content || null, subtitle || null,
         shape || 'panel', bearing || 0, pitch || 0,
         image_url || null, era_year || null,
         trigger_radius || 50, fov_angle || 25,
-        tags || null, userId,
+        tags || null, userId, custom_code || null,
       ]
     );
 
@@ -154,6 +156,7 @@ async function createBuilding(req, res) {
       scale_x, scale_y, scale_z,
       era_year, model_url, image_url,
       trigger_radius, fov_angle, tags,
+      custom_code,
     } = req.body;
 
     if (!latitude || !longitude || !title) {
@@ -166,8 +169,8 @@ async function createBuilding(req, res) {
           shape, bearing, pitch, elevation,
           scale_x, scale_y, scale_z,
           type, era_year, model_url, image_url,
-          trigger_radius, fov_angle, tags, owner_id)
-       VALUES ($1,$2,$3,$4,$5,'building',$6,$7,$8,$9,$10,$11,'building',$12,$13,$14,$15,$16,$17,$18)
+          trigger_radius, fov_angle, tags, owner_id, custom_code)
+       VALUES ($1,$2,$3,$4,$5,'building',$6,$7,$8,$9,$10,$11,'building',$12,$13,$14,$15,$16,$17,$18,$19)
        RETURNING ${RETURNING_FIELDS}`,
       [
         latitude, longitude, title, content || null, subtitle || null,
@@ -175,7 +178,7 @@ async function createBuilding(req, res) {
         scale_x || 1, scale_y || 1, scale_z || 1,
         era_year || null, model_url || null, image_url || null,
         trigger_radius || 50, fov_angle || 25,
-        tags || null, userId,
+        tags || null, userId, custom_code || null,
       ]
     );
 
@@ -200,6 +203,7 @@ async function createStory(req, res) {
       latitude, longitude, title, content, subtitle,
       bearing, image_url, era_year,
       trigger_radius, fov_angle, tags,
+      custom_code,
     } = req.body;
 
     if (!latitude || !longitude || !title) {
@@ -211,15 +215,15 @@ async function createStory(req, res) {
          (latitude, longitude, title, content, subtitle,
           shape, bearing,
           type, image_url, era_year,
-          trigger_radius, fov_angle, tags, owner_id)
-       VALUES ($1,$2,$3,$4,$5,'panel',$6,'story',$7,$8,$9,$10,$11,$12)
+          trigger_radius, fov_angle, tags, owner_id, custom_code)
+       VALUES ($1,$2,$3,$4,$5,'panel',$6,'story',$7,$8,$9,$10,$11,$12,$13)
        RETURNING ${RETURNING_FIELDS}`,
       [
         latitude, longitude, title, content || null, subtitle || null,
         bearing || 0,
         image_url || null, era_year || null,
         trigger_radius || 50, fov_angle || 25,
-        tags || null, userId,
+        tags || null, userId, custom_code || null,
       ]
     );
 
@@ -243,6 +247,7 @@ async function createNavPoint(req, res) {
     const {
       latitude, longitude, title, content,
       trigger_radius, tags,
+      custom_code,
     } = req.body;
 
     if (!latitude || !longitude || !title) {
@@ -253,12 +258,12 @@ async function createNavPoint(req, res) {
       `INSERT INTO ar_contents
          (latitude, longitude, title, content,
           shape, bearing,
-          type, trigger_radius, tags, owner_id)
-       VALUES ($1,$2,$3,$4,'arrow',0,'nav_point',$5,$6,$7)
+          type, trigger_radius, tags, owner_id, custom_code)
+       VALUES ($1,$2,$3,$4,'arrow',0,'nav_point',$5,$6,$7,$8)
        RETURNING ${RETURNING_FIELDS}`,
       [
         latitude, longitude, title, content || null,
-        trigger_radius || 50, tags || null, userId,
+        trigger_radius || 50, tags || null, userId, custom_code || null,
       ]
     );
 
@@ -294,6 +299,7 @@ async function updateARContent(req, res) {
       trigger_radius, fov_angle,
       scale_x, scale_y, scale_z,
       era_year, tags,
+      custom_code,
     } = req.body;
 
     const { rows } = await pool.query(
@@ -316,8 +322,9 @@ async function updateARContent(req, res) {
          scale_y       = COALESCE($16, scale_y),
          scale_z       = COALESCE($17, scale_z),
          era_year      = COALESCE($18, era_year),
-         tags          = COALESCE($19, tags)
-       WHERE id = $20
+         tags          = COALESCE($19, tags),
+         custom_code   = COALESCE($20, custom_code)
+       WHERE id = $21
        RETURNING ${RETURNING_FIELDS}`,
       [
         latitude    != null ? latitude    : null,
@@ -339,6 +346,7 @@ async function updateARContent(req, res) {
         scale_z     != null ? scale_z     : null,
         era_year    != null ? era_year    : null,
         tags        != null ? tags        : null,
+        custom_code != null ? custom_code : null,
         id,
       ]
     );
@@ -485,10 +493,17 @@ async function createPhotoMarker(req, res) {
 async function getARContentById(req, res) {
   try {
     const { id } = req.params;
-    const { rows } = await pool.query(
-      `SELECT ${RETURNING_FIELDS} FROM ar_contents WHERE id = $1`,
-      [id]
-    );
+    
+    // Check if input matches standard numeric ID or alphanumeric custom code
+    let query = `SELECT ${RETURNING_FIELDS} FROM ar_contents WHERE LOWER(custom_code) = LOWER($1)`;
+    let params = [id];
+
+    if (/^\d+$/.test(id)) {
+      query = `SELECT ${RETURNING_FIELDS} FROM ar_contents WHERE id = $1 OR LOWER(custom_code) = LOWER($2)`;
+      params = [parseInt(id, 10), id];
+    }
+
+    const { rows } = await pool.query(query, params);
 
     if (rows.length === 0) {
       return res.status(404).json({ error: 'المعلم غير موجود' });

@@ -25,7 +25,7 @@ const QR_PROTOCOL = {
       const parts = raw.split(':');
       if (parts[0] === 'AGQ_QR') {
         return {
-          id: parseInt(parts[1], 10),
+          id: parts[1],
           timestamp: parseInt(parts[2], 10)
         };
       }
@@ -65,9 +65,15 @@ export default function ARView() {
         audio: false,
       });
       if (videoRef.current) {
+        videoRef.current.setAttribute('playsinline', 'true');
+        videoRef.current.setAttribute('muted', 'true');
+        videoRef.current.setAttribute('autoplay', 'true');
         videoRef.current.srcObject = stream;
         videoRef.current.onloadedmetadata = () => {
-          videoRef.current.play().catch(e => console.error('Play error:', e));
+          videoRef.current.play().catch(e => {
+            console.error('Play error:', e);
+            videoRef.current.play().catch(err => console.error('Fallback play failed:', err));
+          });
         };
       }
       return true;
@@ -185,99 +191,96 @@ export default function ARView() {
   // 🖥️ UI RENDERING
   // ══════════════════════════════════════════════════════════════
 
-  if (phase === 'loading') {
-    return (
-      <div className="ar-loading-overlay">
-        <div className="ar-loading-spinner" />
-        <p>جارٍ فتح كاميرا الكاشف المخصصة...</p>
-      </div>
-    );
-  }
-
-  if (phase === 'error') {
-    return (
-      <div className="ar-permission-screen">
-        <div className="ar-perm-card error">
-          <div className="ar-perm-icon">⚠️</div>
-          <h2>فشل تشغيل الكاميرا الحية</h2>
-          <p>{permMsg || 'تأكد من إعطاء صلاحيات الكاميرا للمتصفح وتحديث الصفحة.'}</p>
-          <button className="ar-perm-btn" onClick={() => navigate(-1)}>رجوع</button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="ar-root">
-      {/* 📹 Live Video Stream Feed */}
+      {/* 📹 Live Video Stream Feed - Always mounted so videoRef is never null and stream stays active */}
       <video ref={videoRef} className="ar-video" playsInline muted autoPlay />
 
-      {/* 🎛️ Glass Overlay HUD */}
-      <div className="ar-overlay">
-        
-        {/* Flash screen indicator on detection */}
-        <div className={`scan-flash-screen ${scanFlash ? 'active' : ''}`} />
+      {phase === 'loading' && (
+        <div className="ar-loading-overlay">
+          <div className="ar-loading-spinner" />
+          <p>جارٍ فتح كاميرا الكاشف المخصصة...</p>
+        </div>
+      )}
 
-        {/* ─── TOP HUD BAR ─── */}
-        <div className="ar-hud-top">
-          <button className="ar-back-btn" onClick={() => navigate(-1)} aria-label="Back">
-            ✕
-          </button>
-          
-          <div className="ar-status-pill">
-            <span className={`ar-gps-dot ${!isScanningPaused ? 'active' : ''}`} />
-            <span className="ar-status-text">{statusMsg}</span>
+      {phase === 'error' && (
+        <div className="ar-permission-screen">
+          <div className="ar-perm-card error">
+            <div className="ar-perm-icon">⚠️</div>
+            <h2>فشل تشغيل الكاميرا الحية</h2>
+            <p>{permMsg || 'تأكد من إعطاء صلاحيات الكاميرا للمتصفح وتحديث الصفحة.'}</p>
+            <button className="ar-perm-btn" onClick={() => navigate(-1)}>رجوع</button>
           </div>
         </div>
+      )}
 
-        {/* ─── SCANNER LASER FRAME INDICATOR ─── */}
-        {!scannedItem && (
-          <div className="qr-scanner-frame-wrap">
-            <div className="qr-scanner-box">
-              <div className="corner top-left" />
-              <div className="corner top-right" />
-              <div className="corner bottom-left" />
-              <div className="corner bottom-right" />
-              <div className="scanner-laser" />
+      {phase === 'active' && (
+        /* 🎛️ Glass Overlay HUD */
+        <div className="ar-overlay">
+          {/* Flash screen indicator on detection */}
+          <div className={`scan-flash-screen ${scanFlash ? 'active' : ''}`} />
+
+          {/* ─── TOP HUD BAR ─── */}
+          <div className="ar-hud-top">
+            <button className="ar-back-btn" onClick={() => navigate(-1)} aria-label="Back">
+              ✕
+            </button>
+            
+            <div className="ar-status-pill">
+              <span className={`ar-gps-dot ${!isScanningPaused ? 'active' : ''}`} />
+              <span className="ar-status-text">{statusMsg}</span>
             </div>
-            <p className="qr-scanner-hint">كاشف الرموز الآمنة للشبكة</p>
           </div>
-        )}
 
-        {/* ─── SCANNED MARKER DETAIL POPUP PANEL ─── */}
-        {scannedItem && (
-          <div className="ar-detail-panel" onClick={handleCloseDetail}>
-            <div className="ar-detail-card scale-up" onClick={e => e.stopPropagation()}>
-              <button className="ar-detail-close" onClick={handleCloseDetail} aria-label="Close details">✕</button>
+          {/* ─── SCANNER LASER FRAME INDICATOR ─── */}
+          {!scannedItem && (
+            <div className="qr-scanner-frame-wrap">
+              <div className="qr-scanner-box">
+                <div className="corner top-left" />
+                <div className="corner top-right" />
+                <div className="corner bottom-left" />
+                <div className="corner bottom-right" />
+                <div className="scanner-laser" />
+              </div>
+              <p className="qr-scanner-hint">كاشف الرموز الآمنة للشبكة</p>
+            </div>
+          )}
 
-              {scannedItem.image_url && (
-                <div className="ar-detail-img-wrap">
-                  <img src={scannedItem.image_url} alt={scannedItem.title} className="ar-detail-img" />
-                </div>
-              )}
+          {/* ─── SCANNED MARKER DETAIL POPUP PANEL ─── */}
+          {scannedItem && (
+            <div className="ar-detail-panel" onClick={handleCloseDetail}>
+              <div className="ar-detail-card scale-up" onClick={e => e.stopPropagation()}>
+                <button className="ar-detail-close" onClick={handleCloseDetail} aria-label="Close details">✕</button>
 
-              <div className="ar-detail-body">
-                <div className="ar-scan-success-badge">✓ تم الكشف بنجاح</div>
-                <h2 className="ar-detail-title">{scannedItem.title}</h2>
-                
-                {scannedItem.subtitle && (
-                  <h4 className="ar-detail-subtitle-text">{scannedItem.subtitle}</h4>
-                )}
-
-                {scannedItem.content && (
-                  <p className="ar-detail-content">{scannedItem.content}</p>
-                )}
-
-                {scannedItem.era_year && (
-                  <div className="ar-detail-badge-row">
-                    <span className="ar-detail-era-badge">📅 سنة المعلم: {scannedItem.era_year}</span>
+                {scannedItem.image_url && (
+                  <div className="ar-detail-img-wrap">
+                    <img src={scannedItem.image_url} alt={scannedItem.title} className="ar-detail-img" />
                   </div>
                 )}
+
+                <div className="ar-detail-body">
+                  <div className="ar-scan-success-badge">✓ تم الكشف بنجاح</div>
+                  <h2 className="ar-detail-title">{scannedItem.title}</h2>
+                  
+                  {scannedItem.subtitle && (
+                    <h4 className="ar-detail-subtitle-text">{scannedItem.subtitle}</h4>
+                  )}
+
+                  {scannedItem.content && (
+                    <p className="ar-detail-content">{scannedItem.content}</p>
+                  )}
+
+                  {scannedItem.era_year && (
+                    <div className="ar-detail-badge-row">
+                      <span className="ar-detail-era-badge">📅 سنة المعلم: {scannedItem.era_year}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
