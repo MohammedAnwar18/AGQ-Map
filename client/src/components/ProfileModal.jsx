@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { userService, pageService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import ImageCropper from './ImageCropper';
@@ -55,6 +56,7 @@ const PrivacyToggle = ({ label, checked, onChange }) => (
 
 const ProfileModal = ({ userId, onClose }) => {
     const { user: currentUser } = useAuth();
+    const navigate = useNavigate();
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState(false);
@@ -917,21 +919,52 @@ const ProfileModal = ({ userId, onClose }) => {
                                             </button>
                                         </div>
                                     ) : (
-                                        <button
-                                            className="btn"
-                                            onClick={() => setEditing(true)}
-                                            style={{
-                                                width: '100%',
-                                                background: 'linear-gradient(135deg, #fbab15 0%, #f59e0b 100%)',
-                                                color: '#000',
-                                                fontWeight: 'bold',
-                                                border: 'none',
-                                                boxShadow: '0 4px 15px rgba(251, 171, 21, 0.3)',
-                                                transition: 'all 0.3s ease'
-                                            }}
-                                        >
-                                            تعديل الملف الشخصي
-                                        </button>
+                                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                            <button
+                                                className="btn"
+                                                onClick={() => setEditing(true)}
+                                                style={{
+                                                    flex: 1,
+                                                    background: 'linear-gradient(135deg, #fbab15 0%, #f59e0b 100%)',
+                                                    color: '#000',
+                                                    fontWeight: 'bold',
+                                                    border: 'none',
+                                                    boxShadow: '0 4px 15px rgba(251, 171, 21, 0.3)',
+                                                    transition: 'all 0.3s ease'
+                                                }}
+                                            >
+                                                تعديل الملف الشخصي
+                                            </button>
+                                            
+                                            <button
+                                                className="btn"
+                                                onClick={() => {
+                                                    onClose();
+                                                    navigate('/ar');
+                                                }}
+                                                style={{
+                                                    flex: 1,
+                                                    background: 'linear-gradient(135deg, #ff6e00 0%, #ff0055 100%)',
+                                                    color: 'white',
+                                                    fontWeight: 'bold',
+                                                    border: '2px solid rgba(255, 255, 255, 0.2)',
+                                                    boxShadow: '0 4px 15px rgba(255, 110, 0, 0.4)',
+                                                    transition: 'all 0.3s ease',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '8px'
+                                                }}
+                                            >
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
+                                                    <rect x="3" y="3" width="6" height="6" rx="1" />
+                                                    <rect x="15" y="3" width="6" height="6" rx="1" />
+                                                    <rect x="3" y="15" width="6" height="6" rx="1" />
+                                                    <path d="M16 16h1v1h-1zM19 19h2v2h-2zM15 20h2v1h-2zM20 15h1v2h-1zM10 5h2v2h-2zM10 10h2v2h-2zM5 10h2v2H5zM15 10h3v2h-3zM10 16h2v3h-2z" fill="currentColor" />
+                                                </svg>
+                                                <span>ماسح الرموز 📷</span>
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
                             )}
