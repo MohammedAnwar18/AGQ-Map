@@ -194,6 +194,7 @@ app.use('/cameras', require('./routes/cameras'));
 app.use('/admin', require('./routes/admin'));
 app.use('/reels', require('./routes/reels'));
 app.use('/magazines', require('./routes/magazine'));
+app.use('/ar', require('./routes/ar'));
 
 // API Aliases
 app.use('/api/auth', require('./routes/auth'));
@@ -216,6 +217,7 @@ app.use('/api/radar', require('./routes/radar')); // <-- NEW RADAR MOUNT
 app.use('/api/pages', require('./routes/pages')); // <-- NEW PAGES MOUNT
 app.use('/api/storage', require('./routes/storageRoutes')); // <-- NEW STORAGE MOUNT
 app.use('/api/remote-sensing', require('./routes/remoteSensing'));
+app.use('/api/ar', require('./routes/ar'));
 
 
 

@@ -32,6 +32,7 @@ import MagazineModal from '../components/MagazineModal';
 import PalNovaaLab from '../components/PalNovaaLab';
 import SplashLoading from '../components/SplashLoading';
 import LiveCameraModal from '../components/LiveCameraModal';
+import SpatialARViewer from '../components/SpatialARViewer';
 import { postService, friendService, authService, notificationService, communityService, shopService, cameraService, getImageUrl } from '../services/api';
 import { isNative, startNativeTracking, stopNativeTracking } from '../utils/nativeLocation';
 import './Map.css';
@@ -553,6 +554,7 @@ const MapComponent = () => {
     const [gpsErrorType, setGpsErrorType] = useState(null); // 'denied' or 'generic'
     const [lineDashOffset, setLineDashOffset] = useState(0);
     const [showSpatialReels, setShowSpatialReels] = useState(false);
+    const [showARViewer, setShowARViewer] = useState(false);
 
     // Community Mode State
     const [currentCommunity, setCurrentCommunity] = useState(null);
@@ -2914,6 +2916,9 @@ const MapComponent = () => {
                     } else if (action === 'profile') {
                         setShowProfile(true);
                         setShowSidebar(false);
+                    } else if (action === 'spatial-ar') {
+                        setShowARViewer(true);
+                        setShowSidebar(false);
                     } else if (action === 'settings') {
                         setShowProfile(true); // Opens profile which includes settings/privacy
                         setShowSidebar(false);
@@ -3108,6 +3113,50 @@ const MapComponent = () => {
             {showMagazine && (
                 <MagazineModal
                     onClose={() => setShowMagazine(false)}
+                />
+            )}
+
+            {/* Floating AR HUD Scanner Trigger - Visible to Everyone (including Guests) */}
+            {!isEmergencyActive && (
+                <button
+                    onClick={() => setShowARViewer(true)}
+                    className="floating-ar-trigger"
+                    title="الواقع المعزز 🕶️"
+                    style={{
+                        position: 'fixed',
+                        bottom: isMobileDevice ? '110px' : '24px',
+                        right: '24px',
+                        zIndex: 999,
+                        width: '56px',
+                        height: '56px',
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #ff6e00 0%, #ff0055 100%)',
+                        border: '2px solid rgba(255, 255, 255, 0.4)',
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        boxShadow: '0 0 20px rgba(255, 110, 0, 0.6), 0 4px 15px rgba(0,0,0,0.4)',
+                        transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                        animation: 'pulse-glow-ar 3s infinite ease-in-out'
+                    }}
+                    onMouseOver={e => e.currentTarget.style.transform = 'scale(1.15) rotate(10deg)'}
+                    onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="28" height="28" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}>
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                        <line x1="12" y1="22.08" x2="12" y2="12" />
+                    </svg>
+                </button>
+            )}
+
+            {/* Spatial AR Viewer Modal */}
+            {showARViewer && (
+                <SpatialARViewer
+                    onClose={() => setShowARViewer(false)}
+                    user={user}
                 />
             )}
         </div>

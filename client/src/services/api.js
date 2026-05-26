@@ -719,4 +719,20 @@ export const cameraService = {
     }
 };
 
+// Spatial AR Services
+export const arService = {
+    getNearby: async (lat, lng, radius = 2000) => {
+        const response = await api.get(`/ar?lat=${lat}&lng=${lng}&radius=${radius}`);
+        return response.data;
+    },
+    create: async (data) => {
+        const response = await api.post('/ar', data);
+        return response.data;
+    },
+    deleteARContent: async (id) => {
+        const response = await api.delete(`/ar/${id}`);
+        return response.data;
+    }
+};
+
 export default api;
