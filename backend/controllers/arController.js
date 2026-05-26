@@ -113,9 +113,12 @@ async function createARContent(req, res) {
       custom_code,
     } = req.body;
 
-    if (!latitude || !longitude || !title) {
-      return res.status(400).json({ error: 'latitude, longitude and title are required' });
+    if (!title) {
+      return res.status(400).json({ error: 'title is required' });
     }
+
+    const lat = (latitude !== undefined && latitude !== null && latitude !== '') ? parseFloat(latitude) : 31.7767;
+    const lng = (longitude !== undefined && longitude !== null && longitude !== '') ? parseFloat(longitude) : 35.2345;
 
     const { rows } = await pool.query(
       `INSERT INTO ar_contents
@@ -125,7 +128,7 @@ async function createARContent(req, res) {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'story',$9,$10,$11,$12,$13,$14,$15)
        RETURNING ${RETURNING_FIELDS}`,
       [
-        latitude, longitude, title, content || null, subtitle || null,
+        lat, lng, title, content || null, subtitle || null,
         shape || 'panel', bearing || 0, pitch || 0,
         image_url || null, era_year || null,
         trigger_radius || 50, fov_angle || 25,
@@ -159,9 +162,12 @@ async function createBuilding(req, res) {
       custom_code,
     } = req.body;
 
-    if (!latitude || !longitude || !title) {
-      return res.status(400).json({ error: 'latitude, longitude and title are required' });
+    if (!title) {
+      return res.status(400).json({ error: 'title is required' });
     }
+
+    const lat = (latitude !== undefined && latitude !== null && latitude !== '') ? parseFloat(latitude) : 31.7767;
+    const lng = (longitude !== undefined && longitude !== null && longitude !== '') ? parseFloat(longitude) : 35.2345;
 
     const { rows } = await pool.query(
       `INSERT INTO ar_contents
@@ -173,7 +179,7 @@ async function createBuilding(req, res) {
        VALUES ($1,$2,$3,$4,$5,'building',$6,$7,$8,$9,$10,$11,'building',$12,$13,$14,$15,$16,$17,$18,$19)
        RETURNING ${RETURNING_FIELDS}`,
       [
-        latitude, longitude, title, content || null, subtitle || null,
+        lat, lng, title, content || null, subtitle || null,
         bearing || 0, pitch || 0, elevation || 0,
         scale_x || 1, scale_y || 1, scale_z || 1,
         era_year || null, model_url || null, image_url || null,
@@ -206,9 +212,12 @@ async function createStory(req, res) {
       custom_code,
     } = req.body;
 
-    if (!latitude || !longitude || !title) {
-      return res.status(400).json({ error: 'latitude, longitude and title are required' });
+    if (!title) {
+      return res.status(400).json({ error: 'title is required' });
     }
+
+    const lat = (latitude !== undefined && latitude !== null && latitude !== '') ? parseFloat(latitude) : 31.7767;
+    const lng = (longitude !== undefined && longitude !== null && longitude !== '') ? parseFloat(longitude) : 35.2345;
 
     const { rows } = await pool.query(
       `INSERT INTO ar_contents
@@ -219,7 +228,7 @@ async function createStory(req, res) {
        VALUES ($1,$2,$3,$4,$5,'panel',$6,'story',$7,$8,$9,$10,$11,$12,$13)
        RETURNING ${RETURNING_FIELDS}`,
       [
-        latitude, longitude, title, content || null, subtitle || null,
+        lat, lng, title, content || null, subtitle || null,
         bearing || 0,
         image_url || null, era_year || null,
         trigger_radius || 50, fov_angle || 25,
@@ -250,9 +259,12 @@ async function createNavPoint(req, res) {
       custom_code,
     } = req.body;
 
-    if (!latitude || !longitude || !title) {
-      return res.status(400).json({ error: 'latitude, longitude and title are required' });
+    if (!title) {
+      return res.status(400).json({ error: 'title is required' });
     }
+
+    const lat = (latitude !== undefined && latitude !== null && latitude !== '') ? parseFloat(latitude) : 31.7767;
+    const lng = (longitude !== undefined && longitude !== null && longitude !== '') ? parseFloat(longitude) : 35.2345;
 
     const { rows } = await pool.query(
       `INSERT INTO ar_contents
@@ -262,7 +274,7 @@ async function createNavPoint(req, res) {
        VALUES ($1,$2,$3,$4,'arrow',0,'nav_point',$5,$6,$7,$8)
        RETURNING ${RETURNING_FIELDS}`,
       [
-        latitude, longitude, title, content || null,
+        lat, lng, title, content || null,
         trigger_radius || 50, tags || null, userId, custom_code || null,
       ]
     );
