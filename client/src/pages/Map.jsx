@@ -2366,7 +2366,7 @@ const MapComponent = () => {
                         // Customized zoom visibility levels for Roundabouts (دوار) and specific landmarks to avoid map clutter
                         const cat = shop.category || '';
                         if (cat === 'دوار') {
-                            return viewState.zoom >= 16; // Shows when zoomed in very close
+                            return viewState.zoom >= 17.5; // يظهر فقط عند التكبير الشديد
                         }
                         if (['مقبرة', 'مسجد', 'كنيسة', 'ملعب'].includes(cat)) {
                             return viewState.zoom >= 14.5; // Shows when zoomed in
@@ -2421,7 +2421,7 @@ const MapComponent = () => {
                                     if (routePath) return null;
                                     let showName = false;
                                     if (shop.category === 'دوار') {
-                                        showName = viewState.zoom >= 16;
+                                        showName = viewState.zoom >= 17.5;
                                     } else if (['مسجد', 'كنيسة', 'مقبرة', 'ملعب'].includes(shop.category)) {
                                         showName = viewState.zoom >= 14.5;
                                     } else if (['حديقة', 'منتزه', 'مدرسة', 'وزارة'].includes(shop.category)) {
