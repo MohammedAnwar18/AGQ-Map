@@ -183,14 +183,14 @@ const getMarkerBorder = (category) => {
 
 // حجم الـ marker حسب التصنيف
 const getMarkerSize = (category) => {
-    if (category === 'دوار') return 64;                                              // أكبر حجم
+    if (category === 'دوار') return 40;                                              // حجم صغير
     if (['مسجد', 'كنيسة', 'مقبرة', 'ملعب'].includes(category)) return 58;          // حجم كبير
     if (['حديقة', 'منتزه', 'وزارة', 'مدرسة', 'مستشفى', 'مركز تسوق', 'مجمع تجاري'].includes(category)) return 54;
     return 50; // الحجم الافتراضي
 };
 
 const getMarkerEmojiFontSize = (category) => {
-    if (category === 'دوار') return '26px';
+    if (category === 'دوار') return '18px';
     if (['مسجد', 'كنيسة', 'مقبرة', 'ملعب'].includes(category)) return '24px';
     return '20px';
 };
