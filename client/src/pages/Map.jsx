@@ -140,6 +140,81 @@ const isPointInPolygon = (point, vs) => {
 // Birzeit University Boundaries
 const BIRZEIT_POLYGON = [[35.18513515866644,31.957184076802875],[35.18209843743068,31.95649812627677],[35.17894340238078,31.956916389402295],[35.177661669392364,31.958305009319346],[35.17791801599083,31.959978017477695],[35.17953497145379,31.959911097736665],[35.180718109597166,31.961818291250495],[35.18123080279278,31.963089731588028],[35.18142568847392,31.963936130039684],[35.1817285933796,31.964982395362483],[35.18391383591873,31.964138041819965],[35.18564472109804,31.96298163197747],[35.18544999651445,31.962063836022807],[35.18663998007514,31.961788495446953],[35.187808327571105,31.960742193731534],[35.18551490470992,31.95864955453706],[35.18568799322745,31.95747471865181],[35.18553654077462,31.95699743728042],[35.185133382474106,31.957164567445005]];
 
+// Helper for custom category emojis
+const getCategoryEmoji = (category) => {
+    const map = {
+        'مركز تسوق': '🏢', 'Restaurant': '🍽️', 'Cafe': '☕', 'بنك': '🏦',
+        'University': '🎓', 'Clothing': '👕', 'Electronics': '📱',
+        'Supermarket': '🛒', 'مجمع تجاري': '🏘️', 'Service': '⚙️',
+        'بلدية': '🏩', 'Municipality': '🏩',
+        'مركز طبي': '🏥', 'مستشفى': '🏨', 'عيادة': '🩺', 'صيدلية': '💊',
+        'حديقة': '🌳', 'منتزه': '🏞️', 'نادي رياضي': '🏋️', 'مدرسة': '🏫',
+        'مكتبة': '📚', 'حلويات': '🍰', 'معجنات': '🥐', 'احذية': '👟',
+        'صالون رجالي': '💈', 'صالون نسائي': '💇‍♀️', 'وزارة': '🏛️',
+        'دوار': '🔄', 'مقبرة': '🪦', 'مسجد': '🕌', 'كنيسة': '⛪', 'ملعب': '🏟️'
+    };
+    return map[category] || '🏪';
+};
+
+const getMarkerBgColor = (category) => {
+    if (category === 'بنك' || category === 'فرع بنك' || category === 'صراف آلي') return '#ffffff';
+    if (category === 'مركز تسوق' || category === 'مجمع تجاري' || category === 'Mall') return '#fbab15';
+    if (category === 'مسجد') return '#10b981';
+    if (category === 'كنيسة') return '#6366f1';
+    if (category === 'حديقة' || category === 'منتزه') return '#059669';
+    if (category === 'دوار') return '#475569';
+    if (category === 'ملعب') return '#0d9488';
+    if (category === 'وزارة') return '#0f172a';
+    return '#1e293b';
+};
+
+const getMarkerBorder = (category) => {
+    if (category === 'مستشفى' || category === 'مركز طبي' || category === 'عيادة' || category === 'صيدلية') return '4px solid #ef4444';
+    if (category === 'بنك' || category === 'فرع بنك' || category === 'صراف آلي') return '4px solid #f1f5f9';
+    if (category === 'مركز تسوق' || category === 'مجمع تجاري' || category === 'Mall') return '4px solid #fbab15';
+    if (category === 'مسجد') return '4px solid #34d399';
+    if (category === 'كنيسة') return '4px solid #818cf8';
+    if (category === 'حديقة' || category === 'منتزه') return '4px solid #34d399';
+    if (category === 'دوار') return '4px solid #94a3b8';
+    if (category === 'ملعب') return '4px solid #2dd4bf';
+    if (category === 'وزارة') return '4px solid #fbab15';
+    return '3px solid white';
+};
+
+// حجم الـ marker حسب التصنيف
+const getMarkerSize = (category) => {
+    if (category === 'دوار') return 64;                                              // أكبر حجم
+    if (['مسجد', 'كنيسة', 'مقبرة', 'ملعب'].includes(category)) return 58;          // حجم كبير
+    if (['حديقة', 'منتزه', 'وزارة', 'مدرسة', 'مستشفى', 'مركز تسوق', 'مجمع تجاري'].includes(category)) return 54;
+    return 50; // الحجم الافتراضي
+};
+
+const getMarkerEmojiFontSize = (category) => {
+    if (category === 'دوار') return '26px';
+    if (['مسجد', 'كنيسة', 'مقبرة', 'ملعب'].includes(category)) return '24px';
+    return '20px';
+};
+
+const getNameBadgeBgColor = (category) => {
+    if (category === 'مستشفى' || category === 'مركز طبي' || category === 'عيادة' || category === 'صيدلية') return '#ef4444';
+    if (category === 'بنك' || category === 'فرع بنك' || category === 'صراف آلي') return '#ffffff';
+    if (category === 'مركز تسوق' || category === 'مجمع تجاري' || category === 'Mall') return '#fbab15';
+    if (category === 'مسجد') return '#10b981';
+    if (category === 'كنيسة') return '#6366f1';
+    if (category === 'حديقة' || category === 'منتزه') return '#059669';
+    if (category === 'دوار') return '#475569';
+    if (category === 'ملعب') return '#0d9488';
+    if (category === 'وزارة') return '#0f172a';
+    return 'white';
+};
+
+const getNameBadgeTextColor = (category) => {
+    if (category === 'مركز تسوق' || category === 'مجمع تجاري' || category === 'Mall' || category === 'مستشفى' || category === 'مركز طبي' || category === 'عيادة' || category === 'صيدلية' || category === 'مسجد' || category === 'كنيسة' || category === 'حديقة' || category === 'منتزه' || category === 'دوار' || category === 'ملعب') return 'white';
+    if (category === 'وزارة') return '#fbab15';
+    return 'black';
+};
+
+
 const MapComponent = () => {
     const { user, logout, socket } = useAuth();
     const navigate = useNavigate();
@@ -2288,9 +2363,15 @@ const MapComponent = () => {
                             return String(shop.id) === String(shopIdQuery);
                         }
 
-                        // Standardizing ALL shops and institutions to appear from Zoom 12+
-                        // This matches the university scale for uniform early discovery.
-                        return viewState.zoom >= 12;
+                        // Customized zoom visibility levels for Roundabouts (دوار) and specific landmarks to avoid map clutter
+                        const cat = shop.category || '';
+                        if (cat === 'دوار') {
+                            return viewState.zoom >= 16; // Shows when zoomed in very close
+                        }
+                        if (['مقبرة', 'مسجد', 'كنيسة', 'ملعب'].includes(cat)) {
+                            return viewState.zoom >= 14.5; // Shows when zoomed in
+                        }
+                        return viewState.zoom >= 12; // Standard shops/institutions
                     }).flatMap(shop => [
                         <Marker
                             key={`shop-${shop.id}`}
@@ -2314,42 +2395,65 @@ const MapComponent = () => {
                             }}
                         >
                             <div style={{
-                                width: '50px',
-                                height: '50px',
+                                width:  `${getMarkerSize(shop.category)}px`,
+                                height: `${getMarkerSize(shop.category)}px`,
                                 borderRadius: '50%',
-                                backgroundColor: (shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '#ffffff' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '#fbab15' : 'white'),
-                                backgroundImage: `url(${getImageUrl(shop.profile_picture) || getImageUrl(shop.image_url) || '/default-shop.png'})`,
+                                backgroundColor: getMarkerBgColor(shop.category),
+                                backgroundImage: (shop.profile_picture || shop.image_url) ? `url(${getImageUrl(shop.profile_picture) || getImageUrl(shop.image_url)})` : 'none',
                                 backgroundSize: 'cover',
                                 backgroundPosition: 'center',
-                                border: (shop.category === 'مستشفى' || shop.category === 'مركز طبي' || shop.category === 'عيادة' || shop.category === 'صيدلية') ? '4px solid #ef4444' : ((shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '4px solid #f1f5f9' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '4px solid #fbab15' : '3px solid white')),
+                                border: getMarkerBorder(shop.category),
                                 boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
                                 position: 'relative',
                                 display: 'flex',
                                 alignItems: 'center',
-                                justifyContent: 'center'
+                                justifyContent: 'center',
+                                color: 'white',
+                                fontSize: getMarkerEmojiFontSize(shop.category)
                             }}>
-                                {/* Name Badge */}
-                                {!routePath && viewState.zoom >= 19 && (
-                                    <div style={{
-                                        position: 'absolute',
-                                        bottom: '-22px',
-                                        left: '50%',
-                                        transform: 'translateX(-50%)',
-                                        backgroundColor: (shop.category === 'مستشفى' || shop.category === 'مركز طبي' || shop.category === 'عيادة' || shop.category === 'صيدلية') ? '#ef4444' : ((shop.category === 'بنك' || shop.category === 'فرع بنك' || shop.category === 'صراف آلي') ? '#ffffff' : ((shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall') ? '#fbab15' : 'white')),
-                                        padding: '2px 10px',
-                                        borderRadius: '12px',
-                                        fontSize: '11px',
-                                        fontWeight: 'bold',
-                                        fontFamily: 'inherit',
-                                        color: (shop.category === 'مركز تسوق' || shop.category === 'مجمع تجاري' || shop.category === 'Mall' || shop.category === 'مستشفى' || shop.category === 'مركز طبي' || shop.category === 'عيادة' || shop.category === 'صيدلية') ? 'white' : 'black',
-                                        border: '1px solid rgba(255,255,255,0.1)',
-                                        whiteSpace: 'nowrap',
-                                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                                        zIndex: 1
-                                    }}>
-                                        {shop.name}
-                                    </div>
+                                {/* Display premium category emoji badge inside circle if no image exists */}
+                                {(!shop.profile_picture && !shop.image_url) && (
+                                    <span>{getCategoryEmoji(shop.category)}</span>
                                 )}
+
+                                {/* Name Badge - Visible starting from custom zoom thresholds based on category */}
+                                {(() => {
+                                    if (routePath) return null;
+                                    let showName = false;
+                                    if (shop.category === 'دوار') {
+                                        showName = viewState.zoom >= 16;
+                                    } else if (['مسجد', 'كنيسة', 'مقبرة', 'ملعب'].includes(shop.category)) {
+                                        showName = viewState.zoom >= 14.5;
+                                    } else if (['حديقة', 'منتزه', 'مدرسة', 'وزارة'].includes(shop.category)) {
+                                        showName = viewState.zoom >= 15;
+                                    } else {
+                                        showName = viewState.zoom >= 16.5; // General categories
+                                    }
+
+                                    if (!showName) return null;
+
+                                    return (
+                                        <div style={{
+                                            position: 'absolute',
+                                            bottom: '-22px',
+                                            left: '50%',
+                                            transform: 'translateX(-50%)',
+                                            backgroundColor: getNameBadgeBgColor(shop.category),
+                                            padding: '2px 10px',
+                                            borderRadius: '12px',
+                                            fontSize: '11px',
+                                            fontWeight: 'bold',
+                                            fontFamily: 'inherit',
+                                            color: getNameBadgeTextColor(shop.category),
+                                            border: '1px solid rgba(255,255,255,0.15)',
+                                            whiteSpace: 'nowrap',
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                                            zIndex: 1
+                                        }}>
+                                            {shop.name}
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         </Marker>,
 

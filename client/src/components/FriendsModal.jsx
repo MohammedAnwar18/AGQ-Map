@@ -13,7 +13,13 @@ const categoryEmoji = (category) => {
         'Supermarket': '🛒', 'مجمع تجاري': '🏘️', 'Service': '⚙️',
 
         'بلدية': '🏩', 'Municipality': '🏩',
-        'مركز طبي': '🏥', 'مستشفى': '🏨', 'عيادة': '🩺', 'صيدلية': '💊'
+        'مركز طبي': '🏥', 'مستشفى': '🏨', 'عيادة': '🩺', 'صيدلية': '💊',
+        
+        // New Categories
+        'حديقة': '🌳', 'منتزه': '🏞️', 'نادي رياضي': '🏋️', 'مدرسة': '🏫',
+        'مكتبة': '📚', 'حلويات': '🍰', 'معجنات': '🥐', 'احذية': '👟',
+        'صالون رجالي': '💈', 'صالون نسائي': '💇‍♀️', 'وزارة': '🏛️',
+        'دوار': '🔄', 'مقبرة': '🪦', 'مسجد': '🕌', 'كنيسة': '⛪', 'ملعب': '🏟️'
     };
     return map[category] || '🏪';
 };
@@ -684,6 +690,22 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                         <option value="مركز ثقافي">مركز ثقافي</option>
                                                         <option value="كرفان">كرفان</option>
                                                         <option value="محل تجاري متخصص">محل تجاري متخصص</option>
+                                                        <option value="حديقة">حديقة 🌳</option>
+                                                        <option value="منتزه">منتزه 🏞️</option>
+                                                        <option value="نادي رياضي">نادي رياضي 🏋️</option>
+                                                        <option value="مدرسة">مدرسة 🏫</option>
+                                                        <option value="مكتبة">مكتبة 📚</option>
+                                                        <option value="حلويات">حلويات 🍰</option>
+                                                        <option value="معجنات">معجنات 🥐</option>
+                                                        <option value="احذية">احذية 👟</option>
+                                                        <option value="صالون رجالي">صالون رجالي 💈</option>
+                                                        <option value="صالون نسائي">صالون نسائي 💇‍♀️</option>
+                                                        <option value="وزارة">وزارة 🏛️</option>
+                                                        <option value="دوار">دوار 🔄</option>
+                                                        <option value="مقبرة">مقبرة 🪦</option>
+                                                        <option value="مسجد">مسجد 🕌</option>
+                                                        <option value="كنيسة">كنيسة ⛪</option>
+                                                        <option value="ملعب">ملعب 🏟️</option>
                                                     </select>
                                                 </div>
                                                 {newShopData.category === 'محل تجاري متخصص' && (
