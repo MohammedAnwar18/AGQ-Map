@@ -294,23 +294,71 @@ const getAllShops = async (req, res) => {
         const { search, page = 1, limit = 50 } = req.query;
         const offset = (page - 1) * limit;
 
-        let query = `
-            SELECT id, name, category, profile_picture, created_at, 'shop' as type, is_hidden, is_locked
-            FROM shops
-        `;
+        let query;
         let params = [];
-        if (search) {
-            query += ` WHERE name ILIKE $1 OR category ILIKE $1`;
-            params.push(`%${search}%`);
+        let result;
+
+        try {
+            // Unified query for both shops (including medical centers) and university facilities
+            query = `
+                WITH combined AS (
+                    SELECT id, name, category, profile_picture, created_at, 'shop' as type, is_hidden, is_locked, icon_size, text_size, min_zoom, text_min_zoom
+                    FROM shops
+                    UNION ALL
+                    SELECT id, name, category, icon as profile_picture, created_at, 'facility' as type, FALSE as is_hidden, FALSE as is_locked, icon_size, text_size, min_zoom, text_min_zoom
+                    FROM university_facilities
+                )
+                SELECT * FROM combined
+            `;
+            if (search) {
+                query += ` WHERE name ILIKE $1 OR category ILIKE $1`;
+                params.push(`%${search}%`);
+            }
+            query += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+            params.push(limit, offset);
+            result = await pool.query(query, params);
+        } catch (dbErr) {
+            console.warn("Database error in getAllShops querying custom sizes/zooms, falling back to standard columns:", dbErr.message);
+            params = [];
+            query = `
+                WITH combined AS (
+                    SELECT id, name, category, profile_picture, created_at, 'shop' as type, is_hidden, is_locked
+                    FROM shops
+                    UNION ALL
+                    SELECT id, name, category, icon as profile_picture, created_at, 'facility' as type, FALSE as is_hidden, FALSE as is_locked
+                    FROM university_facilities
+                )
+                SELECT * FROM combined
+            `;
+            if (search) {
+                query += ` WHERE name ILIKE $1 OR category ILIKE $1`;
+                params.push(`%${search}%`);
+            }
+            query += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+            params.push(limit, offset);
+            const rawRes = await pool.query(query, params);
+            result = {
+                rows: rawRes.rows.map(row => ({
+                    ...row,
+                    icon_size: null,
+                    text_size: null,
+                    min_zoom: null,
+                    text_min_zoom: null
+                }))
+            };
         }
-        
-        query += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
-        params.push(limit, offset);
 
-        const result = await pool.query(query, params);
-
-        let countQuery = 'SELECT COUNT(*) as count FROM shops';
-        if (search) countQuery += ` WHERE name ILIKE $1 OR category ILIKE $1`;
+        let countQuery = `
+            WITH combined AS (
+                SELECT name, category FROM shops
+                UNION ALL
+                SELECT name, category FROM university_facilities
+            )
+            SELECT COUNT(*) as count FROM combined
+        `;
+        if (search) {
+            countQuery += ` WHERE name ILIKE $1 OR category ILIKE $1`;
+        }
         const countResult = await pool.query(countQuery, search ? [`%${search}%`] : []);
 
         res.json({

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { adminService } from '../services/adminApi';
-import { cameraService } from '../services/api';
+import { cameraService, shopService } from '../services/api';
 
 import './AdminDashboard.css';
 import ARAdminPanel from './ARAdminPanel';
@@ -16,8 +16,7 @@ const AdminDashboard = () => {
     const [posts, setPosts] = useState([]);
     const [shops, setShops] = useState([]);
     const [cameras, setCameras] = useState([]);
-    const [orgItems, setOrgItems] = useState([]);
-    const [selectedOrgItem, setSelectedOrgItem] = useState(null);
+    const [editingShopOrg, setEditingShopOrg] = useState(null);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
@@ -69,10 +68,6 @@ const AdminDashboard = () => {
             } else if (activeTab === 'cameras') {
                 const camerasData = await cameraService.getAll();
                 setCameras(camerasData || []);
-                setPagination(null);
-            } else if (activeTab === 'shops_organization') {
-                const orgData = await adminService.getOrganizationItems();
-                setOrgItems(orgData.items || []);
                 setPagination(null);
             } else if (activeTab === 'notifications') {
                 const usersData = await adminService.getAllUsers('', 1, 100);
@@ -131,13 +126,22 @@ const AdminDashboard = () => {
     };
 
     // Shop Handlers
-    const handleDeleteShop = async (shopId) => {
-        if (window.confirm('هل أنت متأكد من حذف هذا المحل نهائياً من الخريطة؟')) {
+    const handleDeleteShop = async (item) => {
+        const isFacility = item.type === 'facility';
+        const msg = isFacility 
+            ? 'هل أنت متأكد من حذف هذا المرفق الجامعي نهائياً من الخريطة؟' 
+            : 'هل أنت متأكد من حذف هذا المحل نهائياً من الخريطة؟';
+        if (window.confirm(msg)) {
             try {
-                await adminService.deleteShop(shopId);
+                if (isFacility) {
+                    await shopService.deleteFacility(item.id);
+                } else {
+                    await adminService.deleteShop(item.id);
+                }
+                alert(isFacility ? 'تم حذف المرفق الجامعي بنجاح ✅' : 'تم حذف المحل بنجاح ✅');
                 loadData();
             } catch (error) {
-                alert('فشل في حذف المحل');
+                alert(isFacility ? 'فشل في حذف المرفق الجامعي' : 'فشل في حذف المحل');
             }
         }
     };
@@ -156,7 +160,7 @@ const AdminDashboard = () => {
     const handleToggleShopVisibility = async (shopId, currentHiddenStatus) => {
         try {
             await adminService.toggleShopStatus(shopId, !currentHiddenStatus);
-            setShops(prev => prev.map(s => s.id === shopId ? { ...s, is_hidden: !currentHiddenStatus } : s));
+            setShops(prev => prev.map(s => (s.id === shopId && s.type === 'shop') ? { ...s, is_hidden: !currentHiddenStatus } : s));
         } catch (error) {
             alert('فشل في تحديث حالة ظهور المحل');
         }
@@ -165,7 +169,7 @@ const AdminDashboard = () => {
     const handleToggleShopLock = async (shopId, currentLockedStatus) => {
         try {
             await adminService.toggleShopLock(shopId, !currentLockedStatus);
-            setShops(prev => prev.map(s => s.id === shopId ? { ...s, is_locked: !currentLockedStatus } : s));
+            setShops(prev => prev.map(s => (s.id === shopId && s.type === 'shop') ? { ...s, is_locked: !currentLockedStatus } : s));
         } catch (error) {
             alert('فشل في تحديث حالة قفل المحل');
         }
@@ -229,7 +233,6 @@ const AdminDashboard = () => {
                         { id: 'overview', icon: '📊', label: 'الرئيسية' },
                         { id: 'users', icon: '👥', label: 'المستخدمين' },
                         { id: 'shops', icon: '🏪', label: 'إدارة المحلات' },
-                        { id: 'shops_organization', icon: '📐', label: 'تنظيم المحلات والزوم' },
                         { id: 'cameras', icon: '📹', label: 'إدارة الكاميرات' },
                         { id: 'data', icon: '📝', label: 'كل البيانات' },
                         { id: 'files', icon: '📁', label: 'ملفات الوسائط' },
@@ -265,12 +268,11 @@ const AdminDashboard = () => {
                             activeTab === 'overview' ? 'لوحة التحكم العامة' :
                                 activeTab === 'users' ? 'إدارة الحسابات' :
                                     activeTab === 'shops' ? 'إدارة المحلات والمؤسسات' :
-                                        activeTab === 'shops_organization' ? 'تنظيم أحجام وزوم المحلات والمرافق' :
-                                            activeTab === 'cameras' ? 'إدارة كاميرات البث المباشر' :
-                                                activeTab === 'data' ? 'إدارة المحتوى والبيانات' :
-                                                    activeTab === 'files' ? 'مكتبة الوسائط' :
-                                                        activeTab === 'notifications' ? 'إرسال التنبيهات والبرودكاست' :
-                                                            activeTab === 'ar' ? 'إدارة محتوى الواقع المعزز' : 'خارطة النشاط الموحدة'
+                                        activeTab === 'cameras' ? 'إدارة كاميرات البث المباشر' :
+                                            activeTab === 'data' ? 'إدارة المحتوى والبيانات' :
+                                                activeTab === 'files' ? 'مكتبة الوسائط' :
+                                                    activeTab === 'notifications' ? 'إرسال التنبيهات والبرودكاست' :
+                                                        activeTab === 'ar' ? 'إدارة محتوى الواقع المعزز' : 'خارطة النشاط الموحدة'
                         }</h2>
                         <p>مرحباً بك يا {user.full_name || user.username} • {new Date().toLocaleDateString('ar-SA', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                     </div>
@@ -453,8 +455,16 @@ const AdminDashboard = () => {
                             <div className="shops-grid">
                                 {shops.map(s => (
                                     <div key={s.id} className={`shop-card ${s.is_locked ? 'shop-locked' : ''}`}>
-                                        <div className="shop-card-img">
+                                        <div 
+                                            className="shop-card-img" 
+                                            style={{ cursor: 'pointer', position: 'relative' }}
+                                            onClick={() => setEditingShopOrg(s)}
+                                            title="اضغط للتعديل على أحجام الأيقونات، الخطوط والزوم 📐"
+                                        >
                                             <img src={s.profile_picture || '/logo.png'} alt={s.name} />
+                                            <div style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', color: 'white', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', boxShadow: '0 2px 6px rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.2)', transition: 'all 0.2s' }}>
+                                                📐
+                                            </div>
                                             {s.is_locked && (
                                                 <div className="shop-lock-overlay">
                                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="28" height="28">
@@ -470,47 +480,59 @@ const AdminDashboard = () => {
                                             <p className="shop-card-date">{formatDate(s.created_at)}</p>
 
                                             <div className="shop-card-badges">
-                                                <span className={`badge ${s.is_hidden ? 'badge-hidden' : 'badge-visible'}`}>
-                                                    {s.is_hidden ? 'مخفي' : 'ظاهر'}
-                                                </span>
-                                                <span className={`badge ${s.is_locked ? 'badge-locked' : 'badge-unlocked'}`}>
-                                                    {s.is_locked ? 'مقفول' : 'مفتوح'}
-                                                </span>
+                                                {s.type === 'facility' ? (
+                                                    <span className="badge" style={{ background: 'rgba(249, 115, 22, 0.12)', color: '#f97316', borderColor: 'rgba(249, 115, 22, 0.25)' }}>
+                                                        مرفق جامعي 🏫
+                                                    </span>
+                                                ) : (
+                                                    <>
+                                                        <span className={`badge ${s.is_hidden ? 'badge-hidden' : 'badge-visible'}`}>
+                                                            {s.is_hidden ? 'مخفي' : 'ظاهر'}
+                                                        </span>
+                                                        <span className={`badge ${s.is_locked ? 'badge-locked' : 'badge-unlocked'}`}>
+                                                            {s.is_locked ? 'مقفول' : 'مفتوح'}
+                                                        </span>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="shop-card-actions">
-                                            <button
-                                                className={`shop-action-btn ${s.is_hidden ? 'btn-show' : 'btn-hide'}`}
-                                                title={s.is_hidden ? 'إظهار على الخريطة' : 'إخفاء من الخريطة'}
-                                                onClick={() => handleToggleShopVisibility(s.id, s.is_hidden)}
-                                            >
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                                                    {s.is_hidden
-                                                        ? <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></>
-                                                        : <><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></>
-                                                    }
-                                                </svg>
-                                                {s.is_hidden ? 'إظهار' : 'إخفاء'}
-                                            </button>
+                                            {s.type !== 'facility' && (
+                                                <>
+                                                    <button
+                                                        className={`shop-action-btn ${s.is_hidden ? 'btn-show' : 'btn-hide'}`}
+                                                        title={s.is_hidden ? 'إظهار على الخريطة' : 'إخفاء من الخريطة'}
+                                                        onClick={() => handleToggleShopVisibility(s.id, s.is_hidden)}
+                                                    >
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                                                            {s.is_hidden
+                                                                ? <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></>
+                                                                : <><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></>
+                                                            }
+                                                        </svg>
+                                                        {s.is_hidden ? 'إظهار' : 'إخفاء'}
+                                                    </button>
 
-                                            <button
-                                                className={`shop-action-btn ${s.is_locked ? 'btn-unlock' : 'btn-lock'}`}
-                                                title={s.is_locked ? 'فتح القفل' : 'قفل المحل'}
-                                                onClick={() => handleToggleShopLock(s.id, s.is_locked)}
-                                            >
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                                                    {s.is_locked
-                                                        ? <><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></>
-                                                        : <><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>
-                                                    }
-                                                </svg>
-                                                {s.is_locked ? 'فتح' : 'قفل'}
-                                            </button>
+                                                    <button
+                                                        className={`shop-action-btn ${s.is_locked ? 'btn-unlock' : 'btn-lock'}`}
+                                                        title={s.is_locked ? 'فتح القفل' : 'قفل المحل'}
+                                                        onClick={() => handleToggleShopLock(s.id, s.is_locked)}
+                                                    >
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                                                            {s.is_locked
+                                                                ? <><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></>
+                                                                : <><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>
+                                                            }
+                                                        </svg>
+                                                        {s.is_locked ? 'فتح' : 'قفل'}
+                                                    </button>
+                                                </>
+                                            )}
 
                                             <button
                                                 className="shop-action-btn btn-delete"
                                                 title="حذف نهائي"
-                                                onClick={() => handleDeleteShop(s.id)}
+                                                onClick={() => handleDeleteShop(s)}
                                             >
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
                                                     <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
@@ -539,293 +561,176 @@ const AdminDashboard = () => {
                     </div>
                 )}
 
-                {/* Shops Organization (Size & Zoom Controls) */}
-                {activeTab === 'shops_organization' && (
-                    <div className="admin-content-card" style={{ padding: '20px' }}>
-                        <div className="content-header" style={{ marginBottom: '20px' }}>
-                            <h3 style={{ margin: 0 }}>⚙️ تنظيم المحلات والمراكز الطبية والمرافق الجامعية</h3>
-                            <p style={{ margin: '5px 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                                تحكم في أحجام الأيقونات، الخطوط، ومستويات الزوم لكل مكان بشكل منفصل.
-                            </p>
+
+            {/* Premium Shop Organization Modal Popup */}
+            {editingShopOrg && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+                    background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(8px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    zIndex: 9999, padding: '20px', transition: 'all 0.3s ease'
+                }} onClick={() => setEditingShopOrg(null)}>
+                    <div style={{
+                        background: 'var(--bg-secondary)', border: '1px solid var(--border-color)',
+                        borderRadius: '20px', width: '100%', maxWidth: '550px',
+                        boxShadow: '0 10px 40px rgba(0,0,0,0.5)', overflow: 'hidden',
+                        display: 'flex', flexDirection: 'column'
+                    }} onClick={e => e.stopPropagation()}>
+                        
+                        {/* Header */}
+                        <div style={{
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                            padding: '20px', borderBottom: '1px solid var(--border-color)',
+                            background: 'var(--bg-primary)'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                <img 
+                                    src={editingShopOrg.profile_picture || '/logo.png'} 
+                                    alt={editingShopOrg.name} 
+                                    style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--primary)' }} 
+                                    onError={(e) => { e.target.src = '/logo.png'; }}
+                                />
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 'bold' }}>📐 تنظيم أبعاد المحل</h3>
+                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{editingShopOrg.name} ({editingShopOrg.category || 'عام'})</span>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => setEditingShopOrg(null)}
+                                style={{
+                                    background: 'none', border: 'none', color: 'var(--text-muted)',
+                                    fontSize: '1.5rem', cursor: 'pointer', outline: 'none'
+                                }}
+                            >
+                                &times;
+                            </button>
                         </div>
 
-                        <div className="org-split-container" style={{ display: 'flex', gap: '20px', minHeight: '500px' }}>
-                            {/* Left Side: List of All Items */}
-                            <div className="org-list-panel" style={{ flex: 1.2, background: 'var(--bg-secondary)', borderRadius: '12px', padding: '15px', display: 'flex', flexDirection: 'column', gap: '10px', border: '1px solid var(--border-color)', maxHeight: '700px', overflowY: 'auto' }}>
-                                <div style={{ fontWeight: 'bold', fontSize: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span>🏪 قائمة العناصر ({orgItems.length})</span>
-                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>اختر عنصراً لتعديله</span>
-                                </div>
+                        {/* Form */}
+                        <form onSubmit={async (e) => {
+                            e.preventDefault();
+                            const form = e.target;
+                            const iconSize = form.icon_size.value;
+                            const textSize = form.text_size.value;
+                            const minZoom = form.min_zoom.value;
+                            const textMinZoom = form.text_min_zoom.value;
+
+                            const data = {
+                                icon_size: iconSize === '' ? null : parseInt(iconSize),
+                                text_size: textSize === '' ? null : parseInt(textSize),
+                                min_zoom: minZoom === '' ? null : parseFloat(minZoom),
+                                text_min_zoom: textMinZoom === '' ? null : parseFloat(textMinZoom)
+                            };
+
+                            try {
+                                await adminService.updateOrganizationItem(editingShopOrg.type || 'shop', editingShopOrg.id, data);
+                                alert(`تم حفظ إعدادات الأبعاد لـ "${editingShopOrg.name}" بنجاح! ✅`);
                                 
-                                <div style={{ marginBottom: '10px' }}>
-                                    <input
-                                        type="text"
-                                        placeholder="🔍 تصفية سريعة بالاسم أو التصنيف..."
-                                        className="input"
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
+                                // Update dashboard shops state immediately
+                                setShops(prev => prev.map(s => (s.id === editingShopOrg.id && s.type === editingShopOrg.type) ? { ...s, ...data } : s));
+                                setEditingShopOrg(null);
+                            } catch (err) {
+                                alert('فشل الحفظ: ' + (err.response?.data?.error || err.message));
+                            }
+                        }} style={{ padding: '25px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            
+                            <div style={{ display: 'flex', gap: '15px' }}>
+                                <div style={{ flex: 1 }}>
+                                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '0.9rem' }}>📏 حجم الأيقونة (بيكسل)</label>
+                                    <input 
+                                        type="number" 
+                                        name="icon_size"
+                                        className="input" 
+                                        placeholder="الافتراضي للتصنيف"
+                                        defaultValue={editingShopOrg.icon_size || ''}
+                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                                     />
                                 </div>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                    {orgItems
-                                        .filter(item => 
-                                            item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                                            (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase()))
-                                        )
-                                        .map(item => {
-                                            const isSelected = selectedOrgItem && selectedOrgItem.id === item.id;
-                                            const badgeColor = 
-                                                item.display_type === 'مرفق جامعي' ? '#3b82f6' : 
-                                                item.display_type === 'مركز طبي' ? '#ef4444' : '#10b981';
-
-                                            return (
-                                                <div 
-                                                    key={item.id}
-                                                    onClick={() => setSelectedOrgItem(item)}
-                                                    style={{
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '12px',
-                                                        padding: '12px',
-                                                        borderRadius: '10px',
-                                                        background: isSelected ? 'var(--primary)' : 'var(--bg-primary)',
-                                                        color: isSelected ? 'white' : 'var(--text-primary)',
-                                                        cursor: 'pointer',
-                                                        border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border-color)',
-                                                        transition: 'all 0.2s',
-                                                        boxShadow: isSelected ? '0 4px 12px rgba(59, 130, 246, 0.25)' : 'none'
-                                                    }}
-                                                >
-                                                    <img 
-                                                        src={item.profile_picture || '/logo.png'} 
-                                                        alt={item.name} 
-                                                        style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: isSelected ? '2px solid white' : '1px solid var(--border-color)' }} 
-                                                        onError={(e) => { e.target.src = '/logo.png'; }}
-                                                    />
-                                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3px', overflow: 'hidden' }}>
-                                                        <span style={{ fontWeight: 'bold', fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</span>
-                                                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                                            <span style={{ 
-                                                                background: isSelected ? 'rgba(255,255,255,0.2)' : badgeColor, 
-                                                                color: isSelected ? 'white' : 'white', 
-                                                                padding: '1px 6px', 
-                                                                borderRadius: '20px', 
-                                                                fontSize: '0.7rem', 
-                                                                fontWeight: 'bold'
-                                                            }}>
-                                                                {item.display_type}
-                                                            </span>
-                                                            <span style={{ color: isSelected ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)', fontSize: '0.8rem' }}>
-                                                                {item.category || 'عام'}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    <span style={{ fontSize: '1.2rem', opacity: isSelected ? 1 : 0.4 }}>◀</span>
-                                                </div>
-                                            );
-                                        })}
-                                    {orgItems.length === 0 && (
-                                        <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
-                                            🏪 لا يوجد عناصر حالياً
-                                        </div>
-                                    )}
+                                <div style={{ flex: 1 }}>
+                                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '0.9rem' }}>🔤 حجم خط الاسم (بيكسل)</label>
+                                    <input 
+                                        type="number" 
+                                        name="text_size"
+                                        className="input" 
+                                        placeholder="مثال: 11"
+                                        defaultValue={editingShopOrg.text_size || ''}
+                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                                    />
                                 </div>
                             </div>
 
-                            {/* Right Side: Detailed Editing Panel */}
-                            <div className="org-edit-panel" style={{ flex: 1.8, background: 'var(--bg-secondary)', borderRadius: '12px', padding: '20px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                {selectedOrgItem ? (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', height: '100%' }}>
-                                        {/* Selected Item Profile Header */}
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', paddingBottom: '15px', borderBottom: '1px solid var(--border-color)' }}>
-                                            <img 
-                                                src={selectedOrgItem.profile_picture || '/logo.png'} 
-                                                alt={selectedOrgItem.name} 
-                                                style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--primary)' }} 
-                                                onError={(e) => { e.target.src = '/logo.png'; }}
-                                            />
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                                <h4 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 'bold' }}>{selectedOrgItem.name}</h4>
-                                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                                    <span style={{ 
-                                                        background: selectedOrgItem.display_type === 'مرفق جامعي' ? '#3b82f6' : selectedOrgItem.display_type === 'مركز طبي' ? '#ef4444' : '#10b981', 
-                                                        color: 'white', 
-                                                        padding: '2px 8px', 
-                                                        borderRadius: '20px', 
-                                                        fontSize: '0.75rem', 
-                                                        fontWeight: 'bold'
-                                                    }}>
-                                                        {selectedOrgItem.display_type}
-                                                    </span>
-                                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                                                        التصنيف: {selectedOrgItem.category || 'عام'}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
+                            <div style={{ display: 'flex', gap: '15px' }}>
+                                <div style={{ flex: 1 }}>
+                                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '0.9rem' }}>🔍 زوم ظهور الأيقونة</label>
+                                    <input 
+                                        type="number" 
+                                        step="any"
+                                        name="min_zoom"
+                                        className="input" 
+                                        placeholder="الافتراضي"
+                                        defaultValue={editingShopOrg.min_zoom || ''}
+                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                                    />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '0.9rem' }}>💬 زوم ظهور الاسم</label>
+                                    <input 
+                                        type="number" 
+                                        step="any"
+                                        name="text_min_zoom"
+                                        className="input" 
+                                        placeholder="الافتراضي"
+                                        defaultValue={editingShopOrg.text_min_zoom || ''}
+                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                                    />
+                                </div>
+                            </div>
 
-                                        {/* Size & Zoom Form */}
-                                        <form onSubmit={async (e) => {
-                                            e.preventDefault();
-                                            const form = e.target;
-                                            const iconSize = form.icon_size.value;
-                                            const textSize = form.text_size.value;
-                                            const minZoom = form.min_zoom.value;
-                                            const textMinZoom = form.text_min_zoom.value;
-
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '10px', paddingTop: '15px', borderTop: '1px solid var(--border-color)' }}>
+                                <button 
+                                    type="submit" 
+                                    className="btn is-primary" 
+                                    style={{ flex: 2, padding: '12px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.95rem' }}
+                                >
+                                    💾 حفظ الأبعاد والزوم
+                                </button>
+                                <button 
+                                    type="button" 
+                                    className="btn btn-reject" 
+                                    onClick={async () => {
+                                        if (window.confirm(`هل أنت متأكد من إعادة تعيين أبعاد "${editingShopOrg.name}" إلى الافتراضي؟`)) {
                                             const data = {
-                                                icon_size: iconSize === '' ? null : parseInt(iconSize),
-                                                text_size: textSize === '' ? null : parseInt(textSize),
-                                                min_zoom: minZoom === '' ? null : parseFloat(minZoom),
-                                                text_min_zoom: textMinZoom === '' ? null : parseFloat(textMinZoom)
+                                                icon_size: null,
+                                                text_size: null,
+                                                min_zoom: null,
+                                                text_min_zoom: null
                                             };
 
                                             try {
-                                                await adminService.updateOrganizationItem(selectedOrgItem.type, selectedOrgItem.real_id, data);
-                                                alert(`تم حفظ إعدادات "${selectedOrgItem.name}" بنجاح! ✅`);
-                                                // Update local states
-                                                setOrgItems(prev => prev.map(o => o.id === selectedOrgItem.id ? { ...o, ...data } : o));
-                                                setSelectedOrgItem(prev => ({ ...prev, ...data }));
+                                                await adminService.updateOrganizationItem(editingShopOrg.type || 'shop', editingShopOrg.id, data);
+                                                alert(`تم إعادة تعيين إعدادات "${editingShopOrg.name}" للافتراضي بنجاح! ✅`);
+                                                setShops(prev => prev.map(s => (s.id === editingShopOrg.id && s.type === editingShopOrg.type) ? { ...s, ...data } : s));
+                                                setEditingShopOrg(null);
                                             } catch (err) {
-                                                alert('فشل الحفظ: ' + (err.response?.data?.error || err.message));
+                                                alert('فشلت العملية: ' + (err.response?.data?.error || err.message));
                                             }
-                                        }} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                            
-                                            <div style={{ display: 'flex', gap: '15px' }}>
-                                                <div style={{ flex: 1 }}>
-                                                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '0.9rem' }}>📏 حجم الأيقونة (بيكسل)</label>
-                                                    <input 
-                                                        type="number" 
-                                                        name="icon_size"
-                                                        className="input" 
-                                                        placeholder="مثال: 50 (الافتراضي للتصنيف)"
-                                                        defaultValue={selectedOrgItem.icon_size || ''}
-                                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-                                                    />
-                                                    <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
-                                                        يحدد حجم دائرة الشعار على الخريطة.
-                                                    </small>
-                                                </div>
-                                                <div style={{ flex: 1 }}>
-                                                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '0.9rem' }}>🔤 حجم خط الاسم (بيكسل)</label>
-                                                    <input 
-                                                        type="number" 
-                                                        name="text_size"
-                                                        className="input" 
-                                                        placeholder="مثال: 11 (الافتراضي)"
-                                                        defaultValue={selectedOrgItem.text_size || ''}
-                                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-                                                    />
-                                                    <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
-                                                        حجم الخط للنص المكتوب تحت الأيقونة.
-                                                    </small>
-                                                </div>
-                                            </div>
-
-                                            <div style={{ display: 'flex', gap: '15px' }}>
-                                                <div style={{ flex: 1 }}>
-                                                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '0.9rem' }}>🔍 زوم ظهور الأيقونة على الخريطة</label>
-                                                    <input 
-                                                        type="number" 
-                                                        step="any"
-                                                        name="min_zoom"
-                                                        className="input" 
-                                                        placeholder="مثال: 12.5 (الافتراضي)"
-                                                        defaultValue={selectedOrgItem.min_zoom || ''}
-                                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-                                                    />
-                                                    <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
-                                                        مستوى التكبير الذي يبدأ عنده ظهور الأيقونة.
-                                                    </small>
-                                                </div>
-                                                <div style={{ flex: 1 }}>
-                                                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '0.9rem' }}>💬 زوم ظهور اسم المكان</label>
-                                                    <input 
-                                                        type="number" 
-                                                        step="any"
-                                                        name="text_min_zoom"
-                                                        className="input" 
-                                                        placeholder="مثال: 16.5 (الافتراضي)"
-                                                        defaultValue={selectedOrgItem.text_min_zoom || ''}
-                                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-                                                    />
-                                                    <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
-                                                        مستوى التكبير الذي يبدأ عنده ظهور الاسم.
-                                                    </small>
-                                                </div>
-                                            </div>
-
-                                            <div style={{ display: 'flex', gap: '10px', marginTop: '15px', paddingTop: '15px', borderTop: '1px solid var(--border-color)' }}>
-                                                <button 
-                                                    type="submit" 
-                                                    className="btn is-primary" 
-                                                    style={{ flex: 2, padding: '12px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.95rem' }}
-                                                >
-                                                    💾 حفظ كافة التغييرات
-                                                </button>
-                                                <button 
-                                                    type="button" 
-                                                    className="btn btn-reject" 
-                                                    onClick={async () => {
-                                                        if (window.confirm(`هل أنت متأكد من إعادة تعيين إعدادات "${selectedOrgItem.name}" إلى الافتراضي؟`)) {
-                                                            const data = {
-                                                                icon_size: null,
-                                                                text_size: null,
-                                                                min_zoom: null,
-                                                                text_min_zoom: null
-                                                            };
-
-                                                            try {
-                                                                await adminService.updateOrganizationItem(selectedOrgItem.type, selectedOrgItem.real_id, data);
-                                                                alert(`تم إعادة تعيين إعدادات "${selectedOrgItem.name}" للافتراضي بنجاح! ✅`);
-                                                                
-                                                                // Reset form inputs manually
-                                                                const iconInput = document.querySelector('.org-edit-panel input[name="icon_size"]');
-                                                                const textInput = document.querySelector('.org-edit-panel input[name="text_size"]');
-                                                                const minZoomInput = document.querySelector('.org-edit-panel input[name="min_zoom"]');
-                                                                const textMinZoomInput = document.querySelector('.org-edit-panel input[name="text_min_zoom"]');
-                                                                if (iconInput) iconInput.value = '';
-                                                                if (textInput) textInput.value = '';
-                                                                if (minZoomInput) minZoomInput.value = '';
-                                                                if (textMinZoomInput) textMinZoomInput.value = '';
-
-                                                                setOrgItems(prev => prev.map(o => o.id === selectedOrgItem.id ? { ...o, ...data } : o));
-                                                                setSelectedOrgItem(prev => ({ ...prev, ...data }));
-                                                            } catch (err) {
-                                                                alert('فشلت العملية: ' + (err.response?.data?.error || err.message));
-                                                            }
-                                                        }
-                                                    }}
-                                                    style={{ flex: 1, padding: '12px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.95rem', background: '#6b7280' }}
-                                                >
-                                                    🔄 إعادة تعيين
-                                                </button>
-                                            </div>
-                                        </form>
-                                    </div>
-                                ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '15px', padding: '40px', color: 'var(--text-muted)' }}>
-                                        <span style={{ fontSize: '3rem' }}>📐</span>
-                                        <h4 style={{ margin: 0, fontWeight: 'bold', fontSize: '1.1rem' }}>يرجى اختيار عنصر من القائمة للبدء بالتنظيم</h4>
-                                        <p style={{ margin: 0, fontSize: '0.85rem', textAlign: 'center', maxWidth: '300px', lineHeight: 1.4 }}>
-                                            اختر أي محل، مركز طبي، أو مرفق جامعي من القائمة الجانبية لتعديل خصائص ظهوره وأبعاده على الخريطة فوراً.
-                                        </p>
-                                    </div>
-                                )}
+                                        }
+                                    }}
+                                    style={{ flex: 1, padding: '12px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.95rem', background: '#6b7280' }}
+                                >
+                                    🔄 تصفير
+                                </button>
                             </div>
-                        </div>
+                        </form>
                     </div>
-                )}
-
+                </div>
+            )}
                 {/* Cameras Management */}
                 {activeTab === 'cameras' && (
                     <div className="admin-content-card">
                         <div className="content-header">
-                            <h3>إدارة كاميرات البث المباشر على الخريطة</h3>
+                            <h3>إدارة كاميرات البث المباشر الموحدة</h3>
                         </div>
-
                         <div className="admin-table-wrapper">
                             {loading ? (
                                 <div className="loading-container"><div className="spinner"></div></div>
