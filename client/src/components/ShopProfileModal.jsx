@@ -3484,7 +3484,11 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                     contact_info: form.contact_info.value,
                                                     opening_hours: openingHours,
                                                     latitude: form.latitude.value,
-                                                    longitude: form.longitude.value
+                                                    longitude: form.longitude.value,
+                                                    icon_size: form.icon_size.value ? parseInt(form.icon_size.value) : null,
+                                                    text_size: form.text_size.value ? parseInt(form.text_size.value) : null,
+                                                    min_zoom: form.min_zoom.value ? parseFloat(form.min_zoom.value) : null,
+                                                    text_min_zoom: form.text_min_zoom.value ? parseFloat(form.text_min_zoom.value) : null
                                                 };
                                                 try {
                                                     await shopService.updateProfile(shopData.id, updates);
@@ -3546,6 +3550,59 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                             </div>
                                                         );
                                                     })}
+                                                </div>
+
+                                                {/* Custom Size and Zoom Level Controls */}
+                                                <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+                                                    <div style={{ flex: 1 }}>
+                                                        <label style={{ display: 'block', marginBottom: 5 }}>حجم الأيقونة (بيكسل)</label>
+                                                        <input 
+                                                            type="number" 
+                                                            name="icon_size" 
+                                                            className="input" 
+                                                            defaultValue={shopData.icon_size || ''} 
+                                                            placeholder="مثال: 50 (افتراضي)" 
+                                                            style={{ width: '100%' }} 
+                                                        />
+                                                    </div>
+                                                    <div style={{ flex: 1 }}>
+                                                        <label style={{ display: 'block', marginBottom: 5 }}>حجم خط الاسم (بيكسل)</label>
+                                                        <input 
+                                                            type="number" 
+                                                            name="text_size" 
+                                                            className="input" 
+                                                            defaultValue={shopData.text_size || ''} 
+                                                            placeholder="مثال: 11 (افتراضي)" 
+                                                            style={{ width: '100%' }} 
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+                                                    <div style={{ flex: 1 }}>
+                                                        <label style={{ display: 'block', marginBottom: 5 }}>زوم ظهور المحل على الخريطة</label>
+                                                        <input 
+                                                            type="number" 
+                                                            step="any" 
+                                                            name="min_zoom" 
+                                                            className="input" 
+                                                            defaultValue={shopData.min_zoom || ''} 
+                                                            placeholder="مثال: 12 (افتراضي)" 
+                                                            style={{ width: '100%' }} 
+                                                        />
+                                                    </div>
+                                                    <div style={{ flex: 1 }}>
+                                                        <label style={{ display: 'block', marginBottom: 5 }}>زوم ظهور اسم المحل</label>
+                                                        <input 
+                                                            type="number" 
+                                                            step="any" 
+                                                            name="text_min_zoom" 
+                                                            className="input" 
+                                                            defaultValue={shopData.text_min_zoom || ''} 
+                                                            placeholder="مثال: 16.5 (افتراضي)" 
+                                                            style={{ width: '100%' }} 
+                                                        />
+                                                    </div>
                                                 </div>
 
                                                 <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>

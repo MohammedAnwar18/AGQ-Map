@@ -2363,7 +2363,10 @@ const MapComponent = () => {
                             return String(shop.id) === String(shopIdQuery);
                         }
 
-                        // Customized zoom visibility levels for Roundabouts (دوار) and specific landmarks to avoid map clutter
+                        // Customized zoom visibility levels or per-shop overrides
+                        if (shop.min_zoom != null && shop.min_zoom !== '') {
+                            return viewState.zoom >= parseFloat(shop.min_zoom);
+                        }
                         const cat = shop.category || '';
                         if (cat === 'دوار') {
                             return viewState.zoom >= 17.5; // يظهر فقط عند التكبير الشديد
@@ -2395,8 +2398,8 @@ const MapComponent = () => {
                             }}
                         >
                             <div style={{
-                                width:  `${getMarkerSize(shop.category)}px`,
-                                height: `${getMarkerSize(shop.category)}px`,
+                                width:  `${shop.icon_size ? shop.icon_size : getMarkerSize(shop.category)}px`,
+                                height: `${shop.icon_size ? shop.icon_size : getMarkerSize(shop.category)}px`,
                                 borderRadius: '50%',
                                 backgroundColor: getMarkerBgColor(shop.category),
                                 backgroundImage: (shop.profile_picture || shop.image_url) ? `url(${getImageUrl(shop.profile_picture) || getImageUrl(shop.image_url)})` : 'none',
@@ -2409,7 +2412,7 @@ const MapComponent = () => {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 color: 'white',
-                                fontSize: getMarkerEmojiFontSize(shop.category)
+                                fontSize: shop.icon_size ? `${Math.round(shop.icon_size * 0.44)}px` : getMarkerEmojiFontSize(shop.category)
                             }}>
                                 {/* Display premium category emoji badge inside circle if no image exists */}
                                 {(!shop.profile_picture && !shop.image_url) && (
@@ -2420,7 +2423,9 @@ const MapComponent = () => {
                                 {(() => {
                                     if (routePath) return null;
                                     let showName = false;
-                                    if (shop.category === 'دوار') {
+                                    if (shop.text_min_zoom != null && shop.text_min_zoom !== '') {
+                                        showName = viewState.zoom >= parseFloat(shop.text_min_zoom);
+                                    } else if (shop.category === 'دوار') {
                                         showName = viewState.zoom >= 17.5;
                                     } else if (['مسجد', 'كنيسة', 'مقبرة', 'ملعب'].includes(shop.category)) {
                                         showName = viewState.zoom >= 14.5;
@@ -2432,16 +2437,19 @@ const MapComponent = () => {
 
                                     if (!showName) return null;
 
+                                    const currentSize = shop.icon_size ? shop.icon_size : getMarkerSize(shop.category);
+                                    const offsetBottom = -Math.round(currentSize * 0.4);
+
                                     return (
                                         <div style={{
                                             position: 'absolute',
-                                            bottom: '-22px',
+                                            bottom: `${offsetBottom}px`,
                                             left: '50%',
                                             transform: 'translateX(-50%)',
                                             backgroundColor: getNameBadgeBgColor(shop.category),
                                             padding: '2px 10px',
                                             borderRadius: '12px',
-                                            fontSize: '11px',
+                                            fontSize: shop.text_size ? `${shop.text_size}px` : '11px',
                                             fontWeight: 'bold',
                                             fontFamily: 'inherit',
                                             color: getNameBadgeTextColor(shop.category),

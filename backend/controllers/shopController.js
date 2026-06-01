@@ -307,7 +307,7 @@ const getFollowedShops = async (req, res) => {
 // --- 5. Create Shop (Admin) ---
 const createShop = async (req, res) => {
     try {
-        const { name, latitude, longitude, category, parent_shop_id, floor, custom_design } = req.body;
+        const { name, latitude, longitude, category, parent_shop_id, floor, custom_design, icon_size, text_size, min_zoom, text_min_zoom } = req.body;
         const ownerId = req.user.id || req.user.userId;
 
         const lat = parseFloat(latitude);
@@ -317,11 +317,16 @@ const createShop = async (req, res) => {
             return res.status(400).json({ error: 'Invalid coordinates provided' });
         }
 
+        const parsedIconSize = (icon_size === '' || icon_size === undefined || icon_size === null || isNaN(parseInt(icon_size))) ? null : parseInt(icon_size);
+        const parsedTextSize = (text_size === '' || text_size === undefined || text_size === null || isNaN(parseInt(text_size))) ? null : parseInt(text_size);
+        const parsedMinZoom = (min_zoom === '' || min_zoom === undefined || min_zoom === null || isNaN(parseFloat(min_zoom))) ? null : parseFloat(min_zoom);
+        const parsedTextMinZoom = (text_min_zoom === '' || text_min_zoom === undefined || text_min_zoom === null || isNaN(parseFloat(text_min_zoom))) ? null : parseFloat(text_min_zoom);
+
         const result = await pool.query(`
-            INSERT INTO shops (name, latitude, longitude, category, owner_id, parent_shop_id, floor, location, custom_design)
-            VALUES ($1, $2::numeric, $3::numeric, $4, $5, $6, $7, ST_SetSRID(ST_MakePoint($3::double precision, $2::double precision), 4326)::geography, $8)
+            INSERT INTO shops (name, latitude, longitude, category, owner_id, parent_shop_id, floor, location, custom_design, icon_size, text_size, min_zoom, text_min_zoom)
+            VALUES ($1, $2::numeric, $3::numeric, $4, $5, $6, $7, ST_SetSRID(ST_MakePoint($3::double precision, $2::double precision), 4326)::geography, $8, $9, $10, $11, $12)
             RETURNING *
-        `, [name, lat, lon, category || 'General', ownerId, parent_shop_id || null, floor || null, custom_design || {}]);
+        `, [name, lat, lon, category || 'General', ownerId, parent_shop_id || null, floor || null, custom_design || {}, parsedIconSize, parsedTextSize, parsedMinZoom, parsedTextMinZoom]);
 
         const newShop = result.rows[0];
 
@@ -453,11 +458,21 @@ const updateShopProfile = async (req, res) => {
         let values = [];
         let index = 1;
 
-        const fields = ['name', 'bio', 'opening_hours', 'contact_info', 'category', 'parent_shop_id', 'floor', 'enable_proximity_notifications', 'is_hidden', 'proximity_radius', 'custom_design'];
+        const fields = ['name', 'bio', 'opening_hours', 'contact_info', 'category', 'parent_shop_id', 'floor', 'enable_proximity_notifications', 'is_hidden', 'proximity_radius', 'custom_design', 'icon_size', 'text_size', 'min_zoom', 'text_min_zoom'];
         fields.forEach(field => {
             if (req.body[field] !== undefined) {
                 queryParts.push(`${field} = $${index++}`);
-                values.push(req.body[field] === '' ? null : (field === 'custom_design' && typeof req.body[field] === 'string' ? JSON.parse(req.body[field]) : req.body[field]));
+                let val = req.body[field];
+                if (val === '') {
+                    val = null;
+                } else if (field === 'custom_design' && typeof val === 'string') {
+                    val = JSON.parse(val);
+                } else if (['icon_size', 'text_size'].includes(field)) {
+                    val = (val === null || isNaN(parseInt(val))) ? null : parseInt(val);
+                } else if (['min_zoom', 'text_min_zoom'].includes(field)) {
+                    val = (val === null || isNaN(parseFloat(val))) ? null : parseFloat(val);
+                }
+                values.push(val);
             }
         });
 
@@ -930,7 +945,7 @@ const getFollowedUniversitiesFacilities = async (req, res) => {
 
 const getAllShopsMap = async (req, res) => {
     try {
-        const shopsRes = await pool.query('SELECT id, name, category, profile_picture, cover_picture, custom_design, hidden_sections, latitude, longitude, floor, parent_shop_id, is_locked, \'shop\' as type FROM shops WHERE is_hidden = FALSE');
+        const shopsRes = await pool.query("SELECT id, name, category, profile_picture, cover_picture, custom_design, hidden_sections, latitude, longitude, floor, parent_shop_id, is_locked, icon_size, text_size, min_zoom, text_min_zoom, 'shop' as type FROM shops WHERE is_hidden = FALSE");
         const facilitiesRes = await pool.query('SELECT id, name, category, icon, latitude, longitude, university_id as parent_shop_id, FALSE as is_locked, \'facility\' as type FROM university_facilities');
 
         res.json({

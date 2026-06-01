@@ -240,7 +240,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
 
                 alert("تم إضافة الكاميرا بنجاح!");
                 setIsCreatingShop(false);
-                setNewShopData({ name: '', category: 'General', lat: '', lon: '', menu_layout: 'default', stream_url: '', crop_position: 'full', specialization: '' });
+                setNewShopData({ name: '', category: 'General', lat: '', lon: '', menu_layout: 'default', stream_url: '', crop_position: 'full', specialization: '', customCategory: '' });
                 
                 if (onCameraAdded) {
                     onCameraAdded(createdCamera);
@@ -253,9 +253,16 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                     setIsSubmittingShop(false);
                     return;
                 }
+                if (newShopData.category === 'custom' && (!newShopData.customCategory || !newShopData.customCategory.trim())) {
+                    alert("يرجى كتابة التصنيف المخصص");
+                    setIsSubmittingShop(false);
+                    return;
+                }
                 const finalCategory = newShopData.category === 'محل تجاري متخصص'
                     ? `محل تجاري متخصص - ${newShopData.specialization.trim()}`
-                    : newShopData.category;
+                    : newShopData.category === 'custom'
+                        ? newShopData.customCategory.trim()
+                        : newShopData.category;
                 const createdShop = await shopService.create({
                     name: newShopData.name,
                     category: finalCategory,
@@ -269,7 +276,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
 
                 alert("تم إنشاء المحل بنجاح مع التصميم الخاص!");
                 setIsCreatingShop(false);
-                setNewShopData({ name: '', category: 'General', lat: '', lon: '', menu_layout: 'default', stream_url: '', crop_position: 'full', specialization: '' });
+                setNewShopData({ name: '', category: 'General', lat: '', lon: '', menu_layout: 'default', stream_url: '', crop_position: 'full', specialization: '', customCategory: '' });
                 setPendingDesign(null);
                 await handleFollowShop(createdShop);
             }
@@ -706,8 +713,22 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                         <option value="مسجد">مسجد 🕌</option>
                                                         <option value="كنيسة">كنيسة ⛪</option>
                                                         <option value="ملعب">ملعب 🏟️</option>
+                                                        <option value="custom">تصنيف مخصص (أكتبه بنفسك)</option>
                                                     </select>
                                                 </div>
+                                                {newShopData.category === 'custom' && (
+                                                    <div>
+                                                        <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>أكتب التصنيف المخصص</label>
+                                                        <input
+                                                            type="text"
+                                                            value={newShopData.customCategory || ''}
+                                                            onChange={e => setNewShopData({ ...newShopData, customCategory: e.target.value })}
+                                                            placeholder="مثال: بقالة، حلاقة، خياطة..."
+                                                            style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '1rem' }}
+                                                            required
+                                                        />
+                                                    </div>
+                                                )}
                                                 {newShopData.category === 'محل تجاري متخصص' && (
                                                     <div>
                                                         <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>تخصص المحل</label>
