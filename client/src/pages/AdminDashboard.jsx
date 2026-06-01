@@ -17,6 +17,7 @@ const AdminDashboard = () => {
     const [shops, setShops] = useState([]);
     const [cameras, setCameras] = useState([]);
     const [orgItems, setOrgItems] = useState([]);
+    const [selectedOrgItem, setSelectedOrgItem] = useState(null);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
@@ -540,198 +541,281 @@ const AdminDashboard = () => {
 
                 {/* Shops Organization (Size & Zoom Controls) */}
                 {activeTab === 'shops_organization' && (
-                    <div className="admin-content-card">
-                        <div className="content-header" style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-start', marginBottom: '20px' }}>
+                    <div className="admin-content-card" style={{ padding: '20px' }}>
+                        <div className="content-header" style={{ marginBottom: '20px' }}>
                             <h3 style={{ margin: 0 }}>⚙️ تنظيم المحلات والمراكز الطبية والمرافق الجامعية</h3>
-                            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                                تحكم في أحجام الأيقونات، الخطوط، ومستويات الزوم لكل مكان بشكل منفصل. لتعيين القيم الافتراضية للتصنيف اترك الحقل فارغاً.
+                            <p style={{ margin: '5px 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                                تحكم في أحجام الأيقونات، الخطوط، ومستويات الزوم لكل مكان بشكل منفصل.
                             </p>
-                            <div className="search-bar" style={{ width: '100%', marginTop: '10px' }}>
-                                <input
-                                    type="text"
-                                    placeholder="🔍 ابحث بالاسم أو التصنيف..."
-                                    className="input"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    style={{ width: '100%', padding: '10px 15px', borderRadius: '10px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
-                                />
-                            </div>
                         </div>
 
-                        {loading ? (
-                            <div className="loading-container"><div className="spinner"></div></div>
-                        ) : (
-                            <div className="admin-table-wrapper" style={{ overflowX: 'auto' }}>
-                                <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
-                                    <thead>
-                                        <tr style={{ borderBottom: '2px solid var(--border-color)' }}>
-                                            <th style={{ padding: '12px 10px' }}>الاسم</th>
-                                            <th style={{ padding: '12px 10px' }}>النوع والتصنيف</th>
-                                            <th style={{ padding: '12px 10px', width: '130px' }}>حجم الأيقونة</th>
-                                            <th style={{ padding: '12px 10px', width: '130px' }}>حجم الخط</th>
-                                            <th style={{ padding: '12px 10px', width: '130px' }}>زوم الأيقونة</th>
-                                            <th style={{ padding: '12px 10px', width: '130px' }}>زوم الاسم</th>
-                                            <th style={{ padding: '12px 10px', width: '150px', textAlign: 'center' }}>الإجراءات</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {orgItems
-                                            .filter(item => 
-                                                item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                                                (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase()))
-                                            )
-                                            .map(item => {
-                                                const badgeColor = 
-                                                    item.display_type === 'مرفق جامعي' ? '#3b82f6' : 
-                                                    item.display_type === 'مركز طبي' ? '#ef4444' : '#10b981';
+                        <div className="org-split-container" style={{ display: 'flex', gap: '20px', minHeight: '500px' }}>
+                            {/* Left Side: List of All Items */}
+                            <div className="org-list-panel" style={{ flex: 1.2, background: 'var(--bg-secondary)', borderRadius: '12px', padding: '15px', display: 'flex', flexDirection: 'column', gap: '10px', border: '1px solid var(--border-color)', maxHeight: '700px', overflowY: 'auto' }}>
+                                <div style={{ fontWeight: 'bold', fontSize: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span>🏪 قائمة العناصر ({orgItems.length})</span>
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>اختر عنصراً لتعديله</span>
+                                </div>
+                                
+                                <div style={{ marginBottom: '10px' }}>
+                                    <input
+                                        type="text"
+                                        placeholder="🔍 تصفية سريعة بالاسم أو التصنيف..."
+                                        className="input"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
+                                    />
+                                </div>
 
-                                                return (
-                                                    <tr key={item.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'all 0.2s' }}>
-                                                        <td style={{ padding: '15px 10px', fontWeight: 'bold' }}>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                                <img 
-                                                                    src={item.profile_picture || '/logo.png'} 
-                                                                    alt={item.name} 
-                                                                    style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-color)' }} 
-                                                                    onError={(e) => { e.target.src = '/logo.png'; }}
-                                                                />
-                                                                <span>{item.name}</span>
-                                                            </div>
-                                                        </td>
-                                                        <td style={{ padding: '15px 10px' }}>
-                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                                <span style={{ 
-                                                                    background: badgeColor, 
-                                                                    color: 'white', 
-                                                                    padding: '2px 8px', 
-                                                                    borderRadius: '20px', 
-                                                                    fontSize: '0.75rem', 
-                                                                    fontWeight: 'bold',
-                                                                    width: 'fit-content'
-                                                                }}>
-                                                                    {item.display_type}
-                                                                </span>
-                                                                <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                                                                    {item.category || 'عام'}
-                                                                </span>
-                                                            </div>
-                                                        </td>
-                                                        <td style={{ padding: '15px 10px' }}>
-                                                            <input
-                                                                type="number"
-                                                                className="input"
-                                                                placeholder="الافتراضي"
-                                                                defaultValue={item.icon_size || ''}
-                                                                id={`icon-size-${item.id}`}
-                                                                style={{ width: '90px', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
-                                                            />
-                                                        </td>
-                                                        <td style={{ padding: '15px 10px' }}>
-                                                            <input
-                                                                type="number"
-                                                                className="input"
-                                                                placeholder="الافتراضي"
-                                                                defaultValue={item.text_size || ''}
-                                                                id={`text-size-${item.id}`}
-                                                                style={{ width: '90px', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
-                                                            />
-                                                        </td>
-                                                        <td style={{ padding: '15px 10px' }}>
-                                                            <input
-                                                                type="number"
-                                                                step="any"
-                                                                className="input"
-                                                                placeholder="الافتراضي"
-                                                                defaultValue={item.min_zoom || ''}
-                                                                id={`min-zoom-${item.id}`}
-                                                                style={{ width: '90px', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
-                                                            />
-                                                        </td>
-                                                        <td style={{ padding: '15px 10px' }}>
-                                                            <input
-                                                                type="number"
-                                                                step="any"
-                                                                className="input"
-                                                                placeholder="الافتراضي"
-                                                                defaultValue={item.text_min_zoom || ''}
-                                                                id={`text-min-zoom-${item.id}`}
-                                                                style={{ width: '90px', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
-                                                            />
-                                                        </td>
-                                                        <td style={{ padding: '15px 10px', textAlign: 'center' }}>
-                                                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                                                                <button
-                                                                    className="btn-small is-primary"
-                                                                    onClick={async () => {
-                                                                        const iconSizeVal = document.getElementById(`icon-size-${item.id}`).value;
-                                                                        const textSizeVal = document.getElementById(`text-size-${item.id}`).value;
-                                                                        const minZoomVal = document.getElementById(`min-zoom-${item.id}`).value;
-                                                                        const textMinZoomVal = document.getElementById(`text-min-zoom-${item.id}`).value;
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    {orgItems
+                                        .filter(item => 
+                                            item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                            (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase()))
+                                        )
+                                        .map(item => {
+                                            const isSelected = selectedOrgItem && selectedOrgItem.id === item.id;
+                                            const badgeColor = 
+                                                item.display_type === 'مرفق جامعي' ? '#3b82f6' : 
+                                                item.display_type === 'مركز طبي' ? '#ef4444' : '#10b981';
 
-                                                                        const data = {
-                                                                            icon_size: iconSizeVal === '' ? null : parseInt(iconSizeVal),
-                                                                            text_size: textSizeVal === '' ? null : parseInt(textSizeVal),
-                                                                            min_zoom: minZoomVal === '' ? null : parseFloat(minZoomVal),
-                                                                            text_min_zoom: textMinZoomVal === '' ? null : parseFloat(textMinZoomVal)
-                                                                        };
-
-                                                                        try {
-                                                                            await adminService.updateOrganizationItem(item.type, item.real_id, data);
-                                                                            alert('تم حفظ إعدادات ' + item.name + ' بنجاح! ✅');
-                                                                            setOrgItems(prev => prev.map(o => o.id === item.id ? { ...o, ...data } : o));
-                                                                        } catch (err) {
-                                                                            alert('فشل الحفظ: ' + (err.response?.data?.error || err.message));
-                                                                        }
-                                                                    }}
-                                                                    style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '0.85rem' }}
-                                                                >
-                                                                    حفظ
-                                                                </button>
-                                                                <button
-                                                                    className="btn-small btn-reject"
-                                                                    onClick={async () => {
-                                                                        if (window.confirm('هل أنت متأكد من إعادة تعيين كافة قيم ' + item.name + ' إلى الافتراضي؟')) {
-                                                                            document.getElementById(`icon-size-${item.id}`).value = '';
-                                                                            document.getElementById(`text-size-${item.id}`).value = '';
-                                                                            document.getElementById(`min-zoom-${item.id}`).value = '';
-                                                                            document.getElementById(`text-min-zoom-${item.id}`).value = '';
-
-                                                                            const data = {
-                                                                                icon_size: null,
-                                                                                text_size: null,
-                                                                                min_zoom: null,
-                                                                                text_min_zoom: null
-                                                                            };
-
-                                                                            try {
-                                                                                await adminService.updateOrganizationItem(item.type, item.real_id, data);
-                                                                                alert('تم إعادة تعيين قيم ' + item.name + ' بنجاح! ✅');
-                                                                                setOrgItems(prev => prev.map(o => o.id === item.id ? { ...o, ...data } : o));
-                                                                            } catch (err) {
-                                                                                alert('فشلت العملية: ' + (err.response?.data?.error || err.message));
-                                                                            }
-                                                                        }
-                                                                    }}
-                                                                    style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '0.85rem', background: '#6b7280' }}
-                                                                >
-                                                                    إعادة تعيين
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        {orgItems.length === 0 && (
-                                            <tr>
-                                                <td colSpan="7" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
-                                                    🏪 لا يوجد محلات أو مرافق مسجلة حالياً
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
+                                            return (
+                                                <div 
+                                                    key={item.id}
+                                                    onClick={() => setSelectedOrgItem(item)}
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '12px',
+                                                        padding: '12px',
+                                                        borderRadius: '10px',
+                                                        background: isSelected ? 'var(--primary)' : 'var(--bg-primary)',
+                                                        color: isSelected ? 'white' : 'var(--text-primary)',
+                                                        cursor: 'pointer',
+                                                        border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border-color)',
+                                                        transition: 'all 0.2s',
+                                                        boxShadow: isSelected ? '0 4px 12px rgba(59, 130, 246, 0.25)' : 'none'
+                                                    }}
+                                                >
+                                                    <img 
+                                                        src={item.profile_picture || '/logo.png'} 
+                                                        alt={item.name} 
+                                                        style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: isSelected ? '2px solid white' : '1px solid var(--border-color)' }} 
+                                                        onError={(e) => { e.target.src = '/logo.png'; }}
+                                                    />
+                                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3px', overflow: 'hidden' }}>
+                                                        <span style={{ fontWeight: 'bold', fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</span>
+                                                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                                            <span style={{ 
+                                                                background: isSelected ? 'rgba(255,255,255,0.2)' : badgeColor, 
+                                                                color: isSelected ? 'white' : 'white', 
+                                                                padding: '1px 6px', 
+                                                                borderRadius: '20px', 
+                                                                fontSize: '0.7rem', 
+                                                                fontWeight: 'bold'
+                                                            }}>
+                                                                {item.display_type}
+                                                            </span>
+                                                            <span style={{ color: isSelected ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)', fontSize: '0.8rem' }}>
+                                                                {item.category || 'عام'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <span style={{ fontSize: '1.2rem', opacity: isSelected ? 1 : 0.4 }}>◀</span>
+                                                </div>
+                                            );
+                                        })}
+                                    {orgItems.length === 0 && (
+                                        <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                                            🏪 لا يوجد عناصر حالياً
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        )}
+
+                            {/* Right Side: Detailed Editing Panel */}
+                            <div className="org-edit-panel" style={{ flex: 1.8, background: 'var(--bg-secondary)', borderRadius: '12px', padding: '20px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                {selectedOrgItem ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', height: '100%' }}>
+                                        {/* Selected Item Profile Header */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', paddingBottom: '15px', borderBottom: '1px solid var(--border-color)' }}>
+                                            <img 
+                                                src={selectedOrgItem.profile_picture || '/logo.png'} 
+                                                alt={selectedOrgItem.name} 
+                                                style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--primary)' }} 
+                                                onError={(e) => { e.target.src = '/logo.png'; }}
+                                            />
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                <h4 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 'bold' }}>{selectedOrgItem.name}</h4>
+                                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                    <span style={{ 
+                                                        background: selectedOrgItem.display_type === 'مرفق جامعي' ? '#3b82f6' : selectedOrgItem.display_type === 'مركز طبي' ? '#ef4444' : '#10b981', 
+                                                        color: 'white', 
+                                                        padding: '2px 8px', 
+                                                        borderRadius: '20px', 
+                                                        fontSize: '0.75rem', 
+                                                        fontWeight: 'bold'
+                                                    }}>
+                                                        {selectedOrgItem.display_type}
+                                                    </span>
+                                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                                                        التصنيف: {selectedOrgItem.category || 'عام'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Size & Zoom Form */}
+                                        <form onSubmit={async (e) => {
+                                            e.preventDefault();
+                                            const form = e.target;
+                                            const iconSize = form.icon_size.value;
+                                            const textSize = form.text_size.value;
+                                            const minZoom = form.min_zoom.value;
+                                            const textMinZoom = form.text_min_zoom.value;
+
+                                            const data = {
+                                                icon_size: iconSize === '' ? null : parseInt(iconSize),
+                                                text_size: textSize === '' ? null : parseInt(textSize),
+                                                min_zoom: minZoom === '' ? null : parseFloat(minZoom),
+                                                text_min_zoom: textMinZoom === '' ? null : parseFloat(textMinZoom)
+                                            };
+
+                                            try {
+                                                await adminService.updateOrganizationItem(selectedOrgItem.type, selectedOrgItem.real_id, data);
+                                                alert(`تم حفظ إعدادات "${selectedOrgItem.name}" بنجاح! ✅`);
+                                                // Update local states
+                                                setOrgItems(prev => prev.map(o => o.id === selectedOrgItem.id ? { ...o, ...data } : o));
+                                                setSelectedOrgItem(prev => ({ ...prev, ...data }));
+                                            } catch (err) {
+                                                alert('فشل الحفظ: ' + (err.response?.data?.error || err.message));
+                                            }
+                                        }} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                            
+                                            <div style={{ display: 'flex', gap: '15px' }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '0.9rem' }}>📏 حجم الأيقونة (بيكسل)</label>
+                                                    <input 
+                                                        type="number" 
+                                                        name="icon_size"
+                                                        className="input" 
+                                                        placeholder="مثال: 50 (الافتراضي للتصنيف)"
+                                                        defaultValue={selectedOrgItem.icon_size || ''}
+                                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                                                    />
+                                                    <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+                                                        يحدد حجم دائرة الشعار على الخريطة.
+                                                    </small>
+                                                </div>
+                                                <div style={{ flex: 1 }}>
+                                                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '0.9rem' }}>🔤 حجم خط الاسم (بيكسل)</label>
+                                                    <input 
+                                                        type="number" 
+                                                        name="text_size"
+                                                        className="input" 
+                                                        placeholder="مثال: 11 (الافتراضي)"
+                                                        defaultValue={selectedOrgItem.text_size || ''}
+                                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                                                    />
+                                                    <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+                                                        حجم الخط للنص المكتوب تحت الأيقونة.
+                                                    </small>
+                                                </div>
+                                            </div>
+
+                                            <div style={{ display: 'flex', gap: '15px' }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '0.9rem' }}>🔍 زوم ظهور الأيقونة على الخريطة</label>
+                                                    <input 
+                                                        type="number" 
+                                                        step="any"
+                                                        name="min_zoom"
+                                                        className="input" 
+                                                        placeholder="مثال: 12.5 (الافتراضي)"
+                                                        defaultValue={selectedOrgItem.min_zoom || ''}
+                                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                                                    />
+                                                    <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+                                                        مستوى التكبير الذي يبدأ عنده ظهور الأيقونة.
+                                                    </small>
+                                                </div>
+                                                <div style={{ flex: 1 }}>
+                                                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '0.9rem' }}>💬 زوم ظهور اسم المكان</label>
+                                                    <input 
+                                                        type="number" 
+                                                        step="any"
+                                                        name="text_min_zoom"
+                                                        className="input" 
+                                                        placeholder="مثال: 16.5 (الافتراضي)"
+                                                        defaultValue={selectedOrgItem.text_min_zoom || ''}
+                                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                                                    />
+                                                    <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+                                                        مستوى التكبير الذي يبدأ عنده ظهور الاسم.
+                                                    </small>
+                                                </div>
+                                            </div>
+
+                                            <div style={{ display: 'flex', gap: '10px', marginTop: '15px', paddingTop: '15px', borderTop: '1px solid var(--border-color)' }}>
+                                                <button 
+                                                    type="submit" 
+                                                    className="btn is-primary" 
+                                                    style={{ flex: 2, padding: '12px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.95rem' }}
+                                                >
+                                                    💾 حفظ كافة التغييرات
+                                                </button>
+                                                <button 
+                                                    type="button" 
+                                                    className="btn btn-reject" 
+                                                    onClick={async () => {
+                                                        if (window.confirm(`هل أنت متأكد من إعادة تعيين إعدادات "${selectedOrgItem.name}" إلى الافتراضي؟`)) {
+                                                            const data = {
+                                                                icon_size: null,
+                                                                text_size: null,
+                                                                min_zoom: null,
+                                                                text_min_zoom: null
+                                                            };
+
+                                                            try {
+                                                                await adminService.updateOrganizationItem(selectedOrgItem.type, selectedOrgItem.real_id, data);
+                                                                alert(`تم إعادة تعيين إعدادات "${selectedOrgItem.name}" للافتراضي بنجاح! ✅`);
+                                                                
+                                                                // Reset form inputs manually
+                                                                const iconInput = document.querySelector('.org-edit-panel input[name="icon_size"]');
+                                                                const textInput = document.querySelector('.org-edit-panel input[name="text_size"]');
+                                                                const minZoomInput = document.querySelector('.org-edit-panel input[name="min_zoom"]');
+                                                                const textMinZoomInput = document.querySelector('.org-edit-panel input[name="text_min_zoom"]');
+                                                                if (iconInput) iconInput.value = '';
+                                                                if (textInput) textInput.value = '';
+                                                                if (minZoomInput) minZoomInput.value = '';
+                                                                if (textMinZoomInput) textMinZoomInput.value = '';
+
+                                                                setOrgItems(prev => prev.map(o => o.id === selectedOrgItem.id ? { ...o, ...data } : o));
+                                                                setSelectedOrgItem(prev => ({ ...prev, ...data }));
+                                                            } catch (err) {
+                                                                alert('فشلت العملية: ' + (err.response?.data?.error || err.message));
+                                                            }
+                                                        }
+                                                    }}
+                                                    style={{ flex: 1, padding: '12px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.95rem', background: '#6b7280' }}
+                                                >
+                                                    🔄 إعادة تعيين
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '15px', padding: '40px', color: 'var(--text-muted)' }}>
+                                        <span style={{ fontSize: '3rem' }}>📐</span>
+                                        <h4 style={{ margin: 0, fontWeight: 'bold', fontSize: '1.1rem' }}>يرجى اختيار عنصر من القائمة للبدء بالتنظيم</h4>
+                                        <p style={{ margin: 0, fontSize: '0.85rem', textAlign: 'center', maxWidth: '300px', lineHeight: 1.4 }}>
+                                            اختر أي محل، مركز طبي، أو مرفق جامعي من القائمة الجانبية لتعديل خصائص ظهوره وأبعاده على الخريطة فوراً.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 )}
 
