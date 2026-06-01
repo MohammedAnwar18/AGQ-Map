@@ -322,13 +322,29 @@ const createShop = async (req, res) => {
         const parsedMinZoom = (min_zoom === '' || min_zoom === undefined || min_zoom === null || isNaN(parseFloat(min_zoom))) ? null : parseFloat(min_zoom);
         const parsedTextMinZoom = (text_min_zoom === '' || text_min_zoom === undefined || text_min_zoom === null || isNaN(parseFloat(text_min_zoom))) ? null : parseFloat(text_min_zoom);
 
-        const result = await pool.query(`
-            INSERT INTO shops (name, latitude, longitude, category, owner_id, parent_shop_id, floor, location, custom_design, icon_size, text_size, min_zoom, text_min_zoom)
-            VALUES ($1, $2::numeric, $3::numeric, $4, $5, $6, $7, ST_SetSRID(ST_MakePoint($3::double precision, $2::double precision), 4326)::geography, $8, $9, $10, $11, $12)
-            RETURNING *
-        `, [name, lat, lon, category || 'General', ownerId, parent_shop_id || null, floor || null, custom_design || {}, parsedIconSize, parsedTextSize, parsedMinZoom, parsedTextMinZoom]);
-
-        const newShop = result.rows[0];
+        let newShop;
+        try {
+            const result = await pool.query(`
+                INSERT INTO shops (name, latitude, longitude, category, owner_id, parent_shop_id, floor, location, custom_design, icon_size, text_size, min_zoom, text_min_zoom)
+                VALUES ($1, $2::numeric, $3::numeric, $4, $5, $6, $7, ST_SetSRID(ST_MakePoint($3::double precision, $2::double precision), 4326)::geography, $8, $9, $10, $11, $12)
+                RETURNING *
+            `, [name, lat, lon, category || 'General', ownerId, parent_shop_id || null, floor || null, custom_design || {}, parsedIconSize, parsedTextSize, parsedMinZoom, parsedTextMinZoom]);
+            newShop = result.rows[0];
+        } catch (dbErr) {
+            console.warn("Failed to create shop with custom size/zoom settings (missing columns?), falling back to standard insert:", dbErr.message);
+            const result = await pool.query(`
+                INSERT INTO shops (name, latitude, longitude, category, owner_id, parent_shop_id, floor, location, custom_design)
+                VALUES ($1, $2::numeric, $3::numeric, $4, $5, $6, $7, ST_SetSRID(ST_MakePoint($3::double precision, $2::double precision), 4326)::geography, $8)
+                RETURNING *
+            `, [name, lat, lon, category || 'General', ownerId, parent_shop_id || null, floor || null, custom_design || {}]);
+            newShop = {
+                ...result.rows[0],
+                icon_size: null,
+                text_size: null,
+                min_zoom: null,
+                text_min_zoom: null
+            };
+        }
 
         // Auto-follow for the creator
         await pool.query(`
@@ -454,44 +470,64 @@ const updateShopProfile = async (req, res) => {
         const isAuthorized = userRole === 'admin' || String(shopCheck.rows[0].owner_id) === String(userId);
         if (!isAuthorized) return res.status(403).json({ error: 'Unauthorized' });
 
-        let queryParts = [];
-        let values = [];
-        let index = 1;
+        const buildAndRunQuery = async (includeCustomFields) => {
+            let queryParts = [];
+            let values = [];
+            let index = 1;
 
-        const fields = ['name', 'bio', 'opening_hours', 'contact_info', 'category', 'parent_shop_id', 'floor', 'enable_proximity_notifications', 'is_hidden', 'proximity_radius', 'custom_design', 'icon_size', 'text_size', 'min_zoom', 'text_min_zoom'];
-        fields.forEach(field => {
-            if (req.body[field] !== undefined) {
-                queryParts.push(`${field} = $${index++}`);
-                let val = req.body[field];
-                if (val === '') {
-                    val = null;
-                } else if (field === 'custom_design' && typeof val === 'string') {
-                    val = JSON.parse(val);
-                } else if (['icon_size', 'text_size'].includes(field)) {
-                    val = (val === null || isNaN(parseInt(val))) ? null : parseInt(val);
-                } else if (['min_zoom', 'text_min_zoom'].includes(field)) {
-                    val = (val === null || isNaN(parseFloat(val))) ? null : parseFloat(val);
-                }
-                values.push(val);
+            let fields = ['name', 'bio', 'opening_hours', 'contact_info', 'category', 'parent_shop_id', 'floor', 'enable_proximity_notifications', 'is_hidden', 'proximity_radius', 'custom_design'];
+            if (includeCustomFields) {
+                fields = fields.concat(['icon_size', 'text_size', 'min_zoom', 'text_min_zoom']);
             }
-        });
 
-        if (latitude !== undefined && longitude !== undefined) {
-            const lat = parseFloat(latitude);
-            const lon = parseFloat(longitude);
-            queryParts.push(`latitude = $${index++}`);
-            values.push(lat);
-            queryParts.push(`longitude = $${index++}`);
-            values.push(lon);
-            queryParts.push(`location = ST_SetSRID(ST_MakePoint($${index++}, $${index++}), 4326)::geography`);
-            values.push(lon, lat);
+            fields.forEach(field => {
+                if (req.body[field] !== undefined) {
+                    queryParts.push(`${field} = $${index++}`);
+                    let val = req.body[field];
+                    if (val === '') {
+                        val = null;
+                    } else if (field === 'custom_design' && typeof val === 'string') {
+                        val = JSON.parse(val);
+                    } else if (['icon_size', 'text_size'].includes(field)) {
+                        val = (val === null || isNaN(parseInt(val))) ? null : parseInt(val);
+                    } else if (['min_zoom', 'text_min_zoom'].includes(field)) {
+                        val = (val === null || isNaN(parseFloat(val))) ? null : parseFloat(val);
+                    }
+                    values.push(val);
+                }
+            });
+
+            if (latitude !== undefined && longitude !== undefined) {
+                const lat = parseFloat(latitude);
+                const lon = parseFloat(longitude);
+                queryParts.push(`latitude = $${index++}`);
+                values.push(lat);
+                queryParts.push(`longitude = $${index++}`);
+                values.push(lon);
+                queryParts.push(`location = ST_SetSRID(ST_MakePoint($${index++}, $${index++}), 4326)::geography`);
+                values.push(lon, lat);
+            }
+
+            if (queryParts.length === 0) return { noChanges: true };
+
+            values.push(shopId);
+            const result = await pool.query(`UPDATE shops SET ${queryParts.join(', ')} WHERE id = $${index} RETURNING *`, values);
+            return result.rows[0];
+        };
+
+        let updatedShop;
+        try {
+            updatedShop = await buildAndRunQuery(true);
+        } catch (dbErr) {
+            console.warn("Failed to update shop with custom size/zoom settings, retrying with standard fields:", dbErr.message);
+            updatedShop = await buildAndRunQuery(false);
         }
 
-        if (queryParts.length === 0) return res.json({ message: 'No changes' });
+        if (updatedShop && updatedShop.noChanges) {
+            return res.json({ message: 'No changes' });
+        }
 
-        values.push(shopId);
-        const result = await pool.query(`UPDATE shops SET ${queryParts.join(', ')} WHERE id = $${index} RETURNING *`, values);
-        res.json(result.rows[0]);
+        res.json(updatedShop);
     } catch (e) {
         console.error('Update profile error:', e);
         res.status(500).json({ error: 'Failed to update profile' });
@@ -945,7 +981,22 @@ const getFollowedUniversitiesFacilities = async (req, res) => {
 
 const getAllShopsMap = async (req, res) => {
     try {
-        const shopsRes = await pool.query("SELECT id, name, category, profile_picture, cover_picture, custom_design, hidden_sections, latitude, longitude, floor, parent_shop_id, is_locked, icon_size, text_size, min_zoom, text_min_zoom, 'shop' as type FROM shops WHERE is_hidden = FALSE");
+        let shopsRes;
+        try {
+            shopsRes = await pool.query("SELECT id, name, category, profile_picture, cover_picture, custom_design, hidden_sections, latitude, longitude, floor, parent_shop_id, is_locked, icon_size, text_size, min_zoom, text_min_zoom, 'shop' as type FROM shops WHERE is_hidden = FALSE");
+        } catch (dbErr) {
+            console.warn("Database error querying custom shop sizes/zooms, falling back to standard columns:", dbErr.message);
+            const rawShopsRes = await pool.query("SELECT id, name, category, profile_picture, cover_picture, custom_design, hidden_sections, latitude, longitude, floor, parent_shop_id, is_locked, 'shop' as type FROM shops WHERE is_hidden = FALSE");
+            shopsRes = {
+                rows: rawShopsRes.rows.map(row => ({
+                    ...row,
+                    icon_size: null,
+                    text_size: null,
+                    min_zoom: null,
+                    text_min_zoom: null
+                }))
+            };
+        }
         const facilitiesRes = await pool.query('SELECT id, name, category, icon, latitude, longitude, university_id as parent_shop_id, FALSE as is_locked, \'facility\' as type FROM university_facilities');
 
         res.json({
