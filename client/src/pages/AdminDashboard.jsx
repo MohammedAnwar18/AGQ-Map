@@ -16,6 +16,7 @@ const AdminDashboard = () => {
     const [posts, setPosts] = useState([]);
     const [shops, setShops] = useState([]);
     const [cameras, setCameras] = useState([]);
+    const [orgItems, setOrgItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
@@ -67,6 +68,10 @@ const AdminDashboard = () => {
             } else if (activeTab === 'cameras') {
                 const camerasData = await cameraService.getAll();
                 setCameras(camerasData || []);
+                setPagination(null);
+            } else if (activeTab === 'shops_organization') {
+                const orgData = await adminService.getOrganizationItems();
+                setOrgItems(orgData.items || []);
                 setPagination(null);
             } else if (activeTab === 'notifications') {
                 const usersData = await adminService.getAllUsers('', 1, 100);
@@ -223,6 +228,7 @@ const AdminDashboard = () => {
                         { id: 'overview', icon: '📊', label: 'الرئيسية' },
                         { id: 'users', icon: '👥', label: 'المستخدمين' },
                         { id: 'shops', icon: '🏪', label: 'إدارة المحلات' },
+                        { id: 'shops_organization', icon: '📐', label: 'تنظيم المحلات والزوم' },
                         { id: 'cameras', icon: '📹', label: 'إدارة الكاميرات' },
                         { id: 'data', icon: '📝', label: 'كل البيانات' },
                         { id: 'files', icon: '📁', label: 'ملفات الوسائط' },
@@ -258,11 +264,12 @@ const AdminDashboard = () => {
                             activeTab === 'overview' ? 'لوحة التحكم العامة' :
                                 activeTab === 'users' ? 'إدارة الحسابات' :
                                     activeTab === 'shops' ? 'إدارة المحلات والمؤسسات' :
-                                        activeTab === 'cameras' ? 'إدارة كاميرات البث المباشر' :
-                                            activeTab === 'data' ? 'إدارة المحتوى والبيانات' :
-                                                activeTab === 'files' ? 'مكتبة الوسائط' :
-                                                    activeTab === 'notifications' ? 'إرسال التنبيهات والبرودكاست' :
-                                                        activeTab === 'ar' ? 'إدارة محتوى الواقع المعزز' : 'خارطة النشاط الموحدة'
+                                        activeTab === 'shops_organization' ? 'تنظيم أحجام وزوم المحلات والمرافق' :
+                                            activeTab === 'cameras' ? 'إدارة كاميرات البث المباشر' :
+                                                activeTab === 'data' ? 'إدارة المحتوى والبيانات' :
+                                                    activeTab === 'files' ? 'مكتبة الوسائط' :
+                                                        activeTab === 'notifications' ? 'إرسال التنبيهات والبرودكاست' :
+                                                            activeTab === 'ar' ? 'إدارة محتوى الواقع المعزز' : 'خارطة النشاط الموحدة'
                         }</h2>
                         <p>مرحباً بك يا {user.full_name || user.username} • {new Date().toLocaleDateString('ar-SA', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                     </div>
@@ -526,6 +533,203 @@ const AdminDashboard = () => {
                                 {[...Array(pagination.totalPages)].map((_, i) => (
                                     <button key={i + 1} className={currentPage === i + 1 ? 'active' : ''} onClick={() => setCurrentPage(i + 1)}>{i + 1}</button>
                                 ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Shops Organization (Size & Zoom Controls) */}
+                {activeTab === 'shops_organization' && (
+                    <div className="admin-content-card">
+                        <div className="content-header" style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-start', marginBottom: '20px' }}>
+                            <h3 style={{ margin: 0 }}>⚙️ تنظيم المحلات والمراكز الطبية والمرافق الجامعية</h3>
+                            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                                تحكم في أحجام الأيقونات، الخطوط، ومستويات الزوم لكل مكان بشكل منفصل. لتعيين القيم الافتراضية للتصنيف اترك الحقل فارغاً.
+                            </p>
+                            <div className="search-bar" style={{ width: '100%', marginTop: '10px' }}>
+                                <input
+                                    type="text"
+                                    placeholder="🔍 ابحث بالاسم أو التصنيف..."
+                                    className="input"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    style={{ width: '100%', padding: '10px 15px', borderRadius: '10px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
+                                />
+                            </div>
+                        </div>
+
+                        {loading ? (
+                            <div className="loading-container"><div className="spinner"></div></div>
+                        ) : (
+                            <div className="admin-table-wrapper" style={{ overflowX: 'auto' }}>
+                                <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
+                                    <thead>
+                                        <tr style={{ borderBottom: '2px solid var(--border-color)' }}>
+                                            <th style={{ padding: '12px 10px' }}>الاسم</th>
+                                            <th style={{ padding: '12px 10px' }}>النوع والتصنيف</th>
+                                            <th style={{ padding: '12px 10px', width: '130px' }}>حجم الأيقونة</th>
+                                            <th style={{ padding: '12px 10px', width: '130px' }}>حجم الخط</th>
+                                            <th style={{ padding: '12px 10px', width: '130px' }}>زوم الأيقونة</th>
+                                            <th style={{ padding: '12px 10px', width: '130px' }}>زوم الاسم</th>
+                                            <th style={{ padding: '12px 10px', width: '150px', textAlign: 'center' }}>الإجراءات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {orgItems
+                                            .filter(item => 
+                                                item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                                (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase()))
+                                            )
+                                            .map(item => {
+                                                const badgeColor = 
+                                                    item.display_type === 'مرفق جامعي' ? '#3b82f6' : 
+                                                    item.display_type === 'مركز طبي' ? '#ef4444' : '#10b981';
+
+                                                return (
+                                                    <tr key={item.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'all 0.2s' }}>
+                                                        <td style={{ padding: '15px 10px', fontWeight: 'bold' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                                <img 
+                                                                    src={item.profile_picture || '/logo.png'} 
+                                                                    alt={item.name} 
+                                                                    style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-color)' }} 
+                                                                    onError={(e) => { e.target.src = '/logo.png'; }}
+                                                                />
+                                                                <span>{item.name}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td style={{ padding: '15px 10px' }}>
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                                <span style={{ 
+                                                                    background: badgeColor, 
+                                                                    color: 'white', 
+                                                                    padding: '2px 8px', 
+                                                                    borderRadius: '20px', 
+                                                                    fontSize: '0.75rem', 
+                                                                    fontWeight: 'bold',
+                                                                    width: 'fit-content'
+                                                                }}>
+                                                                    {item.display_type}
+                                                                </span>
+                                                                <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                                                                    {item.category || 'عام'}
+                                                                </span>
+                                                            </div>
+                                                        </td>
+                                                        <td style={{ padding: '15px 10px' }}>
+                                                            <input
+                                                                type="number"
+                                                                className="input"
+                                                                placeholder="الافتراضي"
+                                                                defaultValue={item.icon_size || ''}
+                                                                id={`icon-size-${item.id}`}
+                                                                style={{ width: '90px', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                                                            />
+                                                        </td>
+                                                        <td style={{ padding: '15px 10px' }}>
+                                                            <input
+                                                                type="number"
+                                                                className="input"
+                                                                placeholder="الافتراضي"
+                                                                defaultValue={item.text_size || ''}
+                                                                id={`text-size-${item.id}`}
+                                                                style={{ width: '90px', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                                                            />
+                                                        </td>
+                                                        <td style={{ padding: '15px 10px' }}>
+                                                            <input
+                                                                type="number"
+                                                                step="any"
+                                                                className="input"
+                                                                placeholder="الافتراضي"
+                                                                defaultValue={item.min_zoom || ''}
+                                                                id={`min-zoom-${item.id}`}
+                                                                style={{ width: '90px', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                                                            />
+                                                        </td>
+                                                        <td style={{ padding: '15px 10px' }}>
+                                                            <input
+                                                                type="number"
+                                                                step="any"
+                                                                className="input"
+                                                                placeholder="الافتراضي"
+                                                                defaultValue={item.text_min_zoom || ''}
+                                                                id={`text-min-zoom-${item.id}`}
+                                                                style={{ width: '90px', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                                                            />
+                                                        </td>
+                                                        <td style={{ padding: '15px 10px', textAlign: 'center' }}>
+                                                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                                                                <button
+                                                                    className="btn-small is-primary"
+                                                                    onClick={async () => {
+                                                                        const iconSizeVal = document.getElementById(`icon-size-${item.id}`).value;
+                                                                        const textSizeVal = document.getElementById(`text-size-${item.id}`).value;
+                                                                        const minZoomVal = document.getElementById(`min-zoom-${item.id}`).value;
+                                                                        const textMinZoomVal = document.getElementById(`text-min-zoom-${item.id}`).value;
+
+                                                                        const data = {
+                                                                            icon_size: iconSizeVal === '' ? null : parseInt(iconSizeVal),
+                                                                            text_size: textSizeVal === '' ? null : parseInt(textSizeVal),
+                                                                            min_zoom: minZoomVal === '' ? null : parseFloat(minZoomVal),
+                                                                            text_min_zoom: textMinZoomVal === '' ? null : parseFloat(textMinZoomVal)
+                                                                        };
+
+                                                                        try {
+                                                                            await adminService.updateOrganizationItem(item.type, item.real_id, data);
+                                                                            alert('تم حفظ إعدادات ' + item.name + ' بنجاح! ✅');
+                                                                            setOrgItems(prev => prev.map(o => o.id === item.id ? { ...o, ...data } : o));
+                                                                        } catch (err) {
+                                                                            alert('فشل الحفظ: ' + (err.response?.data?.error || err.message));
+                                                                        }
+                                                                    }}
+                                                                    style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '0.85rem' }}
+                                                                >
+                                                                    حفظ
+                                                                </button>
+                                                                <button
+                                                                    className="btn-small btn-reject"
+                                                                    onClick={async () => {
+                                                                        if (window.confirm('هل أنت متأكد من إعادة تعيين كافة قيم ' + item.name + ' إلى الافتراضي؟')) {
+                                                                            document.getElementById(`icon-size-${item.id}`).value = '';
+                                                                            document.getElementById(`text-size-${item.id}`).value = '';
+                                                                            document.getElementById(`min-zoom-${item.id}`).value = '';
+                                                                            document.getElementById(`text-min-zoom-${item.id}`).value = '';
+
+                                                                            const data = {
+                                                                                icon_size: null,
+                                                                                text_size: null,
+                                                                                min_zoom: null,
+                                                                                text_min_zoom: null
+                                                                            };
+
+                                                                            try {
+                                                                                await adminService.updateOrganizationItem(item.type, item.real_id, data);
+                                                                                alert('تم إعادة تعيين قيم ' + item.name + ' بنجاح! ✅');
+                                                                                setOrgItems(prev => prev.map(o => o.id === item.id ? { ...o, ...data } : o));
+                                                                            } catch (err) {
+                                                                                alert('فشلت العملية: ' + (err.response?.data?.error || err.message));
+                                                                            }
+                                                                        }
+                                                                    }}
+                                                                    style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '0.85rem', background: '#6b7280' }}
+                                                                >
+                                                                    إعادة تعيين
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        {orgItems.length === 0 && (
+                                            <tr>
+                                                <td colSpan="7" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                                                    🏪 لا يوجد محلات أو مرافق مسجلة حالياً
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
                             </div>
                         )}
                     </div>

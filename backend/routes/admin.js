@@ -17,7 +17,9 @@ const {
     deleteShop,
     toggleShopStatus,
     toggleShopLock,
-    sendAdminNotification
+    sendAdminNotification,
+    getOrganizationItems,
+    updateOrganizationItem
 } = require('../controllers/adminController');
 
 const upload = require('../middleware/upload');
@@ -45,6 +47,10 @@ router.get('/shops', getAllShops);
 router.delete('/shops/:shopId', deleteShop);
 router.patch('/shops/:shopId/status', toggleShopStatus);
 router.patch('/shops/:shopId/lock', toggleShopLock);
+
+// Organization Management (Size, Zoom Controls)
+router.get('/organization-items', getOrganizationItems);
+router.put('/organization-items/:type/:id', updateOrganizationItem);
 
 // Admin Notifications
 router.post('/notifications/send', sendAdminNotification);

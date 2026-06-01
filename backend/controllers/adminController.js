@@ -454,6 +454,119 @@ const sendAdminNotification = async (req, res) => {
     }
 };
 
+/**
+ * الحصول على جميع المحلات، المراكز الطبية، والمرافق الجامعية لتنظيمها
+ */
+const getOrganizationItems = async (req, res) => {
+    try {
+        // 1. جلب المحلات والمراكز الطبية
+        const shopsResult = await pool.query(`
+            SELECT id, name, category, profile_picture, 'shop' as type, icon_size, text_size, min_zoom, text_min_zoom
+            FROM shops
+            ORDER BY name ASC
+        `);
+
+        // 2. جلب المرافق الجامعية مع try-catch في حال غياب الأعمدة
+        let facilitiesResult;
+        try {
+            facilitiesResult = await pool.query(`
+                SELECT id, name, category, icon as profile_picture, 'facility' as type, icon_size, text_size, min_zoom, text_min_zoom
+                FROM university_facilities
+                ORDER BY name ASC
+            `);
+        } catch (dbErr) {
+            console.warn("Database error querying facility organization items, using fallbacks:", dbErr.message);
+            const rawResult = await pool.query(`
+                SELECT id, name, category, icon as profile_picture, 'facility' as type
+                FROM university_facilities
+                ORDER BY name ASC
+            `);
+            facilitiesResult = {
+                rows: rawResult.rows.map(row => ({
+                    ...row,
+                    icon_size: null,
+                    text_size: null,
+                    min_zoom: null,
+                    text_min_zoom: null
+                }))
+            };
+        }
+
+        // دمج النتائج ووسمها
+        const shops = shopsResult.rows.map(s => {
+            const isMedical = ['مركز طبي', 'عيادة', 'مستشفى', 'Medical Center', 'Clinic', 'Hospital'].includes(s.category);
+            return {
+                ...s,
+                id: `shop-${s.id}`,
+                real_id: s.id,
+                display_type: isMedical ? 'مركز طبي' : 'محل/مؤسسة'
+            };
+        });
+
+        const facilities = facilitiesResult.rows.map(f => ({
+            ...f,
+            id: `facility-${f.id}`,
+            real_id: f.id,
+            display_type: 'مرفق جامعي'
+        }));
+
+        res.json({
+            items: [...shops, ...facilities]
+        });
+    } catch (error) {
+        console.error('Get organization items error:', error);
+        res.status(500).json({ error: 'Server error fetching organization items' });
+    }
+};
+
+/**
+ * تحديث تنظيم حجم وزوم المحلات، المراكز الطبية، والمرافق الجامعية
+ */
+const updateOrganizationItem = async (req, res) => {
+    try {
+        const { type, id } = req.params;
+        const { icon_size, text_size, min_zoom, text_min_zoom } = req.body;
+
+        const parsedIconSize = (icon_size === '' || icon_size === undefined || icon_size === null) ? null : parseInt(icon_size);
+        const parsedTextSize = (text_size === '' || text_size === undefined || text_size === null) ? null : parseInt(text_size);
+        const parsedMinZoom = (min_zoom === '' || min_zoom === undefined || min_zoom === null) ? null : parseFloat(min_zoom);
+        const parsedTextMinZoom = (text_min_zoom === '' || text_min_zoom === undefined || text_min_zoom === null) ? null : parseFloat(text_min_zoom);
+
+        if (type === 'shop') {
+            let result;
+            try {
+                result = await pool.query(
+                    `UPDATE shops SET icon_size = $1, text_size = $2, min_zoom = $3, text_min_zoom = $4 WHERE id = $5 RETURNING *`,
+                    [parsedIconSize, parsedTextSize, parsedMinZoom, parsedTextMinZoom, id]
+                );
+            } catch (dbErr) {
+                console.warn("Failed to update shop size/zoom in organization (missing columns?):", dbErr.message);
+                return res.status(400).json({ error: 'Database columns do not exist. Please run migration first.' });
+            }
+            if (result.rowCount === 0) return res.status(404).json({ error: 'Shop not found' });
+            return res.json(result.rows[0]);
+        } else if (type === 'facility') {
+            let result;
+            try {
+                result = await pool.query(
+                    `UPDATE university_facilities SET icon_size = $1, text_size = $2, min_zoom = $3, text_min_zoom = $4 WHERE id = $5 RETURNING *`,
+                    [parsedIconSize, parsedTextSize, parsedMinZoom, parsedTextMinZoom, id]
+                );
+            } catch (dbErr) {
+                console.warn("Failed to update facility size/zoom in organization (missing columns?):", dbErr.message);
+                return res.status(400).json({ error: 'Database columns do not exist on university_facilities table. Please run migration first.' });
+            }
+            if (result.rowCount === 0) return res.status(404).json({ error: 'Facility not found' });
+            return res.json(result.rows[0]);
+        } else {
+            return res.status(400).json({ error: 'Invalid type provided' });
+        }
+    } catch (error) {
+        console.error('Update organization item error:', error);
+        res.status(500).json({ error: 'Server error updating organization item' });
+    }
+};
+
 module.exports = {
     getDashboardStats,
     getAllUsers,
@@ -467,5 +580,7 @@ module.exports = {
     deleteShop,
     toggleShopStatus,
     toggleShopLock,
-    sendAdminNotification
+    sendAdminNotification,
+    getOrganizationItems,
+    updateOrganizationItem
 };

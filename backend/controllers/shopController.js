@@ -896,36 +896,70 @@ const updateUniversityFacility = async (req, res) => {
             return res.status(403).json({ error: 'Unauthorized' });
         }
 
-        let queryParts = [];
-        let vals = [];
-        let idx = 1;
+        const buildAndRunQuery = async (includeCustomFields) => {
+            let queryParts = [];
+            let vals = [];
+            let idx = 1;
 
-        if (name !== undefined) { queryParts.push(`name = $${idx++}`); vals.push(name); }
-        if (description !== undefined) { queryParts.push(`description = $${idx++}`); vals.push(description); }
+            if (name !== undefined) { queryParts.push(`name = $${idx++}`); vals.push(name); }
+            if (description !== undefined) { queryParts.push(`description = $${idx++}`); vals.push(description); }
 
-        const { uploadToCloud } = require('../utils/storage');
-        let finalIcon = icon;
+            const { uploadToCloud } = require('../utils/storage');
+            let finalIcon = icon;
 
-        if (req.files && req.files.icon_file) {
-            finalIcon = await uploadToCloud(req.files.icon_file[0].buffer, req.files.icon_file[0].originalname, req.files.icon_file[0].mimetype);
+            if (req.files && req.files.icon_file) {
+                finalIcon = await uploadToCloud(req.files.icon_file[0].buffer, req.files.icon_file[0].originalname, req.files.icon_file[0].mimetype);
+            }
+
+            if (finalIcon !== undefined) {
+                queryParts.push(`icon = $${idx++}`);
+                vals.push(finalIcon);
+            }
+
+            if (req.files && req.files.cover_file) {
+                const url = await uploadToCloud(req.files.cover_file[0].buffer, req.files.cover_file[0].originalname, req.files.cover_file[0].mimetype);
+                queryParts.push(`cover_background = $${idx++}`);
+                vals.push(url);
+            }
+
+            if (includeCustomFields) {
+                const fields = ['icon_size', 'text_size', 'min_zoom', 'text_min_zoom'];
+                fields.forEach(field => {
+                    if (req.body[field] !== undefined) {
+                        queryParts.push(`${field} = $${idx++}`);
+                        let val = req.body[field];
+                        if (val === '') {
+                            val = null;
+                        } else if (['icon_size', 'text_size'].includes(field)) {
+                            val = (val === null || isNaN(parseInt(val))) ? null : parseInt(val);
+                        } else if (['min_zoom', 'text_min_zoom'].includes(field)) {
+                            val = (val === null || isNaN(parseFloat(val))) ? null : parseFloat(val);
+                        }
+                        vals.push(val);
+                    }
+                });
+            }
+
+            if (queryParts.length === 0) return { noChanges: true };
+
+            vals.push(facilityId);
+            const result = await pool.query(`UPDATE university_facilities SET ${queryParts.join(', ')} WHERE id = $${idx} RETURNING *`, vals);
+            return result.rows[0];
+        };
+
+        let updatedFacility;
+        try {
+            updatedFacility = await buildAndRunQuery(true);
+        } catch (dbErr) {
+            console.warn("Failed to update facility with custom size/zoom settings, retrying with standard fields:", dbErr.message);
+            updatedFacility = await buildAndRunQuery(false);
         }
 
-        if (finalIcon !== undefined) {
-            queryParts.push(`icon = $${idx++}`);
-            vals.push(finalIcon);
+        if (updatedFacility && updatedFacility.noChanges) {
+            return res.json(checkRes.rows[0]);
         }
 
-        if (req.files && req.files.cover_file) {
-            const url = await uploadToCloud(req.files.cover_file[0].buffer, req.files.cover_file[0].originalname, req.files.cover_file[0].mimetype);
-            queryParts.push(`cover_background = $${idx++}`);
-            vals.push(url);
-        }
-
-        if (queryParts.length === 0) return res.json(checkRes.rows[0]);
-
-        vals.push(facilityId);
-        const result = await pool.query(`UPDATE university_facilities SET ${queryParts.join(', ')} WHERE id = $${idx} RETURNING *`, vals);
-        res.json(result.rows[0]);
+        res.json(updatedFacility);
     } catch (e) {
         console.error('Update facility error:', e);
         res.status(500).json({ error: 'Failed to update facility' });
@@ -997,7 +1031,23 @@ const getAllShopsMap = async (req, res) => {
                 }))
             };
         }
-        const facilitiesRes = await pool.query('SELECT id, name, category, icon, latitude, longitude, university_id as parent_shop_id, FALSE as is_locked, \'facility\' as type FROM university_facilities');
+
+        let facilitiesRes;
+        try {
+            facilitiesRes = await pool.query("SELECT id, name, category, icon, latitude, longitude, university_id as parent_shop_id, FALSE as is_locked, icon_size, text_size, min_zoom, text_min_zoom, 'facility' as type FROM university_facilities");
+        } catch (dbErr) {
+            console.warn("Database error querying facility custom sizes/zooms, falling back to standard columns:", dbErr.message);
+            const rawFacilitiesRes = await pool.query("SELECT id, name, category, icon, latitude, longitude, university_id as parent_shop_id, FALSE as is_locked, 'facility' as type FROM university_facilities");
+            facilitiesRes = {
+                rows: rawFacilitiesRes.rows.map(row => ({
+                    ...row,
+                    icon_size: null,
+                    text_size: null,
+                    min_zoom: null,
+                    text_min_zoom: null
+                }))
+            };
+        }
 
         res.json({
             shops: shopsRes.rows,

@@ -2535,8 +2535,19 @@ const MapComponent = () => {
                     ))}
 
                     {/* University Facilities Markers - Visible when zoomed in close (>= 15.5) */}
-                    {!currentCommunity && !isEmergencyActive && (isGuestMode ? (facilityIdQuery ? allFacilitiesMap.filter(f => String(f.id) === String(facilityIdQuery)) : []) : (viewState.zoom >= 15.5 ? allFacilitiesMap : [])).map(fac => {
+                    {!currentCommunity && !isEmergencyActive && (isGuestMode ? (facilityIdQuery ? allFacilitiesMap.filter(f => String(f.id) === String(facilityIdQuery)) : []) : (allFacilitiesMap.filter(fac => {
+                        const effectiveMinZoom = fac.min_zoom !== undefined && fac.min_zoom !== null ? parseFloat(fac.min_zoom) : 15.5;
+                        return viewState.zoom >= effectiveMinZoom;
+                    }))).map(fac => {
                         const isFollowedUni = followedShopsMap.some(s => s.id === fac.parent_shop_id);
+                        
+                        const customIconSize = fac.icon_size !== undefined && fac.icon_size !== null ? parseInt(fac.icon_size) : 38;
+                        const customTextSize = fac.text_size !== undefined && fac.text_size !== null ? parseInt(fac.text_size) : 10;
+                        const customEmojiSize = Math.round(customIconSize * (20/38));
+                        
+                        const effectiveTextMinZoom = fac.text_min_zoom !== undefined && fac.text_min_zoom !== null ? parseFloat(fac.text_min_zoom) : 16.5;
+                        const showText = viewState.zoom >= effectiveTextMinZoom;
+
                         return (
                             <Marker
                                 key={`fac-${fac.id}`}
@@ -2561,11 +2572,11 @@ const MapComponent = () => {
                                 onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
                                 >
                                     <div style={{
-                                        width: '38px', height: '38px', background: 'white', borderRadius: '50%', 
+                                        width: `${customIconSize}px`, height: `${customIconSize}px`, background: 'white', borderRadius: '50%', 
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         boxShadow: '0 4px 12px rgba(0,0,0,0.4)', 
                                         border: isFollowedUni ? '3px solid #3b82f6' : '2px solid #94a3b8',
-                                        fontSize: '20px', overflow: 'hidden'
+                                        fontSize: `${customEmojiSize}px`, overflow: 'hidden'
                                     }}>
                                         {fac.icon && fac.icon.startsWith('http') ? (
                                             <img src={getImageUrl(fac.icon)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -2573,14 +2584,16 @@ const MapComponent = () => {
                                             fac.icon || '🏛️'
                                         )}
                                     </div>
-                                    <div style={{
-                                        marginTop: '4px', background: 'rgba(0,0,0,0.65)', color: 'white',
-                                        fontSize: '10px', padding: '2px 8px', borderRadius: '10px',
-                                        backdropFilter: 'blur(4px)', fontWeight: 'bold', whiteSpace: 'nowrap',
-                                        border: isFollowedUni ? '1px solid #3b82f6' : 'none'
-                                    }}>
-                                        {fac.name}
-                                    </div>
+                                    {showText && (
+                                        <div style={{
+                                            marginTop: '4px', background: 'rgba(0,0,0,0.65)', color: 'white',
+                                            fontSize: `${customTextSize}px`, padding: '2px 8px', borderRadius: '10px',
+                                            backdropFilter: 'blur(4px)', fontWeight: 'bold', whiteSpace: 'nowrap',
+                                            border: isFollowedUni ? '1px solid #3b82f6' : 'none'
+                                        }}>
+                                            {fac.name}
+                                        </div>
+                                    )}
                                 </div>
                             </Marker>
                         );

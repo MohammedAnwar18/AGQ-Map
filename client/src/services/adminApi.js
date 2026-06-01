@@ -113,6 +113,17 @@ export const adminService = {
         return response.data;
     },
 
+    // Organization Items (Size and Zoom)
+    getOrganizationItems: async () => {
+        const response = await adminApi.get('/organization-items');
+        return response.data;
+    },
+
+    updateOrganizationItem: async (type, realId, data) => {
+        const response = await adminApi.put(`/organization-items/${type}/${realId}`, data);
+        return response.data;
+    },
+
     // Admin Notifications
     sendNotification: async (targetUser, message) => {
         const response = await adminApi.post('/notifications/send', { targetUser, message });
