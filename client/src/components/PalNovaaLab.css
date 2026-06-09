@@ -3084,8 +3084,8 @@
 .hydro-param input[type="range"] { flex: 1; accent-color: #06D6F2; }
 .hydro-param .param-val { font-size: 12px; color: #06D6F2; min-width: 40px; text-align: left; font-family: 'JetBrains Mono', monospace; }
 
-/* PalStreet Premium Styles */
-.palstreet-progress-card {
+/* PalData Premium Styles */
+.paldata-progress-card {
   backdrop-filter: blur(10px);
   box-shadow: 0 4px 20px rgba(6, 214, 242, 0.1);
   transition: all 0.3s ease;

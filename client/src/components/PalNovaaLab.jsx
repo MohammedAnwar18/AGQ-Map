@@ -7,6 +7,110 @@ import api from '../services/api';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './PalNovaaLab.css';
 
+const PAL_DATA_CATEGORIES = {
+    highway_transport: {
+        id: 'highway_transport',
+        name: 'شبكة الطرق والنقل',
+        color: '#ff7043',
+        outlineColor: '#e64a19',
+        tags: {
+            highway: ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'residential', 'service', 'footway', 'crossing', 'traffic_signals', 'bus_stop'],
+            railway: ['rail', 'subway', 'station'],
+            aeroway: ['aerodrome', 'runway', 'taxiway'],
+            barrier: ['gate', 'fence', 'wall', 'bollard']
+        }
+    },
+    buildings: {
+        id: 'buildings',
+        name: 'المباني والمنشآت',
+        color: '#f472b6',
+        outlineColor: '#db2777',
+        tags: {
+            building: ['yes', 'apartments', 'house', 'commercial', 'industrial', 'school', 'hospital', 'hotel']
+        }
+    },
+    landuse: {
+        id: 'landuse',
+        name: 'استخدامات الأراضي',
+        color: '#84cc16',
+        outlineColor: '#4d7c0f',
+        tags: {
+            landuse: ['residential', 'commercial', 'industrial', 'retail', 'farmland', 'orchard', 'vineyard', 'quarry', 'construction', 'cemetery']
+        }
+    },
+    amenities: {
+        id: 'amenities',
+        name: 'الخدمات والمرافق العامة',
+        color: '#3b82f6',
+        outlineColor: '#1d4ed8',
+        tags: {
+            amenity: ['restaurant', 'cafe', 'fast_food', 'school', 'university', 'hospital', 'clinic', 'pharmacy', 'place_of_worship', 'bank', 'atm', 'fuel', 'parking', 'police', 'post_office', 'townhall']
+        }
+    },
+    leisure_tourism: {
+        id: 'leisure_tourism',
+        name: 'الترفيه والسياحة والتاريخ',
+        color: '#8b5cf6',
+        outlineColor: '#6d28d9',
+        tags: {
+            leisure: ['park', 'playground', 'sports_centre', 'pitch', 'garden'],
+            tourism: ['hotel', 'museum', 'attraction', 'viewpoint'],
+            historic: ['artwork', 'monument', 'archaeological_site', 'castle', 'ruins']
+        }
+    },
+    natural_water: {
+        id: 'natural_water',
+        name: 'البيئة الطبيعية والمعالم المائية',
+        color: '#06b6d4',
+        outlineColor: '#0e7490',
+        tags: {
+            natural: ['wood', 'tree', 'scrub', 'peak', 'bare_rock', 'beach'],
+            waterway: ['river', 'stream', 'canal', 'waterfall'],
+            water: ['lake', 'reservoir', 'pond']
+        }
+    },
+    shops: {
+        id: 'shops',
+        name: 'المحلات والتجارة',
+        color: '#fbbf24',
+        outlineColor: '#d97706',
+        tags: {
+            shop: ['supermarket', 'convenience', 'clothes', 'bakery', 'hairdresser', 'mall', 'butcher', 'electronics']
+        }
+    },
+    offices_crafts: {
+        id: 'offices_crafts',
+        name: 'المكاتب والورش',
+        color: '#6b7280',
+        outlineColor: '#4b5563',
+        tags: {
+            office: ['company', 'government', 'ngo'],
+            craft: ['carpenter', 'electrician', 'plumber']
+        }
+    },
+    infrastructure_emergency: {
+        id: 'infrastructure_emergency',
+        name: 'البنية التحتية والطوارئ',
+        color: '#ef4444',
+        outlineColor: '#b91c1c',
+        tags: {
+            power: ['line', 'tower', 'substation', 'generator'],
+            man_made: ['tower', 'pipeline', 'pier'],
+            emergency: ['fire_hydrant', 'ambulance_station']
+        }
+    },
+    places_boundaries: {
+        id: 'places_boundaries',
+        name: 'الحدود والمسميات',
+        color: '#a855f7',
+        outlineColor: '#7e22ce',
+        tags: {
+            place: ['country', 'city', 'town', 'village', 'neighbourhood'],
+            boundary: ['administrative']
+        }
+    }
+};
+
 const PalNovaaLab = ({ onClose }) => {
     const { user } = useAuth();
     const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -134,10 +238,11 @@ const PalNovaaLab = ({ onClose }) => {
     const [stylePopup, setStylePopup] = useState(null); // { layerId, x, y }
     const [openActionsLayerId, setOpenActionsLayerId] = useState(null);
 
-    // PalStreet States
-    const [palStreetLoading, setPalStreetLoading] = useState(false);
-    const [palStreetProgress, setPalStreetProgress] = useState('');
-    const [palStreetStats, setPalStreetStats] = useState(null);
+    // PalData States
+    const [palDataLoading, setPalDataLoading] = useState(false);
+    const [palDataProgress, setPalDataProgress] = useState('');
+    const [palDataStats, setPalDataStats] = useState(null);
+    const [palDataSelectedCategories, setPalDataSelectedCategories] = useState(Object.keys(PAL_DATA_CATEGORIES));
 
     // Hydro Grid Resolution
     const [gridResolution, setGridResolution] = useState(256);
@@ -2464,7 +2569,12 @@ const PalNovaaLab = ({ onClose }) => {
         }
     };
 
-    const fetchPalStreetOSM = async (south, west, north, east, polygonFilterCoords = null) => {
+    const fetchPalDataOSM = async (south, west, north, east, polygonFilterCoords = null) => {
+        if (palDataSelectedCategories.length === 0) {
+            alert("⚠️ يرجى اختيار تصنيف واحد على الأقل للاستخراج.");
+            return;
+        }
+
         const latDim = Math.abs(north - south);
         const lngDim = Math.abs(east - west);
         const area = latDim * lngDim;
@@ -2473,13 +2583,29 @@ const PalNovaaLab = ({ onClose }) => {
             return;
         }
 
-        setPalStreetLoading(true);
-        setPalStreetProgress("جاري الاتصال بخادم OpenStreetMap...");
-        setPalStreetStats(null);
+        setPalDataLoading(true);
+        setPalDataProgress("جاري الاتصال بخادم OpenStreetMap...");
+        setPalDataStats(null);
 
-        const query = `[out:json][timeout:30];
+        // Build OSM Overpass Query based on selected categories
+        let clauses = [];
+        const bbox = `${south},${west},${north},${east}`;
+        
+        palDataSelectedCategories.forEach(catKey => {
+            const cat = PAL_DATA_CATEGORIES[catKey];
+            if (!cat) return;
+            
+            Object.entries(cat.tags).forEach(([tagKey, tagValues]) => {
+                const valRegex = `^(${tagValues.join('|')})$`;
+                clauses.push(`node["${tagKey}"~"${valRegex}"](${bbox});`);
+                clauses.push(`way["${tagKey}"~"${valRegex}"](${bbox});`);
+                clauses.push(`relation["${tagKey}"~"${valRegex}"](${bbox});`);
+            });
+        });
+
+        const query = `[out:json][timeout:60];
 (
-  way["highway"](${south},${west},${north},${east});
+  ${clauses.join('\n  ')}
 );
 out geom;`;
 
@@ -2494,7 +2620,7 @@ out geom;`;
 
         for (const url of overpassEndpoints) {
             try {
-                setPalStreetProgress(`جاري سحب الشوارع من الخادم (${url.split('/')[2]})...`);
+                setPalDataProgress(`جاري سحب البيانات من الخادم (${url.split('/')[2]})...`);
                 const response = await axios.post(url, `data=${encodeURIComponent(query)}`, {
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
                 });
@@ -2509,24 +2635,26 @@ out geom;`;
         }
 
         if (!fetchedData) {
-            setPalStreetLoading(false);
-            setPalStreetProgress("");
+            setPalDataLoading(false);
+            setPalDataProgress("");
             alert(`❌ فشل جلب البيانات من خوادم OpenStreetMap. خطأ: ${fetchError?.message || "خطأ غير معروف"}`);
             return;
         }
 
-        setPalStreetProgress("جاري معالجة وتصنيف مسارات الشوارع...");
+        setPalDataProgress("جاري معالجة وتصنيف المعالم الجغرافية...");
         
         const features = [];
         const stats = {
-            motorway: 0,
-            trunk: 0,
-            primary: 0,
-            secondary: 0,
-            tertiary: 0,
-            residential: 0,
-            service: 0,
-            footway: 0,
+            highway_transport: 0,
+            buildings: 0,
+            landuse: 0,
+            amenities: 0,
+            leisure_tourism: 0,
+            natural_water: 0,
+            shops: 0,
+            offices_crafts: 0,
+            infrastructure_emergency: 0,
+            places_boundaries: 0,
             other: 0
         };
 
@@ -2543,33 +2671,32 @@ out geom;`;
             return inside;
         };
 
+        const getCategoryKey = (tags) => {
+            if (!tags) return 'other';
+            for (const [catKey, cat] of Object.entries(PAL_DATA_CATEGORIES)) {
+                for (const [tagKey, tagValues] of Object.entries(cat.tags)) {
+                    if (tags.hasOwnProperty(tagKey) && tagValues.includes(tags[tagKey])) {
+                        return catKey;
+                    }
+                }
+            }
+            return 'other';
+        };
+
         fetchedData.forEach(element => {
-            if (element.type === 'way' && element.geometry) {
-                const coords = element.geometry.map(pt => [pt.lon, pt.lat]);
+            const tags = element.tags || {};
+            const palCategory = getCategoryKey(tags);
+
+            if (element.type === 'node' && element.lat !== undefined && element.lon !== undefined) {
+                const pt = [element.lon, element.lat];
                 
                 if (polygonFilterCoords && polygonFilterCoords[0]) {
                     const outerRing = polygonFilterCoords[0];
-                    const isInside = coords.some(pt => isPointInPolygon(pt, outerRing));
-                    if (!isInside) return;
+                    if (!isPointInPolygon(pt, outerRing)) return;
                 }
 
-                const tags = element.tags || {};
-                const hw = tags.highway || 'other';
-                
-                if (stats.hasOwnProperty(hw)) {
-                    stats[hw]++;
-                } else if (['motorway_link'].includes(hw)) {
-                    stats.motorway++;
-                } else if (['trunk_link'].includes(hw)) {
-                    stats.trunk++;
-                } else if (['primary_link'].includes(hw)) {
-                    stats.primary++;
-                } else if (['secondary_link'].includes(hw)) {
-                    stats.secondary++;
-                } else if (['tertiary_link'].includes(hw)) {
-                    stats.tertiary++;
-                } else if (['pedestrian', 'path', 'cycleway', 'living_street'].includes(hw)) {
-                    stats.footway++;
+                if (stats.hasOwnProperty(palCategory)) {
+                    stats[palCategory]++;
                 } else {
                     stats.other++;
                 }
@@ -2578,32 +2705,127 @@ out geom;`;
                     type: 'Feature',
                     id: element.id,
                     geometry: {
-                        type: 'LineString',
-                        coordinates: coords
+                        type: 'Point',
+                        coordinates: pt
                     },
                     properties: {
                         id: element.id,
-                        name: tags.name || tags.name_ar || tags.name_en || 'شارع بدون اسم',
-                        highway: hw,
-                        surface: tags.surface || 'غير معروف',
-                        oneway: tags.oneway || 'no',
-                        maxspeed: tags.maxspeed || 'غير محدد',
-                        ref: tags.ref || '',
+                        name: tags.name || tags.name_ar || tags.name_en || tags.amenity || tags.shop || tags.highway || tags.place || 'معلم نقطي',
+                        palCategory,
+                        isPalData: true,
                         ...tags
+                    }
+                });
+            } 
+            else if (element.type === 'way' && element.geometry && element.geometry.length > 0) {
+                const coords = element.geometry.map(pt => [pt.lon, pt.lat]);
+                
+                if (polygonFilterCoords && polygonFilterCoords[0]) {
+                    const outerRing = polygonFilterCoords[0];
+                    const isInside = coords.some(pt => isPointInPolygon(pt, outerRing));
+                    if (!isInside) return;
+                }
+
+                const isClosed = coords.length > 2 && 
+                               coords[0][0] === coords[coords.length - 1][0] && 
+                               coords[0][1] === coords[coords.length - 1][1];
+                
+                const isArea = isClosed && (
+                    tags.building || 
+                    tags.landuse || 
+                    tags.amenity || 
+                    tags.leisure || 
+                    tags.shop || 
+                    tags.natural || 
+                    tags.water || 
+                    tags.boundary || 
+                    tags.area === 'yes'
+                );
+
+                if (stats.hasOwnProperty(palCategory)) {
+                    stats[palCategory]++;
+                } else {
+                    stats.other++;
+                }
+
+                features.push({
+                    type: 'Feature',
+                    id: element.id,
+                    geometry: {
+                        type: isArea ? 'Polygon' : 'LineString',
+                        coordinates: isArea ? [coords] : coords
+                    },
+                    properties: {
+                        id: element.id,
+                        name: tags.name || tags.name_ar || tags.name_en || tags.building || tags.landuse || tags.highway || 'معلم خطي/مساحي',
+                        palCategory,
+                        isPalData: true,
+                        ...tags
+                    }
+                });
+            }
+            else if (element.type === 'relation' && element.members) {
+                element.members.forEach(member => {
+                    if (member.type === 'way' && member.geometry && member.geometry.length > 0) {
+                        const coords = member.geometry.map(pt => [pt.lon, pt.lat]);
+                        
+                        if (polygonFilterCoords && polygonFilterCoords[0]) {
+                            const outerRing = polygonFilterCoords[0];
+                            const isInside = coords.some(pt => isPointInPolygon(pt, outerRing));
+                            if (!isInside) return;
+                        }
+
+                        const isClosed = coords.length > 2 && 
+                                       coords[0][0] === coords[coords.length - 1][0] && 
+                                       coords[0][1] === coords[coords.length - 1][1];
+                        
+                        const isArea = isClosed && (
+                            tags.building || 
+                            tags.landuse || 
+                            tags.amenity || 
+                            tags.leisure || 
+                            tags.shop || 
+                            tags.natural || 
+                            tags.water || 
+                            tags.boundary || 
+                            tags.area === 'yes'
+                        );
+
+                        if (stats.hasOwnProperty(palCategory)) {
+                            stats[palCategory]++;
+                        } else {
+                            stats.other++;
+                        }
+
+                        features.push({
+                            type: 'Feature',
+                            id: member.ref || Math.floor(Math.random() * 10000000),
+                            geometry: {
+                                type: isArea ? 'Polygon' : 'LineString',
+                                coordinates: isArea ? [coords] : coords
+                            },
+                            properties: {
+                                id: member.ref,
+                                name: tags.name || tags.name_ar || tags.name_en || tags.boundary || 'معلم مساحي (علاقة)',
+                                palCategory,
+                                isPalData: true,
+                                ...tags
+                            }
+                        });
                     }
                 });
             }
         });
 
         if (features.length === 0) {
-            setPalStreetLoading(false);
-            setPalStreetProgress("");
-            alert("⚠️ لم يتم العثور على شوارع في المنطقة المحددة. يرجى تجربة منطقة أخرى.");
+            setPalDataLoading(false);
+            setPalDataProgress("");
+            alert("⚠️ لم يتم العثور على أي معالم جغرافية في التصنيفات المحددة. يرجى تجربة منطقة أخرى.");
             return;
         }
 
-        const newLayerId = `palstreet-${Date.now()}`;
-        const layerName = `شوارع PalStreet [${features.length}]`;
+        const newLayerId = `paldata-${Date.now()}`;
+        const layerName = `بيانات PalData [${features.length}]`;
         const geojson = {
             type: 'FeatureCollection',
             features: features
@@ -2613,7 +2835,7 @@ out geom;`;
             id: newLayerId,
             name: layerName,
             data: geojson,
-            isPalStreet: true,
+            isPalData: true,
             color: '#10D9A0',
             isVisible: true
         }]);
@@ -2623,16 +2845,16 @@ out geom;`;
             [newLayerId]: {
                 color: '#10D9A0',
                 outlineColor: '#ffffff',
-                outlineWidth: 2.5,
+                outlineWidth: 2.0,
                 opacity: 1,
-                isPalStreet: true
+                isPalData: true
             }
         }));
 
-        setPalStreetStats(stats);
-        setPalStreetLoading(false);
-        setPalStreetProgress("");
-        alert(`✅ تم رسم ${features.length} شارع بنجاح وتصنيفها كطبقة حية!`);
+        setPalDataStats(stats);
+        setPalDataLoading(false);
+        setPalDataProgress("");
+        alert(`✅ تم رسم ${features.length} معلم جغرافي بنجاح وتصنيفها كطبقة حية!`);
     };
 
     const handleExportLayer = (layer) => {
@@ -2687,7 +2909,7 @@ out geom;`;
     };
 
     const finishDrawing = () => {
-        if (drawingMode === 'palstreet_poly') {
+        if (drawingMode === 'paldata_poly') {
             if (draftCoordinates.length > 2) {
                 const polygonCoords = [[...draftCoordinates, draftCoordinates[0]]];
                 let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
@@ -2697,7 +2919,7 @@ out geom;`;
                     if (lat < minLat) minLat = lat;
                     if (lat > maxLat) maxLat = lat;
                 });
-                fetchPalStreetOSM(minLat, minLng, maxLat, maxLng, polygonCoords);
+                fetchPalDataOSM(minLat, minLng, maxLat, maxLng, polygonCoords);
             } else {
                 alert("⚠️ يرجى رسم مضلع يحتوي على 3 نقاط على الأقل.");
             }
@@ -2893,7 +3115,7 @@ out geom;`;
                 }));
 
                 setDrawingMode(null);
-            } else if (drawingMode === 'line' || drawingMode === 'measure' || drawingMode === 'polygon' || drawingMode === 'palstreet_poly') {
+            } else if (drawingMode === 'line' || drawingMode === 'measure' || drawingMode === 'polygon' || drawingMode === 'paldata_poly') {
                 setDraftCoordinates(prev => {
                     const newCoords = [...prev, coord];
                     if (drawingMode === 'measure' && prev.length > 0) {
@@ -4543,9 +4765,9 @@ out geom;`;
                         </svg>
                     </button>
 
-                    <button className={`tool ${activeTab === 'palstreet' ? 'active' : ''}`} data-tip="استخراج شوارع PalStreet 🛣️" onClick={() => { setActiveTab('palstreet'); setDrawingMode(null); }}>
+                    <button className={`tool ${activeTab === 'paldata' ? 'active' : ''}`} data-tip="استخراج بيانات PalData 🌍" onClick={() => { setActiveTab('paldata'); setDrawingMode(null); }}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#ffca28' }}>
-                            <path d="M6 3v18M18 3v18M12 3v4M12 10v4M12 17v4" />
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
                         </svg>
                     </button>
 
@@ -4632,114 +4854,172 @@ out geom;`;
 
                                 return (
                                     <Source key={layer.id} id={`src-${layer.id}`} type="geojson" data={layer.data}>
-                                        {/* Polygons */}
-                                        <Layer
-                                            id={`poly-${layer.id}`}
-                                            type="fill"
-                                            filter={['==', '$type', 'Polygon']}
-                                            paint={{
-                                                'fill-color': style.color,
-                                                'fill-opacity': (style.fillOpacity ?? 0.3) * (style.opacity ?? 1),
-                                                'fill-outline-color': style.outlineColor
-                                            }}
-                                        />
-                                        <Layer
-                                            id={`poly-line-${layer.id}`}
-                                            type="line"
-                                            filter={['==', '$type', 'Polygon']}
-                                            paint={{
-                                                'line-color': style.outlineColor,
-                                                'line-width': style.outlineWidth,
-                                                'line-opacity': style.opacity ?? 1
-                                            }}
-                                        />
+                                         {/* Polygons */}
+                                         <Layer
+                                             id={`poly-${layer.id}`}
+                                             type="fill"
+                                             filter={['==', '$type', 'Polygon']}
+                                             paint={{
+                                                 'fill-color': layer.isPalData ? [
+                                                     'match',
+                                                     ['coalesce', ['get', 'palCategory'], ''],
+                                                     'highway_transport', '#ff7043',
+                                                     'buildings', '#f472b6',
+                                                     'landuse', '#84cc16',
+                                                     'amenities', '#3b82f6',
+                                                     'leisure_tourism', '#8b5cf6',
+                                                     'natural_water', '#06b6d4',
+                                                     'shops', '#fbbf24',
+                                                     'offices_crafts', '#6b7280',
+                                                     'infrastructure_emergency', '#ef4444',
+                                                     'places_boundaries', '#a855f7',
+                                                     style.color || '#10D9A0'
+                                                 ] : style.color,
+                                                 'fill-opacity': layer.isPalData ? 0.35 * (style.opacity ?? 1) : (style.fillOpacity ?? 0.3) * (style.opacity ?? 1),
+                                                 'fill-outline-color': layer.isPalData ? [
+                                                     'match',
+                                                     ['coalesce', ['get', 'palCategory'], ''],
+                                                     'highway_transport', '#e64a19',
+                                                     'buildings', '#db2777',
+                                                     'landuse', '#4d7c0f',
+                                                     'amenities', '#1d4ed8',
+                                                     'leisure_tourism', '#6d28d9',
+                                                     'natural_water', '#0e7490',
+                                                     'shops', '#d97706',
+                                                     'offices_crafts', '#4b5563',
+                                                     'infrastructure_emergency', '#b91c1c',
+                                                     'places_boundaries', '#7e22ce',
+                                                     '#ffffff'
+                                                 ] : style.outlineColor
+                                             }}
+                                         />
+                                         <Layer
+                                             id={`poly-line-${layer.id}`}
+                                             type="line"
+                                             filter={['==', '$type', 'Polygon']}
+                                             paint={{
+                                                 'line-color': layer.isPalData ? [
+                                                     'match',
+                                                     ['coalesce', ['get', 'palCategory'], ''],
+                                                     'highway_transport', '#e64a19',
+                                                     'buildings', '#db2777',
+                                                     'landuse', '#4d7c0f',
+                                                     'amenities', '#1d4ed8',
+                                                     'leisure_tourism', '#6d28d9',
+                                                     'natural_water', '#0e7490',
+                                                     'shops', '#d97706',
+                                                     'offices_crafts', '#4b5563',
+                                                     'infrastructure_emergency', '#b91c1c',
+                                                     'places_boundaries', '#7e22ce',
+                                                     '#ffffff'
+                                                 ] : style.outlineColor,
+                                                 'line-width': layer.isPalData ? 1.0 : style.outlineWidth,
+                                                 'line-opacity': style.opacity ?? 1
+                                             }}
+                                         />
 
-                                        {/* Lines */}
-                                        <Layer
-                                            id={`line-${layer.id}`}
-                                            type="line"
-                                            filter={['==', '$type', 'LineString']}
-                                            paint={{
-                                                'line-color': layer.isPalStreet ? [
-                                                    'match',
-                                                    ['coalesce', ['get', 'highway'], ''],
-                                                    'motorway', '#ef5350', 'motorway_link', '#ef5350',
-                                                    'trunk', '#ff7043', 'trunk_link', '#ff7043',
-                                                    'primary', '#ffca28', 'primary_link', '#ffca28',
-                                                    'secondary', '#66bb6a', 'secondary_link', '#66bb6a',
-                                                    'tertiary', '#26c6da', 'tertiary_link', '#26c6da',
-                                                    'residential', '#42a5f5',
-                                                    'service', '#b0bec5',
-                                                    'footway', '#ab47bc', 'pedestrian', '#ab47bc', 'path', '#ab47bc', 'cycleway', '#ab47bc',
-                                                    style.color || '#10D9A0'
-                                                ] : style.color,
-                                                'line-width': layer.isPalStreet ? [
-                                                    'match',
-                                                    ['coalesce', ['get', 'highway'], ''],
-                                                    'motorway', 6.0,
-                                                    'trunk', 5.0,
-                                                    'primary', 4.5,
-                                                    'secondary', 3.5,
-                                                    'tertiary', 2.5,
-                                                    'residential', 2.0,
-                                                    'service', 1.5,
-                                                    'footway', 1.2, 'pedestrian', 1.2, 'path', 1.0, 'cycleway', 1.0,
-                                                    (style.outlineWidth ?? 2) * 2
-                                                ] : (style.outlineWidth ?? 2) * 2,
-                                                'line-opacity': style.opacity ?? 1
-                                            }}
-                                        />
+                                         {/* Lines */}
+                                         <Layer
+                                             id={`line-${layer.id}`}
+                                             type="line"
+                                             filter={['==', '$type', 'LineString']}
+                                             paint={{
+                                                 'line-color': layer.isPalData ? [
+                                                     'match',
+                                                     ['coalesce', ['get', 'palCategory'], ''],
+                                                     'highway_transport', '#ff7043',
+                                                     'buildings', '#f472b6',
+                                                     'landuse', '#84cc16',
+                                                     'amenities', '#3b82f6',
+                                                     'leisure_tourism', '#8b5cf6',
+                                                     'natural_water', '#06b6d4',
+                                                     'shops', '#fbbf24',
+                                                     'offices_crafts', '#6b7280',
+                                                     'infrastructure_emergency', '#ef4444',
+                                                     'places_boundaries', '#a855f7',
+                                                     style.color || '#10D9A0'
+                                                 ] : style.color,
+                                                 'line-width': layer.isPalData ? [
+                                                     'match',
+                                                     ['coalesce', ['get', 'highway'], ''],
+                                                     'motorway', 5.0,
+                                                     'trunk', 4.5,
+                                                     'primary', 4.0,
+                                                     'secondary', 3.0,
+                                                     'tertiary', 2.0,
+                                                     'residential', 1.5,
+                                                     'service', 1.2,
+                                                     'footway', 1.0, 'pedestrian', 1.0, 'path', 0.8, 'cycleway', 0.8,
+                                                     2.0
+                                                 ] : (style.outlineWidth ?? 2) * 2,
+                                                 'line-opacity': style.opacity ?? 1
+                                             }}
+                                         />
 
-                                        {/* Points */}
-                                        <Layer
-                                            id={`point-${layer.id}`}
-                                            type="circle"
-                                            filter={['==', '$type', 'Point']}
-                                            paint={{
-                                                'circle-radius': layer.isRemoteSensing ? [
-                                                    'interpolate',
-                                                    ['linear'],
-                                                    ['zoom'],
-                                                    10, 4,
-                                                    14, 12,
-                                                    17, 30
-                                                ] : 7,
-                                                'circle-color': layer.isRemoteSensing ? (
-                                                    layer.colorRamp === 'grayscale' ? [
-                                                        'interpolate', ['linear'], ['get', 'elevation'],
-                                                        layer.minElevation || 0, '#000000',
-                                                        layer.maxElevation || 500, '#ffffff'
-                                                    ] : layer.colorRamp === 'viridis' ? [
-                                                        'interpolate', ['linear'], ['get', 'elevation'],
-                                                        layer.minElevation || 0, '#440154',
-                                                        (layer.minElevation + layer.maxElevation)/2 || 100, '#21918c',
-                                                        layer.maxElevation || 500, '#fde725'
-                                                    ] : layer.colorRamp === 'terrain' ? [
-                                                        'interpolate', ['linear'], ['get', 'elevation'],
-                                                        layer.minElevation || 0, '#22c55e',
-                                                        (layer.minElevation + layer.maxElevation)/2 || 100, '#eab308',
-                                                        layer.maxElevation || 500, '#ffffff'
-                                                    ] : layer.colorRamp === 'rainbow' ? [
-                                                        'interpolate', ['linear'], ['get', 'elevation'],
-                                                        layer.minElevation || 0, '#0000ff',
-                                                        layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.25 || 100, '#00ffff',
-                                                        layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.5 || 200, '#00ff00',
-                                                        layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.75 || 300, '#ffff00',
-                                                        layer.maxElevation || 500, '#ff0000'
-                                                    ] : [
-                                                        'interpolate', ['linear'], ['get', 'elevation'],
-                                                        layer.minElevation || 0, '#312e81',
-                                                        (layer.minElevation + layer.maxElevation)/2 || 100, '#10b981',
-                                                        layer.maxElevation || 500, '#ef4444'
-                                                    ]
-                                                ) : style.color,
-                                                'circle-stroke-width': style.outlineWidth,
-                                                'circle-stroke-color': style.outlineColor,
-                                                'circle-opacity': style.opacity ?? 1,
-                                                'circle-stroke-opacity': style.opacity ?? 1
-                                            }}
-                                        />
-                                    </Source>
+                                         {/* Points */}
+                                         <Layer
+                                             id={`point-${layer.id}`}
+                                             type="circle"
+                                             filter={['==', '$type', 'Point']}
+                                             paint={{
+                                                 'circle-radius': layer.isPalData ? 5.5 : (layer.isRemoteSensing ? [
+                                                     'interpolate',
+                                                     ['linear'],
+                                                     ['zoom'],
+                                                     10, 4,
+                                                     14, 12,
+                                                     17, 30
+                                                 ] : 7),
+                                                 'circle-color': layer.isPalData ? [
+                                                     'match',
+                                                     ['coalesce', ['get', 'palCategory'], ''],
+                                                     'highway_transport', '#ff7043',
+                                                     'buildings', '#f472b6',
+                                                     'landuse', '#84cc16',
+                                                     'amenities', '#3b82f6',
+                                                     'leisure_tourism', '#8b5cf6',
+                                                     'natural_water', '#06b6d4',
+                                                     'shops', '#fbbf24',
+                                                     'offices_crafts', '#6b7280',
+                                                     'infrastructure_emergency', '#ef4444',
+                                                     'places_boundaries', '#a855f7',
+                                                     style.color || '#10D9A0'
+                                                 ] : (layer.isRemoteSensing ? (
+                                                     layer.colorRamp === 'grayscale' ? [
+                                                         'interpolate', ['linear'], ['get', 'elevation'],
+                                                         layer.minElevation || 0, '#000000',
+                                                         layer.maxElevation || 500, '#ffffff'
+                                                     ] : layer.colorRamp === 'viridis' ? [
+                                                         'interpolate', ['linear'], ['get', 'elevation'],
+                                                         layer.minElevation || 0, '#440154',
+                                                         (layer.minElevation + layer.maxElevation)/2 || 100, '#21918c',
+                                                         layer.maxElevation || 500, '#fde725'
+                                                     ] : layer.colorRamp === 'terrain' ? [
+                                                         'interpolate', ['linear'], ['get', 'elevation'],
+                                                         layer.minElevation || 0, '#22c55e',
+                                                         (layer.minElevation + layer.maxElevation)/2 || 100, '#eab308',
+                                                         layer.maxElevation || 500, '#ffffff'
+                                                     ] : layer.colorRamp === 'rainbow' ? [
+                                                         'interpolate', ['linear'], ['get', 'elevation'],
+                                                         layer.minElevation || 0, '#0000ff',
+                                                         layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.25 || 100, '#00ffff',
+                                                         layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.5 || 200, '#00ff00',
+                                                         layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.75 || 300, '#ffff00',
+                                                         layer.maxElevation || 500, '#ff0000'
+                                                     ] : [
+                                                         'interpolate', ['linear'], ['get', 'elevation'],
+                                                         layer.minElevation || 0, '#312e81',
+                                                         (layer.minElevation + layer.maxElevation)/2 || 100, '#10b981',
+                                                         layer.maxElevation || 500, '#ef4444'
+                                                     ]
+                                                 ) : style.color),
+                                                 'circle-stroke-width': layer.isPalData ? 1.5 : style.outlineWidth,
+                                                 'circle-stroke-color': layer.isPalData ? '#ffffff' : style.outlineColor,
+                                                 'circle-opacity': style.opacity ?? 1,
+                                                 'circle-stroke-opacity': style.opacity ?? 1
+                                             }}
+                                         />
+                                     </Source>
                                 );
                             })}
 
@@ -4780,7 +5060,7 @@ out geom;`;
                                 >
                                     <div className="popup-content" style={{ direction: 'rtl', textAlign: 'right', color: 'white', minWidth: '180px' }}>
                                         <h4 style={{ margin: '0 0 8px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px', color: '#06D6F2' }}>
-                                            {selectedFeatureInfo.properties.dataset === 'aster30m' ? 'نقطة ارتفاع (ASTER GDEM)' : (selectedFeatureInfo.properties.name || selectedFeatureInfo.properties.name_ar || selectedFeatureInfo.properties.name_en || 'شارع بدون اسم')}
+                                            {selectedFeatureInfo.properties.dataset === 'aster30m' ? 'نقطة ارتفاع (ASTER GDEM)' : (selectedFeatureInfo.properties.name || selectedFeatureInfo.properties.name_ar || selectedFeatureInfo.properties.name_en || 'معلم بدون اسم')}
                                         </h4>
                                         <div className="popup-body" style={{ fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                             {selectedFeatureInfo.properties.dataset === 'aster30m' ? (
@@ -4798,9 +5078,9 @@ out geom;`;
                                                         <span>{selectedFeatureInfo.longitude.toFixed(6)}</span>
                                                     </div>
                                                 </>
-                                            ) : selectedFeatureInfo.properties.highway ? (
+                                            ) : selectedFeatureInfo.properties.isPalData ? (
                                                 <>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '15px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '4px', marginBottom: '4px' }}>
                                                         <span style={{ color: '#94a3b8' }}>التصنيف:</span>
                                                         <span style={{ color: '#fbab15', fontWeight: 'bold' }}>{selectedFeatureInfo.properties.highway}</span>
                                                     </div>
@@ -5066,8 +5346,8 @@ out geom;`;
                         <div className={`panel-tab ${activeTab === 'injection' ? 'active' : ''}`} onClick={() => setActiveTab('injection')} title="حقن البيانات">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
                         </div>
-                        <div className={`panel-tab ${activeTab === 'palstreet' ? 'active' : ''}`} onClick={() => setActiveTab('palstreet')} title="PalStreet">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 3v18M18 3v18M12 3v4M12 10v4M12 17v4" /></svg>
+                        <div className={`panel-tab ${activeTab === 'paldata' ? 'active' : ''}`} onClick={() => setActiveTab('paldata')} title="PalData (بيانات OSM)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
                         </div>
                         <div className={`panel-tab ${activeTab === 'palremotesensing' ? 'active' : ''}`} onClick={() => { setActiveTab('palremotesensing'); setDrawingMode(null); }} title="PalRemoteSensing (استشعار عن بعد)">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -5353,101 +5633,153 @@ out geom;`;
                             </div>
                         )}
 
-                        {activeTab === 'palstreet' && (
-                            <div className="tab-content" style={{ display: 'flex', flexDirection: 'column', gap: '20px', height: '100%', overflowY: 'auto' }}>
-                                <div className="panel-section">
-                                    <div className="panel-section-title">استخراج شوارع PalStreet 🛣️</div>
+                        {activeTab === 'paldata' && (
+                            <div className="tab-content" style={{ display: 'flex', flexDirection: 'column', gap: '16px', height: '100%', overflowY: 'auto', paddingRight: '4px' }}>
+                                <div className="panel-section" style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '16px', padding: '16px' }}>
+                                    <div className="panel-section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                                        <span>تصنيفات البيانات المطلوبة 📂</span>
+                                        <div style={{ display: 'flex', gap: '6px' }}>
+                                            <button 
+                                                className="ds-btn outline" 
+                                                style={{ fontSize: '0.65rem', padding: '3px 8px', height: 'auto', minHeight: '0', borderRadius: '6px' }}
+                                                onClick={() => setPalDataSelectedCategories(Object.keys(PAL_DATA_CATEGORIES))}
+                                            >
+                                                الكل
+                                            </button>
+                                            <button 
+                                                className="ds-btn outline" 
+                                                style={{ fontSize: '0.65rem', padding: '3px 8px', height: 'auto', minHeight: '0', borderRadius: '6px' }}
+                                                onClick={() => setPalDataSelectedCategories([])}
+                                            >
+                                                إلغاء
+                                            </button>
+                                        </div>
+                                    </div>
 
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto', paddingRight: '4px', paddingLeft: '4px' }}>
+                                        {Object.values(PAL_DATA_CATEGORIES).map(cat => {
+                                            const isChecked = palDataSelectedCategories.includes(cat.id);
+                                            return (
+                                                <label 
+                                                    key={cat.id} 
+                                                    style={{ 
+                                                        display: 'flex', 
+                                                        alignItems: 'center', 
+                                                        justifyContent: 'space-between', 
+                                                        padding: '8px 10px', 
+                                                        background: isChecked ? 'rgba(255,255,255,0.03)' : 'transparent',
+                                                        border: '1px solid',
+                                                        borderColor: isChecked ? 'rgba(255,255,255,0.06)' : 'transparent',
+                                                        borderRadius: '8px',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s ease'
+                                                    }}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                        <input 
+                                                            type="checkbox"
+                                                            checked={isChecked}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) {
+                                                                    setPalDataSelectedCategories(prev => [...prev, cat.id]);
+                                                                } else {
+                                                                    setPalDataSelectedCategories(prev => prev.filter(id => id !== cat.id));
+                                                                }
+                                                            }}
+                                                            style={{ width: '16px', height: '16px', accentColor: cat.color }}
+                                                        />
+                                                        <span style={{ fontSize: '0.8rem', color: isChecked ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: isChecked ? 'bold' : 'normal' }}>
+                                                            {cat.name}
+                                                        </span>
+                                                    </div>
+                                                    <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', background: cat.color, boxShadow: `0 0 6px ${cat.color}` }}></span>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
 
+                                <div className="panel-section" style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '16px', padding: '16px' }}>
+                                    <div className="panel-section-title">نطاق استخراج البيانات 🗺️</div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                         <button
                                             className="ds-btn secondary w-100"
-                                            disabled={palStreetLoading}
+                                            disabled={palDataLoading}
                                             onClick={() => {
                                                 const map = mapRef.current?.getMap();
                                                 if (map) {
                                                     const bounds = map.getBounds();
-                                                    fetchPalStreetOSM(bounds.getSouth(), bounds.getWest(), bounds.getNorth(), bounds.getEast());
+                                                    fetchPalDataOSM(bounds.getSouth(), bounds.getWest(), bounds.getNorth(), bounds.getEast());
                                                 }
                                             }}
-                                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px' }}
+                                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', borderRadius: '10px' }}
                                         >
                                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
                                             جلب من حدود الشاشة الحالية
                                         </button>
 
                                         <button
-                                            className={`ds-btn ${drawingMode === 'palstreet_poly' ? 'primary' : 'outline'} w-100`}
-                                            disabled={palStreetLoading}
+                                            className={`ds-btn ${drawingMode === 'paldata_poly' ? 'primary' : 'outline'} w-100`}
+                                            disabled={palDataLoading}
                                             onClick={() => {
-                                                if (drawingMode === 'palstreet_poly') {
+                                                if (drawingMode === 'paldata_poly') {
                                                     setDrawingMode(null);
                                                     setDraftCoordinates([]);
                                                 } else {
-                                                    setDrawingMode('palstreet_poly');
+                                                    setDrawingMode('paldata_poly');
                                                     setDraftCoordinates([]);
                                                 }
                                             }}
-                                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px' }}
+                                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', borderRadius: '10px' }}
                                         >
                                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/></svg>
-                                            {drawingMode === 'palstreet_poly' ? 'إلغاء الرسم المخصص' : 'رسم منطقة مخصصة (مضلع)'}
+                                            {drawingMode === 'paldata_poly' ? 'إلغاء الرسم المخصص' : 'رسم منطقة مخصصة (مضلع)'}
                                         </button>
                                     </div>
                                 </div>
 
-                                {palStreetLoading && (
-                                    <div className="palstreet-progress-card" style={{ padding: '15px', background: 'rgba(6, 214, 242, 0.05)', border: '1px solid rgba(6, 214, 242, 0.2)', borderRadius: '12px', textAlign: 'center' }}>
+                                {palDataLoading && (
+                                    <div className="paldata-progress-card" style={{ padding: '15px', background: 'rgba(6, 214, 242, 0.05)', border: '1px solid rgba(6, 214, 242, 0.2)', borderRadius: '12px', textAlign: 'center' }}>
                                         <div className="loader-ring-small" style={{ margin: '0 auto 10px auto', width: '30px', height: '30px', border: '3px solid rgba(6, 214, 242, 0.1)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'ring-spin 1s linear infinite' }}></div>
-                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 'bold' }}>{palStreetProgress}</div>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 'bold' }}>{palDataProgress}</div>
                                     </div>
                                 )}
 
-                                {palStreetStats && (
-                                    <div className="panel-section palstreet-stats-panel">
-                                        <div className="panel-section-title">دليل وإحصائيات الشوارع 📊</div>
-                                        <div className="stats-grid" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
-                                            {[
-                                                { key: 'motorway', label: 'طرق سريعة (Motorway)', color: '#ef5350' },
-                                                { key: 'trunk', label: 'طرق شريانية كبرى (Trunk)', color: '#ff7043' },
-                                                { key: 'primary', label: 'طرق رئيسية (Primary)', color: '#ffca28' },
-                                                { key: 'secondary', label: 'طرق ثانوية (Secondary)', color: '#66bb6a' },
-                                                { key: 'tertiary', label: 'طرق فرعية (Tertiary)', color: '#26c6da' },
-                                                { key: 'residential', label: 'شوارع سكنية (Residential)', color: '#42a5f5' },
-                                                { key: 'service', label: 'طرق خدمات ومواقف (Service)', color: '#b0bec5' },
-                                                { key: 'footway', label: 'ممرات مشاة وتراسات (Footway/Paths)', color: '#ab47bc' },
-                                                { key: 'other', label: 'أخرى (Other)', color: '#e0e0e0' }
-                                            ].map(item => (
-                                                <div key={item.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px' }}>
+                                {palDataStats && (
+                                    <div className="panel-section paldata-stats-panel" style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '16px', padding: '16px' }}>
+                                        <div className="panel-section-title">إحصائيات بيانات PalData 📊</div>
+                                        <div className="stats-grid" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px', maxHeight: '240px', overflowY: 'auto' }}>
+                                            {Object.values(PAL_DATA_CATEGORIES).map(item => (
+                                                <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                         <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', background: item.color, boxShadow: `0 0 8px ${item.color}` }}></span>
-                                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{item.label}</span>
+                                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{item.name}</span>
                                                     </div>
-                                                    <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>{palStreetStats[item.key] || 0}</span>
+                                                    <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>{palDataStats[item.id] || 0}</span>
                                                 </div>
                                             ))}
                                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px', borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '8px', fontWeight: 'bold' }}>
-                                                <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>مجموع الشوارع المستخرجة:</span>
+                                                <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>إجمالي العناصر المستخرجة:</span>
                                                 <span style={{ color: 'var(--primary)' }}>
-                                                    {Object.values(palStreetStats).reduce((a, b) => a + b, 0)}
+                                                    {Object.values(palDataStats).reduce((a, b) => a + b, 0)}
                                                 </span>
                                             </div>
                                         </div>
 
                                         <button
                                             className="ds-btn primary w-100"
-                                            style={{ marginTop: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                                            style={{ marginTop: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', borderRadius: '10px' }}
                                             onClick={() => {
-                                                const palLayer = geoLayers.find(l => l.isPalStreet);
+                                                const palLayer = geoLayers.find(l => l.isPalData);
                                                 if (palLayer) {
                                                     handleExportLayer(palLayer);
                                                 } else {
-                                                    alert("⚠️ لم يتم العثور على طبقة PalStreet للتصدير.");
+                                                    alert("⚠️ لم يتم العثور على طبقة PalData للتصدير.");
                                                 }
                                             }}
                                         >
                                             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                                            تصدير طبقة الشوارع (GeoJSON)
+                                            تصدير طبقة البيانات (GeoJSON)
                                         </button>
                                     </div>
                                 )}
