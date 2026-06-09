@@ -225,7 +225,15 @@ const PalNovaaLab = ({ onClose }) => {
         marker: 'pin',
         component: 'pill',
         effect: 'glow',
-        customPrimary: '#F5A623'
+        customPrimary: '#F5A623',
+        show_controls: true,
+        show_attribution: true,
+        enable_popups: true,
+        auto_rotate: false,
+        enable_search: true,
+        show_legend: true,
+        show_layer_toggle: true,
+        enable_scale: true
     });
     const [pageElements, setPageElements] = useState([]);
     const [selectedElId, setSelectedElId] = useState(null);
@@ -4079,7 +4087,50 @@ out geom;`;
         else if (designSelections.effect === 'glass') effectCSS = '.card-panel { background: rgba(0,0,0,0.2) !important; backdrop-filter: blur(24px) !important; border: 1px solid rgba(255,255,255,0.2) !important; }';
         else if (designSelections.effect === 'shadow_lg') effectCSS = '.card-panel { box-shadow: 0 20px 50px rgba(0,0,0,0.5) !important; }';
 
-        const layersHTML = exportLayers.map(l => `<div class="layer-item"><div style="display:flex;align-items:center;gap:10px;"><div style="width:14px;height:14px;border-radius:4px;background:${l.style?.color || l.color}"></div><span>${l.name}</span></div></div>`).join('');
+        const layersHTML = exportLayers.map(l => `
+            <div class="layer-item" style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding: 12px 14px; margin-bottom: 10px; background: rgba(0,0,0,0.15); border-radius: 10px; border: 1px solid var(--border);">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div class="layer-color-dot" style="width:14px;height:14px;border-radius:4px;background:${l.style?.color || l.color}"></div>
+                    <span>${l.name}</span>
+                </div>
+                ${designSelections.show_layer_toggle ? `
+                    <label class="switch" style="position: relative; display: inline-block; width: 34px; height: 20px; flex-shrink:0;">
+                        <input type="checkbox" checked onchange="toggleLayer('${l.id}', this.checked)" style="opacity: 0; width: 0; height: 0;">
+                        <span class="slider" style="position: absolute; cursor: pointer; inset: 0; background-color: rgba(255,255,255,0.15); transition: .3s; border-radius: 34px;"></span>
+                    </label>
+                ` : ''}
+            </div>
+        `).join('');
+
+        let legendHTML = '';
+        if (designSelections.show_legend) {
+            legendHTML = `
+            <div class="map-legend card-panel" style="position: absolute; bottom: 30px; left: 30px; background: var(--surface-solid); border: 1px solid var(--border); border-radius: 16px; padding: 16px; z-index: 100; min-width: 180px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); border-top: 3px solid var(--primary); direction: rtl; text-align: right;">
+                <h4 style="margin: 0 0 12px 0; font-family: var(--font-h); font-size: 0.95rem; color: var(--primary);">دليل الخريطة</h4>
+                ${exportLayers.map(l => `
+                    <div class="legend-row" style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; margin-bottom: 6px; color: var(--text-color);">
+                        <span class="legend-color" style="width: 12px; height: 12px; border-radius: 3px; background:${l.style?.color || l.color}"></span>
+                        <span>${l.name}</span>
+                    </div>
+                `).join('')}
+            </div>`;
+        }
+
+        let searchHTML = '';
+        if (designSelections.enable_search) {
+            searchHTML = `
+            <div class="map-search-container" style="position: absolute; top: 20px; right: 20px; width: 300px; z-index: 100; direction: rtl;">
+                <input class="map-search-input" placeholder="البحث في معالم الخريطة..." oninput="doSearch(this.value)" style="width: 100%; background: var(--surface-solid); border: 1px solid var(--border); border-radius: 999px; padding: 12px 20px; color: var(--text-color); font-family: var(--font-b); font-size: 0.85rem; outline: none; box-shadow: 0 10px 25px rgba(0,0,0,0.3); border-color: var(--primary);" />
+                <div class="map-search-results" id="search-results" style="position: absolute; top: 100%; left: 0; right: 0; background: var(--surface-solid); border: 1px solid var(--border); border-radius: 12px; margin-top: 6px; overflow: hidden; display: none; max-height: 250px; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.4); text-align: right;"></div>
+            </div>`;
+        }
+
+        const mapContainerHTML = `
+            <div id="map" style="position:relative; flex:1; min-height:400px; height:100%; width:100%; background:#000;">
+                ${searchHTML}
+                ${legendHTML}
+            </div>
+        `;
 
         let layoutCSS = '';
         let layoutHTML = '';
@@ -4089,14 +4140,13 @@ out geom;`;
                 layoutCSS = `
                     .app-container { display: flex; height: 100vh; width: 100vw; }
                     .sidebar { width: 340px; background: var(--surface-solid); border-left: 1px solid var(--border); padding: 24px; display: flex; flex-direction: column; overflow-y: auto; z-index: 10; }
-                    #map { flex: 1; }
                 `;
                 layoutHTML = `
                     <aside class="sidebar card-panel">
                         <h2 style="color:var(--primary);margin-top:0;font-family:var(--font-h);">الطبقات المتاحة</h2>
                         <div class="layers-list">${layersHTML}</div>
                     </aside>
-                    <div id="map"></div>
+                    ${mapContainerHTML}
                 `;
                 break;
             case 'three':
@@ -4105,7 +4155,6 @@ out geom;`;
                     .top-nav { height: 60px; background: var(--surface-solid); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; z-index: 10; }
                     .main-content { flex: 1; display: flex; overflow: hidden; }
                     .left-panel { width: 300px; background: var(--surface-solid); border-left: 1px solid var(--border); padding: 20px; overflow-y: auto; }
-                    #map { flex: 1; }
                     .right-panel { width: 350px; background: var(--bg); border-right: 1px solid var(--border); padding: 20px; overflow-y: auto; }
                 `;
                 layoutHTML = `
@@ -4117,7 +4166,7 @@ out geom;`;
                             <h3 style="color:var(--primary);margin-top:0;font-family:var(--font-h);">الطبقات</h3>
                             <div class="layers-list">${layersHTML}</div>
                         </aside>
-                        <div id="map"></div>
+                        ${mapContainerHTML}
                         <aside class="right-panel card-panel">
                             <h3 style="color:var(--primary);margin-top:0;font-family:var(--font-h);">إحصائيات فورية</h3>
                             <div class="stat-card card-panel" style="margin-bottom:15px;"><div class="stat-num">${exportLayers.length}</div><div class="stat-label">طبقة نشطة</div></div>
@@ -4130,7 +4179,6 @@ out geom;`;
                 layoutCSS = `
                     .app-container { display: flex; height: 100vh; width: 100vw; }
                     .side-content { flex: 1; background: var(--bg); padding: 40px; display: flex; flex-direction: column; justify-content: center; z-index: 10; }
-                    #map { flex: 1; border-right: 1px solid var(--border); }
                 `;
                 layoutHTML = `
                     <div class="side-content card-panel">
@@ -4138,7 +4186,7 @@ out geom;`;
                         <p style="opacity:0.8;font-size:1.2rem;line-height:1.8;">استكشف البيانات الجغرافية بدقة من خلال هذه الخريطة التفاعلية المصممة خصيصاً لاحتياجاتك.</p>
                         <div style="margin-top:40px;">${layersHTML}</div>
                     </div>
-                    <div id="map"></div>
+                    ${mapContainerHTML}
                 `;
                 break;
             case 'dashboard':
@@ -4146,7 +4194,6 @@ out geom;`;
                     .app-container { display: flex; flex-direction: column; height: 100vh; width: 100vw; background: var(--bg); }
                     .dash-header { height: 70px; background: var(--surface-solid); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; z-index: 10; }
                     .dash-body { flex: 1; display: flex; flex-direction: column; padding: 20px; gap: 20px; }
-                    #map { flex: 1; border-radius: 16px; border: 1px solid var(--border); overflow: hidden; }
                     .dash-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; height: 120px; }
                     .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
                     .stat-num { font-size: 2rem; font-weight: 800; color: var(--primary); font-family:var(--font-h); }
@@ -4157,7 +4204,7 @@ out geom;`;
                         <h2 style="margin:0;color:var(--primary);font-family:var(--font-h);">لوحة القيادة المكانية</h2>
                     </header>
                     <div class="dash-body">
-                        <div id="map"></div>
+                        ${mapContainerHTML}
                         <div class="dash-stats">
                             <div class="stat-card card-panel"><div class="stat-num">${exportLayers.length}</div><div class="stat-label">إجمالي الطبقات</div></div>
                             <div class="stat-card card-panel"><div class="stat-num">${exportLayers.reduce((sum, l) => sum + (l.data?.features?.length || 0), 0)}</div><div class="stat-label">المعالم الجغرافية</div></div>
@@ -4172,7 +4219,6 @@ out geom;`;
                     .app-container { display: flex; height: 100vh; width: 100vw; background: var(--bg); justify-content: center; align-items: center; padding: 40px; }
                     .modal-wrapper { width: 100%; max-width: 1200px; height: 80vh; background: var(--surface-solid); border-radius: 24px; border: 1px solid var(--border); overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 30px 80px rgba(0,0,0,0.6); }
                     .modal-header { padding: 20px 30px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--surface); }
-                    #map { flex: 1; }
                 `;
                 layoutHTML = `
                     <div class="modal-wrapper card-panel">
@@ -4180,19 +4226,18 @@ out geom;`;
                             <h2 style="margin:0;color:var(--primary);font-family:var(--font-h);">عارض الخريطة</h2>
                             <div style="display:flex;gap:10px;">${exportLayers.slice(0, 3).map(l => `<span style="background:var(--bg);padding:5px 12px;border-radius:20px;font-size:0.8rem;border:1px solid ${l.style?.color || l.color}">${l.name}</span>`).join('')}</div>
                         </div>
-                        <div id="map"></div>
+                        ${mapContainerHTML}
                     </div>
                 `;
                 break;
             case 'floating':
                 layoutCSS = `
                     .app-container { display: flex; height: 100vh; width: 100vw; }
-                    #map { flex: 1; }
                     .f-card { position: absolute; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; backdrop-filter: blur(15px); padding: 24px; z-index: 10; box-shadow: 0 15px 35px rgba(0,0,0,0.3); }
                     .f-bottom-left { bottom: 40px; left: 30px; width: 400px; }
                 `;
                 layoutHTML = `
-                    <div id="map"></div>
+                    ${mapContainerHTML}
                     <div class="f-card f-bottom-left card-panel">
                         <h3 style="margin-top:0;font-family:var(--font-h);">إحصائيات الخريطة</h3>
                         <p style="opacity:0.8;font-size:1rem;line-height:1.6;">تم تحميل <b>${exportLayers.length}</b> طبقات بنجاح، تحتوي على <b>${exportLayers.reduce((sum, l) => sum + (l.data?.features?.length || 0), 0)}</b> معلم جغرافي تفاعلي.</p>
@@ -4203,17 +4248,18 @@ out geom;`;
             case 'stacked':
                 layoutCSS = `
                     .app-container { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
-                    #map { height: 60%; width: 100%; border-bottom: 1px solid var(--border); }
                     .bottom-content { height: 40%; background: var(--surface-solid); padding: 24px; overflow-y: auto; }
                     .grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
                 `;
                 layoutHTML = `
-                    <div id="map"></div>
+                    <div style="height: 60%; width: 100%; display: flex; position: relative;">
+                        ${mapContainerHTML}
+                    </div>
                     <div class="bottom-content card-panel">
                         <h2 style="color:var(--primary);margin-top:0;font-family:var(--font-h);">استعراض البيانات</h2>
                         <div class="grid-view">
                             ${exportLayers.map(l => `
-                                <div class="layer-item" style="margin:0;">
+                                <div class="layer-item" style="margin:0; padding: 12px 14px; background: rgba(0,0,0,0.15); border-radius: 10px; border: 1px solid var(--border);">
                                     <h4 style="margin:0 0 8px 0;color:var(--primary);">${l.name}</h4>
                                     <div style="font-size:0.9rem;opacity:0.7;">يحتوي على ${l.data?.features?.length || 0} معلم</div>
                                 </div>
@@ -4225,19 +4271,17 @@ out geom;`;
             case 'custom':
                 layoutCSS = `
                     .app-container { position: relative; height: 100vh; width: 100vw; overflow: hidden; }
-                    #map { position: absolute; inset: 0; }
                 `;
                 layoutHTML = `
-                    <div id="map"></div>
+                    ${mapContainerHTML}
                 `;
                 break;
             default: // fullmap
                 layoutCSS = `
                     .app-container { display: flex; height: 100vh; width: 100vw; }
-                    #map { flex: 1; }
                 `;
                 layoutHTML = `
-                    <div id="map"></div>
+                    ${mapContainerHTML}
                 `;
                 break;
         }
@@ -4430,19 +4474,54 @@ out geom;`;
                 center: [${center.lng}, ${center.lat}],
                 zoom: ${zoom},
                 pitch: ${pitch},
-                bearing: ${bearing}
+                bearing: ${bearing},
+                attributionControl: ${designSelections.show_attribution}
             });
 
             if (initialBounds) {
                 map.fitBounds(initialBounds, { padding: 50, animate: false });
             }
 
-            map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+            if (${designSelections.show_controls}) {
+                map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+                
+                // Push navigation control above the browser status bar
+                const style = document.createElement('style');
+                style.textContent = '.maplibregl-ctrl-bottom-right { bottom: 30px !important; }';
+                document.head.appendChild(style);
+            }
 
-            // Push navigation control above the browser status bar
-            const style = document.createElement('style');
-            style.textContent = '.maplibregl-ctrl-bottom-right { bottom: 30px !important; }';
-            document.head.appendChild(style);
+            if (${designSelections.enable_scale}) {
+                map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
+            }
+
+            if (${designSelections.auto_rotate}) {
+                let isRotating = true;
+                function rotateCamera(timestamp) {
+                    if (!isRotating) return;
+                    map.rotateTo((map.getBearing() + 0.1) % 360, { duration: 0 });
+                    requestAnimationFrame(rotateCamera);
+                }
+                map.on('load', () => {
+                    rotateCamera();
+                    map.on('dragstart', () => { isRotating = false; });
+                    map.on('dragend', () => { isRotating = true; rotateCamera(); });
+                    map.on('zoomstart', () => { isRotating = false; });
+                    map.on('zoomend', () => { isRotating = true; rotateCamera(); });
+                });
+            }
+
+            if (${designSelections.show_layer_toggle}) {
+                window.toggleLayer = function(layerId, visible) {
+                    const visibility = visible ? 'visible' : 'none';
+                    ['poly-', 'poly-line-', 'line-', 'point-'].forEach(prefix => {
+                        const lId = prefix + layerId;
+                        if (map.getLayer(lId)) {
+                            map.setLayoutProperty(lId, 'visibility', visibility);
+                        }
+                    });
+                };
+            }
 
             // Search function for custom search element
             window.doSearch = function(query) {
@@ -4459,10 +4538,10 @@ out geom;`;
                         if (match && f.geometry) found.push({ props, geom: f.geometry });
                     });
                 });
-                if (found.length === 0) { results.innerHTML = '<div class="cel-search-item" style="opacity:0.5">لا توجد نتائج</div>'; results.style.display = 'block'; return; }
+                if (found.length === 0) { results.innerHTML = '<div class="map-search-item" style="opacity:0.5; padding: 10px 16px;">لا توجد نتائج</div>'; results.style.display = 'block'; return; }
                 results.innerHTML = found.slice(0, 8).map((r, i) => {
                     const label = Object.values(r.props)[0] || 'معلم ' + (i + 1);
-                    return '<div class="cel-search-item" onclick="flyToFeature(' + i + ')">' + label + '</div>';
+                    return '<div class="map-search-item" onclick="flyToFeature(' + i + ')">' + label + '</div>';
                 }).join('');
                 results.style.display = 'block';
                 window._searchResults = found;
@@ -4619,33 +4698,35 @@ out geom;`;
                     paint: { 'circle-radius': 10, 'circle-color': 'transparent', 'circle-stroke-width': 3, 'circle-stroke-color': '#06D6F2' }
                 });
 
-                map.on('click', (e) => {
-                    const features = map.queryRenderedFeatures(e.point);
-                    const myFeatures = features.filter(f => f.layer.id.startsWith('poly-') || f.layer.id.startsWith('line-') || f.layer.id.startsWith('point-'));
-                    
-                    if (myFeatures.length > 0) {
-                        const f = myFeatures[0];
-                        map.getSource('highlight-src').setData(f.toJSON());
+                if (${designSelections.enable_popups}) {
+                    map.on('click', (e) => {
+                        const features = map.queryRenderedFeatures(e.point);
+                        const myFeatures = features.filter(f => f.layer.id.startsWith('poly-') || f.layer.id.startsWith('line-') || f.layer.id.startsWith('point-'));
                         
-                        let html = '<div style="direction:rtl; text-align:right; font-family: Cairo, sans-serif; padding:5px;">';
-                        html += '<h3 style="margin:0 0 12px 0; color:#06D6F2; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px; font-size:1.1rem;">تفاصيل المعلم</h3>';
-                        const props = f.properties;
-                        let hasProps = false;
-                        for (let key in props) {
-                            hasProps = true;
-                            html += '<div style="margin-bottom:10px; font-size:0.9rem; line-height:1.4;">';
-                            html += '<strong style="color:var(--primary);">' + key + ':</strong> ';
-                            html += '<span style="color:#eee; word-break:break-word;">' + props[key] + '</span>';
+                        if (myFeatures.length > 0) {
+                            const f = myFeatures[0];
+                            map.getSource('highlight-src').setData(f.toJSON());
+                            
+                            let html = '<div style="direction:rtl; text-align:right; font-family: Cairo, sans-serif; padding:5px;">';
+                            html += '<h3 style="margin:0 0 12px 0; color:#06D6F2; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px; font-size:1.1rem;">تفاصيل المعلم</h3>';
+                            const props = f.properties;
+                            let hasProps = false;
+                            for (let key in props) {
+                                hasProps = true;
+                                html += '<div style="margin-bottom:10px; font-size:0.9rem; line-height:1.4;">';
+                                html += '<strong style="color:var(--primary);">' + key + ':</strong> ';
+                                html += '<span style="color:#eee; word-break:break-word;">' + props[key] + '</span>';
+                                html += '</div>';
+                            }
+                            if(!hasProps) html += '<div style="opacity:0.6; font-size:0.85rem;">لا توجد بيانات وصفية متاحة.</div>';
                             html += '</div>';
+                            
+                            new maplibregl.Popup({closeButton: false, maxWidth: '320px'}).setLngLat(e.lngLat).setHTML(html).addTo(map);
+                        } else {
+                            map.getSource('highlight-src').setData({ type: 'FeatureCollection', features: [] });
                         }
-                        if(!hasProps) html += '<div style="opacity:0.6; font-size:0.85rem;">لا توجد بيانات وصفية متاحة.</div>';
-                        html += '</div>';
-                        
-                        new maplibregl.Popup({closeButton: false, maxWidth: '320px'}).setLngLat(e.lngLat).setHTML(html).addTo(map);
-                    } else {
-                        map.getSource('highlight-src').setData({ type: 'FeatureCollection', features: [] });
-                    }
-                });
+                    });
+                }
             });
         } catch (e) {
             console.error("Critical Map Error:", e);
@@ -6196,7 +6277,7 @@ out geom;`;
                             { id: 'basemaps', label: 'الخرائط', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" /></svg>, count: 6 },
                             { id: 'effects', label: 'التأثيرات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>, count: 9 },
                             { id: 'builder', label: 'منشئ الصفحة', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 3v18M3 9h6M3 15h6M15 9h6M15 15h6" /></svg>, count: pageElements.length || '+' },
-                            { id: 'settings', label: 'الإعدادات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1V15a2 2 0 0 1-2-2 2 2 0 0 1 2-2v-.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2v.09a1.65 1.65 0 0 0-1.51 1z" /></svg>, count: 'Pro' }
+                            { id: 'settings', label: 'الإعدادات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1V15a2 2 0 0 1-2-2 2 2 0 0 1 2-2v-.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2v.09a1.65 1.65 0 0 0-1.51 1z" /></svg>, count: 8 }
                         ].map(cat => (
                             <div key={cat.id} className={`ds-cat ${activeDsCategory === cat.id ? 'active' : ''}`} onClick={() => setActiveDsCategory(cat.id)}>
                                 {cat.icon}
@@ -6414,7 +6495,7 @@ out geom;`;
                                         { id: 'cairo_mono', title: 'Cairo + JetBrains Mono', sub: 'تقني · للمطورين', fontH: "'Cairo', sans-serif", fontB: "'JetBrains Mono', monospace", previewH: 'Cairo Extra Bold', previewB: 'JetBrains Mono Technical', wH: 800, wB: 500 },
                                         { id: 'tajawal_ed', title: 'Tajawal Editorial', sub: 'تحريري · رسمي', fontH: "'Tajawal', sans-serif", fontB: "'Tajawal', sans-serif", previewH: 'Tajawal Bold', previewB: 'Tajawal Regular Editorial', wH: 700, wB: 400 },
                                         { id: 'display', title: 'Display Big', sub: 'عرض · بصري', fontH: "'Cairo', sans-serif", fontB: "'Tajawal', sans-serif", previewH: 'Display Cairo 1000', previewB: 'Tajawal Medium UI', wH: 1000, wB: 500, cls: 'preview-display' },
-                                        { id: 'compact', title: 'Compact UI', sub: 'مدمج · واجهات', fontH: "'Cairo', sans-serif", fontB: "'Tajawal', sans-serif", previewH: 'Compact Cairo', previewB: 'Tajawal Extra Light', wH: 700, wB: 200, cls: 'preview-compact' }
+{ id: 'compact', title: 'Compact UI', sub: 'مدمج · واجهات', fontH: "'Cairo', sans-serif", fontB: "'Tajawal', sans-serif", previewH: 'Compact Cairo', previewB: 'Tajawal Extra Light', wH: 700, wB: 200, cls: 'preview-compact' }
                                     ].map(f => (
                                         <div key={f.id} className={`ds-pick ${designSelections.font === f.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({ ...s, font: f.id }))}>
                                             <div className={`type-preview ${f.cls || ''}`}>
@@ -6494,10 +6575,14 @@ out geom;`;
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                                     {[
-                                        { id: 'show_controls', label: 'إظهار أدوات التحكم (Zoom)', icon: '🧭' },
-                                        { id: 'show_attribution', label: 'إظهار حقوق الملكية', icon: 'ℹ️' },
-                                        { id: 'enable_popups', label: 'تفعيل النوافذ المنبثقة', icon: '💬' },
-                                        { id: 'auto_rotate', label: 'دوران تلقائي (Cinematic)', icon: '🔄' }
+                                        { id: 'show_controls', label: 'إظهار أدوات التحكم بالتكبير والتوجيه (Navigation Controls)', icon: '🧭' },
+                                        { id: 'show_attribution', label: 'إظهار حقوق الملكية والترخيص (Attribution)', icon: 'ℹ️' },
+                                        { id: 'enable_popups', label: 'تفعيل النوافذ المنبثقة للتفاصيل الوصفية (Interactive Popups)', icon: '💬' },
+                                        { id: 'auto_rotate', label: 'الدوران السينمائي التلقائي الخامل (Cinematic Auto-Rotate)', icon: '🔄' },
+                                        { id: 'enable_search', label: 'شريط البحث الذكي عن المعالم الجغرافية (Search Bar)', icon: '🔍' },
+                                        { id: 'show_legend', label: 'مفتاح الخريطة التفاعلي الديناميكي (Map Legend)', icon: '📊' },
+                                        { id: 'show_layer_toggle', label: 'لوحة التحكم بالطبقات وتفعيلها (Layer Control)', icon: '⊞' },
+                                        { id: 'enable_scale', label: 'مقياس الرسم الجغرافي للخرائط (Scale Rule)', icon: '📏' }
                                     ].map(s => (
                                         <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px', background: 'var(--bg-soft)', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -6794,109 +6879,254 @@ out geom;`;
                         <div className="device-frame-container">
                             <div className={`${previewDevice === 'desktop' ? 'laptop-frame' : 'phone-frame'}`}>
                                 <div className={`preview-mock-content layout-mockup lm-${designSelections.layout} ${designSelections.effect}`}>
-                                    {designSelections.layout === 'modal' ? (
-                                        <div className="lm-modal-frame">
-                                            <div className="lm-modal-bar"></div>
-                                            <div className="lm-map">
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <div className="lm-map">
-                                            </div>
+                                    {(() => {
+                                        const basemapMockupStyle = {
+                                            satellite: {
+                                                background: 'linear-gradient(135deg, #122c15, #08170e)',
+                                                backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(20,80,40,0.3) 0%, transparent 80%), linear-gradient(135deg, #0d2112, #040d06)'
+                                            },
+                                            streets: {
+                                                background: 'linear-gradient(135deg, #3a4b61, #1e2936)',
+                                                backgroundImage: 'linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)',
+                                                backgroundSize: '10px 10px'
+                                            },
+                                            outdoors: {
+                                                background: 'linear-gradient(135deg, #2e4d2a, #162814)',
+                                                backgroundImage: 'radial-gradient(circle at 30% 20%, rgba(139,195,74,0.15) 0%, transparent 60%), linear-gradient(135deg, #223e1e, #0e1a0b)'
+                                            },
+                                            light: {
+                                                background: 'linear-gradient(135deg, #e5e9f0, #c8d3e6)',
+                                                backgroundImage: 'linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px)',
+                                                backgroundSize: '12px 12px'
+                                            },
+                                            dark: {
+                                                background: 'linear-gradient(135deg, #12161a, #06080a)',
+                                                backgroundImage: 'linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)',
+                                                backgroundSize: '15px 15px'
+                                            },
+                                            palestine: {
+                                                background: 'linear-gradient(135deg, #111b15, #070c09)',
+                                                backgroundImage: 'radial-gradient(circle at 80% 20%, rgba(206,17,38,0.08) 0%, transparent 50%), radial-gradient(circle at 20% 80%, rgba(0,122,61,0.08) 0%, transparent 50%), linear-gradient(135deg, #0e1611, #060a08)'
+                                            }
+                                        }[designSelections.basemap] || {
+                                            background: 'linear-gradient(135deg, #1A3458, #0F1E33)'
+                                        };
 
-                                            {designSelections.layout === 'fullmap' && (
-                                                <>
-                                                    <div className="lm-search"></div>
-                                                    <div className="lm-panel">
-                                                        <div className="lm-row accent thick"></div>
-                                                        <div className="lm-row short"></div>
-                                                        <div className="lm-row tiny"></div>
+                                        const mapInteractiveOverlays = (
+                                            <>
+                                                {/* Map pins simulating markers */}
+                                                <div className="lm-pin" style={{ top: '30%', left: '40%' }}></div>
+                                                <div className="lm-pin cy" style={{ top: '60%', left: '70%' }}></div>
+                                                <div className="lm-pin lg" style={{ top: '45%', left: '55%' }}></div>
+
+                                                {/* 1. Zoom Controls */}
+                                                {designSelections.show_controls && (
+                                                    <div className="lm-zoom-controls" style={{ position: 'absolute', top: '8px', right: '8px', display: 'flex', flexDirection: 'column', gap: '2px', zIndex: 10, background: 'rgba(10,22,40,0.85)', padding: '2px', borderRadius: '3px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                                        <div style={{ width: '10px', height: '10px', display: 'grid', placeItems: 'center', fontSize: '7px', color: '#fff', fontWeight: 'bold', cursor: 'default' }}>+</div>
+                                                        <div style={{ width: '10px', height: '10px', display: 'grid', placeItems: 'center', fontSize: '7px', color: '#fff', fontWeight: 'bold', cursor: 'default', borderTop: '1px solid rgba(255,255,255,0.1)' }}>-</div>
                                                     </div>
-                                                </>
-                                            )}
+                                                )}
 
-                                            {designSelections.layout === 'sidebar' && (
-                                                <div className="lm-panel lm-sidebar">
-                                                    <div className="lm-header" style={{ position: 'relative', height: '15px', marginBottom: '8px' }}></div>
-                                                    {[1, 2, 3, 4, 5].map(i => (
-                                                        <div key={i} className="lm-item">
-                                                            <div className="lm-thumb"></div>
-                                                            <div className="lm-item-content">
-                                                                <div className="lm-row tiny"></div>
-                                                                <div className="lm-row short" style={{ opacity: 0.5 }}></div>
-                                                            </div>
+                                                {/* 2. Scale Ruler */}
+                                                {designSelections.enable_scale && (
+                                                    <div className="lm-scale-bar" style={{ position: 'absolute', bottom: '15px', right: '8px', background: 'rgba(10,22,40,0.85)', border: '1px solid #fff', borderTop: 'none', height: '3px', width: '22px', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <span style={{ fontSize: '4px', color: '#fff', transform: 'scale(0.85)', display: 'block', marginTop: '-6px', fontWeight: 'bold' }}>50م</span>
+                                                    </div>
+                                                )}
+
+                                                {/* 3. Attribution */}
+                                                {designSelections.show_attribution && (
+                                                    <div className="lm-attribution" style={{ position: 'absolute', bottom: '2px', right: '8px', fontSize: '4.5px', opacity: 0.5, color: '#fff', zIndex: 10, pointerEvents: 'none' }}>
+                                                        © OSM PalNovaa
+                                                    </div>
+                                                )}
+
+                                                {/* 4. Layer Toggle Indicator */}
+                                                {designSelections.show_layer_toggle && (
+                                                    <div className="lm-layer-toggle-mini" style={{ position: 'absolute', top: '8px', left: '8px', width: '12px', height: '12px', background: 'rgba(10,22,40,0.9)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '3px', display: 'grid', placeItems: 'center', zIndex: 10 }}>
+                                                        <svg viewBox="0 0 24 24" width="7" height="7" fill="none" stroke="var(--primary)" strokeWidth="3">
+                                                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                                                        </svg>
+                                                    </div>
+                                                )}
+
+                                                {/* 5. Geocoding Search Bar Overlay */}
+                                                {designSelections.enable_search && designSelections.layout !== 'fullmap' && (
+                                                    <div className="lm-search-mini" style={{ position: 'absolute', top: '8px', left: '26px', right: '26px', height: '12px', background: 'rgba(10,22,40,0.9)', border: '1px solid var(--primary-glow)', borderRadius: '99px', display: 'flex', alignItems: 'center', gap: '3px', padding: '0 5px', zIndex: 10 }}>
+                                                        <span style={{ fontSize: '5px', color: '#fff', opacity: 0.6 }}>🔍 بحث...</span>
+                                                    </div>
+                                                )}
+
+                                                {/* 6. Cinematic Auto Rotate Compass Indicator */}
+                                                {designSelections.auto_rotate && (
+                                                    <div className="lm-rotate-compass" style={{ position: 'absolute', top: designSelections.show_controls ? '34px' : '8px', right: '8px', width: '12px', height: '12px', border: '1px solid var(--primary)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'spin 8s linear infinite', zIndex: 10, background: 'rgba(10,22,40,0.8)' }}>
+                                                        <div style={{ width: '1px', height: '9px', background: 'var(--primary)', position: 'relative' }}>
+                                                            <div style={{ position: 'absolute', top: 0, left: '-1px', width: '3px', height: '3px', background: '#EF4444', borderRadius: '50%' }}></div>
                                                         </div>
-                                                    ))}
+                                                    </div>
+                                                )}
+
+                                                {/* 7. Interactive Map Legend */}
+                                                {designSelections.show_legend && (
+                                                    <div className="lm-legend-mini" style={{ position: 'absolute', bottom: '8px', left: '8px', width: '32px', background: 'rgba(10,22,40,0.9)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', padding: '3px', zIndex: 10, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                                            <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--primary)' }}></span>
+                                                            <span style={{ fontSize: '4px', color: '#fff', transform: 'scale(0.8)', transformOrigin: 'left' }}>المعالم</span>
+                                                        </div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                                            <span style={{ width: '4px', height: '4px', background: '#06D6F2' }}></span>
+                                                            <span style={{ fontSize: '4px', color: '#fff', transform: 'scale(0.8)', transformOrigin: 'left' }}>الطرق</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </>
+                                        );
+
+                                        if (designSelections.layout === 'modal') {
+                                            return (
+                                                <div className="lm-modal-frame">
+                                                    <div className="lm-modal-bar"></div>
+                                                    <div className="lm-map" style={basemapMockupStyle}>
+                                                        {mapInteractiveOverlays}
+                                                    </div>
                                                 </div>
-                                            )}
+                                            );
+                                        }
 
-                                            {designSelections.layout === 'three' && (
-                                                <>
-                                                    <div className="lm-header"></div>
-                                                    <div className="lm-tools">
-                                                        <div className="lm-tool active"></div>
-                                                        <div className="lm-tool"></div>
-                                                        <div className="lm-tool"></div>
-                                                        <div className="lm-tool"></div>
-                                                    </div>
-                                                    <div className="lm-panel lm-details">
-                                                        <div className="lm-row thick accent"></div>
-                                                        <div className="lm-row short"></div>
-                                                        <div className="lm-row"></div>
-                                                    </div>
-                                                </>
-                                            )}
+                                        return (
+                                            <>
+                                                <div className="lm-map" style={basemapMockupStyle}>
+                                                    {mapInteractiveOverlays}
+                                                </div>
 
-                                            {designSelections.layout === 'dashboard' && (
-                                                <>
-                                                    <div className="lm-header">
-                                                        <div className="lm-spacer"></div>
-                                                        <div className="lm-dot-row"><i></i></div>
-                                                    </div>
-                                                    <div className="lm-stats">
-                                                        {[1, 2, 3].map(i => (
-                                                            <div key={i} className="lm-stat">
-                                                                <div className="lm-row tiny" style={{ opacity: 0.5 }}></div>
-                                                                <div className="lm-stat-num"></div>
+                                                {designSelections.layout === 'fullmap' && (
+                                                    <>
+                                                        <div className="lm-search"></div>
+                                                        <div className="lm-panel">
+                                                            <div className="lm-row accent thick"></div>
+                                                            <div className="lm-row short"></div>
+                                                            <div className="lm-row tiny"></div>
+                                                        </div>
+                                                    </>
+                                                )}
+
+                                                {designSelections.layout === 'sidebar' && (
+                                                    <div className="lm-panel lm-sidebar">
+                                                        <div className="lm-header" style={{ position: 'relative', height: '15px', marginBottom: '8px' }}></div>
+                                                        {[1, 2, 3, 4, 5].map(i => (
+                                                            <div key={i} className="lm-item">
+                                                                <div className="lm-thumb"></div>
+                                                                <div className="lm-item-content">
+                                                                    <div className="lm-row tiny"></div>
+                                                                    <div className="lm-row short" style={{ opacity: 0.5 }}></div>
+                                                                </div>
                                                             </div>
                                                         ))}
                                                     </div>
-                                                </>
-                                            )}
+                                                )}
 
-                                            {designSelections.layout === 'split' && (
-                                                <div className="lm-panel">
-                                                    <div className="lm-row thick accent" style={{ width: '80%', marginBottom: '10px' }}></div>
-                                                    <div className="lm-grid-2">
-                                                        {[1, 2, 3, 4].map(i => <div key={i} className="lm-card-ph" style={{ height: '25px' }}></div>)}
-                                                    </div>
-                                                </div>
-                                            )}
+                                                {designSelections.layout === 'three' && (
+                                                    <>
+                                                        <div className="lm-header"></div>
+                                                        <div className="lm-tools">
+                                                            <div className="lm-tool active"></div>
+                                                            <div className="lm-tool"></div>
+                                                            <div className="lm-tool"></div>
+                                                            <div className="lm-tool"></div>
+                                                        </div>
+                                                        <div className="lm-panel lm-details">
+                                                            <div className="lm-row thick accent"></div>
+                                                            <div className="lm-row short"></div>
+                                                            <div className="lm-row"></div>
+                                                        </div>
+                                                    </>
+                                                )}
 
-                                            {designSelections.layout === 'stacked' && (
-                                                <div className="lm-panel">
-                                                    <div className="lm-row tiny accent" style={{ marginBottom: '6px' }}></div>
-                                                    <div style={{ display: 'flex', gap: '8px', flex: 1 }}>
-                                                        {[1, 2, 3].map(i => <div key={i} style={{ flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}></div>)}
-                                                    </div>
-                                                </div>
-                                            )}
+                                                {designSelections.layout === 'dashboard' && (
+                                                    <>
+                                                        <div className="lm-header">
+                                                            <div className="lm-spacer"></div>
+                                                            <div className="lm-dot-row"><i></i></div>
+                                                        </div>
+                                                        <div className="lm-stats">
+                                                            {[1, 2, 3].map(i => (
+                                                                <div key={i} className="lm-stat">
+                                                                    <div className="lm-row tiny" style={{ opacity: 0.5 }}></div>
+                                                                    <div className="lm-stat-num"></div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </>
+                                                )}
 
-                                            {designSelections.layout === 'floating' && (
-                                                <>
-                                                    <div className="lm-panel lm-fc1">
-                                                        <div className="lm-row tiny accent"></div>
-                                                        <div className="lm-row short"></div>
+                                                {designSelections.layout === 'split' && (
+                                                    <div className="lm-panel">
+                                                        <div className="lm-row thick accent" style={{ width: '80%', marginBottom: '10px' }}></div>
+                                                        <div className="lm-grid-2">
+                                                            {[1, 2, 3, 4].map(i => <div key={i} className="lm-card-ph" style={{ height: '25px' }}></div>)}
+                                                        </div>
                                                     </div>
-                                                    <div className="lm-panel lm-fc2">
-                                                        <div className="lm-row thick accent"></div>
-                                                        <div className="lm-row"></div>
+                                                )}
+
+                                                {designSelections.layout === 'stacked' && (
+                                                    <div className="lm-panel">
+                                                        <div className="lm-row tiny accent" style={{ marginBottom: '6px' }}></div>
+                                                        <div style={{ display: 'flex', gap: '8px', flex: 1 }}>
+                                                            {[1, 2, 3].map(i => <div key={i} style={{ flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}></div>)}
+                                                        </div>
                                                     </div>
-                                                </>
-                                            )}
-                                        </>
-                                    )}
+                                                )}
+
+                                                {designSelections.layout === 'floating' && (
+                                                    <>
+                                                        <div className="lm-panel lm-fc1">
+                                                            <div className="lm-row tiny accent"></div>
+                                                            <div className="lm-row short"></div>
+                                                        </div>
+                                                        <div className="lm-panel lm-fc2">
+                                                            <div className="lm-row thick accent"></div>
+                                                            <div className="lm-row"></div>
+                                                        </div>
+                                                    </>
+                                                )}
+
+                                                {designSelections.layout === 'custom' && (
+                                                    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 6 }}>
+                                                        {pageElements.map(el => (
+                                                            <div
+                                                                key={el.id}
+                                                                style={{
+                                                                    position: 'absolute',
+                                                                    left: `${el.x}%`,
+                                                                    top: `${el.y}%`,
+                                                                    width: `${el.w}%`,
+                                                                    fontSize: '4px',
+                                                                    padding: '1px 2px',
+                                                                    borderRadius: '2px',
+                                                                    lineHeight: 1,
+                                                                    color: el.color || 'var(--primary)',
+                                                                    boxSizing: 'border-box'
+                                                                }}
+                                                            >
+                                                                {el.type === 'heading' && <div style={{ fontWeight: '900', fontSize: '6px', whiteSpace: 'nowrap', overflow: 'hidden' }}>{el.text}</div>}
+                                                                {el.type === 'subheading' && <div style={{ fontWeight: '700', fontSize: '5px', whiteSpace: 'nowrap', overflow: 'hidden' }}>{el.text}</div>}
+                                                                {el.type === 'paragraph' && <div style={{ fontSize: '3px', opacity: 0.75, overflow: 'hidden', height: '6px' }}>{el.text}</div>}
+                                                                {el.type === 'btn_primary' && <div style={{ background: el.color || 'var(--primary)', color: '#000', borderRadius: '2px', height: '6px', fontSize: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>{el.text}</div>}
+                                                                {el.type === 'btn_outline' && <div style={{ border: `0.5px solid ${el.color || 'var(--primary)'}`, borderRadius: '2px', height: '6px', fontSize: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>{el.text}</div>}
+                                                                {el.type === 'search' && <div style={{ background: 'rgba(0,0,0,0.4)', border: '0.5px solid rgba(255,255,255,0.2)', borderRadius: '99px', height: '6px', display: 'flex', alignItems: 'center', padding: '0 2px', fontSize: '3px' }}>🔍 {el.text}</div>}
+                                                                {el.type === 'layers' && <div style={{ background: 'rgba(0,0,0,0.3)', border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: '2px', height: '6px', fontSize: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⊞ {el.text}</div>}
+                                                                {el.type === 'stat' && <div style={{ background: 'rgba(0,0,0,0.4)', border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: '2px', padding: '1px', textAlign: 'center' }}><div style={{ fontWeight: '800', fontSize: '5px' }}>0</div><div style={{ fontSize: '2.5px', opacity: 0.7 }}>{el.text}</div></div>}
+                                                                {el.type === 'divider' && <hr style={{ border: 'none', borderTop: '0.5px solid rgba(255,255,255,0.2)', margin: '1px 0' }} />}
+                                                                {el.type === 'badge' && <span style={{ background: el.color || 'var(--primary)', color: '#000', borderRadius: '99px', padding: '0.5px 2px', fontSize: '3px', fontWeight: 'bold', display: 'inline-block' }}>{el.text}</span>}
+                                                                {el.type === 'card' && <div style={{ background: 'rgba(20,43,71,0.6)', border: '0.5px solid var(--border)', borderRadius: '2px', padding: '2px' }}><div style={{ fontSize: '4px', fontWeight: 'bold', color: '#fff' }}>{el.text}</div><div style={{ fontSize: '2.5px', opacity: 0.6 }}>...</div></div>}
+                                                                {el.type === 'icon' && <div style={{ display: 'flex', justifyContent: 'center' }}>⭐</div>}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                         </div>
