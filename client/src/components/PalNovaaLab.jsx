@@ -177,6 +177,34 @@ const PalNovaaLab = ({ onClose }) => {
     const clickCountRef = useRef(0);
     const clickTimerRef = useRef(null);
 
+    const [designSelections, setDesignSelections] = useState({
+        layout: 'fullmap',
+        palette: 'classic',
+        font: 'cairo_tajawal',
+        basemap: 'satellite',
+        marker: 'pin',
+        component: 'pill',
+        effect: 'glow',
+        customPrimary: '#F5A623',
+        show_controls: true,
+        show_attribution: true,
+        enable_popups: true,
+        auto_rotate: false,
+        enable_search: true,
+        show_legend: true,
+        show_layer_toggle: true,
+        enable_scale: true,
+        customBg: '#0A1628',
+        customSurface: 'rgba(20, 43, 71, 0.7)',
+        customText: '#FFFFFF',
+        customBorder: 'rgba(255, 255, 255, 0.08)',
+        mapBorderRadius: '12px',
+        mapBorderColor: 'rgba(255, 255, 255, 0.15)',
+        mapBorderWidth: '1px',
+        customFontHeading: 'Cairo',
+        customFontBody: 'Tajawal'
+    });
+
     const mapStyle = useMemo(() => {
         const bm = designSelections.basemap;
         const bmTiles = {
@@ -262,33 +290,6 @@ const PalNovaaLab = ({ onClose }) => {
     const [publishName, setPublishName] = useState('');
     const [publishSlug, setPublishSlug] = useState('');
     const [isPublishing, setIsPublishing] = useState(false);
-    const [designSelections, setDesignSelections] = useState({
-        layout: 'fullmap',
-        palette: 'classic',
-        font: 'cairo_tajawal',
-        basemap: 'satellite',
-        marker: 'pin',
-        component: 'pill',
-        effect: 'glow',
-        customPrimary: '#F5A623',
-        show_controls: true,
-        show_attribution: true,
-        enable_popups: true,
-        auto_rotate: false,
-        enable_search: true,
-        show_legend: true,
-        show_layer_toggle: true,
-        enable_scale: true,
-        customBg: '#0A1628',
-        customSurface: 'rgba(20, 43, 71, 0.7)',
-        customText: '#FFFFFF',
-        customBorder: 'rgba(255, 255, 255, 0.08)',
-        mapBorderRadius: '12px',
-        mapBorderColor: 'rgba(255, 255, 255, 0.15)',
-        mapBorderWidth: '1px',
-        customFontHeading: 'Cairo',
-        customFontBody: 'Tajawal'
-    });
     const [pageElements, setPageElements] = useState([]);
     const [selectedElId, setSelectedElId] = useState(null);
     const [previewDevice, setPreviewDevice] = useState('desktop'); // 'desktop' or 'mobile'
