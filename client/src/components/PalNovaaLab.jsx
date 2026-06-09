@@ -111,6 +111,14 @@ const PAL_DATA_CATEGORIES = {
     }
 };
 
+const TOUR_STEPS = [
+    { name: 'القدس الشريف', coords: [35.2137, 31.7683], desc: 'العاصمة الروحية والتاريخية لفلسطين، تضم المسجد الأقصى وكنيسة القيامة والبلدة القديمة المسورة.', zoom: 14 },
+    { name: 'يافا عروس البحر', coords: [34.7525, 32.0528], desc: 'ميناء فلسطين التاريخي الأهم ومركز الحركة الثقافية والصحفية قبل عام 1948.', zoom: 14 },
+    { name: 'حيفا جبل الكرمل', coords: [34.9888, 32.7940], desc: 'عروس جبل الكرمل، تتميز بمينائها الاستراتيجي وحجارتها الكنعانية وتنوعها المعماري.', zoom: 14 },
+    { name: 'غزة هاشم', coords: [34.4668, 31.5016], desc: 'إحدى أقدم مدن العالم عبر التاريخ، وبوابة فلسطين الجنوبية التي واجهت الحملات والحروب.', zoom: 13 },
+    { name: 'صفد عاصمة الجليل', coords: [35.4944, 32.9658], desc: 'مدينة العلم والتصوف الرابضة على قمم الجليل الأعلى بارتفاع يفوق 900 متر عن سطح البحر.', zoom: 14 }
+];
+
 const PalNovaaLab = ({ onClose }) => {
     const { user } = useAuth();
     const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -169,28 +177,41 @@ const PalNovaaLab = ({ onClose }) => {
     const clickCountRef = useRef(0);
     const clickTimerRef = useRef(null);
 
-    const mapStyle = useMemo(() => ({
-        version: 8,
-        name: "Google Satellite",
-        sprite: "https://demotiles.maplibre.org/styles/osm-bright-gl-style/sprite",
-        glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
-        sources: {
-            'raster-tiles': {
-                type: 'raster',
-                tiles: [`https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}`],
-                tileSize: 256
-            }
-        },
-        layers: [
-            {
-                id: 'simple-tiles',
-                type: 'raster',
-                source: 'raster-tiles',
-                minzoom: 0,
-                maxzoom: 22
-            }
-        ]
-    }), []);
+    const mapStyle = useMemo(() => {
+        const bm = designSelections.basemap;
+        const bmTiles = {
+            dark: 'https://cartodb-basemaps-a.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png',
+            light: 'https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
+            satellite: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+            satellite_pure: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+            terrain: 'https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.jpg',
+            vintage: 'https://stamen-tiles.a.ssl.fastly.net/toner/{z}/{x}/{y}.png',
+            cyber: 'https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}'
+        };
+        const tileUrl = bmTiles[bm] || bmTiles.satellite;
+        return {
+            version: 8,
+            name: "Basemap Style",
+            sprite: "https://demotiles.maplibre.org/styles/osm-bright-gl-style/sprite",
+            glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+            sources: {
+                'raster-tiles': {
+                    type: 'raster',
+                    tiles: [tileUrl],
+                    tileSize: 256
+                }
+            },
+            layers: [
+                {
+                    id: 'simple-tiles',
+                    type: 'raster',
+                    source: 'raster-tiles',
+                    minzoom: 0,
+                    maxzoom: 22
+                }
+            ]
+        };
+    }, [designSelections.basemap]);
 
     const [drawingMode, setDrawingMode] = useState(null); // 'point', 'line', 'polygon', 'measure'
     const [selectedFeatureInfo, setSelectedFeatureInfo] = useState(null);
@@ -198,6 +219,30 @@ const PalNovaaLab = ({ onClose }) => {
     const [drawnFeatures, setDrawnFeatures] = useState({ type: 'FeatureCollection', features: [] });
     const [measurement, setMeasurement] = useState(null);
     const [showBottomTable, setShowBottomTable] = useState(false);
+
+    // Advanced Web GIS States
+    const [gisMeasureType, setGisMeasureType] = useState(null); // 'distance', 'area'
+    const [gisMeasurePoints, setGisMeasurePoints] = useState([]);
+    const [gisMeasureResult, setGisMeasureResult] = useState(null); // { length, area }
+    const [gisBufferActive, setGisBufferActive] = useState(false);
+    const [gisBufferRadius, setGisBufferRadius] = useState(5); // km
+    const [gisBufferCenter, setGisBufferCenter] = useState(null);
+    const [gisBufferResults, setGisBufferResults] = useState([]);
+    const [gisElevActive, setGisElevActive] = useState(false);
+    const [gisElevPoints, setGisElevPoints] = useState([]);
+    const [gisElevProfile, setGisElevProfile] = useState([]);
+    const [gisTimeActive, setGisTimeActive] = useState(false);
+    const [gisTimeValue, setGisTimeValue] = useState(2026);
+    const [gisSwipeActive, setGisSwipeActive] = useState(false);
+    const [gisSwipePosition, setGisSwipePosition] = useState(50); // %
+    const [gisFilterQuery, setGisFilterQuery] = useState('');
+    const [gisFilterTag, setGisFilterTag] = useState('');
+    const [gisApiUrl, setGisApiUrl] = useState('');
+    const [gisHeatmapActive, setGisHeatmapActive] = useState(false);
+    const [gisTourActive, setGisTourActive] = useState(false);
+    const [gisTourStep, setGisTourStep] = useState(0);
+    const [gisReverseGeocodingActive, setGisReverseGeocodingActive] = useState(false);
+    const [gisReverseGeocodingResult, setGisReverseGeocodingResult] = useState(null);
 
     const [geoLayers, setGeoLayers] = useState([]);
     const [activeTableLayerId, setActiveTableLayerId] = useState(null);
@@ -233,7 +278,16 @@ const PalNovaaLab = ({ onClose }) => {
         enable_search: true,
         show_legend: true,
         show_layer_toggle: true,
-        enable_scale: true
+        enable_scale: true,
+        customBg: '#0A1628',
+        customSurface: 'rgba(20, 43, 71, 0.7)',
+        customText: '#FFFFFF',
+        customBorder: 'rgba(255, 255, 255, 0.08)',
+        mapBorderRadius: '12px',
+        mapBorderColor: 'rgba(255, 255, 255, 0.15)',
+        mapBorderWidth: '1px',
+        customFontHeading: 'Cairo',
+        customFontBody: 'Tajawal'
     });
     const [pageElements, setPageElements] = useState([]);
     const [selectedElId, setSelectedElId] = useState(null);
@@ -3094,9 +3148,174 @@ out geom;`;
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [selectedFeatures]);
 
+    const calculateArea = (coords) => {
+        if (coords.length < 3) return 0;
+        let area = 0;
+        const R = 6378137; // Earth radius in meters
+        const toRad = x => x * Math.PI / 180;
+        for (let i = 0; i < coords.length; i++) {
+            const p1 = coords[i];
+            const p2 = coords[(i + 1) % coords.length];
+            const x1 = toRad(p1[0]) * Math.cos(toRad(p1[1])) * R;
+            const y1 = toRad(p1[1]) * R;
+            const x2 = toRad(p2[0]) * Math.cos(toRad(p2[1])) * R;
+            const y2 = toRad(p2[1]) * R;
+            area += (x1 * y2 - x2 * y1);
+        }
+        return Math.abs(area / 2); // Sq meters
+    };
+
+    const calculateElevationProfile = (points) => {
+        if (points.length < 2) return;
+        const profile = [];
+        const sampleCount = 40;
+        let totalDistance = 0;
+        const segmentDistances = [];
+        for (let i = 1; i < points.length; i++) {
+            const dist = haversineDistance(points[i-1], points[i]);
+            segmentDistances.push(dist);
+            totalDistance += dist;
+        }
+        
+        const activeRaster = geoLayers.find(l => l.id === activeAsterLayerId);
+        
+        for (let s = 0; s <= sampleCount; s++) {
+            const t = s / sampleCount;
+            const distAlong = t * totalDistance;
+            let currentDist = 0;
+            let coord = points[0];
+            for (let i = 0; i < segmentDistances.length; i++) {
+                if (currentDist + segmentDistances[i] >= distAlong || i === segmentDistances.length - 1) {
+                    const segmentT = segmentDistances[i] === 0 ? 0 : (distAlong - currentDist) / segmentDistances[i];
+                    const p1 = points[i];
+                    const p2 = points[i+1];
+                    coord = [
+                        p1[0] + (p2[0] - p1[0]) * segmentT,
+                        p1[1] + (p2[1] - p1[1]) * segmentT
+                    ];
+                    break;
+                }
+                currentDist += segmentDistances[i];
+            }
+            
+            let elev = 0;
+            if (activeRaster && activeRaster.elevations) {
+                const { west, south, east, north, gridWidth, gridHeight, elevations } = activeRaster;
+                const pctX = (coord[0] - west) / (east - west);
+                const pctY = (north - coord[1]) / (north - south);
+                if (pctX >= 0 && pctX <= 1 && pctY >= 0 && pctY <= 1) {
+                    const col = Math.floor(pctX * (gridWidth - 1));
+                    const row = Math.floor(pctY * (gridHeight - 1));
+                    const idx = row * gridWidth + col;
+                    elev = elevations[idx] || 0;
+                }
+            } else {
+                const freq1 = 15 / totalDistance || 0.01;
+                const freq2 = 45 / totalDistance || 0.03;
+                elev = 150 + Math.sin(distAlong * freq1) * 90 + Math.cos(distAlong * freq2) * 25;
+            }
+            profile.push({
+                distance: Math.round(distAlong),
+                elevation: Math.round(elev)
+            });
+        }
+        setGisElevProfile(profile);
+    };
+
     const handleMapClick = (e) => {
+        const coord = [e.lngLat.lng, e.lngLat.lat];
+
+        if (gisReverseGeocodingActive) {
+            let closest = null;
+            let minDist = Infinity;
+            geoLayers.forEach(layer => {
+                if (!layer.data?.features) return;
+                layer.data.features.forEach(f => {
+                    if (!f.geometry) return;
+                    let fCoord = null;
+                    if (f.geometry.type === 'Point') fCoord = f.geometry.coordinates;
+                    else if (f.geometry.coordinates?.[0]?.[0]) fCoord = f.geometry.coordinates[0][0];
+                    else if (f.geometry.coordinates?.[0]) fCoord = f.geometry.coordinates[0];
+                    
+                    if (fCoord) {
+                        const dist = haversineDistance(coord, fCoord);
+                        if (dist < minDist) {
+                            minDist = dist;
+                            closest = {
+                                name: f.properties?.name || f.properties?.name_ar || f.properties?.title || 'معلم جغرافي',
+                                category: layer.name
+                            };
+                        }
+                    }
+                });
+            });
+            setGisReverseGeocodingResult({
+                lng: e.lngLat.lng,
+                lat: e.lngLat.lat,
+                closestName: closest ? closest.name : null,
+                closestCategory: closest ? closest.category : null,
+                distance: closest ? minDist : null
+            });
+            return;
+        }
+
         if (drawingMode) {
-            const coord = [e.lngLat.lng, e.lngLat.lat];
+            if (drawingMode === 'gis_measure') {
+                setGisMeasurePoints(prev => {
+                    const newPoints = [...prev, coord];
+                    if (gisMeasureType === 'distance') {
+                        let dist = 0;
+                        for (let i = 1; i < newPoints.length; i++) {
+                            dist += haversineDistance(newPoints[i-1], newPoints[i]);
+                        }
+                        setGisMeasureResult({ length: dist, area: 0 });
+                    } else if (gisMeasureType === 'area') {
+                        const areaVal = calculateArea(newPoints);
+                        setGisMeasureResult({ length: 0, area: areaVal });
+                    }
+                    return newPoints;
+                });
+                return;
+            }
+
+            if (drawingMode === 'gis_buffer') {
+                setGisBufferCenter(coord);
+                const results = [];
+                const radiusMeters = gisBufferRadius * 1000;
+                geoLayers.forEach(layer => {
+                    if (!layer.data?.features) return;
+                    layer.data.features.forEach(f => {
+                        if (!f.geometry) return;
+                        let fCoord = null;
+                        if (f.geometry.type === 'Point') fCoord = f.geometry.coordinates;
+                        else if (f.geometry.coordinates?.[0]?.[0]) fCoord = f.geometry.coordinates[0][0];
+                        else if (f.geometry.coordinates?.[0]) fCoord = f.geometry.coordinates[0];
+                        
+                        if (fCoord) {
+                            const dist = haversineDistance(coord, fCoord);
+                            if (dist <= radiusMeters) {
+                                results.push({
+                                    name: f.properties?.name || f.properties?.name_ar || f.properties?.title || 'معلم جغرافي',
+                                    category: layer.name,
+                                    distance: Math.round(dist)
+                                });
+                            }
+                        }
+                    });
+                });
+                setGisBufferResults(results.sort((a,b) => a.distance - b.distance));
+                setDrawingMode(null);
+                return;
+            }
+
+            if (drawingMode === 'gis_elevation') {
+                setGisElevPoints(prev => {
+                    const newPoints = [...prev, coord];
+                    calculateElevationProfile(newPoints);
+                    return newPoints;
+                });
+                return;
+            }
 
             if (drawingMode === 'point') {
                 const newFeature = { type: 'Feature', geometry: { type: 'Point', coordinates: coord }, properties: { type: 'drawn_point', name: 'نقطة محددة' } };
@@ -3133,6 +3352,41 @@ out geom;`;
                     return newCoords;
                 });
             }
+            return;
+        }
+
+        if (gisReverseGeocodingActive) {
+            let nearestFeature = null;
+            let minDistance = Infinity;
+            
+            geoLayers.forEach(layer => {
+                if (!layer.data?.features) return;
+                layer.data.features.forEach(f => {
+                    if (!f.geometry) return;
+                    let fCoord = null;
+                    if (f.geometry.type === 'Point') fCoord = f.geometry.coordinates;
+                    else if (f.geometry.coordinates?.[0]?.[0]) fCoord = f.geometry.coordinates[0][0];
+                    else if (f.geometry.coordinates?.[0]) fCoord = f.geometry.coordinates[0];
+                    
+                    if (fCoord) {
+                        const dist = haversineDistance(coord, fCoord);
+                        if (dist < minDistance) {
+                            minDistance = dist;
+                            nearestFeature = {
+                                name: f.properties?.name || f.properties?.name_ar || f.properties?.title || 'معلم تاريخي',
+                                layerName: layer.name,
+                                dist: dist
+                            };
+                        }
+                    }
+                });
+            });
+            
+            setGisReverseGeocodingResult({
+                lng: coord[0].toFixed(5),
+                lat: coord[1].toFixed(5),
+                nearest: nearestFeature ? `${nearestFeature.name} (${(nearestFeature.dist/1000).toFixed(2)} كم)` : 'لا توجد معالم قريبة في النطاق'
+            });
             return;
         }
 
@@ -3319,6 +3573,189 @@ out geom;`;
         };
     }, [draftCoordinates]);
 
+    const isFeatureMatchingTime = (f, yearVal) => {
+        const props = f.properties || {};
+        const yearKeys = ['year', 'date', 'historical_year', 'start_date', 'established', 'depopulation_year', 'occurrence_year'];
+        for (let key of yearKeys) {
+            if (props[key]) {
+                const val = parseInt(props[key]);
+                if (!isNaN(val) && val > yearVal) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    };
+
+    const filteredLayerData = useMemo(() => {
+        return geoLayers.map(l => {
+            if (!l.data) return l;
+            if (!gisTimeActive && !gisFilterQuery && !gisFilterTag) return l;
+            
+            let features = l.data.features || [];
+            
+            if (gisTimeActive) {
+                features = features.filter(f => isFeatureMatchingTime(f, gisTimeValue));
+            }
+            if (gisFilterQuery) {
+                const q = gisFilterQuery.toLowerCase();
+                features = features.filter(f => {
+                    return Object.values(f.properties || {}).some(v => String(v).toLowerCase().includes(q));
+                });
+            }
+            if (gisFilterTag) {
+                features = features.filter(f => {
+                    return f.properties && f.properties[gisFilterTag];
+                });
+            }
+            return {
+                ...l,
+                data: {
+                    ...l.data,
+                    features
+                }
+            };
+        });
+    }, [geoLayers, gisTimeActive, gisTimeValue, gisFilterQuery, gisFilterTag]);
+
+    const generateCirclePolygon = (center, radiusKm) => {
+        const [lng, lat] = center;
+        const points = [];
+        const steps = 64;
+        const R = 6378.1;
+        const d = radiusKm / R;
+        const latRad = lat * Math.PI / 180;
+        const lngRad = lng * Math.PI / 180;
+        
+        for (let i = 0; i <= steps; i++) {
+            const theta = (i / steps) * 2 * Math.PI;
+            const pointLat = Math.asin(Math.sin(latRad) * Math.cos(d) + Math.cos(latRad) * Math.sin(d) * Math.cos(theta));
+            const pointLng = lngRad + Math.atan2(Math.sin(theta) * Math.sin(d) * Math.cos(latRad), Math.cos(d) - Math.sin(latRad) * Math.sin(pointLat));
+            points.push([pointLng * 180 / Math.PI, pointLat * 180 / Math.PI]);
+        }
+        return {
+            type: 'Feature',
+            geometry: {
+                type: 'Polygon',
+                coordinates: [points]
+            },
+            properties: {
+                isBuffer: true
+            }
+        };
+    };
+
+    const gisMeasureGeoJson = useMemo(() => {
+        if (gisMeasurePoints.length === 0) return null;
+        if (gisMeasurePoints.length === 1) {
+            return { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: gisMeasurePoints[0] } }] };
+        }
+        if (gisMeasureType === 'distance') {
+            return {
+                type: 'FeatureCollection',
+                features: [
+                    {
+                        type: 'Feature',
+                        geometry: {
+                            type: 'LineString',
+                            coordinates: gisMeasurePoints
+                        }
+                    },
+                    ...gisMeasurePoints.map(p => ({
+                        type: 'Feature',
+                        geometry: { type: 'Point', coordinates: p }
+                    }))
+                ]
+            };
+        } else if (gisMeasureType === 'area') {
+            const closedPoints = [...gisMeasurePoints];
+            if (closedPoints.length >= 3) {
+                closedPoints.push(closedPoints[0]);
+            }
+            return {
+                type: 'FeatureCollection',
+                features: [
+                    {
+                        type: 'Feature',
+                        geometry: {
+                            type: closedPoints.length >= 3 ? 'Polygon' : 'LineString',
+                            coordinates: closedPoints.length >= 3 ? [closedPoints] : closedPoints
+                        }
+                    },
+                    ...gisMeasurePoints.map(p => ({
+                        type: 'Feature',
+                        geometry: { type: 'Point', coordinates: p }
+                    }))
+                ]
+            };
+        }
+        return null;
+    }, [gisMeasurePoints, gisMeasureType]);
+
+    const gisBufferGeoJson = useMemo(() => {
+        if (!gisBufferCenter) return null;
+        return {
+            type: 'FeatureCollection',
+            features: [generateCirclePolygon(gisBufferCenter, gisBufferRadius)]
+        };
+    }, [gisBufferCenter, gisBufferRadius]);
+
+    const gisElevGeoJson = useMemo(() => {
+        if (gisElevPoints.length === 0) return null;
+        if (gisElevPoints.length === 1) {
+            return { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: gisElevPoints[0] } }] };
+        }
+        return {
+            type: 'FeatureCollection',
+            features: [
+                {
+                    type: 'Feature',
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: gisElevPoints
+                    }
+                },
+                ...gisElevPoints.map(p => ({
+                    type: 'Feature',
+                    geometry: { type: 'Point', coordinates: p }
+                }))
+            ]
+        };
+    }, [gisElevPoints]);
+
+    const handlePrintMap = () => {
+        if (!mapRef.current) return;
+        try {
+            const map = mapRef.current.getMap();
+            const dataUrl = map.getCanvas().toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = `PalNovaa_WebGIS_HD_${Date.now()}.png`;
+            link.href = dataUrl;
+            link.click();
+            alert('✅ تم التقاط الخريطة بدقة عالية وتحميلها كملف PNG بنجاح!');
+        } catch (e) {
+            console.error('HD Print error:', e);
+            alert('❌ عذراً، حدث خطأ أثناء التقاط الخريطة. يرجى التأكد من تشغيل الخريطة بشكل صحيح.');
+        }
+    };
+
+    const handleExportFilteredGeoJSON = () => {
+        const activeId = activeTableLayerId;
+        const activeLayer = geoLayers.find(l => l.id === activeId);
+        if (!activeLayer || !activeLayer.data) {
+            alert('❌ يرجى اختيار طبقة نشطة تحتوي على بيانات لتصديرها.');
+            return;
+        }
+        const filteredData = filteredLayerData.find(l => l.id === activeId)?.data;
+        if (!filteredData) return;
+        
+        const blob = new Blob([JSON.stringify(filteredData, null, 2)], { type: 'application/json' });
+        const link = document.createElement('a');
+        link.download = `Filtered_${activeLayer.name}_${Date.now()}.geojson`;
+        link.href = URL.createObjectURL(blob);
+        link.click();
+    };
+
     useEffect(() => {
         // Generate particles
         const newParticles = [];
@@ -3360,6 +3797,98 @@ out geom;`;
 
         const isCsv = file.name.endsWith('.csv');
         const isTiff = file.name.endsWith('.tif') || file.name.endsWith('.tiff');
+        const isZip = file.name.endsWith('.zip');
+
+        if (isZip) {
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                try {
+                    const shp = (await import('shpjs')).default;
+                    const geojson = await shp(event.target.result);
+                    
+                    let normalizedGeojson = geojson;
+                    if (Array.isArray(geojson)) {
+                        normalizedGeojson = {
+                            type: 'FeatureCollection',
+                            features: geojson.flatMap(collection => collection.features || [])
+                        };
+                    }
+                    
+                    const newLayerId = `shp-${Date.now()}`;
+                    const defaultColor = ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899'][geoLayers.length % 5];
+                    
+                    if (normalizedGeojson.features) {
+                        normalizedGeojson.features = normalizedGeojson.features.map((f, idx) => ({
+                            ...f,
+                            id: f.id || `${newLayerId}_${idx}`
+                        }));
+                    }
+                    
+                    const newLayer = {
+                        id: newLayerId,
+                        name: file.name.replace(/\.[^/.]+$/, "").substring(0, 19),
+                        data: normalizedGeojson,
+                        color: defaultColor,
+                        isVisible: true
+                    };
+                    
+                    setGeoLayers(prev => [...prev, newLayer]);
+                    setLayerStyles(prev => ({
+                        ...prev,
+                        [newLayerId]: {
+                            color: defaultColor,
+                            outlineColor: '#ffffff',
+                            outlineWidth: 2,
+                            shape: 'circle',
+                            opacity: 1,
+                            fillOpacity: 0.3
+                        }
+                    }));
+                    setActiveTableLayerId(newLayerId);
+                    setShowBottomTable(true);
+                    
+                    if (mapRef.current) {
+                        const coordinates = [];
+                        const extractCoords = (obj) => {
+                            if (obj.type === 'FeatureCollection') obj.features.forEach(extractCoords);
+                            else if (obj.geometry) extractCoords(obj.geometry);
+                            else if (obj.coordinates) {
+                                if (typeof obj.coordinates[0] === 'number') coordinates.push(obj.coordinates);
+                                else obj.coordinates.forEach(c => {
+                                    if (typeof c[0] === 'number') coordinates.push(c);
+                                    else c.forEach(sub => {
+                                        if (typeof sub[0] === 'number') coordinates.push(sub);
+                                    });
+                                });
+                            }
+                        };
+                        extractCoords(normalizedGeojson);
+                        if (coordinates.length > 0) {
+                            let minLng = Infinity, maxLng = -Infinity;
+                            let minLat = Infinity, maxLat = -Infinity;
+                            for (let i = 0; i < coordinates.length; i++) {
+                                const pt = coordinates[i];
+                                if (pt[0] < minLng) minLng = pt[0];
+                                if (pt[0] > maxLng) maxLng = pt[0];
+                                if (pt[1] < minLat) minLat = pt[1];
+                                if (pt[1] > maxLat) maxLat = pt[1];
+                            }
+                            mapRef.current.fitBounds(
+                                [[minLng, minLat], [maxLng, maxLat]],
+                                { padding: 80, duration: 2000 }
+                            );
+                        }
+                    }
+                    
+                    alert(`✅ تم استيراد وتحويل ملف Shapefile/Geodatabase بنجاح!`);
+                } catch (err) {
+                    console.error("Failed to parse Shapefile/GDB Zip:", err);
+                    alert("❌ فشل استيراد الملف المضغوط: يرجى التأكد من أنه ملف Shapefile ZIP صالح يحتوي على ملفات .shp و.dbf");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+            return;
+        }
         
         if (isTiff) {
             const reader = new FileReader();
@@ -4051,7 +4580,16 @@ out geom;`;
             royal: { primary: '#F5A623', primaryDark: '#7C3AED', bg: '#1E1B4B', surface: 'rgba(49, 46, 129, 0.7)', surfaceSolid: '#312E81', border: 'rgba(245, 166, 35, 0.2)', text: '#FFFFFF', primaryGlow: 'rgba(245, 166, 35, 0.3)' },
             neon: { primary: '#06D6F2', primaryDark: '#EC4899', bg: '#050B16', surface: 'rgba(139, 92, 246, 0.3)', surfaceSolid: '#14002E', border: 'rgba(236, 72, 153, 0.3)', text: '#FFFFFF', primaryGlow: 'rgba(6, 214, 242, 0.4)' },
             minimal: { primary: '#F5A623', primaryDark: '#D88B0E', bg: '#FFFFFF', surface: 'rgba(245, 244, 237, 0.9)', surfaceSolid: '#F5F4ED', border: 'rgba(0, 0, 0, 0.1)', text: '#1A1A2E', primaryGlow: 'rgba(245, 166, 35, 0.3)' },
-            custom: { primary: designSelections.customPrimary, primaryDark: designSelections.customPrimary, bg: '#0A1628', surface: 'rgba(20, 43, 71, 0.7)', surfaceSolid: '#142B47', border: 'rgba(255, 255, 255, 0.08)', text: '#FFFFFF', primaryGlow: `${designSelections.customPrimary}44` }
+            custom: {
+                primary: designSelections.customPrimary,
+                primaryDark: designSelections.customPrimary,
+                bg: designSelections.customBg || '#0A1628',
+                surface: designSelections.customSurface || 'rgba(20, 43, 71, 0.7)',
+                surfaceSolid: designSelections.customSurface ? (designSelections.customSurface.startsWith('rgba') ? designSelections.customSurface.replace(/[\d\.]+\)$/, '1)') : designSelections.customSurface) : '#142B47',
+                border: designSelections.customBorder || 'rgba(255, 255, 255, 0.08)',
+                text: designSelections.customText || '#FFFFFF',
+                primaryGlow: `${designSelections.customPrimary}44`
+            }
         };
         const theme = palettesData[designSelections.palette] || palettesData.classic;
 
@@ -4061,7 +4599,8 @@ out geom;`;
             cairo_mono: { h: "'Cairo', sans-serif", b: "'JetBrains Mono', monospace" },
             tajawal_ed: { h: "'Tajawal', serif", b: "'Tajawal', sans-serif" },
             display: { h: "'Cairo', sans-serif", b: "'Tajawal', sans-serif" },
-            compact: { h: "'Cairo', sans-serif", b: "'Tajawal', sans-serif" }
+            compact: { h: "'Cairo', sans-serif", b: "'Tajawal', sans-serif" },
+            custom: { h: `'${designSelections.customFontHeading || 'Cairo'}', sans-serif`, b: `'${designSelections.customFontBody || 'Tajawal'}', sans-serif` }
         };
         const selectedFont = fontsData[designSelections.font] || fontsData.cairo_tajawal;
 
@@ -4070,6 +4609,7 @@ out geom;`;
             dark: 'https://cartodb-basemaps-a.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png',
             light: 'https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
             satellite: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+            satellite_pure: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
             terrain: 'https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.jpg',
             vintage: 'https://stamen-tiles.a.ssl.fastly.net/toner/{z}/{x}/{y}.png',
             cyber: 'https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}'
@@ -4439,7 +4979,16 @@ out geom;`;
 
         .layer-item { background: rgba(0,0,0,0.15); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; border: 1px solid var(--border); }
         .layer-item:hover { border-color: var(--primary); }
-        #map { flex: 1; min-height: 400px; height: 100%; width: 100%; background: #000; }
+        #map {
+            flex: 1;
+            min-height: 400px;
+            height: 100%;
+            width: 100%;
+            background: #000;
+            border-radius: ${designSelections.mapBorderRadius || '0px'};
+            border: ${designSelections.mapBorderWidth || '0px'} solid ${designSelections.mapBorderColor || 'transparent'};
+            overflow: hidden;
+        }
 
         .watermark {
             position: fixed; bottom: 5px; right: 8px;
@@ -4540,7 +5089,7 @@ out geom;`;
                 });
                 if (found.length === 0) { results.innerHTML = '<div class="map-search-item" style="opacity:0.5; padding: 10px 16px;">لا توجد نتائج</div>'; results.style.display = 'block'; return; }
                 results.innerHTML = found.slice(0, 8).map((r, i) => {
-                    const label = Object.values(r.props)[0] || 'معلم ' + (i + 1);
+                    const label = r.props['name:ar'] || r.props.name || r.props.name_ar || r.props.title_ar || r.props.title || r.props['name:en'] || r.props.name_en || r.props.title_en || Object.values(r.props).find(v => typeof v === 'string') || 'معلم ' + (i + 1);
                     return '<div class="map-search-item" onclick="flyToFeature(' + i + ')">' + label + '</div>';
                 }).join('');
                 results.style.display = 'block';
@@ -4890,10 +5439,11 @@ out geom;`;
                             style={{ width: '100%', height: '100%' }}
                             maxPitch={85}
                             attributionControl={false}
+                            preserveDrawingBuffer={true}
                         >
                             <NavigationControl position="bottom-right" />
 
-                            {geoLayers.filter(l => l.isVisible !== false).map(layer => {
+                            {filteredLayerData.filter(l => l.isVisible !== false).map(layer => {
                                 const style = layerStyles[layer.id] || {
                                     color: layer.color || '#F5A623',
                                     outlineColor: '#ffffff',
@@ -5038,68 +5588,93 @@ out geom;`;
                                          />
 
                                          {/* Points */}
-                                         <Layer
-                                             id={`point-${layer.id}`}
-                                             type="circle"
-                                             filter={['==', '$type', 'Point']}
-                                             paint={{
-                                                 'circle-radius': layer.isPalData ? 5.5 : (layer.isRemoteSensing ? [
-                                                     'interpolate',
-                                                     ['linear'],
-                                                     ['zoom'],
-                                                     10, 4,
-                                                     14, 12,
-                                                     17, 30
-                                                 ] : 7),
-                                                 'circle-color': layer.isPalData ? [
-                                                     'match',
-                                                     ['coalesce', ['get', 'palCategory'], ''],
-                                                     'highway_transport', '#ff7043',
-                                                     'buildings', '#f472b6',
-                                                     'landuse', '#84cc16',
-                                                     'amenities', '#3b82f6',
-                                                     'leisure_tourism', '#8b5cf6',
-                                                     'natural_water', '#06b6d4',
-                                                     'shops', '#fbbf24',
-                                                     'offices_crafts', '#6b7280',
-                                                     'infrastructure_emergency', '#ef4444',
-                                                     'places_boundaries', '#a855f7',
-                                                     style.color || '#10D9A0'
-                                                 ] : (layer.isRemoteSensing ? (
-                                                     layer.colorRamp === 'grayscale' ? [
-                                                         'interpolate', ['linear'], ['get', 'elevation'],
-                                                         layer.minElevation || 0, '#000000',
-                                                         layer.maxElevation || 500, '#ffffff'
-                                                     ] : layer.colorRamp === 'viridis' ? [
-                                                         'interpolate', ['linear'], ['get', 'elevation'],
-                                                         layer.minElevation || 0, '#440154',
-                                                         (layer.minElevation + layer.maxElevation)/2 || 100, '#21918c',
-                                                         layer.maxElevation || 500, '#fde725'
-                                                     ] : layer.colorRamp === 'terrain' ? [
-                                                         'interpolate', ['linear'], ['get', 'elevation'],
-                                                         layer.minElevation || 0, '#22c55e',
-                                                         (layer.minElevation + layer.maxElevation)/2 || 100, '#eab308',
-                                                         layer.maxElevation || 500, '#ffffff'
-                                                     ] : layer.colorRamp === 'rainbow' ? [
-                                                         'interpolate', ['linear'], ['get', 'elevation'],
-                                                         layer.minElevation || 0, '#0000ff',
-                                                         layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.25 || 100, '#00ffff',
-                                                         layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.5 || 200, '#00ff00',
-                                                         layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.75 || 300, '#ffff00',
-                                                         layer.maxElevation || 500, '#ff0000'
-                                                     ] : [
-                                                         'interpolate', ['linear'], ['get', 'elevation'],
-                                                         layer.minElevation || 0, '#312e81',
-                                                         (layer.minElevation + layer.maxElevation)/2 || 100, '#10b981',
-                                                         layer.maxElevation || 500, '#ef4444'
-                                                     ]
-                                                 ) : style.color),
-                                                 'circle-stroke-width': layer.isPalData ? 1.5 : style.outlineWidth,
-                                                 'circle-stroke-color': layer.isPalData ? '#ffffff' : style.outlineColor,
-                                                 'circle-opacity': style.opacity ?? 1,
-                                                 'circle-stroke-opacity': style.opacity ?? 1
-                                             }}
-                                         />
+                                         {style.heatmapEnabled ? (
+                                             <Layer
+                                                 id={`point-${layer.id}`}
+                                                 type="heatmap"
+                                                 filter={['==', '$type', 'Point']}
+                                                 paint={{
+                                                     'heatmap-weight': 1.5,
+                                                     'heatmap-intensity': 1.5,
+                                                     'heatmap-color': [
+                                                         'interpolate',
+                                                         ['linear'],
+                                                         ['heatmap-density'],
+                                                         0, 'rgba(0,0,255,0)',
+                                                         0.2, 'royalblue',
+                                                         0.4, 'cyan',
+                                                         0.6, 'green',
+                                                         0.8, 'yellow',
+                                                         1.0, 'red'
+                                                     ],
+                                                     'heatmap-radius': 20,
+                                                     'heatmap-opacity': style.opacity ?? 0.85
+                                                 }}
+                                             />
+                                         ) : (
+                                             <Layer
+                                                 id={`point-${layer.id}`}
+                                                 type="circle"
+                                                 filter={['==', '$type', 'Point']}
+                                                 paint={{
+                                                     'circle-radius': layer.isPalData ? 5.5 : (layer.isRemoteSensing ? [
+                                                         'interpolate',
+                                                         ['linear'],
+                                                         ['zoom'],
+                                                         10, 4,
+                                                         14, 12,
+                                                         17, 30
+                                                     ] : 7),
+                                                     'circle-color': layer.isPalData ? [
+                                                         'match',
+                                                         ['coalesce', ['get', 'palCategory'], ''],
+                                                         'highway_transport', '#ff7043',
+                                                         'buildings', '#f472b6',
+                                                         'landuse', '#84cc16',
+                                                         'amenities', '#3b82f6',
+                                                         'leisure_tourism', '#8b5cf6',
+                                                         'natural_water', '#06b6d4',
+                                                         'shops', '#fbbf24',
+                                                         'offices_crafts', '#6b7280',
+                                                         'infrastructure_emergency', '#ef4444',
+                                                         'places_boundaries', '#a855f7',
+                                                         style.color || '#10D9A0'
+                                                     ] : (layer.isRemoteSensing ? (
+                                                         layer.colorRamp === 'grayscale' ? [
+                                                             'interpolate', ['linear'], ['get', 'elevation'],
+                                                             layer.minElevation || 0, '#000000',
+                                                             layer.maxElevation || 500, '#ffffff'
+                                                         ] : layer.colorRamp === 'viridis' ? [
+                                                             'interpolate', ['linear'], ['get', 'elevation'],
+                                                             layer.minElevation || 0, '#440154',
+                                                             (layer.minElevation + layer.maxElevation)/2 || 100, '#21918c',
+                                                             layer.maxElevation || 500, '#fde725'
+                                                         ] : layer.colorRamp === 'terrain' ? [
+                                                             'interpolate', ['linear'], ['get', 'elevation'],
+                                                             layer.minElevation || 0, '#22c55e',
+                                                             (layer.minElevation + layer.maxElevation)/2 || 100, '#eab308',
+                                                             layer.maxElevation || 500, '#ffffff'
+                                                         ] : layer.colorRamp === 'rainbow' ? [
+                                                             'interpolate', ['linear'], ['get', 'elevation'],
+                                                             layer.minElevation || 0, '#0000ff',
+                                                             layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.25 || 100, '#00ffff',
+                                                             layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.5 || 200, '#00ff00',
+                                                             layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.75 || 300, '#ffff00',
+                                                             layer.maxElevation || 500, '#ff0000'
+                                                         ] : [
+                                                             'interpolate', ['linear'], ['get', 'elevation'],
+                                                             layer.minElevation || 0, '#312e81',
+                                                             (layer.minElevation + layer.maxElevation)/2 || 100, '#10b981',
+                                                             layer.maxElevation || 500, '#ef4444'
+                                                         ]
+                                                     ) : style.color),
+                                                     'circle-stroke-width': layer.isPalData ? 1.5 : style.outlineWidth,
+                                                     'circle-stroke-color': layer.isPalData ? '#ffffff' : style.outlineColor,
+                                                     'circle-opacity': style.opacity ?? 1,
+                                                     'circle-stroke-opacity': style.opacity ?? 1
+                                                 }}
+                                             />
+                                         )}
                                      </Source>
                                 );
                             })}
@@ -5200,7 +5775,143 @@ out geom;`;
                                     <Layer id="draft-point" type="circle" paint={{ 'circle-radius': 6, 'circle-color': '#fbab15', 'circle-stroke-width': 2, 'circle-stroke-color': 'white' }} />
                                 </Source>
                             )}
+
+                            {gisMeasureGeoJson && (
+                                <Source id="gis-measure-source" type="geojson" data={gisMeasureGeoJson}>
+                                    <Layer id="gis-measure-polygon" type="fill" filter={['==', '$type', 'Polygon']} paint={{ 'fill-color': '#F5A623', 'fill-opacity': 0.25 }} />
+                                    <Layer id="gis-measure-line" type="line" filter={['==', '$type', 'LineString']} paint={{ 'line-color': '#F5A623', 'line-width': 3, 'line-dasharray': [2, 1] }} />
+                                    <Layer id="gis-measure-point" type="circle" filter={['==', '$type', 'Point']} paint={{ 'circle-radius': 6, 'circle-color': '#F5A623', 'circle-stroke-width': 2, 'circle-stroke-color': 'white' }} />
+                                </Source>
+                            )}
+
+                            {gisBufferGeoJson && (
+                                <Source id="gis-buffer-source" type="geojson" data={gisBufferGeoJson}>
+                                    <Layer id="gis-buffer-fill" type="fill" paint={{ 'fill-color': '#06D6F2', 'fill-opacity': 0.15 }} />
+                                    <Layer id="gis-buffer-line" type="line" paint={{ 'line-color': '#06D6F2', 'line-width': 2 }} />
+                                </Source>
+                            )}
+                            {gisBufferCenter && (
+                                <Source id="gis-buffer-center-source" type="geojson" data={{ type: 'Feature', geometry: { type: 'Point', coordinates: gisBufferCenter } }}>
+                                    <Layer id="gis-buffer-center" type="circle" paint={{ 'circle-radius': 7, 'circle-color': '#06D6F2', 'circle-stroke-width': 2, 'circle-stroke-color': 'white' }} />
+                                </Source>
+                            )}
+
+                            {gisElevGeoJson && (
+                                <Source id="gis-elevation-source" type="geojson" data={gisElevGeoJson}>
+                                    <Layer id="gis-elevation-line" type="line" filter={['==', '$type', 'LineString']} paint={{ 'line-color': '#EC4899', 'line-width': 3 }} />
+                                    <Layer id="gis-elevation-point" type="circle" filter={['==', '$type', 'Point']} paint={{ 'circle-radius': 6, 'circle-color': '#EC4899', 'circle-stroke-width': 2, 'circle-stroke-color': 'white' }} />
+                                </Source>
+                            )}
                         </Map>
+
+                        {gisSwipeActive && (
+                            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 10 }}>
+                                <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', clipPath: `polygon(0 0, ${gisSwipePosition}% 0, ${gisSwipePosition}% 100%, 0 100%)` }}>
+                                    <Map
+                                        {...mapState}
+                                        mapStyle={{
+                                            version: 8,
+                                            sources: {
+                                                'vintage-tiles': {
+                                                    type: 'raster',
+                                                    tiles: ['https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png'],
+                                                    tileSize: 256
+                                                }
+                                            },
+                                            layers: [
+                                                {
+                                                    id: 'vintage-layer',
+                                                    type: 'raster',
+                                                    source: 'vintage-tiles'
+                                                }
+                                            ]
+                                        }}
+                                        style={{ width: '100%', height: '100%' }}
+                                        attributionControl={false}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {gisSwipeActive && (
+                            <div
+                                style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    bottom: 0,
+                                    left: `${gisSwipePosition}%`,
+                                    width: '4px',
+                                    background: '#fbab15',
+                                    cursor: 'ew-resize',
+                                    zIndex: 20,
+                                    boxShadow: '0 0 10px rgba(251, 171, 21, 0.5)'
+                                }}
+                                onMouseDown={(e) => {
+                                    const container = e.currentTarget.parentElement;
+                                    const onMouseMove = (moveEvent) => {
+                                        const rect = container.getBoundingClientRect();
+                                        const x = moveEvent.clientX - rect.left;
+                                        const pct = Math.max(0, Math.min(100, (x / rect.width) * 100));
+                                        setGisSwipePosition(pct);
+                                    };
+                                    const onMouseUp = () => {
+                                        window.removeEventListener('mousemove', onMouseMove);
+                                        window.removeEventListener('mouseup', onMouseUp);
+                                    };
+                                    window.addEventListener('mousemove', onMouseMove);
+                                    window.addEventListener('mouseup', onMouseUp);
+                                }}
+                            >
+                                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '30px', height: '30px', background: '#fbab15', borderRadius: '50%', border: '2px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.3)', color: 'black', fontWeight: 'bold', fontSize: '14px', pointerEvents: 'none' }}>
+                                    ↔
+                                </div>
+                            </div>
+                        )}
+
+                        {gisTourActive && (
+                            <div className="gis-tour-card" style={{ position: 'absolute', bottom: '80px', right: '30px', background: 'rgba(10,22,40,0.95)', border: '1px solid var(--primary)', borderRadius: '16px', padding: '20px', zIndex: 100, width: '320px', direction: 'rtl', textAlign: 'right', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', borderTop: '4px solid var(--primary)', backdropFilter: 'blur(10px)', pointerEvents: 'auto' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                    <span style={{ fontSize: '0.8rem', color: '#fbab15', fontWeight: 'bold' }}>جولة المعالم التاريخية (خطوة {gisTourStep + 1} من {TOUR_STEPS.length})</span>
+                                    <button onClick={() => setGisTourActive(false)} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
+                                </div>
+                                <h3 style={{ fontSize: '1.2rem', color: 'white', margin: '0 0 10px 0' }}>{TOUR_STEPS[gisTourStep].name}</h3>
+                                <p style={{ fontSize: '0.85rem', color: '#cbd5e1', lineHeight: '1.6', margin: '0 0 15px 0' }}>{TOUR_STEPS[gisTourStep].desc}</p>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <button
+                                        className="ds-btn secondary small"
+                                        style={{ flex: 1, padding: '6px' }}
+                                        disabled={gisTourStep === 0}
+                                        onClick={() => {
+                                            const prevStep = gisTourStep - 1;
+                                            setGisTourStep(prevStep);
+                                            if (mapRef.current) {
+                                                mapRef.current.flyTo({ center: TOUR_STEPS[prevStep].coords, zoom: TOUR_STEPS[prevStep].zoom, duration: 2500 });
+                                            }
+                                        }}
+                                    >
+                                        السابق
+                                    </button>
+                                    <button
+                                        className="ds-btn primary small"
+                                        style={{ flex: 1, padding: '6px', color: 'black' }}
+                                        onClick={() => {
+                                            if (gisTourStep < TOUR_STEPS.length - 1) {
+                                                const nextStep = gisTourStep + 1;
+                                                setGisTourStep(nextStep);
+                                                if (mapRef.current) {
+                                                    mapRef.current.flyTo({ center: TOUR_STEPS[nextStep].coords, zoom: TOUR_STEPS[nextStep].zoom, duration: 2500 });
+                                                }
+                                            } else {
+                                                setGisTourActive(false);
+                                                alert('🎉 شكراً لك! لقد انتهت الجولة الاستكشافية.');
+                                            }
+                                        }}
+                                    >
+                                        {gisTourStep === TOUR_STEPS.length - 1 ? 'إنهاء الجولة' : 'التالي'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {measurement && (
@@ -5436,6 +6147,12 @@ out geom;`;
                                 <path d="M12 2v9M8 2h8M12 17v5M5 11V7a3 3 0 0 1 6 0v4M13 11V7a3 3 0 0 1 6 0v4" />
                             </svg>
                         </div>
+                        <div className={`panel-tab ${activeTab === 'gis_tools' ? 'active' : ''}`} onClick={() => { setActiveTab('gis_tools'); setDrawingMode(null); }} title="أدوات Web GIS والتحليل الجغرافي">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10" />
+                                <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+                            </svg>
+                        </div>
                     </div>
 
                     <div className="panel-content">
@@ -5445,11 +6162,11 @@ out geom;`;
                                     <div className="panel-section-title">إضافة بيانات</div>
 
                                     <div className="upload-box" onClick={() => document.getElementById('geo-upload').click()}>
-                                        <input id="geo-upload" type="file" accept=".geojson,.json,.csv,.tif,.tiff" onChange={handleFileUpload} style={{ display: 'none' }} />
+                                        <input id="geo-upload" type="file" accept=".geojson,.json,.csv,.tif,.tiff,.zip" onChange={handleFileUpload} style={{ display: 'none' }} />
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
                                         </svg>
-                                        <span>رفع ملف GeoJSON أو CSV</span>
+                                        <span>رفع ملف Shapefile ZIP, GeoJSON أو CSV</span>
                                         <div className="formats">
                                             <span className="format-pill">.geojson</span>
                                             <span className="format-pill">.csv</span>
@@ -6037,6 +6754,452 @@ out geom;`;
                                 })()}
                             </div>
                         )}
+
+                        {activeTab === 'gis_tools' && (
+                            <div className="tab-content" style={{ display: 'flex', flexDirection: 'column', gap: '20px', height: '100%', overflowY: 'auto' }}>
+                                <div className="panel-section">
+                                    <div className="panel-section-title">أدوات Web GIS والتحليل الجغرافي</div>
+                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.5', marginBottom: '15px' }}>
+                                        بيئة متكاملة لإجراء التحليلات المكانية المتقدمة وحساب المسافات والمساحات وقياس فروق الارتفاع عبر مسارات مرسومة.
+                                    </p>
+
+                                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '12px', marginBottom: '15px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                                            <span style={{ fontSize: '1.2rem' }}>📏</span>
+                                            <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#fbab15' }}>أدوات القياس الجغرافي</span>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+                                            <button
+                                                className={`ds-btn ${gisMeasureType === 'distance' && drawingMode === 'gis_measure' ? 'primary' : 'secondary'} small`}
+                                                style={{ flex: 1, padding: '8px', fontSize: '0.8rem' }}
+                                                onClick={() => {
+                                                    setDrawingMode('gis_measure');
+                                                    setGisMeasureType('distance');
+                                                    setGisMeasurePoints([]);
+                                                    setGisMeasureResult(null);
+                                                }}
+                                            >
+                                                قياس مسافة
+                                            </button>
+                                            <button
+                                                className={`ds-btn ${gisMeasureType === 'area' && drawingMode === 'gis_measure' ? 'primary' : 'secondary'} small`}
+                                                style={{ flex: 1, padding: '8px', fontSize: '0.8rem' }}
+                                                onClick={() => {
+                                                    setDrawingMode('gis_measure');
+                                                    setGisMeasureType('area');
+                                                    setGisMeasurePoints([]);
+                                                    setGisMeasureResult(null);
+                                                }}
+                                            >
+                                                قياس مساحة
+                                            </button>
+                                        </div>
+                                        {gisMeasureResult && (
+                                            <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '8px 12px', fontSize: '0.85rem' }}>
+                                                {gisMeasureResult.length > 0 && (
+                                                    <div>المسافة الإجمالية: <strong style={{ color: 'var(--primary)' }}>{gisMeasureResult.length > 1000 ? (gisMeasureResult.length / 1000).toFixed(2) + ' كم' : gisMeasureResult.length.toFixed(1) + ' م'}</strong></div>
+                                                )}
+                                                {gisMeasureResult.area > 0 && (
+                                                    <div>
+                                                        <div>المساحة: <strong style={{ color: 'var(--primary)' }}>{gisMeasureResult.area.toLocaleString(undefined, {maximumFractionDigits: 1})} م²</strong></div>
+                                                        <div style={{ marginTop: '3px', fontSize: '0.8rem', opacity: 0.8 }}>بالدونم: <strong style={{ color: '#06D6F2' }}>{(gisMeasureResult.area / 1000).toFixed(2)} دونم</strong></div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                        {drawingMode === 'gis_measure' && (
+                                            <div style={{ fontSize: '0.75rem', color: '#fbab15', marginTop: '6px', textAlign: 'center' }}>
+                                                * انقر على الخريطة لرسم النقاط والمسار
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '12px', marginBottom: '15px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                                            <span style={{ fontSize: '1.2rem' }}>🔵</span>
+                                            <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#fbab15' }}>تحليل النطاق العازل (Buffer Zone)</span>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                                <span>نصف القطر:</span>
+                                                <span>{gisBufferRadius} كم</span>
+                                            </div>
+                                            <input
+                                                type="range"
+                                                min="1"
+                                                max="20"
+                                                value={gisBufferRadius}
+                                                onChange={(e) => setGisBufferRadius(parseInt(e.target.value))}
+                                                style={{ width: '100%', accentColor: 'var(--primary)' }}
+                                            />
+                                        </div>
+                                        <button
+                                            className={`ds-btn ${drawingMode === 'gis_buffer' ? 'primary' : 'secondary'} small w-100`}
+                                            style={{ padding: '8px', fontSize: '0.8rem', marginBottom: '10px' }}
+                                            onClick={() => {
+                                                setDrawingMode('gis_buffer');
+                                                setGisBufferCenter(null);
+                                                setGisBufferResults([]);
+                                            }}
+                                        >
+                                            تحديد مركز النطاق
+                                        </button>
+                                        {gisBufferResults.length > 0 && (
+                                            <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '8px', maxHeight: '150px', overflowY: 'auto', fontSize: '0.8rem' }}>
+                                                <div style={{ fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px', marginBottom: '6px', color: '#06D6F2' }}>المعالم داخل النطاق ({gisBufferResults.length}):</div>
+                                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
+                                                    <thead>
+                                                        <tr style={{ opacity: 0.6, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                                            <th style={{ padding: '4px' }}>المعلم</th>
+                                                            <th style={{ padding: '4px' }}>المسافة</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {gisBufferResults.map((r, i) => (
+                                                            <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                                                                <td style={{ padding: '4px', color: 'white' }}>{r.name}</td>
+                                                                <td style={{ padding: '4px', direction: 'ltr', textAlign: 'right' }}>{r.distance > 1000 ? (r.distance / 1000).toFixed(2) + ' كم' : r.distance + ' م'}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '12px', marginBottom: '15px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                                            <span style={{ fontSize: '1.2rem' }}>📈</span>
+                                            <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#fbab15' }}>حساب الارتفاعات (Elevation Profiler)</span>
+                                        </div>
+                                        <button
+                                            className={`ds-btn ${drawingMode === 'gis_elevation' ? 'primary' : 'secondary'} small w-100`}
+                                            style={{ padding: '8px', fontSize: '0.8rem', marginBottom: '10px' }}
+                                            onClick={() => {
+                                                setDrawingMode('gis_elevation');
+                                                setGisElevPoints([]);
+                                                setGisElevProfile([]);
+                                            }}
+                                        >
+                                            رسم مسار الارتفاع
+                                        </button>
+                                        {gisElevProfile.length > 0 && (
+                                            <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '8px', fontSize: '0.8rem' }}>
+                                                <div style={{ fontWeight: 'bold', marginBottom: '6px', color: '#EC4899' }}>مقطع الارتفاع الرأسي:</div>
+                                                <div style={{ height: '100px', display: 'flex', alignItems: 'flex-end', gap: '2px', borderLeft: '1px solid rgba(255,255,255,0.2)', borderBottom: '1px solid rgba(255,255,255,0.2)', padding: '5px 0 0 5px' }}>
+                                                    {(() => {
+                                                        const heights = gisElevProfile.map(p => p.elevation);
+                                                        const minH = Math.min(...heights);
+                                                        const maxH = Math.max(...heights);
+                                                        const range = maxH - minH || 1;
+                                                        return gisElevProfile.map((p, i) => {
+                                                            const hPct = ((p.elevation - minH) / range) * 80 + 10;
+                                                            return (
+                                                                <div
+                                                                    key={i}
+                                                                    style={{ flex: 1, height: `${hPct}%`, background: 'linear-gradient(to top, #EC4899, #F472B6)', minWidth: '4px', borderRadius: '2px 2px 0 0' }}
+                                                                    title={`المسافة: ${p.distance}م، الارتفاع: ${p.elevation}م`}
+                                                                ></div>
+                                                            );
+                                                        });
+                                                    })()}
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                                    <span>البداية (0م)</span>
+                                                    <span>النهاية ({gisElevProfile[gisElevProfile.length - 1].distance}م)</span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'white', marginTop: '6px', fontWeight: 'bold' }}>
+                                                    <span>أدنى ارتفاع: {Math.min(...gisElevProfile.map(p => p.elevation))}م</span>
+                                                    <span>أقصى ارتفاع: {Math.max(...gisElevProfile.map(p => p.elevation))}م</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '12px', marginBottom: '15px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                                            <span style={{ fontSize: '1.2rem' }}>⏳</span>
+                                            <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#fbab15' }}>البعد الزمني والمقارنة التاريخية</span>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                            <span style={{ fontSize: '0.85rem' }}>تفعيل الفلتر الزمني:</span>
+                                            <div
+                                                onClick={() => setGisTimeActive(!gisTimeActive)}
+                                                style={{ width: '40px', height: '20px', background: gisTimeActive ? 'var(--primary)' : 'rgba(255,255,255,0.1)', borderRadius: '10px', position: 'relative', cursor: 'pointer', transition: '0.3s' }}
+                                            >
+                                                <div style={{ width: '14px', height: '14px', background: 'white', borderRadius: '50%', position: 'absolute', top: '3px', left: gisTimeActive ? '23px' : '3px', transition: '0.3s' }}></div>
+                                            </div>
+                                        </div>
+                                        {gisTimeActive && (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '15px', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                                                    <span>الفترة الزمنية:</span>
+                                                    <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{gisTimeValue} م</span>
+                                                </div>
+                                                <input
+                                                    type="range"
+                                                    min="1900"
+                                                    max="2026"
+                                                    value={gisTimeValue}
+                                                    onChange={(e) => setGisTimeValue(parseInt(e.target.value))}
+                                                    style={{ width: '100%', accentColor: 'var(--primary)' }}
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <span style={{ fontSize: '0.85rem' }}>شاشة المقارنة (Swipe Screen):</span>
+                                            <div
+                                                onClick={() => setGisSwipeActive(!gisSwipeActive)}
+                                                style={{ width: '40px', height: '20px', background: gisSwipeActive ? 'var(--primary)' : 'rgba(255,255,255,0.1)', borderRadius: '10px', position: 'relative', cursor: 'pointer', transition: '0.3s' }}
+                                            >
+                                                <div style={{ width: '14px', height: '14px', background: 'white', borderRadius: '50%', position: 'absolute', top: '3px', left: gisSwipeActive ? '23px' : '3px', transition: '0.3s' }}></div>
+                                            </div>
+                                        </div>
+                                        {gisSwipeActive && (
+                                            <div style={{ fontSize: '0.75rem', color: '#06D6F2', marginTop: '6px', textAlign: 'center' }}>
+                                                * اسحب الخط الرأسي في وسط الخريطة للمقارنة بين صور الأقمار الصناعية والأطلس التاريخي
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '12px', marginBottom: '15px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                                            <span style={{ fontSize: '1.2rem' }}>🌐</span>
+                                            <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#fbab15' }}>استيراد رابط وب خارجي (WMS/XYZ/GeoJSON)</span>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            <input
+                                                type="text"
+                                                placeholder="أدخل رابط GeoJSON أو XYZ/WMS..."
+                                                value={gisApiUrl}
+                                                onChange={(e) => setGisApiUrl(e.target.value)}
+                                                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', fontSize: '0.8rem', outline: 'none' }}
+                                            />
+                                            <button
+                                                className="ds-btn secondary small"
+                                                onClick={async () => {
+                                                    if (!gisApiUrl.trim()) return;
+                                                    try {
+                                                        let type = 'geojson';
+                                                        if (gisApiUrl.includes('{z}') || gisApiUrl.includes('{x}') || gisApiUrl.includes('{y}')) type = 'xyz';
+                                                        else if (gisApiUrl.toLowerCase().includes('service=wms') || gisApiUrl.toLowerCase().includes('wms')) type = 'wms';
+                                                        
+                                                        if (type === 'geojson') {
+                                                            const res = await axios.get(gisApiUrl);
+                                                            const newLayerId = `remote-${Date.now()}`;
+                                                            const newLayer = {
+                                                                id: newLayerId,
+                                                                name: 'رابط خارجي (GeoJSON)',
+                                                                data: res.data,
+                                                                color: '#10D9A0',
+                                                                isVisible: true
+                                                            };
+                                                            setGeoLayers(prev => [...prev, newLayer]);
+                                                            alert('✅ تم استيراد طبقة GeoJSON بنجاح!');
+                                                        } else {
+                                                            const newLayerId = `raster-${Date.now()}`;
+                                                            const newLayer = {
+                                                                id: newLayerId,
+                                                                name: type === 'xyz' ? 'بلاط XYZ مخصص' : 'خدمة WMS مخصصة',
+                                                                type: 'raster',
+                                                                url: gisApiUrl,
+                                                                coordinates: [
+                                                                    [-180, 90],
+                                                                    [180, 90],
+                                                                    [180, -90],
+                                                                    [-180, -90]
+                                                                ],
+                                                                isVisible: true
+                                                            };
+                                                            setGeoLayers(prev => [...prev, newLayer]);
+                                                            alert('✅ تم إضافة خدمة الراستر بنجاح!');
+                                                        }
+                                                    } catch (e) {
+                                                        alert('❌ فشل تحميل الرابط: يرجى التأكد من صحة الرابط وسماحية الكورس (CORS).');
+                                                    }
+                                                }}
+                                            >
+                                                تحميل واستيراد
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '12px', marginBottom: '15px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span style={{ fontSize: '1.2rem' }}>🔥</span>
+                                                <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#fbab15' }}>خريطة كثافة حرارية (Heatmap)</span>
+                                            </div>
+                                            <div
+                                                onClick={() => {
+                                                    const activeId = activeTableLayerId;
+                                                    if (!activeId) {
+                                                        alert('يرجى تحديد طبقة نشطة أولاً.');
+                                                        return;
+                                                    }
+                                                    setLayerStyles(prev => {
+                                                        const current = prev[activeId] || {};
+                                                        return {
+                                                            ...prev,
+                                                            [activeId]: {
+                                                                ...current,
+                                                                heatmapEnabled: !current.heatmapEnabled
+                                                            }
+                                                        };
+                                                    });
+                                                }}
+                                                style={{ width: '40px', height: '20px', background: layerStyles[activeTableLayerId]?.heatmapEnabled ? 'var(--primary)' : 'rgba(255,255,255,0.1)', borderRadius: '10px', position: 'relative', cursor: 'pointer', transition: '0.3s' }}
+                                            >
+                                                <div style={{ width: '14px', height: '14px', background: 'white', borderRadius: '50%', position: 'absolute', top: '3px', left: layerStyles[activeTableLayerId]?.heatmapEnabled ? '23px' : '3px', transition: '0.3s' }}></div>
+                                            </div>
+                                        </div>
+                                        <small style={{ display: 'block', marginTop: '6px', color: 'var(--text-muted)', fontSize: '0.7rem' }}>
+                                            * يحول النقاط في الطبقة النشطة المحددة إلى خريطة كثافة حرارية متوهجة ديناميكياً.
+                                        </small>
+                                    </div>
+
+                                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '12px', marginBottom: '15px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                                            <span style={{ fontSize: '1.2rem' }}>✈️</span>
+                                            <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#fbab15' }}>جولة المعالم والمدن التاريخية</span>
+                                        </div>
+                                        <button
+                                            className="ds-btn primary small w-100"
+                                            style={{ padding: '8px', fontSize: '0.8rem', marginBottom: '10px' }}
+                                            onClick={() => {
+                                                setGisTourActive(true);
+                                                setGisTourStep(0);
+                                                const step = TOUR_STEPS[0];
+                                                if (mapRef.current) {
+                                                    mapRef.current.flyTo({ center: step.coords, zoom: step.zoom, duration: 3000 });
+                                                }
+                                            }}
+                                        >
+                                            بدء جولة سياحية تاريخية
+                                        </button>
+                                    </div>
+
+                                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '12px', marginBottom: '15px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                                            <span style={{ fontSize: '1.2rem' }}>📍</span>
+                                            <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#fbab15' }}>تحديد الموقع وحساب المسافات GPS</span>
+                                        </div>
+                                        <button
+                                            className="ds-btn secondary small w-100"
+                                            style={{ padding: '8px', fontSize: '0.8rem', marginBottom: '10px' }}
+                                            onClick={() => {
+                                                if (!navigator.geolocation) {
+                                                    alert('متصفحك لا يدعم نظام تحديد المواقع GPS.');
+                                                    return;
+                                                }
+                                                navigator.geolocation.getCurrentPosition(
+                                                    (pos) => {
+                                                        const userCoords = [pos.coords.longitude, pos.coords.latitude];
+                                                        if (mapRef.current) {
+                                                            mapRef.current.flyTo({ center: userCoords, zoom: 14 });
+                                                        }
+                                                        let closest = null;
+                                                        let minDist = Infinity;
+                                                        geoLayers.forEach(layer => {
+                                                            if (!layer.data?.features) return;
+                                                            layer.data.features.forEach(f => {
+                                                                if (!f.geometry) return;
+                                                                let fCoord = null;
+                                                                if (f.geometry.type === 'Point') fCoord = f.geometry.coordinates;
+                                                                else if (f.geometry.coordinates?.[0]?.[0]) fCoord = f.geometry.coordinates[0][0];
+                                                                else if (f.geometry.coordinates?.[0]) fCoord = f.geometry.coordinates[0];
+                                                                
+                                                                if (fCoord) {
+                                                                    const dist = haversineDistance(userCoords, fCoord);
+                                                                    if (dist < minDist) {
+                                                                        minDist = dist;
+                                                                        closest = {
+                                                                            name: f.properties?.name || f.properties?.name_ar || f.properties?.title || 'معلم جغرافي',
+                                                                            category: layer.name,
+                                                                            distance: dist
+                                                                        };
+                                                                    }
+                                                                }
+                                                            });
+                                                        });
+                                                        if (closest) {
+                                                            alert(`📍 موقعك الحالي: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}\n\nأقرب معلم تاريخي إليك هو: "${closest.name}" (${closest.category}) ويبعد عنك مسافة ${(closest.distance / 1000).toFixed(2)} كم.`);
+                                                        } else {
+                                                            alert(`📍 موقعك الحالي: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}\n\nلم يتم العثور على معالم محملة لحساب المسافة.`);
+                                                        }
+                                                    },
+                                                    (err) => {
+                                                        alert('❌ فشل تحديد موقعك: يرجى إعطاء المتصفح صلاحية الوصول للـ GPS.');
+                                                    }
+                                                );
+                                            }}
+                                        >
+                                            GPS: أقرب معلم لموقعي
+                                        </button>
+                                    </div>
+
+                                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '12px', marginBottom: '15px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span style={{ fontSize: '1.2rem' }}>🔍</span>
+                                                <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#fbab15' }}>استعلام بالإشارة (Reverse Geocoding)</span>
+                                            </div>
+                                            <div
+                                                onClick={() => {
+                                                    setGisReverseGeocodingActive(!gisReverseGeocodingActive);
+                                                    setGisReverseGeocodingResult(null);
+                                                    if (!gisReverseGeocodingActive) {
+                                                        alert('انقر الآن على أي مكان في الخريطة لعرض تفاصيل الموقع وأقرب معلم.');
+                                                    }
+                                                }}
+                                                style={{ width: '40px', height: '20px', background: gisReverseGeocodingActive ? 'var(--primary)' : 'rgba(255,255,255,0.1)', borderRadius: '10px', position: 'relative', cursor: 'pointer', transition: '0.3s' }}
+                                            >
+                                                <div style={{ width: '14px', height: '14px', background: 'white', borderRadius: '50%', position: 'absolute', top: '3px', left: gisReverseGeocodingActive ? '23px' : '3px', transition: '0.3s' }}></div>
+                                            </div>
+                                        </div>
+                                        {gisReverseGeocodingActive && (
+                                            <div style={{ fontSize: '0.75rem', color: '#fbab15', marginTop: '4px' }}>
+                                                * اضغط على الخريطة للاستعلام
+                                            </div>
+                                        )}
+                                        {gisReverseGeocodingResult && (
+                                            <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '10px', fontSize: '0.85rem', marginTop: '10px' }}>
+                                                <div>📍 الإحداثيات: <span style={{ fontFamily: 'monospace' }}>{gisReverseGeocodingResult.lat.toFixed(5)}, {gisReverseGeocodingResult.lng.toFixed(5)}</span></div>
+                                                {gisReverseGeocodingResult.closestName && (
+                                                    <div style={{ marginTop: '5px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '5px' }}>
+                                                        أقرب معلم: <strong style={{ color: 'var(--primary)' }}>{gisReverseGeocodingResult.closestName}</strong> ({gisReverseGeocodingResult.closestCategory}) يبعد مسافة {gisReverseGeocodingResult.distance > 1000 ? (gisReverseGeocodingResult.distance / 1000).toFixed(2) + ' كم' : gisReverseGeocodingResult.distance + ' م'}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '12px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                                            <span style={{ fontSize: '1.2rem' }}>💾</span>
+                                            <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#fbab15' }}>حفظ وتصدير اللوحة</span>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                            <button
+                                                className="ds-btn secondary small w-100"
+                                                onClick={handlePrintMap}
+                                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px' }}
+                                            >
+                                                📷 التقاط خريطة عالية الدقة HD PNG
+                                            </button>
+                                            <button
+                                                className="ds-btn secondary small w-100"
+                                                onClick={handleExportFilteredGeoJSON}
+                                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px' }}
+                                            >
+                                                📥 تصدير الطبقة المصفاة (GeoJSON)
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </aside>
 
@@ -6479,6 +7642,46 @@ out geom;`;
                                         <div className="ds-pick-sub">اختر لونك الخاص</div>
                                     </div>
                                 </div>
+
+                                {designSelections.palette === 'custom' && (
+                                    <div className="custom-colors-panel" style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px', padding: '15px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <label style={{ fontSize: '0.8rem', opacity: 0.8 }}>اللون الرئيسي</label>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <input type="color" value={designSelections.customPrimary} onChange={e => setDesignSelections(s => ({ ...s, customPrimary: e.target.value }))} style={{ width: '35px', height: '35px', border: 'none', borderRadius: '4px', cursor: 'pointer', background: 'transparent' }} />
+                                                <span style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>{designSelections.customPrimary}</span>
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <label style={{ fontSize: '0.8rem', opacity: 0.8 }}>لون الخلفية</label>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <input type="color" value={designSelections.customBg} onChange={e => setDesignSelections(s => ({ ...s, customBg: e.target.value }))} style={{ width: '35px', height: '35px', border: 'none', borderRadius: '4px', cursor: 'pointer', background: 'transparent' }} />
+                                                <span style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>{designSelections.customBg}</span>
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <label style={{ fontSize: '0.8rem', opacity: 0.8 }}>لون الألواح والبطاقات</label>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <input type="color" value={designSelections.customSurface} onChange={e => setDesignSelections(s => ({ ...s, customSurface: e.target.value }))} style={{ width: '35px', height: '35px', border: 'none', borderRadius: '4px', cursor: 'pointer', background: 'transparent' }} />
+                                                <span style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>{designSelections.customSurface}</span>
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <label style={{ fontSize: '0.8rem', opacity: 0.8 }}>لون النصوص</label>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <input type="color" value={designSelections.customText} onChange={e => setDesignSelections(s => ({ ...s, customText: e.target.value }))} style={{ width: '35px', height: '35px', border: 'none', borderRadius: '4px', cursor: 'pointer', background: 'transparent' }} />
+                                                <span style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>{designSelections.customText}</span>
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <label style={{ fontSize: '0.8rem', opacity: 0.8 }}>لون الحدود والخطوط الفاصلة</label>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <input type="color" value={designSelections.customBorder} onChange={e => setDesignSelections(s => ({ ...s, customBorder: e.target.value }))} style={{ width: '35px', height: '35px', border: 'none', borderRadius: '4px', cursor: 'pointer', background: 'transparent' }} />
+                                                <span style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>{designSelections.customBorder}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -6506,7 +7709,30 @@ out geom;`;
                                             <div className="type-pair-name">{f.sub}</div>
                                         </div>
                                     ))}
+
+                                    {/* Custom Font Pick */}
+                                    <div className={`ds-pick ${designSelections.font === 'custom' ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({ ...s, font: 'custom' }))} style={{ borderStyle: 'dashed' }}>
+                                        <div className="type-preview" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '5px', padding: '10px' }}>
+                                            <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>Aa</span>
+                                            <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>خط مخصص</span>
+                                        </div>
+                                        <div className="ds-pick-title">خط مخصص</div>
+                                        <div className="type-pair-name">أدخل خطوطك الخاصة</div>
+                                    </div>
                                 </div>
+
+                                {designSelections.font === 'custom' && (
+                                    <div className="custom-fonts-panel" style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px', padding: '15px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <label style={{ fontSize: '0.8rem', opacity: 0.8 }}>خط العناوين الرئيسية (Heading Font)</label>
+                                            <input type="text" value={designSelections.customFontHeading} onChange={e => setDesignSelections(s => ({ ...s, customFontHeading: e.target.value }))} placeholder="مثال: Cairo أو Tajawal" style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '8px 12px', color: 'white', outline: 'none', fontSize: '0.85rem' }} />
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <label style={{ fontSize: '0.8rem', opacity: 0.8 }}>خط النصوص العامة (Body Font)</label>
+                                            <input type="text" value={designSelections.customFontBody} onChange={e => setDesignSelections(s => ({ ...s, customFontBody: e.target.value }))} placeholder="مثال: Tajawal أو sans-serif" style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '8px 12px', color: 'white', outline: 'none', fontSize: '0.85rem' }} />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -6521,7 +7747,8 @@ out geom;`;
                                     {[
                                         { id: 'dark', title: 'النمط الداكن', sub: 'داكن أنيق · للتطبيقات الحديثة', type: 'bm-dark', provider: 'MAPTILER' },
                                         { id: 'light', title: 'النمط الفاتح', sub: 'فاتح ونظيف · للقراءة الواضحة', type: 'bm-light', provider: 'MAPTILER' },
-                                        { id: 'satellite', title: 'قمر صناعي', sub: 'صور أقمار صناعية', type: 'bm-satellite', provider: 'GOOGLE' },
+                                        { id: 'satellite', title: 'قمر صناعي (هجين)', sub: 'صور أقمار صناعية مع أسماء الطرق', type: 'bm-satellite', provider: 'GOOGLE' },
+                                        { id: 'satellite_pure', title: 'قمر صناعي (سادة)', sub: 'صور أقمار صناعية سادة بدون أسماء', type: 'bm-satellite', provider: 'GOOGLE' },
                                         { id: 'terrain', title: 'تضاريس', sub: 'تضاريس وارتفاعات', type: 'bm-terrain', provider: 'MAPTILER' },
                                         { id: 'vintage', title: 'خريطة عتيقة', sub: 'خريطة تاريخية كلاسيكية', type: 'bm-vintage', provider: 'MAPTILER' },
                                         { id: 'cyber', title: 'خريطة رقمية', sub: 'سايبر بانك مستقبلي', type: 'bm-cyber', provider: 'MAPTILER' }
@@ -6603,6 +7830,27 @@ out geom;`;
                                             </div>
                                         </div>
                                     ))}
+                                </div>
+
+                                <div style={{ marginTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '20px' }}>
+                                    <h3 style={{ fontSize: '0.95rem', color: 'var(--primary)', marginBottom: '15px' }}>تخصيص حدود الخريطة</h3>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <label style={{ fontSize: '0.8rem', opacity: 0.8 }}>زاوية انحناء الخريطة (Border Radius): {designSelections.mapBorderRadius}</label>
+                                            <input type="range" min="0" max="40" value={parseInt(designSelections.mapBorderRadius || '0')} onChange={e => setDesignSelections(s => ({ ...s, mapBorderRadius: e.target.value + 'px' }))} style={{ width: '100%', accentColor: 'var(--primary)' }} />
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <label style={{ fontSize: '0.8rem', opacity: 0.8 }}>سمك حد الخريطة (Border Width): {designSelections.mapBorderWidth}</label>
+                                            <input type="range" min="0" max="10" value={parseInt(designSelections.mapBorderWidth || '0')} onChange={e => setDesignSelections(s => ({ ...s, mapBorderWidth: e.target.value + 'px' }))} style={{ width: '100%', accentColor: 'var(--primary)' }} />
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <label style={{ fontSize: '0.8rem', opacity: 0.8 }}>لون حد الخريطة (Border Color)</label>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <input type="color" value={designSelections.mapBorderColor || '#ffffff'} onChange={e => setDesignSelections(s => ({ ...s, mapBorderColor: e.target.value }))} style={{ width: '35px', height: '35px', border: 'none', borderRadius: '4px', cursor: 'pointer', background: 'transparent' }} />
+                                                <span style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>{designSelections.mapBorderColor}</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         )}
