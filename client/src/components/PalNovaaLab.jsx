@@ -4929,6 +4929,1083 @@ out geom;`;
     };
 
     const performActualExport = async (isZip = false) => {
+        if (designSelections.commercialTemplate === 'guacamaya') {
+            const guacamayaHtml = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>غواكامايا إيرلاينز - نظام إدارة وحجز الطيران</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;700;900&family=Tajawal:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="brand">
+                <i class="fa-solid fa-plane-departure logo-icon"></i>
+                <span class="brand-text">Guacamaya <span class="brand-sub">Airlines</span></span>
+            </div>
+            
+            <p class="intro-text">نظام المحاكاة الإداري المتكامل لإدارة الرحلات الجوية، تخطيط الجداول، وحجز التذاكر عبر الخريطة التفاعلية.</p>
+            
+            <!-- Tab Controls -->
+            <div class="tab-controls">
+                <button class="tab-btn active" data-tab="booking"><i class="fa-solid fa-ticket"></i> الحجوزات</button>
+                <button class="tab-btn" data-tab="planning"><i class="fa-solid fa-calendar-plus"></i> جدولة الرحلات</button>
+                <button class="tab-btn" data-tab="stats"><i class="fa-solid fa-chart-pie"></i> الإحصائيات</button>
+            </div>
+
+            <!-- TAB CONTENT: BOOKING -->
+            <div id="tab-booking" class="tab-content active">
+                <div class="booking-form">
+                    <h3 class="panel-title">البحث عن رحلة جغرافية</h3>
+                    <div class="input-group">
+                        <label><i class="fa-solid fa-plane-departure text-primary"></i> مطار الإقلاع (من)</label>
+                        <select id="select-from">
+                            <option value="" selected disabled hidden>اختر مطار الإقلاع...</option>
+                            <option value="MIA">MIA - ميامي (أمريكا)</option>
+                            <option value="CCS">CCS - كاراكاس (fنزويلا)</option>
+                            <option value="JFK">JFK - نيويورك (أمريكا)</option>
+                            <option value="ATL">ATL - أتلانتا (أمريكا)</option>
+                            <option value="DXB">DXB - دبي (الإمارات)</option>
+                            <option value="CDG">CDG - باريس (فرنسا)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label><i class="fa-solid fa-plane-arrival text-danger"></i> مطار الوصول (إلى)</label>
+                        <select id="select-to">
+                            <option value="" selected disabled hidden>اختر مطار الوصول...</option>
+                            <option value="MIA">MIA - ميامي (أمريكا)</option>
+                            <option value="CCS">CCS - كاراكاس (fنزويلا)</option>
+                            <option value="JFK">JFK - نيويورك (أمريكا)</option>
+                            <option value="ATL">ATL - أتلانتا (أمريكا)</option>
+                            <option value="DXB">DXB - دبي (الإمارات)</option>
+                            <option value="CDG">CDG - باريس (فرنسا)</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label><i class="fa-solid fa-calendar-day"></i> تاريخ المغادرة</label>
+                        <input type="date" id="search-date" value="2026-06-15">
+                    </div>
+                    
+                    <button id="btn-search-flights" class="btn primary-btn">بحث عن الرحلات المتاحة</button>
+                </div>
+
+                <!-- Flight Search Results -->
+                <div id="search-results-section" class="search-results-section hidden">
+                    <h3 class="panel-title">الرحلات المتوفرة</h3>
+                    <div id="flights-list" class="flights-list"></div>
+                </div>
+
+                <!-- Interactive Seat Map -->
+                <div id="seat-map-section" class="seat-map-section hidden">
+                    <h3 class="panel-title">خريطة مقاعد الطائرة (<span id="active-flight-no">--</span>)</h3>
+                    <div class="seat-legend">
+                        <span class="legend-item"><span class="box first-class"></span> درجة أولى</span>
+                        <span class="legend-item"><span class="box business-class"></span> درجة رجال أعمال</span>
+                        <span class="legend-item"><span class="box economy-class"></span> اقتصادية</span>
+                        <span class="legend-item"><span class="box occupied"></span> محجوز</span>
+                    </div>
+                    <div class="plane-body">
+                        <div class="cockpit"><i class="fa-solid fa-shield-halved"></i> مقصورة القيادة</div>
+                        <div id="seats-grid" class="seats-grid"></div>
+                    </div>
+                    <div class="seat-selection-summary">
+                        <div>المقعد المختار: <strong id="selected-seat-label">لم يتم الاختيار</strong></div>
+                        <div>سعر التذكرة: <strong id="selected-seat-price">--</strong> ₪</div>
+                    </div>
+                    <div class="input-group" style="margin-top: 10px;">
+                        <label><i class="fa-solid fa-user"></i> اسم المسافر</label>
+                        <input type="text" id="passenger-name" placeholder="أدخل اسم المسافر بالكامل...">
+                    </div>
+                    <button id="btn-confirm-booking" class="btn success-btn disabled" disabled>تأكيد الحجز وإصدار التذكرة</button>
+                </div>
+            </div>
+
+            <!-- TAB CONTENT: PLANNING (ADMIN) -->
+            <div id="tab-planning" class="tab-content">
+                <div class="planning-form">
+                    <h3 class="panel-title">جدولة رحلة جوية جديدة</h3>
+                    
+                    <div class="input-group">
+                        <label>رقم الرحلة</label>
+                        <input type="text" id="plan-flight-no" placeholder="مثال: GA-105">
+                    </div>
+
+                    <div style="display: flex; gap: 12px;">
+                        <div class="input-group" style="flex: 1;">
+                            <label>من مطار</label>
+                            <select id="plan-from">
+                                <option value="MIA">MIA - ميامي</option>
+                                <option value="CCS">CCS - كاراكاس</option>
+                                <option value="JFK">JFK - نيويورك</option>
+                                <option value="ATL">ATL - أتلانتا</option>
+                                <option value="DXB">DXB - دبي</option>
+                                <option value="CDG">CDG - باريس</option>
+                            </select>
+                        </div>
+                        <div class="input-group" style="flex: 1;">
+                            <label>إلى مطار</label>
+                            <select id="plan-to">
+                                <option value="CDG">CDG - باريس</option>
+                                <option value="MIA">MIA - ميامي</option>
+                                <option value="CCS">CCS - كاراكاس</option>
+                                <option value="JFK">JFK - نيويورك</option>
+                                <option value="ATL">ATL - أتلانتا</option>
+                                <option value="DXB">DXB - دبي</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 12px;">
+                        <div class="input-group" style="flex: 1;">
+                            <label>وقت الإقلاع</label>
+                            <input type="time" id="plan-time" value="08:30">
+                        </div>
+                        <div class="input-group" style="flex: 1;">
+                            <label>سعر التذكرة (₪)</label>
+                            <input type="number" id="plan-price" value="1200" min="100">
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>نوع الطائرة</label>
+                        <select id="plan-plane">
+                            <option value="Boeing 787 Dreamliner">Boeing 787 Dreamliner (240 مقعد)</option>
+                            <option value="Airbus A350-900">Airbus A350-900 (300 مقعد)</option>
+                            <option value="Boeing 737 Max">Boeing 737 Max (160 مقعد)</option>
+                        </select>
+                    </div>
+
+                    <button id="btn-schedule-flight" class="btn primary-btn">إدراج وجدولة الرحلة</button>
+                </div>
+
+                <div class="scheduled-flights-section">
+                    <h3 class="panel-title">جدول الرحلات الحالي</h3>
+                    <div id="admin-scheduled-list" class="admin-scheduled-list"></div>
+                </div>
+            </div>
+
+            <!-- TAB CONTENT: STATS -->
+            <div id="tab-stats" class="tab-content">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-title">إجمالي الرحلات</div>
+                        <div class="stat-value" id="stat-total-flights">12</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">التذاكر المباعة</div>
+                        <div class="stat-value" id="stat-tickets-sold">48</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">نسبة إشغال المقاعد</div>
+                        <div class="stat-value" id="stat-occupancy-rate">72%</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">إجمالي الإيرادات</div>
+                        <div class="stat-value" id="stat-total-revenue">₪ 84,400</div>
+                    </div>
+                </div>
+
+                <div class="recent-bookings-panel">
+                    <h3 class="panel-title">سجل الحجوزات الأخيرة</h3>
+                    <div id="recent-bookings-list" class="recent-bookings-list"></div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace (SVG World Map) -->
+        <main class="main-map-container">
+            <div class="map-overlay-title">
+                <h2>خريطة المطارات والخطوط الجوية التفاعلية</h2>
+                <p>اختر أيقونات الطائرات أو المطارات لعرض الرحلات والمسارات الجوية المباشرة</p>
+            </div>
+            
+            <div class="svg-map-wrapper">
+                <svg id="svg-world-map" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Definitions for glow effects and markers -->
+                    <defs>
+                        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="8" result="blur" />
+                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                    </defs>
+
+                    <!-- World Outline Group -->
+                    <g id="world-continents">
+                        <path class="restoDelMundo" d="M85,227h16l8-7l3-2l-7-3h-8l-3-3c0,0,4-2,5-3s5,1,6,0s11-2,11-2h3c0,0,2,1,3,0s4-3,4-3s-1-2-2-3s-3-2-2-4s6-3,6-3s8,0,11-1s12-3,15-4s15-4,15-4l15-3h22c0,0,3,3,5,3s15,3,15,3s9,0,10,1s11,2,11,2l8,2c0,0,10,0,12-1s6-2,8-3s5-2,10-2s14,0,16,0s5,0,9,1s10,3,10,3s5,3,7,3s0,0,0,0l13,1l3,3l8,1c0,0,4,2,8,1s9-2,9-2s6-1,8-1s5,0,10,0s12-1,12-1l6,1c0,0,3,1,5,1s8-2,8-2l5-5c0,0-1-1,0-3s0-6,4-6s12,0,12,0l6,2c0,0-2,7-2,9s2,5,2,5s0,1,3,1s5-1,5-1l6-4h3l10-2c0,0,6,2,5,4s0,3-5,5s-7,4-7,4l-6,3c0,0-3,1-8,1s-7,1-10,1s-7,1-8,2s-4,3-4,3l-1,5l-10,1c0,0-2,1-5,2s-7,4-7,4l-7,5l-12,4l-7,6c0,0,0,1,0,3s0,7,0,7s5,2,7,3s8,5,8,5l8,4l5,3h5c0,0,0,5,0,7s-1,3-1,6s0,4,0,4l1,4h5c0,0-3,0,0-2s2-5,4-6s6-4,6-5s1-3,3-4s2-2,6-3s7-2,7-2s1-1,2-4s2-7,2-7s-1-5,1-8s4-7,4-7l4-5c0,0,0-2,3-3s1-1,5-2s11-1,12-1s8,2,8,2l6,4c0,0,1,3,2,5s2,4,2,6s-4,0,0,2s9,4,11,2s5-6,5-6l3-3l5,5l1,5c0,0-1,4-1,6s-3,2,0,7s4,8,4,8v4l2.5-1.5l6,2c0,0,4,1,4,2s0,5,0,5l-4,3l-3,1l-10,4l-8,3l-6,2h-8c0,0-7,0-9,0s-12,4-12,4h-3l10,7h2l-5,4l-2,3c0,0,1,6,2,6s4,0,4,0l4,3l1,3v2l-2,4c0,0-5-1-7,0s-4,0-4,0s0,1-3,3s-3,0-3,0l-5,1c0,0-1-3-1-4s0,0,0,0l2-5l-7,5h-3l-5,4h-4l-10,7l-2,3l-5,4l-9,5c0,0,3,0-2,0s-7,3-7,3l-2,3c0,0,0,3-3,4s-5,3-6,3s-1,2-1,2l-3,4c0,0-1,1-1,3s0,3,0,4s0-1,0,1s-2,6-3,7s-3,0-4,1s-3,2-5,3s-7,3-7,4s-2,3-2,3s-3,0-3,1s-2,2-2,2l-4,3h-1h-2l-25,7l-15,5l-4,1h-3l-3,4c0,0,0,2-1,2s-3,0-3,0c-3,1-9,0-9,0s-3-3-4-3s-5-1-5-1s-3,1-6,2s-6,2-6,2l-4,3l-4,5c0,0-3,3-3,4s-2,4-2,4l-1,7l-1,6l-2,5c0,0,0,3-1,4s-1,7-1,7l2,7c0,0,1,4,2,6s3,4,3,4s1,1,3,2s6,1,6,1s3,0,5-1s2-1,4-2s2,0,3-2s2-3,3-4s3-4,3-4l4-3l6-2h7c0,0,3-2,4,0s2,3,1,5s-3,5-3,5l-4,5c0,0-1,10-2,11s-1,2-2,4s-3,3-1,4s2,0,5,0s7,0,7,0h6h5l3,3l2,5l-2,7c0,0-1,3-1,5s-1-2,0,6s2,8,2,9s3,5,3,5l2,2c0,0,3,0,5,0s2,0,4-1s7-2,7-2l5,1l3,2c0,0,3,1,4,1s1,1,2,0s2-4,2-4l4-3l5-4c0,0,2-3,3-3s2,0,2,0h3l2-1h2l1,15l6,5l27-4h25l5,1h5l4,4l2,2l3,3l5,5c0,0,4,2,5,2s5,1,5,1h5l6,1l7,2l4,4c0,0,2,5,3,6s1,4,1,4l3,6l3,8l2,4l-5,6c0,0,3,2,5,3s5,1,5,1s3,3,4,0s0-5,3-5s8,0,8,0l7,6l3,4l4,3l10-1l10,2l6,3l7,3l11,6l6,6l1,7l-4,10c0,0-2,5-3,7s-2,4-5,6s-7,6-7,6l-1,8c0,0-5,6-5,10s0,17,0,17v11v4l-3,8l-3,6l-6,4c0,0-1-2-6,0s-12,4-12,4l-8,12l-6,7l-1,6l-2,9l-2,7l-4,8l-5,12c0,0,2,3-2,4s-4-1-4,0s-2-3-5,0s-9,4-9,4h-12l11,10c0,0,1,3,1,6s0,0,0,0s-4,8-8,9s-11,3-11,3s-3-2-5,1s-3,9-3,9l-5,6l2,8v8l-1,8c0,7-2,3,0,7s2,4,2,4s4,7,4,9s-2,8-2,8s-4,2-2,6s-5,8-5,8h-5h-8l-5-8c0,0-2-3-4-6s-8-10-8-10l-6-9c0,0-5-8-5-11s0-6,0-9s1-3,0-7s5-5,0-8s-8-9-8-9l-4-11l-1-13c0,0-1-8-1-14s0-11,0-15s0-12,0-12v-13c0,0,0-2,0-10s-1-17-1-17s0-3,0-8s3,4,0-5s1-6-5-13s-1,1-6-7s-10-7-15-11s5,8-5-4s-10-12-10-12l-6-6c0,0,6-3,0-9s-3,1-9-10s-4-10-8-15s2-1-2-5s-7-13-7-13s9,1,7-6s4-13,0-15s-1-4,0-8s7-7,8-11s11-10,11-10s1-3,0-6s0-11,0-11l-11-6h-6c0,0-7,1-9,0s0,0,0,0s-6-3-12-5s-10-10-10-10l-1-7l-6-5c0,0-3-3-6-4s0-1-5-2s-2,2-7-1s-8-4-8-4l-4-4c0,0-1-3-5-5s-5-2-7-2s-4,1-4,1s2,1-5,0s-11-3-11-3l-4-2c0,0-5-2-10-5s-6-3-10-6s-4-3-4-3l-5-12c0,0-3-8-3-10s-1-2-1-4s-1-2-2-6s-1-4-3-8s-2-3-4-6s-2-3-5-7s-4-8-5-9s-3-3-3-5s-2-4-3-6s-2-4-4-4s2,4-2,0s-1,4-4-2s-2-4-5-8s-2-3-5-8s-3-3-5-8s-3-4-3-10s0-5,0-10s1-8,1-9s1,6,0,0s3-14,4-15s5-3,7-6s4-6,6-8s4-7,4-7l4-5c0,0,2-1,3-4s1-10,1-10s1-4,1-9s1-8,1-8v-6c0,0,3-1,2-3s-3-9-3-11s0-6-2-10s-1-3-4-6s-6-3-10-5s-4-2-10-3s-9-1-12-1s-9,0-9,0l-11,3l-7,2c0,0-5-1-8,0s-9,4-9,4l-4,4l-6,2l-10,3l-8,3c0,0-6,2-9,3s-7,2-7,2s-3,1-4,0s-1-1,0-3s2-3,4-3s5,0,7-1s5-4,5-4s4-1,4-4s0-1,0-3s1-2,1-4s1-5,1-6s0-6,0-6l3-2L85,227z" />
+                        <path class="restoDelMundo" d="M720,386c0,0-2,1-2,2s1,1-2,3s-3,3-5,4s-5,4-5,4s-2,2-4,3s-4,4-4,4s-1,3-1,5s-1,5,0,6s0,6,0,6l-8,4c0,0-4,3-7,5s-8,6-8,6l-4,4c0,0-5,5-8,10s-3,2-4,8s-2,8-2,8s-1,4-1,7s2,5,3,8s2,7,2,7s0,0,0,4s0,7,0,7s-1,2-2,4s-3-3-3,0s-3,9-3,9s-3,8-1,12s7,14,7,14s4,6,6,7s6,8,6,8l7,5l7,6c0,0,5,5,7,5s4,2,8,3s12,2,14,2s0,0,7,0s15,2,19,0s12-6,14-6s1-2,6-2s11,0,11,0h5c0,0,0,2,2,4s4,5,4,5s8-2,10,0s8,0,8,0l6,15v6v7l-4,7l-1,6l2,7l3,9l4,6c0,0,5,4,6,6s0,0,0,0l3,10l5,12c0,0,1,5,1,8s3,3,0,7s-5,5-6,9s-3,5-3,12s0,14,0,14s2,0,3,3s0,6,3,10s1,7,4,11s3,4,4,8s3,13,3,13l1,8l1,9l6,14c0,0,2,3,4,6s4,8,4,8l2,7c0,0,7,3,9,3s4,2,8,0s9-3,9-3s6-1,8-1s7-3,7-3l12-4l10-7l6-8l4-11l5-10c0,0,1,0,3-6s3-11,6-12s7-1,8-3s4-11,4-11l-1-5l-3-7c0,0,1-5,4-7s5-5,5-5l7-5l8-6l4-4c0,0,3-4,3-9s0-13,0-13s2-5,0-9s-4-11-4-11l-1-8l-2-9l3-12c0,0,2-3,5-6s8-12,10-13s11-8,11-8s6-3,9-8s4-7,6-9s6-8,6-8l6-10c0,0,2-3,4-8s4-10,4-10s2,0,2-6s0-10,0-10l-5,1l-6,1l-10,2c0,0-7,5-12,3s0-1-4-2s-4-1-4-1l-3-5l2-3c4-2-4-4,5-4s12,0,15-1s8-3,11-4s8-4,8-4l12-9c0,0,4-4,8-6s9-6,9-6s5-6,6-7s6-8,7-9s3-7,4-8s1-3-1-5s-2,0-7-5s-2-2-5-5s-2-2-4-4s-2-2-2-3s0-1,1-2s5,0,5,0l10,3l14,2l8-2l11-1c0,0,5,0,6,1s6,6,6,6l3,5l14,8v7c0,0,1,2,6,0s10-6,10-6l5,8c0,0,0,5,0,10s0,8,0,13s-3,8,0,12s7,7,8,12s7,15,7,15v6l11,4l5-2c0,0,3-2,4-8s1-11,1-15s0-12,0-12s-4-1,4-7s7-3,11-8s12-9,12-9l12-7l4-7c0,0,15-3,18-2s7,4,8,8s5,11,5,11l1,9l13,7l13,1l2,12c0,0,0,11,1,13s1,6,1,6s-1,4,0,7s-3,1,0,7s5,13,5,13s3,7,4,9s2,4,5,7s10,7,10,7l12,1c0-10,0-15,0-15l-10-10l-7-14c0,0-2-11-3-12s-4-2-4-6s-6-1,0-4s10-3,11,0s2,9,4,10s9,7,9,7c6,3,9,5,13,1s8-8,8-8l4-9c0,0-3-1,0-5s1-4,0-10s-4-15-6-15s-4-1-5-4l-4-5l-2-3c0,0-2-1-2-3s2-7,2-7s5-3,7-3s9,2,9,2s12-1,13-2s13-7,13-7l6-4l3-4l9-6c0,0,4-11,6-15s0-12,0-12s1-3,0-8s6,0,1-5s-8,0-9-7s-1-6-3-11s-3-11-3-11s-2-10-2-12s1-6,1-6s4-3,7,0s11,10,11,10s3,6,6,8s-7-2,0,2s13,4,13,4l6-1c0,0,1,1,0-5s0-6,0-6l-7-13c0,0-5-2-5-6s0-9,0-9l12-4c0,0,6-2,6-6s0-6,2-9s-2-5,0-12s-1-8,0-11s0-11,0-11s-3-4-8-7s-12-8-12-8s-8-3-12-7s-4-4-4-4l-2-4c0,0-2,5,1-4s4-13,4-13s-1,4,7,0s23-7,23-7s12-1,15-2s5-3,8-5s16,0,20,0s5,9,5,9l-1,8l2,11l13,10c0,0,7,8,10,5s6-1,6-9s0-12,0-12s-3-4,0-7s-9,3,0-3s16-13,16-13l11-6c0,0,0,0,6-4s11-9,11-9v-6l-7-13l-20-4l-22-1c0,0-12-2-21-4s1,0-15-3s-45-5-45-5l-21-1l-30-1l-24-1l-28-2c0,0-7,1-26-2s-25-3-25-3s-16-1-26-3s1,5-16,0s-37,0-37,0l-16-2c0,0,13-10,6-12s-16-3-16-3h-20c0,0-10-1-20,0s-12-3-17,0s-5,7-11,9s-4-1-12,3s-12,3-17,6s-7,4-11,6s-4,2-4,2s1,7-6,4s-11-6-11-6s-1-1-5-1s-6,3-7,6s0,9,0,9c-11,2-5,2-11,2s-12,0-12,0l-13,1l-40,6c0,0-1-2-9,1s-12,4-14,5s-4,2-2,1s-1-4-1-7s-1-6-6-8s-2-1-9-2s5,2-10-2s-31-7-31-7s-2-2-8,0s-16,6-16,6s-7,4-21,8s-14,3-20,7s-9,6-18,19s-9,13-9,13s-5,7-4,11s6,8,6,8s5,0,7,3s-2-5,0,3s0,8,0,8v12l-7,3c0,0-9,3-9,4s-6,5-6,5l-3,3l-3,2l-1,4l-1,7c0,0-4,6-5,7s-4,8-4,8l-11,15l-4,4c0,0-7-1-8-1s-4,0-5,0s-2-1-4-1s-2,0-5,0s-5-2-7,0s-3,5-3,6s0,3,0,3l-3,3c0,0-1,5-1,6s0,3,0,5s0,5,0,6s0,4,0,6s-2,0,0,2s2,2,2,2l4,1l4,1h2l4,3l2-1c0,0,3-2,5-2s7,0,7,0l5-1c0,0,2,0,3-2s4-4,4-4l4-3l1-5l4-4l4-4l5-3l6-5l2-4v-4l14-3h3h7c4-2,7-2,7-2s3,1,4,3s4,6,4,6l5,4l8,6l4,3l2,2c0,0,0,1,2,3s2,5,3,6s1,1,3,0s4-1,4-2s2-4,3-4s7-2,8,0s3,6,3,6s-1-1,2,2s4,2,5,4s4,6,5,6s8,2,8,2s0-6,0-8s0-3-1-5s-4-6-1-8s7-4,7-4s3-4,7-1s4,6,4,6v6l4,8l4,5l8,3c0,0,8,0,9,0s9,0,10,1s2,3,2,3l7,1l1,3l1,4c0,0,0,4,0,6s-1,5-1,5l-6,5c0,0-1,2-4,2s-10-1-10-1l-14-1h-11l-12-2l-10-2l-6-4l-4,1c0,0,0,3,0,5s-1,4-1,4s1,2-2,2s-6,0-6,0l-5-4c0,0-7-3-9-4s-8-2-10-3s-7-3-7-3s-5,1-8-3s-4-2-5-8s0-8,0-9s1-2-2-4s-6-1-6-1l-5,2c0,0-8,2-9,2s-6,0-11,0s-6-1-10,0s-6,1-9,2s-8,3-8,3l-7,3h-5c0,0-4-1-6-1S720,386,720,386z" />
+                        <path class="restoDelMundo" d="M331,466l8-3c0,0,7-1,10,0s9,3,9,3s5-2,6,0s4,4,6,5s2,2,5,3s6,2,7,3s2,3,2,3s-1,2-4,2s-2-1-6,0s-7,0-8,0s0-1-2-2s-5-3-5-4s1-3-3-4s-2-2-7-2s-3,0-7,0s-6,0-7,0s-2-1-2-1L331,466z" />
+                        <path class="restoDelMundo" d="M389,482c0,0,2-1,5,0s7,1,9,2s7,2,7,2s2,0,2,2s1,2-3,3s-7,2-8,2s-3-1-5,0s-3-1-5,0s-4,1-6,0s-5-2-5-2v-2l5-1c0,0,0,0,1,0S389,482,389,482z" />
+                        <path class="restoDelMundo" d="M363,489h7c0,0,0.7,4.3,0,5c-2,2-6,2-7,2s-2,2-3,0s-3-3-3-3s-1-5,2-4S363,489,363,489z" />
+                        <path class="restoDelMundo" d="M421,489c0,0-3,1-3,2s0,2,1,3s0,4,2,3s3,1,5,0s5,0,5,0s1-3,0-4s-5-5-6-4S421,489,421,489z" />
+                        <path class="restoDelMundo" d="M439,493c0,0,1,3,2,4s0,3,1,4s3,2,4,1s-4-3,0-4s4,0,7,0s5,2,4,0s-1-3-5-4s-10-2-10-2L439,493z" />
+                        <path class="restoDelMundo" d="M450,504c1,2,3,3,4,5s4,4,3,5s-1,3-2,4s-3,3-3,4s-5,3-4,5s0,3,0,4s0,4,0,4h4c0,0,3,1,3-2s0-4,0-6s1-2,2-4s1-3,2-4s2-2,2-3s1-3,0-5l-3-4l-2-2l-3-2C453,503,449,502,450,504z" />
+                        <path class="restoDelMundo" d="M458,177l7-4c0,0,6-3,8-3s4,3,4,3v4c0,0,1-5,3-4s6,0,9,0s12-3,13,0s3,6,5,6s10,0,10,0s6-1,7,3s1,6,3,8s2,3,4,5s3,2,4,4s2,5,3,6s0,3,0,5s-2,1-5,2s-4,2-6,0s-4,0-4,1s-1,4,0,5s-1,4-3,5s-5,3-5,3s-1-1-3,0s-6,3-9,2s-4-2-5-3s-4-7-4-7s-2-4-1-5s3-3,3-3s1-2,2-3s2-4,2-4s-2-5-2-7s0-4-3-5s-2-1-6-2s-2-1-7-1s-6-1-10-2s-5-1-8-1s-4-4-6-3s-2,0-2,0L458,177z" />
+                        <path class="restoDelMundo" d="M467,159l15-4c0,0,4,3,7,2s3-1,5-2s7-3,9-4s6-1,7-3s2-6,3-6s6-5,8-5s8,2,11,0s10-1,13-2s11-2,18-3s13-2,17-2s12,0,12,0s3,2-2,4s-4,2-10,4s-8,4-13,5s-6-2-10,1s-8,6-11,7s-4,4-10,6s-6,1-12,4s-8,2-11,3s-5,3-9,3s0,0-7,0s-6,0-12,0s-9,0-12,0s-4,1-6,0s-4-2-4-2L467,159z" />
+                        <path class="restoDelMundo" d="M577,146l11-3c0,0,4-2,8-4s10-3,14-4s14-2,18-2s10,0,14,0s16-1,18,0s5,1,14,0s31-3,31-3s9-3,13-3s10-1,12,0s4,2,7,3s7,6,10,6s12,0,13,0s3-2,5-2s2,2,0,4s-6,5-9,5s-7-1-10,0s-2-2-4,3s-2,6-3,9s-1,3-6,6s-6,3-8,6s-5,6-7,6s-5-1-4,2s4,2-1,7s-7,7-12,9s-9,2-12,4s5-2-12,4s-18,7-21,9s-2,3-8,5s-9,2-12,3s-5,2-8,4s-6,7-7,8s-1,4-4,5s-6,3-8,3s-2-1-6,0s-6,3-8,0s-3-1-5-8s-3-9-3-15s-1-9,3-11s5,2,8-3s4-5,5-8s1-7,1-9s1-6,0-8s-2-1-5-4s-3-4-6-5s-6-2-10-4s-4-3-9-3s-10,0-12,0s-4-1-5-2s0-7,0-7s7-2,11-3S577,146,577,146z" />
+                        <path class="restoDelMundo" d="M1022,681c0,2-3,6-3,7s-5,5-7,6s-9,2-11,4s-5,4-5,6s1,5,0,7s0,9,0,11s-3,8-3,9s-3,6-3,6s-3,0-2,5s-1,7,0,10s-1,6,3,7s4,0,7,0s9,3,10,0s2-6,2-7s5-4,5-9s2-7,2-12s1-5,3-10s5-10,5-11s3-5,3-7s1-4,0-8s-3-10-3-10L1022,681z" />
+                        <path class="restoDelMundo" d="M799,344c-1,0-1,1-1,2s-2,3-1,3s1,2,1,2s0,1-1,2s-1,0-2,2s-1,2-1,4s0,3,1,4s1,2,2,2s-1,1,1,1s2,0,3-1s0-1,1-3s1-4,1-6s0-4,0-5s-1-3-1-4s-1-3-1-3s-1,0-1,0H799z" />
+                        <path class="restoDelMundo" d="M884,386c-2,0-3,0-6,0s-2,0-3,0s-1,1-1,2s1,1,2,2s3,2,4,2s0,1,3,1s5,0,6,0s4-2,4-2s0-1-1-2s-3-1-4-2S884,386,884,386z" />
+                        <path class="restoDelMundo" d="M736,254c0,0-4,7-3,8s0,5,1,6s4,5,5,6s4,2,3,4s-2,0-4,4s3,0,0,4s-7,6-5,7s-1,5,4,5s9,1,11,0s5-5,7-5s6-2,6-3s3-1,2-6s0-4-4-8s-3-3-6-6s-4-5-7-9s-6-7-6-7H736z" />
+                        <path class="restoDelMundo" d="M719,270c-1,0-5,0-6,3s-5,9-4,10s-1,5,5,6s5,3,7,0s5-4,5-6s1-6,0-9s-4-4-4-4H719z" />
+                        <path class="restoDelMundo" d="M1198,551c0,1,0,2,0,5s-1,8,0,10s2,4,4,4s4,4,5,0s4-4,3-9s-3-10-3-10h-3H1198z" />
+                        <path class="restoDelMundo" d="M1442,282c0,0,5,8,6,10s2,4,3,7s-4,5,0,9s6,8,9,9s3,3,5,3s4,1,5-2s0-6,0-10s-2-4-2-7s-1-2-7-7s0-2-5-5s-7-7-8-7s-3,0-3,0H1442z" />
+                        <path class="restoDelMundo" d="M1470,330c0,0-2,6,0,8s-2,6,0,7s2,4,3,5s2,4,3,6s0,4,0,4c3,5,3,9,3,11s1,5-2,6s-5,2-8,3s-8,3-9,4s-1-1-4,2s-4,9-6,10s-4-1-4,3s-1,5,2,7s1,3,8,3s11-3,9-5s-2-3-3-5s-9-4-2-4s0-2,7,0s7,3,9,3s5,3,6,0s-9-5,0-5s7,2,9,0s5-4,5-8s0-4,0-7s0-5,0-6s3-2,0-7s-3-7-4-9s2-1-1-2s-3-2-4-3s-1-4-1-4l2-1l2-1c0,0,4-3,3-5s-5-5-5-5s-1-1-3-2s-8-3-9-3S1470,330,1470,330z" />
+                    </g>
+
+                    <!-- Interactive Airports Group -->
+                    <g id="interactive-airports">
+                        <!-- Paris (CDG) -->
+                        <g id="node-CDG" class="airport-node" data-code="CDG" data-name="مطار شارل ديغول" data-city="باريس" data-country="فرنسا" data-x="733" data-y="310">
+                            <circle class="airport-glow" cx="733" cy="310" r="25" fill="rgba(6, 214, 242, 0.2)" />
+                            <circle class="airport-core" cx="733" cy="310" r="10" fill="#06D6F2" />
+                            <text class="airport-label" x="733" y="290">CDG (باريس)</text>
+                        </g>
+
+                        <!-- New York (JFK) -->
+                        <g id="node-JFK" class="airport-node" data-code="JFK" data-name="مطار جون إف كينيدي" data-city="نيويورك" data-country="أمريكا" data-x="414" data-y="340">
+                            <circle class="airport-glow" cx="414" cy="340" r="25" fill="rgba(6, 214, 242, 0.2)" />
+                            <circle class="airport-core" cx="414" cy="340" r="10" fill="#06D6F2" />
+                            <text class="airport-label" x="414" y="320">JFK (نيويورك)</text>
+                        </g>
+
+                        <!-- Miami (MIA) -->
+                        <g id="node-MIA" class="airport-node" data-code="MIA" data-name="مطار ميامي الدولي" data-city="ميامي" data-country="أمريكا" data-x="358" data-y="435">
+                            <circle class="airport-glow" cx="358" cy="435" r="25" fill="rgba(6, 214, 242, 0.2)" />
+                            <circle class="airport-core" cx="358" cy="435" r="10" fill="#06D6F2" />
+                            <text class="airport-label" x="358" y="415">MIA (ميامي)</text>
+                        </g>
+
+                        <!-- Atlanta (ATL) -->
+                        <g id="node-ATL" class="airport-node" data-code="ATL" data-name="مطار هارتسفيلد جاكسون" data-city="أتلانتا" data-country="أمريكا" data-x="359" data-y="395">
+                            <circle class="airport-glow" cx="359" cy="395" r="25" fill="rgba(6, 214, 242, 0.2)" />
+                            <circle class="airport-core" cx="359" cy="395" r="10" fill="#06D6F2" />
+                            <text class="airport-label" x="359" y="375">ATL (أتلانتا)</text>
+                        </g>
+
+                        <!-- Dubai (DXB) -->
+                        <g id="node-DXB" class="airport-node" data-code="DXB" data-name="مطار دبي الدولي" data-city="دبي" data-country="الإمارات" data-x="940" data-y="440">
+                            <circle class="airport-glow" cx="940" cy="440" r="25" fill="rgba(6, 214, 242, 0.2)" />
+                            <circle class="airport-core" cx="940" cy="440" r="10" fill="#06D6F2" />
+                            <text class="airport-label" x="940" y="420">DXB (دبي)</text>
+                        </g>
+
+                        <!-- Caracas (CCS) -->
+                        <g id="node-CCS" class="airport-node" data-code="CCS" data-name="مطار سيمون بوليفار الدولي" data-city="كاراكاس" data-country="فنزويلا" data-x="394" data-y="530">
+                            <circle class="airport-glow" cx="394" cy="530" r="25" fill="rgba(6, 214, 242, 0.2)" />
+                            <circle class="airport-core" cx="394" cy="530" r="10" fill="#06D6F2" />
+                            <text class="airport-label" x="394" y="510">CCS (كاراكاس)</text>
+                        </g>
+                    </g>
+
+                    <!-- Active Flight Routes Arc Group -->
+                    <g id="flight-arcs-group"></g>
+                </svg>
+            </div>
+            
+            <!-- Floating Airport Card Info -->
+            <div id="airport-info-popup" class="airport-info-popup hidden">
+                <div class="popup-header">
+                    <span id="popup-airport-title" class="popup-title">مطار دبي الدولي</span>
+                    <button id="btn-close-popup" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="popup-body">
+                    <p>المدينة: <strong id="popup-airport-city">دبي</strong> | الدولة: <strong id="popup-airport-country">الإمارات</strong></p>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button id="btn-set-origin" class="btn primary-btn btn-xs">تحديد كمطار إقلاع</button>
+                        <button id="btn-set-dest" class="btn primary-btn btn-xs">تحديد كمطار وصول</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Boarding Pass Modal -->
+    <div id="boarding-pass-modal" class="modal-overlay hidden">
+        <div class="boarding-pass-card">
+            <div class="pass-header">
+                <div class="pass-brand"><i class="fa-solid fa-plane-departure"></i> Guacamaya Airlines</div>
+                <div class="pass-type">بطاقة صعود الطائرة / BOARDING PASS</div>
+            </div>
+            <div class="pass-body">
+                <div class="pass-section">
+                    <div class="pass-item">
+                        <span>الاسم / NAME</span>
+                        <strong id="pass-passenger-name">محمد أنور</strong>
+                    </div>
+                    <div class="pass-item">
+                        <span>رقم الرحلة / FLIGHT</span>
+                        <strong id="pass-flight-no">GA-201</strong>
+                    </div>
+                    <div class="pass-item">
+                        <span>التاريخ / DATE</span>
+                        <strong id="pass-date">15 Jun 2026</strong>
+                    </div>
+                </div>
+                <div class="pass-section travel-route">
+                    <div class="airport-route-code">
+                        <strong id="pass-origin-code">MIA</strong>
+                        <span id="pass-origin-city">ميامي</span>
+                    </div>
+                    <div class="route-plane-icon">
+                        <i class="fa-solid fa-plane"></i>
+                    </div>
+                    <div class="airport-route-code">
+                        <strong id="pass-dest-code">DXB</strong>
+                        <span id="pass-dest-city">دبي</span>
+                    </div>
+                </div>
+                <div class="pass-section">
+                    <div class="pass-item">
+                        <span>المقعد / SEAT</span>
+                        <strong id="pass-seat-no" class="text-primary">12A</strong>
+                    </div>
+                    <div class="pass-item">
+                        <span>بوابة الصعود / GATE</span>
+                        <strong id="pass-gate">B4</strong>
+                    </div>
+                    <div class="pass-item">
+                        <span>وقت الصعود / BOARDING</span>
+                        <strong id="pass-time">08:00</strong>
+                    </div>
+                </div>
+            </div>
+            <div class="pass-footer">
+                <div class="barcode-container">
+                    <div class="barcode"></div>
+                    <div class="barcode-num">GA8986F593DF49</div>
+                </div>
+                <button id="btn-close-pass" class="btn primary-btn">إغلاق وحفظ</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>`;
+            const guacamayaStyleCss = `:root {
+    --primary: #06D6F2;
+    --primary-dark: #04A0B5;
+    --bg-deep: #0B0E17;
+    --surface: rgba(20, 26, 40, 0.75);
+    --surface-solid: #121824;
+    --border: rgba(255, 255, 255, 0.08);
+    --text: #FFFFFF;
+    --text-muted: rgba(255, 255, 255, 0.6);
+    --primary-glow: rgba(6, 214, 242, 0.25);
+    --font-main: 'Tajawal', sans-serif;
+}
+html, body {
+    margin: 0; padding: 0; height: 100%; width: 100%;
+    font-family: var(--font-main); background: var(--bg-deep);
+    color: var(--text); overflow: hidden;
+}
+* { box-sizing: border-box; }
+.app-container { display: flex; height: 100vh; width: 100vw; position: relative; }
+
+/* Sidebar Layout */
+.sidebar {
+    width: 420px; background: var(--surface-solid); border-left: 1px solid var(--border);
+    padding: 20px; display: flex; flex-direction: column; overflow-y: auto;
+    z-index: 10; box-shadow: -5px 0 25px rgba(0, 0, 0, 0.5); backdrop-filter: blur(20px);
+}
+@media (max-width: 992px) {
+    .app-container { flex-direction: column-reverse; }
+    .sidebar { width: 100%; height: 50vh; box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.5); }
+}
+
+.brand { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.logo-icon { font-size: 2rem; color: var(--primary); filter: drop-shadow(0 0 8px var(--primary-glow)); }
+.brand-text { font-size: 1.6rem; font-weight: 900; font-family: 'Cairo', sans-serif; }
+.brand-sub { color: var(--primary); font-size: 1.1rem; font-weight: 400; }
+.intro-text { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5; }
+
+/* Tab Control Panels */
+.tab-controls { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+.tab-btn {
+    flex: 1; padding: 10px 6px; background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text-muted); font-size: 0.82rem; font-weight: 700;
+    cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.tab-btn:hover { color: var(--text); border-color: var(--primary); }
+.tab-btn.active { color: #000; background: var(--primary); border-color: var(--primary); box-shadow: 0 0 10px var(--primary-glow); }
+
+.tab-content { display: none; flex-direction: column; gap: 16px; }
+.tab-content.active { display: flex; }
+
+/* Booking & Forms */
+.panel-title { font-size: 1rem; font-weight: 900; color: var(--primary); margin: 0 0 12px 0; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+.booking-form, .planning-form { display: flex; flex-direction: column; gap: 14px; background: rgba(0,0,0,0.2); padding: 16px; border-radius: 12px; border: 1px solid var(--border); }
+.input-group { display: flex; flex-direction: column; gap: 6px; }
+.input-group label { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); }
+.input-group select, .input-group input {
+    padding: 10px 12px; background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--border); border-radius: 8px; color: var(--text);
+    outline: none; font-family: var(--font-main); font-size: 0.85rem; transition: all 0.3s;
+}
+.input-group select:focus, .input-group input:focus { border-color: var(--primary); box-shadow: 0 0 8px var(--primary-glow); }
+
+.btn { padding: 12px; border: none; border-radius: 8px; font-weight: 900; font-family: var(--font-main); font-size: 0.95rem; cursor: pointer; transition: all 0.3s; text-align: center; }
+.primary-btn { background: var(--primary); color: #000; width: 100%; }
+.primary-btn:hover:not(.disabled) { background: var(--primary-dark); transform: translateY(-2px); }
+.success-btn { background: #10B981; color: #fff; width: 100%; }
+.success-btn:hover:not(.disabled) { background: #059669; transform: translateY(-2px); }
+.disabled { opacity: 0.4; cursor: not-allowed; }
+.hidden { display: none !important; }
+.text-primary { color: var(--primary); }
+.text-danger { color: #EF4444; }
+
+/* Flights List */
+.flights-list { display: flex; flex-direction: column; gap: 10px; max-height: 250px; overflow-y: auto; padding-right: 4px; }
+.flight-card {
+    background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.3s;
+}
+.flight-card:hover { border-color: var(--primary); background: rgba(6, 214, 242, 0.03); }
+.flight-card.selected { border-color: var(--primary); background: rgba(6, 214, 242, 0.08); box-shadow: 0 0 10px var(--primary-glow); }
+.flight-info-left { display: flex; flex-direction: column; gap: 4px; }
+.flight-no { font-weight: 900; color: var(--primary); font-size: 0.9rem; }
+.flight-route { font-size: 0.8rem; font-weight: bold; }
+.flight-time-price { font-size: 0.75rem; color: var(--text-muted); }
+.flight-price-tag { font-size: 1.05rem; font-weight: 900; color: var(--primary); }
+
+/* Seat Selection Layout */
+.seat-map-section { background: rgba(0,0,0,0.2); padding: 16px; border-radius: 12px; border: 1px solid var(--border); }
+.seat-legend { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 14px; font-size: 0.7rem; }
+.legend-item { display: flex; align-items: center; gap: 4px; }
+.legend-item .box { width: 12px; height: 12px; border-radius: 3px; }
+.first-class { background: #10B981; }
+.business-class { background: #3B82F6; }
+.economy-class { background: #F59E0B; }
+.occupied { background: #475569; cursor: not-allowed !important; }
+
+.plane-body {
+    background: rgba(255,255,255,0.02); border: 2px solid var(--border); border-radius: 50px 50px 20px 20px;
+    padding: 24px 16px 16px 16px; display: flex; flex-direction: column; align-items: center; max-height: 250px; overflow-y: auto;
+}
+.cockpit { font-size: 0.72rem; color: var(--text-muted); border-bottom: 1px solid var(--border); width: 100%; text-align: center; padding-bottom: 8px; margin-bottom: 12px; }
+.seats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.seat {
+    width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center;
+    font-size: 0.65rem; font-weight: bold; color: #000; cursor: pointer; transition: all 0.2s;
+}
+.seat.selected { border: 2px solid #fff; box-shadow: 0 0 8px #fff; transform: scale(1.1); }
+.seat-selection-summary { display: flex; justify-content: space-between; font-size: 0.8rem; margin: 12px 0; border-top: 1px solid var(--border); padding-top: 10px; }
+
+/* Admin & Stats */
+.admin-scheduled-list { display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto; }
+.scheduled-item {
+    background: rgba(255,255,255,0.01); border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 12px; display: flex; justify-content: space-between; font-size: 0.8rem;
+}
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.stat-card { background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; }
+.stat-title { font-size: 0.7rem; color: var(--text-muted); margin-bottom: 4px; }
+.stat-value { font-size: 1.15rem; font-weight: 900; color: var(--primary); }
+.recent-bookings-panel { background: rgba(0,0,0,0.1); border-radius: 8px; padding: 12px; margin-top: 10px; }
+.recent-bookings-list { display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto; font-size: 0.75rem; }
+.booking-log-item { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 4px; }
+
+/* Main Map Workspace */
+.main-map-container { flex: 1; height: 100%; position: relative; background: #07090F; display: flex; align-items: center; justify-content: center; }
+.map-overlay-title { position: absolute; top: 20px; right: 20px; z-index: 5; text-shadow: 0 2px 10px rgba(0,0,0,0.8); }
+.map-overlay-title h2 { margin: 0; font-size: 1.4rem; font-weight: 900; font-family: 'Cairo', sans-serif; color: #fff; }
+.map-overlay-title p { margin: 4px 0 0 0; font-size: 0.8rem; color: var(--text-muted); }
+
+.svg-map-wrapper { width: 95%; height: 90%; display: flex; align-items: center; justify-content: center; }
+#svg-world-map { width: 100%; height: 100%; }
+
+/* Map Path styling */
+.restoDelMundo { fill: #1E293B; stroke: #0F172A; stroke-width: 1.5px; transition: fill 0.3s; }
+.airport-node { cursor: pointer; }
+.airport-core { stroke: #fff; stroke-width: 2px; transition: all 0.3s; }
+.airport-glow { animation: pulseGlow 2s infinite; }
+.airport-label { fill: #fff; font-size: 16px; font-weight: bold; text-anchor: middle; font-family: var(--font-main); opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+
+.airport-node:hover .airport-core { fill: #fff; stroke: var(--primary); r: 12px; }
+.airport-node:hover .airport-label { opacity: 1; }
+.airport-node.active .airport-core { fill: #FF007F; stroke: #fff; r: 12px; }
+.airport-node.active .airport-label { opacity: 1; fill: #FF007F; }
+
+@keyframes pulseGlow {
+    0% { r: 15px; opacity: 0.8; }
+    50% { r: 35px; opacity: 0.1; }
+    100% { r: 15px; opacity: 0.8; }
+}
+
+/* Flight Arcs */
+.flight-arc-line { fill: none; stroke: var(--primary); stroke-width: 3px; stroke-dasharray: 6, 6; animation: dash 30s linear infinite; }
+.flight-plane-icon { font-size: 24px; fill: var(--primary); text-shadow: 0 0 8px var(--primary); }
+
+@keyframes dash {
+    to { stroke-dashoffset: -1000; }
+}
+
+/* Airport info overlay popup */
+.airport-info-popup {
+    position: absolute; bottom: 30px; left: 30px; background: var(--surface-solid); border: 1px solid var(--primary);
+    border-radius: 12px; padding: 14px; width: 300px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); z-index: 100;
+    backdrop-filter: blur(16px);
+}
+.popup-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 8px; }
+.popup-title { font-weight: bold; color: var(--primary); font-size: 0.95rem; }
+.close-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.1rem; }
+.close-btn:hover { color: #fff; }
+.btn-xs { padding: 6px 10px; font-size: 0.72rem; border-radius: 6px; }
+
+/* Boarding Pass Modal */
+.modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.85); display: flex; align-items: center;
+    justify-content: center; z-index: 1000; backdrop-filter: blur(8px);
+}
+.boarding-pass-card {
+    background: #121824; border: 2px solid var(--primary); border-radius: 20px;
+    width: 450px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+    animation: slideUp 0.4s ease-out; direction: rtl;
+}
+@keyframes slideUp {
+    from { transform: translateY(50px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+.pass-header { background: var(--primary); padding: 16px; color: #000; display: flex; justify-content: space-between; align-items: center; }
+.pass-brand { font-weight: 900; font-size: 1.2rem; font-family: 'Cairo', sans-serif; }
+.pass-type { font-size: 0.7rem; font-weight: bold; }
+.pass-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.pass-section { display: flex; justify-content: space-between; }
+.pass-item { display: flex; flex-direction: column; gap: 4px; }
+.pass-item span { font-size: 0.65rem; color: var(--text-muted); }
+.pass-item strong { font-size: 0.95rem; }
+.travel-route { align-items: center; justify-content: center; gap: 30px; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 10px; }
+.airport-route-code { display: flex; flex-direction: column; align-items: center; }
+.airport-route-code strong { font-size: 1.8rem; color: var(--primary); font-family: 'Cairo', sans-serif; }
+.airport-route-code span { font-size: 0.75rem; color: var(--text-muted); }
+.route-plane-icon { font-size: 1.4rem; color: var(--text-muted); transform: rotate(-90deg); }
+.pass-footer { padding: 0 20px 20px 20px; display: flex; flex-direction: column; gap: 16px; align-items: center; }
+.barcode-container { background: #fff; padding: 10px 20px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; width: 100%; }
+.barcode { width: 100%; height: 50px; background: repeating-linear-gradient(90deg, #000, #000 2px, #fff 2px, #fff 8px, #000 8px, #000 12px); }
+.barcode-num { font-size: 0.65rem; color: #000; margin-top: 4px; font-family: monospace; letter-spacing: 2px; }
+`;
+            const guacamayaAppJs = `'use strict';
+
+// 1. Initial State Data
+let flights = [
+    { id: 1, flightNo: 'GA-201', from: 'MIA', to: 'DXB', time: '08:30', price: 1850, plane: 'Boeing 787 Dreamliner', capacity: 240, bookings: ['4A', '10C', '12F'] },
+    { id: 2, flightNo: 'GA-202', from: 'CDG', to: 'JFK', time: '11:15', price: 1100, plane: 'Airbus A350-900', capacity: 300, bookings: ['1A', '2B', '15D', '22E'] },
+    { id: 3, flightNo: 'GA-203', from: 'JFK', to: 'MIA', time: '14:45', price: 350, plane: 'Boeing 737 Max', capacity: 160, bookings: ['8B', '12A'] },
+    { id: 4, flightNo: 'GA-204', from: 'DXB', to: 'CDG', time: '18:00', price: 1400, plane: 'Boeing 787 Dreamliner', capacity: 240, bookings: [] },
+    { id: 5, flightNo: 'GA-205', from: 'CCS', to: 'MIA', time: '09:00', price: 450, plane: 'Boeing 737 Max', capacity: 160, bookings: ['1A', '1B'] },
+    { id: 6, flightNo: 'GA-206', from: 'ATL', to: 'JFK', time: '16:30', price: 280, plane: 'Boeing 737 Max', capacity: 160, bookings: [] }
+];
+
+let bookings = [
+    { passenger: 'أحمد محمود', flightNo: 'GA-201', seat: '4A', price: 1850, date: '2026-06-15' },
+    { passenger: 'علي حسن', flightNo: 'GA-202', seat: '15D', price: 1100, date: '2026-06-15' },
+    { passenger: 'سارة خالد', flightNo: 'GA-203', seat: '8B', price: 350, date: '2026-06-15' }
+];
+
+const airports = {
+    MIA: { code: 'MIA', name: 'مطار ميامي الدولي', city: 'ميامي', country: 'أمريكا', x: 358, y: 435 },
+    CCS: { code: 'CCS', name: 'مطار سيمون بوليفار الدولي', city: 'كاراكاس', country: 'فنزويلا', x: 394, y: 530 },
+    JFK: { code: 'JFK', name: 'مطار جون إف كينيدي', city: 'نيويورك', country: 'أمريكا', x: 414, y: 340 },
+    ATL: { code: 'ATL', name: 'مطار هارتسفيلد جاكسون', city: 'أتلانتا', country: 'أمريكا', x: 359, y: 395 },
+    DXB: { code: 'DXB', name: 'مطار دبي الدولي', city: 'دبي', country: 'الإمارات', x: 940, y: 440 },
+    CDG: { code: 'CDG', name: 'مطار شارل ديغول', city: 'باريس', country: 'فرنسا', x: 733, y: 310 }
+};
+
+let activeFlight = null;
+let selectedSeat = null;
+
+// 2. Initialization on Window Load
+window.onload = function() {
+    initApp();
+};
+
+function initApp() {
+    setupTabControls();
+    setupAirportMapInteractions();
+    setupSearchFlights();
+    setupBookingFormActions();
+    setupPlanningForm();
+    updateStatistics();
+    renderScheduledAdminFlights();
+    renderRecentBookingsLog();
+}
+
+// Tab Switching
+function setupTabControls() {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            btn.classList.add('active');
+            const tabId = btn.getAttribute('data-tab');
+            document.getElementById('tab-' + tabId).classList.add('active');
+        });
+    });
+}
+
+// Map interactions
+let activeNode = null;
+function setupAirportMapInteractions() {
+    document.querySelectorAll('.airport-node').forEach(node => {
+        node.addEventListener('click', (e) => {
+            const code = node.getAttribute('data-code');
+            const airport = airports[code];
+            
+            // Highlight node
+            document.querySelectorAll('.airport-node').forEach(n => n.classList.remove('active'));
+            node.classList.add('active');
+            activeNode = code;
+
+            // Show popup
+            const popup = document.getElementById('airport-info-popup');
+            document.getElementById('popup-airport-title').textContent = airport.name;
+            document.getElementById('popup-airport-city').textContent = airport.city;
+            document.getElementById('popup-airport-country').textContent = airport.country;
+            
+            popup.classList.remove('hidden');
+        });
+    });
+
+    document.getElementById('btn-close-popup').addEventListener('click', () => {
+        document.getElementById('airport-info-popup').classList.add('hidden');
+        document.querySelectorAll('.airport-node').forEach(n => n.classList.remove('active'));
+        activeNode = null;
+    });
+
+    document.getElementById('btn-set-origin').addEventListener('click', () => {
+        if (activeNode) {
+            document.getElementById('select-from').value = activeNode;
+            document.getElementById('airport-info-popup').classList.add('hidden');
+        }
+    });
+
+    document.getElementById('btn-set-dest').addEventListener('click', () => {
+        if (activeNode) {
+            document.getElementById('select-to').value = activeNode;
+            document.getElementById('airport-info-popup').classList.add('hidden');
+        }
+    });
+}
+
+// Flight search logic
+function setupSearchFlights() {
+    document.getElementById('btn-search-flights').addEventListener('click', () => {
+        const fromVal = document.getElementById('select-from').value;
+        const toVal = document.getElementById('select-to').value;
+        
+        if (!fromVal || !toVal) {
+            alert("يرجى اختيار مطار الإقلاع والوصول!");
+            return;
+        }
+
+        if (fromVal === toVal) {
+            alert("لا يمكن أن يكون مطار الإقلاع والوصول متطابقين!");
+            return;
+        }
+
+        const filtered = flights.filter(f => f.from === fromVal && f.to === toVal);
+        renderFlightResults(filtered);
+        
+        // Draw route line on the map
+        drawRouteArcOnMap(fromVal, toVal);
+    });
+}
+
+function renderFlightResults(results) {
+    const listContainer = document.getElementById('flights-list');
+    listContainer.innerHTML = '';
+    
+    const resultsSection = document.getElementById('search-results-section');
+    resultsSection.classList.remove('hidden');
+    
+    // Hide seat map until a flight is selected
+    document.getElementById('seat-map-section').classList.add('hidden');
+
+    if (results.length === 0) {
+        listContainer.innerHTML = '<div style="font-size:0.8rem;text-align:center;padding:12px;color:var(--text-muted);">عذراً، لا توجد رحلات مباشرة مجدولة لهذا المسار اليوم. جرب مساراً آخر.</div>';
+        return;
+    }
+
+    results.forEach(flight => {
+        const card = document.createElement('div');
+        card.className = 'flight-card';
+        card.innerHTML = \\\`
+            <div class="flight-info-left">
+                <span class="flight-no">\\\${flight.flightNo} (\\\${flight.plane})</span>
+                <span class="flight-route">\\\${flight.from} <i class="fa-solid fa-arrow-left-long"></i> \\\${flight.to}</span>
+                <span class="flight-time-price">وقت الإقلاع: \\\${flight.time}</span>
+            </div>
+            <div style="text-align: left;">
+                <div class="flight-price-tag">\\\${flight.price} ₪</div>
+                <span style="font-size:0.65rem;color:var(--text-muted);">اختر لحجز المقعد</span>
+            </div>
+        \\\`;
+        
+        card.addEventListener('click', () => {
+            document.querySelectorAll('.flight-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            openSeatSelectionMap(flight);
+        });
+        
+        listContainer.appendChild(card);
+    });
+}
+
+// Seat Selection Logic
+function openSeatSelectionMap(flight) {
+    activeFlight = flight;
+    selectedSeat = null;
+    
+    document.getElementById('active-flight-no').textContent = flight.flightNo;
+    document.getElementById('selected-seat-label').textContent = 'لم يتم الاختيار';
+    document.getElementById('selected-seat-price').textContent = '--';
+    
+    const confirmBtn = document.getElementById('btn-confirm-booking');
+    confirmBtn.classList.add('disabled');
+    confirmBtn.setAttribute('disabled', 'true');
+
+    renderSeatsGrid(flight);
+    document.getElementById('seat-map-section').classList.remove('hidden');
+}
+
+function renderSeatsGrid(flight) {
+    const seatsGrid = document.getElementById('seats-grid');
+    seatsGrid.innerHTML = '';
+
+    const rows = 10;
+    const cols = ['A', 'B', 'C', 'D'];
+    
+    for (let r = 1; r <= rows; r++) {
+        cols.forEach(c => {
+            const seatLabel = \\\`\\\${r}\\\${c}\\\`;
+            const seat = document.createElement('div');
+            
+            // Set seat class based on row number
+            let seatClass = 'economy-class';
+            let seatPrice = flight.price;
+            
+            if (r <= 2) {
+                seatClass = 'first-class';
+                seatPrice = Math.round(flight.price * 2.2);
+            } else if (r <= 5) {
+                seatClass = 'business-class';
+                seatPrice = Math.round(flight.price * 1.5);
+            }
+
+            const isOccupied = flight.bookings.includes(seatLabel);
+            
+            seat.className = \\\`seat \\\${isOccupied ? 'occupied' : seatClass}\\\`;
+            seat.textContent = seatLabel;
+            
+            if (!isOccupied) {
+                seat.addEventListener('click', () => {
+                    const confirmBtn = document.getElementById('btn-confirm-booking');
+                    document.querySelectorAll('.seat').forEach(s => s.classList.remove('selected'));
+                    
+                    if (selectedSeat === seatLabel) {
+                        // Deselect
+                        selectedSeat = null;
+                        document.getElementById('selected-seat-label').textContent = 'لم يتم الاختيار';
+                        document.getElementById('selected-seat-price').textContent = '--';
+                        confirmBtn.classList.add('disabled');
+                        confirmBtn.setAttribute('disabled', 'true');
+                    } else {
+                        // Select
+                        selectedSeat = seatLabel;
+                        seat.classList.add('selected');
+                        document.getElementById('selected-seat-label').textContent = seatLabel;
+                        document.getElementById('selected-seat-price').textContent = seatPrice;
+                        
+                        confirmBtn.classList.remove('disabled');
+                        confirmBtn.removeAttribute('disabled');
+                    }
+                });
+            }
+            
+            seatsGrid.appendChild(seat);
+        });
+    }
+}
+
+// Confirm booking & print Boarding Pass
+function setupBookingFormActions() {
+    document.getElementById('btn-confirm-booking').addEventListener('click', () => {
+        const passengerName = document.getElementById('passenger-name').value.trim();
+        if (!passengerName) {
+            alert("يرجى إدخال اسم المسافر أولاً!");
+            return;
+        }
+
+        if (!activeFlight || !selectedSeat) return;
+        
+        let seatPrice = activeFlight.price;
+        const row = parseInt(selectedSeat);
+        if (row <= 2) seatPrice = Math.round(activeFlight.price * 2.2);
+        else if (row <= 5) seatPrice = Math.round(activeFlight.price * 1.5);
+
+        // Add to active bookings state
+        const newBooking = {
+            passenger: passengerName,
+            flightNo: activeFlight.flightNo,
+            seat: selectedSeat,
+            price: seatPrice,
+            date: '2026-06-15'
+        };
+
+        bookings.unshift(newBooking);
+        activeFlight.bookings.push(selectedSeat);
+        
+        // Show boarding pass
+        showBoardingPass(newBooking);
+        
+        // Update dashboard logs and widgets
+        updateStatistics();
+        renderRecentBookingsLog();
+        
+        // Reset inputs and redraw seat grid
+        document.getElementById('passenger-name').value = '';
+        openSeatSelectionMap(activeFlight);
+    });
+
+    document.getElementById('btn-close-pass').addEventListener('click', () => {
+        document.getElementById('boarding-pass-modal').classList.add('hidden');
+    });
+}
+
+function showBoardingPass(booking) {
+    const flight = flights.find(f => f.flightNo === booking.flightNo);
+    const origin = airports[flight.from];
+    const dest = airports[flight.to];
+
+    document.getElementById('pass-passenger-name').textContent = booking.passenger;
+    document.getElementById('pass-flight-no').textContent = booking.flightNo;
+    document.getElementById('pass-date').textContent = booking.date;
+    document.getElementById('pass-seat-no').textContent = booking.seat;
+    document.getElementById('pass-time').textContent = flight.time;
+    
+    document.getElementById('pass-origin-code').textContent = flight.from;
+    document.getElementById('pass-origin-city').textContent = origin.city;
+    document.getElementById('pass-dest-code').textContent = flight.to;
+    document.getElementById('pass-dest-city').textContent = dest.city;
+
+    document.getElementById('boarding-pass-modal').classList.remove('hidden');
+}
+
+// SVG Arc drawing logic
+function drawRouteArcOnMap(fromCode, toCode) {
+    const origin = airports[fromCode];
+    const dest = airports[toCode];
+    
+    const arcGroup = document.getElementById('flight-arcs-group');
+    arcGroup.innerHTML = ''; // clear previous arcs
+    
+    // Draw arc line
+    const dx = dest.x - origin.x;
+    const dy = dest.y - origin.y;
+    const dr = Math.sqrt(dx * dx + dy * dy);
+    
+    const pathD = \\\`M\\\${origin.x},\\\${origin.y} A\\\${dr},\\\${dr} 0 0,1 \\\${dest.x},\\\${dest.y}\\\`;
+    
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', pathD);
+    path.setAttribute('class', 'flight-arc-line');
+    path.setAttribute('id', 'temp-flight-arc');
+    
+    arcGroup.appendChild(path);
+
+    const animatePlane = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    animatePlane.setAttribute('r', '7');
+    animatePlane.setAttribute('fill', '#06D6F2');
+    animatePlane.setAttribute('filter', 'url(#glow)');
+    
+    const pathLength = path.getTotalLength();
+    let progress = 0;
+    
+    function step() {
+        if (progress >= pathLength) progress = 0;
+        progress += 4; // speed
+        
+        const pt = path.getPointAtLength(progress);
+        animatePlane.setAttribute('cx', pt.x);
+        animatePlane.setAttribute('cy', pt.y);
+        
+        requestAnimationFrame(step);
+    }
+    
+    arcGroup.appendChild(animatePlane);
+    requestAnimationFrame(step);
+}
+
+// Planning / Admin Scheduling Form
+function setupPlanningForm() {
+    document.getElementById('btn-schedule-flight').addEventListener('click', () => {
+        const flightNo = document.getElementById('plan-flight-no').value.trim();
+        const from = document.getElementById('plan-from').value;
+        const to = document.getElementById('plan-to').value;
+        const time = document.getElementById('plan-time').value;
+        const price = parseInt(document.getElementById('plan-price').value);
+        const plane = document.getElementById('plan-plane').value;
+
+        if (!flightNo || !time || isNaN(price)) {
+            alert("يرجى تعبئة كافة حقول الرحلة الجديدة!");
+            return;
+        }
+
+        if (from === to) {
+            alert("لا يمكن أن يكون مطار المغادرة والوصول متطابقين!");
+            return;
+        }
+
+        // Add to active flight schedule list
+        const newFlight = {
+            id: flights.length + 1,
+            flightNo: flightNo.toUpperCase(),
+            from: from,
+            to: to,
+            time: time,
+            price: price,
+            plane: plane,
+            capacity: plane.includes('Boeing 787') ? 240 : (plane.includes('Airbus') ? 300 : 160),
+            bookings: []
+        };
+
+        flights.push(newFlight);
+        
+        // Reset fields
+        document.getElementById('plan-flight-no').value = '';
+        document.getElementById('plan-price').value = '1200';
+        
+        // Update lists
+        renderScheduledAdminFlights();
+        updateStatistics();
+        alert(\\\`تمت جدولة الرحلة \\\${newFlight.flightNo} بنجاح!\\\`);
+    });
+}
+
+function renderScheduledAdminFlights() {
+    const adminList = document.getElementById('admin-scheduled-list');
+    adminList.innerHTML = '';
+    
+    flights.forEach(f => {
+        const item = document.createElement('div');
+        item.className = 'scheduled-item';
+        item.innerHTML = \\\`
+            <div>
+                <strong>\\\${f.flightNo}</strong> | \\\${f.from} <i class="fa-solid fa-arrow-left"></i> \\\${f.to}
+                <div style="font-size:0.65rem;color:var(--text-muted);">\\\${f.plane} - الساعة \\\${f.time}</div>
+            </div>
+            <div style="text-align:left;font-weight:bold;color:var(--primary);">
+                \\\${f.price} ₪
+                <div style="font-size:0.65rem;color:#10B981;">نشط</div>
+            </div>
+        \\\`;
+        adminList.appendChild(item);
+    });
+}
+
+// Admin logs & stats widgets
+function updateStatistics() {
+    const totalFlights = flights.length;
+    const ticketsSold = bookings.length;
+    
+    let totalRevenue = 0;
+    bookings.forEach(b => totalRevenue += b.price);
+    
+    let totalSeats = 0;
+    flights.forEach(f => totalSeats += f.capacity);
+    
+    const occupancyRate = totalSeats > 0 ? Math.round((ticketsSold / totalSeats) * 100) + 12 : 72; // simulated occupancy
+
+    document.getElementById('stat-total-flights').textContent = totalFlights;
+    document.getElementById('stat-tickets-sold').textContent = ticketsSold;
+    document.getElementById('stat-occupancy-rate').textContent = Math.min(98, occupancyRate) + '%';
+    document.getElementById('stat-total-revenue').textContent = '₪ ' + totalRevenue.toLocaleString();
+}
+
+function renderRecentBookingsLog() {
+    const logContainer = document.getElementById('recent-bookings-list');
+    logContainer.innerHTML = '';
+    
+    bookings.forEach(b => {
+        const log = document.createElement('div');
+        log.className = 'booking-log-item';
+        log.innerHTML = \\\`
+            <div>
+                <strong>\\\${b.passenger}</strong>
+                <div style="font-size:0.65rem;color:var(--text-muted);">المقعد \\\${b.seat} - الرحلة \\\${b.flightNo}</div>
+            </div>
+            <div style="text-align:left;font-weight:bold;color:#10B981;">
+                +\\\${b.price} ₪
+                <div style="font-size:0.65rem;color:var(--text-muted);">\\\${b.date}</div>
+            </div>
+        \\\`;
+        logContainer.appendChild(log);
+    });
+}
+`;
+
+            if (isZip) {
+                setIsPublishing(true);
+                try {
+                    if (!window.JSZip) {
+                        await new Promise((resolve, reject) => {
+                            const script = document.createElement('script');
+                            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+                            script.onload = resolve;
+                            script.onerror = reject;
+                            document.head.appendChild(script);
+                        });
+                    }
+                    const zip = new window.JSZip();
+                    zip.file("index.html", guacamayaHtml);
+                    zip.folder("css").file("style.css", guacamayaStyleCss);
+                    zip.folder("js").file("app.js", guacamayaAppJs);
+                    
+                    const content = await zip.generateAsync({ type: 'blob' });
+                    const downloadUrl = URL.createObjectURL(content);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = `Guacamaya_Airlines_Project_${Date.now()}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(downloadUrl);
+                } catch (err) {
+                    console.error("ZIP packaging failed:", err);
+                    alert("فشل تصدير المشروع كـ ZIP: " + err.message);
+                } finally {
+                    setIsPublishing(false);
+                }
+            } else {
+                let bundledHtml = guacamayaHtml
+                    .replace('<link rel="stylesheet" href="css/style.css">', `<style>${guacamayaStyleCss}</style>`)
+                    .replace('<script src="js/app.js"></script>', `<script>${guacamayaAppJs}</script>`);
+
+                const blob = new Blob([bundledHtml], { type: 'text/html' });
+                const downloadUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = `Guacamaya_Airlines_Design_${Date.now()}.html`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(downloadUrl);
+            }
+            setIsDesignStudioOpen(false);
+            return;
+        }
+
         if (designSelections.commercialTemplate === 'uber') {
             const uberHtml = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -9671,7 +10748,7 @@ function closeAllInfoWindows() {
                         <div className="ds-cat-title">الأقسام الرئيسية</div>
                         {[
                             { id: 'layouts', label: 'التخطيطات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="9" y1="3" x2="9" y2="21" /></svg>, count: 8 },
-                            { id: 'applications', label: 'تطبيقات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="2" y1="20" x2="22" y2="20" /><line x1="12" y1="17" x2="12" y2="20" /></svg>, count: 3 },
+                            { id: 'applications', label: 'تطبيقات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="2" y1="20" x2="22" y2="20" /><line x1="12" y1="17" x2="12" y2="20" /></svg>, count: 4 },
                             { id: 'palettes', label: 'لوحات الألوان', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" /></svg>, count: 8 },
                             { id: 'typography', label: 'الخطوط', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="4 7 4 4 20 4 20 7" /><line x1="9" y1="20" x2="15" y2="20" /><line x1="12" y1="4" x2="12" y2="20" /></svg>, count: 6 },
                             { id: 'basemaps', label: 'الخرائط', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" /></svg>, count: 6 },
@@ -9698,7 +10775,8 @@ function closeAllInfoWindows() {
                                     {[
                                         { id: 'none', title: 'بدون تطبيق (خريطة عامة)', sub: 'تصميم خريطة عامة تفاعلية تقليدية لعرض البيانات فقط', icon: '🗺️' },
                                         { id: 'covid19', title: 'خريطة انتشار كوفيد-19 (COVID-19 Map)', sub: 'تطبيق ويب متكامل لعرض حالات وإحصائيات كورونا حول العالم ومحلياً على الخريطة', icon: '🦠' },
-                                        { id: 'uber', title: 'منصة توصيل الركاب (Uber Web Clone)', sub: 'نسخة ويب تفاعلية لطلب وتوصيل الركاب وتحديد المسارات وحساب أسعار الرحلات', icon: '🚗' }
+                                        { id: 'uber', title: 'منصة توصيل الركاب (Uber Web Clone)', sub: 'نسخة ويب تفاعلية لطلب وتوصيل الركاب وتحديد المسارات وحساب أسعار الرحلات', icon: '🚗' },
+                                        { id: 'guacamaya', title: 'إدارة وحجوزات الطيران (Guacamaya Airlines)', sub: 'نظام متكامل لإدارة الخطوط الجوية والرحلات وحجز المقاعد وعرض الإحصائيات التفاعلية', icon: '✈️' }
                                     ].map(t => (
                                         <div key={t.id} className={`ds-pick ${designSelections.commercialTemplate === t.id ? 'selected' : (t.id === 'none' && !designSelections.commercialTemplate ? 'selected' : '')}`} onClick={() => setDesignSelections(s => ({ ...s, commercialTemplate: t.id }))}>
                                             <div style={{ fontSize: '2rem', marginBottom: '10px', display: 'flex', justifyContent: 'center' }}>{t.icon}</div>
