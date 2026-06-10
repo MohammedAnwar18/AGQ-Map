@@ -4929,6 +4929,1438 @@ out geom;`;
     };
 
     const performActualExport = async (isZip = false) => {
+        if (designSelections.commercialTemplate === 'tourism') {
+            const tourismHtml = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>منصة حجز السياحة الفلسطينية - Palestine Tourism</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Tajawal:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Leaflet JS & CSS -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.8.0/dist/leaflet.css"
+      integrity="sha512-hoalWLoI8r4UszCkZ5kL8vayOGVae1oxXe/2A4AO6J9+580uKHDO3JdHb7NzwwzK5xr/Fs0W40kiNHxM9vyTtQ=="
+      crossorigin=""
+    />
+    <script
+      src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js"
+      integrity="sha512-BB3hKbKWOc9Ez/TAwyWxNXeoV9c1v6FIeYiBieIWkpLjauysF18NzgR1MBNBXf8/KABdlkX68nAhlwcDFLGPCQ=="
+      crossorigin=""
+    ></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="css/style.css" />
+    <script defer src="js/app.js"></script>
+  </head>
+  <body>
+    <!-- App Container -->
+    <div class="app-container">
+      
+      <!-- Top Header -->
+      <header class="app-header">
+        <div class="logo-area">
+          <i class="fa-solid fa-hotel logo-icon"></i>
+          <h1 class="logo-title">استكشف <span class="logo-accent">فلسطين</span></h1>
+        </div>
+        <p class="logo-subtitle">بوابتك لحجز الفنادق وأماكن الإقامة والوجبات التراثية</p>
+      </header>
+
+      <!-- Main Layout -->
+      <main class="main-content">
+        
+        <!-- SEARCH VIEW -->
+        <section id="homepage" class="view-section">
+          <div class="glass-card search-card">
+            <h2 class="section-title"><i class="fa-solid fa-magnifying-glass"></i> ابحث عن إقامتك القادمة</h2>
+            
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="checkIn"><i class="fa-regular fa-calendar-check"></i> تاريخ الوصول</label>
+                <input type="date" id="checkIn" class="form-control" required>
+              </div>
+
+              <div class="form-group">
+                <label for="checkOut"><i class="fa-regular fa-calendar-minus"></i> تاريخ المغادرة</label>
+                <input type="date" id="checkOut" class="form-control" required>
+              </div>
+
+              <div class="form-group">
+                <label for="guests"><i class="fa-solid fa-users"></i> عدد الضيوف</label>
+                <select id="guests" class="form-control">
+                  <option value="1">ضابط واحد (1 Guest)</option>
+                  <option value="2" selected>ضيفان (2 Guests)</option>
+                  <option value="3">3 ضيوف (3 Guests)</option>
+                  <option value="4">4 ضيوف (4 Guests)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="search-btn-wrapper">
+              <button id="search-btn" class="btn btn-primary btn-glow">🔍 ابحث عن العروض المتاحة</button>
+            </div>
+            
+            <div id="noResult" class="error-message"></div>
+          </div>
+        </section>
+
+        <!-- ACCOMMODATION OPTIONS -->
+        <section id="accommodation-options" class="view-section hidden">
+          <div class="section-header">
+            <button class="btn btn-secondary back-to-search"><i class="fa-solid fa-arrow-right"></i> تعديل البحث</button>
+            <h2 class="section-title">العروض المتوفرة لرحلتك</h2>
+          </div>
+          
+          <div id="cardResult" class="cards-grid">
+            <!-- Cards will be injected by JavaScript -->
+          </div>
+        </section>
+
+        <!-- ACCOMMODATION DETAILS & BOOKING -->
+        <section id="accommodation-details" class="view-section hidden">
+          <div class="section-header">
+            <button class="btn btn-secondary back-to-options"><i class="fa-solid fa-arrow-right"></i> العودة للنتائج</button>
+            <h2 class="section-title" id="hotel-detail-title">تفاصيل مكان الإقامة</h2>
+          </div>
+
+          <div class="details-grid">
+            
+            <!-- Left Side: Info, facilities and pricing -->
+            <div class="details-left">
+              <div class="glass-card">
+                <h3 class="hotel-title" id="detail-name">اسم الفندق</h3>
+                <p class="hotel-address" id="detail-address"><i class="fa-solid fa-location-dot"></i> العنوان</p>
+                <hr class="divider">
+                <p class="hotel-desc" id="detail-description">الوصف المفصل...</p>
+              </div>
+
+              <!-- Facilities -->
+              <div class="glass-card mt-4">
+                <h3 class="card-subtitle"><i class="fa-solid fa-star"></i> الخدمات والمرافق المتوفرة</h3>
+                <div class="facilities-grid">
+                  <div class="facility-item"><i class="fa-solid fa-wifi"></i> إنترنت لاسلكي مجاني</div>
+                  <div class="facility-item"><i class="fa-solid fa-snowflake"></i> تكييف هواء مركزي</div>
+                  <div class="facility-item"><i class="fa-solid fa-tv"></i> شاشة تلفاز ذكية</div>
+                  <div class="facility-item"><i class="fa-solid fa-parking"></i> موقف سيارات آمن</div>
+                  <div class="facility-item"><i class="fa-solid fa-mug-hot"></i> ماكينة قهوة وشاي</div>
+                  <div class="facility-item"><i class="fa-solid fa-concierge-bell"></i> خدمة غرف 24 ساعة</div>
+                </div>
+              </div>
+
+              <!-- Booking Summary / Pricing Sheet -->
+              <div class="glass-card mt-4 pricing-card">
+                <h3 class="card-subtitle"><i class="fa-solid fa-file-invoice-dollar"></i> ملخص وتكلفة الحجز</h3>
+                <div class="summary-details">
+                  <div class="summary-row">
+                    <span>تاريخ الوصول:</span>
+                    <strong id="summary-checkin">-</strong>
+                  </div>
+                  <div class="summary-row">
+                    <span>تاريخ المغادرة:</span>
+                    <strong id="summary-checkout">-</strong>
+                  </div>
+                  <div class="summary-row">
+                    <span>عدد الضيوف:</span>
+                    <strong id="summary-guests">-</strong>
+                  </div>
+                  <div class="summary-row">
+                    <span>عدد الليالي:</span>
+                    <strong id="summary-nights">-</strong>
+                  </div>
+                </div>
+                
+                <hr class="divider">
+                
+                <!-- Meal upgrades -->
+                <h4 class="meals-title"><i class="fa-solid fa-utensils"></i> ترقية وجبات الطعام (اختياري)</h4>
+                <div class="meals-options">
+                  <label class="checkbox-container">
+                    <input type="checkbox" id="meal-breakfast">
+                    <span class="checkmark"></span>
+                    فطور فلسطيني تقليدي (حمص، فلافل، زيت وزعتر) - <strong>₪30</strong> لكل ليلة/ضيف
+                  </label>
+                  <label class="checkbox-container">
+                    <input type="checkbox" id="meal-lunch">
+                    <span class="checkmark"></span>
+                    غداء فلسطيني أصيل (مسخن، منسف أو مقلوبة) - <strong>₪70</strong> لكل ليلة/ضيف
+                  </label>
+                  <label class="checkbox-container">
+                    <input type="checkbox" id="meal-dinner">
+                    <span class="checkmark"></span>
+                    عشاء محلي خفيف - <strong>₪40</strong> لكل ليلة/ضيف
+                  </label>
+                </div>
+
+                <hr class="divider">
+
+                <div class="pricing-table">
+                  <div class="price-row">
+                    <span>سعر الليلة الأساسي:</span>
+                    <span id="price-per-night">₪0</span>
+                  </div>
+                  <div class="price-row">
+                    <span>إجمالي الإقامة:</span>
+                    <span id="subtotal-result">₪0</span>
+                  </div>
+                  <div class="price-row">
+                    <span>ضريبة القيمة المضافة (16%):</span>
+                    <span id="vat-result">₪0</span>
+                  </div>
+                  <div class="price-row total-row">
+                    <span>المجموع النهائي:</span>
+                    <span id="total-result" class="total-text">₪0</span>
+                  </div>
+                </div>
+
+                <button id="book-btn" class="btn btn-primary w-100 mt-4 btn-glow"><i class="fa-solid fa-circle-check"></i> تأكيد وحجز الرحلة الآن</button>
+              </div>
+            </div>
+
+            <!-- Right Side: Carousel and Leaflet Map -->
+            <div class="details-right">
+              <!-- Carousel -->
+              <div class="glass-card p-0 overflow-hidden carousel-wrapper">
+                <div class="carousel">
+                  <div class="carousel-inner" id="carousel-inner">
+                    <!-- Slides injected dynamically -->
+                  </div>
+                  <button class="carousel-control prev" id="carousel-prev"><i class="fa-solid fa-chevron-right"></i></button>
+                  <button class="carousel-control next" id="carousel-next"><i class="fa-solid fa-chevron-left"></i></button>
+                </div>
+              </div>
+
+              <!-- Interactive Map -->
+              <div class="glass-card mt-4 p-0 overflow-hidden map-wrapper">
+                <div class="map-title-bar">
+                  <span><i class="fa-solid fa-map-location-dot"></i> موقع مكان الإقامة على خريطة فلسطين</span>
+                </div>
+                <div id="map"></div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- BOOKING CONFIRMATION -->
+        <section id="booking-confirmation" class="view-section hidden">
+          <div class="glass-card confirmation-card">
+            <div class="success-icon-wrapper">
+              <i class="fa-solid fa-circle-check success-icon"></i>
+            </div>
+            
+            <h2 class="confirmation-title">تهانينا! تم حجز رحلتك بنجاح</h2>
+            <p class="confirmation-subtitle">أهلاً بك في أرض فلسطين التراثية والتاريخية</p>
+            
+            <div class="reservation-box">
+              <span class="res-label">رمز تأكيد الحجز الخاص بك:</span>
+              <strong id="reservation-code" class="res-code">#PAL-000000</strong>
+            </div>
+
+            <hr class="divider">
+
+            <div class="itinerary-send-box">
+              <p class="itinerary-desc"><i class="fa-regular fa-paper-plane"></i> أدخل بريدك الإلكتروني لإرسال تفاصيل خطة السفر الفاتورة فوراً:</p>
+              
+              <div class="email-input-group">
+                <input type="email" id="emailInput" class="form-control" placeholder="example@domain.com">
+                <button id="send-btn" class="btn btn-primary">إرسال الفاتورة</button>
+              </div>
+              <div id="emailConfirmation" class="email-status"></div>
+            </div>
+
+            <div class="confirmation-actions">
+              <button id="new-booking-btn" class="btn btn-secondary"><i class="fa-solid fa-rotate-left"></i> القيام بحجز جديد</button>
+            </div>
+          </div>
+        </section>
+
+      </main>
+
+      <!-- App Footer -->
+      <footer class="app-footer">
+        <p>منصة حجز السياحة الفلسطينية &copy; تصميم وتطوير بال نوفا - استوديو التصميم المتكامل</p>
+      </footer>
+    </div>
+  </body>
+</html>`;
+            const tourismStyleCss = `:root {
+  --color-primary: #10B981; /* Palestine Green */
+  --color-secondary: #EF4444; /* Palestine Red */
+  --color-dark-1: #090d16;
+  --color-dark-2: #121824;
+  --color-dark-3: #1e293b;
+  --color-light: #f8fafc;
+  --color-light-muted: #94a3b8;
+  --font-main: 'Tajawal', sans-serif;
+  --font-logo: 'Cairo', sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--color-dark-1);
+  color: var(--color-light);
+  line-height: 1.6;
+  direction: rtl;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+/* Glassmorphism Card Style */
+.glass-card {
+  background: rgba(18, 24, 36, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+.app-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Header */
+.app-header {
+  text-align: center;
+  padding: 15px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.logo-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.logo-icon {
+  font-size: 2.5rem;
+  color: var(--color-primary);
+  text-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+}
+
+.logo-title {
+  font-family: var(--font-logo);
+  font-size: 2.2rem;
+  font-weight: 800;
+}
+
+.logo-accent {
+  color: var(--color-secondary);
+}
+
+.logo-subtitle {
+  font-size: 1.1rem;
+  color: var(--color-light-muted);
+  margin-top: 5px;
+}
+
+/* Layout */
+.main-content {
+  min-height: 60vh;
+}
+
+.view-section {
+  transition: all 0.4s ease;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* Forms */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-light-muted);
+}
+
+.form-control {
+  width: 100%;
+  padding: 12px 16px;
+  background-color: var(--color-dark-1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 1.05rem;
+  outline: none;
+  transition: all 0.3s;
+}
+
+.form-control:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.2);
+}
+
+select.form-control {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: left 12px center;
+  background-size: 16px;
+  padding-left: 40px;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  font-family: inherit;
+  font-size: 1.05rem;
+  font-weight: 700;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background-color: var(--color-primary);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background-color: #0d9488;
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background-color: var(--color-dark-3);
+  color: var(--color-light);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.btn-secondary:hover {
+  background-color: #334155;
+  transform: translateY(-2px);
+}
+
+.btn-glow:hover {
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+}
+
+.w-100 {
+  width: 100%;
+}
+
+.mt-4 {
+  margin-top: 1.5rem;
+}
+
+/* Search Area specific */
+.search-card {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+}
+
+.search-btn-wrapper {
+  margin-top: 25px;
+  text-align: center;
+}
+
+.error-message {
+  color: var(--color-secondary);
+  font-weight: 700;
+  font-size: 1.05rem;
+  text-align: center;
+  margin-top: 15px;
+}
+
+/* Cards Grid */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 25px;
+}
+
+/* Hotel Card */
+.hotel-card {
+  background: var(--color-dark-2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
+}
+
+.hotel-card:hover {
+  transform: translateY(-6px);
+  border-color: var(--color-primary);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+.card-img-wrapper {
+  height: 200px;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: all 0.5s ease;
+}
+
+.hotel-card:hover .card-img {
+  transform: scale(1.08);
+}
+
+.card-badge {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background-color: var(--color-primary);
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 5px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.card-info {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.card-hotel-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 5px;
+}
+
+.card-hotel-address {
+  font-size: 0.95rem;
+  color: var(--color-light-muted);
+  margin-bottom: 15px;
+}
+
+.card-footer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.card-price {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.card-price-sub {
+  font-size: 0.85rem;
+  color: var(--color-light-muted);
+  font-weight: 400;
+}
+
+/* Details Grid */
+.details-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 25px;
+}
+
+@media (max-width: 900px) {
+  .details-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.details-left, .details-right {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.hotel-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 5px;
+}
+
+.hotel-address {
+  color: var(--color-light-muted);
+  font-size: 1rem;
+}
+
+.divider {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin: 15px 0;
+}
+
+.hotel-desc {
+  font-size: 1.05rem;
+  color: var(--color-light-muted);
+  line-height: 1.7;
+}
+
+.card-subtitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.facilities-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 15px;
+}
+
+.facility-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1rem;
+  color: var(--color-light);
+}
+
+.facility-item i {
+  color: var(--color-primary);
+  font-size: 1.2rem;
+}
+
+/* Pricing and Meal Upgrades */
+.pricing-card {
+  border-left: 4px solid var(--color-primary);
+}
+
+.summary-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1rem;
+}
+
+.summary-row span {
+  color: var(--color-light-muted);
+}
+
+.meals-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meals-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Custom Checkboxes */
+.checkbox-container {
+  display: block;
+  position: relative;
+  padding-right: 32px;
+  margin-bottom: 4px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  user-select: none;
+  color: var(--color-light);
+}
+
+.checkbox-container input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.checkmark {
+  position: absolute;
+  top: 3px;
+  right: 0;
+  height: 20px;
+  width: 20px;
+  background-color: var(--color-dark-1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+.checkbox-container:hover input ~ .checkmark {
+  background-color: var(--color-dark-3);
+  border-color: var(--color-primary);
+}
+
+.checkbox-container input:checked ~ .checkmark {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+
+.checkbox-container input:checked ~ .checkmark:after {
+  display: block;
+}
+
+.checkbox-container .checkmark:after {
+  left: 6px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.pricing-table {
+  background-color: rgba(0, 0, 0, 0.15);
+  padding: 15px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.price-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1rem;
+}
+
+.price-row span:first-child {
+  color: var(--color-light-muted);
+}
+
+.total-row {
+  border-top: 1px dashed rgba(255, 255, 255, 0.15);
+  padding-top: 10px;
+  margin-top: 5px;
+}
+
+.total-row span:first-child {
+  color: #fff;
+  font-weight: 700;
+}
+
+.total-text {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+/* Carousel wrapper */
+.carousel-wrapper {
+  height: 300px;
+  position: relative;
+}
+
+.carousel {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.carousel-inner {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  transition: transform 0.5s ease-in-out;
+}
+
+.carousel-item {
+  min-width: 100%;
+  height: 100%;
+}
+
+.carousel-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.carousel-control {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(18, 24, 36, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 5;
+  transition: all 0.3s;
+}
+
+.carousel-control:hover {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.carousel-control.prev {
+  right: 15px;
+}
+
+.carousel-control.next {
+  left: 15px;
+}
+
+/* Map */
+.map-wrapper {
+  height: 300px;
+  display: flex;
+  flex-direction: column;
+}
+
+.map-title-bar {
+  background-color: var(--color-dark-2);
+  padding: 8px 15px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+#map {
+  flex-grow: 1;
+  width: 100%;
+  z-index: 1;
+  background-color: var(--color-dark-1);
+}
+
+/* Leaflet Custom Style */
+.leaflet-popup .leaflet-popup-content-wrapper {
+  background-color: var(--color-dark-2) !important;
+  color: var(--color-light) !important;
+  border-radius: 6px !important;
+  font-family: var(--font-main) !important;
+}
+.leaflet-popup .leaflet-popup-tip {
+  background-color: var(--color-dark-2) !important;
+}
+
+/* Confirmation Page */
+.confirmation-card {
+  max-width: 700px;
+  margin: 40px auto;
+  text-align: center;
+  padding: 40px;
+  border-top: 4px solid var(--color-primary);
+}
+
+.success-icon-wrapper {
+  margin-bottom: 20px;
+}
+
+.success-icon {
+  font-size: 4.5rem;
+  color: var(--color-primary);
+  filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.3));
+}
+
+.confirmation-title {
+  font-family: var(--font-logo);
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.confirmation-subtitle {
+  color: var(--color-light-muted);
+  font-size: 1.1rem;
+  margin-bottom: 25px;
+}
+
+.reservation-box {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 8px;
+  padding: 15px;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 25px;
+}
+
+.res-label {
+  font-size: 0.95rem;
+  color: var(--color-light-muted);
+}
+
+.res-code {
+  font-size: 1.8rem;
+  color: var(--color-primary);
+  font-family: monospace;
+  letter-spacing: 2px;
+}
+
+.itinerary-send-box {
+  background-color: rgba(255, 255, 255, 0.02);
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 30px;
+  text-align: right;
+}
+
+.itinerary-desc {
+  font-size: 1rem;
+  margin-bottom: 12px;
+}
+
+.email-input-group {
+  display: flex;
+  gap: 10px;
+}
+
+.email-input-group .form-control {
+  flex-grow: 1;
+}
+
+.email-status {
+  font-size: 0.95rem;
+  margin-top: 10px;
+  font-weight: 700;
+}
+
+.email-success {
+  color: var(--color-primary);
+}
+
+.email-error {
+  color: var(--color-secondary);
+}
+
+.confirmation-actions {
+  display: flex;
+  justify-content: center;
+}
+
+/* Footer */
+.app-footer {
+  text-align: center;
+  padding: 20px 0;
+  color: var(--color-light-muted);
+  font-size: 0.9rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+`;
+            const tourismAppJs = `"use strict";
+
+// Accommodations Array of Objects (Palestine Tourism)
+const accommodations = [
+  {
+    id: 101,
+    name: "نزل القدس العتيق (Jerusalem Heritage Hostel)",
+    description: "نزل عريق يقع في قلب البلدة القديمة بالقدس. يقدم تجربة تراثية أصيلة للرحالة والمسافرين الأفراد بالقرب من المسجد الأقصى وكنيسة القيامة والأسواق التاريخية.",
+    address: "البلدة القديمة، القدس",
+    price: 100,
+    badge: "الأكثر طلباً 🏛️",
+    image: "https://images.unsplash.com/photo-1549144511-f099e773c147?auto=format&fit=crop&w=600&q=80",
+    carousel1: "https://images.unsplash.com/photo-1565008447742-97f6f38c985c?auto=format&fit=crop&w=600&q=80",
+    carousel2: "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=600&q=80",
+    carousel3: "https://images.unsplash.com/photo-1601918774946-25832a4be0d6?auto=format&fit=crop&w=600&q=80",
+    latitude: 31.7780,
+    longitude: 35.2354,
+    minGuests: 1,
+    maxGuests: 1,
+    minDays: 1,
+    maxDays: 10
+  },
+  {
+    id: 102,
+    name: "فندق قصر الجاسر التاريخي (Jacir Palace Bethlehem)",
+    description: "فندق تاريخي فاخر ذو تصنيف 5 نجوم في بيت لحم، يعكس رقي العمارة الفلسطينية الكلاسيكية ويقدم خدمات متميزة، ويبعد دقائق معدودة عن كنيسة المهد.",
+    address: "شارع القدس الخليل، بيت لحم",
+    price: 550,
+    badge: "فاخر وتاريخي ✨",
+    image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80",
+    carousel1: "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=600&q=80",
+    carousel2: "https://images.unsplash.com/photo-1584132967334-10e028bd69f7?auto=format&fit=crop&w=600&q=80",
+    carousel3: "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=600&q=80",
+    latitude: 31.7161,
+    longitude: 35.2033,
+    minGuests: 2,
+    maxGuests: 4,
+    minDays: 3,
+    maxDays: 10
+  },
+  {
+    id: 103,
+    name: "منتجع وواحة أريحا (Jericho Oasis Resort)",
+    description: "منتجع فاخر للاستجمام في أقدم مدينة في التاريخ. يوفر مسبحاً واسعاً، ومناظر خلابة على جبل التجربة وقريب جداً من البحر الميت، وهو مثالي للعائلات الباحثة عن الراحة.",
+    address: "شارع قصر هشام، أريحا",
+    price: 350,
+    badge: "استجمام وعائلي 🌴",
+    image: "https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=600&q=80",
+    carousel1: "https://images.unsplash.com/photo-1445019980597-93fa8acb246c?auto=format&fit=crop&w=600&q=80",
+    carousel2: "https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=600&q=80",
+    carousel3: "https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=600&q=80",
+    latitude: 31.8560,
+    longitude: 35.4630,
+    minGuests: 1,
+    maxGuests: 2,
+    minDays: 2,
+    maxDays: 10
+  },
+  {
+    id: 104,
+    name: "أجنحة رام الله الفندقية (Ramallah Executive Suites)",
+    description: "أجنحة عصرية فاخرة تقع في أرقى أحياء رام الله. مثالية لرجال الأعمال والسياح الباحثين عن إقامة متكاملة مع مطبخ مجهز وموقع مركزي قريب من الخدمات والمطاعم.",
+    address: "حي الماصيون، رام الله",
+    price: 450,
+    badge: "عصري ومركزي 💼",
+    image: "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=600&q=80",
+    carousel1: "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=600&q=80",
+    carousel2: "https://images.unsplash.com/photo-1568495248636-6432b97bd949?auto=format&fit=crop&w=600&q=80",
+    carousel3: "https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?auto=format&fit=crop&w=600&q=80",
+    latitude: 31.9029,
+    longitude: 35.2032,
+    minGuests: 1,
+    maxGuests: 4,
+    minDays: 2,
+    maxDays: 15
+  }
+];
+
+// UI selectors
+const inputCheckIn = document.getElementById("checkIn");
+const inputCheckOut = document.getElementById("checkOut");
+const inputGuests = document.getElementById("guests");
+const searchBtn = document.getElementById("search-btn");
+const cardResult = document.getElementById("cardResult");
+const noResult = document.getElementById("noResult");
+
+const viewHomepage = document.getElementById("homepage");
+const viewOptions = document.getElementById("accommodation-options");
+const viewDetails = document.getElementById("accommodation-details");
+const viewConfirmation = document.getElementById("booking-confirmation");
+
+// Subtotals and calculation nodes
+const summaryCheckin = document.getElementById("summary-checkin");
+const summaryCheckout = document.getElementById("summary-checkout");
+const summaryGuests = document.getElementById("summary-guests");
+const summaryNights = document.getElementById("summary-nights");
+
+const pricePerNight = document.getElementById("price-per-night");
+const subtotalResult = document.getElementById("subtotal-result");
+const vatResult = document.getElementById("vat-result");
+const totalResult = document.getElementById("total-result");
+
+// Meal Checkboxes
+const chkBreakfast = document.getElementById("meal-breakfast");
+const chkLunch = document.getElementById("meal-lunch");
+const chkDinner = document.getElementById("meal-dinner");
+
+// Map variable
+let map;
+let mapMarker;
+
+// App state variables
+let selectedHotel = null;
+let currentNights = 0;
+let currentGuests = 1;
+let currentCarouselIndex = 0;
+
+// Setup check-in min date as today
+const today = new Date();
+const formattedToday = today.toISOString().split("T")[0];
+inputCheckIn.min = formattedToday;
+
+// Set default dates
+const tomorrow = new Date(today);
+tomorrow.setDate(tomorrow.getDate() + 1);
+inputCheckIn.value = formattedToday;
+inputCheckOut.value = tomorrow.toISOString().split("T")[0];
+inputCheckOut.min = tomorrow.toISOString().split("T")[0];
+
+inputCheckIn.addEventListener("change", function() {
+  const checkInDate = new Date(inputCheckIn.value);
+  const nextDay = new Date(checkInDate);
+  nextDay.setDate(nextDay.getDate() + 1);
+  inputCheckOut.min = nextDay.toISOString().split("T")[0];
+  if (new Date(inputCheckOut.value) <= checkInDate) {
+    inputCheckOut.value = nextDay.toISOString().split("T")[0];
+  }
+});
+
+// App Initiation
+document.addEventListener("DOMContentLoaded", () => {
+  initLeafletMap();
+  setupEventListeners();
+});
+
+function initLeafletMap() {
+  // Center of Palestine (Ramallah area)
+  map = L.map("map").setView([31.9029, 35.2032], 10);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains: 'abcd',
+    maxZoom: 20
+  }).addTo(map);
+}
+
+function setupEventListeners() {
+  // Search Action
+  searchBtn.addEventListener("click", performSearch);
+
+  // Back Actions
+  document.querySelectorAll(".back-to-search").forEach(btn => {
+    btn.addEventListener("click", () => {
+      showView(viewHomepage);
+    });
+  });
+
+  document.querySelectorAll(".back-to-options").forEach(btn => {
+    btn.addEventListener("click", () => {
+      showView(viewOptions);
+    });
+  });
+
+  // Calculate pricing dynamically when meal upgrades change
+  [chkBreakfast, chkLunch, chkDinner].forEach(chk => {
+    chk.addEventListener("change", calculatePrices);
+  });
+
+  // Confirm booking
+  document.getElementById("book-btn").addEventListener("click", confirmBooking);
+
+  // Send itinerary email
+  document.getElementById("send-btn").addEventListener("click", sendItinerary);
+
+  // New booking
+  document.getElementById("new-booking-btn").addEventListener("click", () => {
+    chkBreakfast.checked = false;
+    chkLunch.checked = false;
+    chkDinner.checked = false;
+    showView(viewHomepage);
+  });
+}
+
+function showView(view) {
+  [viewHomepage, viewOptions, viewDetails, viewConfirmation].forEach(v => {
+    v.classList.add("hidden");
+  });
+  view.classList.remove("hidden");
+}
+
+function performSearch() {
+  noResult.innerText = "";
+  
+  const checkInVal = inputCheckIn.value;
+  const checkOutVal = inputCheckOut.value;
+  
+  if (!checkInVal || !checkOutVal) {
+    noResult.innerText = "يرجى اختيار تاريخ الوصول والمغادرة.";
+    return;
+  }
+  
+  const dateIn = new Date(checkInVal);
+  const dateOut = new Date(checkOutVal);
+  
+  currentNights = Math.ceil((dateOut - dateIn) / (1000 * 60 * 60 * 24));
+  currentGuests = parseInt(inputGuests.value);
+
+  if (currentNights <= 0) {
+    noResult.innerText = "تاريخ المغادرة يجب أن يكون بعد تاريخ الوصول.";
+    return;
+  }
+  
+  if (currentNights > 15) {
+    noResult.innerText = "أقصى مدة للحجز هي 15 يوماً.";
+    return;
+  }
+
+  // Filter accommodations
+  const filtered = accommodations.filter(acc => {
+    return currentGuests >= acc.minGuests && 
+           currentGuests <= acc.maxGuests && 
+           currentNights >= acc.minDays && 
+           currentNights <= acc.maxDays;
+  });
+
+  cardResult.innerHTML = "";
+  if (filtered.length === 0) {
+    cardResult.innerHTML = '<div class="no-offers">لا توجد عروض تناسب اختياراتك (عدد الضيوف أو الليالي لا يطابق شروط الإقامة). حاول تغيير المعايير.</div>';
+  } else {
+    filtered.forEach(acc => {
+      const card = document.createElement("div");
+      card.className = "hotel-card";
+      card.innerHTML = \`
+        <div class="card-img-wrapper">
+          <img src="\${acc.image}" alt="\${acc.name}" class="card-img">
+          <span class="card-badge">\${acc.badge}</span>
+        </div>
+        <div class="card-info">
+          <h3 class="card-hotel-title">\${acc.name}</h3>
+          <p class="card-hotel-address"><i class="fa-solid fa-location-dot"></i> \${acc.address}</p>
+          <div class="card-footer-row">
+            <div class="card-price">₪\${acc.price} <span class="card-price-sub">/ ليلة</span></div>
+            <button class="btn btn-primary select-hotel-btn" data-id="\${acc.id}">عرض التفاصيل</button>
+          </div>
+        </div>
+      \`;
+      cardResult.appendChild(card);
+    });
+
+    // Add select buttons event listeners
+    document.querySelectorAll(".select-hotel-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const id = parseInt(e.target.dataset.id);
+        openHotelDetails(id);
+      });
+    });
+  }
+
+  showView(viewOptions);
+}
+
+function openHotelDetails(hotelId) {
+  selectedHotel = accommodations.find(acc => acc.id === hotelId);
+  if (!selectedHotel) return;
+
+  // Set textual details
+  document.getElementById("detail-name").innerText = selectedHotel.name;
+  document.getElementById("detail-address").innerHTML = \`<i class="fa-solid fa-location-dot"></i> \${selectedHotel.address}\`;
+  document.getElementById("detail-description").innerHTML = selectedHotel.description;
+
+  // Set booking summary details
+  summaryCheckin.innerText = inputCheckIn.value;
+  summaryCheckout.innerText = inputCheckOut.value;
+  summaryGuests.innerText = \`\${currentGuests} ضيوف\`;
+  summaryNights.innerText = \`\${currentNights} ليالي\`;
+
+  pricePerNight.innerText = \`₪\${selectedHotel.price}\`;
+
+  // Setup carousel
+  const carouselInner = document.getElementById("carousel-inner");
+  carouselInner.innerHTML = \`
+    <div class="carousel-item"><img src="\${selectedHotel.image}" alt="\${selectedHotel.name}"></div>
+    <div class="carousel-item"><img src="\${selectedHotel.carousel1}" alt="\${selectedHotel.name}"></div>
+    <div class="carousel-item"><img src="\${selectedHotel.carousel2}" alt="\${selectedHotel.name}"></div>
+    <div class="carousel-item"><img src="\${selectedHotel.carousel3}" alt="\${selectedHotel.name}"></div>
+  \`;
+  currentCarouselIndex = 0;
+  updateCarouselPosition();
+
+  // Setup Carousel Controls
+  document.getElementById("carousel-prev").onclick = () => {
+    currentCarouselIndex = (currentCarouselIndex > 0) ? currentCarouselIndex - 1 : 3;
+    updateCarouselPosition();
+  };
+  document.getElementById("carousel-next").onclick = () => {
+    currentCarouselIndex = (currentCarouselIndex < 3) ? currentCarouselIndex + 1 : 0;
+    updateCarouselPosition();
+  };
+
+  // Setup map marker
+  const coords = [selectedHotel.latitude, selectedHotel.longitude];
+  map.setView(coords, 13);
+  
+  if (mapMarker) {
+    mapMarker.setLatLng(coords).setPopupContent(selectedHotel.name);
+  } else {
+    mapMarker = L.marker(coords).addTo(map).bindPopup(selectedHotel.name).openPopup();
+  }
+  
+  // Recalculate size to render properly in hidden tabs
+  setTimeout(() => {
+    map.invalidateSize();
+  }, 100);
+
+  // Reset meal checkboxes
+  chkBreakfast.checked = false;
+  chkLunch.checked = false;
+  chkDinner.checked = false;
+
+  calculatePrices();
+  showView(viewDetails);
+}
+
+function updateCarouselPosition() {
+  const carouselInner = document.getElementById("carousel-inner");
+  carouselInner.style.transform = \`translateX(\${currentCarouselIndex * 100}%)\`;
+}
+
+function calculatePrices() {
+  if (!selectedHotel) return;
+
+  const basePrice = selectedHotel.price * currentNights;
+  
+  // Calculate meals
+  let mealCost = 0;
+  if (chkBreakfast.checked) mealCost += 30;
+  if (chkLunch.checked) mealCost += 70;
+  if (chkDinner.checked) mealCost += 40;
+
+  const totalMealCost = mealCost * currentGuests * currentNights;
+  const subtotal = basePrice + totalMealCost;
+  const vat = Math.round(subtotal * 0.16);
+  const total = subtotal + vat;
+
+  subtotalResult.innerText = \`₪\${subtotal}\`;
+  vatResult.innerText = \`₪\${vat}\`;
+  totalResult.innerText = \`₪\${total}\`;
+}
+
+function confirmBooking() {
+  // Generate random reservation code
+  const randomCode = "PAL-" + Math.floor(100000 + Math.random() * 900000);
+  document.getElementById("reservation-code").innerText = randomCode;
+
+  // Reset email fields
+  document.getElementById("emailInput").value = "";
+  document.getElementById("emailConfirmation").innerText = "";
+
+  showView(viewConfirmation);
+}
+
+function sendItinerary() {
+  const emailInput = document.getElementById("emailInput");
+  const emailStatus = document.getElementById("emailConfirmation");
+  
+  emailStatus.className = "email-status";
+  emailStatus.innerText = "";
+
+  const email = emailInput.value.trim();
+  const mailformat = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}\$/;
+
+  if (email.match(mailformat)) {
+    emailStatus.innerText = "تم إرسال الفاتورة وتفاصيل الرحلة بنجاح إلى بريدك الإلكتروني! ✉️";
+    emailStatus.classList.add("email-success");
+  } else {
+    emailStatus.innerText = "يرجى إدخال عنوان بريد إلكتروني صحيح.";
+    emailStatus.classList.add("email-error");
+  }
+}
+`;
+
+            if (isZip) {
+                setIsPublishing(true);
+                try {
+                    if (!window.JSZip) {
+                        await new Promise((resolve, reject) => {
+                            const script = document.createElement('script');
+                            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+                            script.onload = resolve;
+                            script.onerror = reject;
+                            document.head.appendChild(script);
+                        });
+                    }
+                    const zip = new window.JSZip();
+                    zip.file("index.html", tourismHtml);
+                    zip.folder("css").file("style.css", tourismStyleCss);
+                    zip.folder("js").file("app.js", tourismAppJs);
+                    
+                    const content = await zip.generateAsync({ type: 'blob' });
+                    const downloadUrl = URL.createObjectURL(content);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = `Palestine_Tourism_Booking_${Date.now()}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(downloadUrl);
+                } catch (err) {
+                    console.error("ZIP packaging failed:", err);
+                    alert("فشل تصدير المشروع كـ ZIP: " + err.message);
+                } finally {
+                    setIsPublishing(false);
+                }
+            } else {
+                let bundledHtml = tourismHtml
+                    .replace('<link rel="stylesheet" href="css/style.css" />', `<style>${tourismStyleCss}</style>`)
+                    .replace('<script defer src="js/app.js"></script>', `<script>${tourismAppJs}</script>`);
+
+                const blob = new Blob([bundledHtml], { type: 'text/html' });
+                const downloadUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = `Palestine_Tourism_Booking_${Date.now()}.html`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(downloadUrl);
+            }
+            setIsDesignStudioOpen(false);
+            return;
+        }
+
         if (designSelections.commercialTemplate === 'mapty') {
             const maptyHtml = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -11429,7 +12861,7 @@ function closeAllInfoWindows() {
                         <div className="ds-cat-title">الأقسام الرئيسية</div>
                         {[
                             { id: 'layouts', label: 'التخطيطات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="9" y1="3" x2="9" y2="21" /></svg>, count: 8 },
-                            { id: 'applications', label: 'تطبيقات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="2" y1="20" x2="22" y2="20" /><line x1="12" y1="17" x2="12" y2="20" /></svg>, count: 5 },
+                            { id: 'applications', label: 'تطبيقات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="2" y1="20" x2="22" y2="20" /><line x1="12" y1="17" x2="12" y2="20" /></svg>, count: 6 },
                             { id: 'palettes', label: 'لوحات الألوان', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" /></svg>, count: 8 },
                             { id: 'typography', label: 'الخطوط', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="4 7 4 4 20 4 20 7" /><line x1="9" y1="20" x2="15" y2="20" /><line x1="12" y1="4" x2="12" y2="20" /></svg>, count: 6 },
                             { id: 'basemaps', label: 'الخرائط', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" /></svg>, count: 6 },
@@ -11458,7 +12890,8 @@ function closeAllInfoWindows() {
                                         { id: 'covid19', title: 'خريطة انتشار كوفيد-19 (COVID-19 Map)', sub: 'تطبيق ويب متكامل لعرض حالات وإحصائيات كورونا حول العالم ومحلياً على الخريطة', icon: '🦠' },
                                         { id: 'uber', title: 'منصة توصيل الركاب (Uber Web Clone)', sub: 'نسخة ويب تفاعلية لطلب وتوصيل الركاب وتحديد المسارات وحساب أسعار الرحلات', icon: '🚗' },
                                         { id: 'guacamaya', title: 'إدارة وحجوزات الطيران (Guacamaya Airlines)', sub: 'نظام متكامل لإدارة الخطوط الجوية والرحلات وحجز المقاعد وعرض الإحصائيات التفاعلية', icon: '✈️' },
-                                        { id: 'mapty', title: 'مقتفي الرياضة بالضفة (Mapty Palestine)', sub: 'تطبيق رياضي تفاعلي لتسجيل أنشطة الجري وركوب الدراجات وتحديد المواقع في مدن الضفة الغربية', icon: '🏃‍♂️' }
+                                        { id: 'mapty', title: 'مقتفي الرياضة بالضفة (Mapty Palestine)', sub: 'تطبيق رياضي تفاعلي لتسجيل أنشطة الجري وركوب الدراجات وتحديد المواقع في مدن الضفة الغربية', icon: '🏃‍♂️' },
+                                        { id: 'tourism', title: 'دليل ومنصة حجز السياحة في فلسطين (Palestine Tourism)', sub: 'منصة متكاملة للبحث وحجز الفنادق وأماكن الإقامة والوجبات التراثية مع خريطة تفاعلية لمدن فلسطين وعرض الأسعار بالشيكل', icon: '🏨' }
                                     ].map(t => (
                                         <div key={t.id} className={`ds-pick ${designSelections.commercialTemplate === t.id ? 'selected' : (t.id === 'none' && !designSelections.commercialTemplate ? 'selected' : '')}`} onClick={() => setDesignSelections(s => ({ ...s, commercialTemplate: t.id }))}>
                                             <div style={{ fontSize: '2rem', marginBottom: '10px', display: 'flex', justifyContent: 'center' }}>{t.icon}</div>
