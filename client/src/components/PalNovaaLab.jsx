@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import axios from 'axios';
-import Map, { Source, Layer, NavigationControl, Popup } from 'react-map-gl/maplibre';
+import Map, { Source, Layer, NavigationControl, Popup, Marker } from 'react-map-gl/maplibre';
 import * as GeoTIFF from 'geotiff';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -243,6 +243,8 @@ const PalNovaaLab = ({ onClose }) => {
 
     const [drawingMode, setDrawingMode] = useState(null); // 'point', 'line', 'polygon', 'measure'
     const [selectedFeatureInfo, setSelectedFeatureInfo] = useState(null);
+    const [editingImageFeature, setEditingImageFeature] = useState(null); // { layerId, featureId }
+    const [tempImageUrl, setTempImageUrl] = useState('');
     const [draftCoordinates, setDraftCoordinates] = useState([]);
     const [drawnFeatures, setDrawnFeatures] = useState({ type: 'FeatureCollection', features: [] });
     const [measurement, setMeasurement] = useState(null);
@@ -277,6 +279,13 @@ const PalNovaaLab = ({ onClose }) => {
     const [isDesignStudioOpen, setIsDesignStudioOpen] = useState(false);
     const [isHydroSimOpen, setIsHydroSimOpen] = useState(false);
     const [activeDsCategory, setActiveDsCategory] = useState('layouts');
+    const [isExportStudioOpen, setIsExportStudioOpen] = useState(false);
+    const [exportTitle, setExportTitle] = useState('خريطة مختبر بال نوفا الجغرافية');
+    const [exportDesc, setExportDesc] = useState('تم توليد وتصدير هذه الخريطة بدقة فائقة باستخدام استوديو التصميم المتطور في PalNovaa Lab.');
+    const [exportResolution, setExportResolution] = useState('hd');
+    const [exportIncludeLegend, setExportIncludeLegend] = useState(true);
+    const [exportIncludeLogo, setExportIncludeLogo] = useState(true);
+    const [isExportingMap, setIsExportingMap] = useState(false);
     const [builderTab, setBuilderTab] = useState('basic'); // 'basic', 'components', 'icons'
     const [isMagicPromptOpen, setIsMagicPromptOpen] = useState(false);
     const [magicPromptText, setMagicPromptText] = useState('');
@@ -3047,6 +3056,63 @@ out geom;`;
         setEditingLayerId(null);
     };
 
+    const handleUpdateFeatureProperty = (layerId, featureId, key, val) => {
+        setGeoLayers(prev => prev.map(layer => {
+            if (layer.id === layerId) {
+                const updatedFeatures = layer.data.features.map(f => {
+                    const fId = f.id || JSON.stringify(f.geometry.coordinates);
+                    if (fId === featureId) {
+                        return {
+                            ...f,
+                            properties: {
+                                ...f.properties,
+                                [key]: val
+                            }
+                        };
+                    }
+                    return f;
+                });
+                return {
+                    ...layer,
+                    data: {
+                        ...layer.data,
+                        features: updatedFeatures
+                    }
+                };
+            }
+            return layer;
+        }));
+
+        // Also update highlightFeatures if they are active
+        setHighlightFeatures(prev => prev.map(f => {
+            const fId = f.id || JSON.stringify(f.geometry.coordinates);
+            if (fId === featureId) {
+                return {
+                    ...f,
+                    properties: {
+                        ...f.properties,
+                        [key]: val
+                    }
+                };
+            }
+            return f;
+        }));
+
+        // Also update selectedFeatureInfo state so it refreshes immediately in the UI
+        setSelectedFeatureInfo(prev => {
+            if (prev && prev.layerId === layerId && prev.featureId === featureId) {
+                return {
+                    ...prev,
+                    properties: {
+                        ...prev.properties,
+                        [key]: val
+                    }
+                };
+            }
+            return prev;
+        });
+    };
+
     const handleExtractFeature = (feature) => {
         try {
             const featureJson = feature.toJSON ? feature.toJSON() : feature;
@@ -3450,7 +3516,9 @@ out geom;`;
                     setSelectedFeatureInfo({
                         properties: fullProperties,
                         longitude: e.lngLat.lng,
-                        latitude: e.lngLat.lat
+                        latitude: e.lngLat.lat,
+                        layerId: originalLayerId || layerId,
+                        featureId: featureId || JSON.stringify(clickedFeature.toJSON().geometry.coordinates)
                     });
 
                     // التحديد المتعدد
@@ -3725,18 +3793,371 @@ out geom;`;
     }, [gisElevPoints]);
 
     const handlePrintMap = () => {
+        setIsExportStudioOpen(true);
+    };
+
+    const performHDExport = async () => {
         if (!mapRef.current) return;
+        setIsExportingMap(true);
         try {
             const map = mapRef.current.getMap();
-            const dataUrl = map.getCanvas().toDataURL('image/png');
+            
+            let targetWidth = 1920;
+            let targetHeight = 1080;
+            if (exportResolution === 'hd') {
+                targetWidth = 2560;
+                targetHeight = 1440;
+            } else if (exportResolution === 'uhd') {
+                targetWidth = 3840;
+                targetHeight = 2160;
+            } else if (exportResolution === 'standard') {
+                const rect = map.getContainer().getBoundingClientRect();
+                targetWidth = Math.round(rect.width);
+                targetHeight = Math.round(rect.height);
+            }
+
+            const container = map.getContainer();
+            const origWidth = container.style.width;
+            const origHeight = container.style.height;
+            const origPosition = container.style.position;
+
+            container.style.width = targetWidth + 'px';
+            container.style.height = targetHeight + 'px';
+            container.style.position = 'fixed';
+            container.style.zIndex = '99999';
+            
+            map.resize();
+
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            map.triggerRepaint();
+            await new Promise((resolve) => {
+                if (map.loaded() && map.isIdle()) {
+                    resolve();
+                } else {
+                    map.once('idle', resolve);
+                }
+            });
+
+            const webglCanvas = map.getCanvas();
+            
+            const destCanvas = document.createElement('canvas');
+            destCanvas.width = targetWidth;
+            destCanvas.height = targetHeight;
+            const ctx = destCanvas.getContext('2d');
+
+            ctx.drawImage(webglCanvas, 0, 0, targetWidth, targetHeight);
+
+            for (const layer of geoLayers) {
+                const currentStyle = layerStyles[layer.id] || {};
+                if (!currentStyle.heatmapEnabled && layer.data?.features) {
+                    for (const f of layer.data.features) {
+                        if (f.geometry?.type === 'Point' && (f.properties?.image || currentStyle.imageUrl)) {
+                            const coords = f.geometry.coordinates;
+                            const pos = map.project(coords);
+                            const imageSrc = f.properties.image || currentStyle.imageUrl;
+                            
+                            try {
+                                const img = await new Promise((resolve, reject) => {
+                                    const image = new Image();
+                                    image.crossOrigin = 'anonymous';
+                                    image.onload = () => resolve(image);
+                                    image.onerror = () => reject();
+                                    image.src = imageSrc;
+                                });
+                                
+                                ctx.save();
+                                ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                                ctx.shadowBlur = 10;
+                                ctx.shadowOffsetX = 0;
+                                ctx.shadowOffsetY = 4;
+                                
+                                const markerSize = exportResolution === 'uhd' ? 90 : exportResolution === 'hd' ? 60 : 40;
+                                const radius = markerSize / 2;
+                                
+                                ctx.beginPath();
+                                ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+                                ctx.fillStyle = '#ffffff';
+                                ctx.fill();
+                                
+                                ctx.beginPath();
+                                ctx.arc(pos.x, pos.y, radius - 3, 0, Math.PI * 2);
+                                ctx.clip();
+                                
+                                ctx.drawImage(img, pos.x - radius, pos.y - radius, markerSize, markerSize);
+                                ctx.restore();
+                                
+                                ctx.fillStyle = '#ffffff';
+                                ctx.beginPath();
+                                ctx.moveTo(pos.x - 6, pos.y + radius - 2);
+                                ctx.lineTo(pos.x + 6, pos.y + radius - 2);
+                                ctx.lineTo(pos.x, pos.y + radius + 6);
+                                ctx.closePath();
+                                ctx.fill();
+                            } catch (err) {
+                                console.error('Failed to load image for marker export:', imageSrc);
+                            }
+                        }
+                    }
+                }
+            }
+
+            container.style.width = origWidth;
+            container.style.height = origHeight;
+            container.style.position = origPosition;
+            container.style.zIndex = '';
+            map.resize();
+
+            if (exportTitle) {
+                const padding = targetWidth * 0.02;
+                const cardWidth = targetWidth * 0.45;
+                const cardHeight = targetHeight * 0.15;
+                const cardX = padding;
+                const cardY = padding;
+
+                ctx.save();
+                ctx.fillStyle = 'rgba(10, 22, 40, 0.85)';
+                ctx.strokeStyle = 'rgba(6, 214, 242, 0.4)';
+                ctx.lineWidth = exportResolution === 'uhd' ? 4 : 2;
+                
+                const roundRect = (x, y, w, h, r) => {
+                    ctx.beginPath();
+                    ctx.moveTo(x + r, y);
+                    ctx.arcTo(x + w, y, x + w, y + h, r);
+                    ctx.arcTo(x + w, y + h, x, y + h, r);
+                    ctx.arcTo(x, y + h, x, y, r);
+                    ctx.arcTo(x, y, x + w, y, r);
+                    ctx.closePath();
+                };
+                
+                roundRect(cardX, cardY, cardWidth, cardHeight, 12);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = `bold ${exportResolution === 'uhd' ? '32px' : exportResolution === 'hd' ? '22px' : '16px'} 'Cairo', sans-serif`;
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'top';
+                ctx.fillText(exportTitle, cardX + cardWidth - 20, cardY + 20);
+
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.font = `${exportResolution === 'uhd' ? '18px' : exportResolution === 'hd' ? '14px' : '11px'} 'Tajawal', sans-serif`;
+                
+                const wrapText = (text, x, y, maxWidth, lineHeight) => {
+                    const words = text.split(' ');
+                    let line = '';
+                    let currentY = y;
+                    for (let n = 0; n < words.length; n++) {
+                        let testLine = line + words[n] + ' ';
+                        let metrics = ctx.measureText(testLine);
+                        if (metrics.width > maxWidth && n > 0) {
+                            ctx.fillText(line, x, currentY);
+                            line = words[n] + ' ';
+                            currentY += lineHeight;
+                        } else {
+                            line = testLine;
+                        }
+                    }
+                    ctx.fillText(line, x, currentY);
+                };
+                
+                wrapText(
+                    exportDesc, 
+                    cardX + cardWidth - 20, 
+                    cardY + (exportResolution === 'uhd' ? 70 : exportResolution === 'hd' ? 55 : 45), 
+                    cardWidth - 40, 
+                    exportResolution === 'uhd' ? 26 : exportResolution === 'hd' ? 20 : 15
+                );
+                
+                ctx.restore();
+            }
+
+            if (exportIncludeLogo) {
+                const padding = targetWidth * 0.02;
+                const logoWidth = exportResolution === 'uhd' ? 320 : exportResolution === 'hd' ? 240 : 180;
+                const logoHeight = exportResolution === 'uhd' ? 80 : exportResolution === 'hd' ? 60 : 45;
+                const logoX = targetWidth - logoWidth - padding;
+                const logoY = padding;
+
+                ctx.save();
+                ctx.fillStyle = 'rgba(10, 22, 40, 0.85)';
+                ctx.strokeStyle = 'rgba(6, 214, 242, 0.4)';
+                ctx.lineWidth = exportResolution === 'uhd' ? 4 : 2;
+
+                const roundRect = (x, y, w, h, r) => {
+                    ctx.beginPath();
+                    ctx.moveTo(x + r, y);
+                    ctx.arcTo(x + w, y, x + w, y + h, r);
+                    ctx.arcTo(x + w, y + h, x, y + h, r);
+                    ctx.arcTo(x, y + h, x, y, r);
+                    ctx.arcTo(x, y, x + w, y, r);
+                    ctx.closePath();
+                };
+
+                roundRect(logoX, logoY, logoWidth, logoHeight, 10);
+                ctx.fill();
+                ctx.stroke();
+
+                const iconSize = logoHeight * 0.6;
+                const iconX = logoX + 20;
+                const iconY = logoY + (logoHeight - iconSize) / 2;
+
+                ctx.strokeStyle = '#06D6F2';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(iconX + iconSize/2, iconY + iconSize/2, iconSize/2, 0, Math.PI*2);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(iconX, iconY + iconSize/2);
+                ctx.lineTo(iconX + iconSize, iconY + iconSize/2);
+                ctx.moveTo(iconX + iconSize/2, iconY);
+                ctx.lineTo(iconX + iconSize/2, iconY + iconSize);
+                ctx.stroke();
+                
+                ctx.fillStyle = '#fbab15';
+                ctx.beginPath();
+                ctx.arc(iconX + iconSize/2, iconY + iconSize/3, iconSize/4, 0, Math.PI, true);
+                ctx.lineTo(iconX + iconSize/2, iconY + iconSize*0.8);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = `bold ${exportResolution === 'uhd' ? '22px' : exportResolution === 'hd' ? '16px' : '13px'} 'Cairo', sans-serif`;
+                ctx.textAlign = 'right';
+                ctx.fillText('PalNovaa Lab', logoX + logoWidth - 15, logoY + (logoHeight / 2) - (exportResolution === 'uhd' ? 4 : 2));
+
+                ctx.fillStyle = '#fbab15';
+                ctx.font = `bold ${exportResolution === 'uhd' ? '12px' : exportResolution === 'hd' ? '9px' : '8px'} 'Tajawal', sans-serif`;
+                ctx.fillText('مختبر بال نوفا المتطور', logoX + logoWidth - 15, logoY + (logoHeight / 2) + (exportResolution === 'uhd' ? 18 : 12));
+
+                ctx.restore();
+            }
+
+            if (exportIncludeLegend && geoLayers.length > 0) {
+                const padding = targetWidth * 0.02;
+                const legendWidth = exportResolution === 'uhd' ? 400 : exportResolution === 'hd' ? 300 : 220;
+                
+                let entryCount = 0;
+                geoLayers.forEach(l => {
+                    entryCount += 1;
+                    const style = layerStyles[l.id];
+                    if (style?.classification?.enabled && style.classification.colors) {
+                        entryCount += Object.keys(style.classification.colors).length;
+                    }
+                });
+
+                const lineHt = exportResolution === 'uhd' ? 32 : exportResolution === 'hd' ? 24 : 18;
+                const legendHeight = (entryCount + 1.5) * lineHt + 30;
+                const legendX = targetWidth - legendWidth - padding;
+                const legendY = targetHeight - legendHeight - padding;
+
+                ctx.save();
+                ctx.fillStyle = 'rgba(10, 22, 40, 0.85)';
+                ctx.strokeStyle = 'rgba(6, 214, 242, 0.4)';
+                ctx.lineWidth = exportResolution === 'uhd' ? 4 : 2;
+
+                const roundRect = (x, y, w, h, r) => {
+                    ctx.beginPath();
+                    ctx.moveTo(x + r, y);
+                    ctx.arcTo(x + w, y, x + w, y + h, r);
+                    ctx.arcTo(x + w, y + h, x, y + h, r);
+                    ctx.arcTo(x, y + h, x, y, r);
+                    ctx.arcTo(x, y, x + w, y, r);
+                    ctx.closePath();
+                };
+
+                roundRect(legendX, legendY, legendWidth, legendHeight, 12);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#fbab15';
+                ctx.font = `bold ${exportResolution === 'uhd' ? '20px' : exportResolution === 'hd' ? '15px' : '12px'} 'Cairo', sans-serif`;
+                ctx.textAlign = 'right';
+                ctx.fillText('مفتاح الخريطة', legendX + legendWidth - 15, legendY + 20);
+
+                let currentY = legendY + (exportResolution === 'uhd' ? 50 : exportResolution === 'hd' ? 40 : 30);
+                
+                geoLayers.forEach(layer => {
+                    const style = layerStyles[layer.id] || {};
+                    const isTable = layer.type === 'table';
+                    if (isTable) return;
+
+                    const layerColor = style.color || layer.color || '#10D9A0';
+                    ctx.fillStyle = layerColor;
+                    ctx.beginPath();
+                    ctx.arc(legendX + legendWidth - 25, currentY + lineHt/2, exportResolution === 'uhd' ? 8 : exportResolution === 'hd' ? 6 : 4, 0, Math.PI*2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = `bold ${exportResolution === 'uhd' ? '16px' : exportResolution === 'hd' ? '12px' : '10px'} 'Cairo', sans-serif`;
+                    ctx.textAlign = 'right';
+                    ctx.fillText(layer.name, legendX + legendWidth - 40, currentY + 3);
+
+                    currentY += lineHt;
+
+                    if (style.classification?.enabled && style.classification.colors) {
+                        Object.entries(style.classification.colors).forEach(([val, col]) => {
+                            ctx.fillStyle = col;
+                            ctx.beginPath();
+                            ctx.arc(legendX + legendWidth - 45, currentY + lineHt/2, exportResolution === 'uhd' ? 6 : exportResolution === 'hd' ? 4.5 : 3, 0, Math.PI*2);
+                            ctx.fill();
+
+                            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                            ctx.font = `${exportResolution === 'uhd' ? '14px' : exportResolution === 'hd' ? '10px' : '9px'} 'Tajawal', sans-serif`;
+                            ctx.textAlign = 'right';
+                            ctx.fillText(val || '(فارغ)', legendX + legendWidth - 60, currentY + 3);
+
+                            currentY += lineHt;
+                        });
+                    }
+                });
+
+                ctx.restore();
+            }
+
+            const padding = targetWidth * 0.02;
+            const scaleWidth = exportResolution === 'uhd' ? 200 : exportResolution === 'hd' ? 140 : 100;
+            const scaleX = padding;
+            const scaleY = targetHeight - padding - (exportResolution === 'uhd' ? 30 : exportResolution === 'hd' ? 20 : 15);
+
+            ctx.save();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = exportResolution === 'uhd' ? 4 : 2;
+            ctx.beginPath();
+            ctx.moveTo(scaleX, scaleY);
+            ctx.lineTo(scaleX, scaleY + (exportResolution === 'uhd' ? 15 : 10));
+            ctx.lineTo(scaleX + scaleWidth, scaleY + (exportResolution === 'uhd' ? 15 : 10));
+            ctx.lineTo(scaleX + scaleWidth, scaleY);
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `${exportResolution === 'uhd' ? '14px' : exportResolution === 'hd' ? '10px' : '8px'} monospace`;
+            ctx.textAlign = 'center';
+            
+            const zoom = map.getZoom();
+            const metersPerPixel = 156543.03392 * Math.cos(32 * Math.PI / 180) / Math.pow(2, zoom);
+            const scaleMeters = Math.round(scaleWidth * metersPerPixel);
+            let scaleText = scaleMeters + ' م';
+            if (scaleMeters >= 1000) {
+                scaleText = (scaleMeters / 1000).toFixed(1) + ' كم';
+            }
+            ctx.fillText(scaleText, scaleX + scaleWidth/2, scaleY - 5);
+            ctx.restore();
+
+            const dataUrl = destCanvas.toDataURL('image/png');
             const link = document.createElement('a');
-            link.download = `PalNovaa_WebGIS_HD_${Date.now()}.png`;
+            link.download = `PalNovaa_WebGIS_Premium_${Date.now()}.png`;
             link.href = dataUrl;
             link.click();
-            alert('✅ تم التقاط الخريطة بدقة عالية وتحميلها كملف PNG بنجاح!');
+
+            alert('✅ تم تصميم وتصدير الخريطة بدقة فائقة الجودة واحترافية متناهية!');
+            setIsExportStudioOpen(false);
         } catch (e) {
-            console.error('HD Print error:', e);
-            alert('❌ عذراً، حدث خطأ أثناء التقاط الخريطة. يرجى التأكد من تشغيل الخريطة بشكل صحيح.');
+            console.error('HD Print Studio error:', e);
+            alert('❌ عذراً، حدث خطأ أثناء تصميم وتصدير الخريطة. يرجى المحاولة مرة أخرى.');
+        } finally {
+            setIsExportingMap(false);
         }
     };
 
@@ -5437,6 +5858,35 @@ out geom;`;
                                     fillOpacity: 0.3
                                 };
 
+                                const getLayerColor = (defaultVal) => {
+                                    if (style?.classification?.enabled && style.classification.property && style.classification.colors) {
+                                        const matchEntries = Object.entries(style.classification.colors).flatMap(([val, col]) => [val, col]);
+                                        if (matchEntries.length > 0) {
+                                            return [
+                                                'match',
+                                                ['coalesce', ['get', style.classification.property], ''],
+                                                ...matchEntries,
+                                                style.color || defaultVal
+                                            ];
+                                        }
+                                    }
+                                    return layer.isPalData ? [
+                                        'match',
+                                        ['coalesce', ['get', 'palCategory'], ''],
+                                        'highway_transport', '#ff7043',
+                                        'buildings', '#f472b6',
+                                        'landuse', '#84cc16',
+                                        'amenities', '#3b82f6',
+                                        'leisure_tourism', '#8b5cf6',
+                                        'natural_water', '#06b6d4',
+                                        'shops', '#fbbf24',
+                                        'offices_crafts', '#6b7280',
+                                        'infrastructure_emergency', '#ef4444',
+                                        'places_boundaries', '#a855f7',
+                                        style.color || defaultVal
+                                    ] : style.color || defaultVal;
+                                };
+
                                 if (layer.type === '3d-mesh') {
                                     return (
                                         <Source key={layer.id} id={`src-${layer.id}`} type="geojson" data={layer.data}>
@@ -5468,148 +5918,38 @@ out geom;`;
                                 }
 
                                 return (
-                                    <Source key={layer.id} id={`src-${layer.id}`} type="geojson" data={layer.data}>
-                                         {/* Polygons */}
-                                         <Layer
-                                             id={`poly-${layer.id}`}
-                                             type="fill"
-                                             filter={['==', '$type', 'Polygon']}
-                                             paint={{
-                                                 'fill-color': layer.isPalData ? [
-                                                     'match',
-                                                     ['coalesce', ['get', 'palCategory'], ''],
-                                                     'highway_transport', '#ff7043',
-                                                     'buildings', '#f472b6',
-                                                     'landuse', '#84cc16',
-                                                     'amenities', '#3b82f6',
-                                                     'leisure_tourism', '#8b5cf6',
-                                                     'natural_water', '#06b6d4',
-                                                     'shops', '#fbbf24',
-                                                     'offices_crafts', '#6b7280',
-                                                     'infrastructure_emergency', '#ef4444',
-                                                     'places_boundaries', '#a855f7',
-                                                     style.color || '#10D9A0'
-                                                 ] : style.color,
-                                                 'fill-opacity': layer.isPalData ? 0.35 * (style.opacity ?? 1) : (style.fillOpacity ?? 0.3) * (style.opacity ?? 1),
-                                                 'fill-outline-color': layer.isPalData ? [
-                                                     'match',
-                                                     ['coalesce', ['get', 'palCategory'], ''],
-                                                     'highway_transport', '#e64a19',
-                                                     'buildings', '#db2777',
-                                                     'landuse', '#4d7c0f',
-                                                     'amenities', '#1d4ed8',
-                                                     'leisure_tourism', '#6d28d9',
-                                                     'natural_water', '#0e7490',
-                                                     'shops', '#d97706',
-                                                     'offices_crafts', '#4b5563',
-                                                     'infrastructure_emergency', '#b91c1c',
-                                                     'places_boundaries', '#7e22ce',
-                                                     '#ffffff'
-                                                 ] : style.outlineColor
-                                             }}
-                                         />
-                                         <Layer
-                                             id={`poly-line-${layer.id}`}
-                                             type="line"
-                                             filter={['==', '$type', 'Polygon']}
-                                             paint={{
-                                                 'line-color': layer.isPalData ? [
-                                                     'match',
-                                                     ['coalesce', ['get', 'palCategory'], ''],
-                                                     'highway_transport', '#e64a19',
-                                                     'buildings', '#db2777',
-                                                     'landuse', '#4d7c0f',
-                                                     'amenities', '#1d4ed8',
-                                                     'leisure_tourism', '#6d28d9',
-                                                     'natural_water', '#0e7490',
-                                                     'shops', '#d97706',
-                                                     'offices_crafts', '#4b5563',
-                                                     'infrastructure_emergency', '#b91c1c',
-                                                     'places_boundaries', '#7e22ce',
-                                                     '#ffffff'
-                                                 ] : style.outlineColor,
-                                                 'line-width': layer.isPalData ? 1.0 : style.outlineWidth,
-                                                 'line-opacity': style.opacity ?? 1
-                                             }}
-                                         />
-
-                                         {/* Lines */}
-                                         <Layer
-                                             id={`line-${layer.id}`}
-                                             type="line"
-                                             filter={['==', '$type', 'LineString']}
-                                             paint={{
-                                                 'line-color': layer.isPalData ? [
-                                                     'match',
-                                                     ['coalesce', ['get', 'palCategory'], ''],
-                                                     'highway_transport', '#ff7043',
-                                                     'buildings', '#f472b6',
-                                                     'landuse', '#84cc16',
-                                                     'amenities', '#3b82f6',
-                                                     'leisure_tourism', '#8b5cf6',
-                                                     'natural_water', '#06b6d4',
-                                                     'shops', '#fbbf24',
-                                                     'offices_crafts', '#6b7280',
-                                                     'infrastructure_emergency', '#ef4444',
-                                                     'places_boundaries', '#a855f7',
-                                                     style.color || '#10D9A0'
-                                                 ] : style.color,
-                                                 'line-width': layer.isPalData ? [
-                                                     'match',
-                                                     ['coalesce', ['get', 'highway'], ''],
-                                                     'motorway', 5.0,
-                                                     'trunk', 4.5,
-                                                     'primary', 4.0,
-                                                     'secondary', 3.0,
-                                                     'tertiary', 2.0,
-                                                     'residential', 1.5,
-                                                     'service', 1.2,
-                                                     'footway', 1.0, 'pedestrian', 1.0, 'path', 0.8, 'cycleway', 0.8,
-                                                     2.0
-                                                 ] : (style.outlineWidth ?? 2) * 2,
-                                                 'line-opacity': style.opacity ?? 1
-                                             }}
-                                         />
-
-                                         {/* Points */}
-                                         {style.heatmapEnabled ? (
+                                    <React.Fragment key={layer.id}>
+                                        <Source id={`src-${layer.id}`} type="geojson" data={layer.data}>
+                                             {/* Polygons */}
                                              <Layer
-                                                 id={`point-${layer.id}`}
-                                                 type="heatmap"
-                                                 filter={['==', '$type', 'Point']}
+                                                 id={`poly-${layer.id}`}
+                                                 type="fill"
+                                                 filter={['==', '$type', 'Polygon']}
                                                  paint={{
-                                                     'heatmap-weight': 1.5,
-                                                     'heatmap-intensity': 1.5,
-                                                     'heatmap-color': [
-                                                         'interpolate',
-                                                         ['linear'],
-                                                         ['heatmap-density'],
-                                                         0, 'rgba(0,0,255,0)',
-                                                         0.2, 'royalblue',
-                                                         0.4, 'cyan',
-                                                         0.6, 'green',
-                                                         0.8, 'yellow',
-                                                         1.0, 'red'
-                                                     ],
-                                                     'heatmap-radius': 20,
-                                                     'heatmap-opacity': style.opacity ?? 0.85
+                                                     'fill-color': getLayerColor('#10D9A0'),
+                                                     'fill-opacity': layer.isPalData ? 0.35 * (style.opacity ?? 1) : (style.fillOpacity ?? 0.3) * (style.opacity ?? 1),
+                                                     'fill-outline-color': style.outlineColor || '#ffffff'
                                                  }}
                                              />
-                                         ) : (
                                              <Layer
-                                                 id={`point-${layer.id}`}
-                                                 type="circle"
-                                                 filter={['==', '$type', 'Point']}
+                                                 id={`poly-line-${layer.id}`}
+                                                 type="line"
+                                                 filter={['==', '$type', 'Polygon']}
                                                  paint={{
-                                                     'circle-radius': layer.isPalData ? 5.5 : (layer.isRemoteSensing ? [
-                                                         'interpolate',
-                                                         ['linear'],
-                                                         ['zoom'],
-                                                         10, 4,
-                                                         14, 12,
-                                                         17, 30
-                                                     ] : 7),
-                                                     'circle-color': layer.isPalData ? [
+                                                     'line-color': style.outlineColor || '#ffffff',
+                                                     'line-width': layer.isPalData ? 1.0 : style.outlineWidth,
+                                                     'line-opacity': style.opacity ?? 1
+                                                 }}
+                                             />
+
+                                             {/* Lines */}
+                                             <Layer
+                                                 id={`line-${layer.id}`}
+                                                 type="line"
+                                                 filter={['==', '$type', 'LineString']}
+                                                 paint={{
+                                                     'line-color': getLayerColor('#10D9A0'),
+                                                     'line-width': layer.isPalData ? [
                                                          'match',
                                                          ['coalesce', ['get', 'palCategory'], ''],
                                                          'highway_transport', '#ff7043',
@@ -5623,43 +5963,153 @@ out geom;`;
                                                          'infrastructure_emergency', '#ef4444',
                                                          'places_boundaries', '#a855f7',
                                                          style.color || '#10D9A0'
-                                                     ] : (layer.isRemoteSensing ? (
-                                                         layer.colorRamp === 'grayscale' ? [
-                                                             'interpolate', ['linear'], ['get', 'elevation'],
-                                                             layer.minElevation || 0, '#000000',
-                                                             layer.maxElevation || 500, '#ffffff'
-                                                         ] : layer.colorRamp === 'viridis' ? [
-                                                             'interpolate', ['linear'], ['get', 'elevation'],
-                                                             layer.minElevation || 0, '#440154',
-                                                             (layer.minElevation + layer.maxElevation)/2 || 100, '#21918c',
-                                                             layer.maxElevation || 500, '#fde725'
-                                                         ] : layer.colorRamp === 'terrain' ? [
-                                                             'interpolate', ['linear'], ['get', 'elevation'],
-                                                             layer.minElevation || 0, '#22c55e',
-                                                             (layer.minElevation + layer.maxElevation)/2 || 100, '#eab308',
-                                                             layer.maxElevation || 500, '#ffffff'
-                                                         ] : layer.colorRamp === 'rainbow' ? [
-                                                             'interpolate', ['linear'], ['get', 'elevation'],
-                                                             layer.minElevation || 0, '#0000ff',
-                                                             layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.25 || 100, '#00ffff',
-                                                             layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.5 || 200, '#00ff00',
-                                                             layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.75 || 300, '#ffff00',
-                                                             layer.maxElevation || 500, '#ff0000'
-                                                         ] : [
-                                                             'interpolate', ['linear'], ['get', 'elevation'],
-                                                             layer.minElevation || 0, '#312e81',
-                                                             (layer.minElevation + layer.maxElevation)/2 || 100, '#10b981',
-                                                             layer.maxElevation || 500, '#ef4444'
-                                                         ]
-                                                     ) : style.color),
-                                                     'circle-stroke-width': layer.isPalData ? 1.5 : style.outlineWidth,
-                                                     'circle-stroke-color': layer.isPalData ? '#ffffff' : style.outlineColor,
-                                                     'circle-opacity': style.opacity ?? 1,
-                                                     'circle-stroke-opacity': style.opacity ?? 1
+                                                     ] : (style.outlineWidth ?? 2) * 2,
+                                                     'line-opacity': style.opacity ?? 1
                                                  }}
                                              />
-                                         )}
-                                     </Source>
+
+                                             {/* Points */}
+                                             {style.heatmapEnabled ? (
+                                                 <Layer
+                                                     id={`point-${layer.id}`}
+                                                     type="heatmap"
+                                                     filter={['==', '$type', 'Point']}
+                                                     paint={{
+                                                         'heatmap-weight': 1.5,
+                                                         'heatmap-intensity': 1.5,
+                                                         'heatmap-color': [
+                                                             'interpolate',
+                                                             ['linear'],
+                                                             ['heatmap-density'],
+                                                             0, 'rgba(0,0,255,0)',
+                                                             0.2, 'royalblue',
+                                                             0.4, 'cyan',
+                                                             0.6, 'green',
+                                                             0.8, 'yellow',
+                                                             1.0, 'red'
+                                                         ],
+                                                         'heatmap-radius': 20,
+                                                         'heatmap-opacity': style.opacity ?? 0.85
+                                                     }}
+                                                 />
+                                             ) : (
+                                                 <Layer
+                                                     id={`point-${layer.id}`}
+                                                     type="circle"
+                                                     filter={
+                                                         style.imageUrl 
+                                                             ? ['false'] 
+                                                             : (layer.isPalData 
+                                                                 ? ['==', '$type', 'Point'] 
+                                                                 : ['all', ['==', '$type', 'Point'], ['!', ['has', 'image']]])
+                                                     }
+                                                     paint={{
+                                                         'circle-radius': layer.isPalData ? 5.5 : (layer.isRemoteSensing ? [
+                                                             'interpolate',
+                                                             ['linear'],
+                                                             ['zoom'],
+                                                             10, 4,
+                                                             14, 12,
+                                                             17, 30
+                                                         ] : 7),
+                                                         'circle-color': layer.isRemoteSensing ? (
+                                                             layer.colorRamp === 'grayscale' ? [
+                                                                 'interpolate', ['linear'], ['get', 'elevation'],
+                                                                 layer.minElevation || 0, '#000000',
+                                                                 layer.maxElevation || 500, '#ffffff'
+                                                             ] : layer.colorRamp === 'viridis' ? [
+                                                                 'interpolate', ['linear'], ['get', 'elevation'],
+                                                                 layer.minElevation || 0, '#440154',
+                                                                 (layer.minElevation + layer.maxElevation)/2 || 100, '#21918c',
+                                                                 layer.maxElevation || 500, '#fde725'
+                                                             ] : layer.colorRamp === 'terrain' ? [
+                                                                 'interpolate', ['linear'], ['get', 'elevation'],
+                                                                 layer.minElevation || 0, '#22c55e',
+                                                                 (layer.minElevation + layer.maxElevation)/2 || 100, '#eab308',
+                                                                 layer.maxElevation || 500, '#ffffff'
+                                                             ] : layer.colorRamp === 'rainbow' ? [
+                                                                 'interpolate', ['linear'], ['get', 'elevation'],
+                                                                 layer.minElevation || 0, '#0000ff',
+                                                                 layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.25 || 100, '#00ffff',
+                                                                 layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.5 || 200, '#00ff00',
+                                                                 layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.75 || 300, '#ffff00',
+                                                                 layer.maxElevation || 500, '#ff0000'
+                                                             ] : [
+                                                                 'interpolate', ['linear'], ['get', 'elevation'],
+                                                                 layer.minElevation || 0, '#312e81',
+                                                                 (layer.minElevation + layer.maxElevation)/2 || 100, '#10b981',
+                                                                 layer.maxElevation || 500, '#ef4444'
+                                                             ]
+                                                         ) : getLayerColor('#10D9A0'),
+                                                         'circle-stroke-width': layer.isPalData ? 1.5 : style.outlineWidth,
+                                                         'circle-stroke-color': layer.isPalData ? '#ffffff' : style.outlineColor,
+                                                         'circle-opacity': style.opacity ?? 1,
+                                                         'circle-stroke-opacity': style.opacity ?? 1
+                                                     }}
+                                                 />
+                                             )}
+                                        </Source>
+
+                                        {/* Render custom react-map-gl Markers for point features with images */}
+                                        {!style.heatmapEnabled && layer.data?.features && layer.data.features.map((f, idx) => {
+                                            if (f.geometry?.type === 'Point' && (f.properties?.image || style.imageUrl)) {
+                                                const coords = f.geometry.coordinates;
+                                                const imageSrc = f.properties.image || style.imageUrl;
+                                                return (
+                                                    <Marker
+                                                        key={`img-marker-${layer.id}-${idx}`}
+                                                        longitude={coords[0]}
+                                                        latitude={coords[1]}
+                                                        anchor="bottom"
+                                                    >
+                                                        <div 
+                                                            className="custom-image-marker-wrapper" 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setSelectedFeatureInfo({
+                                                                    longitude: coords[0],
+                                                                    latitude: coords[1],
+                                                                    properties: f.properties || {},
+                                                                    layerId: layer.id,
+                                                                    featureId: f.id || JSON.stringify(f.geometry.coordinates)
+                                                                });
+                                                            }}
+                                                            style={{
+                                                                width: '40px', height: '40px',
+                                                                borderRadius: '50%',
+                                                                border: '2.5px solid white',
+                                                                boxShadow: '0 3px 8px rgba(0,0,0,0.45)',
+                                                                background: '#1e293b',
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                cursor: 'pointer',
+                                                                transition: 'transform 0.2s',
+                                                                position: 'relative'
+                                                            }}
+                                                        >
+                                                            <div style={{
+                                                                width: '100%', height: '100%',
+                                                                borderRadius: '50%',
+                                                                backgroundImage: `url(${imageSrc})`,
+                                                                backgroundSize: 'cover',
+                                                                backgroundPosition: 'center',
+                                                            }} />
+                                                            <div style={{
+                                                                position: 'absolute',
+                                                                bottom: '-6px',
+                                                                left: '50%',
+                                                                transform: 'translateX(-50%)',
+                                                                width: '0', height: '0',
+                                                                borderLeft: '4px solid transparent',
+                                                                borderRight: '4px solid transparent',
+                                                                borderTop: '6px solid white'
+                                                            }} />
+                                                        </div>
+                                                    </Marker>
+                                                );
+                                            }
+                                            return null;
+                                        })}
+                                    </React.Fragment>
                                 );
                             })}
 
@@ -5703,6 +6153,19 @@ out geom;`;
                                             {selectedFeatureInfo.properties.dataset === 'aster30m' ? 'نقطة ارتفاع (ASTER GDEM)' : (selectedFeatureInfo.properties.name || selectedFeatureInfo.properties.name_ar || selectedFeatureInfo.properties.name_en || 'معلم بدون اسم')}
                                         </h4>
                                         <div className="popup-body" style={{ fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                            {(selectedFeatureInfo.properties.image || layerStyles[selectedFeatureInfo.layerId]?.imageUrl) && (
+                                                <div style={{ 
+                                                    width: '100%', 
+                                                    height: '110px', 
+                                                    borderRadius: '8px', 
+                                                    marginBottom: '8px', 
+                                                    backgroundImage: `url(${selectedFeatureInfo.properties.image || layerStyles[selectedFeatureInfo.layerId]?.imageUrl})`, 
+                                                    backgroundSize: 'cover', 
+                                                    backgroundPosition: 'center', 
+                                                    border: '1.5px solid rgba(6, 214, 242, 0.4)',
+                                                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                                                }} />
+                                            )}
                                             {selectedFeatureInfo.properties.dataset === 'aster30m' ? (
                                                 <>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '15px' }}>
@@ -6277,6 +6740,32 @@ out geom;`;
                                                             </div>
                                                         )}
                                                     </div>
+
+                                                    {currentStyle?.classification?.enabled && currentStyle.classification.colors && (
+                                                        <div className="layer-legend-sublist" style={{ 
+                                                            marginTop: '10px', 
+                                                            padding: '10px 14px', 
+                                                            background: 'rgba(255, 255, 255, 0.03)', 
+                                                            borderRadius: '10px', 
+                                                            border: '1.5px dashed rgba(6, 214, 242, 0.25)',
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            gap: '6px'
+                                                        }}>
+                                                            <div style={{ fontSize: '0.75rem', color: '#fbab15', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold' }}>
+                                                                <span style={{ fontSize: '0.9rem' }}>🎨</span>
+                                                                <span>تصنيف: {currentStyle.classification.property}</span>
+                                                            </div>
+                                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '6px', marginTop: '4px' }}>
+                                                                {Object.entries(currentStyle.classification.colors).map(([val, col]) => (
+                                                                    <div key={val} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                                                                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: col, border: '1px solid rgba(255,255,255,0.2)', flexShrink: 0 }} />
+                                                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={val}>{val || '(فارغ)'}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
 
                                                     {openActionsLayerId === layer.id && (
                                                         <div className="expanded-actions" style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', width: '100%', marginTop: '8px', justifyContent: 'space-around' }}>
@@ -7328,6 +7817,135 @@ out geom;`;
                                                     </div>
                                                 ))}
                                             </div>
+                                        </div>
+
+                                        {/* Custom Image for Points */}
+                                        {layer?.data?.features?.some(f => f.geometry?.type === 'Point') && (
+                                            <div className="style-section" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
+                                                <label style={{ fontWeight: '600' }}>صورة مخصصة للنقاط (رابط URL)</label>
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="https://example.com/image.jpg" 
+                                                    value={style.imageUrl || ''} 
+                                                    onChange={(e) => updateStyle('imageUrl', e.target.value)} 
+                                                    style={{
+                                                        width: '100%',
+                                                        background: '#1e293b',
+                                                        color: 'white',
+                                                        border: '1px solid rgba(255,255,255,0.1)',
+                                                        padding: '8px',
+                                                        borderRadius: '8px',
+                                                        marginTop: '4px',
+                                                        fontFamily: 'Tajawal, sans-serif',
+                                                        fontSize: '0.8rem'
+                                                    }}
+                                                />
+                                                {style.imageUrl && (
+                                                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <div style={{ width: '30px', height: '30px', borderRadius: '50%', backgroundImage: `url(${style.imageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', border: '1.5px solid white' }}></div>
+                                                        <button 
+                                                            className="ds-btn secondary small" 
+                                                            onClick={() => updateStyle('imageUrl', '')}
+                                                            style={{ padding: '2px 8px', fontSize: '0.65rem' }}
+                                                        >
+                                                            إزالة الصورة
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Data Classification (تصنيف المعالم حسب البيانات) */}
+                                        <div className="style-section" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '12px', marginTop: '12px' }}>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', color: 'var(--primary)', cursor: 'pointer' }}>
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={!!style.classification?.enabled} 
+                                                    onChange={(e) => {
+                                                        const enabled = e.target.checked;
+                                                        const keys = layer?.data?.features?.[0]?.properties ? Object.keys(layer.data.features[0].properties) : [];
+                                                        const firstKey = keys.find(k => k !== 'id' && k !== 'color') || '';
+                                                        
+                                                        // Auto generate classes if enabling
+                                                        let newColors = {};
+                                                        if (enabled && firstKey) {
+                                                            const uniqueVals = [...new Set(layer.data.features.map(f => f.properties?.[firstKey]).filter(v => v !== undefined && v !== null))];
+                                                            uniqueVals.forEach((val, idx) => {
+                                                                newColors[val] = ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899', '#3b82f6', '#10b981', '#f43f5e', '#eab308'][idx % 9];
+                                                            });
+                                                        }
+                                                        updateStyle('classification', {
+                                                            enabled,
+                                                            property: firstKey,
+                                                            colors: newColors
+                                                        });
+                                                     }}
+                                                 />
+                                                 تصنيف المعالم حسب حقل بيانات
+                                            </label>
+
+                                            {style.classification?.enabled && (
+                                                <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                    <div>
+                                                        <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>حقل التصنيف:</span>
+                                                        <select
+                                                            value={style.classification.property || ''}
+                                                            onChange={(e) => {
+                                                                const prop = e.target.value;
+                                                                const uniqueVals = [...new Set(layer.data.features.map(f => f.properties?.[prop]).filter(v => v !== undefined && v !== null))];
+                                                                const newColors = {};
+                                                                uniqueVals.forEach((val, idx) => {
+                                                                    newColors[val] = ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899', '#3b82f6', '#10b981', '#f43f5e', '#eab308'][idx % 9];
+                                                                });
+                                                                updateStyle('classification', {
+                                                                    ...style.classification,
+                                                                    property: prop,
+                                                                    colors: newColors
+                                                                });
+                                                            }}
+                                                            style={{
+                                                                width: '100%',
+                                                                background: '#1e293b',
+                                                                color: 'white',
+                                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                                padding: '6px',
+                                                                borderRadius: '8px',
+                                                                marginTop: '4px',
+                                                                fontFamily: 'Tajawal, sans-serif',
+                                                                fontSize: '0.8rem'
+                                                            }}
+                                                        >
+                                                            {layer?.data?.features?.[0]?.properties && Object.keys(layer.data.features[0].properties)
+                                                                .filter(k => k !== 'id' && k !== 'color')
+                                                                .map(k => <option key={k} value={k}>{k}</option>)}
+                                                        </select>
+                                                    </div>
+
+                                                    {/* Swatch color pickers */}
+                                                    <div style={{ maxHeight: '130px', overflowY: 'auto', background: 'rgba(0,0,0,0.3)', padding: '8px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                        <span style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>الفئات والوانها:</span>
+                                                        {Object.entries(style.classification.colors || {}).map(([val, col]) => (
+                                                            <div key={val} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '6px' }}>
+                                                                <span style={{ fontSize: '0.75rem', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1, color: '#e2e8f0' }}>{val || '(فارغ)'}</span>
+                                                                <input 
+                                                                    type="color" 
+                                                                    value={col} 
+                                                                    onChange={(e) => {
+                                                                        updateStyle('classification', {
+                                                                            ...style.classification,
+                                                                            colors: {
+                                                                                ...style.classification.colors,
+                                                                                [val]: e.target.value
+                                                                            }
+                                                                        });
+                                                                    }}
+                                                                    style={{ width: '24px', height: '24px', border: 'none', padding: '0', background: 'none', cursor: 'pointer', borderRadius: '4px' }}
+                                                                />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </>
                                 )}
@@ -8463,6 +9081,110 @@ out geom;`;
                                     className="ds-btn ghost"
                                     style={{ flex: 1, height: '50px' }}
                                     onClick={() => setIsPublishModalOpen(false)}
+                                >
+                                    إلغاء
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {isExportStudioOpen && (
+                    <div className="ds-overlay active" style={{ display: 'grid', placeItems: 'center', zIndex: 99999, position: 'fixed', inset: 0, background: 'rgba(5, 12, 22, 0.85)', backdropFilter: 'blur(12px)' }}>
+                        <div className="ds-modal" style={{ width: '500px', background: '#0A1628', borderRadius: '24px', border: '1.5px solid rgba(6, 214, 242, 0.35)', padding: '30px', boxShadow: '0 30px 80px rgba(0,0,0,0.9)', direction: 'rtl', textAlign: 'right' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '15px' }}>
+                                <div style={{ width: '45px', height: '45px', background: 'rgba(6, 214, 242, 0.1)', borderRadius: '12px', display: 'grid', placeItems: 'center' }}>
+                                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#06D6F2" strokeWidth="2.5">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#06D6F2', fontWeight: 'bold' }}>أستوديو تصميم وتصدير الخرائط HD</h3>
+                                    <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.6 }}>قم بإعداد الخريطة الجغرافية وتصديرها بدقة عالية واحترافية متناهية</p>
+                                </div>
+                            </div>
+
+                            <div style={{ marginBottom: '16px' }}>
+                                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.88rem', opacity: 0.9, fontWeight: 'bold' }}>عنوان الخريطة الرئيسي</label>
+                                <input
+                                    type="text"
+                                    value={exportTitle}
+                                    onChange={(e) => setExportTitle(e.target.value)}
+                                    placeholder="أدخل عنوان الخريطة..."
+                                    style={{ width: '100%', height: '42px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '0 15px', color: 'white', outline: 'none', fontSize: '0.9rem' }}
+                                />
+                            </div>
+
+                            <div style={{ marginBottom: '16px' }}>
+                                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.88rem', opacity: 0.9, fontWeight: 'bold' }}>وصف الخريطة / الحواشي</label>
+                                <textarea
+                                    value={exportDesc}
+                                    onChange={(e) => setExportDesc(e.target.value)}
+                                    placeholder="أدخل وصفاً تفصيلياً أو هوامش للخريطة..."
+                                    rows="3"
+                                    style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '12px 15px', color: 'white', outline: 'none', fontSize: '0.85rem', resize: 'vertical', minHeight: '80px', fontFamily: 'inherit' }}
+                                />
+                            </div>
+
+                            <div style={{ marginBottom: '20px' }}>
+                                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.88rem', opacity: 0.9, fontWeight: 'bold' }}>دقة التصدير والوضوح</label>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                                    {[
+                                        { id: 'standard', name: 'عادية (Screen)', desc: 'دقة الشاشة الحالية' },
+                                        { id: 'hd', name: 'عالية (HD)', desc: '2560x1440 بكسل' },
+                                        { id: 'uhd', name: 'فائقة (4K)', desc: '3840x2160 بكسل' }
+                                    ].map(res => (
+                                        <div 
+                                            key={res.id} 
+                                            onClick={() => setExportResolution(res.id)}
+                                            style={{ 
+                                                border: exportResolution === res.id ? '2px solid #06D6F2' : '1px solid rgba(255,255,255,0.1)', 
+                                                background: exportResolution === res.id ? 'rgba(6, 214, 242, 0.08)' : 'rgba(255,255,255,0.02)', 
+                                                borderRadius: '12px', padding: '10px 8px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s' 
+                                            }}
+                                        >
+                                            <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: exportResolution === res.id ? '#06D6F2' : 'white' }}>{res.name}</div>
+                                            <div style={{ fontSize: '0.65rem', opacity: 0.5, marginTop: '2px' }}>{res.desc}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div style={{ marginBottom: '25px', display: 'flex', flexDirection: 'column', gap: '10px', background: 'rgba(255,255,255,0.02)', padding: '12px 16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span style={{ fontSize: '0.88rem', opacity: 0.9 }}>تضمين شعار المختبر (PalNovaa Lab)</span>
+                                    <div 
+                                        onClick={() => setExportIncludeLogo(!exportIncludeLogo)}
+                                        style={{ width: '40px', height: '20px', background: exportIncludeLogo ? '#06D6F2' : 'rgba(255,255,255,0.1)', borderRadius: '10px', position: 'relative', cursor: 'pointer', transition: '0.3s' }}
+                                    >
+                                        <div style={{ width: '14px', height: '14px', background: 'white', borderRadius: '50%', position: 'absolute', top: '3px', left: exportIncludeLogo ? '23px' : '3px', transition: '0.3s' }}></div>
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span style={{ fontSize: '0.88rem', opacity: 0.9 }}>تضمين مفتاح الخريطة (Legend)</span>
+                                    <div 
+                                        onClick={() => setExportIncludeLegend(!exportIncludeLegend)}
+                                        style={{ width: '40px', height: '20px', background: exportIncludeLegend ? '#06D6F2' : 'rgba(255,255,255,0.1)', borderRadius: '10px', position: 'relative', cursor: 'pointer', transition: '0.3s' }}
+                                    >
+                                        <div style={{ width: '14px', height: '14px', background: 'white', borderRadius: '50%', position: 'absolute', top: '3px', left: exportIncludeLegend ? '23px' : '3px', transition: '0.3s' }}></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '15px' }}>
+                                <button
+                                    className={`ds-btn primary ${isExportingMap ? 'loading' : ''}`}
+                                    style={{ flex: 2, height: '48px', background: '#06D6F2', border: 'none', color: 'black', fontWeight: 'bold' }}
+                                    onClick={performHDExport}
+                                    disabled={isExportingMap}
+                                >
+                                    {isExportingMap ? 'جاري تصدير الخريطة...' : 'بدء التصدير وتحميل الصورة'}
+                                </button>
+                                <button
+                                    className="ds-btn ghost"
+                                    style={{ flex: 1, height: '48px' }}
+                                    onClick={() => setIsExportStudioOpen(false)}
                                 >
                                     إلغاء
                                 </button>
