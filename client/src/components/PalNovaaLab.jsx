@@ -203,7 +203,9 @@ const PalNovaaLab = ({ onClose }) => {
         mapBorderWidth: '1px',
         customFontHeading: 'Cairo',
         customFontBody: 'Tajawal',
-        commercialTemplate: 'none'
+        commercialTemplate: 'none',
+        uberAppName: 'سفريات بال نوفا',
+        uberRatePerKm: 5.0
     });
 
     const mapStyle = useMemo(() => {
@@ -4933,7 +4935,7 @@ out geom;`;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سفريات بال نوفا - حجز سيارات أجرة</title>
+    <title>${designSelections.uberAppName || 'سفريات بال نوفا'} - حجز سيارات أجرة</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;700;900&family=Tajawal:wght@300;400;700;900&display=swap" rel="stylesheet">
@@ -4946,7 +4948,7 @@ out geom;`;
         <aside class="sidebar">
             <div class="brand">
                 <i class="fa-solid fa-car-side logo-icon"></i>
-                <span class="brand-text">سفريات بال نوفا</span>
+                <span class="brand-text">${designSelections.uberAppName || 'سفريات بال نوفا'}</span>
             </div>
             
             <p class="intro-text">احجز رحلتك بكل سهولة. انقر على الخريطة لتحديد نقطة الانطلاق والوصول.</p>
@@ -4954,12 +4956,12 @@ out geom;`;
             <div class="booking-form">
                 <div class="input-group">
                     <label><i class="fa-solid fa-signature"></i> اسم الخدمة / التطبيق</label>
-                    <input type="text" id="app-name-input" value="سفريات بال نوفا" placeholder="أدخل اسم الخدمة...">
+                    <input type="text" id="app-name-input" value="${designSelections.uberAppName || 'سفريات بال نوفا'}" placeholder="أدخل اسم الخدمة...">
                 </div>
                 
                 <div class="input-group">
                     <label><i class="fa-solid fa-shekel-sign"></i> سعر الكيلومتر (شيكل)</label>
-                    <input type="number" id="rate-input" value="5.0" min="0.5" step="0.5">
+                    <input type="number" id="rate-input" value="${designSelections.uberRatePerKm || 5.0}" min="0.5" step="0.5">
                 </div>
 
                 <div class="input-group">
@@ -9705,6 +9707,21 @@ function closeAllInfoWindows() {
                                         </div>
                                     ))}
                                 </div>
+                                {designSelections.commercialTemplate === 'uber' && (
+                                    <div className="ds-sub-config" style={{ marginTop: '20px', padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                                        <h4 style={{ margin: '0 0 12px 0', fontSize: '0.9rem', color: 'var(--primary)' }}>إعدادات تطبيق التوصيل (أوبر ويب) قبل النشر</h4>
+                                        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                                            <div style={{ flex: 1, minWidth: '200px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                <label style={{ fontSize: '0.8rem', opacity: 0.8 }}>اسم الخدمة / التطبيق:</label>
+                                                <input type="text" value={designSelections.uberAppName || 'سفريات بال نوفا'} onChange={e => setDesignSelections(s => ({ ...s, uberAppName: e.target.value }))} style={{ padding: '8px 12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: '#fff', outline: 'none' }} />
+                                            </div>
+                                            <div style={{ flex: 1, minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                <label style={{ fontSize: '0.8rem', opacity: 0.8 }}>سعر الكيلومتر (شيكل):</label>
+                                                <input type="number" value={designSelections.uberRatePerKm || 5.0} onChange={e => setDesignSelections(s => ({ ...s, uberRatePerKm: parseFloat(e.target.value) || 0 }))} min="0.5" step="0.5" style={{ padding: '8px 12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: '#fff', outline: 'none' }} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                         {activeDsCategory === 'layouts' && (
