@@ -4927,6 +4927,942 @@ out geom;`;
     };
 
     const performActualExport = async (isZip = false) => {
+        if (designSelections.commercialTemplate === 'covid19') {
+            const covidHtml = `<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+        integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"
+        integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+        integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
+        crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"
+        integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
+        crossorigin="anonymous"></script>
+
+    <!-- Material Icons -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <!-- Font Awesome icons -->
+    <script src="https://kit.fontawesome.com/358c7d921e.js" crossorigin="anonymous"></script>
+
+    <!-- Custom stylesheets -->
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/loader.css">
+    <link rel="stylesheet" href="css/errorModal.css">
+    <!-- Custom scripts -->
+    <script defer src="js/constants.js"></script>
+    <script defer src="js/util.js"></script>
+    <script defer src="js/index.js"></script>
+
+    <script src="https://unpkg.com/@google/markerclustererplus@4.0.1/dist/markerclustererplus.min.js"></script>
+    <script defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAKBXdCmWV-2chRvozRWUQnT2W2nYnQy2E&callback=initMap"></script>
+
+    <title>Mapa de casos y estadísticas COVID-19</title>
+</head>
+
+<body>
+    <h1 class="tituloMapa">Mapa de casos y estadísticas <b class="virusType">COVID-19</b></h1>
+    <div class="container-fluid" id="first-row">
+        <div class="row">
+            <div class="col-12 col-lg-9">
+                <div id="map"></div>
+            </div>
+            <div class="col-12 col-lg-3 mt-3">
+                <div class="card text-center">
+                    <div class="card-header font-weight-bold text text-uppercase">
+                        Casos confirmados por país
+                    </div>
+                    <div class="card-body d-flex justify-content-center">
+                        <table id="countryCasesTable">
+                            <thead>
+                                <tr>
+                                    <th>Pos.</th>
+                                    <th>País</th>
+                                    <th>Casos</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid mt-3" id="global-stats">
+        <div class="card-deck">
+            <div class="card text-center">
+                <div class="card-header font-weight-bold text-uppercase">
+                    Última actualización
+                </div>
+                <div class="card-body d-flex justify-content-center align-items-center">
+                    <span id="lastUpdated"></span>
+                </div>
+            </div>
+            <div class="card text-center">
+                <div class="card-header font-weight-bold text-uppercase">
+                    Casos confirmados
+                </div>
+                <div class="card-body text-secondary d-flex justify-content-center align-items-center">
+                    <span id="globalConfirmedCases"></span>
+                </div>
+            </div>
+            <div class="card text-center">
+                <div class="card-header font-weight-bold text-uppercase">
+                    Casos activos
+                </div>
+                <div class="card-body text-warning d-flex justify-content-center align-items-center">
+                    <span id="globalActiveCases"></span>
+                </div>
+            </div>
+            <div class="card text-center">
+                <div class="card-header font-weight-bold text-uppercase">
+                    Casos cerrados
+                </div>
+                <div id="recovered-deaths" class="card-body d-flex justify-content-center">
+                    <div class="row">
+                        <div class="col">
+                            <h6>Recuperados</h6>
+                            <div>
+                                <span id="globalRecovered" class="text-success"></span>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <h6>Muertes</h6>
+                            <div>
+                                <span id="globalDeaths" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="container-fluid mt-4">
+        <div class="row border bg-light d-flex justify-content-center">
+            <div class="col d-flex justify-content-around align-items-center p-2">
+                <a href="#" data-toggle="modal" data-target="#modalAbout">Acerca de</a>
+                <a href="#" data-toggle="modal" data-target="#modalSource">Fuente</a>
+                <a href="#" data-toggle="modal" data-target="#modalCredits">Créditos</a>
+            </div>
+        </div>
+    </footer>
+
+    <div class="googleMapMarkerContainer">
+        <div class="googleMapMarker">
+            <div style="display:flex; flex-direction: column; align-items: center; padding-bottom: 1em;">
+                <img class="countryFlag" style="width: 60%;">
+            </div>
+            <div style="display:flex; flex-direction: column; align-items: center;">
+                <div>
+                    <b>Casos: </b><span id="cases"></span><br>
+                </div>
+                <div>
+                    <b>Muertes: </b><span id="deaths"></span><br>
+                </div>
+                <div>
+                    <b>Recuperados: </b><span id="recovered"></span><br>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="googleMapRightControlContainer">
+        <div class="googleMapRightControl">
+            <div style="display:flex; flex-direction: column; align-items: center; padding-bottom: 1em;">
+                <img class="countryFlag" style="width: 60%;">
+                <h5 style="margin: 3px 0 0 0;" id="countryName"></h5>
+            </div>
+            <div style="display:flex; justify-content: center;">
+                <table>
+                    <tr>
+                        <td><b>Casos</b></td>
+                        <td id="casesCell"></td>
+                    </tr>
+                    <tr>
+                        <td><b>Nuevos hoy</b></td>
+                        <td id="todayCasesCell"></td>
+                    </tr>
+                    <tr>
+                        <td><b>Muertes</b></td>
+                        <td id="deathsCell"></td>
+                    </tr>
+                    <tr>
+                        <td><b>Muertes hoy</b></td>
+                        <td id="todayDeathsCell"></td>
+                    </tr>
+                    <tr>
+                        <td><b>Recuperados</b></td>
+                        <td id="recoveredCell"></td>
+                    </tr>
+                    <tr>
+                        <td><b>Activos</b></td>
+                        <td id="activeCasesCell"></td>
+                    </tr>
+                    <tr>
+                        <td><b>Críticos</b></td>
+                        <td id="criticalCasesCell"></td>
+                    </tr>
+                    <tr>
+                        <td><b>Casos/millón</b></td>
+                        <td id="casesPerMillionCell"></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Loading -->
+    <div id="modalLoading" class="modal fade" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center">
+                    <div class="lds-ellipsis">
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                    </div>
+                    <h5 class="modal-title">Obteniendo datos...</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal About -->
+    <div class="modal fade" id="modalAbout" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-info-circle"></i>
+                        <h5 class="modal-title">Acerca de</h5>
+                    </div>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body text-justify">
+                    <p>
+                        Este mapa fue creado por estudiantes de 6° semestre de la carrera
+                        de Ingeniería de Software y Sistemas Computacionales de la
+                        Universidad De La Salle Bajío, con la finalidad de informar a la
+                        comunidad sobre la expansión del COVID-19 a nivel mundial y por
+                        país.
+                    </p>
+
+                    <a class="btn btn-primary" data-toggle="collapse" href="#collapseExample">Info. para
+                        desarrolladores</a>
+                    <div class="collapse" id="collapseExample">
+                        <div class="card card-body">
+                            <ul class="list-group">
+                                <li class="list-group-item">
+                                    <span>
+                                        El código fuente del sitio puede ser consultado
+                                        <a href="https://github.com/nibble-4bits/COVID-19-Map">aquí</a>.
+                                    </span>
+                                </li>
+                                <li class="list-group-item">
+                                    <span>
+                                        La obtención de los datos se hace a través de esta
+                                        <a href="https://disease.sh/" target="_blank">API</a>.
+                                    </span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-dismiss="modal">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Source -->
+    <div class="modal fade" id="modalSource" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-search"></i>
+                        <h5 class="modal-title">Fuente</h5>
+                    </div>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body text-center">
+                    Todos los datos son obtenidos de
+                    <a href="https://www.worldometers.info/coronavirus/"
+                        target="_blank">worldometers.info/coronavirus</a>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-dismiss="modal">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Credits -->
+    <div class="modal fade" id="modalCredits" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-hands-helping"></i>
+                        <h5 class="modal-title">Créditos</h5>
+                    </div>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body text-center">
+                    <p>
+                        <b>Crédito para todos los estudiantes de 6° semestre de Ingeniería de Software y Sistemas
+                            Computacionales</b>
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-dismiss="modal">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Error -->
+    <div id="modalError" class="modal fade">
+        <div class="modal-dialog modal-confirm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="icon-box">
+                        <i class="material-icons">&#xE5CD;</i>
+                    </div>
+                    <h4 class="modal-title">¡Lo sentimos!</h4>
+                </div>
+                <div class="modal-body">
+                    <p class="text-center">
+                        Ha ocurrido un error al intentar obtener los datos más recientes.
+                        Por favor inténtelo de nuevo más tarde.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-danger btn-block" data-dismiss="modal">
+                        OK
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>`;
+            const covidStyleCss = `@import url('https://fonts.googleapis.com/css?family=Roboto&display=swap');
+
+body {
+    min-height: 100%;
+    background-color: #efefef;
+    font-family: 'Roboto', sans-serif !important;
+}
+
+.tituloMapa {
+    text-align: center;
+    font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+    border-bottom: 1px solid #ccc;
+}
+
+.virusType {
+    color: #df0505;
+}
+
+#first-row .card-body {
+    max-height: 35vh;
+    overflow-y: auto;
+}
+
+@media only screen and (min-width: 992px) {
+    #first-row .row {
+        overflow: hidden;
+    }
+
+    #first-row .card {
+        height: 100%;
+    }
+
+    #first-row .card-body {
+        min-height: 90%;
+        overflow-y: auto;
+    }
+}
+
+#countryCasesTable {
+    width: 90%;
+}
+
+#countryCasesTable th,
+#countryCasesTable td {
+    border-bottom: 1px solid #ccc;
+}
+
+#countryCasesTable tr:hover :not(th) {
+    background-color: rgb(220, 220, 220);
+    cursor: pointer;
+}
+
+#map {
+    height: 75vh;
+}
+
+#global-stats .card-header {
+    font-size: 95%;
+}
+
+#global-stats span {
+    font-size: 2.75vh;
+    font-weight: 500;
+}
+
+#recovered-deaths h6 {
+    margin: 0;
+}
+
+@media only screen and (min-width: 768px) {
+    footer .row div {
+        max-width: 50%;
+    }
+}
+
+@media only screen and (min-width: 1200px) {
+    footer .row div {
+        max-width: 25%;
+    }
+}
+
+#modalAbout .modal-title,
+#modalSource .modal-title,
+#modalCredits .modal-title {
+    margin-left: 7.5px;
+}
+
+.googleMapMarkerContainer {
+    display: none;
+}
+
+.googleMapMarker {
+    max-width: 10em;
+}
+
+.googleMapRightControlContainer {
+    display: none;
+}
+
+.googleMapRightControl {
+    background: #efefef;
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+    padding: 1rem;
+    width: 225px;
+    font-size: 1.125rem;
+    opacity: 1;
+}
+
+.googleMapRightControl td:nth-child(1) {
+    padding: 0.125rem 1rem;
+    text-align: right;
+}
+
+@media only screen and (max-width: 850px) {
+    .googleMapRightControl {
+        padding: 20px;
+        width: 120px !important;
+        font-size: 10px;
+    }
+
+    .googleMapRightControl td:nth-child(1) {
+        padding: 0.125rem 0.5rem;
+        text-align: right;
+    }
+}`;
+            const covidLoaderCss = `.lds-ellipsis {
+  display: inline-block;
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+
+.lds-ellipsis div {
+  position: absolute;
+  top: 33px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #a4a4a4;
+  animation-timing-function: cubic-bezier(0, 1, 1, 0);
+}
+
+.lds-ellipsis div:nth-child(1) {
+  left: 8px;
+  animation: lds-ellipsis1 0.6s infinite;
+}
+
+.lds-ellipsis div:nth-child(2) {
+  left: 8px;
+  animation: lds-ellipsis2 0.6s infinite;
+}
+
+.lds-ellipsis div:nth-child(3) {
+  left: 32px;
+  animation: lds-ellipsis2 0.6s infinite;
+}
+
+.lds-ellipsis div:nth-child(4) {
+  left: 56px;
+  animation: lds-ellipsis3 0.6s infinite;
+}
+
+@keyframes lds-ellipsis1 {
+  0% {
+    transform: scale(0);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes lds-ellipsis3 {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(0);
+  }
+}
+
+@keyframes lds-ellipsis2 {
+  0% {
+    transform: translate(0, 0);
+  }
+  100% {
+    transform: translate(24px, 0);
+  }
+}`;
+            const covidErrorModalCss = `body {
+    font-family: 'Varela Round', sans-serif;
+}
+
+.modal-confirm {
+    color: #636363;
+    width: 325px;
+}
+
+.modal-confirm .modal-content {
+    padding: 20px;
+    border-radius: 5px;
+    border: none;
+}
+
+.modal-confirm .modal-header {
+    border-bottom: none;
+    position: relative;
+}
+
+.modal-confirm h4 {
+    text-align: center;
+    font-size: 26px;
+    margin: 30px 0 -15px;
+}
+
+.modal-confirm .form-control, .modal-confirm .btn {
+    min-height: 40px;
+    border-radius: 3px;
+}
+
+.modal-confirm .close {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+}
+
+.modal-confirm .modal-footer {
+    border: none;
+    text-align: center;
+    border-radius: 5px;
+    font-size: 13px;
+}
+
+.modal-confirm .icon-box {
+    color: #fff;
+    position: absolute;
+    margin: 0 auto;
+    left: 0;
+    right: 0;
+    top: -70px;
+    width: 95px;
+    height: 95px;
+    border-radius: 50%;
+    z-index: 9;
+    background: #ef513a;
+    padding: 15px;
+    text-align: center;
+    box-shadow: 0px 2px 2px rgba(0, 0, 0, 0.1);
+}
+
+.modal-confirm .icon-box i {
+    font-size: 56px;
+    position: relative;
+    top: 4px;
+}
+
+.modal-confirm.modal-dialog {
+    margin-top: 80px;
+}
+
+.modal-confirm .btn {
+    color: #fff;
+    border-radius: 4px;
+    background: #ef513a;
+    text-decoration: none;
+    transition: all 0.4s;
+    line-height: normal;
+    border: none;
+}
+
+.modal-confirm .btn:hover, .modal-confirm .btn:focus {
+    background: #da2c12;
+    outline: none;
+}
+
+.trigger-btn {
+    display: inline-block;
+    margin: 100px auto;
+}`;
+            const covidConstantsJs = `'use strict';
+
+const BASE_API_URL = 'https://disease.sh/v3/covid-19';
+
+// DOM elements
+const tblCountryCases = document.getElementById('countryCasesTable');
+const divLastUpdated = document.getElementById('lastUpdated');
+const divGlobalConfirmedCases = document.getElementById('globalConfirmedCases');
+const divGlobalActiveCases = document.getElementById('globalActiveCases');
+const divGlobalRecovered = document.getElementById('globalRecovered');
+const divGlobalDeaths = document.getElementById('globalDeaths');`;
+            const covidUtilJs = `'use strict';
+
+/**
+ * Saves a JSON string to the local storage
+ * @param {String} key 
+ * @param {Object} jsonData 
+ */
+function cacheAPIData(key, jsonData) {
+    localStorage.setItem(key, JSON.stringify(jsonData));
+}
+
+/**
+ * Gets an object saved in the local storage
+ * @param {String} key 
+ */
+function retrieveCachedAPIData(key) {
+    return JSON.parse(localStorage.getItem(key));
+}
+
+async function showModal(modalId) {
+    \$(modalId).modal({ backdrop: 'static', keyboard: true, show: true });
+    return new Promise((resolve, reject) => {
+        \$(modalId).on('shown.bs.modal', evt => {
+            resolve();
+        });
+    });
+}
+
+async function hideModal(modalId) {
+    \$(modalId).modal('hide');
+    return new Promise((resolve, reject) => {
+        \$(modalId).on('hidden.bs.modal', evt => {
+            resolve();
+        });
+    });
+}
+`;
+            const covidIndexJs = `'use strict';
+
+const objInfoWindows = {};
+const markers = {};
+
+async function initMap() {
+    const mapProps = {
+        center: {
+            lat: 15,
+            lng: 0
+        },
+        zoom: 2
+    };
+    const map = new google.maps.Map(document.getElementById('map'), mapProps);
+    let globalData = null;
+    let countriesData = null;
+    let countryNamesES = null;
+
+    await showModal('#modalLoading');
+    try {
+        const globalRes = await fetch(\`\${BASE_API_URL}/all\`);
+        globalData = await globalRes.json();
+        cacheAPIData('globalData', globalData);
+
+        const countriesRes = await fetch(\`\${BASE_API_URL}/countries?sort=cases\`);
+        countriesData = await countriesRes.json();
+        cacheAPIData('countryData', countriesData);
+
+        const countryNamesESRes = await fetch('https://raw.githubusercontent.com/umpirsky/country-list/master/data/es_MX/country.json');
+        countryNamesES = await countryNamesESRes.json();
+    }
+    catch (error) {
+        globalData = retrieveCachedAPIData('globalData');
+        countriesData = retrieveCachedAPIData('countryData');
+        await hideModal('#modalLoading');
+        if (!globalData || !countriesData) {
+            await showModal('#modalError');
+        }
+    }
+
+    updateInfoCards(globalData, countriesData, countryNamesES);
+    addCountryMarkers(countriesData, countryNamesES, map);
+
+    await hideModal('#modalLoading');
+
+    const markerCluster = new MarkerClusterer(map, markers,
+        {
+            imagePath: 'https://developers.google.com/maps/documentation/javascript/examples/markerclusterer/m',
+            gridSize: 35,
+            maxZoom: 10
+        }
+    );
+}
+
+function generateCountryInfoHTML(country, countryES) {
+    const markerContainer = document.querySelector('.googleMapMarkerContainer');
+    const img = markerContainer.querySelector('.countryFlag');
+    const cases = markerContainer.querySelector('#cases');
+    const deaths = markerContainer.querySelector('#deaths');
+    const recovered = markerContainer.querySelector('#recovered');
+
+    img.src = country.countryInfo.flag;
+    img.alt = \`Bandera de \${countryES[country.countryInfo.iso2] || country.country}\`;
+    
+    cases.textContent = country.cases.toLocaleString('en');
+    deaths.textContent = country.deaths.toLocaleString('en');
+    recovered.textContent = country.recovered.toLocaleString('en');
+
+    return markerContainer.innerHTML;
+}
+
+function generateFullCountryInfoHTML(country, countryES) {
+    const markerContainer = document.querySelector('.googleMapRightControlContainer');
+    const img = markerContainer.querySelector('.countryFlag');
+    const countryName = markerContainer.querySelector('#countryName');
+    const casesCell = markerContainer.querySelector('#casesCell');
+    const todayCasesCell = markerContainer.querySelector('#todayCasesCell');
+    const deathsCell = markerContainer.querySelector('#deathsCell');
+    const todayDeathsCell = markerContainer.querySelector('#todayDeathsCell');
+    const recoveredCell = markerContainer.querySelector('#recoveredCell');
+    const activeCasesCell = markerContainer.querySelector('#activeCasesCell');
+    const criticalCasesCell = markerContainer.querySelector('#criticalCasesCell');
+    const casesPerMillionCell = markerContainer.querySelector('#casesPerMillionCell');
+
+    img.src = country.countryInfo.flag;
+    img.alt = \`Bandera de \${country.countryInfo.flag}\`;
+
+    countryName.textContent = countryES[country.countryInfo.iso2] || country.country;
+    
+    casesCell.textContent = country.cases.toLocaleString('en');
+    todayCasesCell.textContent = country.todayCases.toLocaleString('en');
+    deathsCell.textContent = country.deaths.toLocaleString('en');
+    todayDeathsCell.textContent = country.todayDeaths.toLocaleString('en');
+    recoveredCell.textContent = country.recovered.toLocaleString('en');
+    activeCasesCell.textContent = country.active.toLocaleString('en');
+    criticalCasesCell.textContent = country.critical.toLocaleString('en');
+    casesPerMillionCell.textContent = country.casesPerOneMillion.toLocaleString('en');
+
+    return markerContainer.innerHTML;
+}
+
+function makeControl(controlDiv, country, countryES) {
+    // Set up the control border.
+    const controlUI = document.createElement('div');
+    controlUI.title = countryES[country.countryInfo.iso2] || country.country;
+    controlUI.className = 'controlUI';
+    controlDiv.appendChild(controlUI);
+
+    // Set up the inner control.
+    const controlText = document.createElement('div');
+    controlText.innerHTML = generateFullCountryInfoHTML(country, countryES);
+    controlText.className = 'controlText';
+    controlUI.appendChild(controlText);
+}
+
+function updateInfoCards(globalData, countriesData, countryNamesES) {
+    // For each country add a row to the 'Casos confirmados por país' card
+    countriesData.forEach((country, i) => {
+        const tdPosicion = document.createElement('td');
+        const tdPais = document.createElement('td');
+        const tdCasos = document.createElement('td');
+
+        tdPosicion.textContent = i + 1;
+        tdPais.textContent = countryNamesES[country.countryInfo.iso2] || country.country;
+
+        const spanCasos = document.createElement('span');
+        spanCasos.textContent = country.cases.toLocaleString('en');
+        spanCasos.className = 'badge badge-pill badge-warning';
+
+        tdCasos.appendChild(spanCasos);
+
+        const tr = document.createElement('tr');
+        tr.id = country.country;
+        tr.appendChild(tdPosicion);
+        tr.appendChild(tdPais);
+        tr.appendChild(tdCasos);
+
+        tr.addEventListener('click', evt => {
+            const country = evt.currentTarget.id;
+            closeAllInfoWindows();
+            google.maps.event.trigger(markers[country], 'click');
+        });
+
+        tblCountryCases.appendChild(tr);
+    });
+
+    // Show the remaining statistics (last update, confirmed, active, closed cases) in the other cards
+    divLastUpdated.textContent = new Date(globalData.updated).toLocaleString('es-us', { hour12: true });
+    divGlobalConfirmedCases.textContent = globalData.cases.toLocaleString('en');
+    divGlobalActiveCases.textContent = globalData.active.toLocaleString('en');
+    divGlobalRecovered.textContent = globalData.recovered.toLocaleString('en');
+    divGlobalDeaths.textContent = globalData.deaths.toLocaleString('en');
+}
+
+function addCountryMarkers(countriesData, countryNamesES, map) {
+    const icon = {
+        url: 'https://image.flaticon.com/icons/png/128/2659/2659980.png',
+        scaledSize: new google.maps.Size(24, 24),
+        origin: new google.maps.Point(0, 0)
+    };
+
+    for (const country of countriesData) {
+        const info = generateCountryInfoHTML(country, countryNamesES);
+        const infoWindow = new google.maps.InfoWindow({
+            content: info
+        });
+
+        const marker = new google.maps.Marker({
+            map: map,
+            icon: icon,
+            position: new google.maps.LatLng(country.countryInfo.lat, country.countryInfo.long),
+            title: \`\${countryNamesES[country.countryInfo.iso2] || country.country}\`
+        });
+
+        markers[country.country] = marker;
+        marker.addListener('click', () => {
+            closeAllInfoWindows();
+            infoWindow.open(map, marker);
+            const divName = document.createElement('div');
+            new makeControl(divName, country, countryNamesES);
+
+            let fullInfoWindow = setInterval(() => {
+                if (!infoWindow.getMap()) {
+                    clearInterval(fullInfoWindow);
+                    map.controls[google.maps.ControlPosition.RIGHT_CENTER].pop();
+                }
+                else if (map.controls[google.maps.ControlPosition.RIGHT_CENTER].length === 0) {
+                    map.controls[google.maps.ControlPosition.RIGHT_CENTER].push(divName);
+                }
+            }, 100);
+        });
+
+        objInfoWindows[country.country] = infoWindow;
+    }
+}
+
+function closeAllInfoWindows() {
+    for (const infoWinKey in objInfoWindows) {
+        objInfoWindows[infoWinKey].close();
+    }
+}`;
+
+            if (isZip) {
+                setIsPublishing(true);
+                try {
+                    if (!window.JSZip) {
+                        await new Promise((resolve, reject) => {
+                            const script = document.createElement('script');
+                            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+                            script.onload = resolve;
+                            script.onerror = reject;
+                            document.head.appendChild(script);
+                        });
+                    }
+                    const zip = new window.JSZip();
+                    zip.file("index.html", covidHtml);
+                    zip.folder("css").file("style.css", covidStyleCss);
+                    zip.folder("css").file("loader.css", covidLoaderCss);
+                    zip.folder("css").file("errorModal.css", covidErrorModalCss);
+                    zip.folder("js").file("constants.js", covidConstantsJs);
+                    zip.folder("js").file("util.js", covidUtilJs);
+                    zip.folder("js").file("index.js", covidIndexJs);
+                    
+                    const content = await zip.generateAsync({ type: 'blob' });
+                    const downloadUrl = URL.createObjectURL(content);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = `COVID-19_Map_Project_${Date.now()}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(downloadUrl);
+                } catch (err) {
+                    console.error("ZIP packaging failed:", err);
+                    alert("فشل تصدير المشروع كـ ZIP: " + err.message);
+                } finally {
+                    setIsPublishing(false);
+                }
+            } else {
+                let bundledHtml = covidHtml
+                    .replace('<link rel="stylesheet" href="css/style.css">', `<style>${covidStyleCss}</style>`)
+                    .replace('<link rel="stylesheet" href="css/loader.css">', `<style>${covidLoaderCss}</style>`)
+                    .replace('<link rel="stylesheet" href="css/errorModal.css">', `<style>${covidErrorModalCss}</style>`)
+                    .replace('<script defer src="js/constants.js"></script>', `<script>${covidConstantsJs}</script>`)
+                    .replace('<script defer src="js/util.js"></script>', `<script>${covidUtilJs}</script>`)
+                    .replace('<script defer src="js/index.js"></script>', `<script>${covidIndexJs}</script>`);
+
+                const blob = new Blob([bundledHtml], { type: 'text/html' });
+                const downloadUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = `COVID-19_Map_Design_${Date.now()}.html`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(downloadUrl);
+            }
+            setIsDesignStudioOpen(false);
+            return;
+        }
+
         const map = mapRef.current?.getMap();
         const center = map ? map.getCenter() : { lng: mapState.longitude, lat: mapState.latitude };
         const zoom = map ? map.getZoom() : mapState.zoom;
@@ -5262,1011 +6198,7 @@ out geom;`;
                     `;
                     break;
             }
-        } else if (designSelections.commercialTemplate === 'realestate') {
-            layoutCSS = `
-                .app-container { display: flex; height: 100vh; width: 100vw; flex-direction: row-reverse; }
-                .sidebar { width: 360px; background: var(--surface-solid); border-left: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; overflow-y: auto; z-index: 10; box-shadow: -5px 0 25px rgba(0,0,0,0.5); }
-                .sidebar-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
-                .sidebar-desc { font-size: 0.85rem; opacity: 0.8; margin-bottom: 16px; line-height: 1.5; }
-                .search-box input { width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 8px; color: var(--text-color); font-family: var(--font-b); outline: none; transition: border-color 0.3s; }
-                .search-box input:focus { border-color: var(--primary); }
-                .section-title { font-family: var(--font-h); font-size: 0.95rem; color: var(--primary); margin: 20px 0 10px 0; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 6px; }
-                .listings-list { display: flex; flex-direction: column; gap: 10px; }
-                .estate-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; padding: 12px; cursor: pointer; transition: all 0.3s; text-align: right; }
-                .estate-card:hover { border-color: var(--primary); background: rgba(255,255,255,0.06); transform: translateY(-2px); }
-                .estate-title { font-weight: bold; font-size: 0.9rem; color: var(--text-color); margin-bottom: 6px; }
-                .estate-meta { font-size: 0.8rem; opacity: 0.7; display: flex; justify-content: space-between; }
-                .detail-panel { position: absolute; bottom: 30px; right: 390px; width: 340px; background: var(--surface-solid); border: 1px solid var(--primary); border-radius: 16px; padding: 20px; z-index: 100; box-shadow: 0 15px 35px rgba(0,0,0,0.4); display: none; text-align: right; border-top: 4px solid var(--primary); }
-                .detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-                .detail-header h3 { margin: 0; font-size: 1.1rem; color: var(--primary); font-family: var(--font-h); }
-                .close-btn { background: none; border: none; color: var(--text-color); font-size: 1.5rem; cursor: pointer; opacity: 0.7; }
-                .close-btn:hover { opacity: 1; }
-                .detail-body { font-size: 0.88rem; line-height: 1.6; margin-bottom: 16px; }
-                .detail-row { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px dashed rgba(255,255,255,0.05); padding-bottom: 6px; }
-                .detail-row strong { color: var(--primary); }
-                .detail-actions { display: flex; gap: 8px; }
-                .action-btn { flex: 1; padding: 10px; border-radius: 8px; border: none; font-weight: bold; font-size: 0.85rem; cursor: pointer; text-align: center; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 6px; }
-                .wa-btn { background: #25D366; color: white; }
-                .wa-btn:hover { background: #20ba5a; }
-                .voice-btn { background: var(--surface); border: 1px solid var(--border); color: var(--primary); }
-                .voice-btn:hover { background: rgba(255,255,255,0.05); }
-            `;
-            layoutHTML = `
-                <aside class="sidebar card-panel">
-                    <div class="sidebar-header">
-                        <span style="font-size: 2rem;">🏢</span>
-                        <h2 style="color:var(--primary);margin:0;font-family:var(--font-h);font-size:1.3rem;">التسويق العقاري والأراضي</h2>
-                    </div>
-                    <p class="sidebar-desc">استكشف قطع الأراضي والعقارات المتوفرة للبيع والاستثمار. اضغط على أي عقار لعرض التفاصيل وتحديد موقعه.</p>
-                    <div class="search-box">
-                        <input type="text" id="estate-search" placeholder="البحث برقم الحوض أو القطعة..." oninput="filterEstates(this.value)">
-                    </div>
-                    <div class="layers-container">
-                        <h3 class="section-title">الطبقات الجغرافية</h3>
-                        <div id="layers-list">${layersHTML}</div>
-                    </div>
-                    <div class="listings-section">
-                        <h3 class="section-title">العقارات المدرجة</h3>
-                        <div class="listings-list" id="listings-list"></div>
-                    </div>
-                </aside>
-                ${mapContainerHTML}
-                <div class="detail-panel" id="detail-panel">
-                    <div class="detail-header">
-                        <h3 id="detail-title">تفاصيل العقار</h3>
-                        <button onclick="closeDetails()" class="close-btn">&times;</button>
-                    </div>
-                    <div class="detail-body" id="detail-body"></div>
-                    <div class="detail-actions">
-                        <button onclick="speakDetails()" class="action-btn voice-btn">🔊 استماع للوصف</button>
-                        <a href="#" id="whatsapp-btn" target="_blank" class="action-btn wa-btn">💬 تواصل عبر واتساب</a>
-                    </div>
-                </div>
-            `;
-            templateJS = `
-                let listings = [];
-                
-                const loadTemplateData = async () => {
-                    const promises = layers.map(async (l) => {
-                        if (l.type !== 'raster' && l.type !== 'raster-tile') {
-                            if (typeof l.url === 'string') {
-                                try {
-                                    const res = await fetch(l.url);
-                                    l.data = await res.json();
-                                } catch (e) {
-                                    console.error("Failed to fetch layer data:", e);
-                                }
-                            }
-                        }
-                    });
-                    await Promise.all(promises);
-                    initTemplate();
-                };
-
-                function initTemplate() {
-                    const vectorLayers = layers.filter(l => l.type !== 'raster' && l.type !== 'raster-tile');
-                    if (vectorLayers.length > 0) {
-                        let idCounter = 1;
-                        vectorLayers.forEach(l => {
-                            if (l.data?.features) {
-                                l.data.features.forEach(f => {
-                                    if (f.geometry) {
-                                        const props = f.properties || {};
-                                        const coords = f.geometry.type === 'Point' ? f.geometry.coordinates : f.geometry.coordinates?.[0]?.[0] || f.geometry.coordinates?.[0];
-                                        if (coords) {
-                                            listings.push({
-                                                id: idCounter++,
-                                                title: props.title || props.name || \`عقار رقم \${props.parcel_no || idCounter}\`,
-                                                block: props.block_no || props.block || '3',
-                                                parcel: props.parcel_no || props.parcel || (10 + idCounter),
-                                                area: props.area || props.size || '1000م²',
-                                                price: props.price || '120,000 JD',
-                                                owner: props.owner || 'شركة ريادية للتطوير العقاري',
-                                                coords: coords
-                                            });
-                                        }
-                                    }
-                                });
-                            }
-                        });
-                    }
-                    if (listings.length === 0) {
-                        listings = [
-                            { id: 1, title: 'أرض سكنية - الماصيون، رام الله', block: '18 (عين منجد)', parcel: '124', area: '850 م²', price: '250,000 USD', owner: 'أبو أحمد العقاري', coords: [35.1982, 31.8962] },
-                            { id: 2, title: 'دونم تجاري - شارع القدس، نابلس', block: '5 (السهل)', parcel: '99', area: '1020 م²', price: '380,000 JOD', owner: 'مكتب الهدى العقاري', coords: [35.2635, 32.2212] },
-                            { id: 3, title: 'فيلا قيد الإنشاء - بيت جالا، بيت لحم', block: '2 (رأس بيت جالا)', parcel: '12', area: '600 م² (مباني 350 م²)', price: '310,000 USD', owner: 'المطور الهندسي الحديث', coords: [35.1873, 31.7145] },
-                            { id: 4, title: 'أرض زراعية استثمارية - طوباس', block: '1 (البقيعة)', parcel: '310', area: '5200 م²', price: '85,000 JOD', owner: 'جمعية طوباس الزراعية', coords: [35.3695, 32.3214] }
-                        ];
-                    }
-                    renderListings(listings);
-                }
-
-                function renderListings(items) {
-                    const list = document.getElementById('listings-list');
-                    if (!list) return;
-                    list.innerHTML = items.map(item => \`
-                        <div class="estate-card" onclick="selectEstate(\${item.id})">
-                            <div class="estate-title">\${item.title}</div>
-                            <div class="estate-meta">
-                                <span>📐 \${item.area}</span>
-                                <span>💰 \${item.price}</span>
-                            </div>
-                            <div style="font-size: 0.75rem; opacity: 0.6; margin-top:4px;">حوض: \${item.block} | قطعة: \${item.parcel}</div>
-                        </div>
-                    \`).join('');
-                }
-
-                let currentEstate = null;
-                window.selectEstate = function(id) {
-                    const item = listings.find(l => l.id === id);
-                    if (!item) return;
-                    currentEstate = item;
-                    map.flyTo({ center: item.coords, zoom: 16, pitch: 45 });
-                    
-                    const panel = document.getElementById('detail-panel');
-                    const body = document.getElementById('detail-body');
-                    const title = document.getElementById('detail-title');
-                    const waBtn = document.getElementById('whatsapp-btn');
-                    
-                    if (panel && body && title) {
-                        title.textContent = item.title;
-                        body.innerHTML = \`
-                            <div class="detail-row"><strong>رقم الحوض:</strong> <span>\${item.block}</span></div>
-                            <div class="detail-row"><strong>رقم القطعة:</strong> <span>\${item.parcel}</span></div>
-                            <div class="detail-row"><strong>المساحة:</strong> <span>\${item.area}</span></div>
-                            <div class="detail-row"><strong>السعر المطلوب:</strong> <span>\${item.price}</span></div>
-                            <div class="detail-row"><strong>المالك/الوسيط:</strong> <span>\${item.owner}</span></div>
-                        \`;
-                        panel.style.display = 'block';
-                        
-                        const waMsg = encodeURIComponent(\`مرحباً، أود الاستفسار عن العقار المعروض: \\\\n\\\\n*\${item.title}*\\\\nالحوض: \${item.block}\\\\nالقطعة: \${item.parcel}\\\\nالمساحة: \${item.area}\\\\nالسعر: \${item.price}\\\\n\\\\nشكراً لك.\`);
-                        waBtn.href = \`https://wa.me/970599000000?text=\${waMsg}\`;
-                    }
-                };
-
-                window.closeDetails = function() {
-                    const panel = document.getElementById('detail-panel');
-                    if (panel) panel.style.display = 'none';
-                    window.speechSynthesis.cancel();
-                };
-
-                window.speakDetails = function() {
-                    if (!currentEstate) return;
-                    window.speechSynthesis.cancel();
-                    const text = \`عقار معروض للبيع. \${currentEstate.title}. في حوض رقم \${currentEstate.block}، قطعة رقم \${currentEstate.parcel}. مساحته تعادل \${currentEstate.area}، بسعر \${currentEstate.price}. للتواصل مع المالك اضغط على زر الواتساب في الأسفل.\`;
-                    const utterance = new SpeechSynthesisUtterance(text);
-                    utterance.lang = 'ar-SA';
-                    utterance.rate = 1.0;
-                    window.speechSynthesis.speak(utterance);
-                };
-
-                window.filterEstates = function(query) {
-                    const filtered = listings.filter(l => 
-                        l.title.toLowerCase().includes(query.toLowerCase()) || 
-                        l.block.toLowerCase().includes(query.toLowerCase()) || 
-                        l.parcel.toString().includes(query)
-                    );
-                    renderListings(filtered);
-                };
-
-                map.on('load', () => {
-                    loadTemplateData();
-                });
-            `;
-        } else if (designSelections.commercialTemplate === 'storelocator') {
-            layoutCSS = `
-                .app-container { display: flex; height: 100vh; width: 100vw; flex-direction: row-reverse; }
-                .sidebar { width: 360px; background: var(--surface-solid); border-left: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; overflow-y: auto; z-index: 10; box-shadow: -5px 0 25px rgba(0,0,0,0.5); }
-                .sidebar-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
-                .sidebar-desc { font-size: 0.85rem; opacity: 0.8; margin-bottom: 16px; line-height: 1.5; }
-                .filter-tabs { display: flex; gap: 5px; margin-bottom: 15px; }
-                .filter-tab { flex: 1; padding: 8px 5px; border-radius: 6px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: var(--text-color); font-size: 0.78rem; cursor: pointer; font-family: var(--font-b); transition: all 0.2s; text-align: center; }
-                .filter-tab.active { background: var(--primary); color: #000; border-color: var(--primary); font-weight: bold; }
-                .store-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
-                .store-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; padding: 12px; cursor: pointer; transition: all 0.3s; text-align: right; }
-                .store-card:hover { border-color: var(--primary); background: rgba(255,255,255,0.06); }
-                .store-name { font-weight: bold; font-size: 0.92rem; color: var(--text-color); margin-bottom: 4px; }
-                .store-type { font-size: 0.75rem; color: var(--primary); opacity: 0.9; }
-                .store-meta { font-size: 0.8rem; opacity: 0.7; margin-top: 4px; display: flex; justify-content: space-between; }
-                .cart-panel { background: rgba(0,0,0,0.3); border: 1px dashed var(--border); border-radius: 12px; padding: 16px; margin-top: auto; }
-                .cart-header { display: flex; justify-content: space-between; font-weight: bold; font-size: 0.9rem; color: var(--primary); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 10px; }
-                .cart-items { display: flex; flex-direction: column; gap: 8px; max-height: 120px; overflow-y: auto; margin-bottom: 10px; }
-                .cart-item { display: flex; justify-content: space-between; font-size: 0.82rem; align-items: center; }
-                .remove-cart-item { background: none; border: none; color: #EF4444; cursor: pointer; font-size: 1rem; }
-                .cart-total { display: flex; justify-content: space-between; font-weight: bold; font-size: 0.9rem; margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 8px; margin-bottom: 12px; }
-                .checkout-form { display: flex; flex-direction: column; gap: 8px; }
-                .checkout-form input { width: 100%; padding: 8px 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 6px; color: var(--text-color); font-size: 0.82rem; outline: none; }
-                .checkout-form input:focus { border-color: var(--primary); }
-                .checkout-btn { width: 100%; padding: 10px; background: #25D366; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 0.88rem; cursor: pointer; margin-top: 6px; }
-                .checkout-btn:hover { background: #20ba5a; }
-                .products-panel { position: absolute; bottom: 30px; right: 390px; width: 340px; background: var(--surface-solid); border: 1px solid var(--primary); border-radius: 16px; padding: 20px; z-index: 100; box-shadow: 0 15px 35px rgba(0,0,0,0.4); display: none; text-align: right; border-top: 4px solid var(--primary); }
-                .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; }
-                .panel-header h3 { margin: 0; font-size: 1.05rem; color: var(--primary); font-family: var(--font-h); }
-                .products-list { display: flex; flex-direction: column; gap: 10px; max-height: 250px; overflow-y: auto; }
-                .product-row { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px; border: 1px solid var(--border); }
-                .product-name { font-size: 0.85rem; font-weight: bold; }
-                .product-price { font-size: 0.82rem; color: var(--primary); }
-                .add-to-cart { background: var(--primary); color: #000; border: none; border-radius: 4px; padding: 4px 10px; font-weight: bold; cursor: pointer; font-size: 0.78rem; }
-                .add-to-cart:hover { background: var(--primary-dark); }
-                .close-btn { background: none; border: none; color: var(--text-color); font-size: 1.5rem; cursor: pointer; opacity: 0.7; }
-                .close-btn:hover { opacity: 1; }
-            `;
-            layoutHTML = `
-                <aside class="sidebar card-panel">
-                    <div class="sidebar-header">
-                        <span style="font-size: 2rem;">🛍️</span>
-                        <h2 style="color:var(--primary);margin:0;font-family:var(--font-h);font-size:1.3rem;">دليل المحلات والتوصيل</h2>
-                    </div>
-                    <p class="sidebar-desc">تصفح المحلات والفروع القريبة منك، أضف السلع للسلة واطلب مباشرة للتوصيل لمنزلك عبر واتساب.</p>
-                    
-                    <div class="filter-tabs">
-                        <button class="filter-tab active" onclick="filterStores('all', this)">الكل</button>
-                        <button class="filter-tab" onclick="filterStores('restaurant', this)">مطاعم</button>
-                        <button class="filter-tab" onclick="filterStores('market', this)">سوبرماركت</button>
-                        <button class="filter-tab" onclick="filterStores('pharmacy', this)">صيدلية</button>
-                    </div>
-                    
-                    <div class="section-title" style="font-family: var(--font-h); font-size: 0.95rem; color: var(--primary); margin: 10px 0;">المحلات المتاحة</div>
-                    <div class="store-list" id="store-list"></div>
-                    
-                    <div class="cart-panel" id="cart-panel">
-                        <div class="cart-header">
-                            <span>🛒 سلة المشتريات</span>
-                            <span id="cart-count">0 سلع</span>
-                        </div>
-                        <div class="cart-items" id="cart-items">
-                            <div style="opacity: 0.5; padding: 12px 0; font-size:0.85rem; text-align: center;">السلة فارغة. اختر محلاً وأضف منتجات!</div>
-                        </div>
-                        <div class="cart-total" id="cart-total" style="display:none;">
-                            <span>الإجمالي:</span>
-                            <span id="total-price">0 شيكل</span>
-                        </div>
-                        
-                        <div class="checkout-form" id="checkout-form" style="display:none;">
-                            <input type="text" id="cust-name" placeholder="الاسم الكامل" required>
-                            <input type="text" id="cust-addr" placeholder="عنوان التوصيل (المدينة/الشارع)" required>
-                            <button onclick="sendOrder()" class="checkout-btn">💬 إرسال الطلب عبر واتساب</button>
-                        </div>
-                    </div>
-                </aside>
-                ${mapContainerHTML}
-                <div class="products-panel" id="products-panel">
-                    <div class="panel-header">
-                        <h3 id="store-title">قائمة المنتجات</h3>
-                        <button onclick="closeProducts()" class="close-btn">&times;</button>
-                    </div>
-                    <div class="products-list" id="products-list"></div>
-                </div>
-            `;
-            templateJS = `
-                let stores = [];
-
-                const loadTemplateData = async () => {
-                    const promises = layers.map(async (l) => {
-                        if (l.type !== 'raster' && l.type !== 'raster-tile') {
-                            if (typeof l.url === 'string') {
-                                try {
-                                    const res = await fetch(l.url);
-                                    l.data = await res.json();
-                                } catch (e) {
-                                    console.error("Failed to fetch layer data:", e);
-                                }
-                            }
-                        }
-                    });
-                    await Promise.all(promises);
-                    initTemplate();
-                };
-
-                function initTemplate() {
-                    const vectorLayers = layers.filter(l => l.type !== 'raster' && l.type !== 'raster-tile');
-                    if (vectorLayers.length > 0) {
-                        let idCounter = 1;
-                        vectorLayers.forEach(l => {
-                            if (l.data?.features) {
-                                l.data.features.forEach(f => {
-                                    if (f.geometry) {
-                                        const props = f.properties || {};
-                                        const coords = f.geometry.type === 'Point' ? f.geometry.coordinates : f.geometry.coordinates?.[0]?.[0] || f.geometry.coordinates?.[0];
-                                        if (coords) {
-                                            let type = props.type || 'restaurant';
-                                            if (['pharmacy', 'market', 'restaurant'].indexOf(type) === -1) {
-                                                type = idCounter % 3 === 0 ? 'restaurant' : (idCounter % 3 === 1 ? 'market' : 'pharmacy');
-                                            }
-                                            stores.push({
-                                                id: idCounter++,
-                                                name: props.name || props.title || \`محل تجاري \${idCounter}\`,
-                                                type: type,
-                                                phone: props.phone || '970599000000',
-                                                address: props.address || 'فلسطين',
-                                                coords: coords,
-                                                products: [
-                                                    { name: 'منتج أساسي 1', price: 15 },
-                                                    { name: 'منتج عائلي مميز', price: 40 },
-                                                    { name: 'منتج إضافي', price: 5 }
-                                                ]
-                                            });
-                                        }
-                                    }
-                                });
-                            }
-                        });
-                    }
-                    if (stores.length === 0) {
-                        stores = [
-                            { id: 1, name: 'شاورما على الجمر', type: 'restaurant', phone: '970599000000', address: 'وسط البلد، رام الله', coords: [35.2012, 31.9022], products: [{name: 'وجبة شاورما عربي', price: 22}, {name: 'صاروخ شاورما سوبر', price: 15}, {name: 'صحن شاورما عائلي', price: 50}] },
-                            { id: 2, name: 'سوبرماركت المدينة', type: 'market', phone: '970599000000', address: 'شارع الجامعة، نابلس', coords: [35.2605, 32.2235], products: [{name: 'أرز بسمتي 5 كغم', price: 45}, {name: 'زيت نباتي 3 لتر', price: 30}, {name: 'علبة قهوة بن مطحون', price: 20}] },
-                            { id: 3, name: 'صيدلية القدس الحديثة', type: 'pharmacy', phone: '970599000000', address: 'باب العامود، القدس', coords: [35.2301, 31.7825], products: [{name: 'معقم أيدي طبي', price: 10}, {name: 'مجموعة فيتامينات', price: 35}, {name: 'مقياس حرارة رقمي', price: 40}] },
-                            { id: 4, name: 'بيتزا إيطالـيانو', type: 'restaurant', phone: '970599000000', address: 'حي الرمال، غزة', coords: [34.4536, 31.5235], products: [{name: 'بيتزا مارغريتا كبير', price: 30}, {name: 'بيتزا خضار وسط', price: 22}, {name: 'ثومية وبطاطا مقلية', price: 12}] }
-                        ];
-                    }
-                    filterStores('all');
-                }
-
-                window.filterStores = function(typeFilter, btn) {
-                    document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
-                    if (btn) btn.classList.add('active');
-                    
-                    const list = document.getElementById('store-list');
-                    if (!list) return;
-                    const filtered = typeFilter === 'all' ? stores : stores.filter(s => s.type === typeFilter);
-                    list.innerHTML = filtered.map(store => \`
-                        <div class="store-card" onclick="selectStore(\${store.id})">
-                            <div class="store-name">\${store.name}</div>
-                            <div class="store-type">\${store.type === 'restaurant' ? '🍔 مطعم' : (store.type === 'market' ? '🛒 سوبرماركت' : '💊 صيدلية')}</div>
-                            <div class="store-meta">
-                                <span>📍 \${store.address}</span>
-                            </div>
-                        </div>
-                    \`).join('');
-                };
-
-                let cart = [];
-                let activeStore = null;
-
-                window.selectStore = function(id) {
-                    const store = stores.find(s => s.id === id);
-                    if (!store) return;
-                    activeStore = store;
-                    map.flyTo({ center: store.coords, zoom: 16 });
-                    
-                    const panel = document.getElementById('products-panel');
-                    const title = document.getElementById('store-title');
-                    const list = document.getElementById('products-list');
-                    
-                    if (panel && title && list) {
-                        title.textContent = \`قائمة المنتجات - \${store.name}\`;
-                        list.innerHTML = store.products.map((p, idx) => \`
-                            <div class="product-row">
-                                <div>
-                                    <div class="product-name">\${p.name}</div>
-                                    <div class="product-price">\${p.price} شيكل</div>
-                                </div>
-                                <button class="add-to-cart" onclick="addToCart('\${p.name}', \${p.price})">إضافة</button>
-                            </div>
-                        \`).join('');
-                        panel.style.display = 'block';
-                    }
-                };
-
-                window.closeProducts = function() {
-                    const panel = document.getElementById('products-panel');
-                    if (panel) panel.style.display = 'none';
-                };
-
-                window.addToCart = function(name, price) {
-                    if (!activeStore) return;
-                    cart.push({ name, price, storeName: activeStore.name });
-                    updateCartUI();
-                };
-
-                window.removeFromCart = function(index) {
-                    cart.splice(index, 1);
-                    updateCartUI();
-                };
-
-                function updateCartUI() {
-                    const itemsContainer = document.getElementById('cart-items');
-                    const countLabel = document.getElementById('cart-count');
-                    const totalContainer = document.getElementById('cart-total');
-                    const totalPriceLabel = document.getElementById('total-price');
-                    const formContainer = document.getElementById('checkout-form');
-                    
-                    if (!itemsContainer) return;
-                    countLabel.textContent = \`\${cart.length} سلع\`;
-                    
-                    if (cart.length === 0) {
-                        itemsContainer.innerHTML = \`<div style="opacity: 0.5; padding: 12px 0; font-size:0.85rem; text-align: center;">السلة فارغة. اختر محلاً وأضف منتجات!</div>\`;
-                        totalContainer.style.display = 'none';
-                        formContainer.style.display = 'none';
-                    } else {
-                        itemsContainer.innerHTML = cart.map((item, idx) => \`
-                            <div class="cart-item">
-                                <span>\${item.name} (\${item.storeName})</span>
-                                <div>
-                                    <span>\${item.price} شيكل</span>
-                                    <button class="remove-cart-item" onclick="removeFromCart(\${idx})">&times;</button>
-                                </div>
-                            </div>
-                        \`).join('');
-                        const total = cart.reduce((sum, item) => sum + item.price, 0);
-                        totalPriceLabel.textContent = \`\${total} شيكل\`;
-                        totalContainer.style.display = 'flex';
-                        formContainer.style.display = 'flex';
-                    }
-                }
-
-                window.sendOrder = function() {
-                    const name = document.getElementById('cust-name').value;
-                    const addr = document.getElementById('cust-addr').value;
-                    if (!name || !addr) { alert('الرجاء تعبئة الاسم والعنوان لإتمام الطلب'); return; }
-                    
-                    const itemsStr = cart.map((item, idx) => \`\${idx + 1}. *\${item.name}* - (\${item.price} شيكل)\`).join('%0A');
-                    const total = cart.reduce((sum, item) => sum + item.price, 0);
-                    
-                    const msg = \`مرحباً، أود تقديم طلب توصيل جديد من تطبيق الخرائط: %0A%0A*اسم الزبون:* \${name}%0A*عنوان التوصيل:* \${addr}%0A%0A*المنتجات المحددة:*%0A\${itemsStr}%0A%0A*الإجمالي:* *\${total} شيكل*%0A%0Aيرجى تأكيد الطلب وتحديد موعد التوصيل.\`;
-                    
-                    const phone = activeStore?.phone || '970599000000';
-                    window.open(\`https://wa.me/\${phone}?text=\${msg}\`, '_blank');
-                };
-
-                map.on('load', () => {
-                    loadTemplateData();
-                });
-            `;
-        } else if (designSelections.commercialTemplate === 'tourguide') {
-            layoutCSS = `
-                .app-container { display: flex; height: 100vh; width: 100vw; flex-direction: row-reverse; }
-                .sidebar { width: 360px; background: var(--surface-solid); border-left: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; overflow-y: auto; z-index: 10; box-shadow: -5px 0 25px rgba(0,0,0,0.5); }
-                .sidebar-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
-                .sidebar-desc { font-size: 0.85rem; opacity: 0.8; margin-bottom: 16px; line-height: 1.5; }
-                .route-buttons { display: flex; flex-direction: column; gap: 8px; }
-                .route-btn { text-align: right; width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: 8px; color: var(--text-color); font-family: var(--font-b); cursor: pointer; font-size: 0.85rem; transition: all 0.3s; }
-                .route-btn:hover { border-color: var(--primary); background: rgba(255,255,255,0.05); }
-                .tour-list { display: flex; flex-direction: column; gap: 10px; }
-                .attraction-card { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 10px; padding: 12px; cursor: pointer; transition: all 0.3s; text-align: right; }
-                .attraction-card:hover { border-color: var(--primary); background: rgba(255,255,255,0.06); }
-                .attraction-card-title { font-weight: bold; font-size: 0.9rem; color: var(--text-color); margin-bottom: 4px; }
-                .attraction-card-rating { font-size: 0.75rem; color: var(--primary); }
-                .attraction-panel { position: absolute; bottom: 30px; right: 390px; width: 340px; background: var(--surface-solid); border: 1px solid var(--primary); border-radius: 16px; padding: 20px; z-index: 100; box-shadow: 0 15px 35px rgba(0,0,0,0.4); display: none; text-align: right; border-top: 4px solid var(--primary); }
-                .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-                .panel-header h3 { margin: 0; font-size: 1.05rem; color: var(--primary); font-family: var(--font-h); }
-                .guide-btn { width: 100%; padding: 10px; background: var(--primary); color: #000; border: none; border-radius: 8px; font-weight: bold; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
-                .guide-btn:hover { background: var(--primary-dark); }
-                .guide-btn.playing { background: #EF4444; color: white; }
-                .close-btn { background: none; border: none; color: var(--text-color); font-size: 1.5rem; cursor: pointer; opacity: 0.7; }
-                .close-btn:hover { opacity: 1; }
-            `;
-            layoutHTML = `
-                <aside class="sidebar card-panel">
-                    <div class="sidebar-header">
-                        <span style="font-size: 2rem;">🏛️</span>
-                        <h2 style="color:var(--primary);margin:0;font-family:var(--font-h);font-size:1.3rem;">الدليل السياحي التفاعلي</h2>
-                    </div>
-                    <p class="sidebar-desc">استكشف المعالم السياحية والأثرية العريقة. انقر على المعلم للاستماع للمرشد الصوتي أو اختر مساراً سياحياً مقترحاً.</p>
-                    
-                    <div class="routes-section">
-                        <h3 class="section-title" style="font-family: var(--font-h); font-size: 0.95rem; color: var(--primary); margin-bottom:10px;">المسارات المقترحة</h3>
-                        <div class="route-buttons">
-                            <button class="route-btn" onclick="drawRoute('jericho')">🐫 جولة أريحا وأقدم مدينة</button>
-                            <button class="route-btn" onclick="drawRoute('jerusalem')">🕌 مسار القدس التاريخي</button>
-                            <button class="route-btn" onclick="clearRoute()">❌ مسح المسار</button>
-                        </div>
-                    </div>
-                    
-                    <div class="listings-section" style="margin-top:20px;">
-                        <h3 class="section-title" style="font-family: var(--font-h); font-size: 0.95rem; color: var(--primary); margin-bottom:10px;">المعالم السياحية</h3>
-                        <div class="tour-list" id="tour-list"></div>
-                    </div>
-                </aside>
-                ${mapContainerHTML}
-                <div class="attraction-panel" id="attraction-panel">
-                    <div class="panel-header">
-                        <h3 id="attraction-title">اسم المعلم</h3>
-                        <button onclick="closeAttraction()" class="close-btn">&times;</button>
-                    </div>
-                    <div class="panel-body">
-                        <div class="rating-stars" id="attraction-rating">⭐⭐⭐⭐⭐</div>
-                        <p id="attraction-desc" style="font-size:0.85rem; line-height:1.6; margin:10px 0;"></p>
-                        <div class="audio-guide-control">
-                            <button onclick="toggleAudioGuide()" class="guide-btn" id="audio-btn">🔊 تشغيل المرشد الصوتي</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            templateJS = `
-                let attractions = [];
-
-                const loadTemplateData = async () => {
-                    const promises = layers.map(async (l) => {
-                        if (l.type !== 'raster' && l.type !== 'raster-tile') {
-                            if (typeof l.url === 'string') {
-                                try {
-                                    const res = await fetch(l.url);
-                                    l.data = await res.json();
-                                } catch (e) {
-                                    console.error("Failed to fetch layer data:", e);
-                                }
-                            }
-                        }
-                    });
-                    await Promise.all(promises);
-                    initTemplate();
-                };
-
-                function initTemplate() {
-                    const vectorLayers = layers.filter(l => l.type !== 'raster' && l.type !== 'raster-tile');
-                    if (vectorLayers.length > 0) {
-                        let idCounter = 1;
-                        vectorLayers.forEach(l => {
-                            if (l.data?.features) {
-                                l.data.features.forEach(f => {
-                                    if (f.geometry) {
-                                        const props = f.properties || {};
-                                        const coords = f.geometry.type === 'Point' ? f.geometry.coordinates : f.geometry.coordinates?.[0]?.[0] || f.geometry.coordinates?.[0];
-                                        if (coords) {
-                                            attractions.push({
-                                                id: idCounter++,
-                                                title: props.title || props.name || \`معلم سياحي \${idCounter}\`,
-                                                rating: props.rating || '⭐⭐⭐⭐⭐ (5.0)',
-                                                desc: props.desc || props.description || 'معلم أثري وسياحي هام جداً في فلسطين يعبر عن التاريخ العريق للمنطقة وحضاراتها المتعاقبة.',
-                                                coords: coords
-                                            });
-                                        }
-                                    }
-                                });
-                            }
-                        });
-                    }
-                    if (attractions.length === 0) {
-                        attractions = [
-                            { id: 1, title: 'المسجد الأقصى وقبة الصخرة', rating: '⭐⭐⭐⭐⭐ (5.0)', desc: 'المسجد الأقصى هو أحد أكبر المساجد في العالم ومن أكثرها قدسية لدى المسلمين، وهو أولى القبلتين في الإسلام. يقع داخل البلدة القديمة بالقدس. يتميز بقبته الذهبية المشرفة ومساحته البالغة 144 دونماً.', coords: [35.2358, 31.7780] },
-                            { id: 2, title: 'قصر هشام بن عبد الملك', rating: '⭐⭐⭐⭐ (4.6)', desc: 'يقع في أريّحا ويمثل نموذجاً رائعاً للعمارة الإسلامية المبكرة في العهد الأموي. يشتهر بـ "لوحة شجرة الحياة" وهي واحدة من أكبر وأجمل سجادات الفسيفسيفساء في العالم بأكمله.', coords: [35.4594, 31.8824] },
-                            { id: 3, title: 'كنيسة المهد - بيت لحم', rating: '⭐⭐⭐⭐⭐ (4.9)', desc: 'هي كنيسة تاريخية أثرية تكتسب قدسية عظيمة لكونها بنيت فوق المغارة التي ولد فيها المسيح عيسى عليه السلام. تعد من أقدم كنائس العالم وتدرج ضمن مواقع التراث العالمي لليونسكو.', coords: [35.2078, 31.7042] },
-                            { id: 4, title: 'سبسطية الأثرية - نابلس', rating: '⭐⭐⭐⭐ (4.5)', desc: 'تقع شمال غرب نابلس وتحتوي على آثار رومانية ويونانية عريقة بما في ذلك المدرج الروماني، وشارع الأعمدة التاريخي، والمقبرة الملكية، وتعتبر عاصمة الرومان القديمة في فلسطين.', coords: [35.1965, 32.2742] }
-                        ];
-                    }
-                    renderAttractions();
-                }
-
-                function renderAttractions() {
-                    const list = document.getElementById('tour-list');
-                    if (!list) return;
-                    list.innerHTML = attractions.map(item => \`
-                        <div class="attraction-card" onclick="selectAttraction(\${item.id})">
-                            <div class="attraction-card-title">\${item.title}</div>
-                            <div class="attraction-card-rating">\${item.rating}</div>
-                        </div>
-                    \`).join('');
-                }
-
-                let currentAttraction = null;
-                let isAudioPlaying = false;
-
-                window.selectAttraction = function(id) {
-                    const item = attractions.find(a => a.id === id);
-                    if (!item) return;
-                    currentAttraction = item;
-                    map.flyTo({ center: item.coords, zoom: 16 });
-                    
-                    const panel = document.getElementById('attraction-panel');
-                    const title = document.getElementById('attraction-title');
-                    const rating = document.getElementById('attraction-rating');
-                    const desc = document.getElementById('attraction-desc');
-                    const btn = document.getElementById('audio-btn');
-                    
-                    window.speechSynthesis.cancel();
-                    isAudioPlaying = false;
-                    if (btn) { btn.textContent = '🔊 تشغيل المرشد الصوتي'; btn.classList.remove('playing'); }
-                    
-                    if (panel && title && rating && desc) {
-                        title.textContent = item.title;
-                        rating.textContent = item.rating;
-                        desc.textContent = item.desc;
-                        panel.style.display = 'block';
-                    }
-                };
-
-                window.closeAttraction = function() {
-                    const panel = document.getElementById('attraction-panel');
-                    if (panel) panel.style.display = 'none';
-                    window.speechSynthesis.cancel();
-                    isAudioPlaying = false;
-                };
-
-                window.toggleAudioGuide = function() {
-                    if (!currentAttraction) return;
-                    const btn = document.getElementById('audio-btn');
-                    
-                    if (isAudioPlaying) {
-                        window.speechSynthesis.cancel();
-                        isAudioPlaying = false;
-                        if (btn) { btn.textContent = '🔊 تشغيل المرشد الصوتي'; btn.classList.remove('playing'); }
-                    } else {
-                        isAudioPlaying = true;
-                        if (btn) { btn.textContent = '⏹️ إيقاف المرشد الصوتي'; btn.classList.add('playing'); }
-                        const utterance = new SpeechSynthesisUtterance(currentAttraction.desc);
-                        utterance.lang = 'ar-SA';
-                        utterance.rate = 0.9;
-                        utterance.onend = () => {
-                            isAudioPlaying = false;
-                            if (btn) { btn.textContent = '🔊 تشغيل المرشد الصوتي'; btn.classList.remove('playing'); }
-                        };
-                        window.speechSynthesis.speak(utterance);
-                    }
-                };
-
-                window.drawRoute = function(routeId) {
-                    clearRoute();
-                    let routeCoords = [];
-                    if (routeId === 'jericho') {
-                        routeCoords = [
-                            [35.4594, 31.8824],
-                            [35.4442, 31.8702],
-                            [35.4502, 31.8564]
-                        ];
-                    } else if (routeId === 'jerusalem') {
-                        routeCoords = [
-                            [35.2301, 31.7825],
-                            [35.2325, 31.7801],
-                            [35.2358, 31.7780]
-                        ];
-                    }
-                    
-                    map.addSource('route-src', {
-                        type: 'geojson',
-                        data: {
-                            type: 'Feature',
-                            geometry: {
-                                type: 'LineString',
-                                coordinates: routeCoords
-                            }
-                        }
-                    });
-                    
-                    map.addLayer({
-                        id: 'route-line',
-                        type: 'line',
-                        source: 'route-src',
-                        paint: {
-                            'line-color': '#EC4899',
-                            'line-width': 5,
-                            'line-dasharray': [2, 2]
-                        }
-                    });
-                    
-                    const bounds = routeCoords.reduce((b, coord) => b.extend(coord), new maplibregl.LngLatBounds(routeCoords[0], routeCoords[0]));
-                    map.fitBounds(bounds, { padding: 80 });
-                };
-
-                window.clearRoute = function() {
-                    if (map.getLayer('route-line')) map.removeLayer('route-line');
-                    if (map.getSource('route-src')) map.removeSource('route-src');
-                };
-
-                map.on('load', () => {
-                    loadTemplateData();
-                });
-            `;
-        } else if (designSelections.commercialTemplate === 'surveyor') {
-            layoutCSS = `
-                .app-container { display: flex; height: 100vh; width: 100vw; flex-direction: row-reverse; }
-                .sidebar { width: 360px; background: var(--surface-solid); border-left: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; overflow-y: auto; z-index: 10; box-shadow: -5px 0 25px rgba(0,0,0,0.5); }
-                .sidebar-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
-                .sidebar-desc { font-size: 0.85rem; opacity: 0.8; margin-bottom: 16px; line-height: 1.5; }
-                .coordinates-panel { background: rgba(0,0,0,0.3); padding: 14px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 15px; }
-                .coord-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 6px; }
-                .coord-row strong { color: var(--primary); }
-                .coord-row span { font-family: monospace; font-size: 0.82rem; }
-                .tool-btn { text-align: right; width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: 8px; color: var(--text-color); font-family: var(--font-b); cursor: pointer; font-size: 0.85rem; transition: all 0.3s; margin-bottom: 8px; }
-                .tool-btn:hover { border-color: var(--primary); background: rgba(255,255,255,0.05); }
-                .tool-btn.active { background: var(--primary); color: black; border-color: var(--primary); font-weight: bold; }
-                .tool-btn.reset { background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.3); color: #EF4444; }
-                .tool-btn.reset:hover { background: rgba(239, 68, 68, 0.25); }
-                .measurement-result { padding: 12px; background: rgba(245, 166, 35, 0.05); border: 1px dashed var(--primary); border-radius: 8px; font-size: 0.82rem; line-height: 1.5; text-align: center; }
-                #survey-search { width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 8px; color: var(--text-color); font-family: var(--font-b); outline: none; transition: border-color 0.3s; }
-                #survey-search:focus { border-color: var(--primary); }
-                .survey-search-item { padding: 8px 12px; cursor: pointer; font-size: 0.82rem; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: right; }
-                .survey-search-item:hover { background: rgba(255,255,255,0.05); color: var(--primary); }
-            `;
-            layoutHTML = `
-                <aside class="sidebar card-panel">
-                    <div class="sidebar-header">
-                        <span style="font-size: 2rem;">📏</span>
-                        <h2 style="color:var(--primary);margin:0;font-family:var(--font-h);font-size:1.3rem;">منصة المساحة والرفع الهندسي</h2>
-                    </div>
-                    <p class="sidebar-desc">لوحة المساح المهنية لحساب المسافات والمساحات وعرض الإحداثيات الفلسطينية الرسمية.</p>
-                    
-                    <div class="coordinates-panel">
-                        <h3 class="section-title" style="font-family: var(--font-h); font-size: 0.95rem; color: var(--primary); margin: 0 0 10px 0;">الإحداثيات الحالية (المؤشر)</h3>
-                        <div class="coord-row"><strong>WGS84:</strong> <span id="coord-wgs84">-</span></div>
-                        <div class="coord-row"><strong>Cassini 1923:</strong> <span id="coord-palgrid">-</span></div>
-                        <div class="coord-row"><strong>UTM 36N:</strong> <span id="coord-utm">-</span></div>
-                    </div>
-                    
-                    <div class="tools-section">
-                        <h3 class="section-title" style="font-family: var(--font-h); font-size: 0.95rem; color: var(--primary); margin: 10px 0;">أدوات القياس</h3>
-                        <div class="measurement-controls">
-                            <button class="tool-btn" id="btn-measure-dist" onclick="startMeasurement('distance')">📏 قياس مسافة (أمتار)</button>
-                            <button class="tool-btn" id="btn-measure-area" onclick="startMeasurement('area')">📐 قياس مساحة (دونم)</button>
-                            <button class="tool-btn reset" onclick="resetMeasurement()">❌ إعادة تعيين</button>
-                        </div>
-                        <div class="measurement-result" id="measurement-result">
-                            انقر على الأدوات ثم اضغط على الخريطة لرسم النقاط.
-                        </div>
-                    </div>
-                    
-                    <div class="search-section" style="margin-top:20px;">
-                        <h3 class="section-title" style="font-family: var(--font-h); font-size: 0.95rem; color: var(--primary); margin-bottom:10px;">البحث والتحقق من الأحواض</h3>
-                        <input type="text" id="survey-search" placeholder="ابحث برقم الحوض (مثال: حوض 4)" oninput="searchBlocks(this.value)">
-                        <div id="survey-search-results" style="margin-top:8px; display:none; max-height:120px; overflow-y:auto; background:rgba(0,0,0,0.2); border-radius:6px; border:1px solid var(--border);"></div>
-                    </div>
-                    
-                    <div class="layers-container" style="margin-top:20px;">
-                        <h3 class="section-title" style="font-family: var(--font-h); font-size: 0.95rem; color: var(--primary); margin-bottom:10px;">الطبقات الجغرافية المتاحة</h3>
-                        <div id="layers-list">${layersHTML}</div>
-                    </div>
-                </aside>
-                ${mapContainerHTML}
-            `;
-            templateJS = `
-                const loadTemplateData = async () => {
-                    const promises = layers.map(async (l) => {
-                        if (l.type !== 'raster' && l.type !== 'raster-tile') {
-                            if (typeof l.url === 'string') {
-                                try {
-                                    const res = await fetch(l.url);
-                                    l.data = await res.json();
-                                } catch (e) {
-                                    console.error("Failed to fetch layer data:", e);
-                                }
-                            }
-                        }
-                    });
-                    await Promise.all(promises);
-                    initTemplate();
-                };
-
-                function initTemplate() {
-                }
-
-                map.on('mousemove', (e) => {
-                    const wgs = e.lngLat;
-                    const wgsStr = \`\${wgs.lng.toFixed(5)}, \${wgs.lat.toFixed(5)}\`;
-                    document.getElementById('coord-wgs84').textContent = wgsStr;
-                    
-                    const pg = wgs84ToPalestineGrid(wgs.lng, wgs.lat);
-                    document.getElementById('coord-palgrid').textContent = \`\${pg.east} E, \${pg.north} N\`;
-                    
-                    const utm = wgs84ToUTM36N(wgs.lng, wgs.lat);
-                    document.getElementById('coord-utm').textContent = \`\${utm.east} E, \${utm.north} N\`;
-                });
-
-                function wgs84ToPalestineGrid(lng, lat) {
-                    const lat0 = 31.73409694 * Math.PI / 180;
-                    const lng0 = 35.21208056 * Math.PI / 180;
-                    const falseEast = 170000;
-                    const falseNorth = 1125000;
-                    const a = 6378300.789;
-                    const b = 6356566.435;
-                    const e2 = (a*a - b*b) / (a*a);
-                    const phi = lat * Math.PI / 180;
-                    const lam = lng * Math.PI / 180;
-                    const dLam = lam - lng0;
-                    const N = a / Math.sqrt(1 - e2 * Math.sin(phi) * Math.sin(phi));
-                    const T = Math.tan(phi) * Math.tan(phi);
-                    const A = dLam * Math.cos(phi);
-                    const n = (a - b) / (a + b);
-                    const M0 = a * ((1 - n + 5/4 * (n*n - n*n*n) + 81/64 * (n*n*n*n - n*n*n*n*n)) * lat0 - (3/2 * (n - n*n + 7/8 * (n*n*n - n*n*n*n))) * Math.sin(2*lat0) + (15/16 * (n*n - n*n*n + 3/4 * (n*n*n*n))) * Math.sin(4*lat0) - (35/48 * (n*n*n - n*n*n*n)) * Math.sin(6*lat0));
-                    const M = a * ((1 - n + 5/4 * (n*n - n*n*n) + 81/64 * (n*n*n*n - n*n*n*n*n)) * phi - (3/2 * (n - n*n + 7/8 * (n*n*n - n*n*n*n))) * Math.sin(2*phi) + (15/16 * (n*n - n*n*n + 3/4 * (n*n*n*n))) * Math.sin(4*phi) - (35/48 * (n*n*n - n*n*n*n)) * Math.sin(6*phi));
-                    const X = N * (A - A*A*A/6 * T + A*A*A*A*A/120 * (8 - T + 8*T));
-                    const Y = M - M0 + N * Math.tan(phi) * (A*A/2 + A*A*A*A/24 * (5 - T));
-                    return { east: (X + falseEast).toFixed(2), north: (Y + falseNorth).toFixed(2) };
-                }
-
-                function wgs84ToUTM36N(lng, lat) {
-                    const lat0 = 0;
-                    const lng0 = 33 * Math.PI / 180;
-                    const k0 = 0.9996;
-                    const falseEast = 500000;
-                    const falseNorth = 0;
-                    const a = 6378137;
-                    const f = 1 / 298.257223563;
-                    const b = a * (1 - f);
-                    const e2 = (a*a - b*b) / (a*a);
-                    const phi = lat * Math.PI / 180;
-                    const lam = lng * Math.PI / 180;
-                    const dLam = lam - lng0;
-                    const N = a / Math.sqrt(1 - e2 * Math.sin(phi) * Math.sin(phi));
-                    const T = Math.tan(phi) * Math.tan(phi);
-                    const C = e2 * Math.cos(phi) * Math.cos(phi) / (1 - e2);
-                    const A = dLam * Math.cos(phi);
-                    const M = a * ((1 - e2/4 - 3*e2*e2/64 - 5*e2*e2*e2/256)*phi - (3*e2/8 + 3*e2*e2/32 + 45*e2*e2*e2/1024)*Math.sin(2*phi) + (15*e2*e2/256 + 45*e2*e2/1024)*Math.sin(4*phi) - (35*e2*e2*e2/3072)*Math.sin(6*phi));
-                    const east = k0 * N * (A + (1 - T + C)*A*A*A/6 + (5 - 18*T + T*T + 72*C - 58*e2)*A*A*A*A*A/120) + falseEast;
-                    const north = k0 * (M + N*Math.tan(phi)*(A*A/2 + (5 - T + 9*C + 4*C*C)*A*A*A*A/24 + (61 - 58*T + T*T + 600*C - 330*e2)*A*A*A*A*A*A/720)) + falseNorth;
-                    return { east: east.toFixed(2), north: north.toFixed(2) };
-                }
-
-                let measurePoints = [];
-                let measureMode = null;
-
-                window.startMeasurement = function(mode) {
-                    resetMeasurement();
-                    measureMode = mode;
-                    document.getElementById('btn-measure-dist').classList.toggle('active', mode === 'distance');
-                    document.getElementById('btn-measure-area').classList.toggle('active', mode === 'area');
-                    document.getElementById('measurement-result').textContent = 'انقر على الخريطة لوضع النقاط وقياسها.';
-                    map.getCanvas().style.cursor = 'crosshair';
-                };
-
-                window.resetMeasurement = function() {
-                    measurePoints = [];
-                    measureMode = null;
-                    document.getElementById('btn-measure-dist').classList.remove('active');
-                    document.getElementById('btn-measure-area').classList.remove('active');
-                    document.getElementById('measurement-result').textContent = 'انقر على الأدوات ثم اضغط على الخريطة لرسم النقاط.';
-                    map.getCanvas().style.cursor = '';
-                    
-                    if (map.getLayer('measure-poly')) map.removeLayer('measure-poly');
-                    if (map.getLayer('measure-lines')) map.removeLayer('measure-lines');
-                    if (map.getLayer('measure-points')) map.removeLayer('measure-points');
-                    if (map.getSource('measure-src')) map.removeSource('measure-src');
-                };
-
-                map.on('click', (e) => {
-                    if (!measureMode) return;
-                    const pt = [e.lngLat.lng, e.lngLat.lat];
-                    measurePoints.push(pt);
-                    updateMeasurementGeoJSON();
-                });
-
-                function updateMeasurementGeoJSON() {
-                    const geojson = { type: 'FeatureCollection', features: [] };
-                    measurePoints.forEach((pt, idx) => {
-                        geojson.features.push({
-                            type: 'Feature',
-                            geometry: { type: 'Point', coordinates: pt },
-                            properties: { label: \`نقطة \${idx + 1}\` }
-                        });
-                    });
-                    
-                    if (measurePoints.length > 1) {
-                        if (measureMode === 'distance') {
-                            geojson.features.push({
-                                type: 'Feature',
-                                geometry: { type: 'LineString', coordinates: measurePoints },
-                                properties: {}
-                            });
-                        } else if (measureMode === 'area') {
-                            const polyCoords = [...measurePoints, measurePoints[0]];
-                            geojson.features.push({
-                                type: 'Feature',
-                                geometry: { type: 'Polygon', coordinates: [polyCoords] },
-                                properties: {}
-                            });
-                        }
-                    }
-                    
-                    if (!map.getSource('measure-src')) {
-                        map.addSource('measure-src', { type: 'geojson', data: geojson });
-                        map.addLayer({
-                            id: 'measure-poly', type: 'fill', source: 'measure-src',
-                            filter: ['==', '$type', 'Polygon'],
-                            paint: { 'fill-color': 'rgba(245, 166, 35, 0.2)', 'fill-outline-color': '#F5A623' }
-                        });
-                        map.addLayer({
-                            id: 'measure-lines', type: 'line', source: 'measure-src',
-                            filter: ['in', '$type', 'LineString', 'Polygon'],
-                            paint: { 'line-color': '#F5A623', 'line-width': 3 }
-                        });
-                        map.addLayer({
-                            id: 'measure-points', type: 'circle', source: 'measure-src',
-                            filter: ['==', '$type', 'Point'],
-                            paint: { 'circle-radius': 6, 'circle-color': '#fff', 'circle-stroke-width': 2, 'circle-stroke-color': '#F5A623' }
-                        });
-                    } else {
-                        map.getSource('measure-src').setData(geojson);
-                    }
-                    calculateResult();
-                }
-
-                function calculateResult() {
-                    const resultEl = document.getElementById('measurement-result');
-                    if (measurePoints.length < 2) {
-                        resultEl.textContent = 'ضع نقطتين على الأقل لإجراء العمليات الحسابية.';
-                        return;
-                    }
-                    if (measureMode === 'distance') {
-                        let dist = 0;
-                        for (let i = 0; i < measurePoints.length - 1; i++) {
-                            dist += haversineDistance(measurePoints[i], measurePoints[i+1]);
-                        }
-                        resultEl.innerHTML = \`🏁 <b>المسافة الإجمالية:</b> \${(dist).toFixed(1)} متر (\${(dist/1000).toFixed(3)} كم)\`;
-                    } else if (measureMode === 'area') {
-                        if (measurePoints.length < 3) {
-                            resultEl.textContent = 'حدد 3 نقاط على الأقل لحساب المساحة.';
-                            return;
-                        }
-                        const area = calculatePolygonArea(measurePoints);
-                        const dunums = area / 1000;
-                        resultEl.innerHTML = \`📐 <b>المساحة الإجمالية:</b> \${(area).toFixed(1)} م² (\${dunums.toFixed(2)} دونم)\`;
-                    }
-                }
-
-                function haversineDistance(p1, p2) {
-                    const R = 6371e3;
-                    const lat1 = p1[1] * Math.PI / 180;
-                    const lat2 = p2[1] * Math.PI / 180;
-                    const dLat = (p2[1] - p1[1]) * Math.PI / 180;
-                    const dLng = (p2[0] - p1[0]) * Math.PI / 180;
-                    const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng/2) * Math.sin(dLng/2);
-                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-                    return R * c;
-                }
-
-                function calculatePolygonArea(coords) {
-                    let area = 0;
-                    const R = 6378137;
-                    if (coords.length > 2) {
-                        for (let i = 0; i < coords.length; i++) {
-                            const p1 = coords[i];
-                            const p2 = coords[(i + 1) % coords.length];
-                            const x1 = p1[0] * Math.PI / 180 * R;
-                            const y1 = Math.log(Math.tan(Math.PI / 4 + p1[1] * Math.PI / 360)) * R;
-                            const x2 = p2[0] * Math.PI / 180 * R;
-                            const y2 = Math.log(Math.tan(Math.PI / 4 + p2[1] * Math.PI / 360)) * R;
-                            area += (x1 * y2) - (x2 * y1);
-                        }
-                        area = Math.abs(area / 2);
-                        const avgLat = coords.reduce((sum, c) => sum + c[1], 0) / coords.length;
-                        const cosLat = Math.cos(avgLat * Math.PI / 180);
-                        area = area * cosLat * cosLat;
-                    }
-                    return area;
-                }
-
-                window.searchBlocks = function(query) {
-                    const res = document.getElementById('survey-search-results');
-                    if (!res) return;
-                    if (!query.trim()) { res.style.display = 'none'; return; }
-                    const found = [];
-                    layers.forEach(layer => {
-                        if (!layer.data?.features) return;
-                        layer.data.features.forEach(f => {
-                            const props = f.properties || {};
-                            const match = Object.values(props).some(v => String(v).includes(query));
-                            if (match) {
-                                const name = props.block_name || props.block_no || props.name || Object.values(props)[0];
-                                found.push({ name: String(name), geom: f.geometry, props });
-                            }
-                        });
-                    });
-                    if (found.length === 0) {
-                        res.innerHTML = '<div style="padding:8px 12px;opacity:0.5;font-size:0.82rem;">لا توجد تطابقات</div>';
-                        res.style.display = 'block';
-                        return;
-                    }
-                    res.innerHTML = found.slice(0, 5).map((item, idx) => \`
-                        <div class="survey-search-item" onclick="zoomToSurveyItem(\${idx})">🔍 \${item.name}</div>
-                    \`).join('');
-                    res.style.display = 'block';
-                    window._surveyResults = found;
-                };
-
-                window.zoomToSurveyItem = function(idx) {
-                    const item = window._surveyResults?.[idx];
-                    if (!item) return;
-                    const coords = item.geom.type === 'Point' ? item.geom.coordinates : item.geom.coordinates?.[0]?.[0] || item.geom.coordinates?.[0];
-                    if (coords) map.flyTo({ center: coords, zoom: 16 });
-                    document.getElementById('survey-search-results').style.display = 'none';
-                };
-
-                map.on('load', () => {
-                    loadTemplateData();
-                });
-            `;
         }
-
         // 4. Build custom elements overlay
         const customElsCSS = pageElements.length > 0 ? `
         .custom-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
@@ -9199,10 +9131,9 @@ out geom;`;
                         <div className="ds-cat-title">الأقسام الرئيسية</div>
                         {[
                             { id: 'layouts', label: 'التخطيطات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="9" y1="3" x2="9" y2="21" /></svg>, count: 8 },
-                            { id: 'templates', label: 'القوالب التجارية', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>, count: 5 },
+                            { id: 'applications', label: 'تطبيقات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="2" y1="20" x2="22" y2="20" /><line x1="12" y1="17" x2="12" y2="20" /></svg>, count: 2 },
                             { id: 'palettes', label: 'لوحات الألوان', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" /></svg>, count: 8 },
                             { id: 'typography', label: 'الخطوط', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="4 7 4 4 20 4 20 7" /><line x1="9" y1="20" x2="15" y2="20" /><line x1="12" y1="4" x2="12" y2="20" /></svg>, count: 6 },
-                            { id: 'commercial_templates', label: 'القوالب التجارية', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg>, count: 5 },
                             { id: 'basemaps', label: 'الخرائط', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" /></svg>, count: 6 },
                             { id: 'effects', label: 'التأثيرات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>, count: 9 },
                             { id: 'builder', label: 'منشئ الصفحة', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 3v18M3 9h6M3 15h6M15 9h6M15 15h6" /></svg>, count: pageElements.length || '+' },
@@ -9217,32 +9148,21 @@ out geom;`;
                     </aside>
 
                     <main className="ds-main" dir="rtl" style={{ fontFamily: 'var(--font-main)' }}>
-                        {activeDsCategory === 'templates' && (
+                        {activeDsCategory === 'applications' && (
                             <div className="ds-section active">
                                 <div className="ds-section-head">
-                                    <h2>القوالب التجارية الجاهزة <span className="ds-tag">TEMPLATES</span></h2>
-                                    <p>اختر قالباً تجارياً مسبق التهيئة لترخيص وبيع تطبيقك الجغرافي مباشرة وتحقيق الربح</p>
+                                    <h2>التطبيقات التفاعلية الجاهزة <span className="ds-tag">APPLICATIONS</span></h2>
+                                    <p>اختر تطبيقاً جغرافياً جاهزاً للتشغيل المباشر وعرض وتحليل البيانات</p>
                                 </div>
                                 <div className="ds-grid">
                                     {[
-                                        { id: 'none', title: 'بدون قالب (خريطة عامة)', sub: 'تصميم خريطة عامة تفاعلية تقليدية لعرض البيانات فقط', type: 'tm-none' },
-                                        { id: 'realestate', title: 'التسويق العقاري والأراضي', sub: 'عرض وتثمين الأراضي وربطها بجيومولج مع نماذج حجز واستفسار واتساب مباشرة', type: 'tm-realestate' },
-                                        { id: 'storelocator', title: 'دليل المحلات والتوصيل المباشر', sub: 'عرض فروع المتاجر مع سلة طلبات مصغرة للتوصيل وإرسال الطلبات للواتساب', type: 'tm-storelocator' },
-                                        { id: 'tourguide', title: 'دليل السياحة والترفيه التفاعلي', sub: 'مسارات جولات سياحية، نقاط جذب تفاعلية بالصور والتقييمات وصوتيات ارشادية', type: 'tm-tourguide' },
-                                        { id: 'surveyor', title: 'منصة المساحة الهندسية والمخططات', sub: 'أدوات مساحة متقدمة، حساب مساحات وأطوال، تحويل إحداثيات (Palestine Grid / UTM)', type: 'tm-surveyor' }
+                                        { id: 'none', title: 'بدون تطبيق (خريطة عامة)', sub: 'تصميم خريطة عامة تفاعلية تقليدية لعرض البيانات فقط', icon: '🗺️' },
+                                        { id: 'covid19', title: 'خريطة انتشار كوفيد-19 (COVID-19 Map)', sub: 'تطبيق ويب متكامل لعرض حالات وإحصائيات كورونا حول العالم ومحلياً على الخريطة', icon: '🦠' }
                                     ].map(t => (
-                                        <div key={t.id} className={`ds-pick ${designSelections.commercialTemplate === t.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({ ...s, commercialTemplate: t.id }))}>
-                                            <div className="basemap-preview" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', height: '70px', borderRadius: '8px' }}>
-                                                <span style={{ fontSize: '1.8rem' }}>
-                                                    {t.id === 'none' && '🗺️'}
-                                                    {t.id === 'realestate' && '🏢'}
-                                                    {t.id === 'storelocator' && '🛍️'}
-                                                    {t.id === 'tourguide' && '🏛️'}
-                                                    {t.id === 'surveyor' && '📏'}
-                                                </span>
-                                            </div>
+                                        <div key={t.id} className={`ds-pick ${designSelections.commercialTemplate === t.id ? 'selected' : (t.id === 'none' && !designSelections.commercialTemplate ? 'selected' : '')}`} onClick={() => setDesignSelections(s => ({ ...s, commercialTemplate: t.id }))}>
+                                            <div style={{ fontSize: '2rem', marginBottom: '10px', display: 'flex', justifyContent: 'center' }}>{t.icon}</div>
                                             <div className="ds-pick-title">{t.title}</div>
-                                            <div className="ds-pick-sub">{t.sub}</div>
+                                            <div className="ds-pick-sub" style={{ fontSize: '0.78rem', opacity: '0.7', marginTop: '6px', lineHeight: '1.4' }}>{t.sub}</div>
                                         </div>
                                     ))}
                                 </div>
@@ -9531,29 +9451,7 @@ out geom;`;
                                     </div>
                                 )}
 
-                        {activeDsCategory === 'commercial_templates' && (
-                            <div className="ds-section active">
-                                <div className="ds-section-head">
-                                    <h2>القوالب التجارية <span className="ds-tag">COMMERCIAL TEMPLATES</span></h2>
-                                    <p>اختر قالباً تجارياً جاهزاً للبيع والربح، متكاملاً مع أدوات تفاعلية متخصصة</p>
-                                </div>
-                                <div className="ds-grid">
-                                    {[
-                                        { id: 'none', title: 'خريطة عادية (Full Map)', sub: 'بدون قالب تجاري - تخطيط خريطة تفاعلية اعتيادي', icon: '🗺️' },
-                                        { id: 'realestate', title: 'التسويق العقاري والأراضي (Real Estate Pro)', sub: 'قالب تجاري لعرض وتصفح الأراضي والعقارات مع تفاصيل القطع والأحواض وزر تواصل مباشر عبر واتساب', icon: '🏢' },
-                                        { id: 'storelocator', title: 'دليل المحلات والتوصيل (Store Locator & Delivery)', sub: 'دليل محلات وفروع تفاعلي مع سلة مشتريات ونموذج طلب وتوصيل متصل بواتساب', icon: '🛍️' },
-                                        { id: 'tourguide', title: 'الدليل السياحي التفاعلي (Interactive Tour Guide)', sub: 'دليل سياحي تفاعلي للأماكن التاريخية والأثرية مدمج معه مرشد صوتي آلي ومسارات تنقل مقترحة', icon: '🏛️' },
-                                        { id: 'surveyor', title: 'منصة المساحة والرفع الهندسي (Surveyor Workspace)', sub: 'مساحة عمل للمهندسين والمساحين لحساب المساحات بالدونم والمسافات بالأمتار مع تحويل الإحداثيات للفلسطينية ونظام UTM', icon: '📏' }
-                                    ].map(t => (
-                                        <div key={t.id} className={`ds-pick ${designSelections.commercialTemplate === t.id ? 'selected' : (t.id === 'none' && !designSelections.commercialTemplate ? 'selected' : '')}`} onClick={() => setDesignSelections(s => ({ ...s, commercialTemplate: t.id }))}>
-                                            <div style={{ fontSize: '2rem', marginBottom: '10px', display: 'flex', justifyContent: 'center' }}>{t.icon}</div>
-                                            <div className="ds-pick-title">{t.title}</div>
-                                            <div className="ds-pick-sub" style={{ fontSize: '0.78rem', opacity: '0.7', marginTop: '6px', lineHeight: '1.4' }}>{t.sub}</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+
                             </div>
                         )}
 
