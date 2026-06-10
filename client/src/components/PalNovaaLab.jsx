@@ -4929,6 +4929,687 @@ out geom;`;
     };
 
     const performActualExport = async (isZip = false) => {
+        if (designSelections.commercialTemplate === 'mapty') {
+            const maptyHtml = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>مقتفي الرياضة بالضفة - Mapty Palestine</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Tajawal:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.8.0/dist/leaflet.css"
+      integrity="sha512-hoalWLoI8r4UszCkZ5kL8vayOGVae1oxXe/2A4AO6J9+580uKHDO3JdHb7NzwwzK5xr/Fs0W40kiNHxM9vyTtQ=="
+      crossorigin=""
+    />
+    <script
+      src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js"
+      integrity="sha512-BB3hKbKWOc9Ez/TAwyWxNXeoV9c1v6FIeYiBieIWkpLjauysF18NzgR1MBNBXf8/KABdlkX68nAhlwcDFLGPCQ=="
+      crossorigin=""
+    ></script>
+    <link rel="stylesheet" href="css/style.css" />
+    <script defer src="js/app.js"></script>
+  </head>
+  <body>
+    <div class="sidebar">
+      <div class="logo-container">
+        <i class="fa-solid fa-person-running logo-icon"></i>
+        <div class="logo-text">Mapty <span class="logo-sub">Palestine</span></div>
+      </div>
+      
+      <p class="intro-text">سجل تمارين الجري وركوب الدراجات الخاصة بك في الضفة الغربية. انقر على الخريطة في أي مدينة لإضافة تمرين جديد.</p>
+
+      <ul class="workouts">
+        <form class="form hidden">
+          <div class="form__row">
+            <label class="form__label">نوع التمرين</label>
+            <select class="form__input form__input--type">
+              <option value="running">🏃‍♂️ جري</option>
+              <option value="cycling">🚴‍♀️ دراجات</option>
+            </select>
+          </div>
+          <div class="form__row">
+            <label class="form__label">المسافة</label>
+            <input class="form__input form__input--distance" placeholder="كم" />
+          </div>
+          <div class="form__row">
+            <label class="form__label">المدة</label>
+            <input class="form__input form__input--duration" placeholder="دقيقة" />
+          </div>
+          <div class="form__row">
+            <label class="form__label">التردد (الخطوات)</label>
+            <input class="form__input form__input--cadence" placeholder="خطوة/دقيقة" />
+          </div>
+          <div class="form__row form__row--hidden">
+            <label class="form__label">الارتفاع المحقق</label>
+            <input class="form__input form__input--elevation" placeholder="أمتار" />
+          </div>
+          <button class="form__btn">تأكيد</button>
+        </form>
+      </ul>
+
+      <p class="copyright">
+        مقتفي الرياضة بالضفة الغربية &copy; تصميم وتطوير بال نوفا - تم الاقتباس والتعريب من Jonas Schmedtmann.
+      </p>
+    </div>
+
+    <div id="map"></div>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  </body>
+</html>`;
+            const maptyStyleCss = `:root {
+  --color-brand--1: #00A86B; /* Palestine Green for running */
+  --color-brand--2: #EF4444; /* Palestine Red for cycling */
+  
+  --color-dark--1: #0B0F19;
+  --color-dark--2: #121824;
+  --color-light--1: #F8FAFC;
+  --color-light--2: #E2E8F0;
+  
+  --font-main: 'Tajawal', sans-serif;
+  --font-logo: 'Cairo', sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 62.5%;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-main);
+  color: var(--color-light--2);
+  font-weight: 400;
+  line-height: 1.6;
+  height: 100vh;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Links */
+a:link,
+a:visited {
+  color: var(--color-brand--1);
+}
+
+/* Sidebar Layout */
+.sidebar {
+  flex-basis: 400px;
+  background-color: var(--color-dark--1);
+  padding: 3rem 3.5rem 3rem 3.5rem;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: -5px 0 25px rgba(0, 0, 0, 0.4);
+  z-index: 10;
+}
+@media (max-width: 768px) {
+  body { flex-direction: column-reverse; }
+  .sidebar { flex-basis: 50%; width: 100%; }
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  margin-bottom: 2rem;
+}
+.logo-icon {
+  font-size: 3rem;
+  color: var(--color-brand--1);
+  text-shadow: 0 0 10px rgba(0, 168, 107, 0.3);
+}
+.logo-text {
+  font-size: 2.4rem;
+  font-weight: 900;
+  color: #fff;
+  font-family: var(--font-logo);
+}
+.logo-sub {
+  color: var(--color-brand--2);
+}
+
+.intro-text {
+  font-size: 1.2rem;
+  color: rgba(255,255,255,0.5);
+  text-align: center;
+  margin-bottom: 2.5rem;
+  line-height: 1.5;
+}
+
+.workouts {
+  list-style: none;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  height: 77vh;
+  padding-right: 4px;
+}
+
+.workouts::-webkit-scrollbar {
+  width: 0.5rem;
+}
+
+.workouts::-webkit-scrollbar-track {
+  background-color: var(--color-dark--1);
+}
+
+.workouts::-webkit-scrollbar-thumb {
+  background-color: rgba(255,255,255,0.1);
+  border-radius: 4px;
+}
+
+/* Workouts List items */
+.workout {
+  background-color: var(--color-dark--2);
+  border-radius: 8px;
+  padding: 1.5rem 2.2rem;
+  margin-bottom: 1.7rem;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 0.8rem 1.5rem;
+  border-right: 5px solid transparent;
+  transition: all 0.3s;
+}
+
+.workout:hover {
+  transform: translateX(-4px);
+  background-color: #172030;
+}
+
+.workout--running {
+  border-right-color: var(--color-brand--1);
+}
+.workout--cycling {
+  border-right-color: var(--color-brand--2);
+}
+
+.workout__title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  grid-column: 1 / -1;
+  color: #fff;
+}
+
+.workout__details {
+  display: flex;
+  align-items: center;
+}
+
+.workout__icon {
+  font-size: 1.5rem;
+  margin-left: 0.5rem;
+}
+
+.workout__value {
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.workout__unit {
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.4);
+  margin-right: 3px;
+  text-transform: uppercase;
+  font-weight: 800;
+}
+
+/* Entry Form */
+.form {
+  background-color: var(--color-dark--2);
+  border-radius: 8px;
+  padding: 1.5rem 2rem;
+  margin-bottom: 1.7rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.2rem 2.2rem;
+  transition: all 0.5s, transform 1ms;
+}
+
+.form.hidden {
+  transform: translateY(-30rem);
+  height: 0;
+  padding: 0;
+  margin: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.form__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.form__row--hidden {
+  display: none !important;
+}
+
+.form__label {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--color-light--2);
+}
+
+.form__input {
+  width: 55%;
+  padding: 0.5rem 0.8rem;
+  font-family: inherit;
+  font-size: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 5px;
+  background-color: rgba(0, 0, 0, 0.2);
+  color: #fff;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.form__input:focus {
+  background-color: rgba(0, 0, 0, 0.4);
+  border-color: var(--color-brand--1);
+}
+
+.form__btn {
+  display: none;
+}
+
+.copyright {
+  margin-top: auto;
+  font-size: 1rem;
+  color: rgba(255,255,255,0.3);
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* Map area */
+#map {
+  flex: 1;
+  height: 100%;
+  background-color: var(--color-dark--1);
+}
+
+/* Leaflet Popup Styling */
+.leaflet-popup .leaflet-popup-content-wrapper {
+  background-color: var(--color-dark--2) !important;
+  color: var(--color-light--2) !important;
+  border-radius: 8px !important;
+  padding: 8px 12px !important;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.5) !important;
+}
+
+.leaflet-popup .leaflet-popup-content {
+  font-size: 1.2rem !important;
+  font-family: var(--font-main) !important;
+  font-weight: 700 !important;
+}
+
+.leaflet-popup .leaflet-popup-tip {
+  background-color: var(--color-dark--2) !important;
+}
+
+.running-popup .leaflet-popup-content-wrapper {
+  border-right: 5px solid var(--color-brand--1) !important;
+}
+
+.cycling-popup .leaflet-popup-content-wrapper {
+  border-right: 5px solid var(--color-brand--2) !important;
+}
+`;
+            const maptyAppJs = `"use strict";
+
+// Selectors
+const form = document.querySelector(".form");
+const containerWorkouts = document.querySelector(".workouts");
+const inputType = document.querySelector(".form__input--type");
+const inputDistance = document.querySelector(".form__input--distance");
+const inputDuration = document.querySelector(".form__input--duration");
+const inputCadence = document.querySelector(".form__input--cadence");
+const inputElevation = document.querySelector(".form__input--elevation");
+
+class Workout {
+  id = Date.now() + "".slice(-7);
+  date = new Date();
+
+  constructor(coords, distance, duration) {
+    this.distance = distance;
+    this.duration = duration;
+    this.coords = coords;
+  }
+
+  _setDescription() {
+    const months = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+    this.description = \`\${this.type === "running" ? "🏃‍♂️ جري" : "🚴‍♀️ دراجات"} في \${this.date.getDate()} \${months[this.date.getMonth()]}\`;
+  }
+}
+
+class Cycling extends Workout {
+  type = "cycling";
+  constructor(coords, distance, duration, elevationGain) {
+    super(coords, distance, duration);
+    this.elevationGain = elevationGain;
+    this.calcSpeed();
+    this._setDescription();
+  }
+
+  calcSpeed() {
+    this.speed = Number((this.distance / (this.duration / 60)).toFixed(1));
+    return this.speed;
+  }
+}
+
+class Running extends Workout {
+  type = "running";
+  constructor(coords, distance, duration, cadence) {
+    super(coords, distance, duration);
+    this.cadence = cadence;
+    this.calcPace();
+    this._setDescription();
+  }
+
+  calcPace() {
+    this.pace = Number((this.duration / this.distance).toFixed(1));
+    return this.pace;
+  }
+}
+
+class App {
+  #map;
+  #mapEvent;
+  #workout = [];
+  #mapZoomLevel = 11;
+  #defaultCoord = [32.0, 35.25]; // Center of West Bank (Ramallah/Nablus area)
+
+  constructor() {
+    this._loadPreloadedWorkouts();
+    this._getPosition();
+    this._getLocalStorage();
+    
+    inputType.addEventListener("change", this._toggleElevationField);
+    form.addEventListener("submit", this._newWorkout.bind(this));
+    containerWorkouts.addEventListener("click", this._moveMap.bind(this));
+  }
+
+  // Preload sample workouts in West Bank
+  _loadPreloadedWorkouts() {
+    if (localStorage.getItem("workouts")) return; // skip if user already has logged ones
+    
+    // Sample running in Ramallah
+    const runSample = new Running([31.9029, 35.2032], 5.2, 26, 178);
+    // Sample cycling in Nablus
+    const cycleSample = new Cycling([32.2211, 35.2544], 18.5, 45, 220);
+    
+    this.#workout.push(runSample, cycleSample);
+  }
+
+  _getPosition() {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        this._loadMap.bind(this),
+        () => {
+          // If GPS fails/denied, load default West Bank view
+          this._loadMap({ coords: { latitude: this.#defaultCoord[0], longitude: this.#defaultCoord[1] } }, true);
+        }
+      );
+    } else {
+      this._loadMap({ coords: { latitude: this.#defaultCoord[0], longitude: this.#defaultCoord[1] } }, true);
+    }
+  }
+
+  _loadMap(position, isDefault = false) {
+    const { latitude, longitude } = position.coords;
+    const coord = [latitude, longitude];
+
+    this.#map = L.map("map").setView(coord, this.#mapZoomLevel);
+
+    // Dark high-tech theme map tiles from CartoDB
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 20
+    }).addTo(this.#map);
+
+    this.#map.on("click", this._showForm.bind(this));
+
+    // Render existing and sample markers
+    this.#workout.forEach((work) => {
+      this._renderWorkoutMarker(work);
+    });
+    
+    if (isDefault) {
+      console.log("Centered map by default on West Bank, Palestine.");
+    }
+  }
+
+  _showForm(mapE) {
+    this.#mapEvent = mapE;
+    form.classList.remove("hidden");
+    inputDistance.focus();
+  }
+
+  _hideForm() {
+    inputDistance.value =
+      inputCadence.value =
+      inputDuration.value =
+      inputElevation.value =
+        "";
+    form.style.display = "none";
+    form.classList.add("hidden");
+    setTimeout(() => (form.style.display = "grid"), 1000);
+  }
+
+  _toggleElevationField() {
+    inputElevation.closest(".form__row").classList.toggle("form__row--hidden");
+    inputCadence.closest(".form__row").classList.toggle("form__row--hidden");
+  }
+
+  _newWorkout(e) {
+    e.preventDefault();
+
+    const inputOnlyNum = (...inputs) =>
+      inputs.every((input) => Number.isFinite(input));
+
+    const inputOnlyPosNum = (...inputs) => inputs.every((input) => input > 0);
+
+    let workout;
+    const type = inputType.value;
+    const distance = +inputDistance.value;
+    const duration = +inputDuration.value;
+    const { lat, lng } = this.#mapEvent.latlng;
+
+    if (type === "running") {
+      const cadence = +inputCadence.value;
+      if (
+        !inputOnlyNum(distance, duration, cadence) ||
+        !inputOnlyPosNum(distance, duration, cadence)
+      ) {
+        alert("يرجى إدخال أرقام موجبة وصحيحة!");
+        return;
+      }
+      workout = new Running([lat, lng], distance, duration, cadence);
+    }
+
+    if (type === "cycling") {
+      const elevation = +inputElevation.value;
+      if (
+        !inputOnlyNum(distance, duration, elevation) ||
+        !inputOnlyPosNum(distance, duration)
+      ) {
+        alert("يرجى إدخال أرقام موجبة وصحيحة!");
+        return;
+      }
+      workout = new Cycling([lat, lng], distance, duration, elevation);
+    }
+
+    this.#workout.push(workout);
+    this._renderWorkoutMarker(workout);
+    this._renderWorkout(workout);
+    this._hideForm();
+    this._setLocalStorage();
+  }
+
+  _renderWorkoutMarker(workout) {
+    L.marker(workout.coords)
+      .addTo(this.#map)
+      .bindPopup(
+        L.popup({
+          maxWidth: 250,
+          minWidth: 100,
+          autoClose: false,
+          closeOnClick: false,
+          closeOnEscapeKey: false,
+          className: \`\${workout.type}-popup\`,
+        })
+      )
+      .setPopupContent(\`\${workout.description}\`)
+      .openPopup();
+  }
+
+  _renderWorkout(workout) {
+    let html = \`
+    <li class="workout workout--\${workout.type}" data-id=\${workout.id}>
+        <h2 class="workout__title">\${workout.description}</h2>
+        <div class="workout__details">
+            <span class="workout__icon">\${workout.type === "running" ? "🏃‍♂️" : "🚴‍♀️"}</span>
+            <span class="workout__value">\${workout.distance}</span>
+            <span class="workout__unit">كم</span>
+        </div>
+        <div class="workout__details">
+          <span class="workout__icon">⏱</span>
+          <span class="workout__value">\${workout.duration}</span>
+          <span class="workout__unit">دقيقة</span>
+        </div>
+    \`;
+
+    if (workout.type === "running") {
+      html += \`
+      <div class="workout__details">
+        <span class="workout__icon">⚡️</span>
+        <span class="workout__value">\${workout.pace}</span>
+        <span class="workout__unit">دقيقة/كم</span>
+      </div>
+      <div class="workout__details">
+        <span class="workout__icon">🦶🏼</span>
+        <span class="workout__value">\${workout.cadence}</span>
+        <span class="workout__unit">خ/دقيقة</span>
+      </div></li>\`;
+    }
+
+    if (workout.type === "cycling") {
+      html += \`
+      <div class="workout__details">
+        <span class="workout__icon">⚡️</span>
+        <span class="workout__value">\${workout.speed}</span>
+        <span class="workout__unit">كم/ساعة</span>
+      </div>
+      <div class="workout__details">
+        <span class="workout__icon">⛰</span>
+        <span class="workout__value">\${workout.elevationGain}</span>
+        <span class="workout__unit">متر</span>
+      </div></li>
+      \`;
+    }
+
+    form.insertAdjacentHTML("afterend", html);
+  }
+
+  _moveMap(e) {
+    const workoutEle = e.target.closest(".workout");
+    if (!workoutEle) return;
+
+    const workout = this.#workout.find((w) => w.id === workoutEle.dataset.id);
+    this.#map.setView(workout.coords, this.#mapZoomLevel, {
+      animate: true,
+      pan: {
+        duration: 1,
+      },
+    });
+  }
+
+  _setLocalStorage() {
+    localStorage.setItem("workouts", JSON.stringify(this.#workout));
+  }
+
+  _getLocalStorage() {
+    const data = JSON.parse(localStorage.getItem("workouts"));
+    if (!data) {
+      // Load sample workouts first time
+      this.#workout.forEach((work) => {
+        this._renderWorkout(work);
+      });
+      return;
+    }
+    this.#workout = data;
+    this.#workout.forEach((work) => {
+      this._renderWorkout(work);
+    });
+  }
+}
+
+const app = new App();
+`;
+
+            if (isZip) {
+                setIsPublishing(true);
+                try {
+                    if (!window.JSZip) {
+                        await new Promise((resolve, reject) => {
+                            const script = document.createElement('script');
+                            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+                            script.onload = resolve;
+                            script.onerror = reject;
+                            document.head.appendChild(script);
+                        });
+                    }
+                    const zip = new window.JSZip();
+                    zip.file("index.html", maptyHtml);
+                    zip.folder("css").file("style.css", maptyStyleCss);
+                    zip.folder("js").file("app.js", maptyAppJs);
+                    
+                    const content = await zip.generateAsync({ type: 'blob' });
+                    const downloadUrl = URL.createObjectURL(content);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = `Mapty_Palestine_Project_${Date.now()}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(downloadUrl);
+                } catch (err) {
+                    console.error("ZIP packaging failed:", err);
+                    alert("فشل تصدير المشروع كـ ZIP: " + err.message);
+                } finally {
+                    setIsPublishing(false);
+                }
+            } else {
+                let bundledHtml = maptyHtml
+                    .replace('<link rel="stylesheet" href="css/style.css" />', `<style>${maptyStyleCss}</style>`)
+                    .replace('<script defer src="js/app.js"></script>', `<script>${maptyAppJs}</script>`);
+
+                const blob = new Blob([bundledHtml], { type: 'text/html' });
+                const downloadUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = `Mapty_Palestine_Design_${Date.now()}.html`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(downloadUrl);
+            }
+            setIsDesignStudioOpen(false);
+            return;
+        }
+
         if (designSelections.commercialTemplate === 'guacamaya') {
             const guacamayaHtml = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -10748,7 +11429,7 @@ function closeAllInfoWindows() {
                         <div className="ds-cat-title">الأقسام الرئيسية</div>
                         {[
                             { id: 'layouts', label: 'التخطيطات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="9" y1="3" x2="9" y2="21" /></svg>, count: 8 },
-                            { id: 'applications', label: 'تطبيقات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="2" y1="20" x2="22" y2="20" /><line x1="12" y1="17" x2="12" y2="20" /></svg>, count: 4 },
+                            { id: 'applications', label: 'تطبيقات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="2" y1="20" x2="22" y2="20" /><line x1="12" y1="17" x2="12" y2="20" /></svg>, count: 5 },
                             { id: 'palettes', label: 'لوحات الألوان', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" /></svg>, count: 8 },
                             { id: 'typography', label: 'الخطوط', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="4 7 4 4 20 4 20 7" /><line x1="9" y1="20" x2="15" y2="20" /><line x1="12" y1="4" x2="12" y2="20" /></svg>, count: 6 },
                             { id: 'basemaps', label: 'الخرائط', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" /></svg>, count: 6 },
@@ -10776,7 +11457,8 @@ function closeAllInfoWindows() {
                                         { id: 'none', title: 'بدون تطبيق (خريطة عامة)', sub: 'تصميم خريطة عامة تفاعلية تقليدية لعرض البيانات فقط', icon: '🗺️' },
                                         { id: 'covid19', title: 'خريطة انتشار كوفيد-19 (COVID-19 Map)', sub: 'تطبيق ويب متكامل لعرض حالات وإحصائيات كورونا حول العالم ومحلياً على الخريطة', icon: '🦠' },
                                         { id: 'uber', title: 'منصة توصيل الركاب (Uber Web Clone)', sub: 'نسخة ويب تفاعلية لطلب وتوصيل الركاب وتحديد المسارات وحساب أسعار الرحلات', icon: '🚗' },
-                                        { id: 'guacamaya', title: 'إدارة وحجوزات الطيران (Guacamaya Airlines)', sub: 'نظام متكامل لإدارة الخطوط الجوية والرحلات وحجز المقاعد وعرض الإحصائيات التفاعلية', icon: '✈️' }
+                                        { id: 'guacamaya', title: 'إدارة وحجوزات الطيران (Guacamaya Airlines)', sub: 'نظام متكامل لإدارة الخطوط الجوية والرحلات وحجز المقاعد وعرض الإحصائيات التفاعلية', icon: '✈️' },
+                                        { id: 'mapty', title: 'مقتفي الرياضة بالضفة (Mapty Palestine)', sub: 'تطبيق رياضي تفاعلي لتسجيل أنشطة الجري وركوب الدراجات وتحديد المواقع في مدن الضفة الغربية', icon: '🏃‍♂️' }
                                     ].map(t => (
                                         <div key={t.id} className={`ds-pick ${designSelections.commercialTemplate === t.id ? 'selected' : (t.id === 'none' && !designSelections.commercialTemplate ? 'selected' : '')}`} onClick={() => setDesignSelections(s => ({ ...s, commercialTemplate: t.id }))}>
                                             <div style={{ fontSize: '2rem', marginBottom: '10px', display: 'flex', justifyContent: 'center' }}>{t.icon}</div>
