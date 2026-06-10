@@ -4927,6 +4927,497 @@ out geom;`;
     };
 
     const performActualExport = async (isZip = false) => {
+        if (designSelections.commercialTemplate === 'uber') {
+            const uberHtml = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>أوبر ويب - حجز سيارات أجرة</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;700;900&family=Tajawal:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="brand">
+                <i class="fa-solid fa-car-side logo-icon"></i>
+                <span class="brand-text">Uber <span class="brand-sub">Web</span></span>
+            </div>
+            
+            <p class="intro-text">احجز رحلتك بكل سهولة. انقر على الخريطة لتحديد نقطة الانطلاق والوصول.</p>
+            
+            <div class="booking-form">
+                <div class="input-group">
+                    <label><i class="fa-solid fa-location-dot pickup-icon"></i> موقع الانطلاق</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="pickup-input" placeholder="انقر على الخريطة أو حدد الموقع الحالي..." readonly>
+                        <button id="gps-btn" title="تحديد موقعي الحالي"><i class="fa-solid fa-crosshairs"></i></button>
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label><i class="fa-solid fa-flag-checkered dropoff-icon"></i> وجهة الوصول</label>
+                    <input type="text" id="dropoff-input" placeholder="انقر على الخريطة لتحديد الوجهة..." readonly>
+                </div>
+                
+                <button id="calculate-btn" class="btn primary-btn disabled" disabled>حساب المسافة والأسعار</button>
+            </div>
+            
+            <div id="ride-options-section" class="ride-options-section hidden">
+                <h3 class="section-title">فئات السيارات المتوفرة</h3>
+                <div class="ride-options-list">
+                    <div class="ride-card selected" data-type="uberx" data-rate="1.2">
+                        <i class="fa-solid fa-car-side ride-car-icon"></i>
+                        <div class="ride-info">
+                            <div class="ride-name">🚗 UberX (اقتصادي)</div>
+                            <div class="ride-time">وصول خلال 4 دقائق</div>
+                        </div>
+                        <div class="ride-price" id="price-uberx">--</div>
+                    </div>
+                    
+                    <div class="ride-card" data-type="comfort" data-rate="1.8">
+                        <i class="fa-solid fa-car ride-car-icon comfort-car"></i>
+                        <div class="ride-info">
+                            <div class="ride-name">🚙 Comfort (مريح)</div>
+                            <div class="ride-time">وصول خلال 3 دقائق</div>
+                        </div>
+                        <div class="ride-price" id="price-comfort">--</div>
+                    </div>
+                    
+                    <div class="ride-card" data-type="premium" data-rate="3.0">
+                        <i class="fa-solid fa-user-tie ride-car-icon black-car"></i>
+                        <div class="ride-info">
+                            <div class="ride-name">🖤 Premium (فاخر)</div>
+                            <div class="ride-time">وصول خلال 5 دقائق</div>
+                        </div>
+                        <div class="ride-price" id="price-premium">--</div>
+                    </div>
+                </div>
+                
+                <div class="trip-summary">
+                    <div class="summary-item">
+                        <span>المسافة الإجمالية:</span>
+                        <strong id="trip-distance">--</strong>
+                    </div>
+                    <div class="summary-item">
+                        <span>الزمن التقديري للوصول:</span>
+                        <strong id="trip-duration">--</strong>
+                    </div>
+                </div>
+                
+                <button id="book-btn" class="btn success-btn">تأكيد طلب الرحلة</button>
+            </div>
+
+            <div id="status-section" class="status-section hidden">
+                <div class="loader-pulse"></div>
+                <h3 id="status-title">جاري البحث عن كابتن...</h3>
+                <p id="status-desc" class="status-desc">نبحث عن أقرب كابتن لتلبية طلبك.</p>
+                <button id="cancel-btn" class="btn danger-btn">إلغاء الطلب</button>
+            </div>
+        </aside>
+
+        <main id="map"></main>
+    </div>
+
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>`;
+            const uberStyleCss = `:root {
+    --primary: #06D6F2;
+    --primary-dark: #04A0B5;
+    --bg-deep: #050B16;
+    --surface: rgba(15, 23, 42, 0.75);
+    --surface-solid: #0F172A;
+    --border: rgba(255, 255, 255, 0.08);
+    --text: #FFFFFF;
+    --text-muted: rgba(255, 255, 255, 0.6);
+    --primary-glow: rgba(6, 214, 242, 0.25);
+    --font-main: 'Tajawal', sans-serif;
+}
+html, body {
+    margin: 0; padding: 0; height: 100%; width: 100%;
+    font-family: var(--font-main); background: var(--bg-deep);
+    color: var(--text); overflow: hidden;
+}
+* { box-sizing: border-box; }
+.app-container { display: flex; height: 100vh; width: 100vw; position: relative; }
+.sidebar {
+    width: 380px; background: var(--surface-solid); border-left: 1px solid var(--border);
+    padding: 24px; display: flex; flex-direction: column; overflow-y: auto;
+    z-index: 10; box-shadow: -5px 0 25px rgba(0, 0, 0, 0.5); backdrop-filter: blur(20px);
+}
+@media (max-width: 768px) {
+    .app-container { flex-direction: column-reverse; }
+    .sidebar { width: 100%; height: 50vh; box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.5); }
+}
+.brand { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.logo-icon { font-size: 2rem; color: var(--primary); filter: drop-shadow(0 0 8px var(--primary-glow)); }
+.brand-text { font-size: 1.8rem; font-weight: 900; font-family: 'Cairo', sans-serif; }
+.brand-sub { color: var(--primary); font-size: 1.2rem; font-weight: 400; }
+.intro-text { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 24px; line-height: 1.6; }
+.booking-form { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; }
+.input-group { display: flex; flex-direction: column; gap: 6px; }
+.input-group label { font-size: 0.85rem; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+.pickup-icon { color: #10B981; }
+.dropoff-icon { color: #EF4444; }
+.input-wrapper { display: flex; gap: 8px; }
+.booking-form input {
+    flex: 1; padding: 12px 16px; background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border); border-radius: 10px; color: var(--text);
+    outline: none; font-family: var(--font-main); font-size: 0.88rem; transition: all 0.3s;
+}
+.booking-form input:focus { border-color: var(--primary); box-shadow: 0 0 10px var(--primary-glow); }
+#gps-btn {
+    width: 45px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--primary); cursor: pointer; transition: all 0.3s;
+    display: flex; align-items: center; justify-content: center;
+}
+#gps-btn:hover { background: var(--primary); color: #000; border-color: var(--primary); }
+.btn { padding: 14px; border: none; border-radius: 10px; font-weight: 900; font-family: var(--font-main); font-size: 1rem; cursor: pointer; transition: all 0.3s; text-align: center; }
+.primary-btn { background: var(--primary); color: #000; }
+.primary-btn:hover:not(.disabled) { background: var(--primary-dark); transform: translateY(-2px); }
+.success-btn { background: #10B981; color: #fff; width: 100%; }
+.success-btn:hover { background: #059669; transform: translateY(-2px); }
+.danger-btn { background: #EF4444; color: #fff; width: 100%; }
+.danger-btn:hover { background: #DC2626; }
+.disabled { opacity: 0.4; cursor: not-allowed; }
+.hidden { display: none !important; }
+.ride-options-section { margin-top: 10px; display: flex; flex-direction: column; gap: 16px; }
+.section-title { font-size: 1rem; font-weight: 900; color: var(--primary); margin: 0; }
+.ride-options-list { display: flex; flex-direction: column; gap: 10px; }
+.ride-card { background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; align-items: center; gap: 16px; cursor: pointer; transition: all 0.3s; }
+.ride-card:hover { border-color: var(--primary); background: rgba(6, 214, 242, 0.05); }
+.ride-card.selected { border-color: var(--primary); background: rgba(6, 214, 242, 0.1); box-shadow: 0 0 15px var(--primary-glow); }
+.ride-car-icon { font-size: 1.8rem; color: var(--primary); }
+.comfort-car { color: #3B82F6; }
+.black-car { color: #e2e8f0; }
+.ride-info { flex: 1; text-align: right; }
+.ride-name { font-weight: 700; font-size: 0.95rem; }
+.ride-time { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+.ride-price { font-weight: 900; font-size: 1.1rem; color: var(--primary); }
+.trip-summary { background: rgba(0, 0, 0, 0.2); border-radius: 10px; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; font-size: 0.85rem; }
+.summary-item { display: flex; justify-content: space-between; }
+.summary-item strong { color: var(--primary); }
+.status-section { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px 0; gap: 16px; }
+.loader-pulse { width: 60px; height: 60px; border-radius: 50%; background: var(--primary); animation: pulse 1.8s infinite ease-in-out; }
+.status-desc { font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; }
+@keyframes pulse {
+    0% { transform: scale(0.6); opacity: 0.8; }
+    50% { transform: scale(1.1); opacity: 0.4; }
+    100% { transform: scale(0.6); opacity: 0.8; }
+}
+#map { flex: 1; height: 100%; }
+.driver-marker { animation: rotateCar 0.3s ease-in-out; }
+`;
+            const uberAppJs = `'use strict';
+let map;
+let pickupMarker = null;
+let dropoffMarker = null;
+let driverMarker = null;
+let pickupCoords = null;
+let dropoffCoords = null;
+let distanceKm = 0;
+let routeLineId = 'trip-route';
+
+function initMap() {
+    const key = 'N6uNP3sTu25OIBUyi9G1';
+    map = new maplibregl.Map({
+        container: 'map',
+        style: \`https://api.maptiler.com/maps/streets-v2/style.json?key=\${key}\`,
+        center: [35.9106, 31.9539],
+        zoom: 12
+    });
+
+    map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+
+    map.on('click', (e) => {
+        const coords = [e.lngLat.lng, e.lngLat.lat];
+        handleMapClick(coords);
+    });
+
+    document.getElementById('gps-btn').addEventListener('click', () => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((pos) => {
+                const coords = [pos.coords.longitude, pos.coords.latitude];
+                map.flyTo({ center: coords, zoom: 14 });
+                handleMapClick(coords);
+            }, () => {
+                alert('فشل تحديد الموقع الجغرافي. يرجى اختيار نقطة على الخريطة.');
+            });
+        }
+    });
+
+    const calcBtn = document.getElementById('calculate-btn');
+    calcBtn.addEventListener('click', () => {
+        calculateTrip();
+    });
+
+    const cards = document.querySelectorAll('.ride-card');
+    cards.forEach(card => {
+        card.addEventListener('click', () => {
+            cards.forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+        });
+    });
+
+    document.getElementById('book-btn').addEventListener('click', () => {
+        startBooking();
+    });
+
+    document.getElementById('cancel-btn').addEventListener('click', () => {
+        resetTrip();
+    });
+}
+
+function handleMapClick(coords) {
+    if (!pickupCoords) {
+        pickupCoords = coords;
+        document.getElementById('pickup-input').value = \`\${coords[1].toFixed(5)}, \${coords[0].toFixed(5)}\`;
+        const el = document.createElement('div');
+        el.className = 'custom-marker';
+        el.innerHTML = '<i class="fa-solid fa-location-dot" style="font-size:24px; color:#10B981; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));"></i>';
+        
+        pickupMarker = new maplibregl.Marker({ element: el })
+            .setLngLat(coords)
+            .addTo(map);
+            
+    } else if (!dropoffCoords) {
+        dropoffCoords = coords;
+        document.getElementById('dropoff-input').value = \`\${coords[1].toFixed(5)}, \${coords[0].toFixed(5)}\`;
+        const el = document.createElement('div');
+        el.className = 'custom-marker';
+        el.innerHTML = '<i class="fa-solid fa-flag-checkered" style="font-size:24px; color:#EF4444; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));"></i>';
+        
+        dropoffMarker = new maplibregl.Marker({ element: el })
+            .setLngLat(coords)
+            .addTo(map);
+
+        const calcBtn = document.getElementById('calculate-btn');
+        calcBtn.classList.remove('disabled');
+        calcBtn.removeAttribute('disabled');
+    }
+}
+
+function calculateDistance(c1, c2) {
+    const R = 6371;
+    const dLat = (c2[1] - c1[1]) * Math.PI / 180;
+    const dLon = (c2[0] - c1[0]) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(c1[1] * Math.PI / 180) * Math.cos(c2[1] * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+function generateRouteCoordinates(start, end) {
+    const coords = [start];
+    const segments = 8;
+    for (let i = 1; i < segments; i++) {
+        const ratio = i / segments;
+        let lng = start[0] + (end[0] - start[0]) * ratio;
+        let lat = start[1] + (end[1] - start[1]) * ratio;
+        if (i % 2 === 1) {
+            lng += (end[0] - start[0]) * 0.05 * (Math.random() > 0.5 ? 1 : -1);
+        } else {
+            lat += (end[1] - start[1]) * 0.05 * (Math.random() > 0.5 ? 1 : -1);
+        }
+        coords.push([lng, lat]);
+    }
+    coords.push(end);
+    return coords;
+}
+
+function calculateTrip() {
+    if (!pickupCoords || !dropoffCoords) return;
+    distanceKm = calculateDistance(pickupCoords, dropoffCoords);
+    const durationMin = Math.round(distanceKm * 1.5 + 2);
+    
+    document.getElementById('trip-distance').textContent = \`\${distanceKm.toFixed(2)} كم\`;
+    document.getElementById('trip-duration').textContent = \`\${durationMin} دقيقة\`;
+    
+    const uberxPrice = Math.max(1.5, distanceKm * 0.5 + 1.0);
+    const comfortPrice = Math.max(2.5, distanceKm * 0.8 + 1.8);
+    const premiumPrice = Math.max(5.0, distanceKm * 1.5 + 3.0);
+    
+    document.getElementById('price-uberx').textContent = \`\${uberxPrice.toFixed(2)} دينار\`;
+    document.getElementById('price-comfort').textContent = \`\${comfortPrice.toFixed(2)} دينار\`;
+    document.getElementById('price-premium').textContent = \`\${premiumPrice.toFixed(2)} دينار\`;
+
+    const routeCoords = generateRouteCoordinates(pickupCoords, dropoffCoords);
+    drawRouteLine(routeCoords);
+
+    document.getElementById('ride-options-section').classList.remove('hidden');
+    document.getElementById('calculate-btn').classList.add('hidden');
+    
+    const bounds = new maplibregl.LngLatBounds(pickupCoords, pickupCoords);
+    bounds.extend(dropoffCoords);
+    map.fitBounds(bounds, { padding: 60 });
+}
+
+function drawRouteLine(coordinates) {
+    if (map.getLayer(routeLineId)) map.removeLayer(routeLineId);
+    if (map.getSource(routeLineId)) map.removeSource(routeLineId);
+
+    map.addSource(routeLineId, {
+        type: 'geojson',
+        data: {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+                type: 'LineString',
+                coordinates: coordinates
+            }
+        }
+    });
+
+    map.addLayer({
+        id: routeLineId,
+        type: 'line',
+        source: routeLineId,
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: { 'line-color': '#06D6F2', 'line-width': 5, 'line-opacity': 0.85 }
+    });
+}
+
+let bookingInterval = null;
+function startBooking() {
+    document.getElementById('ride-options-section').classList.add('hidden');
+    const statusSection = document.getElementById('status-section');
+    statusSection.classList.remove('hidden');
+    
+    const statusTitle = document.getElementById('status-title');
+    const statusDesc = document.getElementById('status-desc');
+    statusTitle.textContent = "جاري البحث عن كابتن...";
+    statusDesc.textContent = "نبحث عن أقرب كابتن لتلبية طلبك.";
+
+    setTimeout(() => {
+        statusTitle.textContent = "تم قبول الرحلة!";
+        statusDesc.textContent = "الكابتن أحمد (كيا سيراتو بيضاء - 24-5867) قادم إليك الآن.";
+        
+        const driverStart = [
+            pickupCoords[0] + (Math.random() - 0.5) * 0.015,
+            pickupCoords[1] + (Math.random() - 0.5) * 0.015
+        ];
+        
+        const el = document.createElement('div');
+        el.className = 'driver-marker';
+        el.innerHTML = '<i class="fa-solid fa-car-side" style="font-size:24px; color:#06D6F2; filter: drop-shadow(0 2px 6px rgba(6,214,242,0.6));"></i>';
+        
+        driverMarker = new maplibregl.Marker({ element: el })
+            .setLngLat(driverStart)
+            .addTo(map);
+
+        let steps = 50;
+        let step = 0;
+        bookingInterval = setInterval(() => {
+            step++;
+            const ratio = step / steps;
+            const lng = driverStart[0] + (pickupCoords[0] - driverStart[0]) * ratio;
+            const lat = driverStart[1] + (pickupCoords[1] - driverStart[1]) * ratio;
+            
+            if (driverMarker) driverMarker.setLngLat([lng, lat]);
+            
+            if (step >= steps) {
+                clearInterval(bookingInterval);
+                statusTitle.textContent = "وصل الكابتن!";
+                statusDesc.textContent = "الكابتن أحمد متواجد في موقع الانطلاق بانتظارك.";
+                alert("وصل الكابتن إلى موقعك!");
+            }
+        }, 100);
+
+    }, 3000);
+}
+
+function resetTrip() {
+    clearInterval(bookingInterval);
+    if (pickupMarker) pickupMarker.remove();
+    if (dropoffMarker) dropoffMarker.remove();
+    if (driverMarker) driverMarker.remove();
+    
+    if (map.getLayer(routeLineId)) map.removeLayer(routeLineId);
+    if (map.getSource(routeLineId)) map.removeSource(routeLineId);
+
+    pickupMarker = null;
+    dropoffMarker = null;
+    driverMarker = null;
+    pickupCoords = null;
+    dropoffCoords = null;
+    distanceKm = 0;
+
+    document.getElementById('pickup-input').value = '';
+    document.getElementById('dropoff-input').value = '';
+    
+    document.getElementById('ride-options-section').classList.add('hidden');
+    document.getElementById('status-section').classList.add('hidden');
+    
+    const calcBtn = document.getElementById('calculate-btn');
+    calcBtn.classList.remove('hidden');
+    calcBtn.classList.add('disabled');
+    calcBtn.setAttribute('disabled', 'true');
+    
+    map.flyTo({ center: [35.9106, 31.9539], zoom: 12 });
+}
+
+window.onload = initMap;
+`;
+
+            if (isZip) {
+                setIsPublishing(true);
+                try {
+                    if (!window.JSZip) {
+                        await new Promise((resolve, reject) => {
+                            const script = document.createElement('script');
+                            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+                            script.onload = resolve;
+                            script.onerror = reject;
+                            document.head.appendChild(script);
+                        });
+                    }
+                    const zip = new window.JSZip();
+                    zip.file("index.html", uberHtml);
+                    zip.folder("css").file("style.css", uberStyleCss);
+                    zip.folder("js").file("app.js", uberAppJs);
+                    
+                    const content = await zip.generateAsync({ type: 'blob' });
+                    const downloadUrl = URL.createObjectURL(content);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = `Uber_Web_Clone_Project_${Date.now()}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(downloadUrl);
+                } catch (err) {
+                    console.error("ZIP packaging failed:", err);
+                    alert("فشل تصدير المشروع كـ ZIP: " + err.message);
+                } finally {
+                    setIsPublishing(false);
+                }
+            } else {
+                let bundledHtml = uberHtml
+                    .replace('<link rel="stylesheet" href="css/style.css">', `<style>${uberStyleCss}</style>`)
+                    .replace('<script src="js/app.js"></script>', `<script>${uberAppJs}</script>`);
+
+                const blob = new Blob([bundledHtml], { type: 'text/html' });
+                const downloadUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = `Uber_Web_Clone_Design_${Date.now()}.html`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(downloadUrl);
+            }
+            setIsDesignStudioOpen(false);
+            return;
+        }
+
         if (designSelections.commercialTemplate === 'covid19') {
             const covidHtml = `<!DOCTYPE html>
 <html lang="en">
@@ -9087,7 +9578,7 @@ function closeAllInfoWindows() {
                         <div className="ds-brand-icon">
                             <svg viewBox="0 0 32 32" fill="none" stroke="none">
                                 <path fill="var(--primary)" d="M18.5,28h-5c-0.276,0-0.5-0.224-0.5-0.5v-1c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5v1 C19,27.776,18.776,28,18.5,28z M20,24.5v-1c0-0.276-0.224-0.5-0.5-0.5h-7c-0.276,0-0.5,0.224-0.5,0.5v1c0,0.276,0.224,0.5,0.5,0.5 h7C19.776,25,20,24.776,20,24.5z" />
-                                <path fill="white" opacity="0.9" d="M12.005,18.932C9.611,17.55,8,14.963,8,12c0-4.418,3.582-8,8-8s8,3.582,8,8 c0,2.963-1.606,5.55-4,6.932V21.5c0,0.276-0.224,0.5-0.5,0.5H18v-5.134c0.163-0.392,1.415-2.609,1.415-2.609 c0.271-0.457,0.275-1.033,0.01-1.499C19.158,12.29,18.658,12,18.12,12h-4.24c-0.538,0-1.038,0.29-1.305,0.758 c-0.266,0.466-0.261,1.043,0.013,1.505L14,16.866V22h-1.5c-0.276,0-0.5-0.224-0.5-0.5L12.005,18.932z M17,22v-5.271 c0-0.323,1.552-2.977,1.552-2.977C18.749,13.419,18.507,13,18.12,13h-4.24c-0.387,0-0.629,0.419-0.431,0.753 c0,0,1.552,2.652,1.552,2.977V22H17z" />
+                                <path fill="white" opacity="0.9" d="M12.005,18.932C9.611,17.55,8,14.963,8,12c0-4.418,3.582-8,8-8s8,3.582,8,8 c0,2.963-1.606,5.55-4,6.932V21.5c0,0.276-0.224-0.5-0.5-0.5H18v-5.134c0.163-0.392,1.415-2.609,1.415-2.609 c0.271-0.457,0.275-1.033,0.01-1.499C19.158,12.29,18.658,12,18.12,12h-4.24c-0.538,0-1.038,0.29-1.305,0.758 c-0.266,0.466-0.261,1.043,0.013,1.505L14,16.866V22h-1.5c-0.276,0-0.5-0.224-0.5-0.5L12.005,18.932z M17,22v-5.271 c0-0.323,1.552-2.977,1.552-2.977C18.749,13.419,18.507,13,18.12,13h-4.24c-0.387,0-0.629,0.419-0.431,0.753 c0,0,1.552,2.652,1.552,2.977V22H17z" />
                                 <rect x="14.5" y="29.5" width="3" height="1" rx="0.5" fill="var(--primary)" opacity="0.8" />
                                 <rect x="15" y="31" width="2" height="0.8" rx="0.4" fill="var(--primary)" opacity="0.6" />
                             </svg>
@@ -9131,7 +9622,7 @@ function closeAllInfoWindows() {
                         <div className="ds-cat-title">الأقسام الرئيسية</div>
                         {[
                             { id: 'layouts', label: 'التخطيطات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="9" y1="3" x2="9" y2="21" /></svg>, count: 8 },
-                            { id: 'applications', label: 'تطبيقات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="2" y1="20" x2="22" y2="20" /><line x1="12" y1="17" x2="12" y2="20" /></svg>, count: 2 },
+                            { id: 'applications', label: 'تطبيقات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="2" y1="20" x2="22" y2="20" /><line x1="12" y1="17" x2="12" y2="20" /></svg>, count: 3 },
                             { id: 'palettes', label: 'لوحات الألوان', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" /></svg>, count: 8 },
                             { id: 'typography', label: 'الخطوط', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="4 7 4 4 20 4 20 7" /><line x1="9" y1="20" x2="15" y2="20" /><line x1="12" y1="4" x2="12" y2="20" /></svg>, count: 6 },
                             { id: 'basemaps', label: 'الخرائط', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" /></svg>, count: 6 },
@@ -9157,7 +9648,8 @@ function closeAllInfoWindows() {
                                 <div className="ds-grid">
                                     {[
                                         { id: 'none', title: 'بدون تطبيق (خريطة عامة)', sub: 'تصميم خريطة عامة تفاعلية تقليدية لعرض البيانات فقط', icon: '🗺️' },
-                                        { id: 'covid19', title: 'خريطة انتشار كوفيد-19 (COVID-19 Map)', sub: 'تطبيق ويب متكامل لعرض حالات وإحصائيات كورونا حول العالم ومحلياً على الخريطة', icon: '🦠' }
+                                        { id: 'covid19', title: 'خريطة انتشار كوفيد-19 (COVID-19 Map)', sub: 'تطبيق ويب متكامل لعرض حالات وإحصائيات كورونا حول العالم ومحلياً على الخريطة', icon: '🦠' },
+                                        { id: 'uber', title: 'منصة توصيل الركاب (Uber Web Clone)', sub: 'نسخة ويب تفاعلية لطلب وتوصيل الركاب وتحديد المسارات وحساب أسعار الرحلات', icon: '🚗' }
                                     ].map(t => (
                                         <div key={t.id} className={`ds-pick ${designSelections.commercialTemplate === t.id ? 'selected' : (t.id === 'none' && !designSelections.commercialTemplate ? 'selected' : '')}`} onClick={() => setDesignSelections(s => ({ ...s, commercialTemplate: t.id }))}>
                                             <div style={{ fontSize: '2rem', marginBottom: '10px', display: 'flex', justifyContent: 'center' }}>{t.icon}</div>
