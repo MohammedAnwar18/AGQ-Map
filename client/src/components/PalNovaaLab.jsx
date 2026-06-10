@@ -5294,12 +5294,12 @@ out geom;`;
                     <div className="intro-content">
                         <div className="intro-logo">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M9 2h6" />
-                                <path d="M10 2v7.5L4.5 19a2 2 0 0 0 1.7 3h11.6a2 2 0 0 0 1.7-3L14 9.5V2" />
-                                <path d="M7 16h10" />
-                                <circle cx="11" cy="14" r="0.6" fill="currentColor" />
-                                <circle cx="13.5" cy="17" r="0.5" fill="currentColor" />
-                                <circle cx="9.5" cy="18" r="0.5" fill="currentColor" />
+                                {/* شعار المختبر: شبكة جغرافية ودبوس موقع (GIS/Mapping Grid & Location Pin) */}
+                                <circle cx="12" cy="12" r="10" strokeWidth="1.5" opacity="0.4" />
+                                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10M12 2a15.3 15.3 0 0 0-4 10 15.3 15.3 0 0 0 4 10" strokeWidth="1.2" opacity="0.3" />
+                                <path d="M2 12h20M12 2v20" strokeWidth="1.2" opacity="0.3" />
+                                <path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7z" strokeWidth="2" fill="currentColor" fillOpacity="0.15" />
+                                <circle cx="12" cy="9" r="2" fill="currentColor" />
                             </svg>
                         </div>
                         <h1 dir="ltr">PalNovaa <span className="lab-tag">Lab</span></h1>
@@ -5314,9 +5314,12 @@ out geom;`;
                     <div className="brand">
                         <div className="brand-logo">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M9 2h6" />
-                                <path d="M10 2v7.5L4.5 19a2 2 0 0 0 1.7 3h11.6a2 2 0 0 0 1.7-3L14 9.5V2" />
-                                <path d="M7 16h10" />
+                                {/* شعار المختبر: شبكة جغرافية ودبوس موقع (GIS/Mapping Grid & Location Pin) */}
+                                <circle cx="12" cy="12" r="10" strokeWidth="1.5" opacity="0.4" />
+                                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10M12 2a15.3 15.3 0 0 0-4 10 15.3 15.3 0 0 0 4 10" strokeWidth="1.2" opacity="0.3" />
+                                <path d="M2 12h20M12 2v20" strokeWidth="1.2" opacity="0.3" />
+                                <path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7z" strokeWidth="2" fill="currentColor" fillOpacity="0.15" />
+                                <circle cx="12" cy="9" r="2" fill="currentColor" />
                             </svg>
                         </div>
                         <div className="brand-text">
