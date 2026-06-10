@@ -3997,12 +3997,9 @@ out geom;`;
                 const json = JSON.parse(event.target.result);
                 if (json.type === 'FeatureCollection' || json.type === 'Feature') {
                     // الرفع للسيرفر (Cloudflare R2)
-                    const apiUrl = window.location.origin === 'http://localhost:5173' ? 'http://localhost:5001' : '';
-                    const response = await axios.post(`${apiUrl}/api/storage/upload`, {
+                    const response = await api.post('/storage/upload', {
                         geojson: json,
                         layerName: file.name
-                    }, {
-                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
                     });
 
                     if (response.data.success) {
@@ -4129,19 +4126,16 @@ out geom;`;
         if (!importLink) return;
         setIsImporting(true);
         try {
-            const apiUrl = window.location.origin === 'http://localhost:5173' ? 'http://localhost:5001' : '';
-            let endpoint = '/api/storage/upload';
+            let endpoint = '/storage/upload';
             let payload = { url: importLink };
 
             // إذا كان الرابط من ArcGIS
             if (importLink.includes('MapServer') || importLink.includes('FeatureServer')) {
-                endpoint = '/api/storage/import-arcgis';
+                endpoint = '/storage/import-arcgis';
                 payload = { arcgisUrl: importLink };
             }
 
-            const response = await axios.post(`${apiUrl}${endpoint}`, payload, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
+            const response = await api.post(endpoint, payload);
 
             if (response.data.success) {
                 const newLayerId = Date.now().toString();
@@ -4217,10 +4211,7 @@ out geom;`;
 
     const uploadLayerToCloud = async (geojson, layerName) => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.post('/api/storage/upload', { geojson, layerName }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await api.post('/storage/upload', { geojson, layerName });
             return response.data.url;
         } catch (err) {
             console.error("Cloud Upload Failed:", err);
@@ -4323,7 +4314,7 @@ out geom;`;
         var color = style.color || layer.color || '#F5A623';
 
         map.addSource(sourceId, { type: 'geojson', data: geojson });
-        var gtype = geojson.features[0].geometry.type;
+        var gtype = (geojson.features && geojson.features[0] && geojson.features[0].geometry) ? geojson.features[0].geometry.type : 'Point';
         
         if (gtype.includes('Polygon')) {
             map.addLayer({ id: sourceId+'-f', type: 'fill', source: sourceId, paint: { 'fill-color': color, 'fill-opacity': style.fillOpacity || 0.4 } });
@@ -4447,12 +4438,7 @@ out geom;`;
         if (!magicPromptText.trim()) return;
         setIsGenerating(true);
         try {
-            // Use absolute URL if possible, or fallback to relative for proxy
-            const apiUrl = window.location.origin === 'http://localhost:5173'
-                ? 'http://localhost:5001'
-                : '';
-
-            const response = await axios.post(`${apiUrl}/api/ai/generate-design`, {
+            const response = await api.post('/ai/generate-design', {
                 prompt: magicPromptText
             });
 
@@ -4489,9 +4475,7 @@ out geom;`;
 
         setIsPublishing(true);
         try {
-            const apiUrl = window.location.origin === 'http://localhost:5173' ? 'http://localhost:5001' : '';
-            const token = localStorage.getItem('token');
-            const response = await axios.post(`${apiUrl}/api/pages/save`, {
+            const response = await api.post('/pages/save', {
                 name: publishName,
                 slug: publishSlug,
                 status: status,
@@ -4500,10 +4484,6 @@ out geom;`;
                     elements: pageElements,
                     geoLayers: geoLayers,
                     layerStyles: layerStyles
-                }
-            }, {
-                headers: {
-                    Authorization: `Bearer ${token}`
                 }
             });
 
