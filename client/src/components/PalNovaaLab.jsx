@@ -1880,6 +1880,12 @@ const PalNovaaLab = ({ onClose }) => {
         earth: { primary: '#D4C49B', primaryDark: '#A0826D', bg: '#2C1810', surface: '#3D2B1F' },
         neon: { primary: '#EC4899', primaryDark: '#8B5CF6', bg: '#050B16', surface: '#0D1526' },
         minimal: { primary: '#1A1A2E', primaryDark: '#4B5563', bg: '#F5F4ED', surface: '#FFFFFF' },
+        shadcn_zinc: { primary: '#71717a', primaryDark: '#27272a', bg: '#09090b', surface: '#18181b' },
+        shadcn_slate: { primary: '#64748b', primaryDark: '#1e293b', bg: '#020617', surface: '#0f172a' },
+        shadcn_emerald: { primary: '#10b981', primaryDark: '#065f46', bg: '#022c22', surface: '#064e3b' },
+        shadcn_violet: { primary: '#8b5cf6', primaryDark: '#312e81', bg: '#0c0a0f', surface: '#1e1b4b' },
+        shadcn_rose: { primary: '#f43f5e', primaryDark: '#881337', bg: '#1c0d12', surface: '#4c0519' },
+        shadcn_amber: { primary: '#f59e0b', primaryDark: '#78350f', bg: '#271404', surface: '#451a03' },
         custom: { primary: designSelections.customPrimary, primaryDark: designSelections.customPrimary, bg: '#0A1628', surface: '#142B47' }
     };
 
@@ -9681,6 +9687,12 @@ function closeAllInfoWindows() {
             royal: { primary: '#F5A623', primaryDark: '#7C3AED', bg: '#1E1B4B', surface: 'rgba(49, 46, 129, 0.7)', surfaceSolid: '#312E81', border: 'rgba(245, 166, 35, 0.2)', text: '#FFFFFF', primaryGlow: 'rgba(245, 166, 35, 0.3)' },
             neon: { primary: '#06D6F2', primaryDark: '#EC4899', bg: '#050B16', surface: 'rgba(139, 92, 246, 0.3)', surfaceSolid: '#14002E', border: 'rgba(236, 72, 153, 0.3)', text: '#FFFFFF', primaryGlow: 'rgba(6, 214, 242, 0.4)' },
             minimal: { primary: '#F5A623', primaryDark: '#D88B0E', bg: '#FFFFFF', surface: 'rgba(245, 244, 237, 0.9)', surfaceSolid: '#F5F4ED', border: 'rgba(0, 0, 0, 0.1)', text: '#1A1A2E', primaryGlow: 'rgba(245, 166, 35, 0.3)' },
+            shadcn_zinc: { primary: '#71717a', primaryDark: '#27272a', bg: '#09090b', surface: 'rgba(39, 39, 42, 0.6)', surfaceSolid: '#18181b', border: 'rgba(255, 255, 255, 0.08)', text: '#fafafa', primaryGlow: 'rgba(113, 113, 122, 0.3)' },
+            shadcn_slate: { primary: '#64748b', primaryDark: '#1e293b', bg: '#020617', surface: 'rgba(15, 23, 42, 0.6)', surfaceSolid: '#0f172a', border: 'rgba(255, 255, 255, 0.08)', text: '#f8fafc', primaryGlow: 'rgba(100, 116, 139, 0.3)' },
+            shadcn_emerald: { primary: '#10b981', primaryDark: '#065f46', bg: '#022c22', surface: 'rgba(6, 78, 59, 0.6)', surfaceSolid: '#064e3b', border: 'rgba(255, 255, 255, 0.08)', text: '#f0fdf4', primaryGlow: 'rgba(16, 185, 129, 0.3)' },
+            shadcn_violet: { primary: '#8b5cf6', primaryDark: '#312e81', bg: '#0c0a0f', surface: 'rgba(30, 27, 75, 0.6)', surfaceSolid: '#1e1b4b', border: 'rgba(255, 255, 255, 0.08)', text: '#faf5ff', primaryGlow: 'rgba(139, 92, 246, 0.3)' },
+            shadcn_rose: { primary: '#f43f5e', primaryDark: '#881337', bg: '#1c0d12', surface: 'rgba(76, 5, 25, 0.6)', surfaceSolid: '#4c0519', border: 'rgba(255, 255, 255, 0.08)', text: '#fff1f2', primaryGlow: 'rgba(244, 63, 94, 0.3)' },
+            shadcn_amber: { primary: '#f59e0b', primaryDark: '#78350f', bg: '#271404', surface: 'rgba(69, 26, 3, 0.6)', surfaceSolid: '#451a03', border: 'rgba(255, 255, 255, 0.08)', text: '#fffbeb', primaryGlow: 'rgba(245, 158, 11, 0.3)' },
             custom: {
                 primary: designSelections.customPrimary,
                 primaryDark: designSelections.customPrimary,
@@ -9959,6 +9971,25 @@ function closeAllInfoWindows() {
         .cel-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; text-align: right; font-family: var(--font-b); }
         .cel-icon-wrap { display: flex; justify-content: center; }
         .cel-icon { width: 48px; height: 48px; }
+        .cel-accordion { background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; font-family: var(--font-b); font-size: 0.9rem; }
+        .cel-accordion-head { display: flex; justify-content: space-between; align-items: center; font-weight: bold; cursor: pointer; }
+        .cel-alert { background: rgba(16,185,129,0.1); border: 1px solid var(--primary); border-radius: 10px; padding: 12px 16px; font-family: var(--font-b); display: flex; gap: 12px; align-items: center; }
+        .cel-alert-icon { font-size: 1.3rem; }
+        .cel-avatar { display: flex; align-items: center; gap: 10px; font-family: var(--font-b); }
+        .cel-avatar-circle { width: 36px; height: 36px; border-radius: 50%; background: var(--primary); color: #000; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.95rem; }
+        .cel-slider { padding: 10px 0; font-family: var(--font-b); }
+        .cel-slider-track { height: 6px; background: rgba(255,255,255,0.1); border-radius: 999px; position: relative; margin-top: 8px; }
+        .cel-slider-fill { position: absolute; top: 0; right: 0; bottom: 0; left: 30%; background: var(--primary); border-radius: 999px; }
+        .cel-slider-thumb { position: absolute; top: 50%; left: 30%; transform: translate(-50%, -50%); width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 2px solid var(--primary); }
+        .cel-switch { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; font-family: var(--font-b); }
+        .cel-switch-track { width: 36px; height: 20px; background: var(--primary); border-radius: 999px; position: relative; }
+        .cel-switch-thumb { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #000; }
+        .cel-progress { padding: 6px 0; font-family: var(--font-b); }
+        .cel-progress-track { height: 10px; background: rgba(255,255,255,0.1); border-radius: 999px; overflow: hidden; margin-top: 6px; }
+        .cel-progress-fill { height: 100%; background: var(--primary); border-radius: 999px; }
+        .cel-tabs { background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: 8px; padding: 4px; display: flex; gap: 4px; font-family: var(--font-b); }
+        .cel-tab-item { flex: 1; padding: 6px 12px; font-size: 0.85rem; font-weight: bold; border-radius: 6px; text-align: center; }
+        .cel-tab-item.active { background: var(--primary); color: #000; }
         ` : '';
 
         const layersListHTML = exportLayers.map(l =>
@@ -9991,6 +10022,13 @@ function closeAllInfoWindows() {
             else if (el.type === 'badge') inner = `<span class="cel-badge" style="font-size:${el.fontSize || 0.85}rem;${bgClr}">${el.text}</span>`;
             else if (el.type === 'card') inner = `<div class="cel-card" style="${brClr}"><h4 style="margin:0 0 8px 0;${clr}">${el.text}</h4><p style="margin:0;font-size:0.85rem;opacity:0.7;">وصف المكون الجاهز...</p></div>`;
             else if (el.type === 'icon') inner = `<div class="cel-icon-wrap" style="${clr}"><svg class="cel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${el.icon && (el.icon.includes('points') ? `<polygon points="${el.icon}" />` : `<path d="${el.icon}" />`)}</svg></div>`;
+            else if (el.type === 'shadcn_accordion') inner = `<div class="cel-accordion" style="\${brClr}"><div class="cel-accordion-head" style="\${clr}"><span>\${el.text}</span><span>▼</span></div></div>`;
+            else if (el.type === 'shadcn_alert') inner = `<div class="cel-alert" style="\${brClr}"><span class="cel-alert-icon" style="\${clr}">🔔</span><div><div style="font-weight:bold;font-size:0.95rem;\${clr}">تنبيه هام</div><div style="opacity:0.8;font-size:0.82rem;">\${el.text}</div></div></div>`;
+            else if (el.type === 'shadcn_avatar') inner = `<div class="cel-avatar"><div class="cel-avatar-circle" style="\${bgClr}">PN</div><span style="font-size:0.9rem;\${clr}">\${el.text}</span></div>`;
+            else if (el.type === 'shadcn_slider') inner = `<div class="cel-slider"><div style="display:flex;justify-content:space-between;font-size:0.8rem;opacity:0.8;\${clr}"><span>\${el.text}</span><span>70%</span></div><div class="cel-slider-track"><div class="cel-slider-fill" style="\${bgClr}"></div><div class="cel-slider-thumb" style="\${brClr}"></div></div></div>`;
+            else if (el.type === 'shadcn_switch') inner = `<div class="cel-switch" style="\${clr}"><span>\${el.text}</span><div class="cel-switch-track" style="\${bgClr}"><div class="cel-switch-thumb"></div></div></div>`;
+            else if (el.type === 'shadcn_progress') inner = `<div class="cel-progress"><div style="display:flex;justify-content:space-between;font-size:0.8rem;opacity:0.8;\${clr}"><span>\${el.text}</span><span>60%</span></div><div class="cel-progress-track"><div class="cel-progress-fill" style="width:60%;\${bgClr}"></div></div></div>`;
+            else if (el.type === 'shadcn_tabs') inner = `<div class="cel-tabs"><div class="cel-tab-item active" style="\${bgClr}">\${el.text}</div><div class="cel-tab-item" style="opacity:0.6;\${clr}">خيارات</div></div>`;
             return `<div class="cel" style="${wStyle}">${inner}</div>`;
         }).join('\n            ')}
         </div>` : '';
@@ -13069,7 +13107,13 @@ function closeAllInfoWindows() {
                                         { id: 'forest', title: 'الغابة', sub: 'طبيعة خضراء منعشة', colors: ['#10D9A0', '#059669', '#064E3B', '#A7F3D0', '#F5F4ED'] },
                                         { id: 'earth', title: 'ألوان ترابية', sub: 'ألوان ترابية كلاسيكية', colors: ['#D4C49B', '#A0826D', '#5C4033', '#F5F4ED', '#2C1810'] },
                                         { id: 'neon', title: 'نيون مستقبلي', sub: 'مستقبلي وعصري', colors: ['#06D6F2', '#8B5CF6', '#EC4899', '#050B16', '#F5A623'] },
-                                        { id: 'minimal', title: 'بسيط', sub: 'بساطة وأناقة', colors: ['#FFFFFF', '#F5F4ED', '#E5E5E5', '#1A1A2E', '#F5A623'] }
+                                        { id: 'minimal', title: 'بسيط', sub: 'بساطة وأناقة', colors: ['#FFFFFF', '#F5F4ED', '#E5E5E5', '#1A1A2E', '#F5A623'] },
+                                        { id: 'shadcn_zinc', title: 'Shadcn Zinc', sub: 'رمادي داكن كلاسيكي ونظيف', colors: ['#71717a', '#09090b', '#18181b', '#27272a', '#fafafa'] },
+                                        { id: 'shadcn_slate', title: 'Shadcn Slate', sub: 'لوحة سليت احترافية وذكية', colors: ['#64748b', '#020617', '#0f172a', '#1e293b', '#f8fafc'] },
+                                        { id: 'shadcn_emerald', title: 'Shadcn Emerald', sub: 'زمردي حيوي وهادئ', colors: ['#10b981', '#022c22', '#064e3b', '#065f46', '#f0fdf4'] },
+                                        { id: 'shadcn_violet', title: 'Shadcn Violet', sub: 'بنفسجي داكن فاخر وعصري', colors: ['#8b5cf6', '#0c0a0f', '#1e1b4b', '#312e81', '#faf5ff'] },
+                                        { id: 'shadcn_rose', title: 'Shadcn Rose', sub: 'وردي ورد جوري دافئ', colors: ['#f43f5e', '#1c0d12', '#4c0519', '#881337', '#fff1f2'] },
+                                        { id: 'shadcn_amber', title: 'Shadcn Amber', sub: 'أمبر دافئ برتقالي ذهبي', colors: ['#f59e0b', '#271404', '#451a03', '#78350f', '#fffbeb'] }
                                     ].map(p => (
                                         <div key={p.id} className={`ds-pick ${designSelections.palette === p.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({ ...s, palette: p.id }))}>
                                             <div className="palette-strip">
@@ -13397,7 +13441,14 @@ function closeAllInfoWindows() {
                                                         { type: 'search', label: 'حقل بحث', preview: '🔍' },
                                                         { type: 'stat', label: 'بطاقة رقمية', preview: '42' },
                                                         { type: 'card', label: 'بطاقة معلومات', preview: '▭' },
-                                                        { type: 'layers', label: 'متحكم طبقات', preview: '⊞' }
+                                                        { type: 'layers', label: 'متحكم طبقات', preview: '⊞' },
+                                                        { type: 'shadcn_accordion', label: 'أكورديون Shadcn', preview: 'accordion' },
+                                                        { type: 'shadcn_alert', label: 'تنبيه Shadcn', preview: 'alert' },
+                                                        { type: 'shadcn_avatar', label: 'صورة رمزية Shadcn', preview: 'avatar' },
+                                                        { type: 'shadcn_slider', label: 'منزلق Shadcn', preview: 'slider' },
+                                                        { type: 'shadcn_switch', label: 'مفتاح Shadcn', preview: 'switch' },
+                                                        { type: 'shadcn_progress', label: 'تقدم Shadcn', preview: 'progress' },
+                                                        { type: 'shadcn_tabs', label: 'تبويبات Shadcn', preview: 'tabs' }
                                                     ].map(el => (
                                                         <div key={el.type} draggable onDragStart={e => { e.dataTransfer.setData('elType', el.type); e.dataTransfer.setData('elLabel', el.label); }} className="builder-el-card">
                                                             <div className="el-preview-box" style={{ fontSize: '1rem' }}>{el.preview}</div>
@@ -13527,6 +13578,66 @@ function closeAllInfoWindows() {
                                                     {el.type === 'divider' && <hr style={{ border: 'none', borderTop: `1px solid ${el.color || 'rgba(255,255,255,0.15)'}`, margin: '4px 0' }} />}
                                                     {el.type === 'badge' && <span style={{ background: el.color || 'var(--primary)', color: '#000', borderRadius: '999px', padding: '2px 10px', fontSize: '0.7rem', fontWeight: 'bold', display: 'inline-block', fontFamily: 'var(--font-b)' }}>{el.text}</span>}
                                                     {el.type === 'card' && <div style={{ background: 'rgba(20,43,71,0.6)', border: `1px solid ${el.color || 'var(--border)'}`, borderRadius: '10px', padding: '10px', textAlign: 'right', fontFamily: 'var(--font-b)' }}><div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#fff', marginBottom: '4px' }}>{el.text}</div><div style={{ fontSize: '0.6rem', opacity: 0.6 }}>نص وصفي للبطاقة...</div></div>}
+                                                    {el.type === 'shadcn_accordion' && (
+                                                        <div style={{ background: 'rgba(0,0,0,0.3)', border: `1px solid ${el.color || 'rgba(255,255,255,0.1)'}`, borderRadius: '8px', padding: '6px 12px', fontSize: '0.72rem', color: '#fff', fontFamily: 'var(--font-b)' }}>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 'bold' }}>
+                                                                <span>{el.text || 'أسئلة شائعة'}</span>
+                                                                <span style={{ fontSize: '0.6rem', opacity: 0.6 }}>▼</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {el.type === 'shadcn_alert' && (
+                                                        <div style={{ background: 'rgba(16,185,129,0.1)', border: `1px solid ${el.color || 'var(--primary)'}`, borderRadius: '8px', padding: '6px 10px', fontSize: '0.7rem', display: 'flex', gap: '8px', alignItems: 'center', color: '#fff', fontFamily: 'var(--font-b)' }}>
+                                                            <span style={{ color: el.color || 'var(--primary)' }}>🔔</span>
+                                                            <div>
+                                                                <div style={{ fontWeight: 'bold', fontSize: '0.75rem' }}>تنبيه هام</div>
+                                                                <div style={{ opacity: 0.8, fontSize: '0.65rem' }}>{el.text || 'رسالة التنبيه الافتراضية'}</div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {el.type === 'shadcn_avatar' && (
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-b)' }}>
+                                                            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: el.color || 'var(--primary)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.75rem' }}>PN</div>
+                                                            <div style={{ fontSize: '0.7rem', color: '#fff' }}>{el.text || 'مستخدم بال نوفا'}</div>
+                                                        </div>
+                                                    )}
+                                                    {el.type === 'shadcn_slider' && (
+                                                        <div style={{ padding: '6px 0', fontFamily: 'var(--font-b)', width: '100%' }}>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', opacity: 0.7, marginBottom: '4px' }}>
+                                                                <span>{el.text || 'المستوى'}</span>
+                                                                <span>70%</span>
+                                                            </div>
+                                                            <div style={{ height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '999px', position: 'relative' }}>
+                                                                <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: '30%', background: el.color || 'var(--primary)', borderRadius: '999px' }}></div>
+                                                                <div style={{ position: 'absolute', top: '50%', left: '30%', transform: 'translate(-50%, -50%)', width: '10px', height: '10px', borderRadius: '50%', background: '#fff', border: `2px solid ${el.color || 'var(--primary)'}` }}></div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {el.type === 'shadcn_switch' && (
+                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0', fontFamily: 'var(--font-b)', fontSize: '0.7rem', width: '100%' }}>
+                                                            <span>{el.text || 'تفعيل الوضع'}</span>
+                                                            <div style={{ width: '28px', height: '16px', background: el.color || 'var(--primary)', borderRadius: '999px', position: 'relative' }}>
+                                                                <div style={{ position: 'absolute', top: '2px', left: '2px', width: '12px', height: '12px', borderRadius: '50%', background: '#000' }}></div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {el.type === 'shadcn_progress' && (
+                                                        <div style={{ padding: '4px 0', fontFamily: 'var(--font-b)', width: '100%' }}>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', opacity: 0.7, marginBottom: '4px' }}>
+                                                                <span>{el.text || 'التقدم'}</span>
+                                                                <span>60%</span>
+                                                            </div>
+                                                            <div style={{ height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '999px', overflow: 'hidden' }}>
+                                                                <div style={{ width: '60%', height: '100%', background: el.color || 'var(--primary)', borderRadius: '999px' }}></div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {el.type === 'shadcn_tabs' && (
+                                                        <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '6px', padding: '2px', display: 'flex', gap: '2px', fontFamily: 'var(--font-b)', width: '100%' }}>
+                                                            <div style={{ flex: 1, padding: '4px 2px', fontSize: '0.65rem', fontWeight: 'bold', background: el.color || 'var(--primary)', color: '#000', borderRadius: '4px', textAlign: 'center' }}>{el.text || 'تبويب 1'}</div>
+                                                            <div style={{ flex: 1, padding: '4px 2px', fontSize: '0.65rem', color: '#fff', borderRadius: '4px', textAlign: 'center', opacity: 0.6 }}>خيارات</div>
+                                                        </div>
+                                                    )}
                                                     {el.type === 'icon' && (
                                                         <div style={{ color: el.color || 'var(--primary)', display: 'flex', justifyContent: 'center' }}>
                                                             <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" strokeWidth="2">
