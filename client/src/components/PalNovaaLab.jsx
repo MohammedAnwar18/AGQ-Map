@@ -4933,7 +4933,7 @@ out geom;`;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>أوبر ويب - حجز سيارات أجرة</title>
+    <title>سفريات بال نوفا - حجز سيارات أجرة</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;700;900&family=Tajawal:wght@300;400;700;900&display=swap" rel="stylesheet">
@@ -4946,12 +4946,22 @@ out geom;`;
         <aside class="sidebar">
             <div class="brand">
                 <i class="fa-solid fa-car-side logo-icon"></i>
-                <span class="brand-text">Uber <span class="brand-sub">Web</span></span>
+                <span class="brand-text">سفريات بال نوفا</span>
             </div>
             
             <p class="intro-text">احجز رحلتك بكل سهولة. انقر على الخريطة لتحديد نقطة الانطلاق والوصول.</p>
             
             <div class="booking-form">
+                <div class="input-group">
+                    <label><i class="fa-solid fa-signature"></i> اسم الخدمة / التطبيق</label>
+                    <input type="text" id="app-name-input" value="سفريات بال نوفا" placeholder="أدخل اسم الخدمة...">
+                </div>
+                
+                <div class="input-group">
+                    <label><i class="fa-solid fa-shekel-sign"></i> سعر الكيلومتر (شيكل)</label>
+                    <input type="number" id="rate-input" value="5.0" min="0.5" step="0.5">
+                </div>
+
                 <div class="input-group">
                     <label><i class="fa-solid fa-location-dot pickup-icon"></i> موقع الانطلاق</label>
                     <div class="input-wrapper">
@@ -5173,6 +5183,11 @@ function initMap() {
     document.getElementById('cancel-btn').addEventListener('click', () => {
         resetTrip();
     });
+
+    document.getElementById('app-name-input').addEventListener('input', (e) => {
+        const val = e.target.value.trim() || 'سفريات بال نوفا';
+        document.querySelector('.brand-text').textContent = val;
+    });
 }
 
 function handleMapClick(coords) {
@@ -5233,23 +5248,55 @@ function generateRouteCoordinates(start, end) {
     return coords;
 }
 
-function calculateTrip() {
+async function calculateTrip() {
     if (!pickupCoords || !dropoffCoords) return;
-    distanceKm = calculateDistance(pickupCoords, dropoffCoords);
-    const durationMin = Math.round(distanceKm * 1.5 + 2);
     
-    document.getElementById('trip-distance').textContent = \`\${distanceKm.toFixed(2)} كم\`;
-    document.getElementById('trip-duration').textContent = \`\${durationMin} دقيقة\`;
-    
-    const uberxPrice = Math.max(1.5, distanceKm * 0.5 + 1.0);
-    const comfortPrice = Math.max(2.5, distanceKm * 0.8 + 1.8);
-    const premiumPrice = Math.max(5.0, distanceKm * 1.5 + 3.0);
-    
-    document.getElementById('price-uberx').textContent = \`\${uberxPrice.toFixed(2)} دينار\`;
-    document.getElementById('price-comfort').textContent = \`\${comfortPrice.toFixed(2)} دينار\`;
-    document.getElementById('price-premium').textContent = \`\${premiumPrice.toFixed(2)} دينار\`;
+    const calcBtn = document.getElementById('calculate-btn');
+    const originalText = calcBtn.textContent;
+    calcBtn.textContent = 'جاري رسم المسار وحساب التكلفة...';
+    calcBtn.classList.add('disabled');
+    calcBtn.setAttribute('disabled', 'true');
 
-    const routeCoords = generateRouteCoordinates(pickupCoords, dropoffCoords);
+    let routeCoords = null;
+    try {
+        const url = \`https://router.project-osrm.org/route/v1/driving/\${pickupCoords[0]},\${pickupCoords[1]};\${dropoffCoords[0]},\${dropoffCoords[1]}?overview=full&geometries=geojson\`;
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+            const route = data.routes[0];
+            distanceKm = route.distance / 1000;
+            const durationMin = Math.round(route.duration / 60);
+            document.getElementById('trip-duration').textContent = \`\${durationMin} دقيقة\`;
+            routeCoords = route.geometry.coordinates;
+        } else {
+            throw new Error('OSRM routing failed');
+        }
+    } catch (err) {
+        console.warn('OSRM routing failed, using fallback:', err);
+        distanceKm = calculateDistance(pickupCoords, dropoffCoords);
+        const durationMin = Math.round(distanceKm * 1.5 + 2);
+        document.getElementById('trip-duration').textContent = \`\${durationMin} دقيقة\`;
+        routeCoords = generateRouteCoordinates(pickupCoords, dropoffCoords);
+    }
+
+    calcBtn.textContent = originalText;
+    calcBtn.classList.remove('disabled');
+    calcBtn.removeAttribute('disabled');
+
+    document.getElementById('trip-distance').textContent = \`\${distanceKm.toFixed(2)} كم\`;
+    
+    // Read price per km from rate input
+    const ratePerKm = parseFloat(document.getElementById('rate-input').value) || 5.0;
+    
+    const uberxPrice = Math.max(10, distanceKm * ratePerKm);
+    const comfortPrice = Math.max(15, distanceKm * ratePerKm * 1.5);
+    const premiumPrice = Math.max(25, distanceKm * ratePerKm * 2.5);
+    
+    document.getElementById('price-uberx').textContent = \`\${uberxPrice.toFixed(2)} ₪\`;
+    document.getElementById('price-comfort').textContent = \`\${comfortPrice.toFixed(2)} ₪\`;
+    document.getElementById('price-premium').textContent = \`\${premiumPrice.toFixed(2)} ₪\`;
+
     drawRouteLine(routeCoords);
 
     document.getElementById('ride-options-section').classList.remove('hidden');
