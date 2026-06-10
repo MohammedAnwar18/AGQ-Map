@@ -202,7 +202,8 @@ const PalNovaaLab = ({ onClose }) => {
         mapBorderColor: 'rgba(255, 255, 255, 0.15)',
         mapBorderWidth: '1px',
         customFontHeading: 'Cairo',
-        customFontBody: 'Tajawal'
+        customFontBody: 'Tajawal',
+        commercialTemplate: 'none'
     });
 
     const mapStyle = useMemo(() => {
@@ -4925,19 +4926,48 @@ out geom;`;
         }
     };
 
-    const performActualExport = async () => {
+    const performActualExport = async (isZip = false) => {
         const map = mapRef.current?.getMap();
         const center = map ? map.getCenter() : { lng: mapState.longitude, lat: mapState.latitude };
         const zoom = map ? map.getZoom() : mapState.zoom;
         const pitch = map ? map.getPitch() : mapState.pitch;
         const bearing = map ? map.getBearing() : mapState.bearing;
 
-        // 1. Prepare Layers
+        // Helper to round coordinates to 6 decimal places (saves ~50% space)
+        const roundCoords = (coords) => {
+            if (typeof coords === 'number') return Math.round(coords * 1000000) / 1000000;
+            if (Array.isArray(coords)) return coords.map(roundCoords);
+            return coords;
+        };
+
+        // 1. Prepare Layers & Files to Zip
         const exportLayers = [];
+        const filesToZip = [];
+        
         for (const layer of geoLayers) {
             let data = layer.data;
             let url = layer.url;
-            if (layer.type === 'raster' && url && url.startsWith('blob:')) {
+            
+            if (layer.type !== 'raster-tile' && layer.type !== 'raster') {
+                if (data) {
+                    const cleanFeatures = (data.features || []).map(f => ({
+                        ...f,
+                        geometry: f.geometry ? {
+                            ...f.geometry,
+                            coordinates: roundCoords(f.geometry.coordinates)
+                        } : null
+                    }));
+                    const cleanData = { ...data, features: cleanFeatures };
+                    
+                    if (isZip) {
+                        const fileName = `data/layer_${layer.id}.geojson`;
+                        filesToZip.push({ name: fileName, content: JSON.stringify(cleanData) });
+                        url = `./${fileName}`;
+                    } else {
+                        url = cleanData;
+                    }
+                }
+            } else if (layer.type === 'raster' && url && url.startsWith('blob:')) {
                 try {
                     const res = await fetch(url);
                     const blob = await res.blob();
@@ -4950,7 +4980,6 @@ out geom;`;
                 } catch (e) { console.error(e); }
             }
 
-            // Get custom style or default
             const style = layerStyles[layer.id] || {
                 color: layer.color || '#F5A623',
                 outlineColor: '#ffffff',
@@ -4961,11 +4990,15 @@ out geom;`;
             };
 
             exportLayers.push({
-                id: layer.id, name: layer.name, type: layer.type || 'vector',
-                data: data,
-                dataUrl: layer.dataUrl || layer.url, // Ensure we pass the URL for optimization
-                coordinates: layer.coordinates, color: layer.color,
-                style: style
+                id: layer.id,
+                name: layer.name,
+                type: layer.type || 'vector',
+                data: layer.type === 'raster-tile' ? null : data,
+                dataUrl: layer.type === 'raster-tile' ? layer.url : (layer.dataUrl || layer.url),
+                coordinates: layer.coordinates,
+                color: layer.color,
+                style: style,
+                url: url
             });
         }
 
@@ -5023,7 +5056,6 @@ out geom;`;
             layers: [{ id: 'base-layer', type: 'raster', source: 'base-tiles', minzoom: 0, maxzoom: 22 }]
         };
 
-
         let effectCSS = '';
         if (designSelections.effect === 'glow') effectCSS = '.card-panel { box-shadow: 0 0 30px var(--primary-glow) !important; border-color: var(--primary) !important; }';
         else if (designSelections.effect === 'glass') effectCSS = '.card-panel { background: rgba(0,0,0,0.2) !important; backdrop-filter: blur(24px) !important; border: 1px solid rgba(255,255,255,0.2) !important; }';
@@ -5074,161 +5106,1168 @@ out geom;`;
             </div>
         `;
 
+        // 3. Setup Layout / Commercial Templates Overrides
         let layoutCSS = '';
         let layoutHTML = '';
+        let templateJS = '';
 
-        switch (designSelections.layout) {
-            case 'sidebar':
-                layoutCSS = `
-                    .app-container { display: flex; height: 100vh; width: 100vw; }
-                    .sidebar { width: 340px; background: var(--surface-solid); border-left: 1px solid var(--border); padding: 24px; display: flex; flex-direction: column; overflow-y: auto; z-index: 10; }
-                `;
-                layoutHTML = `
-                    <aside class="sidebar card-panel">
-                        <h2 style="color:var(--primary);margin-top:0;font-family:var(--font-h);">الطبقات المتاحة</h2>
-                        <div class="layers-list">${layersHTML}</div>
-                    </aside>
-                    ${mapContainerHTML}
-                `;
-                break;
-            case 'three':
-                layoutCSS = `
-                    .app-container { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
-                    .top-nav { height: 60px; background: var(--surface-solid); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; z-index: 10; }
-                    .main-content { flex: 1; display: flex; overflow: hidden; }
-                    .left-panel { width: 300px; background: var(--surface-solid); border-left: 1px solid var(--border); padding: 20px; overflow-y: auto; }
-                    .right-panel { width: 350px; background: var(--bg); border-right: 1px solid var(--border); padding: 20px; overflow-y: auto; }
-                `;
-                layoutHTML = `
-                    <nav class="top-nav card-panel">
-                        <h2 style="margin:0;color:var(--primary);font-family:var(--font-h);font-size:1.4rem;">مختبر التحليل الذكي</h2>
-                    </nav>
-                    <div class="main-content">
-                        <aside class="left-panel">
-                            <h3 style="color:var(--primary);margin-top:0;font-family:var(--font-h);">الطبقات</h3>
+        if (!designSelections.commercialTemplate || designSelections.commercialTemplate === 'none') {
+            switch (designSelections.layout) {
+                case 'sidebar':
+                    layoutCSS = `
+                        .app-container { display: flex; height: 100vh; width: 100vw; }
+                        .sidebar { width: 340px; background: var(--surface-solid); border-left: 1px solid var(--border); padding: 24px; display: flex; flex-direction: column; overflow-y: auto; z-index: 10; }
+                    `;
+                    layoutHTML = `
+                        <aside class="sidebar card-panel">
+                            <h2 style="color:var(--primary);margin-top:0;font-family:var(--font-h);">الطبقات المتاحة</h2>
                             <div class="layers-list">${layersHTML}</div>
                         </aside>
                         ${mapContainerHTML}
-                        <aside class="right-panel card-panel">
-                            <h3 style="color:var(--primary);margin-top:0;font-family:var(--font-h);">إحصائيات فورية</h3>
-                            <div class="stat-card card-panel" style="margin-bottom:15px;"><div class="stat-num">${exportLayers.length}</div><div class="stat-label">طبقة نشطة</div></div>
-                            <div class="stat-card card-panel"><div class="stat-num">${exportLayers.reduce((sum, l) => sum + (l.data?.features?.length || 0), 0)}</div><div class="stat-label">معلم جغرافي</div></div>
-                        </aside>
-                    </div>
-                `;
-                break;
-            case 'split':
-                layoutCSS = `
-                    .app-container { display: flex; height: 100vh; width: 100vw; }
-                    .side-content { flex: 1; background: var(--bg); padding: 40px; display: flex; flex-direction: column; justify-content: center; z-index: 10; }
-                `;
-                layoutHTML = `
-                    <div class="side-content card-panel">
-                        <h1 style="color:var(--primary);font-size:3rem;margin-bottom:10px;font-family:var(--font-h);">نظرة مكانية</h1>
-                        <p style="opacity:0.8;font-size:1.2rem;line-height:1.8;">استكشف البيانات الجغرافية بدقة من خلال هذه الخريطة التفاعلية المصممة خصيصاً لاحتياجاتك.</p>
-                        <div style="margin-top:40px;">${layersHTML}</div>
-                    </div>
-                    ${mapContainerHTML}
-                `;
-                break;
-            case 'dashboard':
-                layoutCSS = `
-                    .app-container { display: flex; flex-direction: column; height: 100vh; width: 100vw; background: var(--bg); }
-                    .dash-header { height: 70px; background: var(--surface-solid); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; z-index: 10; }
-                    .dash-body { flex: 1; display: flex; flex-direction: column; padding: 20px; gap: 20px; }
-                    .dash-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; height: 120px; }
-                    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-                    .stat-num { font-size: 2rem; font-weight: 800; color: var(--primary); font-family:var(--font-h); }
-                    .stat-label { font-size: 1rem; opacity: 0.7; }
-                `;
-                layoutHTML = `
-                    <header class="dash-header card-panel">
-                        <h2 style="margin:0;color:var(--primary);font-family:var(--font-h);">لوحة القيادة المكانية</h2>
-                    </header>
-                    <div class="dash-body">
-                        ${mapContainerHTML}
-                        <div class="dash-stats">
-                            <div class="stat-card card-panel"><div class="stat-num">${exportLayers.length}</div><div class="stat-label">إجمالي الطبقات</div></div>
-                            <div class="stat-card card-panel"><div class="stat-num">${exportLayers.reduce((sum, l) => sum + (l.data?.features?.length || 0), 0)}</div><div class="stat-label">المعالم الجغرافية</div></div>
-                            <div class="stat-card card-panel"><div class="stat-num">100%</div><div class="stat-label">دقة البيانات</div></div>
-                            <div class="stat-card card-panel"><div class="stat-num">نشط</div><div class="stat-label">حالة النظام</div></div>
+                    `;
+                    break;
+                case 'three':
+                    layoutCSS = `
+                        .app-container { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
+                        .top-nav { height: 60px; background: var(--surface-solid); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; z-index: 10; }
+                        .main-content { flex: 1; display: flex; overflow: hidden; }
+                        .left-panel { width: 300px; background: var(--surface-solid); border-left: 1px solid var(--border); padding: 20px; overflow-y: auto; }
+                        .right-panel { width: 350px; background: var(--bg); border-right: 1px solid var(--border); padding: 20px; overflow-y: auto; }
+                    `;
+                    layoutHTML = `
+                        <nav class="top-nav card-panel">
+                            <h2 style="margin:0;color:var(--primary);font-family:var(--font-h);font-size:1.4rem;">مختبر التحليل الذكي</h2>
+                        </nav>
+                        <div class="main-content">
+                            <aside class="left-panel">
+                                <h3 style="color:var(--primary);margin-top:0;font-family:var(--font-h);">الطبقات</h3>
+                                <div class="layers-list">${layersHTML}</div>
+                            </aside>
+                            ${mapContainerHTML}
+                            <aside class="right-panel card-panel">
+                                <h3 style="color:var(--primary);margin-top:0;font-family:var(--font-h);">إحصائيات فورية</h3>
+                                <div class="stat-card card-panel" style="margin-bottom:15px;"><div class="stat-num">${exportLayers.length}</div><div class="stat-label">طبقة نشطة</div></div>
+                                <div class="stat-card card-panel"><div class="stat-num">${exportLayers.reduce((sum, l) => sum + (l.data?.features?.length || 0), 0)}</div><div class="stat-label">معلم جغرافي</div></div>
+                            </aside>
                         </div>
-                    </div>
-                `;
-                break;
-            case 'modal':
-                layoutCSS = `
-                    .app-container { display: flex; height: 100vh; width: 100vw; background: var(--bg); justify-content: center; align-items: center; padding: 40px; }
-                    .modal-wrapper { width: 100%; max-width: 1200px; height: 80vh; background: var(--surface-solid); border-radius: 24px; border: 1px solid var(--border); overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 30px 80px rgba(0,0,0,0.6); }
-                    .modal-header { padding: 20px 30px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--surface); }
-                `;
-                layoutHTML = `
-                    <div class="modal-wrapper card-panel">
-                        <div class="modal-header">
-                            <h2 style="margin:0;color:var(--primary);font-family:var(--font-h);">عارض الخريطة</h2>
-                            <div style="display:flex;gap:10px;">${exportLayers.slice(0, 3).map(l => `<span style="background:var(--bg);padding:5px 12px;border-radius:20px;font-size:0.8rem;border:1px solid ${l.style?.color || l.color}">${l.name}</span>`).join('')}</div>
+                    `;
+                    break;
+                case 'split':
+                    layoutCSS = `
+                        .app-container { display: flex; height: 100vh; width: 100vw; }
+                        .side-content { flex: 1; background: var(--bg); padding: 40px; display: flex; flex-direction: column; justify-content: center; z-index: 10; }
+                    `;
+                    layoutHTML = `
+                        <div class="side-content card-panel">
+                            <h1 style="color:var(--primary);font-size:3rem;margin-bottom:10px;font-family:var(--font-h);">نظرة مكانية</h1>
+                            <p style="opacity:0.8;font-size:1.2rem;line-height:1.8;">استكشف البيانات الجغرافية بدقة من خلال هذه الخريطة التفاعلية المصممة خصيصاً لاحتياجاتك.</p>
+                            <div style="margin-top:40px;">${layersHTML}</div>
                         </div>
                         ${mapContainerHTML}
-                    </div>
-                `;
-                break;
-            case 'floating':
-                layoutCSS = `
-                    .app-container { display: flex; height: 100vh; width: 100vw; }
-                    .f-card { position: absolute; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; backdrop-filter: blur(15px); padding: 24px; z-index: 10; box-shadow: 0 15px 35px rgba(0,0,0,0.3); }
-                    .f-bottom-left { bottom: 40px; left: 30px; width: 400px; }
-                `;
-                layoutHTML = `
-                    ${mapContainerHTML}
-                    <div class="f-card f-bottom-left card-panel">
-                        <h3 style="margin-top:0;font-family:var(--font-h);">إحصائيات الخريطة</h3>
-                        <p style="opacity:0.8;font-size:1rem;line-height:1.6;">تم تحميل <b>${exportLayers.length}</b> طبقات بنجاح، تحتوي على <b>${exportLayers.reduce((sum, l) => sum + (l.data?.features?.length || 0), 0)}</b> معلم جغرافي تفاعلي.</p>
-                        <button class="${designSelections.component || 'primary'}-btn" style="width:100%;padding:14px;background:var(--primary);color:#000;border:none;border-radius:10px;font-weight:bold;font-size:1rem;cursor:pointer;margin-top:16px;">عرض التفاصيل</button>
-                    </div>
-                `;
-                break;
-            case 'stacked':
-                layoutCSS = `
-                    .app-container { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
-                    .bottom-content { height: 40%; background: var(--surface-solid); padding: 24px; overflow-y: auto; }
-                    .grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
-                `;
-                layoutHTML = `
-                    <div style="height: 60%; width: 100%; display: flex; position: relative;">
+                    `;
+                    break;
+                case 'dashboard':
+                    layoutCSS = `
+                        .app-container { display: flex; flex-direction: column; height: 100vh; width: 100vw; background: var(--bg); }
+                        .dash-header { height: 70px; background: var(--surface-solid); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; z-index: 10; }
+                        .dash-body { flex: 1; display: flex; flex-direction: column; padding: 20px; gap: 20px; }
+                        .dash-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; height: 120px; }
+                        .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+                        .stat-num { font-size: 2rem; font-weight: 800; color: var(--primary); font-family:var(--font-h); }
+                        .stat-label { font-size: 1rem; opacity: 0.7; }
+                    `;
+                    layoutHTML = `
+                        <header class="dash-header card-panel">
+                            <h2 style="margin:0;color:var(--primary);font-family:var(--font-h);">لوحة القيادة المكانية</h2>
+                        </header>
+                        <div class="dash-body">
+                            ${mapContainerHTML}
+                            <div class="dash-stats">
+                                <div class="stat-card card-panel"><div class="stat-num">${exportLayers.length}</div><div class="stat-label">إجمالي الطبقات</div></div>
+                                <div class="stat-card card-panel"><div class="stat-num">${exportLayers.reduce((sum, l) => sum + (l.data?.features?.length || 0), 0)}</div><div class="stat-label">المعالم الجغرافية</div></div>
+                                <div class="stat-card card-panel"><div class="stat-num">100%</div><div class="stat-label">دقة البيانات</div></div>
+                                <div class="stat-card card-panel"><div class="stat-num">نشط</div><div class="stat-label">حالة النظام</div></div>
+                            </div>
+                        </div>
+                    `;
+                    break;
+                case 'modal':
+                    layoutCSS = `
+                        .app-container { display: flex; height: 100vh; width: 100vw; background: var(--bg); justify-content: center; align-items: center; padding: 40px; }
+                        .modal-wrapper { width: 100%; max-width: 1200px; height: 80vh; background: var(--surface-solid); border-radius: 24px; border: 1px solid var(--border); overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 30px 80px rgba(0,0,0,0.6); }
+                        .modal-header { padding: 20px 30px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--surface); }
+                    `;
+                    layoutHTML = `
+                        <div class="modal-wrapper card-panel">
+                            <div class="modal-header">
+                                <h2 style="margin:0;color:var(--primary);font-family:var(--font-h);">عارض الخريطة</h2>
+                                <div style="display:flex;gap:10px;">${exportLayers.slice(0, 3).map(l => `<span style="background:var(--bg);padding:5px 12px;border-radius:20px;font-size:0.8rem;border:1px solid ${l.style?.color || l.color}">${l.name}</span>`).join('')}</div>
+                            </div>
+                            ${mapContainerHTML}
+                        </div>
+                    `;
+                    break;
+                case 'floating':
+                    layoutCSS = `
+                        .app-container { display: flex; height: 100vh; width: 100vw; }
+                        .f-card { position: absolute; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; backdrop-filter: blur(15px); padding: 24px; z-index: 10; box-shadow: 0 15px 35px rgba(0,0,0,0.3); }
+                        .f-bottom-left { bottom: 40px; left: 30px; width: 400px; }
+                    `;
+                    layoutHTML = `
                         ${mapContainerHTML}
+                        <div class="f-card f-bottom-left card-panel">
+                            <h3 style="margin-top:0;font-family:var(--font-h);">إحصائيات الخريطة</h3>
+                            <p style="opacity:0.8;font-size:1rem;line-height:1.6;">تم تحميل <b>${exportLayers.length}</b> طبقات بنجاح، تحتوي على <b>${exportLayers.reduce((sum, l) => sum + (l.data?.features?.length || 0), 0)}</b> معلم جغرافي تفاعلي.</p>
+                            <button class="${designSelections.component || 'primary'}-btn" style="width:100%;padding:14px;background:var(--primary);color:#000;border:none;border-radius:10px;font-weight:bold;font-size:1rem;cursor:pointer;margin-top:16px;">عرض التفاصيل</button>
+                        </div>
+                    `;
+                    break;
+                case 'stacked':
+                    layoutCSS = `
+                        .app-container { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
+                        .bottom-content { height: 40%; background: var(--surface-solid); padding: 24px; overflow-y: auto; }
+                        .grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+                    `;
+                    layoutHTML = `
+                        <div style="height: 60%; width: 100%; display: flex; position: relative;">
+                            ${mapContainerHTML}
+                        </div>
+                        <div class="bottom-content card-panel">
+                            <h2 style="color:var(--primary);margin-top:0;font-family:var(--font-h);">استعراض البيانات</h2>
+                            <div class="grid-view">
+                                ${exportLayers.map(l => `
+                                    <div class="layer-item" style="margin:0; padding: 12px 14px; background: rgba(0,0,0,0.15); border-radius: 10px; border: 1px solid var(--border);">
+                                        <h4 style="margin:0 0 8px 0;color:var(--primary);">${l.name}</h4>
+                                        <div style="font-size:0.9rem;opacity:0.7;">يحتوي على ${l.data?.features?.length || 0} معلم</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                    break;
+                case 'custom':
+                    layoutCSS = `
+                        .app-container { position: relative; height: 100vh; width: 100vw; overflow: hidden; }
+                    `;
+                    layoutHTML = `
+                        ${mapContainerHTML}
+                    `;
+                    break;
+                default: // fullmap
+                    layoutCSS = `
+                        .app-container { display: flex; height: 100vh; width: 100vw; }
+                    `;
+                    layoutHTML = `
+                        ${mapContainerHTML}
+                    `;
+                    break;
+            }
+        } else if (designSelections.commercialTemplate === 'realestate') {
+            layoutCSS = `
+                .app-container { display: flex; height: 100vh; width: 100vw; flex-direction: row-reverse; }
+                .sidebar { width: 360px; background: var(--surface-solid); border-left: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; overflow-y: auto; z-index: 10; box-shadow: -5px 0 25px rgba(0,0,0,0.5); }
+                .sidebar-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+                .sidebar-desc { font-size: 0.85rem; opacity: 0.8; margin-bottom: 16px; line-height: 1.5; }
+                .search-box input { width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 8px; color: var(--text-color); font-family: var(--font-b); outline: none; transition: border-color 0.3s; }
+                .search-box input:focus { border-color: var(--primary); }
+                .section-title { font-family: var(--font-h); font-size: 0.95rem; color: var(--primary); margin: 20px 0 10px 0; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 6px; }
+                .listings-list { display: flex; flex-direction: column; gap: 10px; }
+                .estate-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; padding: 12px; cursor: pointer; transition: all 0.3s; text-align: right; }
+                .estate-card:hover { border-color: var(--primary); background: rgba(255,255,255,0.06); transform: translateY(-2px); }
+                .estate-title { font-weight: bold; font-size: 0.9rem; color: var(--text-color); margin-bottom: 6px; }
+                .estate-meta { font-size: 0.8rem; opacity: 0.7; display: flex; justify-content: space-between; }
+                .detail-panel { position: absolute; bottom: 30px; right: 390px; width: 340px; background: var(--surface-solid); border: 1px solid var(--primary); border-radius: 16px; padding: 20px; z-index: 100; box-shadow: 0 15px 35px rgba(0,0,0,0.4); display: none; text-align: right; border-top: 4px solid var(--primary); }
+                .detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+                .detail-header h3 { margin: 0; font-size: 1.1rem; color: var(--primary); font-family: var(--font-h); }
+                .close-btn { background: none; border: none; color: var(--text-color); font-size: 1.5rem; cursor: pointer; opacity: 0.7; }
+                .close-btn:hover { opacity: 1; }
+                .detail-body { font-size: 0.88rem; line-height: 1.6; margin-bottom: 16px; }
+                .detail-row { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px dashed rgba(255,255,255,0.05); padding-bottom: 6px; }
+                .detail-row strong { color: var(--primary); }
+                .detail-actions { display: flex; gap: 8px; }
+                .action-btn { flex: 1; padding: 10px; border-radius: 8px; border: none; font-weight: bold; font-size: 0.85rem; cursor: pointer; text-align: center; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 6px; }
+                .wa-btn { background: #25D366; color: white; }
+                .wa-btn:hover { background: #20ba5a; }
+                .voice-btn { background: var(--surface); border: 1px solid var(--border); color: var(--primary); }
+                .voice-btn:hover { background: rgba(255,255,255,0.05); }
+            `;
+            layoutHTML = `
+                <aside class="sidebar card-panel">
+                    <div class="sidebar-header">
+                        <span style="font-size: 2rem;">🏢</span>
+                        <h2 style="color:var(--primary);margin:0;font-family:var(--font-h);font-size:1.3rem;">التسويق العقاري والأراضي</h2>
                     </div>
-                    <div class="bottom-content card-panel">
-                        <h2 style="color:var(--primary);margin-top:0;font-family:var(--font-h);">استعراض البيانات</h2>
-                        <div class="grid-view">
-                            ${exportLayers.map(l => `
-                                <div class="layer-item" style="margin:0; padding: 12px 14px; background: rgba(0,0,0,0.15); border-radius: 10px; border: 1px solid var(--border);">
-                                    <h4 style="margin:0 0 8px 0;color:var(--primary);">${l.name}</h4>
-                                    <div style="font-size:0.9rem;opacity:0.7;">يحتوي على ${l.data?.features?.length || 0} معلم</div>
+                    <p class="sidebar-desc">استكشف قطع الأراضي والعقارات المتوفرة للبيع والاستثمار. اضغط على أي عقار لعرض التفاصيل وتحديد موقعه.</p>
+                    <div class="search-box">
+                        <input type="text" id="estate-search" placeholder="البحث برقم الحوض أو القطعة..." oninput="filterEstates(this.value)">
+                    </div>
+                    <div class="layers-container">
+                        <h3 class="section-title">الطبقات الجغرافية</h3>
+                        <div id="layers-list">${layersHTML}</div>
+                    </div>
+                    <div class="listings-section">
+                        <h3 class="section-title">العقارات المدرجة</h3>
+                        <div class="listings-list" id="listings-list"></div>
+                    </div>
+                </aside>
+                ${mapContainerHTML}
+                <div class="detail-panel" id="detail-panel">
+                    <div class="detail-header">
+                        <h3 id="detail-title">تفاصيل العقار</h3>
+                        <button onclick="closeDetails()" class="close-btn">&times;</button>
+                    </div>
+                    <div class="detail-body" id="detail-body"></div>
+                    <div class="detail-actions">
+                        <button onclick="speakDetails()" class="action-btn voice-btn">🔊 استماع للوصف</button>
+                        <a href="#" id="whatsapp-btn" target="_blank" class="action-btn wa-btn">💬 تواصل عبر واتساب</a>
+                    </div>
+                </div>
+            `;
+            templateJS = `
+                let listings = [];
+                
+                const loadTemplateData = async () => {
+                    const promises = layers.map(async (l) => {
+                        if (l.type !== 'raster' && l.type !== 'raster-tile') {
+                            if (typeof l.url === 'string') {
+                                try {
+                                    const res = await fetch(l.url);
+                                    l.data = await res.json();
+                                } catch (e) {
+                                    console.error("Failed to fetch layer data:", e);
+                                }
+                            }
+                        }
+                    });
+                    await Promise.all(promises);
+                    initTemplate();
+                };
+
+                function initTemplate() {
+                    const vectorLayers = layers.filter(l => l.type !== 'raster' && l.type !== 'raster-tile');
+                    if (vectorLayers.length > 0) {
+                        let idCounter = 1;
+                        vectorLayers.forEach(l => {
+                            if (l.data?.features) {
+                                l.data.features.forEach(f => {
+                                    if (f.geometry) {
+                                        const props = f.properties || {};
+                                        const coords = f.geometry.type === 'Point' ? f.geometry.coordinates : f.geometry.coordinates?.[0]?.[0] || f.geometry.coordinates?.[0];
+                                        if (coords) {
+                                            listings.push({
+                                                id: idCounter++,
+                                                title: props.title || props.name || \`عقار رقم \${props.parcel_no || idCounter}\`,
+                                                block: props.block_no || props.block || '3',
+                                                parcel: props.parcel_no || props.parcel || (10 + idCounter),
+                                                area: props.area || props.size || '1000م²',
+                                                price: props.price || '120,000 JD',
+                                                owner: props.owner || 'شركة ريادية للتطوير العقاري',
+                                                coords: coords
+                                            });
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                    }
+                    if (listings.length === 0) {
+                        listings = [
+                            { id: 1, title: 'أرض سكنية - الماصيون، رام الله', block: '18 (عين منجد)', parcel: '124', area: '850 م²', price: '250,000 USD', owner: 'أبو أحمد العقاري', coords: [35.1982, 31.8962] },
+                            { id: 2, title: 'دونم تجاري - شارع القدس، نابلس', block: '5 (السهل)', parcel: '99', area: '1020 م²', price: '380,000 JOD', owner: 'مكتب الهدى العقاري', coords: [35.2635, 32.2212] },
+                            { id: 3, title: 'فيلا قيد الإنشاء - بيت جالا، بيت لحم', block: '2 (رأس بيت جالا)', parcel: '12', area: '600 م² (مباني 350 م²)', price: '310,000 USD', owner: 'المطور الهندسي الحديث', coords: [35.1873, 31.7145] },
+                            { id: 4, title: 'أرض زراعية استثمارية - طوباس', block: '1 (البقيعة)', parcel: '310', area: '5200 م²', price: '85,000 JOD', owner: 'جمعية طوباس الزراعية', coords: [35.3695, 32.3214] }
+                        ];
+                    }
+                    renderListings(listings);
+                }
+
+                function renderListings(items) {
+                    const list = document.getElementById('listings-list');
+                    if (!list) return;
+                    list.innerHTML = items.map(item => \`
+                        <div class="estate-card" onclick="selectEstate(\${item.id})">
+                            <div class="estate-title">\${item.title}</div>
+                            <div class="estate-meta">
+                                <span>📐 \${item.area}</span>
+                                <span>💰 \${item.price}</span>
+                            </div>
+                            <div style="font-size: 0.75rem; opacity: 0.6; margin-top:4px;">حوض: \${item.block} | قطعة: \${item.parcel}</div>
+                        </div>
+                    \`).join('');
+                }
+
+                let currentEstate = null;
+                window.selectEstate = function(id) {
+                    const item = listings.find(l => l.id === id);
+                    if (!item) return;
+                    currentEstate = item;
+                    map.flyTo({ center: item.coords, zoom: 16, pitch: 45 });
+                    
+                    const panel = document.getElementById('detail-panel');
+                    const body = document.getElementById('detail-body');
+                    const title = document.getElementById('detail-title');
+                    const waBtn = document.getElementById('whatsapp-btn');
+                    
+                    if (panel && body && title) {
+                        title.textContent = item.title;
+                        body.innerHTML = \`
+                            <div class="detail-row"><strong>رقم الحوض:</strong> <span>\${item.block}</span></div>
+                            <div class="detail-row"><strong>رقم القطعة:</strong> <span>\${item.parcel}</span></div>
+                            <div class="detail-row"><strong>المساحة:</strong> <span>\${item.area}</span></div>
+                            <div class="detail-row"><strong>السعر المطلوب:</strong> <span>\${item.price}</span></div>
+                            <div class="detail-row"><strong>المالك/الوسيط:</strong> <span>\${item.owner}</span></div>
+                        \`;
+                        panel.style.display = 'block';
+                        
+                        const waMsg = encodeURIComponent(\`مرحباً، أود الاستفسار عن العقار المعروض: \\\\n\\\\n*\${item.title}*\\\\nالحوض: \${item.block}\\\\nالقطعة: \${item.parcel}\\\\nالمساحة: \${item.area}\\\\nالسعر: \${item.price}\\\\n\\\\nشكراً لك.\`);
+                        waBtn.href = \`https://wa.me/970599000000?text=\${waMsg}\`;
+                    }
+                };
+
+                window.closeDetails = function() {
+                    const panel = document.getElementById('detail-panel');
+                    if (panel) panel.style.display = 'none';
+                    window.speechSynthesis.cancel();
+                };
+
+                window.speakDetails = function() {
+                    if (!currentEstate) return;
+                    window.speechSynthesis.cancel();
+                    const text = \`عقار معروض للبيع. \${currentEstate.title}. في حوض رقم \${currentEstate.block}، قطعة رقم \${currentEstate.parcel}. مساحته تعادل \${currentEstate.area}، بسعر \${currentEstate.price}. للتواصل مع المالك اضغط على زر الواتساب في الأسفل.\`;
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'ar-SA';
+                    utterance.rate = 1.0;
+                    window.speechSynthesis.speak(utterance);
+                };
+
+                window.filterEstates = function(query) {
+                    const filtered = listings.filter(l => 
+                        l.title.toLowerCase().includes(query.toLowerCase()) || 
+                        l.block.toLowerCase().includes(query.toLowerCase()) || 
+                        l.parcel.toString().includes(query)
+                    );
+                    renderListings(filtered);
+                };
+
+                map.on('load', () => {
+                    loadTemplateData();
+                });
+            `;
+        } else if (designSelections.commercialTemplate === 'storelocator') {
+            layoutCSS = `
+                .app-container { display: flex; height: 100vh; width: 100vw; flex-direction: row-reverse; }
+                .sidebar { width: 360px; background: var(--surface-solid); border-left: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; overflow-y: auto; z-index: 10; box-shadow: -5px 0 25px rgba(0,0,0,0.5); }
+                .sidebar-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+                .sidebar-desc { font-size: 0.85rem; opacity: 0.8; margin-bottom: 16px; line-height: 1.5; }
+                .filter-tabs { display: flex; gap: 5px; margin-bottom: 15px; }
+                .filter-tab { flex: 1; padding: 8px 5px; border-radius: 6px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: var(--text-color); font-size: 0.78rem; cursor: pointer; font-family: var(--font-b); transition: all 0.2s; text-align: center; }
+                .filter-tab.active { background: var(--primary); color: #000; border-color: var(--primary); font-weight: bold; }
+                .store-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+                .store-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; padding: 12px; cursor: pointer; transition: all 0.3s; text-align: right; }
+                .store-card:hover { border-color: var(--primary); background: rgba(255,255,255,0.06); }
+                .store-name { font-weight: bold; font-size: 0.92rem; color: var(--text-color); margin-bottom: 4px; }
+                .store-type { font-size: 0.75rem; color: var(--primary); opacity: 0.9; }
+                .store-meta { font-size: 0.8rem; opacity: 0.7; margin-top: 4px; display: flex; justify-content: space-between; }
+                .cart-panel { background: rgba(0,0,0,0.3); border: 1px dashed var(--border); border-radius: 12px; padding: 16px; margin-top: auto; }
+                .cart-header { display: flex; justify-content: space-between; font-weight: bold; font-size: 0.9rem; color: var(--primary); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 10px; }
+                .cart-items { display: flex; flex-direction: column; gap: 8px; max-height: 120px; overflow-y: auto; margin-bottom: 10px; }
+                .cart-item { display: flex; justify-content: space-between; font-size: 0.82rem; align-items: center; }
+                .remove-cart-item { background: none; border: none; color: #EF4444; cursor: pointer; font-size: 1rem; }
+                .cart-total { display: flex; justify-content: space-between; font-weight: bold; font-size: 0.9rem; margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 8px; margin-bottom: 12px; }
+                .checkout-form { display: flex; flex-direction: column; gap: 8px; }
+                .checkout-form input { width: 100%; padding: 8px 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 6px; color: var(--text-color); font-size: 0.82rem; outline: none; }
+                .checkout-form input:focus { border-color: var(--primary); }
+                .checkout-btn { width: 100%; padding: 10px; background: #25D366; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 0.88rem; cursor: pointer; margin-top: 6px; }
+                .checkout-btn:hover { background: #20ba5a; }
+                .products-panel { position: absolute; bottom: 30px; right: 390px; width: 340px; background: var(--surface-solid); border: 1px solid var(--primary); border-radius: 16px; padding: 20px; z-index: 100; box-shadow: 0 15px 35px rgba(0,0,0,0.4); display: none; text-align: right; border-top: 4px solid var(--primary); }
+                .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; }
+                .panel-header h3 { margin: 0; font-size: 1.05rem; color: var(--primary); font-family: var(--font-h); }
+                .products-list { display: flex; flex-direction: column; gap: 10px; max-height: 250px; overflow-y: auto; }
+                .product-row { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px; border: 1px solid var(--border); }
+                .product-name { font-size: 0.85rem; font-weight: bold; }
+                .product-price { font-size: 0.82rem; color: var(--primary); }
+                .add-to-cart { background: var(--primary); color: #000; border: none; border-radius: 4px; padding: 4px 10px; font-weight: bold; cursor: pointer; font-size: 0.78rem; }
+                .add-to-cart:hover { background: var(--primary-dark); }
+                .close-btn { background: none; border: none; color: var(--text-color); font-size: 1.5rem; cursor: pointer; opacity: 0.7; }
+                .close-btn:hover { opacity: 1; }
+            `;
+            layoutHTML = `
+                <aside class="sidebar card-panel">
+                    <div class="sidebar-header">
+                        <span style="font-size: 2rem;">🛍️</span>
+                        <h2 style="color:var(--primary);margin:0;font-family:var(--font-h);font-size:1.3rem;">دليل المحلات والتوصيل</h2>
+                    </div>
+                    <p class="sidebar-desc">تصفح المحلات والفروع القريبة منك، أضف السلع للسلة واطلب مباشرة للتوصيل لمنزلك عبر واتساب.</p>
+                    
+                    <div class="filter-tabs">
+                        <button class="filter-tab active" onclick="filterStores('all', this)">الكل</button>
+                        <button class="filter-tab" onclick="filterStores('restaurant', this)">مطاعم</button>
+                        <button class="filter-tab" onclick="filterStores('market', this)">سوبرماركت</button>
+                        <button class="filter-tab" onclick="filterStores('pharmacy', this)">صيدلية</button>
+                    </div>
+                    
+                    <div class="section-title" style="font-family: var(--font-h); font-size: 0.95rem; color: var(--primary); margin: 10px 0;">المحلات المتاحة</div>
+                    <div class="store-list" id="store-list"></div>
+                    
+                    <div class="cart-panel" id="cart-panel">
+                        <div class="cart-header">
+                            <span>🛒 سلة المشتريات</span>
+                            <span id="cart-count">0 سلع</span>
+                        </div>
+                        <div class="cart-items" id="cart-items">
+                            <div style="opacity: 0.5; padding: 12px 0; font-size:0.85rem; text-align: center;">السلة فارغة. اختر محلاً وأضف منتجات!</div>
+                        </div>
+                        <div class="cart-total" id="cart-total" style="display:none;">
+                            <span>الإجمالي:</span>
+                            <span id="total-price">0 شيكل</span>
+                        </div>
+                        
+                        <div class="checkout-form" id="checkout-form" style="display:none;">
+                            <input type="text" id="cust-name" placeholder="الاسم الكامل" required>
+                            <input type="text" id="cust-addr" placeholder="عنوان التوصيل (المدينة/الشارع)" required>
+                            <button onclick="sendOrder()" class="checkout-btn">💬 إرسال الطلب عبر واتساب</button>
+                        </div>
+                    </div>
+                </aside>
+                ${mapContainerHTML}
+                <div class="products-panel" id="products-panel">
+                    <div class="panel-header">
+                        <h3 id="store-title">قائمة المنتجات</h3>
+                        <button onclick="closeProducts()" class="close-btn">&times;</button>
+                    </div>
+                    <div class="products-list" id="products-list"></div>
+                </div>
+            `;
+            templateJS = `
+                let stores = [];
+
+                const loadTemplateData = async () => {
+                    const promises = layers.map(async (l) => {
+                        if (l.type !== 'raster' && l.type !== 'raster-tile') {
+                            if (typeof l.url === 'string') {
+                                try {
+                                    const res = await fetch(l.url);
+                                    l.data = await res.json();
+                                } catch (e) {
+                                    console.error("Failed to fetch layer data:", e);
+                                }
+                            }
+                        }
+                    });
+                    await Promise.all(promises);
+                    initTemplate();
+                };
+
+                function initTemplate() {
+                    const vectorLayers = layers.filter(l => l.type !== 'raster' && l.type !== 'raster-tile');
+                    if (vectorLayers.length > 0) {
+                        let idCounter = 1;
+                        vectorLayers.forEach(l => {
+                            if (l.data?.features) {
+                                l.data.features.forEach(f => {
+                                    if (f.geometry) {
+                                        const props = f.properties || {};
+                                        const coords = f.geometry.type === 'Point' ? f.geometry.coordinates : f.geometry.coordinates?.[0]?.[0] || f.geometry.coordinates?.[0];
+                                        if (coords) {
+                                            let type = props.type || 'restaurant';
+                                            if (['pharmacy', 'market', 'restaurant'].indexOf(type) === -1) {
+                                                type = idCounter % 3 === 0 ? 'restaurant' : (idCounter % 3 === 1 ? 'market' : 'pharmacy');
+                                            }
+                                            stores.push({
+                                                id: idCounter++,
+                                                name: props.name || props.title || \`محل تجاري \${idCounter}\`,
+                                                type: type,
+                                                phone: props.phone || '970599000000',
+                                                address: props.address || 'فلسطين',
+                                                coords: coords,
+                                                products: [
+                                                    { name: 'منتج أساسي 1', price: 15 },
+                                                    { name: 'منتج عائلي مميز', price: 40 },
+                                                    { name: 'منتج إضافي', price: 5 }
+                                                ]
+                                            });
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                    }
+                    if (stores.length === 0) {
+                        stores = [
+                            { id: 1, name: 'شاورما على الجمر', type: 'restaurant', phone: '970599000000', address: 'وسط البلد، رام الله', coords: [35.2012, 31.9022], products: [{name: 'وجبة شاورما عربي', price: 22}, {name: 'صاروخ شاورما سوبر', price: 15}, {name: 'صحن شاورما عائلي', price: 50}] },
+                            { id: 2, name: 'سوبرماركت المدينة', type: 'market', phone: '970599000000', address: 'شارع الجامعة، نابلس', coords: [35.2605, 32.2235], products: [{name: 'أرز بسمتي 5 كغم', price: 45}, {name: 'زيت نباتي 3 لتر', price: 30}, {name: 'علبة قهوة بن مطحون', price: 20}] },
+                            { id: 3, name: 'صيدلية القدس الحديثة', type: 'pharmacy', phone: '970599000000', address: 'باب العامود، القدس', coords: [35.2301, 31.7825], products: [{name: 'معقم أيدي طبي', price: 10}, {name: 'مجموعة فيتامينات', price: 35}, {name: 'مقياس حرارة رقمي', price: 40}] },
+                            { id: 4, name: 'بيتزا إيطالـيانو', type: 'restaurant', phone: '970599000000', address: 'حي الرمال، غزة', coords: [34.4536, 31.5235], products: [{name: 'بيتزا مارغريتا كبير', price: 30}, {name: 'بيتزا خضار وسط', price: 22}, {name: 'ثومية وبطاطا مقلية', price: 12}] }
+                        ];
+                    }
+                    filterStores('all');
+                }
+
+                window.filterStores = function(typeFilter, btn) {
+                    document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+                    if (btn) btn.classList.add('active');
+                    
+                    const list = document.getElementById('store-list');
+                    if (!list) return;
+                    const filtered = typeFilter === 'all' ? stores : stores.filter(s => s.type === typeFilter);
+                    list.innerHTML = filtered.map(store => \`
+                        <div class="store-card" onclick="selectStore(\${store.id})">
+                            <div class="store-name">\${store.name}</div>
+                            <div class="store-type">\${store.type === 'restaurant' ? '🍔 مطعم' : (store.type === 'market' ? '🛒 سوبرماركت' : '💊 صيدلية')}</div>
+                            <div class="store-meta">
+                                <span>📍 \${store.address}</span>
+                            </div>
+                        </div>
+                    \`).join('');
+                };
+
+                let cart = [];
+                let activeStore = null;
+
+                window.selectStore = function(id) {
+                    const store = stores.find(s => s.id === id);
+                    if (!store) return;
+                    activeStore = store;
+                    map.flyTo({ center: store.coords, zoom: 16 });
+                    
+                    const panel = document.getElementById('products-panel');
+                    const title = document.getElementById('store-title');
+                    const list = document.getElementById('products-list');
+                    
+                    if (panel && title && list) {
+                        title.textContent = \`قائمة المنتجات - \${store.name}\`;
+                        list.innerHTML = store.products.map((p, idx) => \`
+                            <div class="product-row">
+                                <div>
+                                    <div class="product-name">\${p.name}</div>
+                                    <div class="product-price">\${p.price} شيكل</div>
                                 </div>
-                            `).join('')}
+                                <button class="add-to-cart" onclick="addToCart('\${p.name}', \${p.price})">إضافة</button>
+                            </div>
+                        \`).join('');
+                        panel.style.display = 'block';
+                    }
+                };
+
+                window.closeProducts = function() {
+                    const panel = document.getElementById('products-panel');
+                    if (panel) panel.style.display = 'none';
+                };
+
+                window.addToCart = function(name, price) {
+                    if (!activeStore) return;
+                    cart.push({ name, price, storeName: activeStore.name });
+                    updateCartUI();
+                };
+
+                window.removeFromCart = function(index) {
+                    cart.splice(index, 1);
+                    updateCartUI();
+                };
+
+                function updateCartUI() {
+                    const itemsContainer = document.getElementById('cart-items');
+                    const countLabel = document.getElementById('cart-count');
+                    const totalContainer = document.getElementById('cart-total');
+                    const totalPriceLabel = document.getElementById('total-price');
+                    const formContainer = document.getElementById('checkout-form');
+                    
+                    if (!itemsContainer) return;
+                    countLabel.textContent = \`\${cart.length} سلع\`;
+                    
+                    if (cart.length === 0) {
+                        itemsContainer.innerHTML = \`<div style="opacity: 0.5; padding: 12px 0; font-size:0.85rem; text-align: center;">السلة فارغة. اختر محلاً وأضف منتجات!</div>\`;
+                        totalContainer.style.display = 'none';
+                        formContainer.style.display = 'none';
+                    } else {
+                        itemsContainer.innerHTML = cart.map((item, idx) => \`
+                            <div class="cart-item">
+                                <span>\${item.name} (\${item.storeName})</span>
+                                <div>
+                                    <span>\${item.price} شيكل</span>
+                                    <button class="remove-cart-item" onclick="removeFromCart(\${idx})">&times;</button>
+                                </div>
+                            </div>
+                        \`).join('');
+                        const total = cart.reduce((sum, item) => sum + item.price, 0);
+                        totalPriceLabel.textContent = \`\${total} شيكل\`;
+                        totalContainer.style.display = 'flex';
+                        formContainer.style.display = 'flex';
+                    }
+                }
+
+                window.sendOrder = function() {
+                    const name = document.getElementById('cust-name').value;
+                    const addr = document.getElementById('cust-addr').value;
+                    if (!name || !addr) { alert('الرجاء تعبئة الاسم والعنوان لإتمام الطلب'); return; }
+                    
+                    const itemsStr = cart.map((item, idx) => \`\${idx + 1}. *\${item.name}* - (\${item.price} شيكل)\`).join('%0A');
+                    const total = cart.reduce((sum, item) => sum + item.price, 0);
+                    
+                    const msg = \`مرحباً، أود تقديم طلب توصيل جديد من تطبيق الخرائط: %0A%0A*اسم الزبون:* \${name}%0A*عنوان التوصيل:* \${addr}%0A%0A*المنتجات المحددة:*%0A\${itemsStr}%0A%0A*الإجمالي:* *\${total} شيكل*%0A%0Aيرجى تأكيد الطلب وتحديد موعد التوصيل.\`;
+                    
+                    const phone = activeStore?.phone || '970599000000';
+                    window.open(\`https://wa.me/\${phone}?text=\${msg}\`, '_blank');
+                };
+
+                map.on('load', () => {
+                    loadTemplateData();
+                });
+            `;
+        } else if (designSelections.commercialTemplate === 'tourguide') {
+            layoutCSS = `
+                .app-container { display: flex; height: 100vh; width: 100vw; flex-direction: row-reverse; }
+                .sidebar { width: 360px; background: var(--surface-solid); border-left: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; overflow-y: auto; z-index: 10; box-shadow: -5px 0 25px rgba(0,0,0,0.5); }
+                .sidebar-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+                .sidebar-desc { font-size: 0.85rem; opacity: 0.8; margin-bottom: 16px; line-height: 1.5; }
+                .route-buttons { display: flex; flex-direction: column; gap: 8px; }
+                .route-btn { text-align: right; width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: 8px; color: var(--text-color); font-family: var(--font-b); cursor: pointer; font-size: 0.85rem; transition: all 0.3s; }
+                .route-btn:hover { border-color: var(--primary); background: rgba(255,255,255,0.05); }
+                .tour-list { display: flex; flex-direction: column; gap: 10px; }
+                .attraction-card { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 10px; padding: 12px; cursor: pointer; transition: all 0.3s; text-align: right; }
+                .attraction-card:hover { border-color: var(--primary); background: rgba(255,255,255,0.06); }
+                .attraction-card-title { font-weight: bold; font-size: 0.9rem; color: var(--text-color); margin-bottom: 4px; }
+                .attraction-card-rating { font-size: 0.75rem; color: var(--primary); }
+                .attraction-panel { position: absolute; bottom: 30px; right: 390px; width: 340px; background: var(--surface-solid); border: 1px solid var(--primary); border-radius: 16px; padding: 20px; z-index: 100; box-shadow: 0 15px 35px rgba(0,0,0,0.4); display: none; text-align: right; border-top: 4px solid var(--primary); }
+                .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+                .panel-header h3 { margin: 0; font-size: 1.05rem; color: var(--primary); font-family: var(--font-h); }
+                .guide-btn { width: 100%; padding: 10px; background: var(--primary); color: #000; border: none; border-radius: 8px; font-weight: bold; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+                .guide-btn:hover { background: var(--primary-dark); }
+                .guide-btn.playing { background: #EF4444; color: white; }
+                .close-btn { background: none; border: none; color: var(--text-color); font-size: 1.5rem; cursor: pointer; opacity: 0.7; }
+                .close-btn:hover { opacity: 1; }
+            `;
+            layoutHTML = `
+                <aside class="sidebar card-panel">
+                    <div class="sidebar-header">
+                        <span style="font-size: 2rem;">🏛️</span>
+                        <h2 style="color:var(--primary);margin:0;font-family:var(--font-h);font-size:1.3rem;">الدليل السياحي التفاعلي</h2>
+                    </div>
+                    <p class="sidebar-desc">استكشف المعالم السياحية والأثرية العريقة. انقر على المعلم للاستماع للمرشد الصوتي أو اختر مساراً سياحياً مقترحاً.</p>
+                    
+                    <div class="routes-section">
+                        <h3 class="section-title" style="font-family: var(--font-h); font-size: 0.95rem; color: var(--primary); margin-bottom:10px;">المسارات المقترحة</h3>
+                        <div class="route-buttons">
+                            <button class="route-btn" onclick="drawRoute('jericho')">🐫 جولة أريحا وأقدم مدينة</button>
+                            <button class="route-btn" onclick="drawRoute('jerusalem')">🕌 مسار القدس التاريخي</button>
+                            <button class="route-btn" onclick="clearRoute()">❌ مسح المسار</button>
                         </div>
                     </div>
-                `;
-                break;
-            case 'custom':
-                layoutCSS = `
-                    .app-container { position: relative; height: 100vh; width: 100vw; overflow: hidden; }
-                `;
-                layoutHTML = `
-                    ${mapContainerHTML}
-                `;
-                break;
-            default: // fullmap
-                layoutCSS = `
-                    .app-container { display: flex; height: 100vh; width: 100vw; }
-                `;
-                layoutHTML = `
-                    ${mapContainerHTML}
-                `;
-                break;
+                    
+                    <div class="listings-section" style="margin-top:20px;">
+                        <h3 class="section-title" style="font-family: var(--font-h); font-size: 0.95rem; color: var(--primary); margin-bottom:10px;">المعالم السياحية</h3>
+                        <div class="tour-list" id="tour-list"></div>
+                    </div>
+                </aside>
+                ${mapContainerHTML}
+                <div class="attraction-panel" id="attraction-panel">
+                    <div class="panel-header">
+                        <h3 id="attraction-title">اسم المعلم</h3>
+                        <button onclick="closeAttraction()" class="close-btn">&times;</button>
+                    </div>
+                    <div class="panel-body">
+                        <div class="rating-stars" id="attraction-rating">⭐⭐⭐⭐⭐</div>
+                        <p id="attraction-desc" style="font-size:0.85rem; line-height:1.6; margin:10px 0;"></p>
+                        <div class="audio-guide-control">
+                            <button onclick="toggleAudioGuide()" class="guide-btn" id="audio-btn">🔊 تشغيل المرشد الصوتي</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            templateJS = `
+                let attractions = [];
+
+                const loadTemplateData = async () => {
+                    const promises = layers.map(async (l) => {
+                        if (l.type !== 'raster' && l.type !== 'raster-tile') {
+                            if (typeof l.url === 'string') {
+                                try {
+                                    const res = await fetch(l.url);
+                                    l.data = await res.json();
+                                } catch (e) {
+                                    console.error("Failed to fetch layer data:", e);
+                                }
+                            }
+                        }
+                    });
+                    await Promise.all(promises);
+                    initTemplate();
+                };
+
+                function initTemplate() {
+                    const vectorLayers = layers.filter(l => l.type !== 'raster' && l.type !== 'raster-tile');
+                    if (vectorLayers.length > 0) {
+                        let idCounter = 1;
+                        vectorLayers.forEach(l => {
+                            if (l.data?.features) {
+                                l.data.features.forEach(f => {
+                                    if (f.geometry) {
+                                        const props = f.properties || {};
+                                        const coords = f.geometry.type === 'Point' ? f.geometry.coordinates : f.geometry.coordinates?.[0]?.[0] || f.geometry.coordinates?.[0];
+                                        if (coords) {
+                                            attractions.push({
+                                                id: idCounter++,
+                                                title: props.title || props.name || \`معلم سياحي \${idCounter}\`,
+                                                rating: props.rating || '⭐⭐⭐⭐⭐ (5.0)',
+                                                desc: props.desc || props.description || 'معلم أثري وسياحي هام جداً في فلسطين يعبر عن التاريخ العريق للمنطقة وحضاراتها المتعاقبة.',
+                                                coords: coords
+                                            });
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                    }
+                    if (attractions.length === 0) {
+                        attractions = [
+                            { id: 1, title: 'المسجد الأقصى وقبة الصخرة', rating: '⭐⭐⭐⭐⭐ (5.0)', desc: 'المسجد الأقصى هو أحد أكبر المساجد في العالم ومن أكثرها قدسية لدى المسلمين، وهو أولى القبلتين في الإسلام. يقع داخل البلدة القديمة بالقدس. يتميز بقبته الذهبية المشرفة ومساحته البالغة 144 دونماً.', coords: [35.2358, 31.7780] },
+                            { id: 2, title: 'قصر هشام بن عبد الملك', rating: '⭐⭐⭐⭐ (4.6)', desc: 'يقع في أريّحا ويمثل نموذجاً رائعاً للعمارة الإسلامية المبكرة في العهد الأموي. يشتهر بـ "لوحة شجرة الحياة" وهي واحدة من أكبر وأجمل سجادات الفسيفسيفساء في العالم بأكمله.', coords: [35.4594, 31.8824] },
+                            { id: 3, title: 'كنيسة المهد - بيت لحم', rating: '⭐⭐⭐⭐⭐ (4.9)', desc: 'هي كنيسة تاريخية أثرية تكتسب قدسية عظيمة لكونها بنيت فوق المغارة التي ولد فيها المسيح عيسى عليه السلام. تعد من أقدم كنائس العالم وتدرج ضمن مواقع التراث العالمي لليونسكو.', coords: [35.2078, 31.7042] },
+                            { id: 4, title: 'سبسطية الأثرية - نابلس', rating: '⭐⭐⭐⭐ (4.5)', desc: 'تقع شمال غرب نابلس وتحتوي على آثار رومانية ويونانية عريقة بما في ذلك المدرج الروماني، وشارع الأعمدة التاريخي، والمقبرة الملكية، وتعتبر عاصمة الرومان القديمة في فلسطين.', coords: [35.1965, 32.2742] }
+                        ];
+                    }
+                    renderAttractions();
+                }
+
+                function renderAttractions() {
+                    const list = document.getElementById('tour-list');
+                    if (!list) return;
+                    list.innerHTML = attractions.map(item => \`
+                        <div class="attraction-card" onclick="selectAttraction(\${item.id})">
+                            <div class="attraction-card-title">\${item.title}</div>
+                            <div class="attraction-card-rating">\${item.rating}</div>
+                        </div>
+                    \`).join('');
+                }
+
+                let currentAttraction = null;
+                let isAudioPlaying = false;
+
+                window.selectAttraction = function(id) {
+                    const item = attractions.find(a => a.id === id);
+                    if (!item) return;
+                    currentAttraction = item;
+                    map.flyTo({ center: item.coords, zoom: 16 });
+                    
+                    const panel = document.getElementById('attraction-panel');
+                    const title = document.getElementById('attraction-title');
+                    const rating = document.getElementById('attraction-rating');
+                    const desc = document.getElementById('attraction-desc');
+                    const btn = document.getElementById('audio-btn');
+                    
+                    window.speechSynthesis.cancel();
+                    isAudioPlaying = false;
+                    if (btn) { btn.textContent = '🔊 تشغيل المرشد الصوتي'; btn.classList.remove('playing'); }
+                    
+                    if (panel && title && rating && desc) {
+                        title.textContent = item.title;
+                        rating.textContent = item.rating;
+                        desc.textContent = item.desc;
+                        panel.style.display = 'block';
+                    }
+                };
+
+                window.closeAttraction = function() {
+                    const panel = document.getElementById('attraction-panel');
+                    if (panel) panel.style.display = 'none';
+                    window.speechSynthesis.cancel();
+                    isAudioPlaying = false;
+                };
+
+                window.toggleAudioGuide = function() {
+                    if (!currentAttraction) return;
+                    const btn = document.getElementById('audio-btn');
+                    
+                    if (isAudioPlaying) {
+                        window.speechSynthesis.cancel();
+                        isAudioPlaying = false;
+                        if (btn) { btn.textContent = '🔊 تشغيل المرشد الصوتي'; btn.classList.remove('playing'); }
+                    } else {
+                        isAudioPlaying = true;
+                        if (btn) { btn.textContent = '⏹️ إيقاف المرشد الصوتي'; btn.classList.add('playing'); }
+                        const utterance = new SpeechSynthesisUtterance(currentAttraction.desc);
+                        utterance.lang = 'ar-SA';
+                        utterance.rate = 0.9;
+                        utterance.onend = () => {
+                            isAudioPlaying = false;
+                            if (btn) { btn.textContent = '🔊 تشغيل المرشد الصوتي'; btn.classList.remove('playing'); }
+                        };
+                        window.speechSynthesis.speak(utterance);
+                    }
+                };
+
+                window.drawRoute = function(routeId) {
+                    clearRoute();
+                    let routeCoords = [];
+                    if (routeId === 'jericho') {
+                        routeCoords = [
+                            [35.4594, 31.8824],
+                            [35.4442, 31.8702],
+                            [35.4502, 31.8564]
+                        ];
+                    } else if (routeId === 'jerusalem') {
+                        routeCoords = [
+                            [35.2301, 31.7825],
+                            [35.2325, 31.7801],
+                            [35.2358, 31.7780]
+                        ];
+                    }
+                    
+                    map.addSource('route-src', {
+                        type: 'geojson',
+                        data: {
+                            type: 'Feature',
+                            geometry: {
+                                type: 'LineString',
+                                coordinates: routeCoords
+                            }
+                        }
+                    });
+                    
+                    map.addLayer({
+                        id: 'route-line',
+                        type: 'line',
+                        source: 'route-src',
+                        paint: {
+                            'line-color': '#EC4899',
+                            'line-width': 5,
+                            'line-dasharray': [2, 2]
+                        }
+                    });
+                    
+                    const bounds = routeCoords.reduce((b, coord) => b.extend(coord), new maplibregl.LngLatBounds(routeCoords[0], routeCoords[0]));
+                    map.fitBounds(bounds, { padding: 80 });
+                };
+
+                window.clearRoute = function() {
+                    if (map.getLayer('route-line')) map.removeLayer('route-line');
+                    if (map.getSource('route-src')) map.removeSource('route-src');
+                };
+
+                map.on('load', () => {
+                    loadTemplateData();
+                });
+            `;
+        } else if (designSelections.commercialTemplate === 'surveyor') {
+            layoutCSS = `
+                .app-container { display: flex; height: 100vh; width: 100vw; flex-direction: row-reverse; }
+                .sidebar { width: 360px; background: var(--surface-solid); border-left: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; overflow-y: auto; z-index: 10; box-shadow: -5px 0 25px rgba(0,0,0,0.5); }
+                .sidebar-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+                .sidebar-desc { font-size: 0.85rem; opacity: 0.8; margin-bottom: 16px; line-height: 1.5; }
+                .coordinates-panel { background: rgba(0,0,0,0.3); padding: 14px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 15px; }
+                .coord-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 6px; }
+                .coord-row strong { color: var(--primary); }
+                .coord-row span { font-family: monospace; font-size: 0.82rem; }
+                .tool-btn { text-align: right; width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: 8px; color: var(--text-color); font-family: var(--font-b); cursor: pointer; font-size: 0.85rem; transition: all 0.3s; margin-bottom: 8px; }
+                .tool-btn:hover { border-color: var(--primary); background: rgba(255,255,255,0.05); }
+                .tool-btn.active { background: var(--primary); color: black; border-color: var(--primary); font-weight: bold; }
+                .tool-btn.reset { background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.3); color: #EF4444; }
+                .tool-btn.reset:hover { background: rgba(239, 68, 68, 0.25); }
+                .measurement-result { padding: 12px; background: rgba(245, 166, 35, 0.05); border: 1px dashed var(--primary); border-radius: 8px; font-size: 0.82rem; line-height: 1.5; text-align: center; }
+                #survey-search { width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 8px; color: var(--text-color); font-family: var(--font-b); outline: none; transition: border-color 0.3s; }
+                #survey-search:focus { border-color: var(--primary); }
+                .survey-search-item { padding: 8px 12px; cursor: pointer; font-size: 0.82rem; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: right; }
+                .survey-search-item:hover { background: rgba(255,255,255,0.05); color: var(--primary); }
+            `;
+            layoutHTML = `
+                <aside class="sidebar card-panel">
+                    <div class="sidebar-header">
+                        <span style="font-size: 2rem;">📏</span>
+                        <h2 style="color:var(--primary);margin:0;font-family:var(--font-h);font-size:1.3rem;">منصة المساحة والرفع الهندسي</h2>
+                    </div>
+                    <p class="sidebar-desc">لوحة المساح المهنية لحساب المسافات والمساحات وعرض الإحداثيات الفلسطينية الرسمية.</p>
+                    
+                    <div class="coordinates-panel">
+                        <h3 class="section-title" style="font-family: var(--font-h); font-size: 0.95rem; color: var(--primary); margin: 0 0 10px 0;">الإحداثيات الحالية (المؤشر)</h3>
+                        <div class="coord-row"><strong>WGS84:</strong> <span id="coord-wgs84">-</span></div>
+                        <div class="coord-row"><strong>Cassini 1923:</strong> <span id="coord-palgrid">-</span></div>
+                        <div class="coord-row"><strong>UTM 36N:</strong> <span id="coord-utm">-</span></div>
+                    </div>
+                    
+                    <div class="tools-section">
+                        <h3 class="section-title" style="font-family: var(--font-h); font-size: 0.95rem; color: var(--primary); margin: 10px 0;">أدوات القياس</h3>
+                        <div class="measurement-controls">
+                            <button class="tool-btn" id="btn-measure-dist" onclick="startMeasurement('distance')">📏 قياس مسافة (أمتار)</button>
+                            <button class="tool-btn" id="btn-measure-area" onclick="startMeasurement('area')">📐 قياس مساحة (دونم)</button>
+                            <button class="tool-btn reset" onclick="resetMeasurement()">❌ إعادة تعيين</button>
+                        </div>
+                        <div class="measurement-result" id="measurement-result">
+                            انقر على الأدوات ثم اضغط على الخريطة لرسم النقاط.
+                        </div>
+                    </div>
+                    
+                    <div class="search-section" style="margin-top:20px;">
+                        <h3 class="section-title" style="font-family: var(--font-h); font-size: 0.95rem; color: var(--primary); margin-bottom:10px;">البحث والتحقق من الأحواض</h3>
+                        <input type="text" id="survey-search" placeholder="ابحث برقم الحوض (مثال: حوض 4)" oninput="searchBlocks(this.value)">
+                        <div id="survey-search-results" style="margin-top:8px; display:none; max-height:120px; overflow-y:auto; background:rgba(0,0,0,0.2); border-radius:6px; border:1px solid var(--border);"></div>
+                    </div>
+                    
+                    <div class="layers-container" style="margin-top:20px;">
+                        <h3 class="section-title" style="font-family: var(--font-h); font-size: 0.95rem; color: var(--primary); margin-bottom:10px;">الطبقات الجغرافية المتاحة</h3>
+                        <div id="layers-list">${layersHTML}</div>
+                    </div>
+                </aside>
+                ${mapContainerHTML}
+            `;
+            templateJS = `
+                const loadTemplateData = async () => {
+                    const promises = layers.map(async (l) => {
+                        if (l.type !== 'raster' && l.type !== 'raster-tile') {
+                            if (typeof l.url === 'string') {
+                                try {
+                                    const res = await fetch(l.url);
+                                    l.data = await res.json();
+                                } catch (e) {
+                                    console.error("Failed to fetch layer data:", e);
+                                }
+                            }
+                        }
+                    });
+                    await Promise.all(promises);
+                    initTemplate();
+                };
+
+                function initTemplate() {
+                }
+
+                map.on('mousemove', (e) => {
+                    const wgs = e.lngLat;
+                    const wgsStr = \`\${wgs.lng.toFixed(5)}, \${wgs.lat.toFixed(5)}\`;
+                    document.getElementById('coord-wgs84').textContent = wgsStr;
+                    
+                    const pg = wgs84ToPalestineGrid(wgs.lng, wgs.lat);
+                    document.getElementById('coord-palgrid').textContent = \`\${pg.east} E, \${pg.north} N\`;
+                    
+                    const utm = wgs84ToUTM36N(wgs.lng, wgs.lat);
+                    document.getElementById('coord-utm').textContent = \`\${utm.east} E, \${utm.north} N\`;
+                });
+
+                function wgs84ToPalestineGrid(lng, lat) {
+                    const lat0 = 31.73409694 * Math.PI / 180;
+                    const lng0 = 35.21208056 * Math.PI / 180;
+                    const falseEast = 170000;
+                    const falseNorth = 1125000;
+                    const a = 6378300.789;
+                    const b = 6356566.435;
+                    const e2 = (a*a - b*b) / (a*a);
+                    const phi = lat * Math.PI / 180;
+                    const lam = lng * Math.PI / 180;
+                    const dLam = lam - lng0;
+                    const N = a / Math.sqrt(1 - e2 * Math.sin(phi) * Math.sin(phi));
+                    const T = Math.tan(phi) * Math.tan(phi);
+                    const A = dLam * Math.cos(phi);
+                    const n = (a - b) / (a + b);
+                    const M0 = a * ((1 - n + 5/4 * (n*n - n*n*n) + 81/64 * (n*n*n*n - n*n*n*n*n)) * lat0 - (3/2 * (n - n*n + 7/8 * (n*n*n - n*n*n*n))) * Math.sin(2*lat0) + (15/16 * (n*n - n*n*n + 3/4 * (n*n*n*n))) * Math.sin(4*lat0) - (35/48 * (n*n*n - n*n*n*n)) * Math.sin(6*lat0));
+                    const M = a * ((1 - n + 5/4 * (n*n - n*n*n) + 81/64 * (n*n*n*n - n*n*n*n*n)) * phi - (3/2 * (n - n*n + 7/8 * (n*n*n - n*n*n*n))) * Math.sin(2*phi) + (15/16 * (n*n - n*n*n + 3/4 * (n*n*n*n))) * Math.sin(4*phi) - (35/48 * (n*n*n - n*n*n*n)) * Math.sin(6*phi));
+                    const X = N * (A - A*A*A/6 * T + A*A*A*A*A/120 * (8 - T + 8*T));
+                    const Y = M - M0 + N * Math.tan(phi) * (A*A/2 + A*A*A*A/24 * (5 - T));
+                    return { east: (X + falseEast).toFixed(2), north: (Y + falseNorth).toFixed(2) };
+                }
+
+                function wgs84ToUTM36N(lng, lat) {
+                    const lat0 = 0;
+                    const lng0 = 33 * Math.PI / 180;
+                    const k0 = 0.9996;
+                    const falseEast = 500000;
+                    const falseNorth = 0;
+                    const a = 6378137;
+                    const f = 1 / 298.257223563;
+                    const b = a * (1 - f);
+                    const e2 = (a*a - b*b) / (a*a);
+                    const phi = lat * Math.PI / 180;
+                    const lam = lng * Math.PI / 180;
+                    const dLam = lam - lng0;
+                    const N = a / Math.sqrt(1 - e2 * Math.sin(phi) * Math.sin(phi));
+                    const T = Math.tan(phi) * Math.tan(phi);
+                    const C = e2 * Math.cos(phi) * Math.cos(phi) / (1 - e2);
+                    const A = dLam * Math.cos(phi);
+                    const M = a * ((1 - e2/4 - 3*e2*e2/64 - 5*e2*e2*e2/256)*phi - (3*e2/8 + 3*e2*e2/32 + 45*e2*e2*e2/1024)*Math.sin(2*phi) + (15*e2*e2/256 + 45*e2*e2/1024)*Math.sin(4*phi) - (35*e2*e2*e2/3072)*Math.sin(6*phi));
+                    const east = k0 * N * (A + (1 - T + C)*A*A*A/6 + (5 - 18*T + T*T + 72*C - 58*e2)*A*A*A*A*A/120) + falseEast;
+                    const north = k0 * (M + N*Math.tan(phi)*(A*A/2 + (5 - T + 9*C + 4*C*C)*A*A*A*A/24 + (61 - 58*T + T*T + 600*C - 330*e2)*A*A*A*A*A*A/720)) + falseNorth;
+                    return { east: east.toFixed(2), north: north.toFixed(2) };
+                }
+
+                let measurePoints = [];
+                let measureMode = null;
+
+                window.startMeasurement = function(mode) {
+                    resetMeasurement();
+                    measureMode = mode;
+                    document.getElementById('btn-measure-dist').classList.toggle('active', mode === 'distance');
+                    document.getElementById('btn-measure-area').classList.toggle('active', mode === 'area');
+                    document.getElementById('measurement-result').textContent = 'انقر على الخريطة لوضع النقاط وقياسها.';
+                    map.getCanvas().style.cursor = 'crosshair';
+                };
+
+                window.resetMeasurement = function() {
+                    measurePoints = [];
+                    measureMode = null;
+                    document.getElementById('btn-measure-dist').classList.remove('active');
+                    document.getElementById('btn-measure-area').classList.remove('active');
+                    document.getElementById('measurement-result').textContent = 'انقر على الأدوات ثم اضغط على الخريطة لرسم النقاط.';
+                    map.getCanvas().style.cursor = '';
+                    
+                    if (map.getLayer('measure-poly')) map.removeLayer('measure-poly');
+                    if (map.getLayer('measure-lines')) map.removeLayer('measure-lines');
+                    if (map.getLayer('measure-points')) map.removeLayer('measure-points');
+                    if (map.getSource('measure-src')) map.removeSource('measure-src');
+                };
+
+                map.on('click', (e) => {
+                    if (!measureMode) return;
+                    const pt = [e.lngLat.lng, e.lngLat.lat];
+                    measurePoints.push(pt);
+                    updateMeasurementGeoJSON();
+                });
+
+                function updateMeasurementGeoJSON() {
+                    const geojson = { type: 'FeatureCollection', features: [] };
+                    measurePoints.forEach((pt, idx) => {
+                        geojson.features.push({
+                            type: 'Feature',
+                            geometry: { type: 'Point', coordinates: pt },
+                            properties: { label: \`نقطة \${idx + 1}\` }
+                        });
+                    });
+                    
+                    if (measurePoints.length > 1) {
+                        if (measureMode === 'distance') {
+                            geojson.features.push({
+                                type: 'Feature',
+                                geometry: { type: 'LineString', coordinates: measurePoints },
+                                properties: {}
+                            });
+                        } else if (measureMode === 'area') {
+                            const polyCoords = [...measurePoints, measurePoints[0]];
+                            geojson.features.push({
+                                type: 'Feature',
+                                geometry: { type: 'Polygon', coordinates: [polyCoords] },
+                                properties: {}
+                            });
+                        }
+                    }
+                    
+                    if (!map.getSource('measure-src')) {
+                        map.addSource('measure-src', { type: 'geojson', data: geojson });
+                        map.addLayer({
+                            id: 'measure-poly', type: 'fill', source: 'measure-src',
+                            filter: ['==', '$type', 'Polygon'],
+                            paint: { 'fill-color': 'rgba(245, 166, 35, 0.2)', 'fill-outline-color': '#F5A623' }
+                        });
+                        map.addLayer({
+                            id: 'measure-lines', type: 'line', source: 'measure-src',
+                            filter: ['in', '$type', 'LineString', 'Polygon'],
+                            paint: { 'line-color': '#F5A623', 'line-width': 3 }
+                        });
+                        map.addLayer({
+                            id: 'measure-points', type: 'circle', source: 'measure-src',
+                            filter: ['==', '$type', 'Point'],
+                            paint: { 'circle-radius': 6, 'circle-color': '#fff', 'circle-stroke-width': 2, 'circle-stroke-color': '#F5A623' }
+                        });
+                    } else {
+                        map.getSource('measure-src').setData(geojson);
+                    }
+                    calculateResult();
+                }
+
+                function calculateResult() {
+                    const resultEl = document.getElementById('measurement-result');
+                    if (measurePoints.length < 2) {
+                        resultEl.textContent = 'ضع نقطتين على الأقل لإجراء العمليات الحسابية.';
+                        return;
+                    }
+                    if (measureMode === 'distance') {
+                        let dist = 0;
+                        for (let i = 0; i < measurePoints.length - 1; i++) {
+                            dist += haversineDistance(measurePoints[i], measurePoints[i+1]);
+                        }
+                        resultEl.innerHTML = \`🏁 <b>المسافة الإجمالية:</b> \${(dist).toFixed(1)} متر (\${(dist/1000).toFixed(3)} كم)\`;
+                    } else if (measureMode === 'area') {
+                        if (measurePoints.length < 3) {
+                            resultEl.textContent = 'حدد 3 نقاط على الأقل لحساب المساحة.';
+                            return;
+                        }
+                        const area = calculatePolygonArea(measurePoints);
+                        const dunums = area / 1000;
+                        resultEl.innerHTML = \`📐 <b>المساحة الإجمالية:</b> \${(area).toFixed(1)} م² (\${dunums.toFixed(2)} دونم)\`;
+                    }
+                }
+
+                function haversineDistance(p1, p2) {
+                    const R = 6371e3;
+                    const lat1 = p1[1] * Math.PI / 180;
+                    const lat2 = p2[1] * Math.PI / 180;
+                    const dLat = (p2[1] - p1[1]) * Math.PI / 180;
+                    const dLng = (p2[0] - p1[0]) * Math.PI / 180;
+                    const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng/2) * Math.sin(dLng/2);
+                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                    return R * c;
+                }
+
+                function calculatePolygonArea(coords) {
+                    let area = 0;
+                    const R = 6378137;
+                    if (coords.length > 2) {
+                        for (let i = 0; i < coords.length; i++) {
+                            const p1 = coords[i];
+                            const p2 = coords[(i + 1) % coords.length];
+                            const x1 = p1[0] * Math.PI / 180 * R;
+                            const y1 = Math.log(Math.tan(Math.PI / 4 + p1[1] * Math.PI / 360)) * R;
+                            const x2 = p2[0] * Math.PI / 180 * R;
+                            const y2 = Math.log(Math.tan(Math.PI / 4 + p2[1] * Math.PI / 360)) * R;
+                            area += (x1 * y2) - (x2 * y1);
+                        }
+                        area = Math.abs(area / 2);
+                        const avgLat = coords.reduce((sum, c) => sum + c[1], 0) / coords.length;
+                        const cosLat = Math.cos(avgLat * Math.PI / 180);
+                        area = area * cosLat * cosLat;
+                    }
+                    return area;
+                }
+
+                window.searchBlocks = function(query) {
+                    const res = document.getElementById('survey-search-results');
+                    if (!res) return;
+                    if (!query.trim()) { res.style.display = 'none'; return; }
+                    const found = [];
+                    layers.forEach(layer => {
+                        if (!layer.data?.features) return;
+                        layer.data.features.forEach(f => {
+                            const props = f.properties || {};
+                            const match = Object.values(props).some(v => String(v).includes(query));
+                            if (match) {
+                                const name = props.block_name || props.block_no || props.name || Object.values(props)[0];
+                                found.push({ name: String(name), geom: f.geometry, props });
+                            }
+                        });
+                    });
+                    if (found.length === 0) {
+                        res.innerHTML = '<div style="padding:8px 12px;opacity:0.5;font-size:0.82rem;">لا توجد تطابقات</div>';
+                        res.style.display = 'block';
+                        return;
+                    }
+                    res.innerHTML = found.slice(0, 5).map((item, idx) => \`
+                        <div class="survey-search-item" onclick="zoomToSurveyItem(\${idx})">🔍 \${item.name}</div>
+                    \`).join('');
+                    res.style.display = 'block';
+                    window._surveyResults = found;
+                };
+
+                window.zoomToSurveyItem = function(idx) {
+                    const item = window._surveyResults?.[idx];
+                    if (!item) return;
+                    const coords = item.geom.type === 'Point' ? item.geom.coordinates : item.geom.coordinates?.[0]?.[0] || item.geom.coordinates?.[0];
+                    if (coords) map.flyTo({ center: coords, zoom: 16 });
+                    document.getElementById('survey-search-results').style.display = 'none';
+                };
+
+                map.on('load', () => {
+                    loadTemplateData();
+                });
+            `;
         }
 
-        // 3. Build custom elements overlay
+        // 4. Build custom elements overlay
         const customElsCSS = pageElements.length > 0 ? `
         .custom-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
         .custom-overlay > * { pointer-events: auto; }
@@ -5294,35 +6333,12 @@ out geom;`;
         }).join('\n            ')}
         </div>` : '';
 
-        // 4. Helper to round coordinates to 6 decimal places (saves ~50% space)
-        const roundCoords = (coords) => {
-            if (typeof coords === 'number') return Math.round(coords * 1000000) / 1000000;
-            if (Array.isArray(coords)) return coords.map(roundCoords);
-            return coords;
-        };
-
-        // 5. Prepare optimized layers with full embedding for portability
-        const optimizedLayers = exportLayers.map(l => {
-            const clean = { ...l };
-            if (clean.data && clean.data.features) {
-                // Optimize each feature
-                clean.data.features = clean.data.features.map(f => ({
-                    ...f,
-                    geometry: f.geometry ? {
-                        ...f.geometry,
-                        coordinates: roundCoords(f.geometry.coordinates)
-                    } : null
-                }));
-            }
-            return clean;
-        });
-
-        // 6. Calculate final bounds from optimized data
+        // 5. Calculate final bounds from original geoLayers
         let finalBounds = null;
         try {
             const allCoords = [];
-            optimizedLayers.forEach(l => {
-                if (l.data?.features) {
+            geoLayers.forEach(l => {
+                if (l.type !== 'raster-tile' && l.type !== 'raster' && l.data?.features) {
                     l.data.features.forEach(f => {
                         if (f.geometry?.type === 'Point') allCoords.push(f.geometry.coordinates);
                         else if (f.geometry?.coordinates) {
@@ -5348,8 +6364,358 @@ out geom;`;
             }
         } catch (e) { console.error("Bounds calc error", e); }
 
-        // 7. Generate HTML Template
-        const htmlTemplate = `<!DOCTYPE html>
+        // 6. Optimized layers array for app.js metadata
+        const optimizedLayers = exportLayers.map(l => ({
+            id: l.id,
+            name: l.name,
+            type: l.type,
+            url: l.url,
+            style: l.style
+        }));
+
+        // 7. Compile CSS and JS contents
+        const compiledCSS = `
+            :root {
+                --primary: ${theme.primary};
+                --primary-dark: ${theme.primaryDark};
+                --primary-glow: ${theme.primaryGlow};
+                --bg: ${theme.bg};
+                --surface: ${theme.surface};
+                --surface-solid: ${theme.surfaceSolid};
+                --border: ${theme.border};
+                --text-color: ${theme.text};
+                --font-h: ${selectedFont.h};
+                --font-b: ${selectedFont.b};
+            }
+            html, body { margin: 0; padding: 0; height: 100%; width: 100%; font-family: var(--font-b); background: var(--bg); color: var(--text-color); overflow: hidden; }
+            * { box-sizing: border-box; }
+            
+            ${layoutCSS}
+            ${effectCSS}
+
+            .layer-item { background: rgba(0,0,0,0.15); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; border: 1px solid var(--border); }
+            .layer-item:hover { border-color: var(--primary); }
+            #map {
+                flex: 1;
+                min-height: 400px;
+                height: 100%;
+                width: 100%;
+                background: #000;
+                border-radius: ${designSelections.mapBorderRadius || '0px'};
+                border: ${designSelections.mapBorderWidth || '0px'} solid ${designSelections.mapBorderColor || 'transparent'};
+                overflow: hidden;
+            }
+
+            .watermark {
+                position: fixed; bottom: 5px; right: 8px;
+                color: rgba(255,255,255,0.6);
+                font-size: 11px; font-family: sans-serif; font-weight: normal;
+                pointer-events: none; z-index: 1000;
+                text-shadow: 0 0 3px rgba(0,0,0,0.5);
+            }
+            
+            .maplibregl-popup-content { background: var(--surface-solid); color: var(--text-color); border: 1px solid var(--primary); border-radius: 12px; font-family: var(--font-b); box-shadow: 0 10px 30px rgba(0,0,0,0.5); padding: 16px; }
+            .maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: var(--primary); }
+            ${customElsCSS}
+        `;
+
+        const compiledJS = `
+            console.log("Initializing PalNovaa Map...");
+            const layers = ${JSON.stringify(optimizedLayers)};
+            const mapStyle = ${JSON.stringify(targetBasemapStyleObj)};
+            const initialBounds = ${JSON.stringify(finalBounds)};
+
+            try {
+                const map = new maplibregl.Map({
+                    container: 'map',
+                    style: mapStyle,
+                    center: [${center.lng}, ${center.lat}],
+                    zoom: ${zoom},
+                    pitch: ${pitch},
+                    bearing: ${bearing},
+                    attributionControl: ${designSelections.show_attribution}
+                });
+
+                if (initialBounds) {
+                    map.fitBounds(initialBounds, { padding: 50, animate: false });
+                }
+
+                if (${designSelections.show_controls}) {
+                    map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+                    const style = document.createElement('style');
+                    style.textContent = '.maplibregl-ctrl-bottom-right { bottom: 30px !important; }';
+                    document.head.appendChild(style);
+                }
+
+                if (${designSelections.enable_scale}) {
+                    map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
+                }
+
+                if (${designSelections.auto_rotate}) {
+                    let isRotating = true;
+                    function rotateCamera(timestamp) {
+                        if (!isRotating) return;
+                        map.rotateTo((map.getBearing() + 0.1) % 360, { duration: 0 });
+                        requestAnimationFrame(rotateCamera);
+                    }
+                    map.on('load', () => {
+                        rotateCamera();
+                        map.on('dragstart', () => { isRotating = false; });
+                        map.on('dragend', () => { isRotating = true; rotateCamera(); });
+                        map.on('zoomstart', () => { isRotating = false; });
+                        map.on('zoomend', () => { isRotating = true; rotateCamera(); });
+                    });
+                }
+
+                if (${designSelections.show_layer_toggle}) {
+                    window.toggleLayer = function(layerId, visible) {
+                        const visibility = visible ? 'visible' : 'none';
+                        ['poly-', 'poly-line-', 'line-', 'point-', 'raster-'].forEach(prefix => {
+                            const lId = prefix + layerId;
+                            if (map.getLayer(lId)) {
+                                map.setLayoutProperty(lId, 'visibility', visibility);
+                            }
+                        });
+                    };
+                }
+
+                // Search function for custom search element
+                window.doSearch = function(query) {
+                    const results = document.getElementById('search-results');
+                    if (!results) return;
+                    if (!query.trim()) { results.style.display = 'none'; return; }
+                    const found = [];
+                    layers.forEach(layer => {
+                        if (!layer.data?.features) return;
+                        layer.data.features.forEach(f => {
+                            const props = f.properties || {};
+                            const match = Object.values(props).some(v => String(v).toLowerCase().includes(query.toLowerCase()));
+                            if (match && f.geometry) found.push({ props, geom: f.geometry });
+                        });
+                    });
+                    if (found.length === 0) { results.innerHTML = '<div class="map-search-item" style="opacity:0.5; padding: 10px 16px;">لا توجد نتائج</div>'; results.style.display = 'block'; return; }
+                    results.innerHTML = found.slice(0, 8).map((r, i) => {
+                        const label = r.props['name:ar'] || r.props.name || r.props.name_ar || r.props.title_ar || r.props.title || r.props['name:en'] || r.props.name_en || r.props.title_en || Object.values(r.props).find(v => typeof v === 'string') || 'معلم ' + (i + 1);
+                        return '<div class="map-search-item" onclick="flyToFeature(' + i + ')">' + label + '</div>';
+                    }).join('');
+                    results.style.display = 'block';
+                    window._searchResults = found;
+                };
+
+                window.flyToFeature = function(i) {
+                    const f = window._searchResults?.[i];
+                    if (!f) return;
+                    const coords = f.geom.type === 'Point' ? f.geom.coordinates : f.geom.coordinates?.[0]?.[0] || f.geom.coordinates?.[0];
+                    if (coords) map.flyTo({ center: coords, zoom: 15 });
+                    document.getElementById('search-results').style.display = 'none';
+                };
+
+                document.addEventListener('click', e => { 
+                    const r = document.getElementById('search-results'); 
+                    if(r && !e.target.closest('.cel-search-wrap')) r.style.display = 'none'; 
+                });
+
+                map.on('load', () => {
+                    console.log("Map loaded, generating icons...");
+                    const addShapeIcon = (name, svgPath) => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 64; canvas.height = 64;
+                        const ctx = canvas.getContext('2d');
+                        const path = new Path2D(svgPath);
+                        ctx.translate(32, 32);
+                        ctx.scale(2, 2);
+                        ctx.translate(-12, -12);
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fill(path);
+                        const imageData = ctx.getImageData(0, 0, 64, 64);
+                        map.addImage('shape-' + name, imageData, { sdf: true });
+                    };
+
+                    const shapes = {
+                        square: 'M3 3h18v18H3z',
+                        diamond: 'M12 2l9 10-9 10-9-10z',
+                        triangle: 'M12 2l10 18H2z',
+                        star: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
+                        cross: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'
+                    };
+                    Object.entries(shapes).forEach(([k, v]) => addShapeIcon(k, v));
+
+                    console.log("Adding sources and layers...");
+                    layers.forEach(layer => {
+                        const s = layer.style || {};
+                        const lColor = s.color || layer.color || '#fbab15';
+                        const lOp = s.opacity ?? 1;
+                        const fOp = s.fillOpacity ?? 0.3;
+                        const outClr = s.outlineColor || '#ffffff';
+                        const outW = s.outlineWidth ?? 2;
+
+                        const sourceData = layer.url || layer.data;
+                        if (!sourceData) {
+                            console.warn("No data for layer:", layer.name);
+                            return;
+                        }
+
+                        if (layer.type === 'raster-tile') {
+                            map.addSource('src-' + layer.id, { type: 'raster', tiles: [sourceData], tileSize: 256 });
+                            map.addLayer({
+                                id: 'raster-' + layer.id,
+                                type: 'raster',
+                                source: 'src-' + layer.id,
+                                paint: { 'raster-opacity': s.opacity ?? 0.8 }
+                            });
+                        } else {
+                            map.addSource('src-' + layer.id, { type: 'geojson', data: sourceData });
+                            map.addLayer({ 
+                                id: 'poly-' + layer.id, 
+                                type: 'fill', 
+                                source: 'src-' + layer.id, 
+                                filter: ['==', '$type', 'Polygon'], 
+                                paint: { 
+                                    'fill-color': lColor, 
+                                    'fill-opacity': fOp * lOp, 
+                                    'fill-outline-color': outClr 
+                                } 
+                            });
+                            map.addLayer({ 
+                                id: 'poly-line-' + layer.id, 
+                                type: 'line', 
+                                source: 'src-' + layer.id, 
+                                filter: ['==', '$type', 'Polygon'], 
+                                paint: { 
+                                    'line-color': outClr, 
+                                    'line-width': outW,
+                                    'line-opacity': lOp
+                                } 
+                            });
+                            map.addLayer({ 
+                                id: 'line-' + layer.id, 
+                                type: 'line', 
+                                source: 'src-' + layer.id, 
+                                filter: ['==', '$type', 'LineString'], 
+                                paint: { 
+                                    'line-color': lColor, 
+                                    'line-width': outW * 2,
+                                    'line-opacity': lOp
+                                } 
+                            });
+                            
+                            const pShape = s.shape || 'circle';
+                            if (pShape === 'circle') {
+                                map.addLayer({ 
+                                    id: 'point-' + layer.id, 
+                                    type: 'circle', 
+                                    source: 'src-' + layer.id, 
+                                    filter: ['==', '$type', 'Point'], 
+                                    paint: { 
+                                        'circle-radius': 7, 
+                                        'circle-color': lColor, 
+                                        'circle-stroke-width': outW, 
+                                        'circle-stroke-color': outClr,
+                                        'circle-opacity': lOp,
+                                        'circle-stroke-opacity': lOp
+                                    } 
+                                });
+                            } else {
+                                map.addLayer({
+                                    id: 'point-' + layer.id,
+                                    type: 'symbol',
+                                    source: 'src-' + layer.id,
+                                    filter: ['==', '$type', 'Point'],
+                                    layout: {
+                                        'icon-image': 'shape-' + pShape,
+                                        'icon-size': 0.8,
+                                        'icon-allow-overlap': true
+                                    },
+                                    paint: {
+                                        'icon-color': lColor,
+                                        'icon-opacity': lOp
+                                    }
+                                });
+                            }
+                        }
+
+                        const layerEvents = layer.type === 'raster-tile' ? ['raster-' + layer.id] : ['poly-' + layer.id, 'line-' + layer.id, 'point-' + layer.id];
+                        layerEvents.forEach(id => {
+                            map.on('mouseenter', id, () => { map.getCanvas().style.cursor = 'pointer'; });
+                            map.on('mouseleave', id, () => { map.getCanvas().style.cursor = ''; });
+                        });
+                    });
+
+                    // Add Highlight Source and Layer
+                    map.addSource('highlight-src', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+                    map.addLayer({
+                        id: 'highlight-line', type: 'line', source: 'highlight-src',
+                        paint: { 'line-color': '#06D6F2', 'line-width': 4, 'line-blur': 2 }
+                    });
+                    map.addLayer({
+                        id: 'highlight-point', type: 'circle', source: 'highlight-src',
+                        filter: ['==', '$type', 'Point'],
+                        paint: { 'circle-radius': 10, 'circle-color': 'transparent', 'circle-stroke-width': 3, 'circle-stroke-color': '#06D6F2' }
+                    });
+
+                    if (${designSelections.enable_popups}) {
+                        map.on('click', (e) => {
+                            const features = map.queryRenderedFeatures(e.point);
+                            const myFeatures = features.filter(f => f.layer.id.startsWith('poly-') || f.layer.id.startsWith('line-') || f.layer.id.startsWith('point-'));
+                            
+                            if (myFeatures.length > 0) {
+                                const f = myFeatures[0];
+                                map.getSource('highlight-src').setData(f.toJSON());
+                                
+                                let html = '<div style="direction:rtl; text-align:right; font-family: Cairo, sans-serif; padding:5px;">';
+                                html += '<h3 style="margin:0 0 12px 0; color:#06D6F2; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px; font-size:1.1rem;">تفاصيل المعلم</h3>';
+                                const props = f.properties;
+                                let hasProps = false;
+                                for (let key in props) {
+                                    hasProps = true;
+                                    html += '<div style="margin-bottom:10px; font-size:0.9rem; line-height:1.4;">';
+                                    html += '<strong style="color:var(--primary);">' + key + ':</strong> ';
+                                    html += '<span style="color:#eee; word-break:break-word;">' + props[key] + '</span>';
+                                    html += '</div>';
+                                }
+                                if(!hasProps) html += '<div style="opacity:0.6; font-size:0.85rem;">لا توجد بيانات وصفية متاحة.</div>';
+                                html += '</div>';
+                                
+                                new maplibregl.Popup({closeButton: false, maxWidth: '320px'}).setLngLat(e.lngLat).setHTML(html).addTo(map);
+                            } else {
+                                map.getSource('highlight-src').setData({ type: 'FeatureCollection', features: [] });
+                            }
+                        });
+                    }
+                });
+            } catch (e) {
+                console.error("Critical Map Error:", e);
+            }
+
+            ${templateJS}
+        `;
+
+        let htmlWrapper = '';
+        if (isZip) {
+            htmlWrapper = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PalNovaa Web Map Design</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@200..1000&family=Tajawal:wght@200;300;400;500;700;800;900&family=JetBrains+Mono:wght@100..800&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container" style="position:relative; height: 100vh; width: 100vw; display: flex; flex-direction: column;">
+        ${layoutHTML}
+        ${customElsHTML}
+    </div>
+    <div style="position:fixed;bottom:5px;right:8px;z-index:1000;font-size:11px;color:rgba(255,255,255,0.65);text-shadow:0 0 3px rgba(0,0,0,0.6);pointer-events:none;font-family:sans-serif;">Designed in PalNovaa Studio</div>
+    <script src="js/app.js"></script>
+</body>
+</html>`;
+        } else {
+            htmlWrapper = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -5361,48 +6727,7 @@ out geom;`;
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <style>
-        :root {
-            --primary: ${theme.primary};
-            --primary-dark: ${theme.primaryDark};
-            --primary-glow: ${theme.primaryGlow};
-            --bg: ${theme.bg};
-            --surface: ${theme.surface};
-            --surface-solid: ${theme.surfaceSolid};
-            --border: ${theme.border};
-            --text-color: ${theme.text};
-            --font-h: ${selectedFont.h};
-            --font-b: ${selectedFont.b};
-        }
-        html, body { margin: 0; padding: 0; height: 100%; width: 100%; font-family: var(--font-b); background: var(--bg); color: var(--text-color); overflow: hidden; }
-        * { box-sizing: border-box; }
-        
-        ${layoutCSS}
-        ${effectCSS}
-
-        .layer-item { background: rgba(0,0,0,0.15); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; border: 1px solid var(--border); }
-        .layer-item:hover { border-color: var(--primary); }
-        #map {
-            flex: 1;
-            min-height: 400px;
-            height: 100%;
-            width: 100%;
-            background: #000;
-            border-radius: ${designSelections.mapBorderRadius || '0px'};
-            border: ${designSelections.mapBorderWidth || '0px'} solid ${designSelections.mapBorderColor || 'transparent'};
-            overflow: hidden;
-        }
-
-        .watermark {
-            position: fixed; bottom: 5px; right: 8px;
-            color: rgba(255,255,255,0.6);
-            font-size: 11px; font-family: sans-serif; font-weight: normal;
-            pointer-events: none; z-index: 1000;
-            text-shadow: 0 0 3px rgba(0,0,0,0.5);
-        }
-        
-        .maplibregl-popup-content { background: var(--surface-solid); color: var(--text-color); border: 1px solid var(--primary); border-radius: 12px; font-family: var(--font-b); box-shadow: 0 10px 30px rgba(0,0,0,0.5); padding: 16px; }
-        .maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: var(--primary); }
-        ${customElsCSS}
+        ${compiledCSS}
     </style>
 </head>
 <body>
@@ -5413,289 +6738,62 @@ out geom;`;
     <div style="position:fixed;bottom:5px;right:8px;z-index:1000;font-size:11px;color:rgba(255,255,255,0.65);text-shadow:0 0 3px rgba(0,0,0,0.6);pointer-events:none;font-family:sans-serif;">Designed in PalNovaa Studio</div>
 
     <script>
-        console.log("Initializing PalNovaa Map...");
-        const layers = ${JSON.stringify(optimizedLayers)};
-        const mapStyle = ${JSON.stringify(targetBasemapStyleObj)};
-        const initialBounds = ${JSON.stringify(finalBounds)};
-
-        try {
-            const map = new maplibregl.Map({
-                container: 'map',
-                style: mapStyle,
-                center: [${center.lng}, ${center.lat}],
-                zoom: ${zoom},
-                pitch: ${pitch},
-                bearing: ${bearing},
-                attributionControl: ${designSelections.show_attribution}
-            });
-
-            if (initialBounds) {
-                map.fitBounds(initialBounds, { padding: 50, animate: false });
-            }
-
-            if (${designSelections.show_controls}) {
-                map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
-                
-                // Push navigation control above the browser status bar
-                const style = document.createElement('style');
-                style.textContent = '.maplibregl-ctrl-bottom-right { bottom: 30px !important; }';
-                document.head.appendChild(style);
-            }
-
-            if (${designSelections.enable_scale}) {
-                map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
-            }
-
-            if (${designSelections.auto_rotate}) {
-                let isRotating = true;
-                function rotateCamera(timestamp) {
-                    if (!isRotating) return;
-                    map.rotateTo((map.getBearing() + 0.1) % 360, { duration: 0 });
-                    requestAnimationFrame(rotateCamera);
-                }
-                map.on('load', () => {
-                    rotateCamera();
-                    map.on('dragstart', () => { isRotating = false; });
-                    map.on('dragend', () => { isRotating = true; rotateCamera(); });
-                    map.on('zoomstart', () => { isRotating = false; });
-                    map.on('zoomend', () => { isRotating = true; rotateCamera(); });
-                });
-            }
-
-            if (${designSelections.show_layer_toggle}) {
-                window.toggleLayer = function(layerId, visible) {
-                    const visibility = visible ? 'visible' : 'none';
-                    ['poly-', 'poly-line-', 'line-', 'point-'].forEach(prefix => {
-                        const lId = prefix + layerId;
-                        if (map.getLayer(lId)) {
-                            map.setLayoutProperty(lId, 'visibility', visibility);
-                        }
-                    });
-                };
-            }
-
-            // Search function for custom search element
-            window.doSearch = function(query) {
-                const results = document.getElementById('search-results');
-                if (!results) return;
-                if (!query.trim()) { results.style.display = 'none'; return; }
-                const found = [];
-                // Search only works if data is embedded or after loading
-                layers.forEach(layer => {
-                    if (!layer.data?.features) return;
-                    layer.data.features.forEach(f => {
-                        const props = f.properties || {};
-                        const match = Object.values(props).some(v => String(v).toLowerCase().includes(query.toLowerCase()));
-                        if (match && f.geometry) found.push({ props, geom: f.geometry });
-                    });
-                });
-                if (found.length === 0) { results.innerHTML = '<div class="map-search-item" style="opacity:0.5; padding: 10px 16px;">لا توجد نتائج</div>'; results.style.display = 'block'; return; }
-                results.innerHTML = found.slice(0, 8).map((r, i) => {
-                    const label = r.props['name:ar'] || r.props.name || r.props.name_ar || r.props.title_ar || r.props.title || r.props['name:en'] || r.props.name_en || r.props.title_en || Object.values(r.props).find(v => typeof v === 'string') || 'معلم ' + (i + 1);
-                    return '<div class="map-search-item" onclick="flyToFeature(' + i + ')">' + label + '</div>';
-                }).join('');
-                results.style.display = 'block';
-                window._searchResults = found;
-            };
-
-            window.flyToFeature = function(i) {
-                const f = window._searchResults?.[i];
-                if (!f) return;
-                const coords = f.geom.type === 'Point' ? f.geom.coordinates : f.geom.coordinates?.[0]?.[0] || f.geom.coordinates?.[0];
-                if (coords) map.flyTo({ center: coords, zoom: 15 });
-                document.getElementById('search-results').style.display = 'none';
-            };
-
-            document.addEventListener('click', e => { 
-                const r = document.getElementById('search-results'); 
-                if(r && !e.target.closest('.cel-search-wrap')) r.style.display = 'none'; 
-            });
-
-            map.on('load', () => {
-                console.log("Map loaded, generating icons...");
-                
-                // Function to generate and add shape icons to the map
-                const addShapeIcon = (name, svgPath) => {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = 64; canvas.height = 64;
-                    const ctx = canvas.getContext('2d');
-                    const path = new Path2D(svgPath);
-                    ctx.translate(32, 32);
-                    ctx.scale(2, 2);
-                    ctx.translate(-12, -12); // Center a 24x24 path
-                    ctx.fillStyle = '#ffffff'; // We use white and 'icon-color' paint property
-                    ctx.fill(path);
-                    const imageData = ctx.getImageData(0, 0, 64, 64);
-                    map.addImage('shape-' + name, imageData, { sdf: true });
-                };
-
-                // Add our custom shapes
-                const shapes = {
-                    square: 'M3 3h18v18H3z',
-                    diamond: 'M12 2l9 10-9 10-9-10z',
-                    triangle: 'M12 2l10 18H2z',
-                    star: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
-                    cross: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'
-                };
-                Object.entries(shapes).forEach(([k, v]) => addShapeIcon(k, v));
-
-                console.log("Adding sources and layers...");
-                layers.forEach(layer => {
-                    const s = layer.style || {};
-                    const lColor = s.color || layer.color || '#fbab15';
-                    const lOp = s.opacity ?? 1;
-                    const fOp = s.fillOpacity ?? 0.3;
-                    const outClr = s.outlineColor || '#ffffff';
-                    const outW = s.outlineWidth ?? 2;
-
-                    // PRIORITIZE EMBEDDED DATA: Use embedded data if available (best for portability)
-                    const sourceData = layer.data || layer.dataUrl;
-                    if (!sourceData) {
-                        console.warn("No data for layer:", layer.name);
-                        return;
-                    }
-
-                    map.addSource('src-' + layer.id, { type: 'geojson', data: sourceData });
-                        
-                    // Polygons
-                    map.addLayer({ 
-                        id: 'poly-' + layer.id, 
-                        type: 'fill', 
-                        source: 'src-' + layer.id, 
-                        filter: ['==', '$type', 'Polygon'], 
-                        paint: { 
-                            'fill-color': lColor, 
-                            'fill-opacity': fOp * lOp, 
-                            'fill-outline-color': outClr 
-                        } 
-                    });
-                    map.addLayer({ 
-                        id: 'poly-line-' + layer.id, 
-                        type: 'line', 
-                        source: 'src-' + layer.id, 
-                        filter: ['==', '$type', 'Polygon'], 
-                        paint: { 
-                            'line-color': outClr, 
-                            'line-width': outW,
-                            'line-opacity': lOp
-                        } 
-                    });
-                    
-                    // Lines
-                    map.addLayer({ 
-                        id: 'line-' + layer.id, 
-                        type: 'line', 
-                        source: 'src-' + layer.id, 
-                        filter: ['==', '$type', 'LineString'], 
-                        paint: { 
-                            'line-color': lColor, 
-                            'line-width': outW * 2,
-                            'line-opacity': lOp
-                        } 
-                    });
-                    
-                    // Points
-                    const pShape = s.shape || 'circle';
-                    if (pShape === 'circle') {
-                        map.addLayer({ 
-                            id: 'point-' + layer.id, 
-                            type: 'circle', 
-                            source: 'src-' + layer.id, 
-                            filter: ['==', '$type', 'Point'], 
-                            paint: { 
-                                'circle-radius': 7, 
-                                'circle-color': lColor, 
-                                'circle-stroke-width': outW, 
-                                'circle-stroke-color': outClr,
-                                'circle-opacity': lOp,
-                                'circle-stroke-opacity': lOp
-                            } 
-                        });
-                    } else {
-                        // For non-circle shapes, we use the symbol layer with our generated icons
-                        map.addLayer({
-                            id: 'point-' + layer.id,
-                            type: 'symbol',
-                            source: 'src-' + layer.id,
-                            filter: ['==', '$type', 'Point'],
-                            layout: {
-                                'icon-image': 'shape-' + pShape,
-                                'icon-size': 0.8,
-                                'icon-allow-overlap': true
-                            },
-                            paint: {
-                                'icon-color': lColor,
-                                'icon-opacity': lOp
-                            }
-                        });
-                    }
-
-                    // Cursor pointers
-                    ['poly-' + layer.id, 'line-' + layer.id, 'point-' + layer.id].forEach(id => {
-                        map.on('mouseenter', id, () => { map.getCanvas().style.cursor = 'pointer'; });
-                        map.on('mouseleave', id, () => { map.getCanvas().style.cursor = ''; });
-                    });
-                });
-
-                // Add Highlight Source and Layer
-                map.addSource('highlight-src', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-                map.addLayer({
-                    id: 'highlight-line', type: 'line', source: 'highlight-src',
-                    paint: { 'line-color': '#06D6F2', 'line-width': 4, 'line-blur': 2 }
-                });
-                map.addLayer({
-                    id: 'highlight-point', type: 'circle', source: 'highlight-src',
-                    filter: ['==', '$type', 'Point'],
-                    paint: { 'circle-radius': 10, 'circle-color': 'transparent', 'circle-stroke-width': 3, 'circle-stroke-color': '#06D6F2' }
-                });
-
-                if (${designSelections.enable_popups}) {
-                    map.on('click', (e) => {
-                        const features = map.queryRenderedFeatures(e.point);
-                        const myFeatures = features.filter(f => f.layer.id.startsWith('poly-') || f.layer.id.startsWith('line-') || f.layer.id.startsWith('point-'));
-                        
-                        if (myFeatures.length > 0) {
-                            const f = myFeatures[0];
-                            map.getSource('highlight-src').setData(f.toJSON());
-                            
-                            let html = '<div style="direction:rtl; text-align:right; font-family: Cairo, sans-serif; padding:5px;">';
-                            html += '<h3 style="margin:0 0 12px 0; color:#06D6F2; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px; font-size:1.1rem;">تفاصيل المعلم</h3>';
-                            const props = f.properties;
-                            let hasProps = false;
-                            for (let key in props) {
-                                hasProps = true;
-                                html += '<div style="margin-bottom:10px; font-size:0.9rem; line-height:1.4;">';
-                                html += '<strong style="color:var(--primary);">' + key + ':</strong> ';
-                                html += '<span style="color:#eee; word-break:break-word;">' + props[key] + '</span>';
-                                html += '</div>';
-                            }
-                            if(!hasProps) html += '<div style="opacity:0.6; font-size:0.85rem;">لا توجد بيانات وصفية متاحة.</div>';
-                            html += '</div>';
-                            
-                            new maplibregl.Popup({closeButton: false, maxWidth: '320px'}).setLngLat(e.lngLat).setHTML(html).addTo(map);
-                        } else {
-                            map.getSource('highlight-src').setData({ type: 'FeatureCollection', features: [] });
-                        }
-                    });
-                }
-            });
-        } catch (e) {
-            console.error("Critical Map Error:", e);
-            document.body.innerHTML += '<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(239,68,68,0.9);color:white;padding:30px;border-radius:20px;text-align:center;z-index:9999;box-shadow:0 20px 50px rgba(0,0,0,0.5);"><h2>عذراً، حدث خطأ في تحميل الخريطة</h2><p>' + e.message + '</p></div>';
-        }
+        ${compiledJS}
     </script>
 </body>
 </html>`;
+        }
 
-        const blob = new Blob([htmlTemplate], { type: 'text/html' });
-        const downloadUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = downloadUrl;
-        a.download = `PalNovaa_Design_${designSelections.layout}_${Date.now()}.html`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(downloadUrl);
+        // 8. Output/Packaging
+        if (isZip) {
+            setIsPublishing(true);
+            try {
+                if (!window.JSZip) {
+                    await new Promise((resolve, reject) => {
+                        const script = document.createElement('script');
+                        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+                        script.onload = resolve;
+                        script.onerror = reject;
+                        document.head.appendChild(script);
+                    });
+                }
+                const zip = new window.JSZip();
+                
+                // Add geojson files to data/ folder
+                filesToZip.forEach(file => {
+                    zip.file(file.name, file.content);
+                });
+                
+                zip.file("index.html", htmlWrapper);
+                zip.folder("css").file("style.css", compiledCSS);
+                zip.folder("js").file("app.js", compiledJS);
+                
+                const content = await zip.generateAsync({ type: 'blob' });
+                const downloadUrl = URL.createObjectURL(content);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = `PalNovaa_Project_${designSelections.commercialTemplate}_${Date.now()}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(downloadUrl);
+            } catch (err) {
+                console.error("ZIP packaging failed:", err);
+                alert("فشل تصدير المشروع كـ ZIP: " + err.message);
+            } finally {
+                setIsPublishing(false);
+            }
+        } else {
+            const blob = new Blob([htmlWrapper], { type: 'text/html' });
+            const downloadUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `PalNovaa_Design_${designSelections.layout}_${Date.now()}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(downloadUrl);
+        }
         setIsDesignStudioOpen(false);
     };
 
@@ -5912,6 +7010,19 @@ out geom;`;
                                                 type="raster"
                                                 source={`src-${layer.id}`}
                                                 paint={{ 'raster-opacity': style.opacity ?? 0.9 }}
+                                            />
+                                        </Source>
+                                    );
+                                }
+
+                                if (layer.type === 'raster-tile') {
+                                    return (
+                                        <Source key={layer.id} id={`src-${layer.id}`} type="raster" tiles={[layer.url]} tileSize={256}>
+                                            <Layer
+                                                id={`raster-${layer.id}`}
+                                                type="raster"
+                                                source={`src-${layer.id}`}
+                                                paint={{ 'raster-opacity': style.opacity ?? 0.8 }}
                                             />
                                         </Source>
                                     );
@@ -6644,6 +7755,53 @@ out geom;`;
                                         <small style={{ display: 'block', marginTop: '8px', color: 'var(--text-muted)', fontSize: '0.7rem' }}>
                                             يدعم MapServer و FeatureServer و GeoJSON مباشر.
                                         </small>
+                                    </div>
+
+                                    <div className="panel-divider" style={{ margin: '15px 0', opacity: 0.2 }}></div>
+
+                                    <div className="geomolg-import-section">
+                                        <div className="panel-section-title">طبقات جيومولج فلسطين (Geomolg)</div>
+                                        <div className="geomolg-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginTop: '10px' }}>
+                                            {[
+                                                { id: 'geo_blocks', name: 'الأحواض والقطع', url: 'https://orthophotos.geomolg.ps/adaptor/rest/services/Blocks_02/MapServer', type: 'raster-tile', color: '#ff5722' },
+                                                { id: 'geo_communities', name: 'المجتمعات (نقاط)', url: 'https://orthophotos.geomolg.ps/adaptor/rest/services/Communities_06/MapServer', type: 'raster-tile', color: '#00bcd4' },
+                                                { id: 'geo_comm_bounds', name: 'حدود المجتمعات', url: 'https://orthophotos.geomolg.ps/adaptor/rest/services/CommunitiesLandBoundary_04/MapServer', type: 'raster-tile', color: '#8bc34a' },
+                                                { id: 'geo_builtup', name: 'المناطق المبنية', url: 'https://orthophotos.geomolg.ps/adaptor/rest/services/BuiltUpAreas_03/MapServer', type: 'raster-tile', color: '#e91e63' }
+                                            ].map(layer => {
+                                                const isActive = geoLayers.some(l => l.id === layer.id);
+                                                return (
+                                                    <button
+                                                        key={layer.id}
+                                                        onClick={() => {
+                                                            if (isActive) {
+                                                                    setGeoLayers(prev => prev.filter(l => l.id !== layer.id));
+                                                            } else {
+                                                                setGeoLayers(prev => [...prev, {
+                                                                    id: layer.id,
+                                                                    name: layer.name,
+                                                                    type: 'raster-tile',
+                                                                    url: `${layer.url}/export?bbox={bbox-epsg-3857}&bboxSR=3857&layers=show%3A0&size=256%2C256&imageSR=3857&format=png32&transparent=true&f=image`,
+                                                                    color: layer.color
+                                                                }]);
+                                                            }
+                                                        }}
+                                                        className="ds-btn secondary small"
+                                                        style={{
+                                                            padding: '8px 4px',
+                                                            fontSize: '0.72rem',
+                                                            background: isActive ? '#3B82F6' : 'rgba(255,255,255,0.05)',
+                                                            color: isActive ? 'white' : 'var(--text-color)',
+                                                            border: '1px solid rgba(255,255,255,0.1)',
+                                                            borderRadius: '8px',
+                                                            cursor: 'pointer',
+                                                            textAlign: 'center'
+                                                        }}
+                                                    >
+                                                        {layer.name} {isActive ? '✓' : '+'}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
                                 </div>
 
@@ -8022,9 +9180,13 @@ out geom;`;
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', height: '18px' }}><path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" /></svg>
                             نشر وتثبيت التطبيق
                         </button>
-                        <button className="ds-btn primary" onClick={performActualExport}>
+                        <button className="ds-btn primary" onClick={() => performActualExport(false)}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', height: '18px' }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
                             تصدير كملف HTML
+                        </button>
+                        <button className="ds-btn primary" onClick={() => performActualExport(true)} style={{ background: '#3B82F6', color: 'white' }}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', height: '18px' }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+                            تصدير كمشروع كامل (ZIP)
                         </button>
                         <button className="ds-close" onClick={() => setIsDesignStudioOpen(false)}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '20px', height: '20px' }}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -8037,8 +9199,10 @@ out geom;`;
                         <div className="ds-cat-title">الأقسام الرئيسية</div>
                         {[
                             { id: 'layouts', label: 'التخطيطات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="9" y1="3" x2="9" y2="21" /></svg>, count: 8 },
+                            { id: 'templates', label: 'القوالب التجارية', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>, count: 5 },
                             { id: 'palettes', label: 'لوحات الألوان', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" /></svg>, count: 8 },
                             { id: 'typography', label: 'الخطوط', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="4 7 4 4 20 4 20 7" /><line x1="9" y1="20" x2="15" y2="20" /><line x1="12" y1="4" x2="12" y2="20" /></svg>, count: 6 },
+                            { id: 'commercial_templates', label: 'القوالب التجارية', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg>, count: 5 },
                             { id: 'basemaps', label: 'الخرائط', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" /></svg>, count: 6 },
                             { id: 'effects', label: 'التأثيرات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>, count: 9 },
                             { id: 'builder', label: 'منشئ الصفحة', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 3v18M3 9h6M3 15h6M15 9h6M15 15h6" /></svg>, count: pageElements.length || '+' },
@@ -8053,6 +9217,37 @@ out geom;`;
                     </aside>
 
                     <main className="ds-main" dir="rtl" style={{ fontFamily: 'var(--font-main)' }}>
+                        {activeDsCategory === 'templates' && (
+                            <div className="ds-section active">
+                                <div className="ds-section-head">
+                                    <h2>القوالب التجارية الجاهزة <span className="ds-tag">TEMPLATES</span></h2>
+                                    <p>اختر قالباً تجارياً مسبق التهيئة لترخيص وبيع تطبيقك الجغرافي مباشرة وتحقيق الربح</p>
+                                </div>
+                                <div className="ds-grid">
+                                    {[
+                                        { id: 'none', title: 'بدون قالب (خريطة عامة)', sub: 'تصميم خريطة عامة تفاعلية تقليدية لعرض البيانات فقط', type: 'tm-none' },
+                                        { id: 'realestate', title: 'التسويق العقاري والأراضي', sub: 'عرض وتثمين الأراضي وربطها بجيومولج مع نماذج حجز واستفسار واتساب مباشرة', type: 'tm-realestate' },
+                                        { id: 'storelocator', title: 'دليل المحلات والتوصيل المباشر', sub: 'عرض فروع المتاجر مع سلة طلبات مصغرة للتوصيل وإرسال الطلبات للواتساب', type: 'tm-storelocator' },
+                                        { id: 'tourguide', title: 'دليل السياحة والترفيه التفاعلي', sub: 'مسارات جولات سياحية، نقاط جذب تفاعلية بالصور والتقييمات وصوتيات ارشادية', type: 'tm-tourguide' },
+                                        { id: 'surveyor', title: 'منصة المساحة الهندسية والمخططات', sub: 'أدوات مساحة متقدمة، حساب مساحات وأطوال، تحويل إحداثيات (Palestine Grid / UTM)', type: 'tm-surveyor' }
+                                    ].map(t => (
+                                        <div key={t.id} className={`ds-pick ${designSelections.commercialTemplate === t.id ? 'selected' : ''}`} onClick={() => setDesignSelections(s => ({ ...s, commercialTemplate: t.id }))}>
+                                            <div className="basemap-preview" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', height: '70px', borderRadius: '8px' }}>
+                                                <span style={{ fontSize: '1.8rem' }}>
+                                                    {t.id === 'none' && '🗺️'}
+                                                    {t.id === 'realestate' && '🏢'}
+                                                    {t.id === 'storelocator' && '🛍️'}
+                                                    {t.id === 'tourguide' && '🏛️'}
+                                                    {t.id === 'surveyor' && '📏'}
+                                                </span>
+                                            </div>
+                                            <div className="ds-pick-title">{t.title}</div>
+                                            <div className="ds-pick-sub">{t.sub}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                         {activeDsCategory === 'layouts' && (
                             <div className="ds-section active">
                                 <div className="ds-section-head">
@@ -8335,6 +9530,30 @@ out geom;`;
                                         </div>
                                     </div>
                                 )}
+
+                        {activeDsCategory === 'commercial_templates' && (
+                            <div className="ds-section active">
+                                <div className="ds-section-head">
+                                    <h2>القوالب التجارية <span className="ds-tag">COMMERCIAL TEMPLATES</span></h2>
+                                    <p>اختر قالباً تجارياً جاهزاً للبيع والربح، متكاملاً مع أدوات تفاعلية متخصصة</p>
+                                </div>
+                                <div className="ds-grid">
+                                    {[
+                                        { id: 'none', title: 'خريطة عادية (Full Map)', sub: 'بدون قالب تجاري - تخطيط خريطة تفاعلية اعتيادي', icon: '🗺️' },
+                                        { id: 'realestate', title: 'التسويق العقاري والأراضي (Real Estate Pro)', sub: 'قالب تجاري لعرض وتصفح الأراضي والعقارات مع تفاصيل القطع والأحواض وزر تواصل مباشر عبر واتساب', icon: '🏢' },
+                                        { id: 'storelocator', title: 'دليل المحلات والتوصيل (Store Locator & Delivery)', sub: 'دليل محلات وفروع تفاعلي مع سلة مشتريات ونموذج طلب وتوصيل متصل بواتساب', icon: '🛍️' },
+                                        { id: 'tourguide', title: 'الدليل السياحي التفاعلي (Interactive Tour Guide)', sub: 'دليل سياحي تفاعلي للأماكن التاريخية والأثرية مدمج معه مرشد صوتي آلي ومسارات تنقل مقترحة', icon: '🏛️' },
+                                        { id: 'surveyor', title: 'منصة المساحة والرفع الهندسي (Surveyor Workspace)', sub: 'مساحة عمل للمهندسين والمساحين لحساب المساحات بالدونم والمسافات بالأمتار مع تحويل الإحداثيات للفلسطينية ونظام UTM', icon: '📏' }
+                                    ].map(t => (
+                                        <div key={t.id} className={`ds-pick ${designSelections.commercialTemplate === t.id ? 'selected' : (t.id === 'none' && !designSelections.commercialTemplate ? 'selected' : '')}`} onClick={() => setDesignSelections(s => ({ ...s, commercialTemplate: t.id }))}>
+                                            <div style={{ fontSize: '2rem', marginBottom: '10px', display: 'flex', justifyContent: 'center' }}>{t.icon}</div>
+                                            <div className="ds-pick-title">{t.title}</div>
+                                            <div className="ds-pick-sub" style={{ fontSize: '0.78rem', opacity: '0.7', marginTop: '6px', lineHeight: '1.4' }}>{t.sub}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                             </div>
                         )}
 
