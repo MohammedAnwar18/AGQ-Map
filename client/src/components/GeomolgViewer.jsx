@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { loadModules } from 'esri-loader';
 import './Modal.css';
 
-const WB_URL = "https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_WB_2024_15cm_tif_PG1923/MapServer";
-const GAZA_URL = "https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_GS_2024_m12_Satellite_tif_PG1923/MapServer";
+const WB_URL = "https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_WB_2025_15cm_tif_PG1923/MapServer";
+const GAZA_URL = "https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_GS_2025_m03_Satellite_tif_PG1923/MapServer";
 
 const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops, onShopClick, onPostClick }) => {
     const mapDiv = useRef(null);
