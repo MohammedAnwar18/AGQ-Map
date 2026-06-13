@@ -1974,12 +1974,31 @@ const MapComponent = () => {
                             </svg>
                         </button>
 
+                        {/* الجولة الافتراضية - Desktop only */}
+                        {!isMobileDevice && (
+                            <button
+                                onClick={() => { navigate('/virtual-tour'); setShowMoreMenu(false); }}
+                            >
+                                <div className="menu-item-content">
+                                    <div className="menu-icon-wrapper" style={{ color: '#fbab15' }}>
+                                        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg">
+                                            <circle cx="12" cy="12" r="10"/>
+                                            <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
+                                            <path d="M2 12h20"/>
+                                        </svg>
+                                    </div>
+                                    <span>الجولة الافتراضية</span>
+                                </div>
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+                            </button>
+                        )}
+
                         {/* PalNovaa Lab - Restricted to Desktop */}
                         {!isMobileDevice && (
-                            <button 
-                                onClick={() => { 
-                                    setShowLabModal(true); 
-                                    setShowMoreMenu(false); 
+                            <button
+                                onClick={() => {
+                                    setShowLabModal(true);
+                                    setShowMoreMenu(false);
                                 }}
                             >
                                 <div className="menu-item-content">
