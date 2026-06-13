@@ -2,8 +2,22 @@ import React, { useEffect, useRef, useState } from 'react';
 import { loadModules } from 'esri-loader';
 import './Modal.css';
 
-const WB_URL = "https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_WB_2025_15cm_tif_PG1923/MapServer";
-const GAZA_URL = "https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_GS_2025_m03_Satellite_tif_PG1923/MapServer";
+const ORTHOPHOTO_SERVICES = {
+    wb: {
+        '2025': "https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_WB_2025_15cm_tif_PG1923/MapServer",
+        '2024': "https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_WB_2024_15cm_tif_PG1923/MapServer",
+        '2023': "https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_WB_2023_15cm_tif_PG1923/MapServer",
+        '2022': "https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_WB_2022_15cm_tif_PG1923/MapServer",
+        '2021': "https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_WB_2021_15cm_tif_PG1923/MapServer",
+        '2020': "https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_WB_2020_15cm_tif_PG1923/MapServer"
+    },
+    gaza: {
+        '2025': "https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_GS_2025_m03_Satellite_tif_PG1923/MapServer",
+        '2024': "https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_GS_2024_m12_Satellite_tif_PG1923/MapServer",
+        '2022': "https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_GS_2022_m12_Satellite_tif_PG1923/MapServer",
+        '2018': "https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_GS_2018_Satellite_tif_PG1923/MapServer"
+    }
+};
 
 const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops, onShopClick, onPostClick }) => {
     const mapDiv = useRef(null);
@@ -14,8 +28,9 @@ const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops, onShopCli
     const esriModules = useRef(null);
     const TileLayerClassRef = useRef(null);
 
-    // State to track loading, current region, and fullscreen
+    // State to track loading, current region, year, and fullscreen
     const [currentRegion, setCurrentRegion] = useState('wb');
+    const [selectedYear, setSelectedYear] = useState('2025');
     const [isMapReady, setIsMapReady] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -51,7 +66,7 @@ const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops, onShopCli
 
                 // إعداد طبقة Orthophoto للضفة الغربية كبداية
                 const orthoLayer = new TileLayer({
-                    url: WB_URL
+                    url: ORTHOPHOTO_SERVICES.wb['2025']
                 });
 
                 const graphicsLayer = new GraphicsLayer();
@@ -190,13 +205,22 @@ const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops, onShopCli
 
     }, [isMapReady, userLocation, posts, friends, shops]);
 
-    const handleSwitchRegion = (region) => {
+    const handleSwitchLayer = (region, year) => {
         if (!viewRef.current || !TileLayerClassRef.current || !mapRef.current) return;
 
-        // تحديد الرابط والإحداثيات بناءً على المنطقة
-        const url = region === 'gaza' ? GAZA_URL : WB_URL;
-        const center = region === 'gaza' ? [34.35, 31.4] : (userLocation ? [parseFloat(userLocation.longitude), parseFloat(userLocation.latitude)] : [35.2034, 31.9038]);
-        const zoom = region === 'gaza' ? 12 : (userLocation ? 16 : 14);
+        // Fallback year if not available for that region
+        const availableYears = Object.keys(ORTHOPHOTO_SERVICES[region]);
+        const targetYear = availableYears.includes(year) ? year : availableYears[0];
+
+        const url = ORTHOPHOTO_SERVICES[region][targetYear];
+        
+        // Only move coordinates if switching region
+        let center = null;
+        let zoom = null;
+        if (region !== currentRegion) {
+            center = region === 'gaza' ? [34.35, 31.4] : (userLocation ? [parseFloat(userLocation.longitude), parseFloat(userLocation.latitude)] : [35.2034, 31.9038]);
+            zoom = region === 'gaza' ? 12 : (userLocation ? 16 : 14);
+        }
 
         // إزالة الطبقة القديمة الجوية فقط وإبقاء الرسومات
         const layersToRemove = mapRef.current.layers.filter(l => l.type === "tile");
@@ -207,12 +231,15 @@ const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops, onShopCli
         mapRef.current.add(newLayer, 0);
 
         // تحريك الكاميرا
-        viewRef.current.goTo({
-            center: center,
-            zoom: zoom
-        });
+        if (center && zoom) {
+            viewRef.current.goTo({
+                center: center,
+                zoom: zoom
+            });
+        }
 
         setCurrentRegion(region);
+        setSelectedYear(targetYear);
     };
 
     return (
@@ -245,40 +272,79 @@ const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops, onShopCli
                 <div className="modal-body" style={{ padding: 0, position: 'relative', height: '100%', overflow: 'hidden' }}>
                     <div ref={mapDiv} style={{ width: '100%', height: '100%' }} />
 
-                    {/* Optimized Region Control for Mobile & Web */}
+                    {/* Optimized Layer & Year Controls */}
                     <div style={{
                         position: 'absolute', top: '20px', left: '50%', transform: 'translateX(-50%)',
-                        background: 'rgba(15, 23, 42, 0.9)', padding: '4px',
+                        background: 'rgba(15, 23, 42, 0.9)', padding: '6px',
                         borderRadius: '14px', border: '1px solid rgba(251, 171, 21, 0.4)',
                         boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-                        zIndex: 100, display: 'flex', gap: '2px',
+                        zIndex: 100, display: 'flex', gap: '8px',
+                        alignItems: 'center',
                         backdropFilter: 'blur(20px)',
-                        width: 'auto', maxWidth: 'calc(100% - 90px)' 
+                        width: 'auto', maxWidth: 'calc(100% - 40px)' 
                     }}>
-                        <button
-                            onClick={() => handleSwitchRegion('wb')}
-                            style={{
-                                padding: '10px 18px', borderRadius: '10px', border: 'none',
-                                background: currentRegion === 'wb' ? '#fbab15' : 'transparent',
-                                color: currentRegion === 'wb' ? '#0f172a' : 'rgba(255,255,255,0.7)',
-                                fontWeight: '800', fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.25s ease',
-                                whiteSpace: 'nowrap'
-                            }}
-                        >
-                            الضفة الغربية
-                        </button>
-                        <button
-                            onClick={() => handleSwitchRegion('gaza')}
-                            style={{
-                                padding: '10px 18px', borderRadius: '10px', border: 'none',
-                                background: currentRegion === 'gaza' ? '#fbab15' : 'transparent',
-                                color: currentRegion === 'gaza' ? '#0f172a' : 'rgba(255,255,255,0.7)',
-                                fontWeight: '800', fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.25s ease',
-                                whiteSpace: 'nowrap'
-                            }}
-                        >
-                            قطاع غزة
-                        </button>
+                        {/* Region Buttons */}
+                        <div style={{ display: 'flex', gap: '2px', background: 'rgba(255,255,255,0.05)', padding: '2px', borderRadius: '10px' }}>
+                            <button
+                                onClick={() => handleSwitchLayer('wb', selectedYear)}
+                                style={{
+                                    padding: '8px 14px', borderRadius: '8px', border: 'none',
+                                    background: currentRegion === 'wb' ? '#fbab15' : 'transparent',
+                                    color: currentRegion === 'wb' ? '#0f172a' : 'rgba(255,255,255,0.7)',
+                                    fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.25s ease',
+                                    whiteSpace: 'nowrap'
+                                }}
+                            >
+                                الضفة الغربية
+                            </button>
+                            <button
+                                onClick={() => handleSwitchLayer('gaza', selectedYear)}
+                                style={{
+                                    padding: '8px 14px', borderRadius: '8px', border: 'none',
+                                    background: currentRegion === 'gaza' ? '#fbab15' : 'transparent',
+                                    color: currentRegion === 'gaza' ? '#0f172a' : 'rgba(255,255,255,0.7)',
+                                    fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.25s ease',
+                                    whiteSpace: 'nowrap'
+                                }}
+                            >
+                                قطاع غزة
+                            </button>
+                        </div>
+
+                        {/* Divider */}
+                        <div style={{ width: '1px', height: '24px', background: 'rgba(255,255,255,0.15)' }}></div>
+
+                        {/* Year Selector */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'rgba(255,255,255,0.6)', whiteSpace: 'nowrap' }}>سنة التصوير:</span>
+                            <select
+                                value={selectedYear}
+                                onChange={(e) => handleSwitchLayer(currentRegion, e.target.value)}
+                                style={{
+                                    background: 'rgba(30, 41, 59, 0.8)',
+                                    color: '#fbab15',
+                                    border: '1px solid rgba(251, 171, 21, 0.3)',
+                                    borderRadius: '8px',
+                                    padding: '6px 24px 6px 10px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    outline: 'none',
+                                    fontFamily: 'inherit',
+                                    appearance: 'none',
+                                    backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23fbab15' viewBox='0 0 24 24'><path d='M7 10l5 5 5-5z'/></svg>")`,
+                                    backgroundRepeat: 'no-repeat',
+                                    backgroundPosition: 'right 8px center',
+                                    backgroundSize: '12px'
+                                }}
+                            >
+                                {Object.keys(ORTHOPHOTO_SERVICES[currentRegion]).map(year => (
+                                    <option key={year} value={year} style={{ background: '#1e293b', color: 'white' }}>
+                                        {year}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
 
                     {/* Minimal Attribution */}
@@ -289,7 +355,7 @@ const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops, onShopCli
                         zIndex: 100, fontSize: '0.75rem', fontWeight: '700', color: 'rgba(251, 171, 21, 0.8)',
                         backdropFilter: 'blur(10px)'
                     }}>
-                        Geomolg Orthophoto 2024
+                        Geomolg Orthophoto {selectedYear}
                     </div>
                 </div>
             </div>
