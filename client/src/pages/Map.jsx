@@ -838,27 +838,51 @@ const MapComponent = () => {
             };
         }
 
-        // Default & Fallback: Google Tiles (Satellite for general view)
-        const attribution = 'Google Satellite';
-
+        // Default & Fallback: Google Tiles (Satellite for general view) with Geomolg 2025 High-Res Orthophotos Overlays
         return {
             version: 8,
             name: "Satellite",
             sprite: "https://demotiles.maplibre.org/styles/osm-bright-gl-style/sprite",
             glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
             sources: {
-                'raster-tiles': {
+                'google-satellite': {
                     type: 'raster',
                     tiles: [`https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&scale=2`],
                     tileSize: 256,
-                    attribution: attribution
+                    attribution: '© Google Satellite'
+                },
+                'geomolg-wb-2025': {
+                    type: 'raster',
+                    tiles: [`https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_WB_2025_15cm_tif_PG1923/MapServer/tile/{z}/{y}/{x}`],
+                    tileSize: 256,
+                    attribution: '© Geomolg WB 2025'
+                },
+                'geomolg-gaza-2025': {
+                    type: 'raster',
+                    tiles: [`https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_GS_2025_m03_Satellite_tif_PG1923/MapServer/tile/{z}/{y}/{x}`],
+                    tileSize: 256,
+                    attribution: '© Geomolg GS 2025'
                 }
             },
             layers: [
                 {
-                    id: 'simple-tiles',
+                    id: 'google-satellite-layer',
                     type: 'raster',
-                    source: 'raster-tiles',
+                    source: 'google-satellite',
+                    minzoom: 0,
+                    maxzoom: 22
+                },
+                {
+                    id: 'geomolg-wb-layer',
+                    type: 'raster',
+                    source: 'geomolg-wb-2025',
+                    minzoom: 0,
+                    maxzoom: 22
+                },
+                {
+                    id: 'geomolg-gaza-layer',
+                    type: 'raster',
+                    source: 'geomolg-gaza-2025',
                     minzoom: 0,
                     maxzoom: 22
                 }
