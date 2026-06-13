@@ -357,7 +357,7 @@ const MapComponent = () => {
                 zoomControl: true
             }).setView(initialCoords, 13);
 
-            window.L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&scale=2', {
+            window.L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
                 maxZoom: 22,
                 attribution: '© Google Satellite'
             }).addTo(leafletMap);
@@ -830,7 +830,7 @@ const MapComponent = () => {
                 sources: {
                     'raster-tiles': {
                         type: 'raster',
-                        tiles: [`https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&scale=2`],
+                        tiles: [`https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}`],
                         tileSize: 256
                     }
                 },
@@ -838,51 +838,27 @@ const MapComponent = () => {
             };
         }
 
-        // Default & Fallback: Google Tiles (Satellite for general view) with Geomolg 2024 High-Res Orthophotos Overlays
+        // Default & Fallback: Google Tiles (Satellite for general view)
+        const attribution = 'Google Satellite';
+
         return {
             version: 8,
             name: "Satellite",
             sprite: "https://demotiles.maplibre.org/styles/osm-bright-gl-style/sprite",
             glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
             sources: {
-                'google-satellite': {
+                'raster-tiles': {
                     type: 'raster',
-                    tiles: [`https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&scale=2`],
+                    tiles: [`https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}`],
                     tileSize: 256,
-                    attribution: '© Google Satellite'
-                },
-                'geomolg-wb-2024': {
-                    type: 'raster',
-                    tiles: [`https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_WB_2024_15cm_tif_PG1923/MapServer/tile/{z}/{y}/{x}`],
-                    tileSize: 256,
-                    attribution: '© Geomolg WB 2024'
-                },
-                'geomolg-gaza-2024': {
-                    type: 'raster',
-                    tiles: [`https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_GS_2024_m12_Satellite_tif_PG1923/MapServer/tile/{z}/{y}/{x}`],
-                    tileSize: 256,
-                    attribution: '© Geomolg GS 2024'
+                    attribution: attribution
                 }
             },
             layers: [
                 {
-                    id: 'google-satellite-layer',
+                    id: 'simple-tiles',
                     type: 'raster',
-                    source: 'google-satellite',
-                    minzoom: 0,
-                    maxzoom: 22
-                },
-                {
-                    id: 'geomolg-wb-layer',
-                    type: 'raster',
-                    source: 'geomolg-wb-2024',
-                    minzoom: 0,
-                    maxzoom: 22
-                },
-                {
-                    id: 'geomolg-gaza-layer',
-                    type: 'raster',
-                    source: 'geomolg-gaza-2024',
+                    source: 'raster-tiles',
                     minzoom: 0,
                     maxzoom: 22
                 }

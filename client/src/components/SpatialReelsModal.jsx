@@ -13,7 +13,7 @@ const SATELLITE_STYLE = {
     sources: {
         'satellite': {
             type: 'raster',
-            tiles: ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&scale=2'],
+            tiles: ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'],
             tileSize: 256,
             attribution: '© Google'
         }

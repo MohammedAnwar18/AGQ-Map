@@ -213,8 +213,8 @@ const PalNovaaLab = ({ onClose }) => {
         const bmTiles = {
             dark: 'https://cartodb-basemaps-a.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png',
             light: 'https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
-            satellite: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}&scale=2',
-            satellite_pure: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&scale=2',
+            satellite: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+            satellite_pure: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
             terrain: 'https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.jpg',
             vintage: 'https://stamen-tiles.a.ssl.fastly.net/toner/{z}/{x}/{y}.png',
             cyber: 'https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}'
@@ -9721,8 +9721,8 @@ function closeAllInfoWindows() {
         const bmTiles = {
             dark: 'https://cartodb-basemaps-a.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png',
             light: 'https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
-            satellite: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}&scale=2',
-            satellite_pure: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&scale=2',
+            satellite: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+            satellite_pure: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
             terrain: 'https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.jpg',
             vintage: 'https://stamen-tiles.a.ssl.fastly.net/toner/{z}/{x}/{y}.png',
             cyber: 'https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}'
