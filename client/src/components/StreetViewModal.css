@@ -1,39 +1,51 @@
-/* ── Overlay ────────────────────────────────────────────────── */
-.sv-overlay {
+/* ── Panel — right side, slides in ─────────────────────────── */
+.sv-panel {
     position: fixed;
-    inset: 0;
-    z-index: 31000;
+    top: 0;
+    right: 0;
+    width: 50vw;
+    height: 100vh;
+    z-index: 2000;
     background: #0a0f1a;
     display: flex;
     flex-direction: column;
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: -8px 0 40px rgba(0, 0, 0, 0.6);
+    animation: sv-slide-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
     font-family: 'Segoe UI', Tahoma, sans-serif;
     direction: rtl;
 }
 
-/* ── Top bar ────────────────────────────────────────────────── */
-.sv-topbar {
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    z-index: 10;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 18px;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, transparent 100%);
+@keyframes sv-slide-in {
+    from { transform: translateX(100%); opacity: 0; }
+    to   { transform: translateX(0);   opacity: 1; }
 }
 
-.sv-topbar-left {
+/* ── Header ──────────────────────────────────────────────────── */
+.sv-header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: rgba(15, 23, 36, 0.98);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    flex-shrink: 0;
     gap: 10px;
 }
 
-.sv-icon {
-    width: 36px;
-    height: 36px;
+.sv-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.sv-pegman-icon {
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
-    background: rgba(99,102,241,0.2);
-    border: 1.5px solid rgba(99,102,241,0.5);
+    background: rgba(99, 102, 241, 0.2);
+    border: 1.5px solid rgba(99, 102, 241, 0.5);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -41,117 +53,131 @@
     flex-shrink: 0;
 }
 
-.sv-info {
+.sv-header-info {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 1px;
+    min-width: 0;
 }
 
-.sv-location {
-    font-size: 0.95rem;
+.sv-title {
+    font-size: 0.9rem;
     font-weight: 700;
     color: #fff;
+    white-space: nowrap;
 }
 
-.sv-badge {
+.sv-subtitle {
     font-size: 0.72rem;
-    color: rgba(99,255,160,0.85);
-    font-weight: 500;
+    color: rgba(255, 255, 255, 0.45);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.sv-topbar-actions {
+.sv-header-right {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+    flex-shrink: 0;
 }
 
-.sv-ext-btn {
+.sv-img-count {
+    font-size: 0.72rem;
+    color: rgba(99, 255, 160, 0.8);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.sv-google-btn {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 7px 14px;
-    border-radius: 20px;
-    border: 1.5px solid rgba(255,255,255,0.2);
-    background: rgba(255,255,255,0.08);
-    color: rgba(255,255,255,0.8);
-    font-size: 0.78rem;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: 18px;
+    border: 1.5px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.75rem;
     text-decoration: none;
-    cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
 }
 
-.sv-ext-btn:hover {
-    background: rgba(255,255,255,0.15);
-    color: #fff;
+.sv-google-btn:hover {
+    background: rgba(26, 115, 232, 0.2);
+    border-color: rgba(26, 115, 232, 0.5);
+    color: #93c5fd;
 }
 
-.sv-close-btn {
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    border: 1.5px solid rgba(255,255,255,0.25);
-    background: rgba(0,0,0,0.4);
-    color: #fff;
-    font-size: 17px;
+.sv-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1.5px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.6);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
+    flex-shrink: 0;
 }
 
-.sv-close-btn:hover {
-    background: rgba(255,80,80,0.3);
-    border-color: rgba(255,80,80,0.5);
+.sv-close:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #fca5a5;
 }
 
-/* ── Viewer ─────────────────────────────────────────────────── */
-.sv-viewer {
+/* ── Viewer area ─────────────────────────────────────────────── */
+.sv-viewer-area {
     flex: 1;
     width: 100%;
-    height: 100%;
+    overflow: hidden;
+    position: relative;
 }
 
-/* Override Mapillary default styles */
-.sv-viewer .mapillary-js {
+/* Fix Mapillary to fill the container */
+.sv-viewer-area > div {
+    width: 100% !important;
     height: 100% !important;
 }
 
-/* ── State overlays ─────────────────────────────────────────── */
-.sv-state-overlay {
+/* ── State overlays ──────────────────────────────────────────── */
+.sv-overlay-state {
     position: absolute;
     inset: 0;
-    z-index: 8;
+    z-index: 10;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 14px;
-    background: rgba(10,15,26,0.92);
-    backdrop-filter: blur(4px);
-    color: rgba(255,255,255,0.75);
+    gap: 12px;
+    background: rgba(10, 15, 26, 0.95);
+    color: rgba(255, 255, 255, 0.7);
     text-align: center;
-    padding: 30px;
+    padding: 24px;
 }
 
-.sv-state-overlay p {
-    font-size: 1.05rem;
+.sv-overlay-state p {
+    font-size: 1rem;
     font-weight: 600;
     color: #fff;
     margin: 0;
 }
 
-.sv-state-overlay span {
-    font-size: 0.82rem;
-    color: rgba(255,255,255,0.45);
+.sv-overlay-state span {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.4);
 }
 
 /* Spinner */
 .sv-spinner {
-    width: 44px;
-    height: 44px;
-    border: 3px solid rgba(99,102,241,0.2);
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(99, 102, 241, 0.2);
     border-top-color: #818cf8;
     border-radius: 50%;
     animation: sv-spin 0.85s linear infinite;
@@ -159,81 +185,61 @@
 
 @keyframes sv-spin { to { transform: rotate(360deg); } }
 
-/* Not found state */
-.sv-not-found p { color: rgba(255,255,255,0.7); }
-
-/* Token steps */
-.sv-token-steps {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 12px;
-    padding: 16px 20px;
-    text-align: right;
-    max-width: 420px;
-    width: 100%;
-}
-
-.sv-token-steps span {
-    font-size: 0.84rem;
-    color: rgba(255,255,255,0.7);
-}
-
-.sv-code {
-    background: rgba(0,0,0,0.5);
-    border: 1px solid rgba(251,171,21,0.3);
+/* Token code */
+.sv-token-code {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(251, 171, 21, 0.3);
     color: #fbab15;
-    font-size: 0.82rem;
-    padding: 8px 14px;
-    border-radius: 8px;
+    font-size: 0.76rem;
+    padding: 6px 12px;
+    border-radius: 6px;
     font-family: monospace;
-    word-break: break-all;
-    text-align: left;
     direction: ltr;
+}
+
+/* Fallback button */
+.sv-fallback-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 9px 22px;
+    border-radius: 22px;
+    background: #1a73e8;
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.2s;
     margin-top: 4px;
 }
 
-/* Google fallback button */
-.sv-google-fallback {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 11px 26px;
-    border-radius: 24px;
-    background: #1a73e8;
-    color: #fff;
-    font-size: 0.9rem;
-    font-weight: 600;
-    text-decoration: none;
-    transition: all 0.2s;
-    margin-top: 6px;
-}
+.sv-fallback-btn:hover { background: #1557b0; }
 
-.sv-google-fallback:hover {
-    background: #1557b0;
-    transform: scale(1.03);
-}
-
-/* ── Bottom hint ────────────────────────────────────────────── */
-.sv-hint {
+/* ── Navigation hint ─────────────────────────────────────────── */
+.sv-nav-hint {
     position: absolute;
-    bottom: 24px;
+    bottom: 16px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 12;
-    background: rgba(0,0,0,0.6);
-    backdrop-filter: blur(8px);
-    color: rgba(255,255,255,0.8);
-    font-size: 0.78rem;
-    padding: 7px 18px;
-    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(6px);
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.75rem;
+    padding: 6px 16px;
+    border-radius: 18px;
     pointer-events: none;
     white-space: nowrap;
-    animation: sv-fadein 0.3s ease, sv-fadeout 0.4s 4s ease forwards;
+    animation: sv-fade 0.3s ease, sv-fadeout 0.4s 4s ease forwards;
 }
 
-@keyframes sv-fadein  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sv-fade    { from { opacity: 0; } to { opacity: 1; } }
 @keyframes sv-fadeout { to   { opacity: 0; } }
+
+/* ── Responsive: full screen on small screens ────────────────── */
+@media (max-width: 900px) {
+    .sv-panel {
+        width: 100vw;
+        border-left: none;
+    }
+}

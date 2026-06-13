@@ -622,8 +622,9 @@ const MapComponent = () => {
     const [showNews, setShowNews] = useState(false);
     const [showMagazine, setShowMagazine] = useState(false);
     const [showLabModal, setShowLabModal] = useState(false);
-    const [streetViewMode,   setStreetViewMode]   = useState(false);
-    const [streetViewCoords, setStreetViewCoords] = useState(null);
+    const [streetViewMode,     setStreetViewMode]     = useState(false);
+    const [streetViewCoords,   setStreetViewCoords]   = useState(null);
+    const [streetViewPosition, setStreetViewPosition] = useState(null);
     const [showCommunities, setShowCommunities] = useState(false);
     const [showMoreMenu, setShowMoreMenu] = useState(false);
     const [isEmergencyActive, setIsEmergencyActive] = useState(false);
@@ -1822,7 +1823,7 @@ const MapComponent = () => {
     if (!isGuestMode && !isInitialDataLoaded) return <SplashLoading />;
 
     return (
-        <div className="map-page" style={{ position: 'relative', height: '100dvh', width: '100vw', overflow: 'hidden' }}>
+        <div className="map-page" style={{ position: 'relative', height: '100dvh', width: streetViewCoords ? '50vw' : '100vw', overflow: 'hidden', transition: 'width 0.3s cubic-bezier(0.22,1,0.36,1)' }}>
 
             {/* Top Bar - Clean & Minimalist */}
             {!isGuestMode && !isEmergencyActive && (
@@ -2891,13 +2892,56 @@ const MapComponent = () => {
                 </div>
             )}
 
-            {/* Street View Modal */}
+            {/* Pegman marker — follows position inside street view */}
+            {streetViewCoords && (
+                <Marker
+                    longitude={(streetViewPosition?.lng ?? streetViewCoords.lng)}
+                    latitude={(streetViewPosition?.lat ?? streetViewCoords.lat)}
+                    anchor="bottom"
+                >
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        pointerEvents: 'none',
+                        animation: 'none',
+                    }}>
+                        <div style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #6366f1, #818cf8)',
+                            border: '3px solid white',
+                            boxShadow: '0 0 0 3px rgba(99,102,241,0.4), 0 4px 14px rgba(0,0,0,0.5)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                        }}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                <circle cx="12" cy="6" r="3.5"/>
+                                <path d="M6.5 21v-3.5a5.5 5.5 0 0 1 11 0V21"/>
+                            </svg>
+                        </div>
+                        <div style={{
+                            width: '2px', height: '8px',
+                            background: 'rgba(99,102,241,0.6)',
+                        }} />
+                    </div>
+                </Marker>
+            )}
+
+            {/* Street View Panel */}
             {streetViewCoords && (
                 <StreetViewModal
                     lat={streetViewCoords.lat}
                     lng={streetViewCoords.lng}
                     locationName="عرض الشارع"
-                    onClose={() => { setStreetViewCoords(null); setStreetViewMode(false); }}
+                    onClose={() => { setStreetViewCoords(null); setStreetViewMode(false); setStreetViewPosition(null); }}
+                    onPositionChange={(lat, lng) => {
+                        setStreetViewPosition({ lat, lng });
+                        mapRef.current?.easeTo({ center: [lng, lat], duration: 500 });
+                    }}
                 />
             )}
 

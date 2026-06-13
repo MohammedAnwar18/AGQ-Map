@@ -3,49 +3,53 @@ import { Viewer } from 'mapillary-js';
 import 'mapillary-js/dist/mapillary.css';
 import './StreetViewModal.css';
 
-// ─── Mapillary token ────────────────────────────────────────────────────────
-// Get a free token at: https://www.mapillary.com/developer/app/new
-// Then set VITE_MAPILLARY_TOKEN in your .env file
 const MAPILLARY_TOKEN = import.meta.env.VITE_MAPILLARY_TOKEN || '';
 
-const StreetViewModal = ({ lat, lng, locationName, onClose }) => {
+// Progressive search radii in degrees (~111m, ~330m, ~1km)
+const SEARCH_RADII = [0.001, 0.003, 0.009];
+
+const StreetViewModal = ({ lat, lng, locationName, onClose, onPositionChange }) => {
     const containerRef = useRef(null);
     const viewerRef    = useRef(null);
 
-    const [status,   setStatus]   = useState('searching'); // searching | found | not_found | no_token
-    const [imgCount, setImgCount] = useState(0);
+    const [status,       setStatus]       = useState('searching');
+    const [imgCount,     setImgCount]     = useState(0);
+    const [searchRadius, setSearchRadius] = useState(0);
+    const [currentImg,   setCurrentImg]   = useState(null);
 
-    // ── Find nearest Mapillary image ─────────────────────────────────────────
-    const findNearestImage = useCallback(async () => {
+    // ── Find nearest image with progressive radius ────────────────────────────
+    const findImage = useCallback(async () => {
         if (!MAPILLARY_TOKEN) { setStatus('no_token'); return; }
 
-        const delta = 0.003; // ~330m search radius
-        const bbox  = `${lng - delta},${lat - delta},${lng + delta},${lat + delta}`;
-        const url   = `https://graph.mapillary.com/images?access_token=${MAPILLARY_TOKEN}&bbox=${bbox}&fields=id,thumb_256_url,computed_geometry&limit=50`;
+        for (const delta of SEARCH_RADII) {
+            setSearchRadius(Math.round(delta * 111000));
+            const bbox = `${lng - delta},${lat - delta},${lng + delta},${lat + delta}`;
+            const url  = `https://graph.mapillary.com/images?access_token=${MAPILLARY_TOKEN}&bbox=${bbox}&fields=id,computed_geometry&limit=100`;
 
-        try {
-            const res  = await fetch(url);
-            const data = await res.json();
-            const imgs = data?.data || [];
+            try {
+                const res  = await fetch(url);
+                const data = await res.json();
+                const imgs = data?.data || [];
 
-            if (imgs.length === 0) { setStatus('not_found'); return; }
+                if (imgs.length === 0) continue;
 
-            setImgCount(imgs.length);
+                setImgCount(imgs.length);
 
-            // Pick image closest to clicked point
-            const closest = imgs.reduce((best, img) => {
-                const [iLng, iLat] = img.computed_geometry?.coordinates || [0, 0];
-                const d = Math.hypot(iLat - lat, iLng - lng);
-                return d < best.d ? { id: img.id, d } : best;
-            }, { id: imgs[0].id, d: Infinity });
+                const closest = imgs.reduce((best, img) => {
+                    const [iLng, iLat] = img.computed_geometry?.coordinates || [0, 0];
+                    const d = Math.hypot(iLat - lat, iLng - lng);
+                    return d < best.d ? { id: img.id, d, coords: [iLat, iLng] } : best;
+                }, { id: imgs[0].id, d: Infinity, coords: [lat, lng] });
 
-            initViewer(closest.id);
-        } catch {
-            setStatus('not_found');
+                initViewer(closest.id);
+                return;
+            } catch { continue; }
         }
+
+        setStatus('not_found');
     }, [lat, lng]);
 
-    // ── Init Mapillary viewer ────────────────────────────────────────────────
+    // ── Init Mapillary viewer ─────────────────────────────────────────────────
     const initViewer = useCallback((imageId) => {
         if (!containerRef.current) return;
 
@@ -54,128 +58,141 @@ const StreetViewModal = ({ lat, lng, locationName, onClose }) => {
             container:   containerRef.current,
             imageId,
             component: {
-                cover:      false,
-                sequence:   { visible: false },
-                direction:  { maxWidth: 340 },
+                cover:     false,
+                sequence:  { visible: false },
+                direction: { maxWidth: 300 },
             },
         });
 
         viewerRef.current = viewer;
 
         viewer.on('load', () => setStatus('found'));
-        viewer.on('navigatedto', () => setStatus('found'));
-    }, []);
+
+        // Update map pegman whenever user navigates to a new image
+        viewer.on('image', async () => {
+            try {
+                const img = await viewer.getImage();
+                if (!img) return;
+                setCurrentImg(img.id);
+                const lngLat = img.lngLat;
+                if (lngLat && onPositionChange) {
+                    onPositionChange(lngLat.lat, lngLat.lng, img.computedAltitude);
+                }
+            } catch {}
+        });
+    }, [onPositionChange]);
 
     useEffect(() => {
-        findNearestImage();
+        findImage();
         return () => {
             try { viewerRef.current?.remove(); } catch {}
         };
-    }, [findNearestImage]);
+    }, [findImage]);
 
-    // ── Render ───────────────────────────────────────────────────────────────
+    // ── Render ────────────────────────────────────────────────────────────────
     return (
-        <div className="sv-overlay">
+        <div className="sv-panel">
 
-            {/* Top bar */}
-            <div className="sv-topbar">
-                <div className="sv-topbar-left">
-                    <div className="sv-icon">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" strokeWidth="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <path d="M12 8v4l3 3"/>
+            {/* ── Header ── */}
+            <div className="sv-header">
+                <div className="sv-header-left">
+                    <div className="sv-pegman-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <circle cx="12" cy="6" r="3.5"/>
+                            <path d="M6.5 21v-3.5a5.5 5.5 0 0 1 11 0V21"/>
                         </svg>
                     </div>
-                    <div className="sv-info">
-                        <span className="sv-location">{locationName || 'عرض الشارع'}</span>
-                        {status === 'found' && imgCount > 0 && (
-                            <span className="sv-badge">{imgCount} صورة متاحة في المنطقة</span>
-                        )}
+                    <div className="sv-header-info">
+                        <span className="sv-title">عرض الشارع</span>
+                        {locationName && <span className="sv-subtitle">{locationName}</span>}
                     </div>
                 </div>
 
-                <div className="sv-topbar-actions">
+                <div className="sv-header-right">
+                    {status === 'found' && imgCount > 0 && (
+                        <span className="sv-img-count">{imgCount} صورة</span>
+                    )}
                     <a
-                        className="sv-ext-btn"
+                        className="sv-google-btn"
                         href={`https://www.google.com/maps?layer=c&cbll=${lat},${lng}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        title="فتح في Google Street View"
+                        title="Google Street View"
                     >
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" strokeWidth="2">
                             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
                             <polyline points="15 3 21 3 21 9"/>
                             <line x1="10" y1="14" x2="21" y2="3"/>
                         </svg>
-                        Google Street View
+                        Google
                     </a>
-                    <button className="sv-close-btn" onClick={onClose}>✕</button>
+                    <button className="sv-close" onClick={onClose} title="إغلاق">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" strokeWidth="2.5">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
 
-            {/* Mapillary container */}
-            <div ref={containerRef} className="sv-viewer" />
+            {/* ── Viewer ── */}
+            <div ref={containerRef} className="sv-viewer-area" />
 
-            {/* State overlays */}
+            {/* ── State overlays ── */}
             {status === 'searching' && (
-                <div className="sv-state-overlay">
+                <div className="sv-overlay-state">
                     <div className="sv-spinner" />
-                    <p>جاري البحث عن صور الشارع...</p>
-                    <span>{lat.toFixed(5)}, {lng.toFixed(5)}</span>
+                    <p>جاري البحث عن صور الشارع</p>
+                    <span>نطاق البحث: {searchRadius} متر</span>
                 </div>
             )}
 
             {status === 'not_found' && (
-                <div className="sv-state-overlay sv-not-found">
-                    <svg width="52" height="52" viewBox="0 0 24 24" fill="none"
-                        stroke="rgba(255,255,255,0.4)" strokeWidth="1.5">
+                <div className="sv-overlay-state">
+                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none"
+                        stroke="rgba(255,255,255,0.35)" strokeWidth="1.5">
                         <circle cx="11" cy="11" r="8"/>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"/>
                     </svg>
-                    <p>لا توجد صور للشارع في هذه المنطقة</p>
-                    <span>جرب موقعاً آخر أو استخدم Google Street View</span>
+                    <p>لا توجد صور في هذه المنطقة</p>
+                    <span>جرّب موقعاً آخر على الخريطة</span>
                     <a
-                        className="sv-google-fallback"
+                        className="sv-fallback-btn"
                         href={`https://www.google.com/maps?layer=c&cbll=${lat},${lng}`}
                         target="_blank"
                         rel="noopener noreferrer"
                     >
-                        فتح في Google Street View
+                        فتح Google Street View
                     </a>
                 </div>
             )}
 
             {status === 'no_token' && (
-                <div className="sv-state-overlay sv-no-token">
-                    <svg width="52" height="52" viewBox="0 0 24 24" fill="none"
+                <div className="sv-overlay-state">
+                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none"
                         stroke="#fbab15" strokeWidth="1.5">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <rect x="3" y="11" width="18" height="11" rx="2"/>
                         <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                     </svg>
-                    <p>يجب إضافة Mapillary Token</p>
-                    <div className="sv-token-steps">
-                        <span>1. سجّل مجاناً على <strong>mapillary.com/developer</strong></span>
-                        <span>2. أنشئ تطبيقاً واحصل على Client Token</span>
-                        <span>3. أضف في ملف <code>.env</code> :</span>
-                        <code className="sv-code">VITE_MAPILLARY_TOKEN=your_token_here</code>
-                    </div>
+                    <p>Token غير مُعيَّن</p>
+                    <code className="sv-token-code">VITE_MAPILLARY_TOKEN=your_token</code>
                     <a
-                        className="sv-google-fallback"
+                        className="sv-fallback-btn"
                         href={`https://www.google.com/maps?layer=c&cbll=${lat},${lng}`}
                         target="_blank"
                         rel="noopener noreferrer"
                     >
-                        فتح في Google Street View الآن
+                        فتح Google Street View
                     </a>
                 </div>
             )}
 
-            {/* Bottom hint */}
+            {/* ── Navigation hint ── */}
             {status === 'found' && (
-                <div className="sv-hint">
-                    انقر على الأسهم للتنقل في الشارع · اسحب للتدوير
+                <div className="sv-nav-hint">
+                    انقر على الأسهم للتنقل · اسحب للتدوير
                 </div>
             )}
         </div>
