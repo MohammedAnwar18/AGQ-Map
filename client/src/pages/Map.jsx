@@ -2493,6 +2493,18 @@ const MapComponent = () => {
                             return String(shop.id) === String(shopIdQuery);
                         }
 
+                        // Hide shops inside complexes/malls by default unless navigated to or searched/profile opened
+                        if (shop.parent_shop_id != null && shop.parent_shop_id !== '') {
+                            const isNavigatingToThisShop = destination && String(destination.id) === String(shop.id);
+                            const isProfileOpen = (selectedShopProfile && String(selectedShopProfile.id) === String(shop.id)) ||
+                                                  (selectedMedicalProfile && String(selectedMedicalProfile.id) === String(shop.id));
+                            const isQueried = shopIdQuery && String(shop.id) === String(shopIdQuery);
+                            
+                            if (!isNavigatingToThisShop && !isProfileOpen && !isQueried) {
+                                return false;
+                            }
+                        }
+
                         // Customized zoom visibility levels or per-shop overrides
                         if (shop.min_zoom != null && shop.min_zoom !== '') {
                             return viewState.zoom >= parseFloat(shop.min_zoom);
