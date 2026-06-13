@@ -357,7 +357,7 @@ const MapComponent = () => {
                 zoomControl: true
             }).setView(initialCoords, 13);
 
-            window.L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            window.L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&scale=2', {
                 maxZoom: 22,
                 attribution: '© Google Satellite'
             }).addTo(leafletMap);
@@ -830,7 +830,7 @@ const MapComponent = () => {
                 sources: {
                     'raster-tiles': {
                         type: 'raster',
-                        tiles: [`https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}`],
+                        tiles: [`https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&scale=2`],
                         tileSize: 256
                     }
                 },
@@ -849,7 +849,7 @@ const MapComponent = () => {
             sources: {
                 'raster-tiles': {
                     type: 'raster',
-                    tiles: [`https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}`],
+                    tiles: [`https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&scale=2`],
                     tileSize: 256,
                     attribution: attribution
                 }
