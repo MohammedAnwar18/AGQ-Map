@@ -1,0 +1,239 @@
+/* ── Overlay ────────────────────────────────────────────────── */
+.sv-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 31000;
+    background: #0a0f1a;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    direction: rtl;
+}
+
+/* ── Top bar ────────────────────────────────────────────────── */
+.sv-topbar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 18px;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, transparent 100%);
+}
+
+.sv-topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.sv-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(99,102,241,0.2);
+    border: 1.5px solid rgba(99,102,241,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #818cf8;
+    flex-shrink: 0;
+}
+
+.sv-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.sv-location {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.sv-badge {
+    font-size: 0.72rem;
+    color: rgba(99,255,160,0.85);
+    font-weight: 500;
+}
+
+.sv-topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.sv-ext-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 20px;
+    border: 1.5px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.8);
+    font-size: 0.78rem;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.sv-ext-btn:hover {
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+}
+
+.sv-close-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255,255,255,0.25);
+    background: rgba(0,0,0,0.4);
+    color: #fff;
+    font-size: 17px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.sv-close-btn:hover {
+    background: rgba(255,80,80,0.3);
+    border-color: rgba(255,80,80,0.5);
+}
+
+/* ── Viewer ─────────────────────────────────────────────────── */
+.sv-viewer {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+}
+
+/* Override Mapillary default styles */
+.sv-viewer .mapillary-js {
+    height: 100% !important;
+}
+
+/* ── State overlays ─────────────────────────────────────────── */
+.sv-state-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 8;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    background: rgba(10,15,26,0.92);
+    backdrop-filter: blur(4px);
+    color: rgba(255,255,255,0.75);
+    text-align: center;
+    padding: 30px;
+}
+
+.sv-state-overlay p {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 0;
+}
+
+.sv-state-overlay span {
+    font-size: 0.82rem;
+    color: rgba(255,255,255,0.45);
+}
+
+/* Spinner */
+.sv-spinner {
+    width: 44px;
+    height: 44px;
+    border: 3px solid rgba(99,102,241,0.2);
+    border-top-color: #818cf8;
+    border-radius: 50%;
+    animation: sv-spin 0.85s linear infinite;
+}
+
+@keyframes sv-spin { to { transform: rotate(360deg); } }
+
+/* Not found state */
+.sv-not-found p { color: rgba(255,255,255,0.7); }
+
+/* Token steps */
+.sv-token-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 16px 20px;
+    text-align: right;
+    max-width: 420px;
+    width: 100%;
+}
+
+.sv-token-steps span {
+    font-size: 0.84rem;
+    color: rgba(255,255,255,0.7);
+}
+
+.sv-code {
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(251,171,21,0.3);
+    color: #fbab15;
+    font-size: 0.82rem;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-family: monospace;
+    word-break: break-all;
+    text-align: left;
+    direction: ltr;
+    margin-top: 4px;
+}
+
+/* Google fallback button */
+.sv-google-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 11px 26px;
+    border-radius: 24px;
+    background: #1a73e8;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s;
+    margin-top: 6px;
+}
+
+.sv-google-fallback:hover {
+    background: #1557b0;
+    transform: scale(1.03);
+}
+
+/* ── Bottom hint ────────────────────────────────────────────── */
+.sv-hint {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 12;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+    color: rgba(255,255,255,0.8);
+    font-size: 0.78rem;
+    padding: 7px 18px;
+    border-radius: 20px;
+    pointer-events: none;
+    white-space: nowrap;
+    animation: sv-fadein 0.3s ease, sv-fadeout 0.4s 4s ease forwards;
+}
+
+@keyframes sv-fadein  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sv-fadeout { to   { opacity: 0; } }

@@ -30,6 +30,7 @@ import HistoricalTimelinePanel from '../components/HistoricalTimelinePanel';
 import SpatialReelsModal from '../components/SpatialReelsModal';
 import MagazineModal from '../components/MagazineModal';
 import PalNovaaLab from '../components/PalNovaaLab';
+import StreetViewModal from '../components/StreetViewModal';
 import SplashLoading from '../components/SplashLoading';
 import LiveCameraModal from '../components/LiveCameraModal';
 import { postService, friendService, authService, notificationService, communityService, shopService, cameraService, getImageUrl } from '../services/api';
@@ -621,6 +622,8 @@ const MapComponent = () => {
     const [showNews, setShowNews] = useState(false);
     const [showMagazine, setShowMagazine] = useState(false);
     const [showLabModal, setShowLabModal] = useState(false);
+    const [streetViewMode,   setStreetViewMode]   = useState(false);
+    const [streetViewCoords, setStreetViewCoords] = useState(null);
     const [showCommunities, setShowCommunities] = useState(false);
     const [showMoreMenu, setShowMoreMenu] = useState(false);
     const [isEmergencyActive, setIsEmergencyActive] = useState(false);
@@ -2159,9 +2162,10 @@ const MapComponent = () => {
                     mapStyle={mapStyle}
                     transformRequest={transformRequest}
                     onLoad={onMapLoad}
-                    style={{ width: '100%', height: '100%' }}
+                    style={{ width: '100%', height: '100%', cursor: streetViewMode ? 'crosshair' : undefined }}
                     maxPitch={85}
                     attributionControl={false}
+                    onClick={streetViewMode ? (e) => { setStreetViewCoords({ lat: e.lngLat.lat, lng: e.lngLat.lng }); } : undefined}
                 >
                     {/* Visual Route with Advanced Premium Layering */}
                     {routePath && (
@@ -2825,6 +2829,75 @@ const MapComponent = () => {
                         setHistoricalTileUrl(tileUrl);
                         setHistoricalLayerName(name ? `${year} \u2014 ${name}` : null);
                     }}
+                />
+            )}
+
+            {/* Street View floating toggle button */}
+            {!isMobileDevice && (
+                <button
+                    onClick={() => { setStreetViewMode(v => !v); setStreetViewCoords(null); }}
+                    style={{
+                        position: 'absolute',
+                        top: '80px',
+                        left: '16px',
+                        zIndex: 1200,
+                        width: '46px',
+                        height: '46px',
+                        borderRadius: '12px',
+                        border: streetViewMode ? '2px solid #fbab15' : '1.5px solid rgba(255,255,255,0.2)',
+                        background: streetViewMode ? 'rgba(251,171,21,0.2)' : 'rgba(15,23,36,0.85)',
+                        backdropFilter: 'blur(8px)',
+                        color: streetViewMode ? '#fbab15' : 'rgba(255,255,255,0.75)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '3px',
+                        boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
+                        transition: 'all 0.2s',
+                    }}
+                    title={streetViewMode ? 'إلغاء وضع الشارع' : 'عرض الشارع - انقر على أي موقع'}
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="8" r="4"/>
+                        <path d="M6 20v-2a6 6 0 0 1 12 0v2"/>
+                    </svg>
+                    <span style={{ fontSize: '8px', fontWeight: 700, letterSpacing: '0.02em' }}>
+                        {streetViewMode ? 'انقر' : 'شارع'}
+                    </span>
+                </button>
+            )}
+
+            {/* Street View hint banner */}
+            {streetViewMode && !streetViewCoords && (
+                <div style={{
+                    position: 'absolute',
+                    top: '16px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    zIndex: 1300,
+                    background: 'rgba(251,171,21,0.95)',
+                    color: '#000',
+                    fontWeight: 700,
+                    fontSize: '0.88rem',
+                    padding: '10px 22px',
+                    borderRadius: '28px',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.35)',
+                    pointerEvents: 'none',
+                    whiteSpace: 'nowrap',
+                }}>
+                    انقر على أي موقع في الخريطة لعرض الشارع
+                </div>
+            )}
+
+            {/* Street View Modal */}
+            {streetViewCoords && (
+                <StreetViewModal
+                    lat={streetViewCoords.lat}
+                    lng={streetViewCoords.lng}
+                    locationName="عرض الشارع"
+                    onClose={() => { setStreetViewCoords(null); setStreetViewMode(false); }}
                 />
             )}
 

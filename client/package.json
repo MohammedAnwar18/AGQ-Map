@@ -20,6 +20,7 @@
         "jspdf": "^4.1.0",
         "jsqr": "^1.4.0",
         "leaflet": "^1.9.4",
+        "mapillary-js": "^4.1.2",
         "maplibre-gl": "^5.15.0",
         "proj4": "^2.20.2",
         "proj4leaflet": "^1.0.2",
