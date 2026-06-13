@@ -618,6 +618,10 @@ const MapComponent = () => {
     const [showChat, setShowChat] = useState(false);
     const [unreadChatCount, setUnreadChatCount] = useState(0);
     const [showAIChat, setShowAIChat] = useState(false);
+
+    // Shared shop connection states
+    const [sharedItemToConnect, setSharedItemToConnect] = useState(null);
+    const [showLocationPrompt, setShowLocationPrompt] = useState(false);
     const [showNews, setShowNews] = useState(false);
     const [showMagazine, setShowMagazine] = useState(false);
     const [showLabModal, setShowLabModal] = useState(false);
@@ -1101,6 +1105,73 @@ const MapComponent = () => {
         }
     };
 
+    // Connect User and Shared Shop/Place
+    const handleConnectLocations = () => {
+        if (!sharedItemToConnect) return;
+
+        const destinationLoc = {
+            latitude: sharedItemToConnect.latitude,
+            longitude: sharedItemToConnect.longitude,
+            name: sharedItemToConnect.name
+        };
+
+        // Hide prompt
+        setShowLocationPrompt(false);
+
+        const drawRoute = (coords) => {
+            fetchRoute(destinationLoc, 'driving', coords);
+            if (mapRef.current) {
+                mapRef.current.flyTo({
+                    center: [coords.longitude, coords.latitude],
+                    zoom: 17,
+                    pitch: 45,
+                    duration: 2000
+                });
+            }
+        };
+
+        if (userLocation) {
+            drawRoute(userLocation);
+        } else {
+            if (!navigator.geolocation) {
+                alert("تحديد الموقع غير مدعوم في هذا المتصفح.");
+                setSharedItemToConnect(null);
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const coords = {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude
+                    };
+                    updateUserLocation(coords);
+                    drawRoute(coords);
+                },
+                (error) => {
+                    console.warn("High accuracy failed for shared connect, trying fallback low accuracy...", error);
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            const coords = {
+                                latitude: position.coords.latitude,
+                                longitude: position.coords.longitude
+                            };
+                            updateUserLocation(coords);
+                            drawRoute(coords);
+                        },
+                        (errLow) => {
+                            console.error("All geolocation attempts failed for shared connect:", errLow);
+                            alert("تعذر الحصول على موقعك الحالي لتوصيل المسار. يرجى تفعيل الـ GPS والتأكد من إذن الموقع.");
+                            setSharedItemToConnect(null);
+                        },
+                        { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
+                    );
+                },
+                { enableHighAccuracy: true, timeout: 8000 }
+            );
+        }
+    };
+
     // Activate Emergency Mode
     const handleActivateEmergency = () => {
         setIsEmergencyActive(true);
@@ -1325,6 +1396,16 @@ const MapComponent = () => {
                             if (!isGuestMode) {
                                 handleOpenShopProfile(shop);
                             }
+
+                            // Prepare connecting route information
+                            setSharedItemToConnect({
+                                type: 'shop',
+                                id: shop.id,
+                                name: shop.store_name || shop.name || 'المحل',
+                                latitude: parseFloat(shop.latitude),
+                                longitude: parseFloat(shop.longitude)
+                            });
+                            setTimeout(() => setShowLocationPrompt(true), 2000);
                         }
                     } else if (facilityId) {
                         const data = await shopService.getFacilityProfile(facilityId);
@@ -1350,6 +1431,16 @@ const MapComponent = () => {
                                 setSelectedFacilityId(facilityId);
                                 setShowFacilityProfile(true);
                             }
+
+                            // Prepare connecting route information
+                            setSharedItemToConnect({
+                                type: 'facility',
+                                id: fac.id,
+                                name: fac.name || fac.title || 'المرفق',
+                                latitude: parseFloat(fac.latitude),
+                                longitude: parseFloat(fac.longitude)
+                            });
+                            setTimeout(() => setShowLocationPrompt(true), 2000);
                         }
                     }
                 } catch (e) {
@@ -2083,31 +2174,51 @@ const MapComponent = () => {
                             <button className="offline-circle-btn" onClick={handleOfflineCenter} title="تركيز الموقع">🎯</button>
                         </div>
 
-                        {/* Offline HUD */}
-                        <div className="offline-dashboard-hud">
-                            <div className="offline-hud-card">
-                                <div className="offline-hud-label">دائرة العرض (Lat)</div>
-                                <div className="offline-hud-value">{offlineMetrics.lat}</div>
+                        {/* Offline HUD - Cleaned and minimized for mobile responsiveness */}
+                        <div className="offline-dashboard-hud-minimized">
+                            <div className="offline-hud-main-status">
+                                <span className="offline-hud-pulse-dot"></span>
+                                <span className="offline-hud-msg-text">
+                                    {offlineMetrics.statusMsg || 'تحديد الموقع عبر الأقمار الصناعية (GPS)'}
+                                </span>
                             </div>
-                            <div className="offline-hud-card">
-                                <div className="offline-hud-label">خط الطول (Lon)</div>
-                                <div className="offline-hud-value">{offlineMetrics.lon}</div>
-                            </div>
-                            <div className="offline-hud-card">
-                                <div className="offline-hud-label">الدقة (Accuracy)</div>
-                                <div className="offline-hud-value">{offlineMetrics.accuracy}</div>
-                            </div>
-                            <div className="offline-hud-card">
-                                <div className="offline-hud-label">السرعة (Speed)</div>
-                                <div className="offline-hud-value">{offlineMetrics.speed}</div>
-                            </div>
-                            <div className="offline-gps-alert">
-                                {offlineMetrics.statusMsg}
+                            <div className="offline-hud-coords-row">
+                                <span>{offlineMetrics.lat}، {offlineMetrics.lon}</span>
+                                <span className="offline-hud-divider">|</span>
+                                <span>الدقة: {offlineMetrics.accuracy}م</span>
+                                {parseFloat(offlineMetrics.speed) > 0 && (
+                                    <>
+                                        <span className="offline-hud-divider">|</span>
+                                        <span>السرعة: {offlineMetrics.speed}</span>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </>
                 ) : (
                     <>
+                        {/* Shared Shop/Place Connection Prompt */}
+                        {showLocationPrompt && sharedItemToConnect && (
+                            <div className="shared-connection-prompt">
+                                <div className="shared-prompt-content">
+                                    <div className="shared-prompt-icon">📍</div>
+                                    <h3>تمت مشاركة موقع "{sharedItemToConnect.name}"</h3>
+                                    <p>هل ترغب في تحديد موقعك الحالي لرسم خط اتجاه ودليل وصول دقيق بينكما؟</p>
+                                    <div className="shared-prompt-actions">
+                                        <button className="prompt-btn-confirm" onClick={handleConnectLocations}>
+                                            <span>🚀</span> تحديد موقعي والربط
+                                        </button>
+                                        <button className="prompt-btn-cancel" onClick={() => {
+                                            setShowLocationPrompt(false);
+                                            setSharedItemToConnect(null);
+                                        }}>
+                                            تخطي
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Community Header Overlay */}
                 {currentCommunity && (
                     <div style={{

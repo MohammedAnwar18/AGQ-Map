@@ -946,10 +946,192 @@
     color: #ffd27a;
 }
 
+/* Minimized Premium Offline HUD */
+.offline-dashboard-hud-minimized {
+    position: absolute;
+    bottom: 30px;
+    right: 20px;
+    left: 20px;
+    z-index: 2000;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(251, 171, 21, 0.4);
+    border-radius: 16px;
+    padding: 12px 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+    font-family: 'Tajawal', sans-serif;
+    direction: rtl;
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.offline-hud-main-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fbab15;
+}
+
+.offline-hud-pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #fbab15;
+    box-shadow: 0 0 8px #fbab15;
+    animation: offline-dot-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes offline-dot-pulse {
+    0%, 100% { opacity: 0.5; transform: scale(0.9); }
+    50% { opacity: 1; transform: scale(1.15); }
+}
+
+.offline-hud-msg-text {
+    color: #fbab15;
+}
+
+.offline-hud-coords-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #cbd5e1;
+}
+
+.offline-hud-divider {
+    color: rgba(255, 255, 255, 0.15);
+}
+
+/* Shared connection prompt styling */
+.shared-connection-prompt {
+    position: absolute;
+    top: 95px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    width: 90%;
+    max-width: 420px;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(251, 171, 21, 0.4);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    animation: slideDownFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideDownFade {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -20px);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
+.shared-prompt-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    color: #f8fafc;
+    direction: rtl;
+    font-family: 'Tajawal', sans-serif;
+}
+
+.shared-prompt-icon {
+    font-size: 2.5rem;
+    margin-bottom: 12px;
+    animation: bounceMarker 2s ease infinite;
+}
+
+@keyframes bounceMarker {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+
+.shared-prompt-content h3 {
+    margin: 0 0 8px 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fbab15;
+}
+
+.shared-prompt-content p {
+    margin: 0 0 20px 0;
+    font-size: 0.9rem;
+    color: #cbd5e1;
+    line-height: 1.5;
+}
+
+.shared-prompt-actions {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+}
+
+.prompt-btn-confirm {
+    flex: 2;
+    background: linear-gradient(135deg, #fbab15, #f59e0b);
+    color: #0f172a;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(251, 171, 21, 0.3);
+}
+
+.prompt-btn-confirm:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(251, 171, 21, 0.45);
+}
+
+.prompt-btn-confirm:active {
+    transform: translateY(0);
+}
+
+.prompt-btn-cancel {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.08);
+    color: #94a3b8;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.prompt-btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #f8fafc;
+}
+
 /* Offline Controls Group */
 .offline-controls-group {
     position: absolute;
-    bottom: 270px;
+    bottom: 130px;
     left: 20px;
     z-index: 2000;
     display: flex;
