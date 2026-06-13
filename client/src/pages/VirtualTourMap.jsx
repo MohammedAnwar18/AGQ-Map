@@ -30,32 +30,32 @@ const VirtualTourMap = () => {
     }, []);
 
     // ── Map styles ───────────────────────────────────────────────────────────
-    // Custom style for 360° mode
-    const CUSTOM_STYLE = useMemo(() =>
-        MAPBOX_TOKEN
-            ? `https://api.mapbox.com/styles/v1/mohammed-1331/cmbseyy16010101qwf9d5a8m3?access_token=${MAPBOX_TOKEN}`
-            : `https://api.maptiler.com/maps/019b8b76-e5e2-7f02-b5d1-74fd0cf725bb/style.json?key=N6uNP3sTu25OIBUyi9G1`
-    , [MAPBOX_TOKEN]);
+    // Google Satellite style matching the main screen
+    const GOOGLE_SATELLITE_STYLE = useMemo(() => ({
+        version: 8,
+        name: "Satellite",
+        sprite: "https://demotiles.maplibre.org/styles/osm-bright-gl-style/sprite",
+        glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+        sources: {
+            'raster-tiles': {
+                type: 'raster',
+                tiles: [`https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}`],
+                tileSize: 256,
+                attribution: 'Google Satellite'
+            }
+        },
+        layers: [
+            {
+                id: 'simple-tiles',
+                type: 'raster',
+                source: 'raster-tiles',
+                minzoom: 0,
+                maxzoom: 22
+            }
+        ]
+    }), []);
 
-    // Satellite style for Street View mode
-    const SATELLITE_STYLE = useMemo(() =>
-        MAPBOX_TOKEN
-            ? `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12?access_token=${MAPBOX_TOKEN}`
-            : `https://api.maptiler.com/maps/hybrid/style.json?key=N6uNP3sTu25OIBUyi9G1`
-    , [MAPBOX_TOKEN]);
-
-    const activeStyle = mode === 'street' ? SATELLITE_STYLE : CUSTOM_STYLE;
-
-    // transformRequest handles both styles (they share the same token)
-    const transformRequest = useCallback((url) => {
-        if (!url.startsWith('mapbox://') || !MAPBOX_TOKEN) return { url };
-        let fu = url.replace('mapbox://', 'https://api.mapbox.com/');
-        if (url.includes('mapbox://styles/'))  fu = fu.replace('/styles/', '/styles/v1/');
-        if (url.includes('mapbox://fonts/'))   fu = fu.replace('/fonts/', '/fonts/v1/');
-        if (url.includes('mapbox://sprites/')) fu = fu.replace('/sprites/', '/sprites/v1/');
-        const sep = fu.includes('?') ? '&' : '?';
-        return { url: `${fu}${sep}access_token=${MAPBOX_TOKEN}`, headers: {} };
-    }, [MAPBOX_TOKEN]);
+    const activeStyle = GOOGLE_SATELLITE_STYLE;
 
     // ── Mapillary coverage tile URL ──────────────────────────────────────────
     const mapillaryCoverageTiles = useMemo(() =>
@@ -164,7 +164,6 @@ const VirtualTourMap = () => {
                         initialViewState={{ longitude: 35.19, latitude: 31.96, zoom: 13 }}
                         style={{ width: '100%', height: '100%' }}
                         mapStyle={activeStyle}
-                        transformRequest={MAPBOX_TOKEN ? transformRequest : undefined}
                         attributionControl={false}
                         cursor={mode === 'street' ? 'crosshair' : 'grab'}
                         onClick={handleMapClick}

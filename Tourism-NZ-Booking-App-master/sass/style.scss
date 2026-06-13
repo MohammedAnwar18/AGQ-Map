@@ -1,0 +1,205 @@
+$primary : #F2B999;
+$secondary : #45718C ;
+
+$font-family-sans-serif: 'Montserrat', 'sans-serif';
+
+@import '../bootstrap-4.5.3/scss/bootstrap.scss';
+@import 'images';
+@import 'buttons';
+
+// INHERITENCE
+text-shadow {
+  text-shadow: 2px 4px 4px rgba(0,0,0,0.25);
+}
+box-shadow {
+  box-shadow: 2px 4px 4px 0px rgba(0,0,0,0.25);
+}
+
+body {
+  font-family: $font-family-sans-serif;
+  height: 100%;
+}
+
+// CSS TRANSITIONS
+.fade-in {
+	opacity: 1;
+	animation-name: fadeInOpacity;
+	animation-iteration-count: 1;
+	animation-timing-function: ease-in;
+	animation-duration: 1s;
+}
+
+@keyframes fadeInOpacity {
+	0% {
+		opacity: 0;
+	}
+	100% {
+		opacity: 1;
+	}
+}
+
+// HOMEPAGE
+.homepage__heading {
+  padding-top: 15.6em;
+}
+
+.heading {
+  font-size: 5em;
+  letter-spacing: 3px;
+  @extend text-shadow;
+  padding-bottom: 20px;
+  font-family: 'Bebas Neue', 'cursive';
+}
+
+.date-guest__box {
+  background: rgba(0,0,0,0.35);
+  @extend box-shadow;
+  font-size: .9em;
+}
+
+.homepage__input {
+  height: 50px;
+  @extend box-shadow;
+  width: 100%;
+}
+
+.homepage__input--btn  {
+  height: 50px;
+  cursor: pointer;
+}
+
+.guest__icon {
+  height: 50px;
+}
+
+.no__result--container {
+  background: rgba(0,0,0,0.85);
+  @extend box-shadow;
+  height: 270px;
+  margin-top: 9em;
+}
+
+
+// ACCOMMODATION OPTIONS PAGE
+.accommodation-options__container {
+  padding-top: 4.6em;
+}
+
+.card {
+  @extend box-shadow;
+  overflow: hidden;
+
+}
+
+.card-body {
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  padding-top: 10rem;
+  height: 38vh;
+}
+
+.card-textbox {
+  background: rgba(0,0,0,0.7);
+  height: 110px;
+  width: 100%;
+  position: absolute;
+  bottom: 0px;
+  left: 0px;
+}
+
+.card-title {
+  font-weight: 600;
+  margin-bottom: .25rem;
+}
+
+.card-text {
+  font-size: .8em;
+  margin-bottom: .9rem;
+}
+
+.price-textbox {
+  font-weight: 600;
+  font-size: 1.2rem;
+}
+
+
+// ACCOMMODATION DETAILS
+.bg-85 {
+  background: rgba(0,0,0,0.85);
+  h2 {
+    font-size: 2.5em;
+    letter-spacing: 1.8px;
+  }
+}
+
+.outer {
+  width: 80%;
+}
+
+.inner{
+  width: 103%;
+}
+
+.myContainer {
+  padding-top: 4.6em;
+}
+
+.iconImg{
+  width: 30px;
+  height: 30px;
+}
+
+.carouselContainer {
+  height: 50%;
+}
+
+.mapContainer {
+  height: 50%;
+}
+
+.myCarousel {
+  height: 100%;
+  width: 100%;
+}
+.booking-line {
+  display: none;
+}
+
+.booking-subcontainer {
+  margin: 0px!important;
+}
+
+.form-check-label {
+  font-size: .8em;
+}
+.mealContainer {
+  padding-left: 30px;
+}
+
+// GOOGLE MAPS API
+#map {
+  width: 100%;
+  height: 100%;
+}
+
+// BOOKING CONFIRMATION
+#booking-confirmation {
+  padding-top: 13.5rem;
+}
+
+.booking-confirmation__container {
+  background: rgba(0,0,0,0.8);
+  @extend box-shadow;
+  padding-top: 25px;
+}
+
+#emailInput {
+  height: 50px;
+}
+
+.spacer {
+  width: 1%;
+}
+// IMPORT MEDIA QUERIES
+@import 'mediaQueries';

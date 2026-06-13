@@ -1,0 +1,197 @@
+// HOMEPAGE
+@media (max-width: 1320px) {
+  .input-group-text {
+    padding-right: 0;
+  }
+  .homepage__input {
+    input {
+      font-size: .8em;
+    }
+  }
+  .form-control {
+    font-size: 0.8em;
+  }
+}
+
+// ACCOMMODATION DETAILS
+@media (max-width: 1260px){
+  .carouselContainer {
+    height: 35%;
+  }
+  .mapContainer {
+    height: 65%;
+  }
+  .card-title {
+    font-size: 1.1em;
+  }
+}
+
+@media (max-width: 1199px){
+  .meal-option {
+    padding-left: 1rem!important;
+  }
+  .cutBorder {
+    border-right: 0!important;
+  }
+  .booking-line {
+    width: 115%;
+    display: block;
+    margin-left: 1rem!important;
+  }
+  .homepage__input {
+    input {
+      font-size: 1em;
+    }
+  }
+  .form-control {
+    font-size: 1em;
+  }
+  #booking-confirmation {
+    padding-top: 12rem!important;
+  }
+}
+
+@media (min-width: 991px) {
+    .iconCol {
+        max-width: 12.5%;
+        p {
+          font-size: .7rem;
+        }
+    }
+}
+
+@media (max-width: 991px){
+  .right {
+    padding:0;
+  }
+  .inner {
+    width: 100%;
+  }
+  .book-btn__container {
+    padding-left: 0 !important;
+  }
+  .mapContainer {
+    width: 100%;
+    margin: 0;
+    padding-left: 0 !important;
+  }
+  .carouselContainer {
+    height: 450px;
+  }
+  .mapContainer {
+    height: 350px;
+  }
+  .itinerary__container {
+    margin-bottom: 1.5rem!important;
+    float: none!important;
+  }
+  #other-booking {
+    float: none!important;
+    clear: both;
+    margin-bottom: 2.5rem!important;
+  }
+  #booking-confirmation {
+    padding-top: 12rem;
+  }
+  #accommodation-options {
+    height: 100%;
+  }
+
+  .card-title {
+    font-size: 1.5em;
+  }
+}
+
+@media (max-width: 768px){
+  .guestMargin {
+    margin-top: 1.5rem;
+  }
+  .cutBorder2 {
+    border-right: 0!important;
+  }
+  .meal-option {
+    margin-bottom: 1.5rem!important;
+  }
+  .meal-line {
+    width: 100%;
+    display: block;
+  }
+  .date-container {
+    padding-bottom: 0!important;
+  }
+  .form-control {
+    font-size: 1em;
+  }
+  .date-container__subcontainer {
+    padding-right: 0px!important;
+  }
+  .homepage__input {
+    input {
+      font-size: 1.2em;
+    }
+  }
+  .form-control {
+    font-size: 1.2em;
+  }
+  .homepage__heading {
+    padding-top: 10.6em!important;
+  }
+}
+
+@media (max-width: 726px){
+
+  .carouselContainer {
+    height: 280px;
+  }
+  .bg-85 h2 {
+    font-size: 2em;
+  }
+  .booking-summary {
+    font-size: .9rem;
+    h6 {
+      font-size: .9rem;
+    }
+  }
+  .booking-subcontainer {
+    margin: 0!important;
+  }
+  .homepage__heading {
+    padding-top: 10.6em!important;
+  }
+  .heading {
+    font-size: 4.2em!important;
+  }
+}
+
+@media (max-width: 589px){
+  .bg-85 h2 {
+    font-size: 1.5em;
+  }
+  .dinnerContainer {
+    margin-left: 25px;
+  }
+  #booking-confirmation {
+    padding-top: 7em;
+  }
+  .card-title {
+    font-size: 1em;
+  }
+  .homepage__heading {
+    padding-top: 8.6em!important;
+  }
+  .heading {
+    font-size: 3.8em!important;
+  }
+}
+
+@media (max-width: 479px) {
+  .heading {
+    font-size: 2.8em!important;
+  }
+}
+
+@media (max-width: 374px) {
+  .heading {
+    font-size: 2.2em!important;
+  }
+}

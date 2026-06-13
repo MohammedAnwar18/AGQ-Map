@@ -1,0 +1,73 @@
+@keyframes slideIn {
+   0% {
+      transform: translateX(-10px) translate(-50%, -50%);
+   }
+   50% {
+      transform: translateX(10px) translate(-50%, -50%);
+   }
+   100% {
+      transform: translateX(0px) translate(-50%, -50%);
+   }
+}
+
+.flash {
+   background: white;
+   box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+   padding: 1.2rem 2rem;
+   position: fixed;
+   top: 93%;
+   left: 50%;
+   width: 40%;
+   z-index: 100000000000000;
+   display: flex;
+   border-radius: 4px;
+   animation: slideIn forwards .1s ease-in-out 2;
+   animation-timing-function: cubic-bezier(0.01, 1.68, 0.58, 1);
+
+   & + .flash {
+      animation-delay: 0.55s;
+
+      & + .flash {
+         animation-delay: 0.6s;
+      }
+   }
+
+   &__text {
+      flex: 1;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      color: rgb(230, 230, 230);
+   }
+
+   &__remove {
+      margin-top: -0.7rem;
+      background: none;
+      font-size: 3rem;
+      border:0;
+      cursor: pointer;
+      transition: all .2s;
+      color: rgb(230, 230, 230);
+
+      &:hover {
+         color: rgb(133, 133, 133);
+      }
+   }
+
+   &--success {
+      background: rgba(47, 104, 47, 0.95);
+   }
+
+   &--error {
+      background: rgba(170, 33, 33, 0.95);
+   }
+
+   &--info {
+      background: rgba(47, 47, 47, 0.95);
+   }
+
+   p {
+      margin: 0;
+   }
+
+}

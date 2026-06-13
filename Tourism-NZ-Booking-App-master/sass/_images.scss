@@ -1,0 +1,54 @@
+// BACKGROUND IMAGES
+#homepage, #accommodation-options, #accommodation-details, #booking-confirmation {
+  height: 100vh;
+  background-position: center;
+  background-size: cover;
+}
+#homepage {
+  background-image:url("../images/backgrounds/homepage.jpg");
+}
+#accommodation-options {
+  background-image:url("../images/backgrounds/booking-page.jpg");
+}
+#accommodation-details {
+  background-image:url("../images/backgrounds/details-page.jpg");
+  height: 100%;
+}
+#booking-confirmation {
+  background-image:url("../images/backgrounds/confirmation-page.jpg");
+}
+
+#bgImg1 {
+  background-image:url("../images/accommodation/hostel-1.jpg");
+}
+
+#bgImg2 {
+  background-image:url("../images/accommodation/motel-2-4.jpg");
+}
+
+#bgImg3 {
+  background-image:url("../images/accommodation/hotel-1-2.jpg");
+}
+
+#bgImg4 {
+  background-image:url("../images/accommodation/house-1-4.jpg");
+}
+
+.guest-icon {
+  z-index: 1;
+}
+
+// FOOTER
+.tourism__logo img {
+  width: 85px;
+  position: absolute;
+  bottom: 20px;
+  left: 15px;
+}
+
+.pure-nz__logo img {
+  width: 140px;
+  position: absolute;
+  bottom: 20px;
+  right: 15px;
+}

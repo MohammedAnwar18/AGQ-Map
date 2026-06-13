@@ -1,0 +1,458 @@
+.admin-section {
+   min-height: 110vh;
+   width: 100%;
+   padding-top: 10rem;
+   background-color: rgb(116, 116, 116);
+}
+
+.sidenav {
+   z-index: 1000;
+
+   .background {
+      filter: brightness(50%);
+
+      img {
+         width: 100%;
+      }
+   }
+
+   .circle {
+      border-radius: 0;
+      height: 40px !important;
+      width: 142px !important;
+   }
+
+   .user-view {
+      padding: 32px 32px 8px !important;
+   }
+}
+
+.collapsible-body {
+
+   a {
+      display: block;
+      padding-left: 5rem;
+      font-size: 1.4rem;
+      transition: all .3s;
+
+      &:hover {
+         background-color: rgb(245, 245, 245);
+      }
+   }
+}
+
+.collapsible-header {
+   font-size: 1.7rem;
+   
+   i {
+      color: #2FBCAC;
+   }
+}
+
+.ml-4 {
+   margin-left: 2rem;
+}
+
+.chartContainer {
+   background-color: rgb(231, 231, 231);
+   box-shadow: 1rem 1rem 1rem rgba(0, 0, 0, 0.238);
+   border-radius: .4rem;
+   width: 95%;
+   margin: 0 auto;
+   padding: .8rem 1.4rem;
+   position: relative;
+}
+
+.titleee {
+   text-align: center;
+   font-weight: 300;
+   color: rgb(32, 32, 32);
+   text-transform: uppercase;
+   letter-spacing: 6px;
+   font-size: 4rem;
+   border-bottom: 2px solid rgb(49, 49, 49);
+   width: 96%;
+   margin: 0 auto;
+   margin-bottom: 2rem;
+   transition: all .3s;
+
+   &:not(:first-child) {
+      margin-top: 2.8rem;
+   }
+
+   &:hover {
+      letter-spacing: 9px;
+   }
+}
+
+.rowBoxes {
+   width: 95%;
+   margin: 0 auto;
+   margin-top: 1rem;
+}
+
+.adminBox {
+   background-color: rgb(46, 46, 46);
+   box-shadow: .25rem .25rem .25rem rgba(0, 0, 0, 0.197);
+   border-radius: 3px;
+   width: 100%;
+   padding: .7rem 1.2rem;
+
+   .titleBox {
+      color: rgb(197, 197, 197);
+      text-transform: uppercase;
+      font-size: 1.4rem;
+      font-weight: 300;
+      padding-bottom: 1rem;
+
+      &-2 {
+         padding-bottom: .2rem;
+      }
+   }
+
+   .contInfo {
+      display: flex;
+      justify-content: center;
+   }
+
+   .infoBox {
+      color: rgb(197, 197, 197);
+      font-size: 2.95rem;
+      text-align: center;
+      font-weight: 100;
+
+      &-num {
+         font-weight: 900;
+         color: #2FBCAC;
+      }
+   }
+
+   .rowRange {
+      margin-bottom: 0 !important;
+
+      .buttonRange {
+         height: 26px;
+         line-height: 26px;
+         padding: 0 7px;
+         top: 50%;
+         left: 50%;
+         transform: translate(-50%, -50%);
+      }
+
+      .buttonSearchBox {
+         color: #FFF;
+         height: 26px;
+         line-height: 26px;
+         padding: 0 7px;
+         top: 50%;
+         left: 50%;
+         transform: translate(-50%, -50%);
+      }
+
+      .colButtonBox {
+         height: 36px;
+      }
+
+      .rangePercentageIncDec {
+         border: 0;
+      }
+   }
+}
+
+.contentModalProfits {
+   background-color: #fafafa;
+   padding: 0 2rem !important;
+   padding-top: 3.8rem !important;
+   height: 23rem !important;
+}
+
+.contInfoInterval {
+   display: flex;
+   font-size: 2.4rem;
+   padding: 0 2rem;
+
+   #intervalProfit {
+      color: #2FBCAC;
+   }
+}
+
+.loaderChart1, .loaderChart2, .loaderChart3, .loaderChart4, .loaderChart5, .loaderChart6, .loaderChart7, .loaderChart8, .loaderChart9 {
+   position: absolute;
+   left: 50%;
+   top: 50%;
+   transform: translate(-50%, -50%);
+}
+
+.containerThreeCharts {
+   display: flex;
+   width: 95%;
+   margin: 0 auto;
+   padding: .8rem 1.4rem;
+   position: relative;
+   padding-bottom: 3.5rem;
+}
+
+.chartContainerxd {
+   margin-right: 2.4rem;
+}
+
+
+
+// ADMINS SECTIONS
+.titlee {
+   text-align: center;
+   font-weight: 300;
+   color: rgb(32, 32, 32);
+   text-transform: uppercase;
+   letter-spacing: 6px;
+   font-size: 4rem;
+   border-bottom: 2px solid rgb(49, 49, 49);
+   width: 96%;
+   margin: 0 auto;
+   margin-bottom: 1rem;
+   transition: all .3s;
+
+   &:hover {
+      letter-spacing: 9px;
+   }
+}
+
+.tableContainer {
+   // background: rgb(37, 37, 37);
+   width: 90%;
+   margin: 0 auto;
+   padding: 2rem 2rem;
+}
+
+.dataTables_length {
+   margin-bottom: 1rem;
+
+   & label {
+      display: flex;
+      align-items: center;
+      font-size: 1.4rem;
+      color: rgb(37, 37, 37);
+      font-weight: 800;
+
+      & select {
+         display: inline-block;
+         margin: 0 .4rem;
+         font-size: 1rem;
+         background: rgb(37, 37, 37);
+         border: none;
+         color: beige;
+      }
+   }
+}
+
+.dataTables_filter {
+   margin-bottom: 1rem;
+
+   & label {
+      display: flex;
+      align-items: center;
+      font-size: 1.4rem;
+      color: rgb(37, 37, 37);
+      font-weight: 800;
+
+      & input {
+         font-weight: 300;
+         font-size: 1rem;
+         border-bottom: 1px solid rgb(37, 37, 37) !important;
+         box-shadow: none !important;
+      }
+   }
+}
+
+.dataTables_info {
+   margin-top: 1rem;
+   font-size: 1.4rem;
+   color: rgb(29, 29, 29) !important;
+   font-weight: 800;
+}
+
+.paginate_button {
+   margin-top: 1rem;
+   font-size: 1.4rem;
+   color: rgb(29, 29, 29) !important;
+   font-weight: 800;
+   padding: .5rem .5rem !important;
+
+   &.current {
+      background: rgb(87, 86, 86) !important;
+      border: none !important;
+      color: rgb(190, 190, 190) !important;
+   }
+
+   &:hover {
+      background: rgb(29, 29, 29) !important;
+      border: none !important;
+   }
+}
+
+
+
+table.tableFlinchi {
+
+   &.dataTable {
+      border-collapse: collapse !important;
+   }
+
+   td {
+      background: #5f5f5f !important;
+      color: rgb(200, 200, 200) !important;
+      font-size: 1.3rem;
+      border-radius: 0 !important;
+
+      &.sorting_1 {
+         background-color: #585858 !important;
+      }
+   }
+
+   thead {
+      font-size: 1.4rem;
+      color: rgb(36, 36, 36) !important;
+      text-transform: uppercase;
+
+      th {
+         border-bottom: none !important;
+      }
+
+      .sorting {
+         background-image: url('/images/sort_both.png') !important;
+      }
+
+      .sorting_asc {
+         background-image: url('/images/sort_asc.png') !important;
+      }
+
+      .sorting_desc {
+         background-image: url('/images/sort_desc.png') !important;
+      }
+   }
+}
+
+.contButton {
+   width: 90%;
+   margin: 0 auto;
+   padding: 2rem 2rem;
+
+   .createButton {
+      color: rgb(235, 235, 235);
+      width: 100%;
+      font-size: 2.2rem;
+      font-weight: 300;
+      letter-spacing: 0.3rem;
+   }
+}
+
+.modalPlanningFlights {
+   height: 34rem ;
+}
+
+.contentModal {
+   background-color: #fafafa;
+
+   .separatorTitleModalAdmin {
+      width: 95%;
+      margin: 0 auto;
+   }
+
+   h4 {
+      padding-top: 1.6rem;
+   }
+
+   .rowModalAdmin {
+      padding-top: 4.6rem;
+      width: 95%;
+   }
+
+   .rowModalAdmin2 {
+      padding-top: 1rem;
+      width: 95%;
+   }
+}
+
+.browser-default {
+   height: 4rem;
+}
+
+.timepicker-analog-display {
+   background-color: #fff;
+}
+
+.timepicker-modal {
+   overflow: hidden;
+}
+
+.timepicker-digital-display {
+   width: 12rem;
+}
+
+.containerBotonesAprobarRechazar {
+   display: flex;
+   justify-content: space-around
+}
+
+.botonApprove, .botonReject {
+   padding: .7rem;
+   width: 1.5rem;
+   border: none;
+   color: #FFF;
+   box-shadow: .2rem .2rem 1rem rgba(0, 0, 0, 0.21);
+   cursor: pointer;
+}
+
+.botonApprove {
+   background-color: rgb(31, 141, 80);
+}
+
+.botonReject {
+   background-color: rgb(128, 31, 31);
+}
+
+.disa {
+   background-color: rgb(56, 56, 56);
+   cursor: not-allowed;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

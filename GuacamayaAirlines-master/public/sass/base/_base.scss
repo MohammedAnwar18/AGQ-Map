@@ -1,0 +1,38 @@
+*,
+*::after,
+*::before {
+   margin: 0;
+   padding: 0;
+   box-sizing: inherit;
+}
+
+html {
+   font-size: 62.5%;
+}
+
+body {
+   box-sizing: border-box;
+   font-family: $font-family;
+}
+
+a, a:link, a:visited {
+   text-decoration: none;
+   color: inherit;
+   font-family: inherit;
+}
+
+// Scroll Bar
+::-webkit-scrollbar-track {
+	-webkit-box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
+	background-color: #F5F5F5;
+}
+
+::-webkit-scrollbar {
+	width: 6px;
+	background-color: #F5F5F5;
+}
+
+::-webkit-scrollbar-thumb {
+	-webkit-box-shadow: inset 0 0 6px rgba(0,0,0,.3);
+	background-color: #2BBBAD;
+}

@@ -1,0 +1,318 @@
+.airport {
+   background-color: rgba(32, 32, 32, 1);
+   padding-bottom: 6rem;
+
+   &__background {
+      width: 100%;
+      height: 500px;
+      clip-path: polygon(0 0, 100% 0, 100% 92%, 0 100%);
+      display: flex;
+      position: relative;
+      justify-content: center;
+      align-items: center;
+
+      &:before {
+         display: block;
+         content: '';
+         position: absolute;
+         height: 100%;
+         width: 100%;
+         top: 0;
+         right: 0;
+         background-image: linear-gradient(to right bottom,
+            rgba(rgba(rgb(26, 83, 76), 0.596), 0.5),
+            rgba(rgba(rgb(58, 109, 74), 0.596), 0.5));
+      }
+      
+      &-image {
+         position: absolute;
+         width: 100%;
+         height: 100%;
+         object-fit: cover;
+         filter: blur(4px);
+         z-index: -1;
+      }
+
+      &-conttext {
+         z-index: 2;
+         background-color: rgba(32, 32, 32, 0.8);
+         position: relative;
+         clip-path: polygon(8% 3%, 100% 0, 92% 97%, 0 100%);
+         transition: all .3s;
+
+         &:hover {
+            transform: scale(1.03);
+         }
+      }
+
+      &-text {
+         text-transform: uppercase;
+         font-size: 12rem;
+         font-weight: 100;
+         padding: .8rem 9rem;
+         color: transparent;
+         background-image: linear-gradient(to right bottom,
+            rgba(rgba(#2DBBAB, 1), 1),
+            rgba(rgba(#62B17B, 1), 1));
+         -webkit-background-clip: text;
+
+         span {
+            font-weight: 400;
+         }
+      }
+   }
+
+   &__info {
+      position: relative;
+      z-index: 10;
+      width: 70%;
+      margin: 0 auto;
+      margin-top: -8rem;
+      box-shadow: 1rem 1rem 1rem rgba(0, 0, 0, 0.25);
+      background-color: rgba(255, 255, 255, 0.8);
+   }
+
+   &__map {
+
+      &-image {
+         width: 100%;
+         border-top: 1px solid rgb(53, 53, 53);
+         border-left: 1px solid rgb(53, 53, 53);
+         border-right: 1px solid rgb(53, 53, 53);
+      }
+
+      &-contname {
+         position: absolute;
+         background-color: rgb(53, 53, 53);
+         width: 100%;
+         margin-top: -3.5rem;
+      }
+
+      &-name {
+         text-transform: uppercase;
+         font-size: 2.5rem;
+         font-weight: 100;
+         text-align: center;
+         color: rgb(210, 210, 211);
+         letter-spacing: 2px;
+         transition: all .3s;
+
+         &:hover {
+            letter-spacing: 2.5px;
+         }
+      }
+   }
+
+   &__flights {
+      padding: 3rem 4rem;
+
+      &-card {
+         margin-bottom: 2rem;
+         padding: .8rem 2rem;
+         background-image: linear-gradient(to top right, rgb(78, 77, 77), rgb(54, 51, 51));
+         color: rgb(212, 212, 212);
+         box-shadow: .6rem .6rem 1rem rgba(0, 0, 0, 0.39);
+         transition: all .2s;
+         border-radius: 2px;
+
+         &:hover {
+            box-shadow: 1rem 1rem 1rem rgba(0, 0, 0, 0.315);
+            transform: scale(1.005) translateY(-1px);
+         }
+
+         table {
+            border-collapse: separate;
+            cursor: default;
+         }
+
+         th {
+            padding: 0;
+            padding-bottom: .2rem;
+            font-size: .8rem;
+            text-transform: uppercase;
+            width: 20%;
+         }
+
+         td {
+            font-size: 1.5rem;
+            padding: .2rem 0rem;
+         }
+
+         .buttonCell {
+            text-align: center;
+            margin-top: -.5rem;
+
+            a {
+               margin-top: -1.5rem;
+            }
+         }
+
+         .flightImportant {
+            font-weight: 900;
+            color: rgb(107, 200, 189);
+            text-shadow: .2rem .2rem .1rem rgba(0, 0, 0, 0.308);
+         }
+      }
+   }
+}
+
+.notFoundText {
+   text-align: center;
+   font-size: 2.4rem;
+}
+
+.modal-content {
+
+   h4 {
+      font-size: 3.5rem;
+      text-align: center;
+      text-shadow: .1rem .1rem .1rem rgba(0, 0, 0, 0.212);
+   }
+
+   .title {
+      font-size: 2rem;
+      font-weight: 500;
+      text-align: left;
+      margin-top: 1rem;
+      margin-left: .2rem;
+      text-transform: uppercase;
+   }
+
+   .title2 {
+      margin-top: 2.5rem;
+      display: inline-block;
+      margin-right: 5rem;
+   }
+}
+
+.firstRow {
+   margin-top: 1rem;
+}
+
+.lastRow {
+   margin-bottom: 0;
+   margin-top: -1.5rem;
+}
+
+.disabledPirata {
+   color: rgba(0,0,0,0.42);
+   border-bottom: 1px dotted rgba(0,0,0,0.42) !important;
+   box-shadow: none !important;
+   pointer-events: none;
+   cursor: not-allowed;
+
+   &.invalid {
+      border-bottom: 1px dotted rgba(0,0,0,0.42) !important;
+      box-shadow: none !important;
+
+      &:focus ~ label {
+         color: rgba(0,0,0,0.42) !important;
+      }
+   }
+
+   & ~ label {
+      color: rgba(0,0,0,0.42) !important;
+   }
+
+   &.inputSeat {
+      text-align: center;
+   }
+}
+
+select.disabledPirata {
+   border-bottom: 1px solid #f2f2f2 !important;
+   box-shadow: inherit !important;
+}
+
+.modal {
+   background-color: transparent !important;
+   box-shadow: none !important;
+   transition: all .5s;
+
+   &.rotateActive .frontSide {
+      transform: rotateY(-180deg);
+      display: none;
+   }
+
+   &.rotateActive .backSide {
+      transform: rotateY(0);
+      display: block;
+   }
+}
+
+.modal-content {
+   height: 37rem;
+   padding: 0 !important;
+}
+
+.frontSide, .backSide {
+   position: absolute;
+   width: 100%;
+   -webkit-backface-visibility: hidden; // Eliminar la parte de atrás de los sides
+   backface-visibility: hidden; // Eliminar la parte de atrás de los sides
+   box-shadow: 0 24px 38px 3px rgba(0,0,0,0.14), 0 9px 46px 8px rgba(0,0,0,0.12), 0 11px 15px -7px rgba(0,0,0,0.2);
+   background-color: #fafafa;
+   padding: 24px;
+   transition: all 1.5s ease;
+}
+
+.frontSide {
+   height: 52rem;
+}
+
+.backSide {
+   transform: rotateY(-180deg);  // Comienza rotado
+   display: none;
+}
+
+.seatMaps {
+   margin-top: -38px;
+   font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+   font-size: 10px;
+}
+
+div.seatCharts-row {
+   justify-content: center;
+   display: flex;
+}
+
+.rangeField {
+   margin-top: 57px;
+}
+
+.textMap {
+   text-align: center;
+}
+
+.loaderSeatMap {
+   position: absolute;
+   left: 50%;
+   top: 24%;
+   transform: translateX(-50%);
+   display: none;
+}
+
+.preloader-wrapper.active {
+   -webkit-animation: none !important;
+   animation: none !important;
+}
+
+.fromCol, .toCol {
+   width: 80px !important;
+}
+
+.dateCol {
+   width: 200px !important;
+}
+
+.priceCol {
+   width: 120px !important;
+}
+
+.totalPriceCol {
+   width: 120px !important;
+}
+
+.totalPriceColl {
+   font-weight: 900 !important;
+}

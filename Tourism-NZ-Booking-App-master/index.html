@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <!-- FONTS -->
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@100;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- CDNS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/themes/dark-hive/jquery-ui.min.css" integrity="sha512-Sg7rco5qUS4Y3wzqjxMhM5zj3DJuxnJAildKRzTIJeIdV8xSlIlFgngli3eOBq6Yv0kbz6IjdCvIpqu54d2YIA==" crossorigin="anonymous"/>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+    <!-- MY STYLE -->
+    <link rel="stylesheet" href="css/style.css" >
+    <title>Your Queenstown Adventure Awaits | Tourism NZ</title>
+  </head>
+  <body>
+
+<!-- HOMEPAGE -->
+    <div id="homepage">
+
+<!-- HEADING -->
+      <div class="fade-in homepage__heading col-11 col-sm-10 col-md-10 col-lg-12 col-xl-12 m-auto text-center text-white">
+        <h1 class="heading">YOUR QUEENSTOWN ADVENTURE AWAITS</h1>
+      </div>
+
+<!-- DATE AND GUEST INPUT BOX -->
+      <div class="fade-in row col-11 col-sm-10 col-md-10 col-lg-10 col-xl-8 date-guest__box mt-5 text-white m-auto clearfix rounded">
+
+<!-- CHECK IN PICKER -->
+        <div class="row col-12 col-sm-12 col-md-8 col-lg-8 col-xl-6 date-container float-left py-4">
+          <div class="col-12 col-sm-6 col-md-6 col-lg-6 col-xl-6  date-container__subcontainer float-left pl-3">
+            <p>CHECK IN</p>
+            <div class="check-in__calendar homepage__input input-group bg-white mb-3 rounded">
+              <div class="calender__icon input-group-prepend">
+                <span class="input-group-text bg-white border-0" id="basic-addon1"><img id="date-icon1" src="images/icons/calender.png" alt="Calender Icon"></span>
+              </div>
+              <input type="text" class="form-control border-0 rounded homepage__input--btn float-right d-inline" id="checkIn" autocomplete="off" placeholder="" aria-describedby="basic-addon1">
+            </div>
+          </div>
+
+<!-- CHECK OUT PICKER -->
+          <div class="col-12 col-sm-6 col-md-6 col-lg-6 col-xl-6 date-container__subcontainer w-50 float-left pr-3">
+            <p>CHECK OUT</p>
+            <div class="check-out__calendar homepage__input input-group bg-white mb-3 rounded">
+              <div class="calender__icon input-group-prepend">
+                <span class="input-group-text bg-white border-0" id="basic-addon2"><img src="images/icons/calender.png" alt="Calender Icon"></span>
+              </div>
+              <input type="text" class="form-control border-0 rounded homepage__input--btn float-right d-inline" id="checkOut" autocomplete="off" placeholder="" aria-describedby="basic-addon1">
+            </div>
+          </div>
+        </div>
+
+<!-- GUEST PICKER -->
+        <div class="row col-12 col-sm-12 col-md-4 col-lg-4 col-xl-6 guest-container py-4 px-0">
+          <div class="col-0 col-sm-0 col-md-0 col-lg-0 col-xl-6"></div>
+          <div class="col-sm-12 col-md-12 col-lg-12 col-xl-6 float-right pl-4">
+            <p>GUESTS</p>
+            <div class="guest__btn homepage__input mb-3 bg-white rounded">
+              <div class="guest__icon input-group-prepend w-25 float-left">
+                <span class="input-group-text bg-white border-0" id="basic-addon3"><img src="images/icons/guests.png" class="guest-icon" alt="Guests Icon"></span>
+              </div>
+              <div class="float-right w-75">
+                <select class="form-control border-0 homepage__input--btn float-right d-inline w-100 mr-2" id="guests">
+                  <optgroup class="optgroup" label="guests">
+                    <option>1 Guest</option>
+                    <option selected>2 Guests</option>
+                    <option>3 Guests</option>
+                    <option>4 Guests</option>
+                  </optgroup>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- NO RESULTS - ERROR MSG -->
+        <div class="text-white my-0 pb-4 text-center m-auto" id="noResult"></div>
+      </div>
+      <!-- SEARCH BUTTON -->
+      <div class="fade-in m-auto col-5 col-sm-3 col-md-2 col-lg-2 col-xl-2">
+        <button class="search-btn bg-primary mt-5 border-0 text-white rounded text-center pt-1 mb-5 w-100" id="search-btn" type="button" name="button">SEARCH</button>
+      </div>
+    </div>
+
+<!-- ACCOMMODATION OPTIONS -->
+    <div id="accommodation-options">
+      <div class="accommodation-options__container col-11 col-sm-10 col-md-9 col-lg-10 col-xl-8 m-auto">
+        <div class="back-btn pl-3" id="back-btn__1">
+          <p>BACK</p>
+        </div>
+        <!-- CARD -->
+        <div id="cardResult" class="row mx-auto clearfix w-100"></div>
+      </div>
+    </div>
+
+<!-- ACCOMMODATION DETAILS -->
+    <div class="" id="accommodation-details">
+      <div class="myContainer m-auto mt-5">
+        <div class="back-btn outer m-auto" id="back-btn__2">
+          <p>BACK</p>
+        </div>
+      <div class="row outer clearfix m-auto">
+        <div class="col-12 col-sm-12 col-md-12 col-lg-7 col-xl-7 left">
+          <div id="descriptionResult" class="row clearfix text-white mb-3 bg-85 rounded-top">
+            <!-- DESCRIPTION RESULT HERE-->
+          </div>
+
+            <!-- FACILITIES -->
+          <div class="row rounded-bottom text-center bg-85 text-light p-4 clearfix mb-3">
+            <div class="d-block col-12">
+              <h4 class="text-left mb-4">FACILITIES</h4>
+            </div>
+              <div class="col-4 col-sm-4 col-md-3 col-lg-3 iconCol">
+                <img class="iconImg mb-2" src="images/icons/wifi.png" alt="Wifi Icon">
+                <p>Wi fi</p>
+              </div>
+              <div class="col-4 col-sm-4 col-md-3 col-lg-3 iconCol">
+                <img class="iconImg mb-2" src="images/icons/washing.png" alt="Washing Icon">
+                <p>Washing</p>
+              </div>
+              <div class="col-4 col-sm-4 col-md-3 col-lg-3 iconCol">
+                <img class="iconImg mb-2" src="images/icons/tv.png" alt="TV Icon">
+                <p>TV</p>
+              </div>
+              <div class="col-4 col-sm-4 col-md-3 col-lg-3 iconCol">
+                <img class="iconImg mb-2" src="images/icons/shower.png" alt="Shower Icon">
+                <p>Shower</p>
+              </div>
+              <div class="col-4 col-sm-4 col-md-3 col-lg-3 iconCol">
+                <img class="iconImg mb-2" src="images/icons/parking.png" alt="Parking Icon">
+                <p>Parking</p>
+              </div>
+              <div class="col-4 col-sm-4 col-md-3 col-lg-3 iconCol">
+                <img class="iconImg mb-2" src="images/icons/coffee.png" alt="Coffee Icon">
+                <p>Coffee</p>
+              </div>
+              <div class="col-4 col-sm-4 col-md-3 col-lg-3 iconCol">
+                <img class="iconImg mb-2" src="images/icons/meals.png" alt="Meals Icon">
+                <p>Meals</p>
+              </div>
+              <div class="col-4 col-sm-4 col-md-3 col-lg-3 iconCol">
+                <img class="iconImg mb-2" src="images/icons/phone.png" alt="Landline Icon">
+                <p>Landline</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-sm-12 col-md-12 col-lg-5 col-xl-5 right">
+            <div id="carouselResult" class="carouselContainer row rounded-top mx-auto w-100 clearfix pb-3">
+              <!-- CAROUSEL RESULT HERE-->
+            </div>
+            <div class="mapContainer row clearfix pl-3 pb-3 mb-3">
+              <!-- MAP HERE -->
+              <div class="" id="map"></div>
+            </div>
+          </div>
+        </div>
+        <!-- BOOKING SUMMARY -->
+        <div class="booking-summary outer m-auto clearfix bg-white p-4 rounded-bottom">
+          <h4>BOOKING SUMMARY</h4>
+          <hr class="summary-line mr-4">
+          <div class="booking-subcontainer row w-100 px-0">
+            <div class="col-12 col-sm-12 col-md-12 col-lg-12 col-xl-6 row pr-0">
+              <div class="col-6 col-sm-6 col-md-4 col-lg-4 col-xl-4 border-right">
+                <h6 class="pb-2">CHECK IN</h6>
+                <p>12pm - 11pm</p>
+                <div id="checkInResult" class="mb-2"></div>
+              </div>
+              <div class="cutBorder2 col-6 col-sm-6 col-md-4 col-lg-4 col-xl-4 border-right">
+                <h6 class="pb-2">CHECK OUT</h6>
+                <p>6am - 12pm</p>
+                <div id="checkOutResult" class="mb-2"></div>
+              </div>
+              <div class="cutBorder col-sm-12 col-md-4 col-lg-4 col-xl-4 pl-3 border-right">
+                <h6 class="pb-2 pl-0 guestMargin">GUESTS</h6>
+                <div class="row pl-3">
+                  <div class="col-6 col-sm-6 col-md-12 col-lg-12 col-xl-12 pl-0 mb-3" id="guestsResult"></div>
+                  <div class="col-6 col-sm-6 col-md-12 col-lg-12 col-xl-12 pl-0" id="daysResult"></div>
+                </div>
+              </div>
+            </div>
+            <div class="col-12 col-sm-12 col-md-12 col-lg-12 col-xl-6 row pr-0">
+            <hr class="booking-line">
+            <!-- MEAL OPTIONS -->
+              <div class="col-12 col-sm-12 col-md-8 col-lg-8 col-xl-7 border-right pl-4 cutBorder meal-option">
+                <h6 class="pb-2">MEAL OPTION</h6>
+                <div class="row mealContainer">
+                  <div class="col-6 form-check pl-0 pr-1 row">
+                    <div class="form-check form-check-inline col-12">
+                      <input class="form-check-input mb-3" type="checkbox" id="inlineCheckbox1" value="option1">
+                      <label class="form-check-label mr-0 mb-3" for="inlineCheckbox1">Breakfast $20</label>
+                    </div>
+                    <div class="form-check form-check-inline col-12">
+                      <input class="form-check-input mb-3" type="checkbox" id="inlineCheckbox2" value="option2">
+                      <label class="form-check-label mb-3" for="inlineCheckbox2">Lunch $25</label>
+                    </div>
+                  </div>
+                  <div class="col-6 form-check row dinnerContainer">
+                    <div class="form-check form-check-inline col-12 pr-0 mr-0">
+                      <input class="form-check-input mb-3" type="checkbox" id="inlineCheckbox3" value="option3">
+                      <label class="form-check-label mb-3" for="inlineCheckbox3">Dinner $35</label>
+                    </div>
+                    <div class="form-check form-check-inline col-12 pr-0 mr-0">
+                      <input class="form-check-input" type="checkbox" id="inlineCheckbox4" value="option4">
+                      <label class="form-check-label" for="inlineCheckbox4">None</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            <!-- TOTAL COST -->
+              <div class="pr-0 col-12 col-sm-12 col-md-4 col-lg-4 col-xl-5 pl-4 row">
+                <hr class="meal-line">
+                <div class="col-6 pr-4">
+                  <p class="mb-3">Subtotal</p>
+                  <p class="mb-2 pb-0">GST</p>
+                  <hr class="w-75 mx-0 mt-1 px-0 mb-2">
+                  <p>TOTAL</p>
+                </div>
+                <div class="col-6">
+                  <div class="mb-3" id="subtotalResult"></div>
+                  <div class="mb-3" id="gstResult"></div>
+                  <div id="totalResult"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="row outer m-auto">
+          <div class="col-7"></div>
+          <div class="book-btn__container col-12 col-sm-12 col-md-12 col-lg-5 col-xl-5 pr-0 mb-4">
+            <button class="book-btn text-white bg-secondary rounded text-center mt-4 border-0 w-100" id="book-btn" type="button" name="button">BOOK</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOOKING CONFIRMATION -->
+    <div id="booking-confirmation">
+      <div class="booking-confirmation__container m-auto pb-4 text-white text-center rounded col-sm-9 col-md-9 col-lg-9 col-xl-8">
+        <img src="images/icons/tick.png" alt="Confirmation Tick Icon">
+        <h2 class="pt-4 font-weight-bold">YOU ARE ALL BOOKED!</h2>
+        <div id="reservationCodeResult"></div>
+        <div class="py-3" id="randomNumberResult"></div>
+        <hr class="bg-white w-50 m-auto">
+        <br><br><br><br>
+        <!-- EMAIL CONFIRMATION - ERROR MSG HERE -->
+        <div id="emailConfirmation" class="text-left pl-5 my-0 py-0"></div>
+        <div class="booking-confirmation__subcontainer px-3 py-2 row">
+          <div class="itinerary__container col-sm-9 col-md-9 col-lg-5 col-xl-5 p-0 row m-auto float-left">
+            <!-- EMAIL INPUT -->
+            <div class="p-0 col-sm-7 col-md-7 col-lg-8 col-xl-8 mb-4">
+              <input type="email" class="form-control float-left" onfocus="this.placeholder=''" id="emailInput" placeholder="Email Itinerary">
+            </div>
+            <div class="spacer col-1 p-0 m-0"></div>
+            <!-- SEND BUTTON -->
+            <div class="col-sm-4 col-md-4 col-lg-3 col-xl-3 p-0 mb-3">
+              <div class="w-100">
+                <button class="border-0 send-btn text-white pt-1 rounded text-center float-left w-100 bg-primary" id="send-btn" type="button" name="button">SEND</button>
+              </div>
+            </div>
+          </div>
+          <!-- MAKE ANOTHER BOOKING BUTTON -->
+          <div class="col-sm-9 col-md-9 col-lg-5 col-xl-5 mt-0 px-0 float-right mx-auto">
+            <button class="border-0 text-white pt-1 rounded text-center w-100 bg-secondary" id="other-booking" type="button" name="button">MAKE ANOTHER BOOKING</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER LOGOS -->
+    <footer id="footer">
+      <div class="tourism__logo fade-in">
+        <a target="_blank" href="https://www.tourismnewzealand.com/"><img src="images/logos/tourism-logo.png" alt="Tourism NZ Logo"></a>
+      </div>
+      <div class="pure-nz__logo fade-in">
+        <a target="_blank" href="https://www.newzealand.com/nz/"><img src="images/logos/pure-logo.png" alt="100% Pure NZ Logo"></a>
+      </div>
+    </footer>
+
+    <!-- JS CDNS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js" integrity="sha512-uto9mlQzrs59VwILcLiRYeLKPPbS/bT71da/OEBYEwcdNUk8jYIy+D176RYoop1Da+f9mvkYrmj5MCLZWEtQuA==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+    <!-- MY SCRIPT -->
+    <script src="js/mapKey.js"></script>
+    <script src="js/script.js"></script>
+  </body>
+</html>

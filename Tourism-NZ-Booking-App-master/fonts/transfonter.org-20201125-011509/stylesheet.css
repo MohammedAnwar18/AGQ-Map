@@ -1,0 +1,198 @@
+@font-face {
+    font-family: 'Milliard';
+    src: url('Milliard-Black.woff2') format('woff2'),
+        url('Milliard-Black.woff') format('woff');
+    font-weight: 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Milliard Book';
+    src: url('Milliard-BoldItalic.woff2') format('woff2'),
+        url('Milliard-BoldItalic.woff') format('woff');
+    font-weight: bold;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Milliard Book';
+    src: url('Milliard-Bold.woff2') format('woff2'),
+        url('Milliard-Bold.woff') format('woff');
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Milliard';
+    src: url('Milliard-BlackItalic.woff2') format('woff2'),
+        url('Milliard-BlackItalic.woff') format('woff');
+    font-weight: 900;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Milliard Book';
+    src: url('Milliard-BookItalic.woff2') format('woff2'),
+        url('Milliard-BookItalic.woff') format('woff');
+    font-weight: normal;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Milliard Book';
+    src: url('Milliard-Book.woff2') format('woff2'),
+        url('Milliard-Book.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Milliard';
+    src: url('Milliard-ExtraBoldItalic.woff2') format('woff2'),
+        url('Milliard-ExtraBoldItalic.woff') format('woff');
+    font-weight: 800;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Milliard';
+    src: url('Milliard-ExtraBold.woff2') format('woff2'),
+        url('Milliard-ExtraBold.woff') format('woff');
+    font-weight: 800;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Milliard';
+    src: url('Milliard-ExtraLight.woff2') format('woff2'),
+        url('Milliard-ExtraLight.woff') format('woff');
+    font-weight: 200;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Milliard';
+    src: url('Milliard-HeavyItalic.woff2') format('woff2'),
+        url('Milliard-HeavyItalic.woff') format('woff');
+    font-weight: 900;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Milliard';
+    src: url('Milliard-ExtraLightItalic.woff2') format('woff2'),
+        url('Milliard-ExtraLightItalic.woff') format('woff');
+    font-weight: 200;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Milliard';
+    src: url('Milliard-LightItalic.woff2') format('woff2'),
+        url('Milliard-LightItalic.woff') format('woff');
+    font-weight: 300;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Milliard';
+    src: url('Milliard-Heavy.woff2') format('woff2'),
+        url('Milliard-Heavy.woff') format('woff');
+    font-weight: 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Milliard Hairline';
+    src: url('Milliard-HairlineItalic.woff2') format('woff2'),
+        url('Milliard-HairlineItalic.woff') format('woff');
+    font-weight: 100;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Milliard';
+    src: url('Milliard-Light.woff2') format('woff2'),
+        url('Milliard-Light.woff') format('woff');
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Milliard Hairline';
+    src: url('Milliard-Hairline.woff2') format('woff2'),
+        url('Milliard-Hairline.woff') format('woff');
+    font-weight: 100;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Milliard';
+    src: url('Milliard-Thin.woff2') format('woff2'),
+        url('Milliard-Thin.woff') format('woff');
+    font-weight: 100;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Milliard';
+    src: url('Milliard-Medium.woff2') format('woff2'),
+        url('Milliard-Medium.woff') format('woff');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Milliard';
+    src: url('Milliard-SemiBoldItalic.woff2') format('woff2'),
+        url('Milliard-SemiBoldItalic.woff') format('woff');
+    font-weight: 600;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Milliard';
+    src: url('Milliard-MediumItalic.woff2') format('woff2'),
+        url('Milliard-MediumItalic.woff') format('woff');
+    font-weight: 500;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Milliard';
+    src: url('Milliard-SemiBold.woff2') format('woff2'),
+        url('Milliard-SemiBold.woff') format('woff');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Milliard';
+    src: url('Milliard-ThinItalic.woff2') format('woff2'),
+        url('Milliard-ThinItalic.woff') format('woff');
+    font-weight: 100;
+    font-style: italic;
+    font-display: swap;
+}
+

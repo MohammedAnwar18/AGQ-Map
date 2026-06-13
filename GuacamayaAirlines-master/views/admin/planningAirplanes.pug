@@ -1,0 +1,41 @@
+extends ../admin
+
+block adminContent
+    .adminSect
+        p.titlee Airplanes
+        .contButton
+                a.waves-effect.waves-light.btn.modal-trigger.createButton.grey.darken-3(href='#modal1' ) - Add a new Airplane -
+        .tableContainer
+            table#tablePlanningFlights.hover.order-column.tableFlinchi
+                thead
+                    tr
+                        th Airplane ID
+                        th Model
+                        th State
+                tbody
+                    each airplane in airplanes
+                        tr
+                            td #{airplane.id}
+                            td #{airplane.model}
+                            td #{airplane.state}
+        .formContainer
+            #modal1.modal
+                .modal-content.contentModal.modalPlanningFlights
+                    h4 Add a new Airplane
+                    hr.separatorTitleModalAdmin
+                    form(action="/admin/planningAirplanes" method="POST")
+                        .row.rowModalAdmin
+                            .input-field.col.s6 
+                                select(name="model").selectAdmin.browser-default.selectFlightAirplane
+                                    option(value='', disabled='', selected='') Select Airplane Model
+                                    each model in models
+                                        option(value=`${model.model}`) #{model.model}
+                            .input-field.col.s6 
+                                select(name="state").selectAdmin.browser-default.selectFlightAirplane
+                                    option(value='', disabled='', selected='') Select State
+                                    option(value="Working") Working
+                                    option(value="In Maintenance") In Maintenance
+                                    option(value="Unavailable") Unavailable
+                        .modal-footer
+                            a.modal-close.waves-effect.waves-green.btn-flat(href='#!') Cancel
+                            button.modal-close.waves-effect.waves-green.btn-flat(type="submit") Save &nbsp;&nbsp;<i class="fas fa-save"></i>
