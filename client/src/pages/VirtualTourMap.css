@@ -100,6 +100,11 @@
     color: #fbab15;
     font-weight: 700;
 }
+.vtmap-mode-btn.active-street {
+    background: rgba(5, 203, 99, 0.15);
+    color: #05CB63;
+    font-weight: 700;
+}
 .vtmap-mode-btn:hover:not(.active) {
     color: rgba(255, 255, 255, 0.8);
     background: rgba(255, 255, 255, 0.06);
@@ -119,6 +124,36 @@
     flex: 1;
     transition: flex 0.3s cubic-bezier(0.22, 1, 0.36, 1);
     overflow: hidden;
+}
+
+/* Coverage legend */
+.vtmap-coverage-legend {
+    position: absolute;
+    bottom: 32px;
+    left: 14px;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(8px);
+    padding: 7px 14px;
+    border-radius: 20px;
+    border: 1px solid rgba(5, 203, 99, 0.25);
+    pointer-events: none;
+}
+.vtmap-legend-line {
+    width: 28px;
+    height: 4px;
+    border-radius: 2px;
+    background: #05CB63;
+    box-shadow: 0 0 6px rgba(5, 203, 99, 0.7);
+}
+.vtmap-coverage-legend span {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 600;
+    white-space: nowrap;
 }
 
 /* Street View hint banner */
@@ -281,6 +316,15 @@
 .vtmap-sv-empty span {
     font-size: 0.78rem;
     color: rgba(255, 255, 255, 0.25);
+}
+.vtmap-no-token {
+    margin-top: 10px;
+    font-size: 0.72rem;
+    color: rgba(251, 171, 21, 0.7);
+    background: rgba(251, 171, 21, 0.08);
+    border: 1px solid rgba(251, 171, 21, 0.2);
+    padding: 5px 12px;
+    border-radius: 10px;
 }
 
 /* ══ Map Markers ══════════════════════════════════════════════════ */
