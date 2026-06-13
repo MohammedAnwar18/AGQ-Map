@@ -8,7 +8,7 @@ const MAPILLARY_TOKEN = import.meta.env.VITE_MAPILLARY_TOKEN || '';
 // Progressive search radii in degrees (~111m, ~330m, ~1km)
 const SEARCH_RADII = [0.001, 0.003, 0.009];
 
-const StreetViewModal = ({ lat, lng, locationName, onClose, onPositionChange }) => {
+const StreetViewModal = ({ lat, lng, locationName, onClose, onPositionChange, inline = false }) => {
     const containerRef = useRef(null);
     const viewerRef    = useRef(null);
 
@@ -91,7 +91,7 @@ const StreetViewModal = ({ lat, lng, locationName, onClose, onPositionChange }) 
 
     // ── Render ────────────────────────────────────────────────────────────────
     return (
-        <div className="sv-panel">
+        <div className={inline ? 'sv-panel sv-inline' : 'sv-panel'}>
 
             {/* ── Header ── */}
             <div className="sv-header">
