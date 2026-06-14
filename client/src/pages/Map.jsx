@@ -533,7 +533,7 @@ const MapComponent = () => {
     }, [user]);
 
     const mapRef = useRef(null);
-    const [activeMapType, setActiveMapType] = useState('satellite');
+    const [activeMapType, setActiveMapType] = useState('geomolg-2024');
     const [showMapLayersMenu, setShowMapLayersMenu] = useState(false);
 
     const PALESTINIAN_CITIES = [
@@ -3055,7 +3055,7 @@ const MapComponent = () => {
                         setActiveCustomStart(null);
                         setAiResults([]); // Also clear the destination marker
                         setIsTracking(false); // Stop tracking when nav ends
-                        setActiveMapType('satellite'); // REVERT TO SATELLITE
+                        setActiveMapType('geomolg-2024'); // REVERT TO DEFAULT 2024 MAP
                     }}
                 />
             )}
@@ -3419,7 +3419,7 @@ const MapComponent = () => {
             {/* Native Geomolg View with ArcGIS API */}
             {activeMapType === 'geomolg' && (
                 <GeomolgViewer
-                    onClose={() => setActiveMapType('satellite')}
+                    onClose={() => setActiveMapType('geomolg-2024')}
                     userLocation={userLocation}
                     posts={posts}
                     friends={friendsMap}
