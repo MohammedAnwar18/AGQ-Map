@@ -473,15 +473,39 @@ const FLORA_PALESTINA_PLANTS = [
 // ID of the Flora Palestina community (adjust if needed)
 const FLORA_PALESTINA_COMMUNITY_ID = 6;
 
-const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId, currentUser }) => {
-    const [content, setContent] = useState('');
-    const [images, setImages] = useState([]);
-    const [imagePreviews, setImagePreviews] = useState([]);
+const CreatePostModal = ({ 
+    currentLocation, 
+    onClose, 
+    onPostCreated, 
+    communityId, 
+    currentUser,
+    draftData,
+    onSelectLocationFromMap
+}) => {
+    const [content, setContent] = useState(draftData?.content || '');
+    const [images, setImages] = useState(draftData?.images || []);
+    const [imagePreviews, setImagePreviews] = useState(draftData?.imagePreviews || []);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [selectedPlant, setSelectedPlant] = useState('');
-    const [plantSearch, setPlantSearch] = useState('');
-    const [showPlantDropdown, setShowPlantDropdown] = useState(false);
+    const [selectedPlant, setSelectedPlant] = useState(draftData?.selectedPlant || '');
+    const [plantSearch, setPlantSearch] = useState(draftData?.plantSearch || '');
+    const [showPlantDropdown, setShowPlantDropdown] = useState(draftData?.showPlantDropdown || false);
+
+    // Admin location configuration states
+    const [locationMode, setLocationMode] = useState(() => {
+        if (draftData?.locationMode) return draftData.locationMode;
+        return currentLocation ? 'current' : 'none';
+    });
+
+    const [customLat, setCustomLat] = useState(() => {
+        if (draftData?.customLat) return draftData.customLat;
+        return '';
+    });
+
+    const [customLng, setCustomLng] = useState(() => {
+        if (draftData?.customLng) return draftData.customLng;
+        return '';
+    });
 
     const fileInputRef = useRef(null);
     const cameraInputRef = useRef(null);
@@ -557,14 +581,46 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId,
     // حالة النجاح
     const [success, setSuccess] = useState(false);
 
+    // callback لتحديد إحداثيات من الخريطة
+    const handleSelectFromMap = () => {
+        if (onSelectLocationFromMap) {
+            onSelectLocationFromMap({
+                content,
+                images,
+                imagePreviews,
+                selectedPlant,
+                plantSearch,
+                showPlantDropdown,
+                locationMode: 'custom',
+                customLat,
+                customLng
+            });
+        }
+    };
+
     // نشر المنشور
     const handleSubmit = async (e) => {
         e.preventDefault();
 
         const isAdmin = currentUser?.role === 'admin';
-        if (!currentLocation && !isAdmin) {
-            setError('لم نتمكن من الحصول على موقعك. يرجى السماح بالوصول للموقع.');
-            return;
+        if (!isAdmin) {
+            if (!currentLocation) {
+                setError('لم نتمكن من الحصول على موقعك. يرجى السماح بالوصول للموقع.');
+                return;
+            }
+        } else {
+            if (locationMode === 'current' && !currentLocation) {
+                setError('لم نتمكن من الحصول على موقعك الحالي. الرجاء السماح بالوصول للموقع أو اختيار وضع آخر.');
+                return;
+            }
+            if (locationMode === 'custom') {
+                const latVal = parseFloat(customLat);
+                const lngVal = parseFloat(customLng);
+                if (isNaN(latVal) || latVal < -90 || latVal > 90 || isNaN(lngVal) || lngVal < -180 || lngVal > 180) {
+                    setError('يرجى إدخال إحداثيات صحيحة (خط العرض بين -90 و 90، وخط الطول بين -180 و 180).');
+                    return;
+                }
+            }
         }
 
         if (!content && images.length === 0) {
@@ -591,11 +647,29 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId,
                     : plantTag;
             }
 
+            let finalLat = null;
+            let finalLng = null;
+
+            if (isAdmin) {
+                if (locationMode === 'current' && currentLocation) {
+                    finalLat = currentLocation.latitude;
+                    finalLng = currentLocation.longitude;
+                } else if (locationMode === 'custom') {
+                    finalLat = parseFloat(customLat);
+                    finalLng = parseFloat(customLng);
+                }
+            } else {
+                if (currentLocation) {
+                    finalLat = currentLocation.latitude;
+                    finalLng = currentLocation.longitude;
+                }
+            }
+
             const formData = new FormData();
             formData.append('content', finalContent);
-            if (currentLocation) {
-                formData.append('latitude', currentLocation.latitude);
-                formData.append('longitude', currentLocation.longitude);
+            if (finalLat !== null && finalLng !== null) {
+                formData.append('latitude', finalLat);
+                formData.append('longitude', finalLng);
             }
             if (communityId) {
                 formData.append('community_id', communityId);
@@ -608,11 +682,11 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId,
             }
 
             // Reverse Geocoding
-            if (currentLocation) {
+            if (finalLat !== null && finalLng !== null) {
                 try {
                     const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
                     const geocodeResponse = await fetch(
-                        `https://api.mapbox.com/geocoding/v5/mapbox.places/${currentLocation.longitude},${currentLocation.latitude}.json?access_token=${mapboxToken}`
+                        `https://api.mapbox.com/geocoding/v5/mapbox.places/${finalLng},${finalLat}.json?access_token=${mapboxToken}`
                     );
                     const geocodeData = await geocodeResponse.json();
                     if (geocodeData.features && geocodeData.features.length > 0) {
@@ -1120,19 +1194,181 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId,
                     </div>
 
                     {/* معلومات الموقع */}
-                    {currentLocation ? (
-                        <div className="location-info">
-                            <span className="location-icon">📍</span>
-                            <span className="location-text">
-                                الموقع: {currentLocation.latitude.toFixed(4)}, {currentLocation.longitude.toFixed(4)}
-                            </span>
+                    {currentUser?.role === 'admin' ? (
+                        <div className="admin-location-section" style={{
+                            border: '1px solid rgba(251, 171, 21, 0.25)',
+                            background: 'rgba(251, 171, 21, 0.04)',
+                            borderRadius: '16px',
+                            padding: '16px',
+                            marginBottom: '15px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '12px',
+                            direction: 'rtl',
+                            textAlign: 'right'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', color: '#fbab15' }}>
+                                <span style={{ fontSize: '1.1rem' }}>⚙️</span>
+                                <span>خيارات موقع المنشور (للأدمن فقط)</span>
+                            </div>
+                            
+                            {/* خيارات تحديد الموقع */}
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                <label style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.85rem',
+                                    background: locationMode === 'none' ? 'rgba(251, 171, 21, 0.15)' : 'rgba(255,255,255,0.03)',
+                                    padding: '8px 12px',
+                                    borderRadius: '8px',
+                                    border: locationMode === 'none' ? '1px solid #fbab15' : '1px solid rgba(255,255,255,0.08)',
+                                    transition: 'all 0.2s'
+                                }}>
+                                    <input 
+                                        type="radio" 
+                                        name="locationMode" 
+                                        value="none" 
+                                        checked={locationMode === 'none'} 
+                                        onChange={() => setLocationMode('none')}
+                                        style={{ accentColor: '#fbab15' }}
+                                    />
+                                    <span>📡 بدون إحداثيات</span>
+                                </label>
+
+                                <label style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.85rem',
+                                    background: locationMode === 'current' ? 'rgba(251, 171, 21, 0.15)' : 'rgba(255,255,255,0.03)',
+                                    padding: '8px 12px',
+                                    borderRadius: '8px',
+                                    border: locationMode === 'current' ? '1px solid #fbab15' : '1px solid rgba(255,255,255,0.08)',
+                                    transition: 'all 0.2s',
+                                    opacity: currentLocation ? 1 : 0.5
+                                }}>
+                                    <input 
+                                        type="radio" 
+                                        name="locationMode" 
+                                        value="current" 
+                                        disabled={!currentLocation}
+                                        checked={locationMode === 'current'} 
+                                        onChange={() => setLocationMode('current')}
+                                        style={{ accentColor: '#fbab15' }}
+                                    />
+                                    <span>📍 موقعي الحالي (GPS)</span>
+                                </label>
+
+                                <label style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.85rem',
+                                    background: locationMode === 'custom' ? 'rgba(251, 171, 21, 0.15)' : 'rgba(255,255,255,0.03)',
+                                    padding: '8px 12px',
+                                    borderRadius: '8px',
+                                    border: locationMode === 'custom' ? '1px solid #fbab15' : '1px solid rgba(255,255,255,0.08)',
+                                    transition: 'all 0.2s'
+                                }}>
+                                    <input 
+                                        type="radio" 
+                                        name="locationMode" 
+                                        value="custom" 
+                                        checked={locationMode === 'custom'} 
+                                        onChange={() => setLocationMode('custom')}
+                                        style={{ accentColor: '#fbab15' }}
+                                    />
+                                    <span>🗺️ إحداثيات مخصصة</span>
+                                </label>
+                            </div>
+
+                            {/* تفاصيل المودات */}
+                            {locationMode === 'current' && currentLocation && (
+                                <div style={{ fontSize: '0.82rem', color: '#bbb', paddingRight: '4px' }}>
+                                    سيتم نشر المنشور في موقعك الحالي: {currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)}
+                                </div>
+                            )}
+
+                            {locationMode === 'none' && (
+                                <div style={{ fontSize: '0.82rem', color: '#bbb', paddingRight: '4px' }}>
+                                    سيتم نشر هذا المنشور بدون أي إحداثيات جغرافية.
+                                </div>
+                            )}
+
+                            {locationMode === 'custom' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', color: '#aaa', marginBottom: '4px' }}>خط العرض (Latitude)</label>
+                                            <input 
+                                                type="number" 
+                                                step="any"
+                                                placeholder="مثال: 31.90" 
+                                                value={customLat} 
+                                                onChange={(e) => setCustomLat(e.target.value)} 
+                                                className="input"
+                                                style={{ padding: '8px 10px', fontSize: '0.85rem' }}
+                                            />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', color: '#aaa', marginBottom: '4px' }}>خط الطول (Longitude)</label>
+                                            <input 
+                                                type="number" 
+                                                step="any"
+                                                placeholder="مثال: 35.20" 
+                                                value={customLng} 
+                                                onChange={(e) => setCustomLng(e.target.value)} 
+                                                className="input"
+                                                style={{ padding: '8px 10px', fontSize: '0.85rem' }}
+                                            />
+                                        </div>
+                                    </div>
+                                    
+                                    <button
+                                        type="button"
+                                        onClick={handleSelectFromMap}
+                                        style={{
+                                            background: 'linear-gradient(135deg, #fbab15, #e08e00)',
+                                            color: '#fff',
+                                            border: 'none',
+                                            padding: '8px 14px',
+                                            borderRadius: '8px',
+                                            fontWeight: 'bold',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '6px',
+                                            fontSize: '0.85rem',
+                                            transition: 'transform 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => e.target.style.transform = 'scale(1.02)'}
+                                        onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+                                    >
+                                        <span>🗺️</span>
+                                        <span>تحديد عبر النقر على الخريطة</span>
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     ) : (
-                        currentUser?.role === 'admin' && (
-                            <div className="location-info" style={{ border: '1.5px dashed rgba(251, 171, 21, 0.4)', background: 'rgba(251, 171, 21, 0.08)', borderRadius: '12px' }}>
-                                <span className="location-icon">📡</span>
-                                <span className="location-text" style={{ color: '#fbab15', fontWeight: '800' }}>
-                                    نشر بدون تحديد إحداثيات (ميزة الأدمن)
+                        /* الوضع للمستخدم العادي */
+                        currentLocation ? (
+                            <div className="location-info">
+                                <span className="location-icon">📍</span>
+                                <span className="location-text">
+                                    الموقع: {currentLocation.latitude.toFixed(4)}, {currentLocation.longitude.toFixed(4)}
+                                </span>
+                            </div>
+                        ) : (
+                            <div className="location-info" style={{ border: '1.5px dashed rgba(239, 68, 68, 0.4)', background: 'rgba(239, 68, 68, 0.08)', borderRadius: '12px' }}>
+                                <span className="location-icon">⚠️</span>
+                                <span className="location-text" style={{ color: '#ef4444', fontWeight: '800' }}>
+                                    لم يتم تحديد الموقع تلقائياً
                                 </span>
                             </div>
                         )

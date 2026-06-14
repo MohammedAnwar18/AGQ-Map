@@ -615,6 +615,9 @@ const MapComponent = () => {
     const [showCreatePost, setShowCreatePost] = useState(false);
     const [isUserInfoExpanded, setIsUserInfoExpanded] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isAdminPickingLocation, setIsAdminPickingLocation] = useState(false);
+    const [adminPostDraft, setAdminPostDraft] = useState(null);
+
 
     const [showChat, setShowChat] = useState(false);
     const [unreadChatCount, setUnreadChatCount] = useState(0);
@@ -1297,6 +1300,21 @@ const MapComponent = () => {
         setPosts(prev => [newPost, ...prev]);
         setShowCreatePost(false);
     };
+
+    const handleMapClick = (e) => {
+        if (isAdminPickingLocation) {
+            const { lng, lat } = e.lngLat;
+            setAdminPostDraft(prev => ({
+                ...prev,
+                customLat: lat.toFixed(6),
+                customLng: lng.toFixed(6),
+                locationMode: 'custom'
+            }));
+            setIsAdminPickingLocation(false);
+            setShowCreatePost(true);
+        }
+    };
+
 
     // Callback to refresh followed shops when changed from AI Chat
     const handleShopFollowed = async () => {
@@ -1983,6 +2001,59 @@ const MapComponent = () => {
     return (
         <div className="map-page" style={{ position: 'relative', height: '100dvh', width: '100vw', overflow: 'hidden' }}>
 
+            {/* Admin Picking Location Banner */}
+            {isAdminPickingLocation && (
+                <div style={{
+                    position: 'absolute',
+                    top: '90px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    zIndex: 3500,
+                    background: 'rgba(15, 23, 42, 0.85)',
+                    backdropFilter: 'blur(10px)',
+                    border: '1.5px solid #fbab15',
+                    borderRadius: '12px',
+                    padding: '12px 20px',
+                    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '15px',
+                    color: '#fff',
+                    maxWidth: '90%',
+                    width: '450px',
+                    direction: 'rtl',
+                    textAlign: 'right'
+                }}>
+                    <span style={{ fontSize: '1.4rem' }}>⚠️</span>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#fbab15' }}>تحديد موقع المنشور</span>
+                        <span style={{ fontSize: '0.8rem', color: '#ccc' }}>انقر على الخريطة في المكان المطلوب لتحديد الإحداثيات</span>
+                    </div>
+                    <button 
+                        type="button"
+                        onClick={() => {
+                            setIsAdminPickingLocation(false);
+                            setShowCreatePost(true);
+                        }}
+                        style={{
+                            background: 'rgba(239, 68, 68, 0.2)',
+                            color: '#f87171',
+                            border: '1px solid rgba(239, 68, 68, 0.4)',
+                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontSize: '0.8rem',
+                            fontWeight: 'bold',
+                            transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.target.style.background = 'rgba(239, 68, 68, 0.3)'}
+                        onMouseLeave={(e) => e.target.style.background = 'rgba(239, 68, 68, 0.2)'}
+                    >
+                        إلغاء
+                    </button>
+                </div>
+            )}
+
             {/* Top Bar - Clean & Minimalist */}
             {!isGuestMode && !isEmergencyActive && (
                 <div className="top-bar">
@@ -2404,7 +2475,8 @@ const MapComponent = () => {
                     mapStyle={mapStyle}
                     transformRequest={transformRequest}
                     onLoad={onMapLoad}
-                    style={{ width: '100%', height: '100%' }}
+                    style={{ width: '100%', height: '100%', cursor: isAdminPickingLocation ? 'crosshair' : 'grab' }}
+                    onClick={handleMapClick}
                     maxPitch={85}
                     attributionControl={false}
                 >
@@ -3087,7 +3159,27 @@ const MapComponent = () => {
 
             {/* Modals */}
             {showLabModal && <PalNovaaLab onClose={() => setShowLabModal(false)} />}
-            {showCreatePost && <CreatePostModal onClose={() => setShowCreatePost(false)} onPostCreated={handlePostCreated} currentLocation={userLocation} communityId={currentCommunity?.id} currentUser={user} />}
+            {showCreatePost && (
+                <CreatePostModal 
+                    onClose={() => {
+                        setShowCreatePost(false);
+                        setAdminPostDraft(null);
+                    }} 
+                    onPostCreated={(post) => {
+                        handlePostCreated(post);
+                        setAdminPostDraft(null);
+                    }} 
+                    currentLocation={userLocation} 
+                    communityId={currentCommunity?.id} 
+                    currentUser={user}
+                    draftData={adminPostDraft}
+                    onSelectLocationFromMap={(draft) => {
+                        setAdminPostDraft(draft);
+                        setIsAdminPickingLocation(true);
+                        setShowCreatePost(false);
+                    }}
+                />
+            )}
             {selectedPost && <PostDetailModal
                 post={selectedPost}
                 isFloraCommunityContext={isFloraComm}
