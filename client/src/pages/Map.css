@@ -1597,4 +1597,122 @@
     transform: scale(0.9) rotate(-10deg) !important;
 }
 
+/* Map Layers Dropdown Menu Styles - Premium Glassmorphic */
+.map-layers-dropdown {
+    position: absolute;
+    top: 55px;
+    right: 0;
+    z-index: 2600;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1.5px solid rgba(251, 171, 21, 0.35);
+    border-radius: 16px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 15px rgba(251, 171, 21, 0.1);
+    width: 290px;
+    padding: 10px;
+    direction: rtl;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    animation: slideDownMenu 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    max-height: 480px;
+    overflow-y: auto;
+}
 
+/* Custom Scrollbar for Dropdown */
+.map-layers-dropdown::-webkit-scrollbar {
+    width: 6px;
+}
+.map-layers-dropdown::-webkit-scrollbar-track {
+    background: transparent;
+}
+.map-layers-dropdown::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+.map-layers-dropdown::-webkit-scrollbar-thumb:hover {
+    background: rgba(251, 171, 21, 0.3);
+}
+
+@keyframes slideDownMenu {
+    from {
+        opacity: 0;
+        transform: translateY(-12px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.map-layers-dropdown .dropdown-title {
+    font-size: 0.92rem;
+    font-weight: 800;
+    color: #fbab15;
+    padding: 6px 12px;
+    letter-spacing: 0.02em;
+    text-shadow: 0 0 10px rgba(251, 171, 21, 0.2);
+}
+
+.map-layers-dropdown .dropdown-section-title {
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.4);
+    padding: 12px 12px 4px 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    margin-top: 4px;
+}
+
+.map-layers-dropdown .dropdown-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 6px 0;
+}
+
+.map-layers-dropdown .dropdown-item {
+    background: none;
+    border: none;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 100%;
+    text-align: right;
+    color: rgba(255, 255, 255, 0.8);
+    font-family: inherit;
+    font-weight: 500;
+}
+
+.map-layers-dropdown .dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #fbab15;
+    transform: translateX(-4px);
+}
+
+.map-layers-dropdown .dropdown-item.active {
+    background: rgba(251, 171, 21, 0.12);
+    color: #fbab15;
+    font-weight: 700;
+    border-right: 3px solid #fbab15;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.map-layers-dropdown .dropdown-item .item-icon {
+    font-size: 1.15rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+}
+
+.map-layers-dropdown .dropdown-item .item-text {
+    font-size: 0.82rem;
+    line-height: 1.2;
+}

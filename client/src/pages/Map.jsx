@@ -534,6 +534,7 @@ const MapComponent = () => {
 
     const mapRef = useRef(null);
     const [activeMapType, setActiveMapType] = useState('satellite');
+    const [showMapLayersMenu, setShowMapLayersMenu] = useState(false);
 
     const PALESTINIAN_CITIES = [
         { name: "القدس", lat: 31.7683, lon: 35.2137 },
@@ -838,6 +839,76 @@ const MapComponent = () => {
             };
         }
 
+        // Check if it is a specific year orthophoto from Geomolg
+        if (activeMapType && activeMapType.startsWith('geomolg-')) {
+            const year = activeMapType.split('-')[1];
+            
+            // Map GS year (Gaza has specific years: 2025, 2024, 2022, 2018)
+            let gazaYear = '2024';
+            if (year === '2025') gazaYear = '2025';
+            else if (year === '2024') gazaYear = '2024';
+            else if (year === '2022') gazaYear = '2022';
+            else gazaYear = '2018'; // Fallback for older years in Gaza
+            
+            let gazaService = `Orthophotos_GS_2024_m12_Satellite_tif_PG1923`;
+            if (gazaYear === '2025') gazaService = `Orthophotos_GS_2025_m03_Satellite_tif_PG1923`;
+            else if (gazaYear === '2022') gazaService = `Orthophotos_GS_2022_m12_Satellite_tif_PG1923`;
+            else if (gazaYear === '2018') gazaService = `Orthophotos_GS_2018_Satellite_tif_PG1923`;
+
+            const wbUrl = `https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_WB_${year}_15cm_tif_PG1923/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&transparent=true&f=image`;
+            const gazaUrl = `https://orthophotos.geomolg.ps/adaptor/rest/services/${gazaService}/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&transparent=true&f=image`;
+
+            return {
+                version: 8,
+                name: `Geomolg-${year}`,
+                sprite: "https://demotiles.maplibre.org/styles/osm-bright-gl-style/sprite",
+                glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+                sources: {
+                    'google-base': {
+                        type: 'raster',
+                        tiles: [`https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}`],
+                        tileSize: 256,
+                        attribution: '© Google Satellite'
+                    },
+                    'geomolg-wb': {
+                        type: 'raster',
+                        tiles: [wbUrl],
+                        tileSize: 256,
+                        attribution: `© Geomolg WB ${year}`
+                    },
+                    'geomolg-gaza': {
+                        type: 'raster',
+                        tiles: [gazaUrl],
+                        tileSize: 256,
+                        attribution: `© Geomolg Gaza ${gazaYear}`
+                    }
+                },
+                layers: [
+                    {
+                        id: 'google-base-layer',
+                        type: 'raster',
+                        source: 'google-base',
+                        minzoom: 0,
+                        maxzoom: 22
+                    },
+                    {
+                        id: 'geomolg-wb-layer',
+                        type: 'raster',
+                        source: 'geomolg-wb',
+                        minzoom: 0,
+                        maxzoom: 22
+                    },
+                    {
+                        id: 'geomolg-gaza-layer',
+                        type: 'raster',
+                        source: 'geomolg-gaza',
+                        minzoom: 0,
+                        maxzoom: 22
+                    }
+                ]
+            };
+        }
+
         // Default & Fallback: Google Tiles (Satellite for general view)
         const attribution = 'Google Satellite';
 
@@ -970,7 +1041,7 @@ const MapComponent = () => {
 
                 if (!isRecalc) {
                     // Ensure we are viewing the MapLibre map (not Geomolg) before routing
-                    if (activeMapType === 'geomolg') setActiveMapType('satellite');
+                    if (activeMapType === 'geomolg' || (activeMapType && activeMapType.startsWith('geomolg-'))) setActiveMapType('satellite');
 
                     if (mapRef.current) {
                         // Smoothly transition to a Navigation Perspective (Direct Guidance)
@@ -1967,17 +2038,80 @@ const MapComponent = () => {
                         </svg>
                     </button>
 
-                    <button
-                        className={`top-nav-icon ${activeMapType === 'geomolg' ? 'active' : ''}`}
-                        onClick={() => setActiveMapType(prev => prev === 'satellite' ? 'geomolg' : 'satellite')}
-                        title="تبديل القمر الصناعي / الخريطة الرسمية"
-                    >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
-                            <polygon points="12 2 2 7 12 12 22 7 12 2" />
-                            <polyline points="2 17 12 22 22 17" />
-                            <polyline points="2 12 12 17 22 12" />
-                        </svg>
-                    </button>
+                    <div className="map-layers-menu-wrapper" style={{ position: 'relative' }}>
+                        <button
+                            className={`top-nav-icon ${(activeMapType === 'geomolg' || activeMapType.startsWith('geomolg-')) ? 'active' : ''}`}
+                            onClick={() => setShowMapLayersMenu(!showMapLayersMenu)}
+                            title="طبقات الخريطة"
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
+                                <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                                <polyline points="2 17 12 22 22 17" />
+                                <polyline points="2 12 12 17 22 12" />
+                            </svg>
+                        </button>
+                        
+                        {showMapLayersMenu && (
+                            <>
+                                <div 
+                                    className="dropdown-backdrop-custom" 
+                                    onClick={() => setShowMapLayersMenu(false)}
+                                    style={{
+                                        position: 'fixed',
+                                        top: 0,
+                                        left: 0,
+                                        right: 0,
+                                        bottom: 0,
+                                        zIndex: 2500,
+                                        background: 'transparent'
+                                    }}
+                                />
+                                <div className="map-layers-dropdown">
+                                    <div className="dropdown-title">طبقات الخريطة</div>
+                                    <div className="dropdown-divider" />
+                                    
+                                    <button 
+                                        className={`dropdown-item ${activeMapType === 'streets' ? 'active' : ''}`}
+                                        onClick={() => { setActiveMapType('streets'); setShowMapLayersMenu(false); }}
+                                    >
+                                        <span className="item-icon">🛣️</span>
+                                        <span className="item-text">خريطة الشوارع (مخطط)</span>
+                                    </button>
+                                    
+                                    <button 
+                                        className={`dropdown-item ${activeMapType === 'satellite' ? 'active' : ''}`}
+                                        onClick={() => { setActiveMapType('satellite'); setShowMapLayersMenu(false); }}
+                                    >
+                                        <span className="item-icon">🌍</span>
+                                        <span className="item-text">قمر صناعي ديناميكي (Google)</span>
+                                    </button>
+                                    
+                                    <div className="dropdown-section-title">صور جوية رسمية (ثبات تاريخ التصوير)</div>
+                                    
+                                    {['2025', '2024', '2023', '2022', '2021', '2020'].map((year) => (
+                                        <button 
+                                            key={year}
+                                            className={`dropdown-item ${activeMapType === `geomolg-${year}` ? 'active' : ''}`}
+                                            onClick={() => { setActiveMapType(`geomolg-${year}`); setShowMapLayersMenu(false); }}
+                                        >
+                                            <span className="item-icon">📸</span>
+                                            <span className="item-text">الصورة الجوية لعام {year}</span>
+                                        </button>
+                                    ))}
+                                    
+                                    <div className="dropdown-divider" />
+                                    
+                                    <button 
+                                        className={`dropdown-item ${activeMapType === 'geomolg' ? 'active' : ''}`}
+                                        onClick={() => { setActiveMapType('geomolg'); setShowMapLayersMenu(false); }}
+                                    >
+                                        <span className="item-icon">🗺️</span>
+                                        <span className="item-text">عرض جيومولج المنفصل (ArcGIS)</span>
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
 
                     <button className={`top-nav-icon ${showMoreMenu ? 'active' : ''}`} onClick={() => setShowMoreMenu(!showMoreMenu)}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
@@ -2652,7 +2786,7 @@ const MapComponent = () => {
                     )}
 
                     {/* Palestinian Cities Labels (Hide when route is active to keep map clean as requested) */}
-                    {activeMapType === 'satellite' && !routePath && !isGuestMode && viewState.zoom <= 13.5 && PALESTINIAN_CITIES.map((city, index) => (
+                    {(activeMapType === 'satellite' || (activeMapType && activeMapType.startsWith('geomolg-'))) && !routePath && !isGuestMode && viewState.zoom <= 13.5 && PALESTINIAN_CITIES.map((city, index) => (
                         <Marker key={`city-${index}`} longitude={city.lon} latitude={city.lat} anchor="bottom">
                             <div style={{
                                 color: (routePath && activeMapType !== 'satellite') ? '#1e293b' : 'white',
