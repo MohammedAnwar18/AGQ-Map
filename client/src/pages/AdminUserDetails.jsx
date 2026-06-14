@@ -364,7 +364,7 @@ const AdminUserDetails = () => {
                                         </Marker>
                                     )}
 
-                                    {posts.filter(p => p.location).map(post => (
+                                    {posts.filter(p => p.location && p.location.latitude !== null && p.location.longitude !== null).map(post => (
                                         <Marker
                                             key={post.id}
                                             position={[post.location.latitude, post.location.longitude]}

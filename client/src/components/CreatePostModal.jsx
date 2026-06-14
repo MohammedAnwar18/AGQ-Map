@@ -473,7 +473,7 @@ const FLORA_PALESTINA_PLANTS = [
 // ID of the Flora Palestina community (adjust if needed)
 const FLORA_PALESTINA_COMMUNITY_ID = 6;
 
-const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId }) => {
+const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId, currentUser }) => {
     const [content, setContent] = useState('');
     const [images, setImages] = useState([]);
     const [imagePreviews, setImagePreviews] = useState([]);
@@ -561,7 +561,8 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!currentLocation) {
+        const isAdmin = currentUser?.role === 'admin';
+        if (!currentLocation && !isAdmin) {
             setError('لم نتمكن من الحصول على موقعك. يرجى السماح بالوصول للموقع.');
             return;
         }
@@ -592,8 +593,10 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
 
             const formData = new FormData();
             formData.append('content', finalContent);
-            formData.append('latitude', currentLocation.latitude);
-            formData.append('longitude', currentLocation.longitude);
+            if (currentLocation) {
+                formData.append('latitude', currentLocation.latitude);
+                formData.append('longitude', currentLocation.longitude);
+            }
             if (communityId) {
                 formData.append('community_id', communityId);
             }
@@ -605,17 +608,19 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
             }
 
             // Reverse Geocoding
-            try {
-                const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
-                const geocodeResponse = await fetch(
-                    `https://api.mapbox.com/geocoding/v5/mapbox.places/${currentLocation.longitude},${currentLocation.latitude}.json?access_token=${mapboxToken}`
-                );
-                const geocodeData = await geocodeResponse.json();
-                if (geocodeData.features && geocodeData.features.length > 0) {
-                    formData.append('address', geocodeData.features[0].place_name);
+            if (currentLocation) {
+                try {
+                    const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
+                    const geocodeResponse = await fetch(
+                        `https://api.mapbox.com/geocoding/v5/mapbox.places/${currentLocation.longitude},${currentLocation.latitude}.json?access_token=${mapboxToken}`
+                    );
+                    const geocodeData = await geocodeResponse.json();
+                    if (geocodeData.features && geocodeData.features.length > 0) {
+                        formData.append('address', geocodeData.features[0].place_name);
+                    }
+                } catch (geocodeError) {
+                    console.error('Geocoding failed:', geocodeError);
                 }
-            } catch (geocodeError) {
-                console.error('Geocoding failed:', geocodeError);
             }
 
             const result = await postService.createPost(formData);
@@ -1115,13 +1120,22 @@ const CreatePostModal = ({ currentLocation, onClose, onPostCreated, communityId 
                     </div>
 
                     {/* معلومات الموقع */}
-                    {currentLocation && (
+                    {currentLocation ? (
                         <div className="location-info">
                             <span className="location-icon">📍</span>
                             <span className="location-text">
                                 الموقع: {currentLocation.latitude.toFixed(4)}, {currentLocation.longitude.toFixed(4)}
                             </span>
                         </div>
+                    ) : (
+                        currentUser?.role === 'admin' && (
+                            <div className="location-info" style={{ border: '1.5px dashed rgba(251, 171, 21, 0.4)', background: 'rgba(251, 171, 21, 0.08)', borderRadius: '12px' }}>
+                                <span className="location-icon">📡</span>
+                                <span className="location-text" style={{ color: '#fbab15', fontWeight: '800' }}>
+                                    نشر بدون تحديد إحداثيات (ميزة الأدمن)
+                                </span>
+                            </div>
+                        )
                     )}
 
                     {/* زر النشر */}

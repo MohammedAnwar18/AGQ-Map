@@ -148,33 +148,13 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
 
             setResults(fetchedResults);
 
-            // Auto-Navigation Logic
+            // Navigation Prompt Logic (Ask user to choose walking or driving instead of auto-navigating)
             const qLower = activeQuery.toLowerCase();
             const isAskingForLocation = qLower.includes('وين') || qLower.includes('اين') || qLower.includes('كيف اروح') || qLower.includes('موقع') || qLower.includes('طريق') || qLower.includes('ديلني') || qLower.includes('اقرب') || qLower.includes('وديني') || qLower.includes('اذهب') || qLower.includes('روح') || qLower.includes('نروح') || qLower.includes('توجه') || qLower.includes('خذني') || qLower.includes('وصلني');
-            const isDriving = qLower.match(/(سيارة|سياره|قيادة|بسيارة|تكسي)/);
-            const isWalking = qLower.match(/(مشي|سير|اقدام|مشيًا)/);
 
-            if (fetchedResults.length > 0 && (isAskingForLocation || isDriving || isWalking || replyText.includes('يبعد') || aiResp.type === 'route' || aiResp.type === 'navigation_options')) {
+            if (fetchedResults.length > 0 && (isAskingForLocation || replyText.includes('يبعد') || aiResp.type === 'route' || aiResp.type === 'navigation_options')) {
                 const target = fetchedResults[0];
-                let mode = 'driving';
-
-                if (isDriving || aiResp.mode === 'driving') {
-                    mode = 'driving';
-                } else if (isWalking || aiResp.mode === 'walking') {
-                    mode = 'walking';
-                } else if (userLocation && target.latitude && target.longitude) {
-                    const dist = calculateDistance(userLocation.latitude, userLocation.longitude, target.latitude, target.longitude);
-                    if (dist !== null && dist <= 1.5) {
-                        mode = 'walking';
-                    }
-                }
-
-                const modeText = mode === 'walking' ? 'مشياً على الأقدام 🚶' : 'بالسيارة 🚗';
-                replyText += `<br/><br/><div style="background: rgba(var(--primary-rgb), 0.1); border-left: 3px solid var(--primary); padding: 10px; border-radius: 8px; margin-top: 10px; font-weight: bold; color: var(--primary);">يتم الآن فتح الخريطة لتوجيهك ${modeText} إلى ${target.name}...</div>`;
-
-                setTimeout(() => {
-                    onNavigate(target, mode);
-                }, 2000);
+                replyText += `<br/><br/><div style="background: rgba(251, 171, 21, 0.08); border-right: 3.5px solid #fbab15; padding: 10px; border-radius: 8px; margin-top: 10px; font-weight: bold; color: #fbab15; direction: rtl; text-align: right;">📍 لقد عثرت على "${target.name}". اختر طريقة الذهاب المفضلة لديك بالأسفل (سيارة 🚗 أو مشي 🚶) لبدء رسم المسار على الخريطة.</div>`;
             }
 
             setChatHistory(prev => [...prev, { role: 'assistant', message: replyText, results: fetchedResults }]);
@@ -458,7 +438,7 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                                 <div className="ai-badge"><span className="ai-badge-dot" />المساعد الذكي</div>
                                                 <p className="ai-response-text" dangerouslySetInnerHTML={{ __html: msg.message }} />
 
-                                                {(idx === chatHistory.length - 1) && msg.results && msg.results.length > 0 && !msg.message.includes('يتم الآن فتح الخريطة') && (
+                                                {(idx === chatHistory.length - 1) && msg.results && msg.results.length > 0 && (
                                                     <div className="ai-nav-options" style={{ marginTop: '15px', borderTop: '1px solid var(--border)', paddingTop: '15px' }}>
                                                         <button className="ai-nav-btn" onClick={() => onNavigate(msg.results[0], 'walking')}>
                                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

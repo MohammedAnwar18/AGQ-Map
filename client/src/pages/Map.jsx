@@ -2511,7 +2511,7 @@ const MapComponent = () => {
                     {/* Removed Taxi Route Line and Markers */}
 
                     {/* Posts Markers - Visible from City/Neighborhood level (zoom 12+) and hidden at Regional level */}
-                    {!isGuestMode && !isEmergencyActive && viewState.zoom >= 12 && posts.map(post => (
+                    {!isGuestMode && !isEmergencyActive && viewState.zoom >= 12 && posts.filter(post => post.location && post.location.latitude !== null && post.location.longitude !== null).map(post => (
                         <Marker
                             key={post.id}
                             longitude={parseFloat(post.location.longitude)}
@@ -3087,7 +3087,7 @@ const MapComponent = () => {
 
             {/* Modals */}
             {showLabModal && <PalNovaaLab onClose={() => setShowLabModal(false)} />}
-            {showCreatePost && <CreatePostModal onClose={() => setShowCreatePost(false)} onPostCreated={handlePostCreated} currentLocation={userLocation} communityId={currentCommunity?.id} />}
+            {showCreatePost && <CreatePostModal onClose={() => setShowCreatePost(false)} onPostCreated={handlePostCreated} currentLocation={userLocation} communityId={currentCommunity?.id} currentUser={user} />}
             {selectedPost && <PostDetailModal
                 post={selectedPost}
                 isFloraCommunityContext={isFloraComm}

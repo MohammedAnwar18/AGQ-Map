@@ -10,14 +10,22 @@ const createPost = async (req, res) => {
     try {
         const { content, latitude, longitude, address, community_id } = req.body;
         const userId = req.user.userId;
+        const isAdmin = req.user.role === 'admin';
 
-        if (!latitude || !longitude) {
+        const hasCoords = latitude !== undefined && latitude !== null && String(latitude).trim() !== '' &&
+                          longitude !== undefined && longitude !== null && String(longitude).trim() !== '';
+
+        if (!hasCoords && !isAdmin) {
             return res.status(400).json({ error: 'Location (latitude, longitude) is required' });
         }
 
-        // التحقق من صحة الإحداثيات
-        if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
-            return res.status(400).json({ error: 'Invalid coordinates' });
+        // التحقق من صحة الإحداثيات إن وُجدت
+        if (hasCoords) {
+            const latNum = parseFloat(latitude);
+            const lonNum = parseFloat(longitude);
+            if (isNaN(latNum) || latNum < -90 || latNum > 90 || isNaN(lonNum) || lonNum < -180 || lonNum > 180) {
+                return res.status(400).json({ error: 'Invalid coordinates' });
+            }
         }
 
         // معالجة الملفات المتعددة ورفعها لـ Supabase
@@ -52,16 +60,29 @@ const createPost = async (req, res) => {
             }
         }
 
-        // إنشاء نقطة جغرافية
-        const result = await pool.query(
-            `INSERT INTO posts (user_id, content, image_url, media_urls, location, address, media_type, community_id)
-       VALUES ($1, $2, $3, $4, ST_SetSRID(ST_MakePoint($5, $6), 4326)::geography, $7, $8, $9)
-       RETURNING id, user_id, content, image_url, media_urls, media_type, community_id,
-                 ST_X(location::geometry) as longitude,
-                 ST_Y(location::geometry) as latitude,
-                 address, created_at`,
-            [userId, content, image_url, media_urls, longitude, latitude, address, media_type, community_id || null]
-        );
+        // إنشاء نقطة جغرافية (اختيارية للأدمن)
+        let result;
+        if (hasCoords) {
+            result = await pool.query(
+                `INSERT INTO posts (user_id, content, image_url, media_urls, location, address, media_type, community_id)
+           VALUES ($1, $2, $3, $4, ST_SetSRID(ST_MakePoint($5, $6), 4326)::geography, $7, $8, $9)
+           RETURNING id, user_id, content, image_url, media_urls, media_type, community_id,
+                      ST_X(location::geometry) as longitude,
+                      ST_Y(location::geometry) as latitude,
+                      address, created_at`,
+                [userId, content, image_url, media_urls, parseFloat(longitude), parseFloat(latitude), address || null, media_type, community_id || null]
+            );
+        } else {
+            result = await pool.query(
+                `INSERT INTO posts (user_id, content, image_url, media_urls, location, address, media_type, community_id)
+           VALUES ($1, $2, $3, $4, NULL, $5, $6, $7)
+           RETURNING id, user_id, content, image_url, media_urls, media_type, community_id,
+                      NULL as longitude,
+                      NULL as latitude,
+                      address, created_at`,
+                [userId, content, image_url, media_urls, address || null, media_type, community_id || null]
+            );
+        }
 
         const post = result.rows[0];
 
