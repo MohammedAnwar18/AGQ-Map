@@ -2207,13 +2207,16 @@ const MapComponent = () => {
                                                   <span className="item-text">خريطة الشوارع (مخطط)</span>
                                               </button>
                                               
-                                              <button 
-                                                  className={`dropdown-item ${activeMapType === 'satellite' ? 'active' : ''}`}
-                                                  onClick={() => { setActiveMapType('satellite'); setShowMapLayersMenu(false); setShowAllLayers(false); }}
-                                              >
-                                                  <span className="item-icon">🌍</span>
-                                                  <span className="item-text">قمر صناعي ديناميكي (Google)</span>
-                                              </button>
+                                              {/* قمر صناعي ديناميكي (Google) - مخفي مؤقتاً بطلب من المستخدم */}
+                                              {false && (
+                                                  <button 
+                                                      className={`dropdown-item ${activeMapType === 'satellite' ? 'active' : ''}`}
+                                                      onClick={() => { setActiveMapType('satellite'); setShowMapLayersMenu(false); setShowAllLayers(false); }}
+                                                  >
+                                                      <span className="item-icon">🌍</span>
+                                                      <span className="item-text">قمر صناعي ديناميكي (Google)</span>
+                                                  </button>
+                                              )}
                                               
                                               <div className="dropdown-section-title">صور جوية رسمية (ثبات تاريخ التصوير)</div>
                                               
