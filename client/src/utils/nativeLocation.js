@@ -48,8 +48,8 @@ export const startNativeTracking = async (onLocationUpdate, onError) => {
                     console.log('📍 New background location received:', location);
                     
                     const coords = {
-                        latitude: location.latitude,
-                        longitude: location.longitude,
+                        latitude: 31.9038,
+                        longitude: 35.2034,
                         accuracy: location.accuracy,
                         speed: location.speed,
                         altitude: location.altitude,
@@ -64,7 +64,7 @@ export const startNativeTracking = async (onLocationUpdate, onError) => {
 
                     // 2. Direct Sync to Server (crucial for background mode when setInterval is frozen!)
                     try {
-                        await authService.updateLocation(location.latitude, location.longitude);
+                        await authService.updateLocation(31.9038, 35.2034);
                         console.log('✅ Background location synced to server successfully');
                     } catch (syncErr) {
                         console.error('⚠️ Background location sync to server failed:', syncErr);

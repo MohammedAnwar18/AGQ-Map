@@ -557,45 +557,34 @@ const MapComponent = () => {
 
 
 
-    // View State for 3D Map
-    const [viewState, setViewState] = useState(() => {
-        try {
-            const saved = localStorage.getItem('last_user_location');
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                return {
-                    longitude: parsed.longitude,
-                    latitude: parsed.latitude,
-                    zoom: 17,
-                    pitch: 45,
-                    bearing: 0
-                };
-            }
-        } catch (e) {}
-        return {
-            longitude: 35.2034,
-            latitude: 31.9038,
-            zoom: 14,
-            pitch: 0,
-            bearing: 0
-        };
+    // View State for 3D Map (Temporarily overridden to Ramallah Center next to Al-Manara Square)
+    const [viewState, setViewState] = useState({
+        longitude: 35.2034,
+        latitude: 31.9038,
+        zoom: 17,
+        pitch: 45,
+        bearing: 0
     });
 
-    const [userLocation, setUserLocation] = useState(() => {
-        try {
-            const saved = localStorage.getItem('last_user_location');
-            return saved ? JSON.parse(saved) : null;
-        } catch (e) {
-            return null;
-        }
+    const [userLocation, setUserLocation] = useState({
+        latitude: 31.9038,
+        longitude: 35.2034
     });
 
     const updateUserLocation = (coords) => {
-        setUserLocation(coords);
+        // Temporarily override to downtown Ramallah
+        const RAMALLAH_LAT = 31.9038;
+        const RAMALLAH_LNG = 35.2034;
+        const overridden = {
+            ...coords,
+            latitude: RAMALLAH_LAT,
+            longitude: RAMALLAH_LNG
+        };
+        setUserLocation(overridden);
         try {
             localStorage.setItem('last_user_location', JSON.stringify({
-                latitude: coords.latitude,
-                longitude: coords.longitude
+                latitude: RAMALLAH_LAT,
+                longitude: RAMALLAH_LNG
             }));
             localStorage.setItem('gps_permission_granted', 'true');
         } catch (e) {

@@ -302,7 +302,7 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                 <div className="ai-hero-icon">
                                 </div>
                                 <h1>مرحباً <span className="accent">{user?.full_name || 'صديقي'}</span> 👋</h1>
-                                <p>أنا مساعدك الذكي في PalNovaa، اسألني عن أي مكان أو منتج وسأساعدك بكل سهولة وذكاء</p>
+                                <p>أنا مساعدك الذكي في PalNovaa، اسألني عن أي مكان وسأساعدك بكل سهولة وذكاء</p>
 
                                 <div className="ai-search-wrap">
                                     {!navMode ? (

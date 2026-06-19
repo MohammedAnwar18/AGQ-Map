@@ -9,21 +9,19 @@ const StreetMap = () => {
     const [viewState, setViewState] = useState({
         longitude: 35.2034,
         latitude: 31.9038,
-        zoom: 14,
+        zoom: 17,
         pitch: 0,
         bearing: 0
     });
 
     useEffect(() => {
-        // Try to get user location for initial center
-        navigator.geolocation.getCurrentPosition((pos) => {
-            setViewState(prev => ({
-                ...prev,
-                latitude: pos.coords.latitude,
-                longitude: pos.coords.longitude,
-                zoom: 16
-            }));
-        });
+        // Temporarily override to Ramallah city center
+        setViewState(prev => ({
+            ...prev,
+            latitude: 31.9038,
+            longitude: 35.2034,
+            zoom: 17
+        }));
     }, []);
 
     if (loading) return <div>Loading...</div>;
