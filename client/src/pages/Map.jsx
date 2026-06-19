@@ -636,6 +636,7 @@ const MapComponent = () => {
     };
 
     // UI States
+    const [showAllLayers, setShowAllLayers] = useState(false);
     const [showSearch, setShowSearch] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
     const [showFriends, setShowFriends] = useState(false);
@@ -2144,7 +2145,11 @@ const MapComponent = () => {
                     <div className="map-layers-menu-wrapper" style={{ position: 'relative' }}>
                         <button
                             className={`top-nav-icon ${(activeMapType === 'geomolg' || activeMapType.startsWith('geomolg-')) ? 'active' : ''}`}
-                            onClick={() => setShowMapLayersMenu(!showMapLayersMenu)}
+                            onClick={() => {
+                                const nextVal = !showMapLayersMenu;
+                                setShowMapLayersMenu(nextVal);
+                                if (!nextVal) setShowAllLayers(false);
+                            }}
                             title="طبقات الخريطة"
                         >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
@@ -2158,7 +2163,7 @@ const MapComponent = () => {
                             <>
                                 <div 
                                     className="dropdown-backdrop-custom" 
-                                    onClick={() => setShowMapLayersMenu(false)}
+                                    onClick={() => { setShowMapLayersMenu(false); setShowAllLayers(false); }}
                                     style={{
                                         position: 'fixed',
                                         top: 0,
@@ -2168,53 +2173,76 @@ const MapComponent = () => {
                                         zIndex: 2500,
                                         background: 'transparent'
                                     }}
-                                />
-                                <div className="map-layers-dropdown">
-                                    <div className="dropdown-title">طبقات الخريطة</div>
-                                    <div className="dropdown-divider" />
-                                    
-                                    <button 
-                                        className={`dropdown-item ${activeMapType === 'streets' ? 'active' : ''}`}
-                                        onClick={() => { setActiveMapType('streets'); setShowMapLayersMenu(false); }}
-                                    >
-                                        <span className="item-icon">🛣️</span>
-                                        <span className="item-text">خريطة الشوارع (مخطط)</span>
-                                    </button>
-                                    
-                                    <button 
-                                        className={`dropdown-item ${activeMapType === 'satellite' ? 'active' : ''}`}
-                                        onClick={() => { setActiveMapType('satellite'); setShowMapLayersMenu(false); }}
-                                    >
-                                        <span className="item-icon">🌍</span>
-                                        <span className="item-text">قمر صناعي ديناميكي (Google)</span>
-                                    </button>
-                                    
-                                    <div className="dropdown-section-title">صور جوية رسمية (ثبات تاريخ التصوير)</div>
-                                    
-                                    {['2025', '2024', '2023', '2022', '2021', '2020'].map((year) => (
-                                        <button 
-                                            key={year}
-                                            className={`dropdown-item ${activeMapType === `geomolg-${year}` ? 'active' : ''}`}
-                                            onClick={() => { setActiveMapType(`geomolg-${year}`); setShowMapLayersMenu(false); }}
-                                        >
-                                            <span className="item-icon">📸</span>
-                                            <span className="item-text">الصورة الجوية لعام {year}</span>
-                                        </button>
-                                    ))}
-                                    
-                                    <div className="dropdown-divider" />
-                                    
-                                    <button 
-                                        className={`dropdown-item ${activeMapType === 'geomolg' ? 'active' : ''}`}
-                                        onClick={() => { setActiveMapType('geomolg'); setShowMapLayersMenu(false); }}
-                                    >
-                                        <span className="item-icon">🗺️</span>
-                                        <span className="item-text">عرض جيومولج المنفصل (ArcGIS)</span>
-                                    </button>
-                                </div>
-                            </>
-                        )}
-                    </div>
+                                  />
+                                  <div className="map-layers-dropdown">
+                                      <div className="dropdown-title">طبقات الخريطة</div>
+                                      <div className="dropdown-divider" />
+                                      
+                                      {!showAllLayers ? (
+                                          <button 
+                                              className="dropdown-item active"
+                                              onClick={() => setShowAllLayers(true)}
+                                              style={{ background: 'rgba(251, 171, 21, 0.15)', border: '1px solid rgba(251, 171, 21, 0.3)' }}
+                                          >
+                                              <span className="item-icon">
+                                                  {activeMapType === 'streets' ? '🛣️' : 
+                                                   activeMapType === 'satellite' ? '🌍' : 
+                                                   activeMapType === 'geomolg' ? '🗺️' : '📸'}
+                                              </span>
+                                              <span className="item-text" style={{ fontWeight: 'bold' }}>
+                                                  {activeMapType === 'streets' ? 'خريطة الشوارع (مخطط)' : 
+                                                   activeMapType === 'satellite' ? 'قمر صناعي ديناميكي (Google)' : 
+                                                   activeMapType === 'geomolg' ? 'عرض جيومولج المنفصل (ArcGIS)' : 
+                                                   `الصورة الجوية لعام ${activeMapType.split('-')[1]}`}
+                                              </span>
+                                              <span style={{ fontSize: '0.8rem', color: '#fbab15', marginRight: 'auto', fontWeight: 'bold' }}>🔄 تغيير</span>
+                                          </button>
+                                      ) : (
+                                          <>
+                                              <button 
+                                                  className={`dropdown-item ${activeMapType === 'streets' ? 'active' : ''}`}
+                                                  onClick={() => { setActiveMapType('streets'); setShowMapLayersMenu(false); setShowAllLayers(false); }}
+                                              >
+                                                  <span className="item-icon">🛣️</span>
+                                                  <span className="item-text">خريطة الشوارع (مخطط)</span>
+                                              </button>
+                                              
+                                              <button 
+                                                  className={`dropdown-item ${activeMapType === 'satellite' ? 'active' : ''}`}
+                                                  onClick={() => { setActiveMapType('satellite'); setShowMapLayersMenu(false); setShowAllLayers(false); }}
+                                              >
+                                                  <span className="item-icon">🌍</span>
+                                                  <span className="item-text">قمر صناعي ديناميكي (Google)</span>
+                                              </button>
+                                              
+                                              <div className="dropdown-section-title">صور جوية رسمية (ثبات تاريخ التصوير)</div>
+                                              
+                                              {['2025', '2024', '2023', '2022', '2021', '2020'].map((year) => (
+                                                  <button 
+                                                      key={year}
+                                                      className={`dropdown-item ${activeMapType === `geomolg-${year}` ? 'active' : ''}`}
+                                                      onClick={() => { setActiveMapType(`geomolg-${year}`); setShowMapLayersMenu(false); setShowAllLayers(false); }}
+                                                  >
+                                                      <span className="item-icon">📸</span>
+                                                      <span className="item-text">الصورة الجوية لعام {year}</span>
+                                                  </button>
+                                              ))}
+                                              
+                                              <div className="dropdown-divider" />
+                                              
+                                              <button 
+                                                  className={`dropdown-item ${activeMapType === 'geomolg' ? 'active' : ''}`}
+                                                  onClick={() => { setActiveMapType('geomolg'); setShowMapLayersMenu(false); setShowAllLayers(false); }}
+                                              >
+                                                  <span className="item-icon">🗺️</span>
+                                                  <span className="item-text">عرض جيومولج المنفصل (ArcGIS)</span>
+                                              </button>
+                                          </>
+                                      )}
+                                  </div>
+                              </>
+                          )}
+                      </div>
 
                     <button className={`top-nav-icon ${showMoreMenu ? 'active' : ''}`} onClick={() => setShowMoreMenu(!showMoreMenu)}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
@@ -2274,15 +2302,18 @@ const MapComponent = () => {
                             </div>
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
-                        <button onClick={() => { setShowNews(true); setShowMoreMenu(false); }}>
-                            <div className="menu-item-content">
-                                <div className="menu-icon-wrapper">
-                                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2" /><path d="M18 14h-8" /><path d="M15 18h-5" /><path d="M10 6h8v4h-8V6Z" /></svg>
+                        {/* الأخبار - مخفي مؤقتاً بطلب من المستخدم */}
+                        {false && (
+                            <button onClick={() => { setShowNews(true); setShowMoreMenu(false); }}>
+                                <div className="menu-item-content">
+                                    <div className="menu-icon-wrapper">
+                                        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2" /><path d="M18 14h-8" /><path d="M15 18h-5" /><path d="M10 6h8v4h-8V6Z" /></svg>
+                                    </div>
+                                    <span>الأخبار</span>
                                 </div>
-                                <span>الأخبار</span>
-                            </div>
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
-                        </button>
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+                            </button>
+                        )}
 
                         {/* الطوارئ (Emergency) */}
                         <button 
@@ -2302,8 +2333,8 @@ const MapComponent = () => {
                             </svg>
                         </button>
 
-                        {/* الجولة الافتراضية - Desktop only */}
-                        {!isMobileDevice && (
+                        {/* الجولة الافتراضية - مخفي مؤقتاً بطلب من المستخدم */}
+                        {false && !isMobileDevice && (
                             <button
                                 onClick={() => { navigate('/virtual-tour'); setShowMoreMenu(false); }}
                             >
@@ -2321,8 +2352,8 @@ const MapComponent = () => {
                             </button>
                         )}
 
-                        {/* PalNovaa Lab - Restricted to Desktop */}
-                        {!isMobileDevice && (
+                        {/* مختبر بالنوفا - مخفي مؤقتاً بطلب من المستخدم */}
+                        {false && !isMobileDevice && (
                             <button
                                 onClick={() => {
                                     setShowLabModal(true);
