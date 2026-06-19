@@ -557,34 +557,65 @@ const MapComponent = () => {
 
 
 
-    // View State for 3D Map (Temporarily overridden to Ramallah Center next to Al-Manara Square)
-    const [viewState, setViewState] = useState({
-        longitude: 35.2034,
-        latitude: 31.9038,
-        zoom: 17,
-        pitch: 45,
-        bearing: 0
+    // View State for 3D Map (Temporarily overridden: Rukab Street for test1, Al-Manara Square for others)
+    const [viewState, setViewState] = useState(() => {
+        let lat = 31.9038;
+        let lng = 35.2034;
+        try {
+            const cached = localStorage.getItem('user_cache');
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                if (parsed && parsed.username === 'test1') {
+                    lat = 31.9046;
+                    lng = 35.2022;
+                }
+            }
+        } catch (e) {}
+
+        return {
+            longitude: lng,
+            latitude: lat,
+            zoom: 17,
+            pitch: 45,
+            bearing: 0
+        };
     });
 
-    const [userLocation, setUserLocation] = useState({
-        latitude: 31.9038,
-        longitude: 35.2034
+    const [userLocation, setUserLocation] = useState(() => {
+        let lat = 31.9038;
+        let lng = 35.2034;
+        try {
+            const cached = localStorage.getItem('user_cache');
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                if (parsed && parsed.username === 'test1') {
+                    lat = 31.9046;
+                    lng = 35.2022;
+                }
+            }
+        } catch (e) {}
+
+        return {
+            latitude: lat,
+            longitude: lng
+        };
     });
 
     const updateUserLocation = (coords) => {
-        // Temporarily override to downtown Ramallah
-        const RAMALLAH_LAT = 31.9038;
-        const RAMALLAH_LNG = 35.2034;
+        const isTest1 = user?.username === 'test1';
+        const targetLat = isTest1 ? 31.9046 : 31.9038;
+        const targetLng = isTest1 ? 35.2022 : 35.2034;
+
         const overridden = {
             ...coords,
-            latitude: RAMALLAH_LAT,
-            longitude: RAMALLAH_LNG
+            latitude: targetLat,
+            longitude: targetLng
         };
         setUserLocation(overridden);
         try {
             localStorage.setItem('last_user_location', JSON.stringify({
-                latitude: RAMALLAH_LAT,
-                longitude: RAMALLAH_LNG
+                latitude: targetLat,
+                longitude: targetLng
             }));
             localStorage.setItem('gps_permission_granted', 'true');
         } catch (e) {

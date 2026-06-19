@@ -3,16 +3,31 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
 
-// 📍 Temporary Mock for Geolocation to Ramallah City Center (Al-Manara Square)
+// 📍 Temporary Mock for Geolocation to Ramallah (Rukab Street for test1, Al-Manara Square for others)
 if (typeof window !== 'undefined' && window.navigator && window.navigator.geolocation) {
-    const RAMALLAH_LAT = 31.9038;
-    const RAMALLAH_LNG = 35.2034;
+    const getCoordinates = () => {
+        let lat = 31.9038;
+        let lng = 35.2034;
+        try {
+            const cached = localStorage.getItem('user_cache');
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                if (parsed && parsed.username === 'test1') {
+                    // Rukab Street coordinates
+                    lat = 31.9046;
+                    lng = 35.2022;
+                }
+            }
+        } catch (e) {}
+        return { latitude: lat, longitude: lng };
+    };
 
     window.navigator.geolocation.getCurrentPosition = (success, error, options) => {
+        const coords = getCoordinates();
         const mockPosition = {
             coords: {
-                latitude: RAMALLAH_LAT,
-                longitude: RAMALLAH_LNG,
+                latitude: coords.latitude,
+                longitude: coords.longitude,
                 accuracy: 10,
                 altitude: null,
                 altitudeAccuracy: null,
@@ -25,10 +40,11 @@ if (typeof window !== 'undefined' && window.navigator && window.navigator.geoloc
     };
 
     window.navigator.geolocation.watchPosition = (success, error, options) => {
+        const coords = getCoordinates();
         const mockPosition = {
             coords: {
-                latitude: RAMALLAH_LAT,
-                longitude: RAMALLAH_LNG,
+                latitude: coords.latitude,
+                longitude: coords.longitude,
                 accuracy: 10,
                 altitude: null,
                 altitudeAccuracy: null,
@@ -38,7 +54,20 @@ if (typeof window !== 'undefined' && window.navigator && window.navigator.geoloc
             timestamp: Date.now()
         };
         const intervalId = setInterval(() => {
-            success(mockPosition);
+            const currentCoords = getCoordinates();
+            const currentMockPosition = {
+                coords: {
+                    latitude: currentCoords.latitude,
+                    longitude: currentCoords.longitude,
+                    accuracy: 10,
+                    altitude: null,
+                    altitudeAccuracy: null,
+                    heading: null,
+                    speed: null
+                },
+                timestamp: Date.now()
+            };
+            success(currentMockPosition);
         }, 5000);
         setTimeout(() => success(mockPosition), 50);
         return intervalId;

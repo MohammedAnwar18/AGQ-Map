@@ -6,20 +6,47 @@ import { Navigate } from 'react-router-dom';
 
 const StreetMap = () => {
     const { isAuthenticated, loading } = useAuth();
-    const [viewState, setViewState] = useState({
-        longitude: 35.2034,
-        latitude: 31.9038,
-        zoom: 17,
-        pitch: 0,
-        bearing: 0
+    const [viewState, setViewState] = useState(() => {
+        let lat = 31.9038;
+        let lng = 35.2034;
+        try {
+            const cached = localStorage.getItem('user_cache');
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                if (parsed && parsed.username === 'test1') {
+                    lat = 31.9046;
+                    lng = 35.2022;
+                }
+            }
+        } catch (e) {}
+
+        return {
+            longitude: lng,
+            latitude: lat,
+            zoom: 17,
+            pitch: 0,
+            bearing: 0
+        };
     });
 
     useEffect(() => {
-        // Temporarily override to Ramallah city center
+        let lat = 31.9038;
+        let lng = 35.2034;
+        try {
+            const cached = localStorage.getItem('user_cache');
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                if (parsed && parsed.username === 'test1') {
+                    lat = 31.9046;
+                    lng = 35.2022;
+                }
+            }
+        } catch (e) {}
+
         setViewState(prev => ({
             ...prev,
-            latitude: 31.9038,
-            longitude: 35.2034,
+            latitude: lat,
+            longitude: lng,
             zoom: 17
         }));
     }, []);

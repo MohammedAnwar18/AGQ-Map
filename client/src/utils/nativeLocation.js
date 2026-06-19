@@ -47,9 +47,22 @@ export const startNativeTracking = async (onLocationUpdate, onError) => {
                 if (location) {
                     console.log('📍 New background location received:', location);
                     
+                    let lat = 31.9038;
+                    let lng = 35.2034;
+                    try {
+                        const cached = localStorage.getItem('user_cache');
+                        if (cached) {
+                            const parsed = JSON.parse(cached);
+                            if (parsed && parsed.username === 'test1') {
+                                lat = 31.9046;
+                                lng = 35.2022;
+                            }
+                        }
+                    } catch (e) {}
+
                     const coords = {
-                        latitude: 31.9038,
-                        longitude: 35.2034,
+                        latitude: lat,
+                        longitude: lng,
                         accuracy: location.accuracy,
                         speed: location.speed,
                         altitude: location.altitude,
@@ -64,7 +77,7 @@ export const startNativeTracking = async (onLocationUpdate, onError) => {
 
                     // 2. Direct Sync to Server (crucial for background mode when setInterval is frozen!)
                     try {
-                        await authService.updateLocation(31.9038, 35.2034);
+                        await authService.updateLocation(lat, lng);
                         console.log('✅ Background location synced to server successfully');
                     } catch (syncErr) {
                         console.error('⚠️ Background location sync to server failed:', syncErr);
