@@ -64,6 +64,7 @@ const ProfileModal = ({ userId, onClose }) => {
     const [publishedPages, setPublishedPages] = useState([]);
     const [loadingPages, setLoadingPages] = useState(false);
     const [showPrivacySettings, setShowPrivacySettings] = useState(false);
+    const [isSimulatedLocation, setIsSimulatedLocation] = useState(localStorage.getItem('simulate_location') === 'true');
     const [privacySettings, setPrivacySettings] = useState({
         hide_username: false,
         hide_age: false,
@@ -578,6 +579,95 @@ const ProfileModal = ({ userId, onClose }) => {
                                                         <PrivacyToggle label="السيرة الذاتية" checked={privacySettings.hide_bio} onChange={() => togglePrivacy('hide_bio')} />
                                                     </div>
                                                 )}
+                                            </div>
+                                        )}
+
+                                        {/* Location Service Settings Section */}
+                                        {isOwnProfile && (
+                                            <div style={{
+                                                marginTop: '12px',
+                                                background: 'var(--bg-tertiary)',
+                                                borderRadius: '12px',
+                                                overflow: 'hidden',
+                                                border: '1px solid rgba(251, 171, 21, 0.15)'
+                                            }}>
+                                                <div style={{
+                                                    padding: '12px 16px',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: '10px'
+                                                }}>
+                                                    <span style={{ 
+                                                        display: 'flex', 
+                                                        alignItems: 'center', 
+                                                        gap: '8px', 
+                                                        color: 'var(--text-primary)', 
+                                                        fontSize: '0.85rem', 
+                                                        fontWeight: '700' 
+                                                    }}>
+                                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                            <path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"/>
+                                                            <circle cx="12" cy="10" r="3"/>
+                                                        </svg>
+                                                        نظام تحديد المواقع (GPS)
+                                                    </span>
+                                                    
+                                                    <div style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'space-between',
+                                                        background: 'rgba(255, 255, 255, 0.02)',
+                                                        padding: '10px',
+                                                        borderRadius: '8px',
+                                                        border: '1px solid rgba(255, 255, 255, 0.05)'
+                                                    }}>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'right', paddingLeft: '10px' }}>
+                                                            <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                                                                محاكاة الموقع في رام الله (للتجربة)
+                                                            </span>
+                                                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                                                                تفعيل إحداثيات رام الله الافتراضية بدلاً من تحديد موقع جهازك الفعلي.
+                                                            </span>
+                                                        </div>
+                                                        <label style={{
+                                                            position: 'relative',
+                                                            display: 'inline-block',
+                                                            width: '42px',
+                                                            height: '22px',
+                                                            cursor: 'pointer',
+                                                            flexShrink: 0
+                                                        }}>
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={isSimulatedLocation} 
+                                                                onChange={(e) => {
+                                                                    const newVal = e.target.checked;
+                                                                    setIsSimulatedLocation(newVal);
+                                                                    localStorage.setItem('simulate_location', newVal ? 'true' : 'false');
+                                                                }}
+                                                                style={{ opacity: 0, width: 0, height: 0 }}
+                                                            />
+                                                            <span style={{
+                                                                position: 'absolute',
+                                                                top: 0, left: 0, right: 0, bottom: 0,
+                                                                backgroundColor: isSimulatedLocation ? '#fbab15' : '#475569',
+                                                                borderRadius: '22px',
+                                                                transition: '0.3s ease'
+                                                            }}>
+                                                                <span style={{
+                                                                    position: 'absolute',
+                                                                    height: '16px', width: '16px',
+                                                                    left: isSimulatedLocation ? '22px' : '4px',
+                                                                    bottom: '3px',
+                                                                    backgroundColor: 'white',
+                                                                    borderRadius: '50%',
+                                                                    transition: '0.3s ease',
+                                                                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                                                }} />
+                                                            </span>
+                                                        </label>
+                                                    </div>
+                                                </div>
                                             </div>
                                         )}
                                     </div>

@@ -7,23 +7,36 @@ import { Navigate } from 'react-router-dom';
 const StreetMap = () => {
     const { isAuthenticated, loading } = useAuth();
     const [viewState, setViewState] = useState(() => {
+        const simulate = localStorage.getItem('simulate_location') === 'true';
         let lat = 31.9038;
         let lng = 35.2034;
-        try {
-            const cached = localStorage.getItem('user_cache');
-            if (cached) {
-                const parsed = JSON.parse(cached);
-                if (parsed) {
-                    if (parsed.role === 'admin' || parsed.username === 'admin') {
-                        lat = 31.9060;
-                        lng = 35.2053;
-                    } else if (parsed.username === 'test1') {
-                        lat = 31.9046;
-                        lng = 35.2022;
+
+        if (!simulate) {
+            try {
+                const saved = localStorage.getItem('last_user_location');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    lat = parsed.latitude;
+                    lng = parsed.longitude;
+                }
+            } catch (e) {}
+        } else {
+            try {
+                const cached = localStorage.getItem('user_cache');
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    if (parsed) {
+                        if (parsed.role === 'admin' || parsed.username === 'admin') {
+                            lat = 31.9060;
+                            lng = 35.2053;
+                        } else if (parsed.username === 'test1') {
+                            lat = 31.9046;
+                            lng = 35.2022;
+                        }
                     }
                 }
-            }
-        } catch (e) {}
+            } catch (e) {}
+        }
 
         return {
             longitude: lng,
@@ -35,23 +48,36 @@ const StreetMap = () => {
     });
 
     useEffect(() => {
+        const simulate = localStorage.getItem('simulate_location') === 'true';
         let lat = 31.9038;
         let lng = 35.2034;
-        try {
-            const cached = localStorage.getItem('user_cache');
-            if (cached) {
-                const parsed = JSON.parse(cached);
-                if (parsed) {
-                    if (parsed.role === 'admin' || parsed.username === 'admin') {
-                        lat = 31.9060;
-                        lng = 35.2053;
-                    } else if (parsed.username === 'test1') {
-                        lat = 31.9046;
-                        lng = 35.2022;
+
+        if (!simulate) {
+            try {
+                const saved = localStorage.getItem('last_user_location');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    lat = parsed.latitude;
+                    lng = parsed.longitude;
+                }
+            } catch (e) {}
+        } else {
+            try {
+                const cached = localStorage.getItem('user_cache');
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    if (parsed) {
+                        if (parsed.role === 'admin' || parsed.username === 'admin') {
+                            lat = 31.9060;
+                            lng = 35.2053;
+                        } else if (parsed.username === 'test1') {
+                            lat = 31.9046;
+                            lng = 35.2022;
+                        }
                     }
                 }
-            }
-        } catch (e) {}
+            } catch (e) {}
+        }
 
         setViewState(prev => ({
             ...prev,

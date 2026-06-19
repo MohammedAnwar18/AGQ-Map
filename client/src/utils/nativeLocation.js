@@ -47,23 +47,34 @@ export const startNativeTracking = async (onLocationUpdate, onError) => {
                 if (location) {
                     console.log('📍 New background location received:', location);
                     
-                    let lat = 31.9038;
-                    let lng = 35.2034;
-                    try {
-                        const cached = localStorage.getItem('user_cache');
-                        if (cached) {
-                            const parsed = JSON.parse(cached);
-                            if (parsed) {
-                                if (parsed.role === 'admin' || parsed.username === 'admin') {
-                                    lat = 31.9060;
-                                    lng = 35.2053;
-                                } else if (parsed.username === 'test1') {
-                                    lat = 31.9046;
-                                    lng = 35.2022;
+                    let lat = location.latitude;
+                    let lng = location.longitude;
+                    
+                    const simulate = localStorage.getItem('simulate_location') === 'true';
+                    if (simulate) {
+                        lat = 31.9038;
+                        lng = 35.2034;
+                        try {
+                            const cached = localStorage.getItem('user_cache');
+                            if (cached) {
+                                const parsed = JSON.parse(cached);
+                                if (parsed) {
+                                    if (parsed.role === 'admin' || parsed.username === 'admin') {
+                                        lat = 31.9060;
+                                        lng = 35.2053;
+                                    } else if (parsed.username === 'test1') {
+                                        lat = 31.9046;
+                                        lng = 35.2022;
+                                    }
                                 }
                             }
-                        }
-                    } catch (e) {}
+                        } catch (e) {}
+                    } else {
+                        // Cache successful location
+                        try {
+                            localStorage.setItem('last_user_location', JSON.stringify({ latitude: lat, longitude: lng }));
+                        } catch (e) {}
+                    }
 
                     const coords = {
                         latitude: lat,
