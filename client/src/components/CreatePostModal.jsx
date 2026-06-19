@@ -878,37 +878,35 @@ const CreatePostModal = ({
                                     </button>
                                 </div>
                             ))}
-                            {/* زر إضافة المزيد (مخفي مؤقتاً بطلب من المستخدم) */}
-                            {false && (
-                                <label style={{
-                                    flex: '0 0 auto',
-                                    width: '150px',
-                                    height: '150px',
-                                    border: '2px dashed #ccc',
-                                    borderRadius: '8px',
-                                    display: 'flex',
-                                    justifyContent: 'center',
-                                    alignItems: 'center',
-                                    cursor: 'pointer',
-                                    background: 'transparent',
-                                    color: '#ccc',
-                                    fontSize: '2rem'
-                                }}>
-                                    +
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        multiple
-                                        onChange={handleFileChange}
-                                        style={{ display: 'none' }}
-                                    />
-                                </label>
-                            )}
+                            {/* زر إضافة المزيد (مفتوح للكاميرا فقط بطلب من المستخدم) */}
+                            <label style={{
+                                flex: '0 0 auto',
+                                width: '150px',
+                                height: '150px',
+                                border: '2px dashed #ccc',
+                                borderRadius: '8px',
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                cursor: 'pointer',
+                                background: 'transparent',
+                                color: '#ccc',
+                                fontSize: '2rem'
+                            }}>
+                                +
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    capture="environment"
+                                    onChange={handleFileChange}
+                                    style={{ display: 'none' }}
+                                />
+                            </label>
                         </div>
                     )}
 
-                    {/* أزرار الإضافة الأولية (مخفية مؤقتاً بطلب من المستخدم) */}
-                    {false && imagePreviews.length === 0 && (
+                    {/* أزرار الإضافة الأولية (تم استرجاع الكاميرا وإخفاء اختيار الملفات بطلب من المستخدم) */}
+                    {imagePreviews.length === 0 && (
                         <div className="image-actions">
                             {/* زر الكاميرا */}
                             <label className="btn btn-secondary" style={{
@@ -938,8 +936,8 @@ const CreatePostModal = ({
                                 />
                             </label>
 
-                            {/* زر اختيار الملفات — فقط خارج مجتمع النباتات */}
-                            {!isFloraComm && (
+                            {/* زر اختيار الملفات مخفي مؤقتاً */}
+                            {false && !isFloraComm && (
                                 <label className="btn btn-secondary" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                                     🖼️ اختيار ملفات
                                     <input
