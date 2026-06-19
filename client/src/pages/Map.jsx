@@ -557,7 +557,7 @@ const MapComponent = () => {
 
 
 
-    // View State for 3D Map (Temporarily overridden: Rukab Street for test1, Al-Manara Square for others)
+    // View State for 3D Map (Temporarily overridden: Al-Irsal Street for admin, Rukab Street for test1, Al-Manara Square for others)
     const [viewState, setViewState] = useState(() => {
         let lat = 31.9038;
         let lng = 35.2034;
@@ -565,9 +565,14 @@ const MapComponent = () => {
             const cached = localStorage.getItem('user_cache');
             if (cached) {
                 const parsed = JSON.parse(cached);
-                if (parsed && parsed.username === 'test1') {
-                    lat = 31.9046;
-                    lng = 35.2022;
+                if (parsed) {
+                    if (parsed.role === 'admin' || parsed.username === 'admin') {
+                        lat = 31.9060;
+                        lng = 35.2053;
+                    } else if (parsed.username === 'test1') {
+                        lat = 31.9046;
+                        lng = 35.2022;
+                    }
                 }
             }
         } catch (e) {}
@@ -588,9 +593,14 @@ const MapComponent = () => {
             const cached = localStorage.getItem('user_cache');
             if (cached) {
                 const parsed = JSON.parse(cached);
-                if (parsed && parsed.username === 'test1') {
-                    lat = 31.9046;
-                    lng = 35.2022;
+                if (parsed) {
+                    if (parsed.role === 'admin' || parsed.username === 'admin') {
+                        lat = 31.9060;
+                        lng = 35.2053;
+                    } else if (parsed.username === 'test1') {
+                        lat = 31.9046;
+                        lng = 35.2022;
+                    }
                 }
             }
         } catch (e) {}
@@ -602,9 +612,11 @@ const MapComponent = () => {
     });
 
     const updateUserLocation = (coords) => {
+        const isAdmin = user?.role === 'admin' || user?.username === 'admin';
         const isTest1 = user?.username === 'test1';
-        const targetLat = isTest1 ? 31.9046 : 31.9038;
-        const targetLng = isTest1 ? 35.2022 : 35.2034;
+        
+        const targetLat = isAdmin ? 31.9060 : (isTest1 ? 31.9046 : 31.9038);
+        const targetLng = isAdmin ? 35.2053 : (isTest1 ? 35.2022 : 35.2034);
 
         const overridden = {
             ...coords,

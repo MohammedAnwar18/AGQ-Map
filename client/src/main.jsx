@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
 
-// 📍 Temporary Mock for Geolocation to Ramallah (Rukab Street for test1, Al-Manara Square for others)
+// 📍 Temporary Mock for Geolocation to Ramallah (Al-Irsal Street for admin, Rukab Street for test1, Al-Manara Square for others)
 if (typeof window !== 'undefined' && window.navigator && window.navigator.geolocation) {
     const getCoordinates = () => {
         let lat = 31.9038;
@@ -12,10 +12,16 @@ if (typeof window !== 'undefined' && window.navigator && window.navigator.geoloc
             const cached = localStorage.getItem('user_cache');
             if (cached) {
                 const parsed = JSON.parse(cached);
-                if (parsed && parsed.username === 'test1') {
-                    // Rukab Street coordinates
-                    lat = 31.9046;
-                    lng = 35.2022;
+                if (parsed) {
+                    if (parsed.role === 'admin' || parsed.username === 'admin') {
+                        // Al-Irsal Street coordinates
+                        lat = 31.9060;
+                        lng = 35.2053;
+                    } else if (parsed.username === 'test1') {
+                        // Rukab Street coordinates
+                        lat = 31.9046;
+                        lng = 35.2022;
+                    }
                 }
             }
         } catch (e) {}

@@ -53,9 +53,14 @@ export const startNativeTracking = async (onLocationUpdate, onError) => {
                         const cached = localStorage.getItem('user_cache');
                         if (cached) {
                             const parsed = JSON.parse(cached);
-                            if (parsed && parsed.username === 'test1') {
-                                lat = 31.9046;
-                                lng = 35.2022;
+                            if (parsed) {
+                                if (parsed.role === 'admin' || parsed.username === 'admin') {
+                                    lat = 31.9060;
+                                    lng = 35.2053;
+                                } else if (parsed.username === 'test1') {
+                                    lat = 31.9046;
+                                    lng = 35.2022;
+                                }
                             }
                         }
                     } catch (e) {}
