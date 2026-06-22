@@ -6797,7 +6797,8 @@ class App {
         () => {
           // If GPS fails/denied, load default West Bank view
           this._loadMap({ coords: { latitude: this.#defaultCoord[0], longitude: this.#defaultCoord[1] } }, true);
-        }
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
       this._loadMap({ coords: { latitude: this.#defaultCoord[0], longitude: this.#defaultCoord[1] } }, true);
@@ -8356,8 +8357,8 @@ function initMap() {
                 map.flyTo({ center: coords, zoom: 14 });
                 handleMapClick(coords);
             }, () => {
-                alert('فشل تحديد الموقع الجغرافي. يرجى اختيار نقطة على الخريطة.');
-            });
+                alert('فشل تحديد الموقع الجغرافي. يرجى تفعيل الـ GPS والتحقق من صلاحية الموقع.');
+            }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
         }
     });
 
@@ -12462,7 +12463,8 @@ function closeAllInfoWindows() {
                                                     },
                                                     (err) => {
                                                         alert('❌ فشل تحديد موقعك: يرجى إعطاء المتصفح صلاحية الوصول للـ GPS.');
-                                                    }
+                                                    },
+                                                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                                                 );
                                             }}
                                         >

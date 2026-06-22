@@ -361,7 +361,7 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                     lat: pos.coords.latitude.toFixed(6),
                     lon: pos.coords.longitude.toFixed(6)
                 }));
-            }, () => alert("تعذر الحصول على الموقع"));
+            }, () => alert("تعذر الحصول على الموقع الجغرافي. يرجى تفعيل الـ GPS والتحقق من الأذونات."), { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
         } else {
             alert("المتصفح لا يدعم تحديد الموقع");
         }

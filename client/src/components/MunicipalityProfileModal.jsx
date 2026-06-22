@@ -234,7 +234,7 @@ const MunicipalityProfileModal = ({ shop, currentUser, onClose, onFollowChange, 
                     latitude: pos.coords.latitude.toFixed(6),
                     longitude: pos.coords.longitude.toFixed(6)
                 }));
-            }, () => alert("تعذر الحصول على إحداثيات الموقع الحالي"));
+            }, () => alert("تعذر الحصول على إحداثيات الموقع الحالي. يرجى تفعيل الـ GPS والتحقق من الأذونات."), { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
         } else {
             alert("المتصفح لا يدعم تحديد الموقع الجغرافي");
         }

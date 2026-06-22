@@ -364,7 +364,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                 } else {
                     setNewShopData(prev => ({ ...prev, lat, lon }));
                 }
-            }, () => alert("تعذر الحصول على الموقع"));
+            }, () => alert("تعذر الحصول على الموقع الجغرافي. يرجى تفعيل الـ GPS والتحقق من الأذونات."), { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
         } else {
             alert("المتصفح لا يدعم تحديد الموقع");
         }

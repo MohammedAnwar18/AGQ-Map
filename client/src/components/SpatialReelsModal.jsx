@@ -544,13 +544,17 @@ const AddReelForm = ({ onClose, onAdded, userLocation, initialData = null }) => 
                                         longitude: userLocation.longitude
                                     }));
                                 } else {
-                                    navigator.geolocation?.getCurrentPosition(pos => {
-                                        setForm(p => ({
-                                            ...p,
-                                            latitude: pos.coords.latitude,
-                                            longitude: pos.coords.longitude
-                                        }));
-                                    });
+                                    navigator.geolocation?.getCurrentPosition(
+                                        pos => {
+                                            setForm(p => ({
+                                                ...p,
+                                                latitude: pos.coords.latitude,
+                                                longitude: pos.coords.longitude
+                                            }));
+                                        },
+                                        () => alert("تعذر الحصول على موقعك الحالي. يرجى تفعيل الـ GPS والتحقق من الأذونات."),
+                                        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                                    );
                                 }
                             }}
                         >

@@ -61,12 +61,16 @@ if (typeof window !== 'undefined' && window.navigator && window.navigator.geoloc
                 success(pos);
             },
             (err) => {
-                console.warn("Real geolocation failed, falling back to mock:", err);
-                const coords = getMockCoordinates();
-                success({
-                    coords: { ...coords, accuracy: 10, altitude: null, altitudeAccuracy: null, heading: null, speed: null },
-                    timestamp: Date.now()
-                });
+                console.warn("Real geolocation failed:", err);
+                if (error) {
+                    error(err);
+                } else {
+                    const coords = getMockCoordinates();
+                    success({
+                        coords: { ...coords, accuracy: 10, altitude: null, altitudeAccuracy: null, heading: null, speed: null },
+                        timestamp: Date.now()
+                    });
+                }
             },
             options
         );
@@ -106,46 +110,31 @@ if (typeof window !== 'undefined' && window.navigator && window.navigator.geoloc
                     success(pos);
                 },
                 (err) => {
-                    console.warn("Real watchPosition failed, falling back to mock:", err);
-                    const entry = watchRegistry.get(id);
-                    if (entry && entry.type === 'real') {
-                        try { originalGeo.clearWatch(entry.realId); } catch (e) {}
-                        
+                    console.warn("Real watchPosition failed:", err);
+                    if (error) {
+                        error(err);
+                    } else {
                         const coords = getMockCoordinates();
                         success({
                             coords: { ...coords, accuracy: 10, altitude: null, altitudeAccuracy: null, heading: null, speed: null },
                             timestamp: Date.now()
                         });
-                        
-                        const intervalId = setInterval(() => {
-                            const currentCoords = getMockCoordinates();
-                            success({
-                                coords: { ...currentCoords, accuracy: 10, altitude: null, altitudeAccuracy: null, heading: null, speed: null },
-                                timestamp: Date.now()
-                            });
-                        }, 5000);
-                        
-                        watchRegistry.set(id, { type: 'mock', intervalId });
                     }
                 },
                 options
             );
             watchRegistry.set(id, { type: 'real', realId });
         } catch (err) {
-            console.error("Error setting up real watchPosition, falling back to mock:", err);
-            const coords = getMockCoordinates();
-            success({
-                coords: { ...coords, accuracy: 10, altitude: null, altitudeAccuracy: null, heading: null, speed: null },
-                timestamp: Date.now()
-            });
-            const intervalId = setInterval(() => {
-                const currentCoords = getMockCoordinates();
+            console.error("Error setting up real watchPosition:", err);
+            if (error) {
+                error(err);
+            } else {
+                const coords = getMockCoordinates();
                 success({
-                    coords: { ...currentCoords, accuracy: 10, altitude: null, altitudeAccuracy: null, heading: null, speed: null },
+                    coords: { ...coords, accuracy: 10, altitude: null, altitudeAccuracy: null, heading: null, speed: null },
                     timestamp: Date.now()
                 });
-            }, 5000);
-            watchRegistry.set(id, { type: 'mock', intervalId });
+            }
         }
 
         return id;

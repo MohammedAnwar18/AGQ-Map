@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import Login from './pages/Login';
-import Map from './pages/Map';
-import StreetMap from './pages/StreetMap';
-import AdminDashboard from './pages/AdminDashboard';
-import AdminUserDetails from './pages/AdminUserDetails';
-import LegalPages from './pages/LegalPages';
-import Support from './pages/Support';
-import PublishedView from './pages/PublishedView';
-import ARView from './pages/ARView';
-import VirtualTourMap from './pages/VirtualTourMap';
+const Login = React.lazy(() => import('./pages/Login'));
+const Map = React.lazy(() => import('./pages/Map'));
+const StreetMap = React.lazy(() => import('./pages/StreetMap'));
+const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
+const AdminUserDetails = React.lazy(() => import('./pages/AdminUserDetails'));
+const LegalPages = React.lazy(() => import('./pages/LegalPages'));
+const Support = React.lazy(() => import('./pages/Support'));
+const PublishedView = React.lazy(() => import('./pages/PublishedView'));
+const ARView = React.lazy(() => import('./pages/ARView'));
+const VirtualTourMap = React.lazy(() => import('./pages/VirtualTourMap'));
 
 import OfflinePage from './components/OfflinePage';
 import PushNotificationManager from './components/PushNotificationManager';
@@ -115,36 +115,38 @@ function App() {
 
     return (
         <BrowserRouter>
-            <Routes>
-                {/* 🌐 Public route - completely outside AuthProvider */}
-                <Route path="/p/:slug" element={<PublishedView />} />
+            <React.Suspense fallback={<SplashLoading />}>
+                <Routes>
+                    {/* 🌐 Public route - completely outside AuthProvider */}
+                    <Route path="/p/:slug" element={<PublishedView />} />
 
-                {/* All other routes inside AuthProvider */}
-                <Route path="*" element={
-                    <AuthProvider>
-                        <div className="bg-blob blob-primary"></div>
-                        <div className="bg-blob blob-secondary"></div>
-                        <PushNotificationManager />
-                        <IosInstallPrompt />
-                        <PwaInstallPrompt />
-                        <OnboardingManager />
-                        <Routes>
-                            <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-                            <Route path="/map" element={<ProtectedRoute><Map /></ProtectedRoute>} />
-                            <Route path="/streets" element={<ProtectedRoute><StreetMap /></ProtectedRoute>} />
-                            <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-                            <Route path="/admin/users/:userId" element={<AdminRoute><AdminUserDetails /></AdminRoute>} />
-                            <Route path="/terms" element={<LegalPages type="terms" />} />
-                            <Route path="/privacy" element={<LegalPages type="privacy" />} />
-                            <Route path="/support" element={<Support />} />
-                            <Route path="/ar" element={<ProtectedRoute><ARView /></ProtectedRoute>} />
-                            <Route path="/virtual-tour" element={<ProtectedRoute><VirtualTourMap /></ProtectedRoute>} />
-                            <Route path="/" element={<Navigate to="/map" />} />
-                            <Route path="*" element={<OfflinePage />} />
-                        </Routes>
-                    </AuthProvider>
-                } />
-            </Routes>
+                    {/* All other routes inside AuthProvider */}
+                    <Route path="*" element={
+                        <AuthProvider>
+                            <div className="bg-blob blob-primary"></div>
+                            <div className="bg-blob blob-secondary"></div>
+                            <PushNotificationManager />
+                            <IosInstallPrompt />
+                            <PwaInstallPrompt />
+                            <OnboardingManager />
+                            <Routes>
+                                <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+                                <Route path="/map" element={<ProtectedRoute><Map /></ProtectedRoute>} />
+                                <Route path="/streets" element={<ProtectedRoute><StreetMap /></ProtectedRoute>} />
+                                <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+                                <Route path="/admin/users/:userId" element={<AdminRoute><AdminUserDetails /></AdminRoute>} />
+                                <Route path="/terms" element={<LegalPages type="terms" />} />
+                                <Route path="/privacy" element={<LegalPages type="privacy" />} />
+                                <Route path="/support" element={<Support />} />
+                                <Route path="/ar" element={<ProtectedRoute><ARView /></ProtectedRoute>} />
+                                <Route path="/virtual-tour" element={<ProtectedRoute><VirtualTourMap /></ProtectedRoute>} />
+                                <Route path="/" element={<Navigate to="/map" />} />
+                                <Route path="*" element={<OfflinePage />} />
+                            </Routes>
+                        </AuthProvider>
+                    } />
+                </Routes>
+            </React.Suspense>
         </BrowserRouter>
     );
 }
