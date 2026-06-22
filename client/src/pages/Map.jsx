@@ -632,22 +632,27 @@ const MapComponent = () => {
     });
 
     const updateUserLocation = (coords) => {
-        const isAdmin = user?.role === 'admin' || user?.username === 'admin';
-        const isTest1 = user?.username === 'test1';
-        
-        const targetLat = isAdmin ? 31.9060 : (isTest1 ? 31.9046 : 31.9038);
-        const targetLng = isAdmin ? 35.2053 : (isTest1 ? 35.2022 : 35.2034);
+        const simulate = localStorage.getItem('simulate_location') === 'true';
+        let lat = coords.latitude;
+        let lng = coords.longitude;
 
-        const overridden = {
+        if (simulate) {
+            const isAdmin = user?.role === 'admin' || user?.username === 'admin';
+            const isTest1 = user?.username === 'test1';
+            lat = isAdmin ? 31.9060 : (isTest1 ? 31.9046 : 31.9038);
+            lng = isAdmin ? 35.2053 : (isTest1 ? 35.2022 : 35.2034);
+        }
+
+        const finalCoords = {
             ...coords,
-            latitude: targetLat,
-            longitude: targetLng
+            latitude: lat,
+            longitude: lng
         };
-        setUserLocation(overridden);
+        setUserLocation(finalCoords);
         try {
             localStorage.setItem('last_user_location', JSON.stringify({
-                latitude: targetLat,
-                longitude: targetLng
+                latitude: lat,
+                longitude: lng
             }));
             localStorage.setItem('gps_permission_granted', 'true');
         } catch (e) {
@@ -1639,11 +1644,8 @@ const MapComponent = () => {
                     const permission = await navigator.permissions.query({ name: 'geolocation' });
                     const savedLoc = localStorage.getItem('last_user_location');
                     
-                    // If the browser hasn't permanently saved the 'Allow' decision (state is 'prompt' or 'denied'),
-                    // AND we already have a saved location from a previous visit,
-                    // we skip auto-prompting so the user isn't annoyed with a popup on every single visit.
-                    if (permission.state !== 'granted' && savedLoc && !isTracking && !destination) {
-                        console.log("Permission requires prompt. Using saved location to avoid annoying popup on load.");
+                    if (permission.state === 'denied') {
+                        console.warn("GPS Permission is denied.");
                         return;
                     }
                 }
