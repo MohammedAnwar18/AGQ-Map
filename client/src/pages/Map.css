@@ -484,6 +484,18 @@
     .top-bar-right {
         gap: 0.5rem !important;
     }
+
+    .map-layers-dropdown {
+        position: fixed;
+        top: 75px;
+        right: 16px;
+        width: calc(100vw - 32px);
+        max-width: 280px;
+        max-height: calc(100dvh - 160px);
+        border: 1.5px solid rgba(251, 171, 21, 0.45);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+        border-radius: 16px;
+    }
 }
 
 /* Hide MapLibre defaults more aggressively */
@@ -1603,7 +1615,7 @@
     top: 55px;
     right: 0;
     z-index: 2600;
-    background: rgba(15, 23, 42, 0.95);
+    background: rgba(15, 23, 42, 0.96);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: 1.5px solid rgba(251, 171, 21, 0.35);
@@ -1616,20 +1628,20 @@
     flex-direction: column;
     gap: 4px;
     animation: slideDownMenu 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    max-height: 480px;
+    max-height: calc(100vh - 120px); /* Dynamic height on laptop */
     overflow-y: auto;
 }
 
 /* Custom Scrollbar for Dropdown */
 .map-layers-dropdown::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
 }
 .map-layers-dropdown::-webkit-scrollbar-track {
     background: transparent;
 }
 .map-layers-dropdown::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
 }
 .map-layers-dropdown::-webkit-scrollbar-thumb:hover {
     background: rgba(251, 171, 21, 0.3);
