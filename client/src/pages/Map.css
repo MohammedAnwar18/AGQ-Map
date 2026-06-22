@@ -488,9 +488,10 @@
     .map-layers-dropdown {
         position: fixed;
         top: 75px;
-        right: 16px;
-        width: calc(100vw - 32px);
-        max-width: 280px;
+        left: 20px;
+        right: auto;
+        width: calc(100vw - 40px);
+        max-width: 300px;
         max-height: calc(100dvh - 160px);
         border: 1.5px solid rgba(251, 171, 21, 0.45);
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
@@ -1613,7 +1614,7 @@
 .map-layers-dropdown {
     position: absolute;
     top: 55px;
-    right: 0;
+    left: 0;
     z-index: 2600;
     background: rgba(15, 23, 42, 0.96);
     backdrop-filter: blur(20px);
@@ -1621,12 +1622,12 @@
     border: 1.5px solid rgba(251, 171, 21, 0.35);
     border-radius: 16px;
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 15px rgba(251, 171, 21, 0.1);
-    width: 290px;
-    padding: 10px;
+    width: 310px;
+    padding: 12px;
     direction: rtl;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
     animation: slideDownMenu 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     max-height: calc(100vh - 120px); /* Dynamic height on laptop */
     overflow-y: auto;
@@ -1725,6 +1726,11 @@
 }
 
 .map-layers-dropdown .dropdown-item .item-text {
-    font-size: 0.82rem;
+    font-size: 0.85rem;
     line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    text-align: right;
 }
