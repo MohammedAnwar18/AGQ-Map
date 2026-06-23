@@ -935,12 +935,14 @@ const MapComponent = () => {
                         type: 'raster',
                         tiles: [wbUrl],
                         tileSize: 256,
+                        maxzoom: 19,
                         attribution: `© Geomolg WB ${year}`
                     },
                     'geomolg-gaza': {
                         type: 'raster',
                         tiles: [gazaUrl],
                         tileSize: 256,
+                        maxzoom: 19,
                         attribution: `© Geomolg Gaza ${gazaYear}`
                     }
                 },
