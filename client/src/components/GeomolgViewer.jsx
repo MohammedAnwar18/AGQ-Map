@@ -1,6 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { loadModules } from 'esri-loader';
+import proj4 from 'proj4';
 import './Modal.css';
+
+// تعريف مسقط فلسطين 1923
+proj4.defs("EPSG:28191", "+proj=cass +lat_0=31.7340969444444 +lon_0=35.2120805555556 +x_0=170251.555 +y_0=126867.909 +a=6378300.789 +b=6356566.435 +units=m +no_defs +type=crs");
+
+const toPalGrid = (lon, lat) => {
+    try {
+        const [x, y] = proj4("EPSG:4326", "EPSG:28191", [parseFloat(lon), parseFloat(lat)]);
+        return { x, y };
+    } catch (e) {
+        console.error("Coordinate projection error:", e);
+        return { x: parseFloat(lon), y: parseFloat(lat) };
+    }
+};
 
 const ORTHOPHOTO_SERVICES = {
     wb: {
@@ -80,10 +94,15 @@ const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops, onShopCli
                 mapRef.current = map;
 
                 // إعداد العرض
+                const defaultCenter = [35.2034, 31.9038];
+                const centerCoords = userLocation 
+                    ? toPalGrid(userLocation.longitude, userLocation.latitude)
+                    : toPalGrid(defaultCenter[0], defaultCenter[1]);
+
                 view = new MapView({
                     container: mapDiv.current,
                     map: map,
-                    center: userLocation ? [parseFloat(userLocation.longitude), parseFloat(userLocation.latitude)] : [35.2034, 31.9038],
+                    center: [centerCoords.x, centerCoords.y],
                     zoom: userLocation ? 16 : 14
                 });
                 viewRef.current = view;
@@ -135,8 +154,9 @@ const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops, onShopCli
     // Effect to update view when userLocation changes for live tracking
     useEffect(() => {
         if (isMapReady && viewRef.current && userLocation) {
+            const coords = toPalGrid(userLocation.longitude, userLocation.latitude);
             viewRef.current.goTo({
-                center: [parseFloat(userLocation.longitude), parseFloat(userLocation.latitude)]
+                center: [coords.x, coords.y]
             });
         }
     }, [isMapReady, userLocation]);
@@ -152,8 +172,14 @@ const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops, onShopCli
 
         // 1. User Location
         if (userLocation) {
+            const coords = toPalGrid(userLocation.longitude, userLocation.latitude);
             const userGraphic = new Graphic({
-                geometry: { type: "point", longitude: parseFloat(userLocation.longitude), latitude: parseFloat(userLocation.latitude) },
+                geometry: { 
+                    type: "point", 
+                    x: coords.x, 
+                    y: coords.y, 
+                    spatialReference: { wkid: 28191 } 
+                },
                 symbol: { type: "simple-marker", color: "#fbab15", size: "18px", outline: { color: [255, 255, 255], width: 3 } },
                 popupTemplate: { title: "موقعي", content: "أنت هنا" },
                 attributes: { type: 'user' }
@@ -165,8 +191,14 @@ const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops, onShopCli
         if (posts && posts.length > 0) {
             posts.forEach(post => {
                 if (!post.location?.latitude || !post.location?.longitude) return;
+                const coords = toPalGrid(post.location.longitude, post.location.latitude);
                 const postGraphic = new Graphic({
-                    geometry: { type: "point", longitude: parseFloat(post.location.longitude), latitude: parseFloat(post.location.latitude) },
+                    geometry: { 
+                        type: "point", 
+                        x: coords.x, 
+                        y: coords.y, 
+                        spatialReference: { wkid: 28191 } 
+                    },
                     symbol: { type: "simple-marker", style: "diamond", color: "#1a5f7a", size: "14px", outline: { color: [255, 255, 255], width: 2 } },
                     popupTemplate: { title: post.user?.username || "منشور", content: "اضغط لعرض المنشور" },
                     attributes: { type: 'post', data: post }
@@ -179,8 +211,14 @@ const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops, onShopCli
         if (friends && friends.length > 0) {
             friends.forEach(friend => {
                 if (!friend.last_latitude || !friend.last_longitude) return;
+                const coords = toPalGrid(friend.last_longitude, friend.last_latitude);
                 const friendGraphic = new Graphic({
-                    geometry: { type: "point", longitude: parseFloat(friend.last_longitude), latitude: parseFloat(friend.last_latitude) },
+                    geometry: { 
+                        type: "point", 
+                        x: coords.x, 
+                        y: coords.y, 
+                        spatialReference: { wkid: 28191 } 
+                    },
                     symbol: { type: "simple-marker", color: "#22c55e", size: "14px", outline: { color: [255, 255, 255], width: 2 } },
                     popupTemplate: { title: friend.username || "صديق", content: "صديقك متواجد هنا" },
                     attributes: { type: 'friend', data: friend }
@@ -193,8 +231,14 @@ const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops, onShopCli
         if (shops && shops.length > 0) {
             shops.forEach(shop => {
                 if (!shop.latitude || !shop.longitude) return;
+                const coords = toPalGrid(shop.longitude, shop.latitude);
                 const shopGraphic = new Graphic({
-                    geometry: { type: "point", longitude: parseFloat(shop.longitude), latitude: parseFloat(shop.latitude) },
+                    geometry: { 
+                        type: "point", 
+                        x: coords.x, 
+                        y: coords.y, 
+                        spatialReference: { wkid: 28191 } 
+                    },
                     symbol: { type: "simple-marker", style: "square", color: "#fbab15", size: "16px", outline: { color: [255, 255, 255], width: 2 } },
                     popupTemplate: { title: shop.name, content: "اضغط لعرض المتجر" },
                     attributes: { type: 'shop', data: shop }
@@ -218,7 +262,9 @@ const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops, onShopCli
         let center = null;
         let zoom = null;
         if (region !== currentRegion) {
-            center = region === 'gaza' ? [34.35, 31.4] : (userLocation ? [parseFloat(userLocation.longitude), parseFloat(userLocation.latitude)] : [35.2034, 31.9038]);
+            const rawCenter = region === 'gaza' ? [34.35, 31.4] : (userLocation ? [parseFloat(userLocation.longitude), parseFloat(userLocation.latitude)] : [35.2034, 31.9038]);
+            const projCenter = toPalGrid(rawCenter[0], rawCenter[1]);
+            center = [projCenter.x, projCenter.y];
             zoom = region === 'gaza' ? 12 : (userLocation ? 16 : 14);
         }
 
@@ -243,8 +289,8 @@ const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops, onShopCli
     };
 
     return (
-        <div className="modal-overlay" onClick={onClose} style={{ zIndex: 3000 }}>
-            <div className="modal-container" ref={containerRef} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay geomolg-modal-overlay" onClick={onClose}>
+            <div className="modal-container geomolg-modal-container" ref={containerRef} onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
                     <h2>الصورة الجوية</h2>
                     <div style={{ display: 'flex', gap: '10px' }}>
@@ -273,73 +319,36 @@ const GeomolgViewer = ({ onClose, userLocation, posts, friends, shops, onShopCli
                     <div ref={mapDiv} style={{ width: '100%', height: '100%' }} />
 
                     {/* Optimized Layer & Year Controls */}
-                    <div style={{
-                        position: 'absolute', top: '20px', left: '50%', transform: 'translateX(-50%)',
-                        background: 'rgba(15, 23, 42, 0.9)', padding: '6px',
-                        borderRadius: '14px', border: '1px solid rgba(251, 171, 21, 0.4)',
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-                        zIndex: 100, display: 'flex', gap: '8px',
-                        alignItems: 'center',
-                        backdropFilter: 'blur(20px)',
-                        width: 'auto', maxWidth: 'calc(100% - 40px)' 
-                    }}>
+                    <div className="geomolg-control-bar">
                         {/* Region Buttons */}
-                        <div style={{ display: 'flex', gap: '2px', background: 'rgba(255,255,255,0.05)', padding: '2px', borderRadius: '10px' }}>
+                        <div className="geomolg-region-container">
                             <button
                                 onClick={() => handleSwitchLayer('wb', selectedYear)}
-                                style={{
-                                    padding: '8px 14px', borderRadius: '8px', border: 'none',
-                                    background: currentRegion === 'wb' ? '#fbab15' : 'transparent',
-                                    color: currentRegion === 'wb' ? '#0f172a' : 'rgba(255,255,255,0.7)',
-                                    fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.25s ease',
-                                    whiteSpace: 'nowrap'
-                                }}
+                                className={`geomolg-region-btn ${currentRegion === 'wb' ? 'active' : ''}`}
                             >
                                 الضفة الغربية
                             </button>
                             <button
                                 onClick={() => handleSwitchLayer('gaza', selectedYear)}
-                                style={{
-                                    padding: '8px 14px', borderRadius: '8px', border: 'none',
-                                    background: currentRegion === 'gaza' ? '#fbab15' : 'transparent',
-                                    color: currentRegion === 'gaza' ? '#0f172a' : 'rgba(255,255,255,0.7)',
-                                    fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.25s ease',
-                                    whiteSpace: 'nowrap'
-                                }}
+                                className={`geomolg-region-btn ${currentRegion === 'gaza' ? 'active' : ''}`}
                             >
                                 قطاع غزة
                             </button>
                         </div>
 
                         {/* Divider */}
-                        <div style={{ width: '1px', height: '24px', background: 'rgba(255,255,255,0.15)' }}></div>
+                        <div className="geomolg-divider"></div>
 
                         {/* Year Selector */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'rgba(255,255,255,0.6)', whiteSpace: 'nowrap' }}>سنة التصوير:</span>
+                        <div className="geomolg-year-container">
+                            <span className="geomolg-year-label">سنة التصوير:</span>
                             <select
                                 value={selectedYear}
                                 onChange={(e) => handleSwitchLayer(currentRegion, e.target.value)}
-                                style={{
-                                    background: 'rgba(30, 41, 59, 0.8)',
-                                    color: '#fbab15',
-                                    border: '1px solid rgba(251, 171, 21, 0.3)',
-                                    borderRadius: '8px',
-                                    padding: '6px 24px 6px 10px',
-                                    fontSize: '0.8rem',
-                                    fontWeight: 'bold',
-                                    cursor: 'pointer',
-                                    outline: 'none',
-                                    fontFamily: 'inherit',
-                                    appearance: 'none',
-                                    backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23fbab15' viewBox='0 0 24 24'><path d='M7 10l5 5 5-5z'/></svg>")`,
-                                    backgroundRepeat: 'no-repeat',
-                                    backgroundPosition: 'right 8px center',
-                                    backgroundSize: '12px'
-                                }}
+                                className="geomolg-year-select"
                             >
                                 {Object.keys(ORTHOPHOTO_SERVICES[currentRegion]).map(year => (
-                                    <option key={year} value={year} style={{ background: '#1e293b', color: 'white' }}>
+                                    <option key={year} value={year}>
                                         {year}
                                     </option>
                                 ))}

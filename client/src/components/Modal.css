@@ -917,3 +917,178 @@
         margin: 0 !important;
     }
 }
+
+/* ==========================================
+   Geomolg Map Viewer Specific Overrides
+   ========================================== */
+
+/* Outer Overlay */
+.geomolg-modal-overlay {
+    z-index: 4500 !important; /* Make sure it overlays everything else */
+}
+
+/* Container size: wider and higher on desktop, full screen on mobile */
+.geomolg-modal-container {
+    width: 95vw !important;
+    height: 90vh !important;
+    max-width: 1400px !important;
+    max-height: 90vh !important;
+}
+
+/* Control Bar on top of map */
+.geomolg-control-bar {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.9);
+    padding: 6px;
+    border-radius: 14px;
+    border: 1px solid rgba(251, 171, 21, 0.4);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    z-index: 100;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    backdrop-filter: blur(20px);
+    width: auto;
+    max-width: calc(100% - 40px);
+    transition: all 0.3s ease;
+}
+
+/* Region Buttons Container */
+.geomolg-region-container {
+    display: flex;
+    gap: 2px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px;
+    border-radius: 10px;
+}
+
+/* Region Button */
+.geomolg-region-btn {
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 800;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    white-space: nowrap;
+}
+
+.geomolg-region-btn.active {
+    background: #fbab15;
+    color: #0f172a;
+}
+
+.geomolg-region-btn:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+/* Year Selector Container */
+.geomolg-year-container {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.geomolg-year-label {
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.6);
+    white-space: nowrap;
+}
+
+/* Year Dropdown Select */
+.geomolg-year-select {
+    background: rgba(30, 41, 59, 0.8);
+    color: #fbab15;
+    border: 1px solid rgba(251, 171, 21, 0.3);
+    border-radius: 8px;
+    padding: 6px 24px 6px 10px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    cursor: pointer;
+    outline: none;
+    font-family: inherit;
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23fbab15' viewBox='0 0 24 24'><path d='M7 10l5 5 5-5z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 12px;
+    transition: all 0.2s ease;
+}
+
+.geomolg-year-select:hover {
+    border-color: rgba(251, 171, 21, 0.6);
+    background-color: rgba(30, 41, 59, 0.95);
+}
+
+.geomolg-year-select option {
+    background: #1e293b;
+    color: white;
+}
+
+/* Divider */
+.geomolg-divider {
+    width: 1px;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* Responsive adjustments for mobile phone display */
+@media (max-width: 768px) {
+    .geomolg-modal-overlay {
+        padding: 0 !important;
+    }
+    
+    .geomolg-modal-container {
+        width: 100vw !important;
+        height: 100dvh !important;
+        max-width: 100vw !important;
+        max-height: 100dvh !important;
+        border-radius: 0 !important;
+        border: none !important;
+    }
+
+    .geomolg-control-bar {
+        top: 10px;
+        padding: 4px;
+        gap: 4px;
+        border-radius: 10px;
+        font-size: 0.85rem;
+    }
+
+    .geomolg-region-container {
+        border-radius: 8px;
+    }
+
+    .geomolg-region-btn {
+        padding: 6px 10px !important;
+        font-size: 0.72rem !important;
+        border-radius: 6px;
+    }
+
+    .geomolg-year-container {
+        gap: 3px;
+    }
+
+    .geomolg-year-label {
+        font-size: 0.7rem;
+    }
+
+    .geomolg-year-select {
+        padding: 4px 18px 4px 6px !important;
+        font-size: 0.72rem !important;
+        border-radius: 6px;
+        background-position: right 4px center;
+    }
+    
+    .geomolg-divider {
+        height: 18px;
+    }
+}
