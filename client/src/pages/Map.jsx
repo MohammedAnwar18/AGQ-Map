@@ -530,7 +530,7 @@ const MapComponent = () => {
     }, [user]);
 
     const mapRef = useRef(null);
-    const [activeMapType, setActiveMapType] = useState('geomolg-2024');
+    const [activeMapType, setActiveMapType] = useState('satellite');
     const [showMapLayersMenu, setShowMapLayersMenu] = useState(false);
 
     const PALESTINIAN_CITIES = [
@@ -2168,7 +2168,7 @@ const MapComponent = () => {
 
                     <div className="map-layers-menu-wrapper" style={{ position: 'relative' }}>
                         <button
-                            className={`top-nav-icon ${(activeMapType === 'geomolg' || activeMapType.startsWith('geomolg-')) ? 'active' : ''}`}
+                            className={`top-nav-icon ${activeMapType === 'satellite' ? 'active' : ''}`}
                             onClick={() => {
                                 const nextVal = !showMapLayersMenu;
                                 setShowMapLayersMenu(nextVal);
@@ -2209,15 +2209,10 @@ const MapComponent = () => {
                                               style={{ background: 'rgba(251, 171, 21, 0.15)', border: '1px solid rgba(251, 171, 21, 0.3)' }}
                                           >
                                               <span className="item-icon">
-                                                  {activeMapType === 'streets' ? '🛣️' : 
-                                                   activeMapType === 'satellite' ? '🌍' : 
-                                                   activeMapType === 'geomolg' ? '🗺️' : '📸'}
+                                                  {activeMapType === 'streets' ? '🛣️' : '🌍'}
                                               </span>
                                               <span className="item-text" style={{ fontWeight: 'bold' }}>
-                                                  {activeMapType === 'streets' ? 'خريطة الشوارع (مخطط)' : 
-                                                   activeMapType === 'satellite' ? 'قمر صناعي ديناميكي (Google)' : 
-                                                   activeMapType === 'geomolg' ? 'عرض جيومولج المنفصل (ArcGIS)' : 
-                                                   `الصورة الجوية لعام ${activeMapType.split('-')[1]}`}
+                                                  {activeMapType === 'streets' ? 'خريطة الشوارع (مخطط)' : 'قمر صناعي ديناميكي (Google)'}
                                               </span>
                                               <span style={{ fontSize: '0.8rem', color: '#fbab15', marginRight: 'auto', fontWeight: 'bold' }}>🔄 تغيير</span>
                                           </button>
@@ -2231,38 +2226,12 @@ const MapComponent = () => {
                                                   <span className="item-text">خريطة الشوارع (مخطط)</span>
                                               </button>
                                               
-                                              {/* قمر صناعي ديناميكي (Google) - مخفي مؤقتاً بطلب من المستخدم */}
-                                              {false && (
-                                                  <button 
-                                                      className={`dropdown-item ${activeMapType === 'satellite' ? 'active' : ''}`}
-                                                      onClick={() => { setActiveMapType('satellite'); setShowMapLayersMenu(false); setShowAllLayers(false); }}
-                                                  >
-                                                      <span className="item-icon">🌍</span>
-                                                      <span className="item-text">قمر صناعي ديناميكي (Google)</span>
-                                                  </button>
-                                              )}
-                                              
-                                              <div className="dropdown-section-title">صور جوية رسمية (ثبات تاريخ التصوير)</div>
-                                              
-                                              {['2025', '2024', '2023', '2022', '2021', '2020'].map((year) => (
-                                                  <button 
-                                                      key={year}
-                                                      className={`dropdown-item ${activeMapType === `geomolg-${year}` ? 'active' : ''}`}
-                                                      onClick={() => { setActiveMapType(`geomolg-${year}`); setShowMapLayersMenu(false); setShowAllLayers(false); }}
-                                                  >
-                                                      <span className="item-icon">📸</span>
-                                                      <span className="item-text">الصورة الجوية لعام {year}</span>
-                                                  </button>
-                                              ))}
-                                              
-                                              <div className="dropdown-divider" />
-                                              
                                               <button 
-                                                  className={`dropdown-item ${activeMapType === 'geomolg' ? 'active' : ''}`}
-                                                  onClick={() => { setActiveMapType('geomolg'); setShowMapLayersMenu(false); setShowAllLayers(false); }}
+                                                  className={`dropdown-item ${activeMapType === 'satellite' ? 'active' : ''}`}
+                                                  onClick={() => { setActiveMapType('satellite'); setShowMapLayersMenu(false); setShowAllLayers(false); }}
                                               >
-                                                  <span className="item-icon">🗺️</span>
-                                                  <span className="item-text">عرض جيومولج المنفصل (ArcGIS)</span>
+                                                  <span className="item-icon">🌍</span>
+                                                  <span className="item-text">قمر صناعي ديناميكي (Google)</span>
                                               </button>
                                           </>
                                       )}
@@ -3218,7 +3187,7 @@ const MapComponent = () => {
                         setActiveCustomStart(null);
                         setAiResults([]); // Also clear the destination marker
                         setIsTracking(false); // Stop tracking when nav ends
-                        setActiveMapType('geomolg-2024'); // REVERT TO DEFAULT 2024 MAP
+                        setActiveMapType('satellite'); // REVERT TO DEFAULT MAP
                     }}
                 />
             )}
@@ -3603,7 +3572,7 @@ const MapComponent = () => {
             {/* Native Geomolg View with ArcGIS API */}
             {activeMapType === 'geomolg' && (
                 <GeomolgViewer
-                    onClose={() => setActiveMapType('geomolg-2024')}
+                    onClose={() => setActiveMapType('satellite')}
                     userLocation={userLocation}
                     posts={posts}
                     friends={friendsMap}
