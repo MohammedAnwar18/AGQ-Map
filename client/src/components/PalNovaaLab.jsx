@@ -5065,7 +5065,7 @@ out geom;`;
                 payload = { arcgisUrl: importLink };
             }
 
-            const response = await api.post(endpoint, payload);
+            const response = await api.post(endpoint, payload, { timeout: 120000 });
 
             if (response.data.success) {
                 const newLayerId = Date.now().toString();
