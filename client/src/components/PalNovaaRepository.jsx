@@ -36,6 +36,17 @@ const PalNovaaRepository = ({ onClose }) => {
 
     // Water Ripple Simulation State & Logic
     const rippleCanvasRef = useRef(null);
+    const emitRippleRef = useRef(null);
+    const queryLengthRef = useRef(0);
+    queryLengthRef.current = searchQuery.length;
+
+    // Trigger ripple pulse when user types in search input
+    useEffect(() => {
+        if (searchQuery && emitRippleRef.current) {
+            const strength = Math.min(650, 350 + searchQuery.length * 15);
+            emitRippleRef.current(strength);
+        }
+    }, [searchQuery]);
 
     useEffect(() => {
         const canvas = rippleCanvasRef.current;
@@ -71,7 +82,6 @@ const PalNovaaRepository = ({ onClose }) => {
 
         const handleMouseMoveEvent = (e) => {
             const rect = canvas.getBoundingClientRect();
-            // Map coordinates relative to the canvas bounding rect
             const clientX = e.clientX - rect.left;
             const clientY = e.clientY - rect.top;
             
@@ -79,7 +89,6 @@ const PalNovaaRepository = ({ onClose }) => {
             const y = Math.floor(clientY / scale);
             
             if (x > 1 && x < cols - 2 && y > 1 && y < rows - 2) {
-                // Drop a stone in the water (wider impact radius for smooth ripples)
                 for (let dy = -1; dy <= 1; dy++) {
                     for (let dx = -1; dx <= 1; dx++) {
                         const index = (x + dx) + (y + dy) * cols;
@@ -87,7 +96,6 @@ const PalNovaaRepository = ({ onClose }) => {
                     }
                 }
                 
-                // Interpolate line points between mouse steps for smooth continuous ripples
                 if (lastMouseX !== -1 && lastMouseY !== -1) {
                     const dist = Math.hypot(x - lastMouseX, y - lastMouseY);
                     if (dist > 1) {
@@ -108,11 +116,39 @@ const PalNovaaRepository = ({ onClose }) => {
 
         window.addEventListener('mousemove', handleMouseMoveEvent);
 
+        // typing ripple emitter assigned to ref
+        emitRippleRef.current = (strength) => {
+            const centerX = Math.floor(cols / 2);
+            const centerY = Math.floor(rows / 2);
+            
+            // 1. Emit localized raindrops (water splashes) near the center card
+            const numDrops = 3;
+            for (let d = 0; d < numDrops; d++) {
+                const rx = centerX + Math.floor((Math.random() - 0.5) * 40);
+                const ry = centerY + Math.floor((Math.random() - 0.5) * 25);
+                if (rx > 1 && rx < cols - 2 && ry > 1 && ry < rows - 2) {
+                    current[rx + ry * cols] = strength;
+                    current[rx + 1 + ry * cols] = strength;
+                    current[rx + (ry + 1) * cols] = strength;
+                }
+            }
+
+            // 2. Emit a circular shockwave starting from the center area outwards
+            const radius = 10;
+            for (let theta = 0; theta < 2 * Math.PI; theta += 0.25) {
+                const rx = Math.floor(centerX + radius * Math.cos(theta));
+                const ry = Math.floor(centerY + radius * Math.sin(theta));
+                if (rx > 1 && rx < cols - 2 && ry > 1 && ry < rows - 2) {
+                    current[rx + ry * cols] = strength * 0.8;
+                }
+            }
+        };
+
         let animationFrameId;
-        const damping = 0.97; // Gradually damp ripple amplitudes
+        const damping = 0.97; // Wave damping
 
         const update = () => {
-            // Wave propagation physics equations
+            // Wave propagation physics
             for (let y = 1; y < rows - 1; y++) {
                 for (let x = 1; x < cols - 1; x++) {
                     const i = x + y * cols;
@@ -126,18 +162,17 @@ const PalNovaaRepository = ({ onClose }) => {
                 }
             }
 
-            // Swap previous and current height buffers
             const temp = current;
             current = previous;
             previous = temp;
 
-            // Generate image data representing the ripples
+            // Render to canvas
             const imgData = ctx.createImageData(cols, rows);
             const data = imgData.data;
 
-            // Gold Highlight: HSL(38, 90%, 55%) -> RGB (251, 171, 21)
-            // Cyan Highlight: HSL(194, 96%, 49%) -> RGB (5, 177, 246)
-            
+            const textLength = queryLengthRef.current;
+            const sunriseRatio = Math.min(1, textLength / 15); // max sunrise ratio at 15 chars
+
             for (let i = 0; i < cols * rows; i++) {
                 const heightVal = current[i];
                 if (Math.abs(heightVal) > 0.1) {
@@ -145,19 +180,37 @@ const PalNovaaRepository = ({ onClose }) => {
                     const y = Math.floor(i / cols);
 
                     if (x > 1 && x < cols - 2 && y > 1 && y < rows - 2) {
-                        // Compute normals/slopes for specular shading/shimmer
                         const dx = current[i + 1] - current[i - 1];
                         const dy = current[i + cols] - current[i - cols];
                         
-                        const shade = Math.min(255, Math.max(0, (dx + dy) * 1.5));
+                        // Specular shading multiplier increases with typing length
+                        const brightnessMultiplier = 1.5 + sunriseRatio * 1.5;
+                        const shade = Math.min(255, Math.max(0, (dx + dy) * brightnessMultiplier));
                         
                         const pixelIdx = i * 4;
                         if (shade > 4) {
                             const mixRatio = Math.sin(x * 0.08 + y * 0.08) * 0.5 + 0.5;
-                            data[pixelIdx] = Math.floor(251 * mixRatio + 5 * (1 - mixRatio));
-                            data[pixelIdx + 1] = Math.floor(171 * mixRatio + 177 * (1 - mixRatio));
-                            data[pixelIdx + 2] = Math.floor(21 * mixRatio + 246 * (1 - mixRatio));
-                            data[pixelIdx + 3] = Math.min(255, Math.floor(shade * 1.8)); // Shimmer opacity
+                            
+                            // Base color: Gold (251, 171, 21) & Cyan (5, 177, 246)
+                            let r = Math.floor(251 * mixRatio + 5 * (1 - mixRatio));
+                            let g = Math.floor(171 * mixRatio + 177 * (1 - mixRatio));
+                            let b = Math.floor(21 * mixRatio + 246 * (1 - mixRatio));
+
+                            // Blends to fiery Sunset Sunrise theme (255, 166, 35) & (255, 75, 15) when typing
+                            if (sunriseRatio > 0) {
+                                const sunR = Math.floor(255 * mixRatio + 255 * (1 - mixRatio));
+                                const sunG = Math.floor(166 * mixRatio + 75 * (1 - mixRatio));
+                                const sunB = Math.floor(35 * mixRatio + 15 * (1 - mixRatio));
+                                
+                                r = Math.floor(r * (1 - sunriseRatio) + sunR * sunriseRatio);
+                                g = Math.floor(g * (1 - sunriseRatio) + sunG * sunriseRatio);
+                                b = Math.floor(b * (1 - sunriseRatio) + sunB * sunriseRatio);
+                            }
+
+                            data[pixelIdx] = r;
+                            data[pixelIdx + 1] = g;
+                            data[pixelIdx + 2] = b;
+                            data[pixelIdx + 3] = Math.min(255, Math.floor(shade * (1.8 + sunriseRatio * 0.7)));
                         }
                     }
                 }
