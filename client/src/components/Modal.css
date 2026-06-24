@@ -10,7 +10,7 @@
     justify-content: center;
     z-index: 4000;
     padding: 20px;
-    animation: fadeInPage 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: fadeInPage 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .modal-container {
@@ -28,7 +28,7 @@
     flex-direction: column;
     overflow: hidden;
     position: relative;
-    animation: slideInPage 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: slideInPage 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .modal-container::before {

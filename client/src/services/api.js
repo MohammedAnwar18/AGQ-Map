@@ -36,10 +36,34 @@ api.interceptors.request.use(
     }
 );
 
-// معالجة الأخطاء
+// ── In-Memory API Cache System ──────────────────────────────────────────────
+const apiCache = new Map();
+const CACHE_TTL = 15000; // 15 seconds TTL
+
+const getCacheKey = (url, config) => {
+    return JSON.stringify({ url, params: config?.params });
+};
+
+// Clear all cached responses on mutations (POST, PUT, DELETE)
+export const clearApiCache = () => {
+    apiCache.clear();
+};
+
+// Interceptor to clear cache on any mutations (success or error)
 api.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        const method = response.config?.method?.toLowerCase();
+        if (method && ['post', 'put', 'delete'].includes(method)) {
+            clearApiCache();
+        }
+        return response;
+    },
     (error) => {
+        const method = error.config?.method?.toLowerCase();
+        if (method && ['post', 'put', 'delete'].includes(method)) {
+            clearApiCache();
+        }
+        
         if (error.response?.status === 401) {
             const requestUrl = error.config?.url || '';
             // فقط أعد التوجيه للصفحة الرئيسية إذا كان الطلب لـ /auth/me
@@ -53,6 +77,30 @@ api.interceptors.response.use(
         return Promise.reject(error);
     }
 );
+
+// Override api.get to resolve from cache if valid
+const originalGet = api.get;
+api.get = async function (url, config) {
+    // Exclude auth check and camera routes from cache
+    const isExcluded = url.includes('/auth/me') || url.includes('/cameras');
+    if (isExcluded || config?.bypassCache) {
+        return originalGet.call(this, url, config);
+    }
+
+    const key = getCacheKey(url, config);
+    const cached = apiCache.get(key);
+
+    if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+        return cached.response;
+    }
+
+    const response = await originalGet.call(this, url, config);
+    apiCache.set(key, {
+        timestamp: Date.now(),
+        response: response
+    });
+    return response;
+};
 
 // Auth Services
 export const authService = {
