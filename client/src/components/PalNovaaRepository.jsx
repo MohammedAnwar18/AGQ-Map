@@ -1,12 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Warp } from "@paper-design/shaders-react";
 import './PalNovaaRepository.css';
 
 const PalNovaaRepository = ({ onClose }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [isFocused, setIsFocused] = useState(false);
-    const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-    const [isHovering, setIsHovering] = useState(false);
     
     // Repository & Admin States - Load from localStorage to persist when closed/reopened
     const [layers, setLayers] = useState(() => {
@@ -36,9 +34,147 @@ const PalNovaaRepository = ({ onClose }) => {
     const [downloadProgress, setDownloadProgress] = useState(0);
     const [downloadedIds, setDownloadedIds] = useState([]);
 
-    const handleMouseMove = (e) => {
-        setMousePos({ x: e.clientX, y: e.clientY });
-    };
+    // Water Ripple Simulation State & Logic
+    const rippleCanvasRef = useRef(null);
+
+    useEffect(() => {
+        const canvas = rippleCanvasRef.current;
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+        let width = 0;
+        let height = 0;
+        const scale = 4; // Downscale factor for grid simulation performance
+        
+        let cols = 0;
+        let rows = 0;
+        let current = [];
+        let previous = [];
+        
+        const resize = () => {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = Math.floor(width / scale);
+            canvas.height = Math.floor(height / scale);
+            cols = canvas.width;
+            rows = canvas.height;
+            current = new Float32Array(cols * rows);
+            previous = new Float32Array(cols * rows);
+        };
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Mouse move ripple trigger
+        let lastMouseX = -1;
+        let lastMouseY = -1;
+
+        const handleMouseMoveEvent = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            // Map coordinates relative to the canvas bounding rect
+            const clientX = e.clientX - rect.left;
+            const clientY = e.clientY - rect.top;
+            
+            const x = Math.floor(clientX / scale);
+            const y = Math.floor(clientY / scale);
+            
+            if (x > 1 && x < cols - 2 && y > 1 && y < rows - 2) {
+                // Drop a stone in the water (wider impact radius for smooth ripples)
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        const index = (x + dx) + (y + dy) * cols;
+                        current[index] = 450;
+                    }
+                }
+                
+                // Interpolate line points between mouse steps for smooth continuous ripples
+                if (lastMouseX !== -1 && lastMouseY !== -1) {
+                    const dist = Math.hypot(x - lastMouseX, y - lastMouseY);
+                    if (dist > 1) {
+                        for (let i = 0; i <= dist; i++) {
+                            const t = i / dist;
+                            const ix = Math.floor(lastMouseX + (x - lastMouseX) * t);
+                            const iy = Math.floor(lastMouseY + (y - lastMouseY) * t);
+                            if (ix > 1 && ix < cols - 2 && iy > 1 && iy < rows - 2) {
+                                current[ix + iy * cols] = 450;
+                            }
+                        }
+                    }
+                }
+            }
+            lastMouseX = x;
+            lastMouseY = y;
+        };
+
+        window.addEventListener('mousemove', handleMouseMoveEvent);
+
+        let animationFrameId;
+        const damping = 0.97; // Gradually damp ripple amplitudes
+
+        const update = () => {
+            // Wave propagation physics equations
+            for (let y = 1; y < rows - 1; y++) {
+                for (let x = 1; x < cols - 1; x++) {
+                    const i = x + y * cols;
+                    previous[i] = (
+                        current[i - 1] +
+                        current[i + 1] +
+                        current[i - cols] +
+                        current[i + cols]
+                    ) / 2 - previous[i];
+                    previous[i] *= damping;
+                }
+            }
+
+            // Swap previous and current height buffers
+            const temp = current;
+            current = previous;
+            previous = temp;
+
+            // Generate image data representing the ripples
+            const imgData = ctx.createImageData(cols, rows);
+            const data = imgData.data;
+
+            // Gold Highlight: HSL(38, 90%, 55%) -> RGB (251, 171, 21)
+            // Cyan Highlight: HSL(194, 96%, 49%) -> RGB (5, 177, 246)
+            
+            for (let i = 0; i < cols * rows; i++) {
+                const heightVal = current[i];
+                if (Math.abs(heightVal) > 0.1) {
+                    const x = i % cols;
+                    const y = Math.floor(i / cols);
+
+                    if (x > 1 && x < cols - 2 && y > 1 && y < rows - 2) {
+                        // Compute normals/slopes for specular shading/shimmer
+                        const dx = current[i + 1] - current[i - 1];
+                        const dy = current[i + cols] - current[i - cols];
+                        
+                        const shade = Math.min(255, Math.max(0, (dx + dy) * 1.5));
+                        
+                        const pixelIdx = i * 4;
+                        if (shade > 4) {
+                            const mixRatio = Math.sin(x * 0.08 + y * 0.08) * 0.5 + 0.5;
+                            data[pixelIdx] = Math.floor(251 * mixRatio + 5 * (1 - mixRatio));
+                            data[pixelIdx + 1] = Math.floor(171 * mixRatio + 177 * (1 - mixRatio));
+                            data[pixelIdx + 2] = Math.floor(21 * mixRatio + 246 * (1 - mixRatio));
+                            data[pixelIdx + 3] = Math.min(255, Math.floor(shade * 1.8)); // Shimmer opacity
+                        }
+                    }
+                }
+            }
+
+            ctx.putImageData(imgData, 0, 0);
+            animationFrameId = requestAnimationFrame(update);
+        };
+
+        update();
+
+        return () => {
+            window.removeEventListener('resize', resize);
+            window.removeEventListener('mousemove', handleMouseMoveEvent);
+            cancelAnimationFrame(animationFrameId);
+        };
+    }, []);
 
     // Autocomplete Suggestions
     const suggestions = useMemo(() => {
@@ -228,12 +364,7 @@ const PalNovaaRepository = ({ onClose }) => {
     };
 
     return (
-        <div 
-            className="repository-overlay-container"
-            onMouseMove={handleMouseMove}
-            onMouseEnter={() => setIsHovering(true)}
-            onMouseLeave={() => setIsHovering(false)}
-        >
+        <div className="repository-overlay-container">
             {/* Close Button */}
             <button className="repository-close-btn" onClick={onClose} title="إغلاق">
                 <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -260,14 +391,8 @@ const PalNovaaRepository = ({ onClose }) => {
                 />
             </div>
             
-            {/* Mouse Follower Glow Light */}
-            <div 
-                className="repository-mouse-follower"
-                style={{
-                    transform: `translate3d(${mousePos.x - 250}px, ${mousePos.y - 250}px, 0)`,
-                    opacity: isHovering ? 1 : 0
-                }}
-            />
+            {/* Physical Water Ripple Canvas */}
+            <canvas ref={rippleCanvasRef} className="repository-ripple-canvas" />
             
             {/* Glowing organic blobs that flash and pulse on focus with theme colors */}
             <div className={`repository-glow-dot dot-1 ${isFocused ? 'active' : ''}`}></div>
