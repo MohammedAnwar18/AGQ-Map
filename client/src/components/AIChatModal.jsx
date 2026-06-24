@@ -269,31 +269,31 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                 <div className="ai-floating-orb ai-orb-1" />
                 <div className="ai-floating-orb ai-orb-2" />
 
-                <div className="ai-modal-content">
-
-                    <header className="ai-header">
-                        <div className="ai-header-right">
-                            <div className="ai-logo" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <div className="ai-logo-mark">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                                        <circle cx="12" cy="10" r="3" />
-                                    </svg>
-                                </div>
-                                <div className="ai-logo-text" style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <span style={{ fontWeight: 'bold', fontSize: '15px' }}>المساعد الذكي</span>
-                                    <small style={{ fontSize: '10px', opacity: 0.6, marginTop: '2px' }}>PalNovaa AI</small>
-                                </div>
+                <header className="ai-header">
+                    <div className="ai-header-right">
+                        <div className="ai-logo" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div className="ai-logo-mark">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                                    <circle cx="12" cy="10" r="3" />
+                                </svg>
+                            </div>
+                            <div className="ai-logo-text" style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontWeight: 'bold', fontSize: '15px' }}>المساعد الذكي</span>
+                                <small style={{ fontSize: '10px', opacity: 0.6, marginTop: '2px' }}>PalNovaa AI</small>
                             </div>
                         </div>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                            <button className="ai-icon-btn" onClick={onClose}>
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                                </svg>
-                            </button>
-                        </div>
-                    </header>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <button className="ai-icon-btn" onClick={onClose}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                        </button>
+                    </div>
+                </header>
+
+                <div className="ai-modal-content">
 
                     <main className="ai-main-scroll" ref={scrollRef}>
                         {!showResults ? (

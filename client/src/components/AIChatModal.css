@@ -147,7 +147,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: calc(6px + env(safe-area-inset-top, 0px)) 16px 6px;
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 24px 14px;
   background: var(--surface);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
@@ -848,6 +848,7 @@
 
 /* Mobile Adjustments - Precise for all phones */
 @media (max-width: 768px) {
+  .ai-header { padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 8px; }
   .ai-modal-content { padding: 0; }
   .ai-main-scroll { padding: 10px; }
   .ai-hero { padding-top: 20px; }

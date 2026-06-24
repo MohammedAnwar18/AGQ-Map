@@ -689,12 +689,39 @@
     .user-item {
         flex-wrap: nowrap;
         gap: 0.75rem;
+        padding: 0.9rem 0.75rem;
+    }
+
+    .user-item .chat-avatar {
+        width: 42px;
+        height: 42px;
+    }
+
+    .user-item .chat-name {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 0.95rem;
+        max-width: 100%;
+    }
+
+    .user-item .chat-last-message {
+        font-size: 0.78rem;
     }
 
     .user-item-actions {
         width: auto;
         justify-content: flex-end;
         margin-top: 0;
+        gap: 0.5rem;
+        flex-shrink: 0;
+    }
+
+    .user-item-actions .btn-small {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
+        height: 32px;
+        min-width: 55px;
     }
 }
 
