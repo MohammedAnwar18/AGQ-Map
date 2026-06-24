@@ -195,18 +195,7 @@
 .repository-search-btn:hover svg {
     transform: scale(1.1);
 }
-/* Physical Water Ripple Canvas */
-.repository-ripple-canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 2; /* sits behind card and overlay */
-    pointer-events: none;
-    mix-blend-mode: screen; /* beautiful glow blend */
-    opacity: 0.85;
-}
+/* Direct Warp Background interactivity active */
 
 /* Glowing Organic Blobs */
 .repository-glow-dot {

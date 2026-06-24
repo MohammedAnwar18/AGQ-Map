@@ -34,200 +34,95 @@ const PalNovaaRepository = ({ onClose }) => {
     const [downloadProgress, setDownloadProgress] = useState(0);
     const [downloadedIds, setDownloadedIds] = useState([]);
 
-    // Water Ripple Simulation State & Logic
-    const rippleCanvasRef = useRef(null);
-    const emitRippleRef = useRef(null);
-    const queryLengthRef = useRef(0);
-    queryLengthRef.current = searchQuery.length;
+    // Spring physics states for Warp shader interactive distortion and swirl
+    const [distortion, setDistortion] = useState(0.25);
+    const [swirl, setSwirl] = useState(0.8);
 
-    // Trigger ripple pulse when user types in search input
+    // Spring physics refs for 60fps animations
+    const distPos = useRef(0.25);
+    const distVel = useRef(0);
+    const swirlPos = useRef(0.8);
+    const swirlVel = useRef(0);
+
+    // Run animation physics loop to update spring wobble
     useEffect(() => {
-        if (searchQuery && emitRippleRef.current) {
-            const strength = Math.min(650, 350 + searchQuery.length * 15);
-            emitRippleRef.current(strength);
-        }
-    }, [searchQuery]);
+        let active = true;
 
-    useEffect(() => {
-        const canvas = rippleCanvasRef.current;
-        if (!canvas) return;
+        const updatePhysics = () => {
+            if (!active) return;
 
-        const ctx = canvas.getContext('2d');
-        let width = 0;
-        let height = 0;
-        const scale = 4; // Downscale factor for grid simulation performance
-        
-        let cols = 0;
-        let rows = 0;
-        let current = [];
-        let previous = [];
-        
-        const resize = () => {
-            width = window.innerWidth;
-            height = window.innerHeight;
-            canvas.width = Math.floor(width / scale);
-            canvas.height = Math.floor(height / scale);
-            cols = canvas.width;
-            rows = canvas.height;
-            current = new Float32Array(cols * rows);
-            previous = new Float32Array(cols * rows);
+            // Spring constant & Damping factor
+            const kSpring = 0.05;
+            const damping = 0.88;
+
+            // Wobble physics for distortion (rests at 0.25)
+            const fDist = -kSpring * (distPos.current - 0.25);
+            distVel.current = (distVel.current + fDist) * damping;
+            distPos.current += distVel.current;
+
+            // Wobble physics for swirl (rests at 0.8)
+            const fSwirl = -kSpring * (swirlPos.current - 0.8);
+            swirlVel.current = (swirlVel.current + fSwirl) * damping;
+            swirlPos.current += swirlVel.current;
+
+            // Sync with React state to cause Warp component rerender
+            setDistortion(distPos.current);
+            setSwirl(swirlPos.current);
+
+            requestAnimationFrame(updatePhysics);
         };
 
-        window.addEventListener('resize', resize);
-        resize();
-
-        // Mouse move ripple trigger
-        let lastMouseX = -1;
-        let lastMouseY = -1;
-
+        updatePhysics();
+        
+        // Listen to mouse movement to perturb/wobble the original shader wave
         const handleMouseMoveEvent = (e) => {
-            const rect = canvas.getBoundingClientRect();
-            const clientX = e.clientX - rect.left;
-            const clientY = e.clientY - rect.top;
-            
-            const x = Math.floor(clientX / scale);
-            const y = Math.floor(clientY / scale);
-            
-            if (x > 1 && x < cols - 2 && y > 1 && y < rows - 2) {
-                for (let dy = -1; dy <= 1; dy++) {
-                    for (let dx = -1; dx <= 1; dx++) {
-                        const index = (x + dx) + (y + dy) * cols;
-                        current[index] = 450;
-                    }
-                }
-                
-                if (lastMouseX !== -1 && lastMouseY !== -1) {
-                    const dist = Math.hypot(x - lastMouseX, y - lastMouseY);
-                    if (dist > 1) {
-                        for (let i = 0; i <= dist; i++) {
-                            const t = i / dist;
-                            const ix = Math.floor(lastMouseX + (x - lastMouseX) * t);
-                            const iy = Math.floor(lastMouseY + (y - lastMouseY) * t);
-                            if (ix > 1 && ix < cols - 2 && iy > 1 && iy < rows - 2) {
-                                current[ix + iy * cols] = 450;
-                            }
-                        }
-                    }
-                }
+            const speed = Math.hypot(e.movementX, e.movementY);
+            if (speed > 1) {
+                // Apply subtle velocities to push distortion and swirl springs
+                distVel.current += e.movementX * 0.0003;
+                swirlVel.current += e.movementY * 0.0006;
             }
-            lastMouseX = x;
-            lastMouseY = y;
         };
 
         window.addEventListener('mousemove', handleMouseMoveEvent);
 
-        // typing ripple emitter assigned to ref
-        emitRippleRef.current = (strength) => {
-            const centerX = Math.floor(cols / 2);
-            const centerY = Math.floor(rows / 2);
-            
-            // 1. Emit localized raindrops (water splashes) near the center card
-            const numDrops = 3;
-            for (let d = 0; d < numDrops; d++) {
-                const rx = centerX + Math.floor((Math.random() - 0.5) * 40);
-                const ry = centerY + Math.floor((Math.random() - 0.5) * 25);
-                if (rx > 1 && rx < cols - 2 && ry > 1 && ry < rows - 2) {
-                    current[rx + ry * cols] = strength;
-                    current[rx + 1 + ry * cols] = strength;
-                    current[rx + (ry + 1) * cols] = strength;
-                }
-            }
-
-            // 2. Emit a circular shockwave starting from the center area outwards
-            const radius = 10;
-            for (let theta = 0; theta < 2 * Math.PI; theta += 0.25) {
-                const rx = Math.floor(centerX + radius * Math.cos(theta));
-                const ry = Math.floor(centerY + radius * Math.sin(theta));
-                if (rx > 1 && rx < cols - 2 && ry > 1 && ry < rows - 2) {
-                    current[rx + ry * cols] = strength * 0.8;
-                }
-            }
-        };
-
-        let animationFrameId;
-        const damping = 0.97; // Wave damping
-
-        const update = () => {
-            // Wave propagation physics
-            for (let y = 1; y < rows - 1; y++) {
-                for (let x = 1; x < cols - 1; x++) {
-                    const i = x + y * cols;
-                    previous[i] = (
-                        current[i - 1] +
-                        current[i + 1] +
-                        current[i - cols] +
-                        current[i + cols]
-                    ) / 2 - previous[i];
-                    previous[i] *= damping;
-                }
-            }
-
-            const temp = current;
-            current = previous;
-            previous = temp;
-
-            // Render to canvas
-            const imgData = ctx.createImageData(cols, rows);
-            const data = imgData.data;
-
-            const textLength = queryLengthRef.current;
-            const sunriseRatio = Math.min(1, textLength / 15); // max sunrise ratio at 15 chars
-
-            for (let i = 0; i < cols * rows; i++) {
-                const heightVal = current[i];
-                if (Math.abs(heightVal) > 0.1) {
-                    const x = i % cols;
-                    const y = Math.floor(i / cols);
-
-                    if (x > 1 && x < cols - 2 && y > 1 && y < rows - 2) {
-                        const dx = current[i + 1] - current[i - 1];
-                        const dy = current[i + cols] - current[i - cols];
-                        
-                        // Specular shading multiplier increases with typing length
-                        const brightnessMultiplier = 1.5 + sunriseRatio * 1.5;
-                        const shade = Math.min(255, Math.max(0, (dx + dy) * brightnessMultiplier));
-                        
-                        const pixelIdx = i * 4;
-                        if (shade > 4) {
-                            const mixRatio = Math.sin(x * 0.08 + y * 0.08) * 0.5 + 0.5;
-                            
-                            // Base color: Gold (251, 171, 21) & Cyan (5, 177, 246)
-                            let r = Math.floor(251 * mixRatio + 5 * (1 - mixRatio));
-                            let g = Math.floor(171 * mixRatio + 177 * (1 - mixRatio));
-                            let b = Math.floor(21 * mixRatio + 246 * (1 - mixRatio));
-
-                            // Blends to fiery Sunset Sunrise theme (255, 166, 35) & (255, 75, 15) when typing
-                            if (sunriseRatio > 0) {
-                                const sunR = Math.floor(255 * mixRatio + 255 * (1 - mixRatio));
-                                const sunG = Math.floor(166 * mixRatio + 75 * (1 - mixRatio));
-                                const sunB = Math.floor(35 * mixRatio + 15 * (1 - mixRatio));
-                                
-                                r = Math.floor(r * (1 - sunriseRatio) + sunR * sunriseRatio);
-                                g = Math.floor(g * (1 - sunriseRatio) + sunG * sunriseRatio);
-                                b = Math.floor(b * (1 - sunriseRatio) + sunB * sunriseRatio);
-                            }
-
-                            data[pixelIdx] = r;
-                            data[pixelIdx + 1] = g;
-                            data[pixelIdx + 2] = b;
-                            data[pixelIdx + 3] = Math.min(255, Math.floor(shade * (1.8 + sunriseRatio * 0.7)));
-                        }
-                    }
-                }
-            }
-
-            ctx.putImageData(imgData, 0, 0);
-            animationFrameId = requestAnimationFrame(update);
-        };
-
-        update();
-
         return () => {
-            window.removeEventListener('resize', resize);
+            active = false;
             window.removeEventListener('mousemove', handleMouseMoveEvent);
-            cancelAnimationFrame(animationFrameId);
         };
     }, []);
+
+    // Pulse the wave spring when typing to create localized ripples/shakes
+    useEffect(() => {
+        if (searchQuery) {
+            distVel.current += (Math.random() - 0.5) * 0.12;
+            swirlVel.current += (Math.random() - 0.5) * 0.20;
+        }
+    }, [searchQuery]);
+
+    // Interpolate original Warp colors to Sunrise theme based on query length
+    const warpColors = useMemo(() => {
+        const textLength = searchQuery.length;
+        if (textLength === 0) {
+            return ["hsl(217, 54%, 11%)", "hsl(38, 90%, 55%)", "hsl(213, 44%, 18%)", "hsl(194, 96%, 49%)"];
+        }
+
+        const ratio = Math.min(1, textLength / 15); // Fully morphed at 15 chars
+
+        const interpolateHSL = (h1, s1, l1, h2, s2, l2, r) => {
+            const h = Math.round(h1 + (h2 - h1) * r);
+            const s = Math.round(s1 + (s2 - s1) * r);
+            const l = Math.round(l1 + (l2 - l1) * r);
+            return `hsl(${h}, ${s}%, ${l}%)`;
+        };
+
+        return [
+            interpolateHSL(217, 54, 11, 260, 40, 8, ratio),   // Dark blue -> Deep indigo
+            interpolateHSL(38, 90, 55, 20, 95, 55, ratio),     // Gold -> Sunrise orange/red
+            interpolateHSL(213, 44, 18, 38, 95, 55, ratio),    // Deep navy -> Sunrise gold
+            interpolateHSL(194, 96, 49, 340, 85, 45, ratio)    // Cyan -> Dawn vibrant pink
+        ];
+    }, [searchQuery]);
 
     // Autocomplete Suggestions
     const suggestions = useMemo(() => {
@@ -426,26 +321,23 @@ const PalNovaaRepository = ({ onClose }) => {
                 </svg>
             </button>
 
-            {/* Background shader - kept exactly as base properties */}
+            {/* Background shader - dynamic wave & sunrise colors */}
             <div className="repository-shader-bg">
                 <Warp
                     style={{ height: "100%", width: "100%" }}
                     proportion={0.45}
                     softness={1}
-                    distortion={0.25}
-                    swirl={0.8}
+                    distortion={distortion}
+                    swirl={swirl}
                     swirlIterations={10}
                     shape="checks"
                     shapeScale={0.1}
                     scale={1}
                     rotation={0}
                     speed={1}
-                    colors={["hsl(217, 54%, 11%)", "hsl(38, 90%, 55%)", "hsl(213, 44%, 18%)", "hsl(194, 96%, 49%)"]}
+                    colors={warpColors}
                 />
             </div>
-            
-            {/* Physical Water Ripple Canvas */}
-            <canvas ref={rippleCanvasRef} className="repository-ripple-canvas" />
             
             {/* Glowing organic blobs that flash and pulse on focus with theme colors */}
             <div className={`repository-glow-dot dot-1 ${isFocused ? 'active' : ''}`}></div>
