@@ -8,7 +8,7 @@ const MAPILLARY_TOKEN = import.meta.env.VITE_MAPILLARY_TOKEN || '';
 // Progressive search radii in degrees (~111m, ~330m, ~1km)
 const SEARCH_RADII = [0.001, 0.003, 0.009];
 
-const StreetViewModal = ({ lat, lng, locationName, onClose, onPositionChange, inline = false }) => {
+const StreetViewModal = ({ lat, lng, locationName, onClose, onPositionChange, inline = false, isMaximized = false, onToggleMaximize }) => {
     const containerRef = useRef(null);
     const viewerRef    = useRef(null);
 
@@ -111,6 +111,24 @@ const StreetViewModal = ({ lat, lng, locationName, onClose, onPositionChange, in
                 <div className="sv-header-right">
                     {status === 'found' && imgCount > 0 && (
                         <span className="sv-img-count">{imgCount} صورة</span>
+                    )}
+                    {onToggleMaximize && (
+                        <button 
+                            className="sv-maximize-btn" 
+                            onClick={onToggleMaximize}
+                            title={isMaximized ? "تصغير الشاشة" : "تكبير الشاشة"}
+                            type="button"
+                        >
+                            {isMaximized ? (
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7"/>
+                                </svg>
+                            ) : (
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/>
+                                </svg>
+                            )}
+                        </button>
                     )}
                     <button className="sv-close" onClick={onClose} title="إغلاق">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"

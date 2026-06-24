@@ -34,6 +34,7 @@ const VirtualTourMap = () => {
     const [imageFile,        setImageFile]        = useState(null);
     const [tempCoords,       setTempCoords]       = useState(null);
     const [isUploading,      setIsUploading]      = useState(false);
+    const [isSvMaximized,    setIsSvMaximized]    = useState(false);
 
     // API URL
     const apiUrl = import.meta.env.VITE_API_URL || '/api';
@@ -221,6 +222,7 @@ const VirtualTourMap = () => {
         setSelectedLocation(null);
         setSvCoords(null);
         setSvPosition(null);
+        setIsSvMaximized(false);
     };
 
     // ── Map click ────────────────────────────────────────────────────────────
@@ -307,7 +309,7 @@ const VirtualTourMap = () => {
             <div className="vtmap-body">
 
                 {/* ── Map ── */}
-                <div className={`vtmap-map-wrap ${svOpen ? 'sv-open' : ''}`}>
+                <div className={`vtmap-map-wrap ${svOpen ? 'sv-open' : ''} ${isSvMaximized ? 'sv-maximized' : ''}`}>
 
                     {/* Hint banner */}
                     {mode === 'street' && !svCoords && (
@@ -664,12 +666,14 @@ const VirtualTourMap = () => {
                             lat={svCoords.lat}
                             lng={svCoords.lng}
                             locationName="عرض الشارع"
-                            onClose={() => { setSvCoords(null); setSvPosition(null); }}
+                            onClose={() => { setSvCoords(null); setSvPosition(null); setIsSvMaximized(false); }}
                             onPositionChange={(lat, lng) => {
                                 setSvPosition({ lat, lng });
                                 mapRef.current?.easeTo({ center: [lng, lat], duration: 500 });
                             }}
                             inline
+                            isMaximized={isSvMaximized}
+                            onToggleMaximize={() => setIsSvMaximized(!isSvMaximized)}
                         />
                     )}
                 </div>
