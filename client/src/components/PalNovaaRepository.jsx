@@ -5,9 +5,20 @@ import './PalNovaaRepository.css';
 const PalNovaaRepository = ({ onClose }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [isFocused, setIsFocused] = useState(false);
+    const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+    const [isHovering, setIsHovering] = useState(false);
+
+    const handleMouseMove = (e) => {
+        setMousePos({ x: e.clientX, y: e.clientY });
+    };
 
     return (
-        <div className="repository-overlay-container">
+        <div 
+            className="repository-overlay-container"
+            onMouseMove={handleMouseMove}
+            onMouseEnter={() => setIsHovering(true)}
+            onMouseLeave={() => setIsHovering(false)}
+        >
             {/* Close Button */}
             <button className="repository-close-btn" onClick={onClose} title="إغلاق">
                 <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -33,6 +44,15 @@ const PalNovaaRepository = ({ onClose }) => {
                     colors={["hsl(217, 54%, 11%)", "hsl(38, 90%, 55%)", "hsl(213, 44%, 18%)", "hsl(194, 96%, 49%)"]}
                 />
             </div>
+            
+            {/* Mouse Follower Glow Light */}
+            <div 
+                className="repository-mouse-follower"
+                style={{
+                    transform: `translate3d(${mousePos.x - 250}px, ${mousePos.y - 250}px, 0)`,
+                    opacity: isHovering ? 1 : 0
+                }}
+            />
             
             {/* Glowing organic blobs that flash and pulse on focus with theme colors */}
             <div className={`repository-glow-dot dot-1 ${isFocused ? 'active' : ''}`}></div>
