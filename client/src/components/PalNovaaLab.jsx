@@ -4424,87 +4424,135 @@ out geom;`;
                     return;
                 }
 
-                const json = JSON.parse(event.target.result);
-                if (json.type === 'FeatureCollection' || json.type === 'Feature') {
-                    // الرفع للسيرفر (Cloudflare R2)
-                    const response = await api.post('/storage/upload', {
-                        geojson: json,
-                        layerName: file.name
-                    });
+                let json;
+                try {
+                    json = JSON.parse(event.target.result);
+                } catch (jsonErr) {
+                    alert("❌ الملف المرفوع لا يحتوي على صيغة JSON صالحة. الرجاء التأكد من صحة الملف.");
+                    return;
+                }
 
-                    if (response.data.success) {
-                        const newLayerId = Date.now().toString();
-                        const defaultColor = ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899'][geoLayers.length % 5];
-                        
-                        // تأكد من وجود معرفات لكل معلم
-                        const geojsonData = response.data.geojson || json;
-                        if (geojsonData.features) {
-                            geojsonData.features = geojsonData.features.map((f, idx) => ({
-                                ...f,
-                                id: f.id || `${newLayerId}_${idx}`
-                            }));
-                        }
-
-                        const newLayer = {
-                            id: newLayerId,
-                            name: file.name.substring(0, 19),
-                            dataUrl: response.data.url,
-                            data: geojsonData,
-                            color: defaultColor,
-                            isVisible: true
+                // تطبيع وتنسيق ملفات GeoJSON البسيطة أو الفردية إلى FeatureCollection
+                if (json && !json.type) {
+                    if (Array.isArray(json)) {
+                        json = {
+                            type: 'FeatureCollection',
+                            features: json.map(f => f.type === 'Feature' ? f : { type: 'Feature', geometry: f, properties: {} })
                         };
-                        setGeoLayers(prev => [...prev, newLayer]);
-
-                        setLayerStyles(prev => ({
-                            ...prev,
-                            [newLayerId]: {
-                                color: defaultColor,
-                                outlineColor: '#ffffff',
-                                outlineWidth: 2,
-                                shape: 'circle',
-                                opacity: 1,
-                                fillOpacity: 0.3
-                            }
-                        }));
-                        setActiveTableLayerId(newLayerId);
-                        setShowBottomTable(true);
-
-                        // Fly to data
-                        if (mapRef.current) {
-                            try {
-                                const coordinates = [];
-                                const extractCoords = (obj) => {
-                                    if (obj.type === 'FeatureCollection') obj.features.forEach(extractCoords);
-                                    else if (obj.geometry) extractCoords(obj.geometry);
-                                    else if (obj.coordinates) {
-                                        if (typeof obj.coordinates[0] === 'number') coordinates.push(obj.coordinates);
-                                        else obj.coordinates.forEach(c => {
-                                            if (typeof c[0] === 'number') coordinates.push(c);
-                                            else c.forEach(sub => {
-                                                if (typeof sub[0] === 'number') coordinates.push(sub);
-                                            });
-                                        });
-                                    }
-                                };
-                                extractCoords(json);
-                                if (coordinates.length > 0) {
-                                    let minLng = Infinity, maxLng = -Infinity;
-                                    let minLat = Infinity, maxLat = -Infinity;
-                                    for (let i = 0; i < coordinates.length; i++) {
-                                        const pt = coordinates[i];
-                                        if (pt[0] < minLng) minLng = pt[0];
-                                        if (pt[0] > maxLng) maxLng = pt[0];
-                                        if (pt[1] < minLat) minLat = pt[1];
-                                        if (pt[1] > maxLat) maxLat = pt[1];
-                                    }
-                                    mapRef.current.fitBounds(
-                                        [[minLng, minLat], [maxLng, maxLat]],
-                                        { padding: 80, duration: 2000 }
-                                    );
-                                }
-                            } catch (e) { console.error('Fit bounds error', e); }
-                        }
                     }
+                } else if (json && json.type && json.type !== 'FeatureCollection' && json.type !== 'Feature') {
+                    if (['Point', 'MultiPoint', 'LineString', 'MultiLineString', 'Polygon', 'MultiPolygon', 'GeometryCollection'].includes(json.type)) {
+                        json = {
+                            type: 'FeatureCollection',
+                            features: [{ type: 'Feature', geometry: json, properties: {} }]
+                        };
+                    }
+                }
+
+                if (json && (json.type === 'FeatureCollection' || json.type === 'Feature')) {
+                    let geojsonData = json;
+                    let dataUrl = null;
+                    let uploadSuccess = false;
+
+                    try {
+                        // محاولة الرفع للسيرفر السحابي
+                        const response = await api.post('/storage/upload', {
+                            geojson: json,
+                            layerName: file.name
+                        });
+
+                        if (response.data && response.data.success) {
+                            dataUrl = response.data.url;
+                            geojsonData = response.data.geojson || json;
+                            uploadSuccess = true;
+                        }
+                    } catch (uploadErr) {
+                        console.warn("Could not upload geojson to server storage, falling back to local-only layer:", uploadErr);
+                    }
+
+                    const newLayerId = Date.now().toString();
+                    const defaultColor = ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899'][geoLayers.length % 5];
+                    
+                    // تأكد من وجود معرفات فريدة لكل معلم
+                    if (geojsonData.features) {
+                        geojsonData.features = geojsonData.features.map((f, idx) => ({
+                            ...f,
+                            id: f.id || `${newLayerId}_${idx}`
+                        }));
+                    } else if (geojsonData.type === 'Feature') {
+                        geojsonData = {
+                            type: 'FeatureCollection',
+                            features: [{ ...geojsonData, id: geojsonData.id || `${newLayerId}_0` }]
+                        };
+                    }
+
+                    const newLayer = {
+                        id: newLayerId,
+                        name: file.name.substring(0, 19),
+                        dataUrl: dataUrl,
+                        data: geojsonData,
+                        color: defaultColor,
+                        isVisible: true
+                    };
+                    setGeoLayers(prev => [...prev, newLayer]);
+
+                    setLayerStyles(prev => ({
+                        ...prev,
+                        [newLayerId]: {
+                            color: defaultColor,
+                            outlineColor: '#ffffff',
+                            outlineWidth: 2,
+                            shape: 'circle',
+                            opacity: 1,
+                            fillOpacity: 0.3
+                        }
+                    }));
+                    setActiveTableLayerId(newLayerId);
+                    setShowBottomTable(true);
+
+                    // تركيز الخريطة وتكبيرها لتناسب حدود الطبقة
+                    if (mapRef.current) {
+                        try {
+                            const coordinates = [];
+                            const extractCoords = (obj) => {
+                                if (obj.type === 'FeatureCollection') obj.features.forEach(extractCoords);
+                                else if (obj.geometry) extractCoords(obj.geometry);
+                                else if (obj.coordinates) {
+                                    if (typeof obj.coordinates[0] === 'number') coordinates.push(obj.coordinates);
+                                    else obj.coordinates.forEach(c => {
+                                        if (typeof c[0] === 'number') coordinates.push(c);
+                                        else c.forEach(sub => {
+                                            if (typeof sub[0] === 'number') coordinates.push(sub);
+                                        });
+                                    });
+                                }
+                            };
+                            extractCoords(geojsonData);
+                            if (coordinates.length > 0) {
+                                let minLng = Infinity, maxLng = -Infinity;
+                                let minLat = Infinity, maxLat = -Infinity;
+                                for (let i = 0; i < coordinates.length; i++) {
+                                    const pt = coordinates[i];
+                                    if (pt[0] < minLng) minLng = pt[0];
+                                    if (pt[0] > maxLng) maxLng = pt[0];
+                                    if (pt[1] < minLat) minLat = pt[1];
+                                    if (pt[1] > maxLat) maxLat = pt[1];
+                                }
+                                mapRef.current.fitBounds(
+                                    [[minLng, minLat], [maxLng, maxLat]],
+                                    { padding: 80, duration: 2000 }
+                                );
+                            }
+                        } catch (e) { console.error('Fit bounds error', e); }
+                    }
+
+                    if (uploadSuccess) {
+                        alert(`✅ تم استيراد وتحميل ملف GeoJSON "${file.name}" بنجاح!`);
+                    } else {
+                        alert(`⚠️ تم تحميل ملف GeoJSON "${file.name}" محلياً بنجاح! (تعذر حفظ النسخة السحابية لضخامة الحجم أو عطل الاتصال)`);
+                    }
+                } else {
+                    alert("❌ صيغة ملف GeoJSON غير مدعومة (يجب أن يكون FeatureCollection أو Feature أو Geometry صالحة)");
                 }
             } catch (err) {
                 console.error("Upload error:", err);
