@@ -5146,6 +5146,7 @@ out geom;`;
                     dataUrl: response.data.url,
                     url: response.data.url, // الرابط السحابي المباشر لخرائط Mapbox
                     data: geojsonData, // قد تكون null في الطبقات الضخمة > 2000
+                    featureCount: response.data.count,
                     color: defaultColor,
                     isVisible: true
                 }]);
@@ -11362,7 +11363,7 @@ function closeAllInfoWindows() {
 
                                 if (layer.type === '3d-mesh') {
                                     return (
-                                        <Source key={layer.id} id={`src-${layer.id}`} type="geojson" data={layer.data}>
+                                        <Source key={layer.id} id={`src-${layer.id}`} type="geojson" data={layer.data || (layer.url ? `/api/storage/proxy?url=${encodeURIComponent(layer.url)}` : null)}>
                                             <Layer
                                                 id={`extrusion-${layer.id}`}
                                                 type="fill-extrusion"
@@ -11405,7 +11406,7 @@ function closeAllInfoWindows() {
 
                                 return (
                                     <React.Fragment key={layer.id}>
-                                        <Source id={`src-${layer.id}`} type="geojson" data={layer.data}>
+                                        <Source id={`src-${layer.id}`} type="geojson" data={layer.data || (layer.url ? `/api/storage/proxy?url=${encodeURIComponent(layer.url)}` : null)}>
                                              {/* Polygons */}
                                              <Layer
                                                  id={`poly-${layer.id}`}
@@ -12290,7 +12291,7 @@ function closeAllInfoWindows() {
                                                                 <small>
                                                                     {isTable 
                                                                         ? `${layer.data?.length || 0} سجل بيانات` 
-                                                                        : `${layer.data?.features?.length || 0} معلم جغرافي`}
+                                                                        : `${layer.featureCount !== undefined ? layer.featureCount : (layer.data?.features?.length || 0)} معلم جغرافي`}
                                                                     {layer.isRemoteSensing && (
                                                                         <span style={{ display: 'block', marginTop: '4px', color: '#fbab15' }}>
                                                                             الارتفاع: {layer.minElevation?.toFixed(0)}م - {layer.maxElevation?.toFixed(0)}م

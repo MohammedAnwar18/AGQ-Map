@@ -205,6 +205,19 @@ exports.importArcGIS = async (req, res) => {
     try {
         const { arcgisUrl, layerName, boundaryGeometry } = req.body;
 
+        // debug log boundary geometry
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            fs.writeFileSync(path.join(__dirname, '../boundary_debug.json'), JSON.stringify({
+                timestamp: new Date().toISOString(),
+                arcgisUrl,
+                boundaryGeometry
+            }, null, 2));
+        } catch (debugErr) {
+            console.error('Failed to write boundary_debug.json:', debugErr.message);
+        }
+
         if (!arcgisUrl) {
             return res.status(400).json({ error: 'يرجى تزويد رابط ArcGIS صالح' });
         }
