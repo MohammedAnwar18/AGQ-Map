@@ -203,7 +203,7 @@ exports.uploadGeoJSON = async (req, res) => {
  */
 exports.importArcGIS = async (req, res) => {
     try {
-        const { arcgisUrl, layerName } = req.body;
+        const { arcgisUrl, layerName, boundaryGeometry } = req.body;
 
         if (!arcgisUrl) {
             return res.status(400).json({ error: 'يرجى تزويد رابط ArcGIS صالح' });
@@ -221,6 +221,15 @@ exports.importArcGIS = async (req, res) => {
         let features = [];
         let objectIdField = 'OBJECTID';
         
+        // إعداد معايير التصفية المكانية في حال توفير حدود جغرافية
+        const spatialParams = {};
+        if (boundaryGeometry) {
+            spatialParams.geometry = typeof boundaryGeometry === 'string' ? boundaryGeometry : JSON.stringify(boundaryGeometry);
+            spatialParams.geometryType = 'esriGeometryPolygon';
+            spatialParams.inSR = 4326;
+            spatialParams.spatialRel = 'esriSpatialRelIntersects';
+        }
+
         // 1. محاولة جلب البيانات التعريفية لمعرفة حقل المعرف الفريد
         try {
             const metadataUrl = queryUrl.replace(/\/query\/?$/i, '');
@@ -238,7 +247,8 @@ exports.importArcGIS = async (req, res) => {
             const idParams = {
                 where: '1=1',
                 returnIdsOnly: true,
-                f: 'json'
+                f: 'json',
+                ...spatialParams
             };
             const idResponse = await axios.get(queryUrl, { params: idParams, timeout: 60000, httpsAgent: insecureAgent });
             if (idResponse.data && Array.isArray(idResponse.data.objectIds) && idResponse.data.objectIds.length > 0) {
@@ -304,7 +314,8 @@ exports.importArcGIS = async (req, res) => {
                     outSR: 4326,
                     resultOffset: offset,
                     resultRecordCount: batchSize,
-                    orderByFields: objectIdField
+                    orderByFields: objectIdField,
+                    ...spatialParams
                 };
 
                 const response = await axios.get(queryUrl, { params: queryParams, timeout: 60000, httpsAgent: insecureAgent });

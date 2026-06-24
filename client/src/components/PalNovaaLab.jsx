@@ -281,6 +281,7 @@ const PalNovaaLab = ({ onClose }) => {
     const [geoLayers, setGeoLayers] = useState([]);
     const [activeTableLayerId, setActiveTableLayerId] = useState(null);
     const [fetchingLayers, setFetchingLayers] = useState({});
+    const [selectedBoundaryLayerId, setSelectedBoundaryLayerId] = useState('');
     const [isDesignStudioOpen, setIsDesignStudioOpen] = useState(false);
     const [isHydroSimOpen, setIsHydroSimOpen] = useState(false);
     const [activeDsCategory, setActiveDsCategory] = useState('layouts');
@@ -5052,6 +5053,48 @@ out geom;`;
         alert(`✅ تم ربط ${selectedCsvFields.length} حقول بـ ${activeTableLayer.name} بنجاح!`);
     };
 
+    const getArcGISPolygonFromLayer = async (layer) => {
+        if (!layer) return null;
+        
+        let geojson = layer.data;
+        if (!geojson && layer.dataUrl) {
+            try {
+                const res = await axios.get(layer.dataUrl, { timeout: 30000 });
+                geojson = res.data;
+            } catch (err) {
+                console.warn('[PalNovaa] Direct fetch of boundary layer failed, trying proxy:', err.message);
+                try {
+                    const proxyUrl = `/api/storage/proxy?url=${encodeURIComponent(layer.dataUrl)}`;
+                    const proxyRes = await api.get(proxyUrl, { timeout: 30000 });
+                    geojson = proxyRes.data;
+                } catch (proxyErr) {
+                    console.error('[PalNovaa] Failed to fetch boundary layer data:', proxyErr);
+                    throw new Error('فشل جلب بيانات طبقة الحدود من السيرفر. يرجى التحقق من اتصالك بالإنترنت.');
+                }
+            }
+        }
+
+        if (!geojson || !geojson.features) {
+            throw new Error('طبقة الحدود المحددة لا تحتوي على أي معالم جغرافية.');
+        }
+
+        const rings = [];
+        geojson.features.forEach(f => {
+            if (!f.geometry) return;
+            if (f.geometry.type === 'Polygon') {
+                f.geometry.coordinates.forEach(ring => rings.push(ring));
+            } else if (f.geometry.type === 'MultiPolygon') {
+                f.geometry.coordinates.forEach(poly => poly.forEach(ring => rings.push(ring)));
+            }
+        });
+
+        if (rings.length === 0) {
+            throw new Error('الطبقة المحددة للحدود لا تحتوي على أي مضلعات (Polygon/MultiPolygon).');
+        }
+
+        return { rings, spatialReference: { wkid: 4326 } };
+    };
+
     const handleImportLink = async () => {
         if (!importLink) return;
         setIsImporting(true);
@@ -5063,6 +5106,23 @@ out geom;`;
             if (importLink.includes('MapServer') || importLink.includes('FeatureServer')) {
                 endpoint = '/storage/import-arcgis';
                 payload = { arcgisUrl: importLink };
+
+                // جلب الحدود الجغرافية إذا كانت محددة
+                if (selectedBoundaryLayerId) {
+                    const boundaryLayer = geoLayers.find(l => l.id === selectedBoundaryLayerId);
+                    if (boundaryLayer) {
+                        try {
+                            const boundaryGeom = await getArcGISPolygonFromLayer(boundaryLayer);
+                            if (boundaryGeom) {
+                                payload.boundaryGeometry = boundaryGeom;
+                            }
+                        } catch (geomErr) {
+                            alert(`⚠️ خطأ في استخراج الحدود:\n${geomErr.message}`);
+                            setIsImporting(false);
+                            return;
+                        }
+                    }
+                }
             }
 
             const response = await api.post(endpoint, payload, { timeout: 120000 });
@@ -12134,6 +12194,33 @@ function closeAllInfoWindows() {
                                                 {isImporting ? '...' : 'جلب'}
                                             </button>
                                         </div>
+
+                                        <div className="form-group" style={{ marginTop: '12px', marginBottom: '8px' }}>
+                                            <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '6px', color: 'var(--text-secondary)' }}>
+                                                الحدود الجغرافية لتصفية الاستيراد (اختياري):
+                                            </label>
+                                            <select
+                                                value={selectedBoundaryLayerId}
+                                                onChange={(e) => setSelectedBoundaryLayerId(e.target.value)}
+                                                style={{
+                                                    width: '100%', 
+                                                    padding: '10px', 
+                                                    background: 'rgba(255,255,255,0.05)',
+                                                    border: '1px solid rgba(255,255,255,0.1)', 
+                                                    borderRadius: '10px',
+                                                    color: 'white', 
+                                                    outline: 'none',
+                                                    fontSize: '0.8rem',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                <option value="" style={{ background: '#222' }}>بدون تصفية (استيراد كامل الطبقة)</option>
+                                                {geoLayers.filter(l => l.type !== 'raster-tile').map(l => (
+                                                    <option key={l.id} value={l.id} style={{ background: '#222' }}>{l.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
                                         <small style={{ display: 'block', marginTop: '8px', color: 'var(--text-muted)', fontSize: '0.7rem' }}>
                                             يدعم MapServer و FeatureServer و GeoJSON مباشر.
                                         </small>
