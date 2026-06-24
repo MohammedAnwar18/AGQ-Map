@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import axios from 'axios';
 import Map, { Source, Layer, NavigationControl, Popup, Marker } from 'react-map-gl/maplibre';
 import * as GeoTIFF from 'geotiff';
+import proj4 from 'proj4';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -181,7 +182,7 @@ const PalNovaaLab = ({ onClose }) => {
         layout: 'fullmap',
         palette: 'classic',
         font: 'cairo_tajawal',
-        basemap: 'satellite',
+        basemap: 'satellite_pure',
         marker: 'pin',
         component: 'pill',
         effect: 'glow',
@@ -2569,12 +2570,14 @@ const PalNovaaLab = ({ onClose }) => {
         }
         
         const rasters = await image.readRasters();
+        const samplesPerPixel = image.getSamplesPerPixel ? image.getSamplesPerPixel() : (rasters.length || 1);
+        
         let elevations = rasters[0];
         if (!(elevations instanceof Float32Array)) {
             elevations = new Float32Array(elevations);
         }
         
-        return { width, height, scaleX, scaleY, west, north, elevations };
+        return { width, height, scaleX, scaleY, west, north, elevations, rasters, samplesPerPixel };
     };
 
 
@@ -4228,6 +4231,184 @@ out geom;`;
         });
     };
 
+    const detectEPSG = (x, y) => {
+        if (Math.abs(x) <= 180 && Math.abs(y) <= 90) {
+            return 'EPSG:4326';
+        }
+        if (x >= 600000 && x <= 750000 && y >= 3400000 && y <= 3700000) {
+            return 'EPSG:32636';
+        }
+        if (x >= 100000 && x <= 250000) {
+            if (y >= 900000 && y <= 1050000) {
+                return 'EPSG:28191';
+            }
+            if (y >= 400000 && y <= 800000) {
+                return 'EPSG:2039';
+            }
+        }
+        if (x > 3000000 && x < 5000000) {
+            return 'EPSG:3857';
+        }
+        return 'EPSG:32636';
+    };
+
+    const reproject = (fromEPSG, coords) => {
+        if (fromEPSG === 'EPSG:4326') return coords;
+        try {
+            if (!proj4.defs["EPSG:28191"]) {
+                proj4.defs("EPSG:28191", "+proj=cass +lat_0=31.734875 +lon_0=35.2120805555556 +k=1 +x_0=170251.555 +y_0=126867.909 +a=6378300.789 +b=6356566.435 +towgs84=-275,-85,-278,0,0,0,0 +units=m +no_defs");
+            }
+            if (!proj4.defs["EPSG:2039"]) {
+                proj4.defs("EPSG:2039", "+proj=tmerc +lat_0=31.734875 +lon_0=35.20451694444445 +k=1.000007 +x_0=219529.584 +y_0=626907.39 +ellps=GRS80 +towgs84=-48,55,52,0,0,0,0 +units=m +no_defs");
+            }
+            if (!proj4.defs["EPSG:32636"]) {
+                proj4.defs("EPSG:32636", "+proj=utm +zone=36 +ellps=WGS84 +datum=WGS84 +units=m +no_defs");
+            }
+            if (!proj4.defs["EPSG:3857"]) {
+                proj4.defs("EPSG:3857", "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs");
+            }
+            return proj4(fromEPSG, "EPSG:4326", coords);
+        } catch (err) {
+            console.error(`Reprojection error:`, err);
+            return coords;
+        }
+    };
+
+    const reprojectArray = (coords, fromEPSG) => {
+        if (typeof coords[0] === 'number') {
+            return reproject(fromEPSG, coords);
+        }
+        return coords.map(c => reprojectArray(c, fromEPSG));
+    };
+
+    const reprojectGeoJSON = (geojson) => {
+        if (!geojson) return geojson;
+        let firstCoord = null;
+        const findFirstCoord = (obj) => {
+            if (firstCoord) return;
+            if (obj.type === 'FeatureCollection') {
+                for (const f of (obj.features || [])) {
+                    findFirstCoord(f);
+                    if (firstCoord) break;
+                }
+            } else if (obj.type === 'Feature') {
+                if (obj.geometry) findFirstCoord(obj.geometry);
+            } else if (obj.coordinates) {
+                const flat = (c) => {
+                    if (firstCoord) return;
+                    if (typeof c[0] === 'number') {
+                        firstCoord = c;
+                    } else {
+                        c.forEach(flat);
+                    }
+                };
+                flat(obj.coordinates);
+            }
+        };
+        findFirstCoord(geojson);
+
+        if (!firstCoord) return geojson;
+
+        const fromEPSG = detectEPSG(firstCoord[0], firstCoord[1]);
+        if (fromEPSG === 'EPSG:4326') return geojson;
+
+        const reprojectGeometry = (geom) => {
+            if (!geom || !geom.coordinates) return geom;
+            return {
+                ...geom,
+                coordinates: reprojectArray(geom.coordinates, fromEPSG)
+            };
+        };
+
+        const reprojectFeature = (f) => {
+            return {
+                ...f,
+                geometry: reprojectGeometry(f.geometry)
+            };
+        };
+
+        if (geojson.type === 'FeatureCollection') {
+            return {
+                ...geojson,
+                features: (geojson.features || []).map(reprojectFeature)
+            };
+        } else if (geojson.type === 'Feature') {
+            return reprojectFeature(geojson);
+        } else if (geojson.coordinates) {
+            return reprojectGeometry(geojson);
+        }
+        return geojson;
+    };
+
+    const generateRgbTiffDataUrl = (rasters, width, height, samplesPerPixel) => {
+        let scale = 1;
+        if (width > 2048 || height > 2048) {
+            scale = Math.max(width / 2048, height / 2048);
+        }
+        const canvasWidth = Math.round(width / scale);
+        const canvasHeight = Math.round(height / scale);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+        const ctx = canvas.getContext('2d');
+        const imgData = ctx.createImageData(canvasWidth, canvasHeight);
+        const data = imgData.data;
+
+        const isPlanar = Array.isArray(rasters) && rasters[0] instanceof Object;
+        const numBands = samplesPerPixel || (isPlanar ? rasters.length : 1);
+
+        let maxVal = 255;
+        if (isPlanar) {
+            let tempMax = 0;
+            const rBand = rasters[0];
+            const step = Math.max(1, Math.floor(rBand.length / 500));
+            for (let i = 0; i < rBand.length; i += step) {
+                if (rBand[i] > tempMax) tempMax = rBand[i];
+            }
+            if (tempMax > 255) maxVal = tempMax;
+        } else {
+            let tempMax = 0;
+            const step = Math.max(1, Math.floor(rasters.length / (500 * numBands)));
+            for (let i = 0; i < rasters.length; i += step * numBands) {
+                if (rasters[i] > tempMax) tempMax = rasters[i];
+            }
+            if (tempMax > 255) maxVal = tempMax;
+        }
+        const scaleFactor = 255 / (maxVal || 1);
+
+        for (let cy = 0; cy < canvasHeight; cy++) {
+            const oy = Math.min(height - 1, Math.floor(cy * scale));
+            for (let cx = 0; cx < canvasWidth; cx++) {
+                const ox = Math.min(width - 1, Math.floor(cx * scale));
+                const origIdx = oy * width + ox;
+                const canvasIdx = (cy * canvasWidth + cx) * 4;
+
+                let r = 0, g = 0, b = 0, a = 255;
+
+                if (isPlanar) {
+                    r = rasters[0][origIdx] * scaleFactor;
+                    g = rasters[1] ? rasters[1][origIdx] * scaleFactor : r;
+                    b = rasters[2] ? rasters[2][origIdx] * scaleFactor : r;
+                    a = rasters[3] ? rasters[3][origIdx] * scaleFactor : 255;
+                } else {
+                    r = rasters[origIdx * numBands + 0] * scaleFactor;
+                    g = numBands > 1 ? rasters[origIdx * numBands + 1] * scaleFactor : r;
+                    b = numBands > 2 ? rasters[origIdx * numBands + 2] * scaleFactor : r;
+                    a = numBands > 3 ? rasters[origIdx * numBands + 3] * scaleFactor : 255;
+                }
+
+                data[canvasIdx + 0] = Math.max(0, Math.min(255, Math.round(r)));
+                data[canvasIdx + 1] = Math.max(0, Math.min(255, Math.round(g)));
+                data[canvasIdx + 2] = Math.max(0, Math.min(255, Math.round(b)));
+                data[canvasIdx + 3] = Math.max(0, Math.min(255, Math.round(a)));
+            }
+        }
+
+        ctx.putImageData(imgData, 0, 0);
+        return canvas.toDataURL('image/png');
+    };
+
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -4240,67 +4421,95 @@ out geom;`;
             const reader = new FileReader();
             reader.onload = async (event) => {
                 try {
-                    const shp = (await import('shpjs')).default;
-                    const geojson = await shp(event.target.result);
+                    const JSZip = (await import('jszip')).default;
+                    const zip = await JSZip.loadAsync(event.target.result);
                     
-                    let normalizedGeojson = geojson;
-                    if (Array.isArray(geojson)) {
-                        normalizedGeojson = {
-                            type: 'FeatureCollection',
-                            features: geojson.flatMap(collection => collection.features || [])
-                        };
-                    }
-                    
-                    const newLayerId = `shp-${Date.now()}`;
-                    const defaultColor = ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899'][geoLayers.length % 5];
-                    
-                    if (normalizedGeojson.features) {
-                        normalizedGeojson.features = normalizedGeojson.features.map((f, idx) => ({
-                            ...f,
-                            id: f.id || `${newLayerId}_${idx}`
-                        }));
-                    }
-                    
-                    const newLayer = {
-                        id: newLayerId,
-                        name: file.name.replace(/\.[^/.]+$/, "").substring(0, 19),
-                        data: normalizedGeojson,
-                        color: defaultColor,
-                        isVisible: true
-                    };
-                    
-                    setGeoLayers(prev => [...prev, newLayer]);
-                    setLayerStyles(prev => ({
-                        ...prev,
-                        [newLayerId]: {
-                            color: defaultColor,
-                            outlineColor: '#ffffff',
-                            outlineWidth: 2,
-                            shape: 'circle',
-                            opacity: 1,
-                            fillOpacity: 0.3
+                    const fileNames = Object.keys(zip.files);
+                    const isGdb = fileNames.some(name => name.toLowerCase().endsWith('.gdbtable') || name.toLowerCase().endsWith('.gdbtablx'));
+
+                    if (isGdb) {
+                        if (typeof window !== 'undefined') {
+                            window.process = window.process || {};
+                            window.process.browser = true;
                         }
-                    }));
-                    setActiveTableLayerId(newLayerId);
-                    setShowBottomTable(true);
-                    
-                    if (mapRef.current) {
+                        
+                        const fgdbModule = await import('fgdb');
+                        const parseFGDB = fgdbModule.default || fgdbModule;
+                        
+                        const layers = await parseFGDB(event.target.result);
+                        const layerKeys = Object.keys(layers);
+                        
+                        if (layerKeys.length === 0) {
+                            throw new Error("لم يتم العثور على أي طبقات جغرافية داخل قاعدة البيانات GDB.");
+                        }
+
+                        const newLayers = [];
+                        const stylesToSet = {};
                         const coordinates = [];
-                        const extractCoords = (obj) => {
-                            if (obj.type === 'FeatureCollection') obj.features.forEach(extractCoords);
-                            else if (obj.geometry) extractCoords(obj.geometry);
-                            else if (obj.coordinates) {
-                                if (typeof obj.coordinates[0] === 'number') coordinates.push(obj.coordinates);
-                                else obj.coordinates.forEach(c => {
-                                    if (typeof c[0] === 'number') coordinates.push(c);
-                                    else c.forEach(sub => {
-                                        if (typeof sub[0] === 'number') coordinates.push(sub);
+
+                        layerKeys.forEach((layerName, idx) => {
+                            let geojson = layers[layerName];
+                            if (!geojson || !geojson.features || geojson.features.length === 0) return;
+                            
+                            geojson = reprojectGeoJSON(geojson);
+
+                            const newLayerId = `gdb-${layerName.replace(/[^a-zA-Z0-9_-]/g, '')}-${Date.now()}-${idx}`;
+                            const defaultColor = ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899', '#3B82F6', '#EF4444', '#10B981'][(geoLayers.length + newLayers.length) % 8];
+
+                            geojson.features = geojson.features.map((f, fIdx) => ({
+                                ...f,
+                                id: f.id || `${newLayerId}_${fIdx}`
+                            }));
+
+                            const layerObj = {
+                                id: newLayerId,
+                                name: `${layerName.substring(0, 19)}`,
+                                data: geojson,
+                                color: defaultColor,
+                                isVisible: true
+                            };
+
+                            newLayers.push(layerObj);
+
+                            stylesToSet[newLayerId] = {
+                                color: defaultColor,
+                                outlineColor: '#ffffff',
+                                outlineWidth: 2,
+                                shape: 'circle',
+                                opacity: 1,
+                                fillOpacity: 0.3
+                            };
+
+                            const extractCoords = (obj) => {
+                                if (obj.type === 'FeatureCollection') obj.features.forEach(extractCoords);
+                                else if (obj.geometry) extractCoords(obj.geometry);
+                                else if (obj.coordinates) {
+                                    if (typeof obj.coordinates[0] === 'number') coordinates.push(obj.coordinates);
+                                    else obj.coordinates.forEach(c => {
+                                        if (typeof c[0] === 'number') coordinates.push(c);
+                                        else c.forEach(sub => {
+                                            if (typeof sub[0] === 'number') coordinates.push(sub);
+                                        });
                                     });
-                                });
-                            }
-                        };
-                        extractCoords(normalizedGeojson);
-                        if (coordinates.length > 0) {
+                                }
+                            };
+                            extractCoords(geojson);
+                        });
+
+                        if (newLayers.length === 0) {
+                            throw new Error("لم يتم تحميل أي طبقات صالحة من ملف الـ GDB.");
+                        }
+
+                        setGeoLayers(prev => [...prev, ...newLayers]);
+                        setLayerStyles(prev => ({
+                            ...prev,
+                            ...stylesToSet
+                        }));
+
+                        setActiveTableLayerId(newLayers[0].id);
+                        setShowBottomTable(true);
+
+                        if (mapRef.current && coordinates.length > 0) {
                             let minLng = Infinity, maxLng = -Infinity;
                             let minLat = Infinity, maxLat = -Infinity;
                             for (let i = 0; i < coordinates.length; i++) {
@@ -4315,12 +4524,94 @@ out geom;`;
                                 { padding: 80, duration: 2000 }
                             );
                         }
+
+                        alert(`✅ تم استيراد قاعدة البيانات الجغرافية File Geodatabase بنجاح! تم استخراج ${newLayers.length} طبقات.`);
+
+                    } else {
+                        const shp = (await import('shpjs')).default;
+                        const geojson = await shp(event.target.result);
+                        
+                        let normalizedGeojson = geojson;
+                        if (Array.isArray(geojson)) {
+                            normalizedGeojson = {
+                                type: 'FeatureCollection',
+                                features: geojson.flatMap(collection => collection.features || [])
+                            };
+                        }
+                        
+                        normalizedGeojson = reprojectGeoJSON(normalizedGeojson);
+
+                        const newLayerId = `shp-${Date.now()}`;
+                        const defaultColor = ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899'][geoLayers.length % 5];
+                        
+                        if (normalizedGeojson.features) {
+                            normalizedGeojson.features = normalizedGeojson.features.map((f, idx) => ({
+                                ...f,
+                                id: f.id || `${newLayerId}_${idx}`
+                            }));
+                        }
+                        
+                        const newLayer = {
+                            id: newLayerId,
+                            name: file.name.replace(/\.[^/.]+$/, "").substring(0, 19),
+                            data: normalizedGeojson,
+                            color: defaultColor,
+                            isVisible: true
+                        };
+                        
+                        setGeoLayers(prev => [...prev, newLayer]);
+                        setLayerStyles(prev => ({
+                            ...prev,
+                            [newLayerId]: {
+                                color: defaultColor,
+                                outlineColor: '#ffffff',
+                                outlineWidth: 2,
+                                shape: 'circle',
+                                opacity: 1,
+                                fillOpacity: 0.3
+                            }
+                        }));
+                        setActiveTableLayerId(newLayerId);
+                        setShowBottomTable(true);
+                        
+                        if (mapRef.current) {
+                            const coordinates = [];
+                            const extractCoords = (obj) => {
+                                if (obj.type === 'FeatureCollection') obj.features.forEach(extractCoords);
+                                else if (obj.geometry) extractCoords(obj.geometry);
+                                else if (obj.coordinates) {
+                                    if (typeof obj.coordinates[0] === 'number') coordinates.push(obj.coordinates);
+                                    else obj.coordinates.forEach(c => {
+                                        if (typeof c[0] === 'number') coordinates.push(c);
+                                        else c.forEach(sub => {
+                                            if (typeof sub[0] === 'number') coordinates.push(sub);
+                                        });
+                                    });
+                                }
+                            };
+                            extractCoords(normalizedGeojson);
+                            if (coordinates.length > 0) {
+                                let minLng = Infinity, maxLng = -Infinity;
+                                let minLat = Infinity, maxLat = -Infinity;
+                                for (let i = 0; i < coordinates.length; i++) {
+                                    const pt = coordinates[i];
+                                    if (pt[0] < minLng) minLng = pt[0];
+                                    if (pt[0] > maxLng) maxLng = pt[0];
+                                    if (pt[1] < minLat) minLat = pt[1];
+                                    if (pt[1] > maxLat) maxLat = pt[1];
+                                }
+                                mapRef.current.fitBounds(
+                                    [[minLng, minLat], [maxLng, maxLat]],
+                                    { padding: 80, duration: 2000 }
+                                );
+                            }
+                        }
+                        
+                        alert(`✅ تم استيراد وتحويل ملف Shapefile بنجاح!`);
                     }
-                    
-                    alert(`✅ تم استيراد وتحويل ملف Shapefile/Geodatabase بنجاح!`);
                 } catch (err) {
                     console.error("Failed to parse Shapefile/GDB Zip:", err);
-                    alert("❌ فشل استيراد الملف المضغوط: يرجى التأكد من أنه ملف Shapefile ZIP صالح يحتوي على ملفات .shp و.dbf");
+                    alert("❌ فشل استيراد الملف المضغوط: " + err.message);
                 }
             };
             reader.readAsArrayBuffer(file);
@@ -4332,58 +4623,104 @@ out geom;`;
             reader.onload = async (event) => {
                 try {
                     const parsed = await parseTiff(event.target.result);
-                    const { width, height, scaleX, scaleY, west, north, elevations } = parsed;
+                    let { width, height, scaleX, scaleY, west, north, elevations, rasters, samplesPerPixel } = parsed;
                     
-                    const south = north - (height - 1) * scaleY;
-                    const east = west + (width - 1) * scaleX;
-                    
-                    let minElev = Infinity;
-                    let maxElev = -Infinity;
-                    for (let i = 0; i < elevations.length; i++) {
-                        const val = elevations[i];
-                        if (val < minElev) minElev = val;
-                        if (val > maxElev) maxElev = val;
+                    let south = north - (height - 1) * scaleY;
+                    let east = west + (width - 1) * scaleX;
+
+                    // Reproject coordinate system if it is projected in meters
+                    const fromEPSG = detectEPSG(west, north);
+                    if (fromEPSG !== 'EPSG:4326') {
+                        const c1 = reproject(fromEPSG, [west, north]);
+                        const c2 = reproject(fromEPSG, [east, north]);
+                        const c3 = reproject(fromEPSG, [west, south]);
+                        const c4 = reproject(fromEPSG, [east, south]);
+                        
+                        west = Math.min(c1[0], c3[0]);
+                        east = Math.max(c2[0], c4[0]);
+                        north = Math.max(c1[1], c2[1]);
+                        south = Math.min(c3[1], c4[1]);
                     }
-                    
-                    const rasterData = generateDemRaster(elevations, width, south, west, north, east, 'classic', height);
-                    const demData = generateTerrariumDem(elevations, width, south, west, north, east, height);
-                    const newLayerId = `aster-${Date.now()}`;
+
+                    const isRgb = samplesPerPixel >= 3 || (Array.isArray(rasters) && rasters.length >= 3);
+                    const newLayerId = `raster-${Date.now()}`;
                     const layerName = file.name.replace(/\.[^/.]+$/, "");
-                    
-                    const newLayer = {
-                        id: `${newLayerId}-raster`,
-                        name: `${layerName} (Raster)`,
-                        type: 'raster',
-                        url: rasterData.url,
-                        demUrl: demData.url,
-                        coordinates: rasterData.coordinates,
-                        isRemoteSensing: true,
-                        minElevation: minElev,
-                        maxElevation: maxElev,
-                        isVisible: true,
-                        elevations: elevations, // Float32Array
-                        gridWidth: width,
-                        gridHeight: height,
-                        south: south,
-                        west: west,
-                        north: north,
-                        east: east,
-                        colorRamp: 'classic'
-                    };
-                    
-                    setGeoLayers(prev => [...prev, newLayer]);
-                    
-                    setLayerStyles(prev => ({
-                        ...prev,
-                        [newLayer.id]: {
-                            opacity: 0.85,
+
+                    let newLayer;
+
+                    if (isRgb) {
+                        const imgUrl = generateRgbTiffDataUrl(rasters, width, height, samplesPerPixel);
+                        newLayer = {
+                            id: `${newLayerId}-aerial`,
+                            name: `${layerName} (Aerial)`,
+                            type: 'raster',
+                            url: imgUrl,
+                            coordinates: [
+                                [west, north],
+                                [east, north],
+                                [east, south],
+                                [west, south]
+                            ],
+                            isRemoteSensing: true,
+                            isVisible: true,
+                            isAerial: true
+                        };
+
+                        setGeoLayers(prev => [...prev, newLayer]);
+                        setLayerStyles(prev => ({
+                            ...prev,
+                            [newLayer.id]: {
+                                opacity: 0.9,
+                                isRemoteSensing: true,
+                                isAerial: true
+                            }
+                        }));
+                        setActiveAsterLayerId(newLayer.id);
+                    } else {
+                        let minElev = Infinity;
+                        let maxElev = -Infinity;
+                        for (let i = 0; i < elevations.length; i++) {
+                            const val = elevations[i];
+                            if (val < minElev) minElev = val;
+                            if (val > maxElev) maxElev = val;
+                        }
+                        
+                        const rasterData = generateDemRaster(elevations, width, south, west, north, east, 'classic', height);
+                        const demData = generateTerrariumDem(elevations, width, south, west, north, east, height);
+                        
+                        newLayer = {
+                            id: `${newLayerId}-dem`,
+                            name: `${layerName} (Raster)`,
+                            type: 'raster',
+                            url: rasterData.url,
+                            demUrl: demData.url,
+                            coordinates: rasterData.coordinates,
                             isRemoteSensing: true,
                             minElevation: minElev,
-                            maxElevation: maxElev
-                        }
-                    }));
-                    
-                    setActiveAsterLayerId(`${newLayerId}-raster`);
+                            maxElevation: maxElev,
+                            isVisible: true,
+                            elevations: elevations, // Float32Array
+                            gridWidth: width,
+                            gridHeight: height,
+                            south: south,
+                            west: west,
+                            north: north,
+                            east: east,
+                            colorRamp: 'classic'
+                        };
+
+                        setGeoLayers(prev => [...prev, newLayer]);
+                        setLayerStyles(prev => ({
+                            ...prev,
+                            [newLayer.id]: {
+                                opacity: 0.85,
+                                isRemoteSensing: true,
+                                minElevation: minElev,
+                                maxElevation: maxElev
+                            }
+                        }));
+                        setActiveAsterLayerId(newLayer.id);
+                    }
                     
                     // Zoom to the raster boundaries
                     if (mapRef.current) {
@@ -4398,7 +4735,11 @@ out geom;`;
                         }
                     }
 
-                    alert(`✅ تم استيراد راستر الارتفاعات GeoTIFF "${file.name}" بنجاح وجدولته على الخريطة!`);
+                    if (isRgb) {
+                        alert(`✅ تم استيراد الصورة الجوية GeoTIFF "${file.name}" بنجاح وجدولتها على الخريطة!`);
+                    } else {
+                        alert(`✅ تم استيراد راستر الارتفاعات GeoTIFF "${file.name}" بنجاح وجدولته على الخريطة!`);
+                    }
                 } catch (err) {
                     console.error("Failed to parse GeoTIFF:", err);
                     alert("❌ فشل استيراد ملف GeoTIFF: " + err.message);
@@ -11598,53 +11939,6 @@ function closeAllInfoWindows() {
                                         <small style={{ display: 'block', marginTop: '8px', color: 'var(--text-muted)', fontSize: '0.7rem' }}>
                                             يدعم MapServer و FeatureServer و GeoJSON مباشر.
                                         </small>
-                                    </div>
-
-                                    <div className="panel-divider" style={{ margin: '15px 0', opacity: 0.2 }}></div>
-
-                                    <div className="geomolg-import-section">
-                                        <div className="panel-section-title">طبقات جيومولج فلسطين (Geomolg)</div>
-                                        <div className="geomolg-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginTop: '10px' }}>
-                                            {[
-                                                { id: 'geo_blocks', name: 'الأحواض والقطع', url: 'https://orthophotos.geomolg.ps/adaptor/rest/services/Blocks_02/MapServer', type: 'raster-tile', color: '#ff5722' },
-                                                { id: 'geo_communities', name: 'المجتمعات (نقاط)', url: 'https://orthophotos.geomolg.ps/adaptor/rest/services/Communities_06/MapServer', type: 'raster-tile', color: '#00bcd4' },
-                                                { id: 'geo_comm_bounds', name: 'حدود المجتمعات', url: 'https://orthophotos.geomolg.ps/adaptor/rest/services/CommunitiesLandBoundary_04/MapServer', type: 'raster-tile', color: '#8bc34a' },
-                                                { id: 'geo_builtup', name: 'المناطق المبنية', url: 'https://orthophotos.geomolg.ps/adaptor/rest/services/BuiltUpAreas_03/MapServer', type: 'raster-tile', color: '#e91e63' }
-                                            ].map(layer => {
-                                                const isActive = geoLayers.some(l => l.id === layer.id);
-                                                return (
-                                                    <button
-                                                        key={layer.id}
-                                                        onClick={() => {
-                                                            if (isActive) {
-                                                                    setGeoLayers(prev => prev.filter(l => l.id !== layer.id));
-                                                            } else {
-                                                                setGeoLayers(prev => [...prev, {
-                                                                    id: layer.id,
-                                                                    name: layer.name,
-                                                                    type: 'raster-tile',
-                                                                    url: `${layer.url}/export?bbox={bbox-epsg-3857}&bboxSR=3857&layers=show%3A0&size=256%2C256&imageSR=3857&format=png32&transparent=true&f=image`,
-                                                                    color: layer.color
-                                                                }]);
-                                                            }
-                                                        }}
-                                                        className="ds-btn secondary small"
-                                                        style={{
-                                                            padding: '8px 4px',
-                                                            fontSize: '0.72rem',
-                                                            background: isActive ? '#3B82F6' : 'rgba(255,255,255,0.05)',
-                                                            color: isActive ? 'white' : 'var(--text-color)',
-                                                            border: '1px solid rgba(255,255,255,0.1)',
-                                                            borderRadius: '8px',
-                                                            cursor: 'pointer',
-                                                            textAlign: 'center'
-                                                        }}
-                                                    >
-                                                        {layer.name} {isActive ? '✓' : '+'}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
                                     </div>
                                 </div>
 

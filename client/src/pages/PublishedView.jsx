@@ -87,11 +87,43 @@ const PublishedView = () => {
     }, [selections]);
 
     const mapStyle = useMemo(() => {
-        const bm = selections.basemap || 'satellite';
-        const key = 'N6uNP3sTu25OIBUyi9G1';
-        if (bm === 'satellite') return `https://api.maptiler.com/maps/satellite/style.json?key=${key}`;
-        const styleIds = { dark: 'dark-v10', light: 'light-v10', terrain: 'outdoors-v11', vintage: 'streets-v11' };
-        return `https://api.maptiler.com/maps/${bm === 'cyber' ? '019b8b76-e5e2-7f02-b5d1-74fd0cf725bb' : (styleIds[bm] || 'basic-v2')}/style.json?key=${key}`;
+        const bm = selections.basemap || 'satellite_pure';
+        const bmTiles = {
+            dark: 'https://cartodb-basemaps-a.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png',
+            light: 'https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
+            satellite: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+            satellite_pure: 'https://mt1.google.com/vt/lyrs=s&x={x}/{y}/{z}.png', // Wait, google uses {z} {x} {y} as well
+            terrain: 'https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.jpg',
+            vintage: 'https://stamen-tiles.a.ssl.fastly.net/toner/{z}/{x}/{y}.png',
+            cyber: 'https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}'
+        };
+        // Let's keep the google templates correct: mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}
+        const tileUrl = bm === 'satellite_pure' ? 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}' :
+                        bm === 'satellite' ? 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}' :
+                        bm === 'cyber' ? 'https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}' :
+                        (bmTiles[bm] || bmTiles.satellite_pure);
+        return {
+            version: 8,
+            name: "Basemap Style",
+            sprite: "https://demotiles.maplibre.org/styles/osm-bright-gl-style/sprite",
+            glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+            sources: {
+                'raster-tiles': {
+                    type: 'raster',
+                    tiles: [tileUrl],
+                    tileSize: 256
+                }
+            },
+            layers: [
+                {
+                    id: 'simple-tiles',
+                    type: 'raster',
+                    source: 'raster-tiles',
+                    minzoom: 0,
+                    maxzoom: 22
+                }
+            ]
+        };
     }, [selections.basemap]);
 
     const handleMapClick = (e) => {
