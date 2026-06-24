@@ -1734,3 +1734,40 @@
     flex: 1;
     text-align: right;
 }
+
+/* Compact map layers dropdown for emoji-only style */
+.map-layers-dropdown.geomolg-layers-compact {
+    width: auto !important;
+    min-width: 50px !important;
+    padding: 6px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+    align-items: center !important;
+}
+
+.map-layers-dropdown.geomolg-layers-compact .dropdown-item {
+    padding: 8px !important;
+    width: 38px !important;
+    height: 38px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    border-right: none !important;
+}
+
+.map-layers-dropdown.geomolg-layers-compact .dropdown-item .item-icon {
+    font-size: 1.4rem !important;
+    margin: 0 !important;
+    width: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.map-layers-dropdown.geomolg-layers-compact .dropdown-item.active {
+    border-right: none !important;
+    border: 1.5px solid #fbab15 !important;
+    background: rgba(251, 171, 21, 0.15) !important;
+}

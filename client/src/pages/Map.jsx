@@ -2198,43 +2198,22 @@ const MapComponent = () => {
                                         background: 'transparent'
                                     }}
                                   />
-                                  <div className="map-layers-dropdown">
-                                      <div className="dropdown-title">طبقات الخريطة</div>
-                                      <div className="dropdown-divider" />
+                                  <div className="map-layers-dropdown geomolg-layers-compact">
+                                      <button 
+                                          className={`dropdown-item ${activeMapType === 'streets' ? 'active' : ''}`}
+                                          onClick={() => { setActiveMapType('streets'); setShowMapLayersMenu(false); }}
+                                          title="خريطة الشوارع"
+                                      >
+                                          <span className="item-icon">🛣️</span>
+                                      </button>
                                       
-                                      {!showAllLayers ? (
-                                          <button 
-                                              className="dropdown-item active"
-                                              onClick={() => setShowAllLayers(true)}
-                                              style={{ background: 'rgba(251, 171, 21, 0.15)', border: '1px solid rgba(251, 171, 21, 0.3)' }}
-                                          >
-                                              <span className="item-icon">
-                                                  {activeMapType === 'streets' ? '🛣️' : '🌍'}
-                                              </span>
-                                              <span className="item-text" style={{ fontWeight: 'bold' }}>
-                                                  {activeMapType === 'streets' ? 'خريطة الشوارع (مخطط)' : 'قمر صناعي ديناميكي (Google)'}
-                                              </span>
-                                              <span style={{ fontSize: '0.8rem', color: '#fbab15', marginRight: 'auto', fontWeight: 'bold' }}>🔄 تغيير</span>
-                                          </button>
-                                      ) : (
-                                          <>
-                                              <button 
-                                                  className={`dropdown-item ${activeMapType === 'streets' ? 'active' : ''}`}
-                                                  onClick={() => { setActiveMapType('streets'); setShowMapLayersMenu(false); setShowAllLayers(false); }}
-                                              >
-                                                  <span className="item-icon">🛣️</span>
-                                                  <span className="item-text">خريطة الشوارع (مخطط)</span>
-                                              </button>
-                                              
-                                              <button 
-                                                  className={`dropdown-item ${activeMapType === 'satellite' ? 'active' : ''}`}
-                                                  onClick={() => { setActiveMapType('satellite'); setShowMapLayersMenu(false); setShowAllLayers(false); }}
-                                              >
-                                                  <span className="item-icon">🌍</span>
-                                                  <span className="item-text">قمر صناعي ديناميكي (Google)</span>
-                                              </button>
-                                          </>
-                                      )}
+                                      <button 
+                                          className={`dropdown-item ${activeMapType === 'satellite' ? 'active' : ''}`}
+                                          onClick={() => { setActiveMapType('satellite'); setShowMapLayersMenu(false); }}
+                                          title="قمر صناعي (Google)"
+                                      >
+                                          <span className="item-icon">🌍</span>
+                                      </button>
                                   </div>
                               </>
                           )}
