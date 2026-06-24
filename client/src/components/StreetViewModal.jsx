@@ -112,21 +112,6 @@ const StreetViewModal = ({ lat, lng, locationName, onClose, onPositionChange, in
                     {status === 'found' && imgCount > 0 && (
                         <span className="sv-img-count">{imgCount} صورة</span>
                     )}
-                    <a
-                        className="sv-google-btn"
-                        href={`https://www.google.com/maps?layer=c&cbll=${lat},${lng}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="Google Street View"
-                    >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" strokeWidth="2">
-                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                            <polyline points="15 3 21 3 21 9"/>
-                            <line x1="10" y1="14" x2="21" y2="3"/>
-                        </svg>
-                        Google
-                    </a>
                     <button className="sv-close" onClick={onClose} title="إغلاق">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" strokeWidth="2.5">
@@ -158,14 +143,6 @@ const StreetViewModal = ({ lat, lng, locationName, onClose, onPositionChange, in
                     </svg>
                     <p>لا توجد صور في هذه المنطقة</p>
                     <span>جرّب موقعاً آخر على الخريطة</span>
-                    <a
-                        className="sv-fallback-btn"
-                        href={`https://www.google.com/maps?layer=c&cbll=${lat},${lng}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-                        فتح Google Street View
-                    </a>
                 </div>
             )}
 
@@ -178,14 +155,6 @@ const StreetViewModal = ({ lat, lng, locationName, onClose, onPositionChange, in
                     </svg>
                     <p>Token غير مُعيَّن</p>
                     <code className="sv-token-code">VITE_MAPILLARY_TOKEN=your_token</code>
-                    <a
-                        className="sv-fallback-btn"
-                        href={`https://www.google.com/maps?layer=c&cbll=${lat},${lng}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-                        فتح Google Street View
-                    </a>
                 </div>
             )}
 
