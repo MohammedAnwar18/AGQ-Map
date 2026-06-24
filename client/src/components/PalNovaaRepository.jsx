@@ -29,6 +29,7 @@ const PalNovaaRepository = ({ onClose }) => {
     const [newLayerDesc, setNewLayerDesc] = useState('');
     const [uploadingState, setUploadingState] = useState('idle'); // idle, validating, compressing, uploading, success
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [editingLayerId, setEditingLayerId] = useState(null);
 
     // Download States
     const [downloadingId, setDownloadingId] = useState(null);
@@ -61,10 +62,13 @@ const PalNovaaRepository = ({ onClose }) => {
         );
     }, [searchQuery, layers]);
 
-    // Handle Upload Simulation & Local Persistence
+    // Handle Upload or Edit Submission & Local Persistence
     const handleAdminUpload = (e) => {
         e.preventDefault();
-        if (!selectedFile || !newLayerName || !newLayerSize || !newLayerDesc) return;
+        
+        // If we are creating a new layer, a file is required. If editing, it is optional.
+        if (!editingLayerId && !selectedFile) return;
+        if (!newLayerName || !newLayerSize || !newLayerDesc) return;
 
         setUploadingState('validating');
         setUploadProgress(15);
@@ -74,47 +78,76 @@ const PalNovaaRepository = ({ onClose }) => {
             setUploadingState('compressing');
             setUploadProgress(45);
             
-            // Step 2: Compressing to ZIP
+            // Step 2: Compressing to ZIP (or saving changes)
             setTimeout(() => {
                 setUploadingState('uploading');
                 setUploadProgress(80);
                 
-                // Step 3: Uploading to Cloudflare R2
-                const localUrl = URL.createObjectURL(selectedFile);
+                // Step 3: Uploading to Cloudflare R2 / Saving
+                const localUrl = selectedFile ? URL.createObjectURL(selectedFile) : null;
                 
                 const saveLayer = (persistentFileUrl) => {
-                    const newLayer = {
-                        id: Date.now(),
-                        name: newLayerName,
-                        category: newLayerCategory,
-                        format: `${newLayerFormat} / ZIP`,
-                        size: newLayerSize,
-                        description: newLayerDesc,
-                        fileUrl: persistentFileUrl || localUrl, // Use base64 if <= 3.5MB, otherwise temporary blob URL
-                        fileName: selectedFile.name,
-                        isPersistent: !!persistentFileUrl
-                    };
-                    
                     setUploadingState('success');
                     setUploadProgress(100);
                     
                     setTimeout(() => {
                         setLayers(prev => {
-                            const updatedLayers = [newLayer, ...prev];
+                            let updatedLayers;
+                            if (editingLayerId) {
+                                // Edit mode
+                                updatedLayers = prev.map(layer => {
+                                    if (layer.id === editingLayerId) {
+                                        return {
+                                            ...layer,
+                                            name: newLayerName,
+                                            category: newLayerCategory,
+                                            format: `${newLayerFormat} / ZIP`,
+                                            size: newLayerSize,
+                                            description: newLayerDesc,
+                                            // Only replace URL and name if a new file was chosen
+                                            ...(selectedFile ? {
+                                                fileUrl: persistentFileUrl || localUrl,
+                                                fileName: selectedFile.name,
+                                                isPersistent: !!persistentFileUrl
+                                            } : {})
+                                        };
+                                    }
+                                    return layer;
+                                });
+                            } else {
+                                // Create mode
+                                const newLayer = {
+                                    id: Date.now(),
+                                    name: newLayerName,
+                                    category: newLayerCategory,
+                                    format: `${newLayerFormat} / ZIP`,
+                                    size: newLayerSize,
+                                    description: newLayerDesc,
+                                    fileUrl: persistentFileUrl || localUrl,
+                                    fileName: selectedFile.name,
+                                    isPersistent: !!persistentFileUrl
+                                };
+                                updatedLayers = [newLayer, ...prev];
+                            }
+                            
                             localStorage.setItem('palnovaa_repository_layers', JSON.stringify(updatedLayers));
                             return updatedLayers;
                         });
+
+                        // Reset states
                         setNewLayerName('');
                         setNewLayerSize('');
                         setNewLayerDesc('');
                         setSelectedFile(null);
+                        setEditingLayerId(null);
                         setUploadingState('idle');
                         setIsAdminMode(false); // Return to search view to see the result
                     }, 1000);
                 };
 
-                // If file is under 3.5MB, read it as Base64 so it survives page refreshes in localStorage
-                if (selectedFile.size <= 3.5 * 1024 * 1024) {
+                // If a new file was uploaded and it is under 3.5MB, read it as Base64.
+                // Otherwise, save immediately.
+                if (selectedFile && selectedFile.size <= 3.5 * 1024 * 1024) {
                     const reader = new FileReader();
                     reader.onload = (event) => {
                         saveLayer(event.target.result);
@@ -129,6 +162,37 @@ const PalNovaaRepository = ({ onClose }) => {
                 
             }, 1200);
         }, 1200);
+    };
+
+    // Populate form to edit layer
+    const handleEditClick = (layer) => {
+        setEditingLayerId(layer.id);
+        setNewLayerName(layer.name);
+        setNewLayerCategory(layer.category);
+        const rawFormat = layer.format.split(' / ')[0]; // Extract base extension
+        setNewLayerFormat(rawFormat);
+        setNewLayerSize(layer.size);
+        setNewLayerDesc(layer.description);
+        setSelectedFile(null); // File upload is optional during edit
+    };
+
+    // Delete a layer
+    const handleDeleteClick = (layerId) => {
+        if (window.confirm("هل أنت متأكد من رغبتك في حذف هذه الطبقة الجغرافية نهائياً؟")) {
+            setLayers(prev => {
+                const updated = prev.filter(layer => layer.id !== layerId);
+                localStorage.setItem('palnovaa_repository_layers', JSON.stringify(updated));
+                return updated;
+            });
+            
+            if (editingLayerId === layerId) {
+                setEditingLayerId(null);
+                setNewLayerName('');
+                setNewLayerSize('');
+                setNewLayerDesc('');
+                setSelectedFile(null);
+            }
+        }
     };
 
     // Handle Download Simulation & Trigger Real Browser Download
@@ -221,6 +285,7 @@ const PalNovaaRepository = ({ onClose }) => {
                         onClick={() => {
                             setIsAdminMode(!isAdminMode);
                             setUploadingState('idle');
+                            setEditingLayerId(null);
                         }}
                         title={isAdminMode ? "العودة للمستودع" : "لوحة التحكم (أدمن)"}
                     >
@@ -376,11 +441,13 @@ const PalNovaaRepository = ({ onClose }) => {
                     /* Admin Control Panel View */
                     <div className="repository-admin-panel">
                         <form onSubmit={handleAdminUpload} className="repository-admin-form">
-                            <h2 className="admin-section-title">إضافة طبقة جغرافية جديدة</h2>
+                            <h2 className="admin-section-title">
+                                {editingLayerId ? "تعديل الطبقة الجغرافية" : "إضافة طبقة جغرافية جديدة"}
+                            </h2>
                             
                             {/* File Upload Selector */}
                             <div className="form-group file-upload-group" style={{ marginBottom: '10px' }}>
-                                <label>اختر الملف الجغرافي للرفع (ZIP, SHP, KML, GeoJSON, TIFF...)</label>
+                                <label>اختر الملف الجغرافي للرفع {editingLayerId ? "(اختياري لاستبدال الملف الحالي)" : "(مطلوب)"}</label>
                                 <div className="custom-file-upload">
                                     <input 
                                         type="file" 
@@ -401,7 +468,7 @@ const PalNovaaRepository = ({ onClose }) => {
                                                 setNewLayerFormat(ext);
                                             }
                                         }}
-                                        required
+                                        required={!editingLayerId}
                                         disabled={uploadingState !== 'idle'}
                                     />
                                     <label htmlFor="layer-file" className="file-upload-label">
@@ -410,7 +477,7 @@ const PalNovaaRepository = ({ onClose }) => {
                                             <polyline points="17 8 12 3 7 8"></polyline>
                                             <line x1="12" y1="3" x2="12" y2="15"></line>
                                         </svg>
-                                        <span>{selectedFile ? `الملف المحدد: ${selectedFile.name}` : "اختر ملفاً من جهازك للبدء..."}</span>
+                                        <span>{selectedFile ? `الملف المحدد: ${selectedFile.name}` : editingLayerId ? "انقر لاختيار ملف جديد (اختياري)..." : "اختر ملفاً من جهازك للبدء..."}</span>
                                     </label>
                                 </div>
                             </div>
@@ -484,10 +551,10 @@ const PalNovaaRepository = ({ onClose }) => {
                             {uploadingState !== 'idle' ? (
                                 <div className="admin-upload-progress-wrapper">
                                     <div className="progress-status-text">
-                                        {uploadingState === 'validating' && "⏳ جاري التحقق من سلامة صيغ الملفات..."}
-                                        {uploadingState === 'compressing' && "📦 جاري ضغط الملفات إلى أرشيف ZIP..."}
-                                        {uploadingState === 'uploading' && "🚀 جاري رفع الأرشيف المضغوط إلى Cloudflare R2..."}
-                                        {uploadingState === 'success' && "✅ تمت العملية بنجاح! تم حفظ الطبقة."}
+                                        {uploadingState === 'validating' && "⏳ جاري التحقق من سلامة البيانات..."}
+                                        {uploadingState === 'compressing' && (editingLayerId ? "📦 جاري معالجة وحفظ التغييرات..." : "📦 جاري ضغط الملفات إلى أرشيف ZIP...")}
+                                        {uploadingState === 'uploading' && (editingLayerId ? "🚀 جاري مزامنة الملف مع R2..." : "🚀 جاري رفع الأرشيف المضغوط إلى Cloudflare R2...")}
+                                        {uploadingState === 'success' && "✅ تمت العملية بنجاح! تم حفظ التعديلات."}
                                     </div>
                                     <div className="admin-progress-track">
                                         <div className="admin-progress-fill" style={{ width: `${uploadProgress}%` }}></div>
@@ -495,16 +562,83 @@ const PalNovaaRepository = ({ onClose }) => {
                                     <div className="progress-percentage">{uploadProgress}%</div>
                                 </div>
                             ) : (
-                                <button type="submit" className="admin-submit-btn">
-                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M21.2 15v3.8a2 2 0 0 1-2 2H4.8a2 2 0 0 1-2-2V15"></path>
-                                        <polyline points="17 8 12 3 7 8"></polyline>
-                                        <line x1="12" y1="3" x2="12" y2="15"></line>
-                                    </svg>
-                                    <span>ضغط ورفع الملف للمستودع</span>
-                                </button>
+                                <div className="admin-form-buttons">
+                                    <button type="submit" className="admin-submit-btn" style={{ flexGrow: 1 }}>
+                                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                            <polyline points="7 3 7 8 15 8"></polyline>
+                                        </svg>
+                                        <span>{editingLayerId ? "حفظ التعديلات" : "ضغط ورفع الملف للمستودع"}</span>
+                                    </button>
+                                    
+                                    {editingLayerId && (
+                                        <button 
+                                            type="button" 
+                                            className="admin-cancel-edit-btn"
+                                            onClick={() => {
+                                                setEditingLayerId(null);
+                                                setNewLayerName('');
+                                                setNewLayerSize('');
+                                                setNewLayerDesc('');
+                                                setSelectedFile(null);
+                                            }}
+                                        >
+                                            إلغاء التعديل
+                                        </button>
+                                    )}
+                                </div>
                             )}
                         </form>
+
+                        {/* Admin Managed Layers Grid List */}
+                        <div className="repository-admin-layers-list">
+                            <h3 className="admin-section-title">إدارة الطبقات المرفوعة ({layers.length})</h3>
+                            {layers.length > 0 ? (
+                                <div className="admin-layers-grid">
+                                    {layers.map(layer => (
+                                        <div key={layer.id} className="admin-layer-item">
+                                            <div className="admin-layer-info">
+                                                <span className="admin-layer-name">{layer.name}</span>
+                                                <span className="admin-layer-meta">
+                                                    <span className="layer-category-badge">{layer.category}</span>
+                                                    <span>•</span>
+                                                    <span>{layer.size}</span>
+                                                </span>
+                                            </div>
+                                            <div className="admin-layer-actions">
+                                                <button 
+                                                    type="button"
+                                                    className="admin-action-btn edit" 
+                                                    onClick={() => handleEditClick(layer)} 
+                                                    title="تعديل"
+                                                >
+                                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                                        <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                                    </svg>
+                                                </button>
+                                                <button 
+                                                    type="button"
+                                                    className="admin-action-btn delete" 
+                                                    onClick={() => handleDeleteClick(layer.id)} 
+                                                    title="حذف"
+                                                >
+                                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="no-results-alert" style={{ background: 'rgba(255,255,255,0.01)', padding: '20px' }}>
+                                    لا توجد طبقات جغرافية مرفوعة حالياً للتحكم بها.
+                                </div>
+                            )}
+                        </div>
 
                         {/* R2 Recommendation Panel */}
                         <div className="repository-r2-recommendation">

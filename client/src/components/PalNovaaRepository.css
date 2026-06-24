@@ -772,3 +772,137 @@
     direction: ltr;
     margin: 0;
 }
+
+/* Admin Form Buttons Layout */
+.admin-form-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+    width: 100%;
+}
+
+.admin-cancel-edit-btn {
+    height: 44px;
+    padding: 0 20px;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 12px;
+    color: #ef4444;
+    font-family: 'Cairo', sans-serif;
+    font-size: 0.92rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.admin-cancel-edit-btn:hover {
+    background: #ef4444;
+    color: #ffffff;
+    border-color: #ef4444;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    transform: translateY(-1px);
+}
+
+/* Admin Managed Layers List */
+.repository-admin-layers-list {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 22px;
+    padding: 20px;
+    margin-top: 10px;
+}
+
+.admin-layers-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.admin-layer-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    padding: 12px 18px;
+    transition: all 0.25s ease;
+}
+
+.admin-layer-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(251, 171, 21, 0.2);
+    transform: translateX(-2px);
+}
+
+.admin-layer-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: right;
+}
+
+.admin-layer-name {
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.admin-layer-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.layer-category-badge {
+    background: rgba(251, 171, 21, 0.08);
+    color: #fbab15;
+    border: 1px solid rgba(251, 171, 21, 0.15);
+    padding: 1px 8px;
+    border-radius: 100px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.admin-layer-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.admin-action-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.03);
+    color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.admin-action-btn:hover {
+    transform: scale(1.08);
+}
+
+.admin-action-btn.edit:hover {
+    background: rgba(251, 171, 21, 0.12);
+    border-color: #fbab15;
+    color: #fbab15;
+    box-shadow: 0 0 10px rgba(251, 171, 21, 0.25);
+}
+
+.admin-action-btn.delete:hover {
+    background: rgba(239, 68, 68, 0.12);
+    border-color: #ef4444;
+    color: #ef4444;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.25);
+}
