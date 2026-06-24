@@ -404,3 +404,183 @@
     .vtmap-map-wrap.sv-open { flex: 0 0 100%; }
     .vtmap-mode-btn span { display: none; }
 }
+
+/* ══ Admin Control Styles ════════════════════════════════════════ */
+.vtmap-admin-add-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 20px;
+    border: 1.5px solid rgba(251, 171, 21, 0.4);
+    background: rgba(251, 171, 21, 0.15);
+    color: #fbab15;
+    font-size: 0.83rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.vtmap-admin-add-btn:hover {
+    background: rgba(251, 171, 21, 0.25);
+    color: #fff;
+}
+
+.vtmap-admin-form {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: rgba(10, 16, 30, 0.95);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.vtmap-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.vtmap-form-group label {
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 600;
+}
+
+.vtmap-form-input {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: #fff;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+.vtmap-form-input:focus {
+    border-color: #fbab15;
+    background: rgba(255, 255, 255, 0.08);
+    outline: none;
+}
+
+.vtmap-coords-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.vtmap-gps-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+.vtmap-gps-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.vtmap-upload-card {
+    border: 2px dashed rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.02);
+    transition: all 0.2s;
+}
+.vtmap-upload-card:hover {
+    border-color: #fbab15;
+    background: rgba(251, 171, 21, 0.03);
+}
+.vtmap-upload-card.has-file {
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.03);
+}
+
+.vtmap-submit-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.vtmap-btn-primary {
+    flex: 1;
+    background: #fbab15;
+    color: #000;
+    font-weight: 700;
+    border: none;
+    border-radius: 8px;
+    padding: 10px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+.vtmap-btn-primary:hover {
+    background: #fca000;
+}
+.vtmap-btn-primary:disabled {
+    background: rgba(251, 171, 21, 0.4);
+    cursor: not-allowed;
+}
+
+.vtmap-btn-secondary {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 10px 16px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+.vtmap-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.vtmap-card-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 4px;
+}
+
+.vtmap-delete-btn {
+    background: transparent;
+    border: none;
+    color: #ef4444;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+.vtmap-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.vtmap-temp-marker {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #fbab15;
+    border: 2px solid #fff;
+    box-shadow: 0 0 10px rgba(251, 171, 21, 0.8);
+    animation: vtmap-temp-pulse 1.5s infinite;
+}
+@keyframes vtmap-temp-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}

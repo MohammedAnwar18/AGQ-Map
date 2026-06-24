@@ -59,6 +59,22 @@ const pool = require('./config/database');
         await pool.query(`CREATE INDEX IF NOT EXISTS ar_contents_type_idx ON ar_contents (type)`);
 
         console.log('✅ ar_contents table ready (v2 — buildings, stories, nav_points)');
+
+        // ── جدول virtual_tours ─────────────────────────────
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS virtual_tours (
+                id          SERIAL PRIMARY KEY,
+                name        VARCHAR(255)  NOT NULL,
+                description TEXT,
+                latitude    DOUBLE PRECISION NOT NULL,
+                longitude   DOUBLE PRECISION NOT NULL,
+                image_url   VARCHAR(500)  NOT NULL,
+                created_at  TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
+                created_by  INTEGER REFERENCES users(id) ON DELETE SET NULL
+            )
+        `);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_virtual_tours_location ON virtual_tours (latitude, longitude)`);
+        console.log('✅ virtual_tours table ready');
     } catch (err) {
         console.error('⚠️ ar_contents migration error:', err.message);
     }
@@ -250,6 +266,7 @@ app.use('/admin', require('./routes/admin'));
 app.use('/reels', require('./routes/reels'));
 app.use('/magazines', require('./routes/magazine'));
 app.use('/ar', require('./routes/ar'));
+app.use('/tours', require('./routes/tours'));
 
 // API Aliases
 app.use('/api/auth', require('./routes/auth'));
@@ -273,6 +290,7 @@ app.use('/api/pages', require('./routes/pages')); // <-- NEW PAGES MOUNT
 app.use('/api/storage', require('./routes/storageRoutes')); // <-- NEW STORAGE MOUNT
 app.use('/api/remote-sensing', require('./routes/remoteSensing'));
 app.use('/api/ar', require('./routes/ar'));
+app.use('/api/tours', require('./routes/tours'));
 
 
 
