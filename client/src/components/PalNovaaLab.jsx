@@ -280,6 +280,7 @@ const PalNovaaLab = ({ onClose }) => {
 
     const [geoLayers, setGeoLayers] = useState([]);
     const [activeTableLayerId, setActiveTableLayerId] = useState(null);
+    const [fetchingLayers, setFetchingLayers] = useState({});
     const [isDesignStudioOpen, setIsDesignStudioOpen] = useState(false);
     const [isHydroSimOpen, setIsHydroSimOpen] = useState(false);
     const [activeDsCategory, setActiveDsCategory] = useState('layouts');
@@ -380,6 +381,83 @@ const PalNovaaLab = ({ onClose }) => {
     useEffect(() => {
         setTablePageIndex(0);
     }, [activeTableLayerId]);
+
+    useEffect(() => {
+        if (!activeTableLayerId) return;
+        const activeLayer = geoLayers.find(l => l.id === activeTableLayerId);
+        if (!activeLayer) return;
+        
+        // إذا كانت الطبقة تملك رابطاً سحابياً ولكن لا توجد بيانات في ذاكرة المتصفح، نقوم بجلبه كسولاً (Lazy Loading)
+        if (activeLayer.dataUrl && !activeLayer.data && !fetchingLayers[activeTableLayerId]) {
+            let isMounted = true;
+            setFetchingLayers(prev => ({ ...prev, [activeTableLayerId]: true }));
+            
+            console.log(`[PalNovaa] Lazy loading layer data from: ${activeLayer.dataUrl}`);
+            
+            const fetchLayerData = async () => {
+                try {
+                    // المحاولة الأولى: جلب البيانات مباشرة من R2 (بما أن CORS مفعل)
+                    const res = await axios.get(activeLayer.dataUrl, { timeout: 30000 });
+                    let geojsonData = res.data;
+                    
+                    if (!isMounted) return;
+                    
+                    if (geojsonData && geojsonData.features) {
+                        geojsonData.features = geojsonData.features.map((f, idx) => ({
+                            ...f,
+                            id: f.id || `${activeTableLayerId}_${idx}`
+                        }));
+                    }
+                    
+                    setGeoLayers(prev => prev.map(l => {
+                        if (l.id === activeTableLayerId) {
+                            return { ...l, data: geojsonData };
+                        }
+                        return l;
+                    }));
+                } catch (err) {
+                    console.warn('[PalNovaa] Direct fetch failed, trying proxy fallback:', err.message);
+                    try {
+                        // المحاولة البديلة: عبر البروكسي لتلافي قيود CORS لو حدثت
+                        const proxyUrl = `/api/storage/proxy?url=${encodeURIComponent(activeLayer.dataUrl)}`;
+                        const proxyRes = await api.get(proxyUrl, { timeout: 30000 });
+                        let geojsonData = proxyRes.data;
+                        
+                        if (!isMounted) return;
+                        
+                        if (geojsonData && geojsonData.features) {
+                            geojsonData.features = geojsonData.features.map((f, idx) => ({
+                                ...f,
+                                id: f.id || `${activeTableLayerId}_${idx}`
+                            }));
+                        }
+                        
+                        setGeoLayers(prev => prev.map(l => {
+                            if (l.id === activeTableLayerId) {
+                                return { ...l, data: geojsonData };
+                            }
+                            return l;
+                        }));
+                    } catch (proxyErr) {
+                        console.error('[PalNovaa] Failed to lazy load layer attributes:', proxyErr);
+                        if (isMounted) {
+                            alert('⚠️ فشل جلب البيانات التفصيلية للطبقة من خادم التخزين. يرجى التحقق من اتصالك بالشبكة.');
+                        }
+                    }
+                } finally {
+                    if (isMounted) {
+                        setFetchingLayers(prev => ({ ...prev, [activeTableLayerId]: false }));
+                    }
+                }
+            };
+            
+            fetchLayerData();
+            
+            return () => {
+                isMounted = false;
+            };
+        }
+    }, [activeTableLayerId, geoLayers, fetchingLayers]);
 
     useEffect(() => {
         if (!isHydroSimOpen) {
@@ -4992,18 +5070,51 @@ out geom;`;
             if (response.data.success) {
                 const newLayerId = Date.now().toString();
                 const defaultColor = ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899'][geoLayers.length % 5];
+                
+                // التأكد من تهيئة معالم الـ geojson في حال إرجاعها
+                let geojsonData = response.data.geojson;
+                if (geojsonData && geojsonData.features) {
+                    geojsonData.features = geojsonData.features.map((f, idx) => ({
+                        ...f,
+                        id: f.id || `${newLayerId}_${idx}`
+                    }));
+                }
+
                 setGeoLayers(prev => [...prev, {
                     id: newLayerId,
                     name: (response.data.name || 'طبقة مستوردة').substring(0, 19),
                     dataUrl: response.data.url,
-                    data: response.data.geojson, // تخزين البيانات محلياً لمنع الأعطال
-                    color: defaultColor
+                    url: response.data.url, // الرابط السحابي المباشر لخرائط Mapbox
+                    data: geojsonData, // قد تكون null في الطبقات الضخمة > 2000
+                    color: defaultColor,
+                    isVisible: true
                 }]);
-                setImportLink('');
-                alert('تم استيراد البيانات بنجاح!');
 
-                // Fly to data if available in response
-                if (response.data.geojson && mapRef.current) {
+                setLayerStyles(prev => ({
+                    ...prev,
+                    [newLayerId]: {
+                        color: defaultColor,
+                        outlineColor: '#ffffff',
+                        outlineWidth: 2,
+                        shape: 'circle',
+                        opacity: 1,
+                        fillOpacity: 0.3
+                    }
+                }));
+
+                setImportLink('');
+                alert(`✅ تم استيراد الطبقة بنجاح! إجمالي المعالم المستوردة: ${response.data.count || 0}`);
+
+                // التوجيه الجغرافي باستخدام bbox (الخيار الأسرع للطبقات الكبيرة) أو استخلاص الإحداثيات
+                if (response.data.bbox && mapRef.current) {
+                    try {
+                        const [minLng, minLat, maxLng, maxLat] = response.data.bbox;
+                        mapRef.current.fitBounds(
+                            [[minLng, minLat], [maxLng, maxLat]],
+                            { padding: 80, duration: 2000 }
+                        );
+                    } catch (e) { console.error('Fit bounds error via bbox', e); }
+                } else if (geojsonData && mapRef.current) {
                     try {
                         const coordinates = [];
                         const extractCoords = (obj) => {
@@ -5019,7 +5130,7 @@ out geom;`;
                                 });
                             }
                         };
-                        extractCoords(response.data.geojson);
+                        extractCoords(geojsonData);
                         if (coordinates.length > 0) {
                             let minLng = Infinity, maxLng = -Infinity;
                             let minLat = Infinity, maxLat = -Infinity;
@@ -11707,48 +11818,81 @@ function closeAllInfoWindows() {
                                     </div>
                                 </div>
                                 <div className="table-panel-body">
-                                    <table className="opaque-table">
-                                        <thead>
-                                            <tr>
-                                                <th>#</th>
-                                                {attributeKeys.map(k => <th key={k}>{k}</th>)}
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {(() => {
-                                                if (activeTableLayer.type === 'table') {
-                                                    const dataArray = activeTableLayer.data || [];
-                                                    const paginatedItems = dataArray.slice(tablePageIndex * ITEMS_PER_PAGE, (tablePageIndex + 1) * ITEMS_PER_PAGE);
-                                                    return paginatedItems.map((row, i) => (
-                                                        <tr key={i}>
-                                                            <td>{tablePageIndex * ITEMS_PER_PAGE + i + 1}</td>
-                                                            {attributeKeys.map(k => <td key={k}>{String(row[k] || '-')}</td>)}
-                                                        </tr>
-                                                    ));
-                                                }
+                                    {fetchingLayers[activeTableLayer.id] ? (
+                                        <div style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            height: '220px',
+                                            width: '100%',
+                                            gap: '16px',
+                                            color: '#F5A623',
+                                            textAlign: 'center',
+                                            padding: '20px'
+                                        }}>
+                                            <div style={{
+                                                width: '45px',
+                                                height: '45px',
+                                                border: '3px solid rgba(255,166,35,0.1)',
+                                                borderTopColor: '#F5A623',
+                                                borderRadius: '50%',
+                                                animation: 'spin 1s linear infinite'
+                                            }}></div>
+                                            <div style={{ fontSize: '0.95rem', fontWeight: '500', color: 'rgba(255,255,255,0.9)', letterSpacing: '0.5px' }}>
+                                                جاري تحميل البيانات التفصيلية للجدول من التخزين السحابي R2...
+                                            </div>
+                                            <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>
+                                                يتم جلب المعالم الجغرافية وعرضها محلياً بكامل الدقة.
+                                            </div>
+                                            <style>{`
+                                                @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                                            `}</style>
+                                        </div>
+                                    ) : (
+                                        <table className="opaque-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>#</th>
+                                                    {attributeKeys.map(k => <th key={k}>{k}</th>)}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {(() => {
+                                                    if (activeTableLayer.type === 'table') {
+                                                        const dataArray = activeTableLayer.data || [];
+                                                        const paginatedItems = dataArray.slice(tablePageIndex * ITEMS_PER_PAGE, (tablePageIndex + 1) * ITEMS_PER_PAGE);
+                                                        return paginatedItems.map((row, i) => (
+                                                            <tr key={i}>
+                                                                <td>{tablePageIndex * ITEMS_PER_PAGE + i + 1}</td>
+                                                                {attributeKeys.map(k => <td key={k}>{String(row[k] || '-')}</td>)}
+                                                            </tr>
+                                                        ));
+                                                    }
 
-                                                const paginatedFeatures = displayFeatures.slice(tablePageIndex * ITEMS_PER_PAGE, (tablePageIndex + 1) * ITEMS_PER_PAGE);
+                                                    const paginatedFeatures = displayFeatures.slice(tablePageIndex * ITEMS_PER_PAGE, (tablePageIndex + 1) * ITEMS_PER_PAGE);
 
-                                                return paginatedFeatures.map((f, i) => {
-                                                    const fId = f.id || JSON.stringify(f.geometry.coordinates);
-                                                    const isHighlighted = selectedFeatures.some(sf => (sf.id || JSON.stringify(sf.geometry.coordinates)) === fId);
-                                                    
-                                                    return (
-                                                        <tr key={i} className={isHighlighted ? 'highlighted-row' : ''} onClick={() => {
-                                                            const coords = f.geometry?.type === 'Point' ? f.geometry.coordinates : (f.geometry?.coordinates?.[0]?.[0] || f.geometry?.coordinates?.[0]);
-                                                            if (coords && typeof coords[0] === 'number') {
-                                                                mapRef.current.flyTo({ center: coords, zoom: 16 });
-                                                                setSelectedFeatureInfo({ properties: f.properties || {}, longitude: coords[0], latitude: coords[1] });
-                                                            }
-                                                        }}>
-                                                            <td>{tablePageIndex * ITEMS_PER_PAGE + i + 1}</td>
-                                                            {attributeKeys.map(k => <td key={k}>{String(f.properties?.[k] || '-')}</td>)}
-                                                        </tr>
-                                                    );
-                                                });
-                                            })()}
-                                        </tbody>
-                                    </table>
+                                                    return paginatedFeatures.map((f, i) => {
+                                                        const fId = f.id || JSON.stringify(f.geometry.coordinates);
+                                                        const isHighlighted = selectedFeatures.some(sf => (sf.id || JSON.stringify(sf.geometry.coordinates)) === fId);
+                                                        
+                                                        return (
+                                                            <tr key={i} className={isHighlighted ? 'highlighted-row' : ''} onClick={() => {
+                                                                const coords = f.geometry?.type === 'Point' ? f.geometry.coordinates : (f.geometry?.coordinates?.[0]?.[0] || f.geometry?.coordinates?.[0]);
+                                                                if (coords && typeof coords[0] === 'number') {
+                                                                    mapRef.current.flyTo({ center: coords, zoom: 16 });
+                                                                    setSelectedFeatureInfo({ properties: f.properties || {}, longitude: coords[0], latitude: coords[1] });
+                                                                }
+                                                            }}>
+                                                                <td>{tablePageIndex * ITEMS_PER_PAGE + i + 1}</td>
+                                                                {attributeKeys.map(k => <td key={k}>{String(f.properties?.[k] || '-')}</td>)}
+                                                            </tr>
+                                                        );
+                                                    });
+                                                })()}
+                                            </tbody>
+                                        </table>
+                                    )}
                                 </div>
                             </div>
                         );
