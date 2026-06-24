@@ -37,11 +37,15 @@ const Login = () => {
             // تنظيف المدخلات للسماح بالأرقام والفواصل فقط
             let cleanValue = value.replace(/[^0-9/]/g, '');
             
-            // إضافة الفواصل تلقائياً
-            if (cleanValue.length === 2 && !cleanValue.includes('/') && e.nativeEvent.inputType !== 'deleteContentBackward') {
-                cleanValue += '/';
-            } else if (cleanValue.length === 5 && cleanValue.lastIndexOf('/') === 2 && e.nativeEvent.inputType !== 'deleteContentBackward') {
-                cleanValue += '/';
+            const prevVal = formData.date_of_birth || '';
+            const isDeleting = cleanValue.length < prevVal.length;
+            
+            if (!isDeleting) {
+                if (cleanValue.length === 2 && !cleanValue.includes('/')) {
+                    cleanValue += '/';
+                } else if (cleanValue.length === 5 && cleanValue.split('/').length === 2) {
+                    cleanValue += '/';
+                }
             }
             
             setFormData({
@@ -62,8 +66,9 @@ const Login = () => {
         // إذا كان بالتنسيق الصحيح بالفعل
         if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
         
-        // محاولة التحويل من DD/MM/YYYY إلى YYYY-MM-DD
-        const parts = dateStr.split('/');
+        // محاولة التحويل من DD/MM/YYYY إلى YYYY-MM-DD مع دعم النقاط والشرطات
+        const normalized = dateStr.replace(/[-.]/g, '/');
+        const parts = normalized.split('/');
         if (parts.length === 3) {
             const [day, month, year] = parts;
             if (day && month && year && year.length === 4) {
@@ -135,6 +140,24 @@ const Login = () => {
                 // التحقق من الموافقة على الشروط
                 if (!termsAccepted) {
                     setError('يجب الموافقة على شروط الخدمة وسياسة الخصوصية للمتابعة');
+                    setLoading(false);
+                    return;
+                }
+
+                // التحقق من تنسيق تاريخ الميلاد
+                const dob = formData.date_of_birth;
+                const parsedDob = parseDateForServer(dob);
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(parsedDob)) {
+                    setError('يرجى إدخال تاريخ ميلاد صحيح بتنسيق يوم/شهر/سنة (مثال: 15/08/1998)');
+                    setLoading(false);
+                    return;
+                }
+
+                // التحقق من منطقية تاريخ الميلاد
+                const dobDate = new Date(parsedDob);
+                const today = new Date();
+                if (isNaN(dobDate.getTime()) || dobDate > today || dobDate.getFullYear() < 1900) {
+                    setError('تاريخ الميلاد غير منطقي أو غير صحيح');
                     setLoading(false);
                     return;
                 }

@@ -22,6 +22,13 @@ const register = async (req, res) => {
         if (gender === '') gender = null;
         if (full_name === '') full_name = null;
 
+        // التحقق من صحة صيغة تاريخ الميلاد لتفادي خطأ قاعدة البيانات
+        if (date_of_birth) {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(date_of_birth) || isNaN(new Date(date_of_birth).getTime())) {
+                return res.status(400).json({ error: 'صيغة تاريخ الميلاد غير صالحة. يرجى استخدام التنسيق YYYY-MM-DD' });
+            }
+        }
+
         // التحقق من وجود المستخدم
         const userExists = await pool.query(
             'SELECT * FROM users WHERE username = $1 OR email = $2',
