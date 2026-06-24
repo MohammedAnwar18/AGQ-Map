@@ -8,8 +8,15 @@ const PalNovaaRepository = ({ onClose }) => {
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
     const [isHovering, setIsHovering] = useState(false);
     
-    // Repository & Admin States
-    const [layers, setLayers] = useState([]);
+    // Repository & Admin States - Load from localStorage to persist when closed/reopened
+    const [layers, setLayers] = useState(() => {
+        try {
+            const saved = localStorage.getItem('palnovaa_repository_layers');
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            return [];
+        }
+    });
     const [isAdminMode, setIsAdminMode] = useState(false);
     const [showSuggestions, setShowSuggestions] = useState(false);
 
@@ -54,7 +61,7 @@ const PalNovaaRepository = ({ onClose }) => {
         );
     }, [searchQuery, layers]);
 
-    // Handle Upload Simulation
+    // Handle Upload Simulation & Local Persistence
     const handleAdminUpload = (e) => {
         e.preventDefault();
         if (!selectedFile || !newLayerName || !newLayerSize || !newLayerDesc) return;
@@ -73,13 +80,9 @@ const PalNovaaRepository = ({ onClose }) => {
                 setUploadProgress(80);
                 
                 // Step 3: Uploading to Cloudflare R2
-                setTimeout(() => {
-                    setUploadingState('success');
-                    setUploadProgress(100);
-                    
-                    // Create local object URL for the uploaded file so user can download it later
-                    const localUrl = URL.createObjectURL(selectedFile);
-                    
+                const localUrl = URL.createObjectURL(selectedFile);
+                
+                const saveLayer = (persistentFileUrl) => {
                     const newLayer = {
                         id: Date.now(),
                         name: newLayerName,
@@ -87,12 +90,20 @@ const PalNovaaRepository = ({ onClose }) => {
                         format: `${newLayerFormat} / ZIP`,
                         size: newLayerSize,
                         description: newLayerDesc,
-                        fileUrl: localUrl,
-                        fileName: selectedFile.name
+                        fileUrl: persistentFileUrl || localUrl, // Use base64 if <= 3.5MB, otherwise temporary blob URL
+                        fileName: selectedFile.name,
+                        isPersistent: !!persistentFileUrl
                     };
                     
+                    setUploadingState('success');
+                    setUploadProgress(100);
+                    
                     setTimeout(() => {
-                        setLayers(prev => [newLayer, ...prev]);
+                        setLayers(prev => {
+                            const updatedLayers = [newLayer, ...prev];
+                            localStorage.setItem('palnovaa_repository_layers', JSON.stringify(updatedLayers));
+                            return updatedLayers;
+                        });
                         setNewLayerName('');
                         setNewLayerSize('');
                         setNewLayerDesc('');
@@ -100,10 +111,24 @@ const PalNovaaRepository = ({ onClose }) => {
                         setUploadingState('idle');
                         setIsAdminMode(false); // Return to search view to see the result
                     }, 1000);
-                    
-                }, 1200);
+                };
+
+                // If file is under 3.5MB, read it as Base64 so it survives page refreshes in localStorage
+                if (selectedFile.size <= 3.5 * 1024 * 1024) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        saveLayer(event.target.result);
+                    };
+                    reader.onerror = () => {
+                        saveLayer(null);
+                    };
+                    reader.readAsDataURL(selectedFile);
+                } else {
+                    saveLayer(null);
+                }
+                
             }, 1200);
-        }, 800);
+        }, 1200);
     };
 
     // Handle Download Simulation & Trigger Real Browser Download
