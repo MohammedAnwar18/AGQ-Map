@@ -465,7 +465,7 @@ const VirtualTourMap = () => {
                 </div>
 
                 {/* ── Right panel ── */}
-                <div className="vtmap-right-panel" style={{ width: isAdding ? '350px' : '300px' }}>
+                <div className="vtmap-right-panel" style={{ width: svOpen ? undefined : (isAdding ? '350px' : '300px') }}>
 
                     {/* Admin Add Form */}
                     {isAdding ? (
