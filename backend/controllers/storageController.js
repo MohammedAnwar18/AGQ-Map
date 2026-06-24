@@ -1,4 +1,5 @@
 const { S3Client, PutObjectCommand, PutBucketCorsCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 
@@ -17,7 +18,7 @@ const publicUrlBase = process.env.R2_PUBLIC_URL;
 
 /**
  * تهيئة CORS على بكت R2 تلقائياً عند تشغيل السيرفر
- * يسمح لأي موقع (حتى الملفات المحلية) بجلب البيانات منه
+ * يسمح لأي موقع (حتى المتصفحات المحلية) بجلب البيانات ورفعها منه مباشرة
  */
 const configureBucketCors = async () => {
     try {
@@ -26,14 +27,14 @@ const configureBucketCors = async () => {
             CORSConfiguration: {
                 CORSRules: [{
                     AllowedHeaders: ['*'],
-                    AllowedMethods: ['GET', 'HEAD'],
+                    AllowedMethods: ['GET', 'HEAD', 'PUT'],
                     AllowedOrigins: ['*'],
                     ExposeHeaders: ['Content-Length', 'Content-Type'],
                     MaxAgeSeconds: 86400
                 }]
             }
         }));
-        console.log('✅ R2 CORS configured: all origins allowed for GET requests');
+        console.log('✅ R2 CORS configured: all origins allowed for GET, HEAD, PUT requests');
     } catch (err) {
         console.warn('⚠️ R2 CORS config failed (may not be supported on this plan):', err.message);
     }
@@ -41,7 +42,42 @@ const configureBucketCors = async () => {
 configureBucketCors();
 
 /**
- * رفع بيانات GeoJSON مباشرة إلى R2
+ * إنشاء رابط رفع موقع مسبقاً (Presigned URL) لرفع الملفات مباشرة من المتصفح إلى R2
+ * يحل هذا مشكلة الـ 4.5MB في خوادم Vercel لملفات GeoJSON الكبيرة
+ */
+exports.getPresignedUrl = async (req, res) => {
+    try {
+        const { fileName, contentType } = req.body;
+        
+        // توليد اسم فريد للملف للحفاظ على أمان البيانات
+        const sanitizedName = (fileName || 'layer.json').replace(/[^a-zA-Z0-9._-]/g, '_');
+        const fileKey = `layers/${uuidv4()}_${sanitizedName}`;
+
+        const params = {
+            Bucket: bucketName,
+            Key: fileKey,
+            ContentType: contentType || 'application/json',
+            ACL: 'public-read'
+        };
+
+        const command = new PutObjectCommand(params);
+        // الحصول على رابط PUT موقع مسبقاً صالح لمدة ساعة واحدة
+        const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+        const publicUrl = `${publicUrlBase}/${fileKey}`;
+
+        res.status(200).json({
+            success: true,
+            uploadUrl,
+            publicUrl
+        });
+    } catch (error) {
+        console.error('R2 Presigned URL Error:', error);
+        res.status(500).json({ error: 'فشل إنشاء رابط الرفع المؤقت' });
+    }
+};
+
+/**
+ * رفع بيانات GeoJSON مباشرة إلى R2 (الرفع العادي عبر السيرفر)
  */
 exports.uploadGeoJSON = async (req, res) => {
     try {

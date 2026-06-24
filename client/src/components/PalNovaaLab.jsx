@@ -4455,19 +4455,27 @@ out geom;`;
                     let uploadSuccess = false;
 
                     try {
-                        // محاولة الرفع للسيرفر السحابي
-                        const response = await api.post('/storage/upload', {
-                            geojson: json,
-                            layerName: file.name
+                        // 1. طلب رابط رفع موقع مسبقاً من السيرفر لتخطي حدود الحجم
+                        const presignedResponse = await api.post('/storage/presigned-url', {
+                            fileName: file.name,
+                            contentType: 'application/json'
                         });
 
-                        if (response.data && response.data.success) {
-                            dataUrl = response.data.url;
-                            geojsonData = response.data.geojson || json;
+                        if (presignedResponse.data && presignedResponse.data.success) {
+                            const { uploadUrl, publicUrl } = presignedResponse.data;
+
+                            // 2. الرفع المباشر إلى Cloudflare R2 باستخدام PUT بدون إرسال توكن المصادقة بالرأس
+                            await axios.put(uploadUrl, json, {
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                }
+                            });
+
+                            dataUrl = publicUrl;
                             uploadSuccess = true;
                         }
                     } catch (uploadErr) {
-                        console.warn("Could not upload geojson to server storage, falling back to local-only layer:", uploadErr);
+                        console.warn("Could not upload geojson to Cloud Storage via presigned URL, falling back to local-only layer:", uploadErr);
                     }
 
                     const newLayerId = Date.now().toString();
@@ -4689,8 +4697,25 @@ out geom;`;
 
     const uploadLayerToCloud = async (geojson, layerName) => {
         try {
-            const response = await api.post('/storage/upload', { geojson, layerName });
-            return response.data.url;
+            // 1. طلب رابط رفع موقع مسبقاً من السيرفر
+            const presignedResponse = await api.post('/storage/presigned-url', {
+                fileName: `${layerName || 'layer'}.geojson`,
+                contentType: 'application/json'
+            });
+
+            if (presignedResponse.data && presignedResponse.data.success) {
+                const { uploadUrl, publicUrl } = presignedResponse.data;
+
+                // 2. الرفع المباشر إلى Cloudflare R2 باستخدام PUT بدون إرسال توكن المصادقة بالرأس
+                await axios.put(uploadUrl, geojson, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                return publicUrl;
+            }
+            return null;
         } catch (err) {
             console.error("Cloud Upload Failed:", err);
             return null;
