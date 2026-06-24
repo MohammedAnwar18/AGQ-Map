@@ -295,3 +295,480 @@
     0%, 100% { opacity: 0.45; filter: blur(80px) brightness(0.8); }
     50% { opacity: 0.85; filter: blur(65px) brightness(1.5); }
 }
+
+/* Header Actions */
+.repository-header-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+.repository-admin-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 100px;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Cairo', sans-serif;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.repository-admin-toggle:hover, .repository-admin-toggle.active {
+    background: rgba(251, 171, 21, 0.12);
+    border-color: #fbab15;
+    color: #fbab15;
+    box-shadow: 0 0 10px rgba(251, 171, 21, 0.2);
+}
+
+/* Autocomplete Dropdown */
+.repository-suggestions-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 100%;
+    background: rgba(10, 22, 40, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 18px;
+    z-index: 100;
+    max-height: 200px;
+    overflow-y: auto;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.repository-suggestion-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: rgba(255,255,255,0.85);
+    font-size: 0.9rem;
+    direction: rtl;
+    text-align: right;
+}
+
+.repository-suggestion-item:hover {
+    background: rgba(251, 171, 21, 0.1);
+    color: #fbab15;
+}
+
+.repository-suggestion-item svg {
+    color: rgba(255,255,255,0.3);
+    transition: color 0.2s ease;
+}
+
+.repository-suggestion-item:hover svg {
+    color: #fbab15;
+}
+
+.suggestion-category {
+    margin-right: auto;
+    font-size: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 8px;
+    border-radius: 100px;
+    color: rgba(255,255,255,0.5);
+}
+
+/* Results Layout Grid */
+.repository-results-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    max-height: 340px;
+    overflow-y: auto;
+    padding-left: 5px;
+    margin-top: 10px;
+}
+
+.repository-results-layout::-webkit-scrollbar {
+    width: 6px;
+}
+.repository-results-layout::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
+}
+.repository-results-layout::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+}
+.repository-results-layout::-webkit-scrollbar-thumb:hover {
+    background: rgba(251, 171, 21, 0.4);
+}
+
+/* Result Card */
+.repository-result-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 20px;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    direction: rtl;
+    text-align: right;
+}
+
+.repository-result-card:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(251, 171, 21, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.result-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.result-card-format {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #fbab15;
+    background: rgba(251, 171, 21, 0.08);
+    padding: 4px 10px;
+    border-radius: 100px;
+    border: 1px solid rgba(251, 171, 21, 0.15);
+}
+
+.result-card-format svg {
+    color: #fbab15;
+}
+
+.result-card-size {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.result-card-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 4px 0 0 0;
+}
+
+.result-card-desc {
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.65);
+    margin: 0;
+}
+
+.result-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding-top: 10px;
+}
+
+.result-card-category {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.45);
+    background: rgba(255,255,255,0.03);
+    padding: 3px 10px;
+    border-radius: 100px;
+}
+
+.result-download-btn {
+    min-width: 110px;
+    height: 36px;
+    padding: 0 16px;
+    border-radius: 100px;
+    border: 1px solid rgba(251, 171, 21, 0.4);
+    background: rgba(251, 171, 21, 0.08);
+    color: #fbab15;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    position: relative;
+    overflow: hidden;
+    font-family: 'Cairo', sans-serif;
+}
+
+.result-download-btn:hover {
+    background: #fbab15;
+    color: #050b14;
+    border-color: #fbab15;
+    box-shadow: 0 0 12px rgba(251, 171, 21, 0.3);
+}
+
+.result-download-btn.downloading {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    cursor: not-allowed;
+}
+
+.result-download-btn.downloaded {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.35);
+    color: #10b981;
+}
+
+.download-progress-bar-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.download-progress-bar-container .progress-bar {
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    background: rgba(251, 171, 21, 0.25);
+    transition: width 0.1s linear;
+}
+
+.download-progress-bar-container .progress-text {
+    z-index: 2;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.no-results-alert {
+    padding: 30px 15px;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.95rem;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px dashed rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+}
+
+/* Admin Panel */
+.repository-admin-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-height: 420px;
+    overflow-y: auto;
+    padding-left: 5px;
+    text-align: right;
+    direction: rtl;
+}
+
+.repository-admin-panel::-webkit-scrollbar {
+    width: 6px;
+}
+.repository-admin-panel::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
+}
+.repository-admin-panel::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+}
+
+.repository-admin-form {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 22px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.admin-section-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin: 0 0 5px 0;
+    color: #ffffff;
+    border-right: 3px solid #fbab15;
+    padding-right: 10px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+@media (max-width: 550px) {
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-group label {
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 600;
+}
+
+.form-group input, .form-group select, .form-group textarea {
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #ffffff;
+    font-family: 'Cairo', sans-serif;
+    font-size: 0.9rem;
+    outline: none;
+    transition: all 0.3s ease;
+    text-align: right;
+}
+
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    border-color: #fbab15;
+    background: rgba(255, 255, 255, 0.07);
+    box-shadow: 0 0 10px rgba(251, 171, 21, 0.15);
+}
+
+.form-group option {
+    background: #0a1628;
+    color: #ffffff;
+}
+
+.admin-submit-btn {
+    margin-top: 8px;
+    height: 44px;
+    background: #fbab15;
+    border: none;
+    border-radius: 12px;
+    color: #050b14;
+    font-family: 'Cairo', sans-serif;
+    font-size: 0.92rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 12px rgba(251, 171, 21, 0.35);
+}
+
+.admin-submit-btn:hover {
+    background: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 15px rgba(255, 255, 255, 0.35);
+}
+
+/* Admin Progress Bar */
+.admin-upload-progress-wrapper {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.progress-status-text {
+    font-size: 0.85rem;
+    color: #fbab15;
+    font-weight: 600;
+}
+
+.admin-progress-track {
+    width: 100%;
+    height: 8px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.admin-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #fbab15, #00e5ff);
+    border-radius: 10px;
+    transition: width 0.3s ease;
+}
+
+.progress-percentage {
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.4);
+    text-align: left;
+}
+
+/* R2 Recommendation */
+.repository-r2-recommendation {
+    background: rgba(251, 171, 21, 0.04);
+    border: 1px solid rgba(251, 171, 21, 0.12);
+    border-radius: 22px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.r2-recommendation-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.r2-recommendation-header h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.repository-r2-recommendation p {
+    font-size: 0.86rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0;
+}
+
+.r2-code-title {
+    font-size: 0.82rem;
+    color: #fbab15;
+    font-weight: 600;
+    margin-top: 5px;
+}
+
+.r2-code-block {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.78rem;
+    color: #a5d6ff;
+    overflow-x: auto;
+    text-align: left;
+    direction: ltr;
+    margin: 0;
+}
