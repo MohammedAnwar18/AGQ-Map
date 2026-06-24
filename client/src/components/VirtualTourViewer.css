@@ -251,3 +251,58 @@
 @keyframes vt-fadeout {
     to { opacity: 0; }
 }
+
+/* ══ Mobile Landscape Fullscreen Viewer Optimization ══════════════ */
+@media (max-height: 480px) and (orientation: landscape) {
+    .vtour-topbar {
+        padding: 10px 14px !important;
+    }
+    
+    .vtour-globe-icon {
+        width: 28px !important;
+        height: 28px !important;
+    }
+    
+    .vtour-location-name {
+        font-size: 0.85rem !important;
+    }
+    
+    .vtour-pano-label {
+        font-size: 0.72rem !important;
+    }
+    
+    .vtour-close-btn {
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 14px !important;
+    }
+
+    .vtour-hotspot-arrow {
+        width: 40px !important;
+        height: 40px !important;
+    }
+    
+    .vtour-hotspot-label {
+        font-size: 0.72rem !important;
+        padding: 3px 8px !important;
+    }
+
+    .vtour-pano-strip {
+        bottom: 8px !important;
+        padding: 4px 10px !important;
+        border-radius: 20px !important;
+        gap: 6px !important;
+    }
+
+    .vtour-pano-thumb {
+        padding: 5px 12px !important;
+        font-size: 0.75rem !important;
+        border-radius: 15px !important;
+    }
+
+    .vtour-hint {
+        bottom: 54px !important;
+        font-size: 0.72rem !important;
+        padding: 5px 12px !important;
+    }
+}
