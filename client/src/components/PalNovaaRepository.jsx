@@ -34,54 +34,51 @@ const PalNovaaRepository = ({ onClose }) => {
     const [downloadProgress, setDownloadProgress] = useState(0);
     const [downloadedIds, setDownloadedIds] = useState([]);
 
-    // Spring physics states for Warp shader interactive distortion and swirl
+    // Dynamic Warp shader interactive distortion and swirl
     const [distortion, setDistortion] = useState(0.25);
     const [swirl, setSwirl] = useState(0.8);
 
-    // Spring physics refs for 60fps animations
-    const distPos = useRef(0.25);
-    const distVel = useRef(0);
-    const swirlPos = useRef(0.8);
-    const swirlVel = useRef(0);
+    // Mouse targets for smooth Ebru-style marbling drift (oil-on-water simulation)
+    const targetX = useRef(0);
+    const targetY = useRef(0);
+    const smoothX = useRef(0);
+    const smoothY = useRef(0);
 
-    // Run animation physics loop to update spring wobble
+    // Run animation physics loop to update smooth marbling drift
     useEffect(() => {
         let active = true;
 
         const updatePhysics = () => {
             if (!active) return;
 
-            // Spring constant & Damping factor
-            const kSpring = 0.05;
-            const damping = 0.88;
+            // Soft ease-out (lerp) toward mouse targets for an elegant Ebru effect
+            smoothX.current += (targetX.current - smoothX.current) * 0.035;
+            smoothY.current += (targetY.current - smoothY.current) * 0.035;
 
-            // Wobble physics for distortion (rests at 0.25)
-            const fDist = -kSpring * (distPos.current - 0.25);
-            distVel.current = (distVel.current + fDist) * damping;
-            distPos.current += distVel.current;
+            // Rests at base values (distortion: 0.25, swirl: 0.8)
+            const dynamicDist = 0.25 + smoothX.current * 0.12;
+            const dynamicSwirl = 0.8 + smoothY.current * 0.35;
 
-            // Wobble physics for swirl (rests at 0.8)
-            const fSwirl = -kSpring * (swirlPos.current - 0.8);
-            swirlVel.current = (swirlVel.current + fSwirl) * damping;
-            swirlPos.current += swirlVel.current;
+            // Slowly decay the target offset back to center (0) so it drifts back when idle
+            targetX.current *= 0.98;
+            targetY.current *= 0.98;
 
-            // Sync with React state to cause Warp component rerender
-            setDistortion(distPos.current);
-            setSwirl(swirlPos.current);
+            setDistortion(dynamicDist);
+            setSwirl(dynamicSwirl);
 
             requestAnimationFrame(updatePhysics);
         };
 
         updatePhysics();
         
-        // Listen to mouse movement to perturb/wobble the original shader wave
+        // Listen to mouse movement and convert to soft directional offset coordinates
         const handleMouseMoveEvent = (e) => {
-            const speed = Math.hypot(e.movementX, e.movementY);
-            if (speed > 1) {
-                // Apply subtle velocities to push distortion and swirl springs
-                distVel.current += e.movementX * 0.0003;
-                swirlVel.current += e.movementY * 0.0006;
-            }
+            const dx = (e.clientX / window.innerWidth) - 0.5;
+            const dy = (e.clientY / window.innerHeight) - 0.5;
+            
+            // Set targets (dx/dy are in range [-0.5, 0.5])
+            targetX.current = dx;
+            targetY.current = dy;
         };
 
         window.addEventListener('mousemove', handleMouseMoveEvent);
@@ -92,11 +89,15 @@ const PalNovaaRepository = ({ onClose }) => {
         };
     }, []);
 
-    // Pulse the wave spring when typing to create localized ripples/shakes
+    // Pulse the wave targets softly when typing to create gentle Ebru marbling drifts
     useEffect(() => {
         if (searchQuery) {
-            distVel.current += (Math.random() - 0.5) * 0.12;
-            swirlVel.current += (Math.random() - 0.5) * 0.20;
+            targetX.current += (Math.random() - 0.5) * 0.25;
+            targetY.current += (Math.random() - 0.5) * 0.25;
+            
+            // Clamp targets to stay within reasonable ranges [-1, 1]
+            targetX.current = Math.max(-1, Math.min(1, targetX.current));
+            targetY.current = Math.max(-1, Math.min(1, targetY.current));
         }
     }, [searchQuery]);
 
