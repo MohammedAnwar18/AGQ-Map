@@ -36,7 +36,10 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 14px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    padding-left: calc(14px + env(safe-area-inset-left, 0px));
+    padding-right: calc(14px + env(safe-area-inset-right, 0px));
     background: rgba(15, 23, 36, 0.98);
     border-bottom: 1px solid rgba(255, 255, 255, 0.07);
     flex-shrink: 0;

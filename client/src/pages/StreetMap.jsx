@@ -108,7 +108,9 @@ const StreetMap = () => {
             <button 
                 onClick={() => window.location.href = '/map'}
                 style={{
-                    position: 'absolute', top: 20, left: 20,
+                    position: 'absolute',
+                    top: 'calc(20px + env(safe-area-inset-top, 0px))',
+                    left: 'calc(20px + env(safe-area-inset-left, 0px))',
                     padding: '12px 20px', borderRadius: '30px',
                     background: 'white', border: '1px solid #ddd',
                     fontWeight: 'bold', cursor: 'pointer', zIndex: 1000,
