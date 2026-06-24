@@ -2,6 +2,12 @@ const { S3Client, PutObjectCommand, PutBucketCorsCommand } = require('@aws-sdk/c
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
+const https = require('https');
+
+// وكيل مخصص لتخطي مشاكل شهادات SSL غير الموثوقة أو منتهية الصلاحية للبلديات والجهات الحكومية
+const insecureAgent = new https.Agent({
+    rejectUnauthorized: false
+});
 
 // إعداد عميل Cloudflare R2
 const s3Client = new S3Client({
@@ -84,7 +90,7 @@ exports.uploadGeoJSON = async (req, res) => {
 
         if (url) {
             // جلب البيانات من الرابط البعيد
-            const fetchRes = await axios.get(url, { timeout: 30000 });
+            const fetchRes = await axios.get(url, { timeout: 60000, httpsAgent: insecureAgent });
             geojson = fetchRes.data;
             if (!layerName) {
                 try {
@@ -218,7 +224,7 @@ exports.importArcGIS = async (req, res) => {
         // 1. محاولة جلب البيانات التعريفية لمعرفة حقل المعرف الفريد
         try {
             const metadataUrl = queryUrl.replace(/\/query\/?$/i, '');
-            const metaRes = await axios.get(metadataUrl, { params: { f: 'json' }, timeout: 10000 });
+            const metaRes = await axios.get(metadataUrl, { params: { f: 'json' }, timeout: 60000, httpsAgent: insecureAgent });
             if (metaRes.data) {
                 objectIdField = metaRes.data.objectIdField || 'OBJECTID';
             }
@@ -234,7 +240,7 @@ exports.importArcGIS = async (req, res) => {
                 returnIdsOnly: true,
                 f: 'json'
             };
-            const idResponse = await axios.get(queryUrl, { params: idParams, timeout: 20000 });
+            const idResponse = await axios.get(queryUrl, { params: idParams, timeout: 60000, httpsAgent: insecureAgent });
             if (idResponse.data && Array.isArray(idResponse.data.objectIds) && idResponse.data.objectIds.length > 0) {
                 const objectIds = idResponse.data.objectIds;
                 const totalIds = objectIds.length;
@@ -250,7 +256,7 @@ exports.importArcGIS = async (req, res) => {
                         returnGeometry: true,
                         outSR: 4326
                     };
-                    const batchResponse = await axios.get(queryUrl, { params: batchParams, timeout: 30000 });
+                    const batchResponse = await axios.get(queryUrl, { params: batchParams, timeout: 60000, httpsAgent: insecureAgent });
                     if (batchResponse.data && Array.isArray(batchResponse.data.features)) {
                         features = features.concat(batchResponse.data.features);
                     }
@@ -288,7 +294,7 @@ exports.importArcGIS = async (req, res) => {
                     orderByFields: objectIdField
                 };
 
-                const response = await axios.get(queryUrl, { params: queryParams, timeout: 30000 });
+                const response = await axios.get(queryUrl, { params: queryParams, timeout: 60000, httpsAgent: insecureAgent });
                 const data = response.data;
 
                 if (!data || !Array.isArray(data.features) || data.features.length === 0) {
@@ -444,7 +450,7 @@ exports.proxyGeoJSON = async (req, res) => {
             return res.status(403).json({ error: 'Only R2 URLs are allowed' });
         }
 
-        const response = await axios.get(url, { responseType: 'json', timeout: 15000 });
+        const response = await axios.get(url, { responseType: 'json', timeout: 60000, httpsAgent: insecureAgent });
 
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Access-Control-Allow-Methods', 'GET');
