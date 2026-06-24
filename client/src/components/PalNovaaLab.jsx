@@ -303,6 +303,7 @@ const PalNovaaLab = ({ onClose }) => {
     const [publishSlug, setPublishSlug] = useState('');
     const [isPublishing, setIsPublishing] = useState(false);
     const [isCorsHelpModalOpen, setIsCorsHelpModalOpen] = useState(false);
+    const [tablePageIndex, setTablePageIndex] = useState(0);
     const [pageElements, setPageElements] = useState([]);
     const [selectedElId, setSelectedElId] = useState(null);
     const [previewDevice, setPreviewDevice] = useState('desktop'); // 'desktop' or 'mobile'
@@ -374,6 +375,10 @@ const PalNovaaLab = ({ onClose }) => {
         fillStartPoint: null,
         injectVolume: 10000
     });
+
+    useEffect(() => {
+        setTablePageIndex(0);
+    }, [activeTableLayerId]);
 
     useEffect(() => {
         if (!isHydroSimOpen) {
@@ -11283,96 +11288,130 @@ function closeAllInfoWindows() {
                     )}
 
 
-                    {showBottomTable && activeTableLayer && (
-                        <div className="attribute-table-panel">
-                            <div className="table-panel-header">
-                                <div className="table-title">
-                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
-                                    <span>جدول البيانات: {activeTableLayer.name}</span>
-                                    <small>
-                                        {activeTableLayer.type === 'table' 
-                                            ? `${activeTableLayer.data?.length || 0} سجل بيانات`
-                                            : (selectedFeatures.length > 0 ? `${selectedFeatures.length} معلم محدد` : `${activeTableLayer.data?.features?.length || 0} معلم`)}
-                                    </small>
-                                </div>
-                                <div style={{ display: 'flex', gap: '10px' }}>
-                                    {activeTableLayer.type !== 'table' && (
-                                        <button
-                                            className="ds-btn primary small"
-                                            onClick={() => {
-                                                setJoinTargetLayerId(activeTableLayer.id);
-                                                setIsJoinModalOpen(true);
-                                            }}
-                                            style={{ padding: '4px 12px', fontSize: '0.7rem', background: '#10D9A0', color: 'black' }}
-                                        >
-                                            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="3" style={{ marginRight: '5px' }}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
-                                            ربط بيانات (CSV)
-                                        </button>
-                                    )}
-                                    {selectedFeatures.length > 0 && (
-                                        <button
-                                            className="ds-btn secondary small"
-                                            onClick={() => { setHighlightFeatures([]); setSelectedFeatures([]); }}
-                                            style={{ padding: '4px 12px', fontSize: '0.7rem' }}
-                                        >
-                                            إلغاء التحديد ({selectedFeatures.length})
-                                        </button>
-                                    )}
-                                    <button className="close-table-btn" onClick={() => setShowBottomTable(false)}>
-                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="table-panel-body">
-                                <table className="opaque-table">
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            {attributeKeys.map(k => <th key={k}>{k}</th>)}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {(() => {
-                                            if (activeTableLayer.type === 'table') {
-                                                return (activeTableLayer.data || []).map((row, i) => (
-                                                    <tr key={i}>
-                                                        <td>{i + 1}</td>
-                                                        {attributeKeys.map(k => <td key={k}>{String(row[k] || '-')}</td>)}
-                                                    </tr>
-                                                ));
-                                            }
+                    {showBottomTable && activeTableLayer && (() => {
+                        const ITEMS_PER_PAGE = 100;
+                        const allFeatures = activeTableLayer.type === 'table' ? [] : (activeTableLayer.data?.features || []);
+                        const displayFeatures = selectedFeatures.length > 0 ?
+                            allFeatures.filter(f => {
+                                const fId = f.id || JSON.stringify(f.geometry.coordinates);
+                                return selectedFeatures.some(sf => (sf.id || JSON.stringify(sf.geometry.coordinates)) === fId);
+                            }) : allFeatures;
 
-                                            const allFeatures = activeTableLayer.data?.features || [];
-                                            // إذا كان هناك تحديد، نظهر فقط المعالم المختارة
-                                            const displayFeatures = selectedFeatures.length > 0 ?
-                                                allFeatures.filter(f => {
+                        const totalItems = activeTableLayer.type === 'table' 
+                            ? (activeTableLayer.data?.length || 0)
+                            : displayFeatures.length;
+                        const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+
+                        return (
+                            <div className="attribute-table-panel">
+                                <div className="table-panel-header">
+                                    <div className="table-title">
+                                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
+                                        <span>جدول البيانات: {activeTableLayer.name}</span>
+                                        <small>
+                                            {activeTableLayer.type === 'table' 
+                                                ? `${activeTableLayer.data?.length || 0} سجل بيانات`
+                                                : (selectedFeatures.length > 0 ? `${selectedFeatures.length} معلم محدد` : `${activeTableLayer.data?.features?.length || 0} معلم`)}
+                                        </small>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                        {/* Pagination Controls */}
+                                        {totalPages > 1 && (
+                                            <div className="table-pagination" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.04)', padding: '2px 8px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                                <button 
+                                                    disabled={tablePageIndex === 0} 
+                                                    onClick={() => setTablePageIndex(p => Math.max(0, p - 1))}
+                                                    style={{ background: 'transparent', border: 'none', color: 'white', opacity: tablePageIndex === 0 ? 0.3 : 0.8, cursor: tablePageIndex === 0 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
+                                                >
+                                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                                                </button>
+                                                <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.85)', minWidth: '100px', textAlign: 'center' }}>
+                                                    صفحة {tablePageIndex + 1} من {totalPages}
+                                                </span>
+                                                <button 
+                                                    disabled={tablePageIndex >= totalPages - 1} 
+                                                    onClick={() => setTablePageIndex(p => Math.min(totalPages - 1, p + 1))}
+                                                    style={{ background: 'transparent', border: 'none', color: 'white', opacity: tablePageIndex >= totalPages - 1 ? 0.3 : 0.8, cursor: tablePageIndex >= totalPages - 1 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
+                                                >
+                                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {activeTableLayer.type !== 'table' && (
+                                            <button
+                                                className="ds-btn primary small"
+                                                onClick={() => {
+                                                    setJoinTargetLayerId(activeTableLayer.id);
+                                                    setIsJoinModalOpen(true);
+                                                }}
+                                                style={{ padding: '4px 12px', fontSize: '0.7rem', background: '#10D9A0', color: 'black' }}
+                                            >
+                                                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="3" style={{ marginRight: '5px' }}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
+                                                ربط بيانات (CSV)
+                                            </button>
+                                        )}
+                                        {selectedFeatures.length > 0 && (
+                                            <button
+                                                className="ds-btn secondary small"
+                                                onClick={() => { setHighlightFeatures([]); setSelectedFeatures([]); }}
+                                                style={{ padding: '4px 12px', fontSize: '0.7rem' }}
+                                            >
+                                                إلغاء التحديد ({selectedFeatures.length})
+                                            </button>
+                                        )}
+                                        <button className="close-table-btn" onClick={() => setShowBottomTable(false)}>
+                                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="table-panel-body">
+                                    <table className="opaque-table">
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                {attributeKeys.map(k => <th key={k}>{k}</th>)}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {(() => {
+                                                if (activeTableLayer.type === 'table') {
+                                                    const dataArray = activeTableLayer.data || [];
+                                                    const paginatedItems = dataArray.slice(tablePageIndex * ITEMS_PER_PAGE, (tablePageIndex + 1) * ITEMS_PER_PAGE);
+                                                    return paginatedItems.map((row, i) => (
+                                                        <tr key={i}>
+                                                            <td>{tablePageIndex * ITEMS_PER_PAGE + i + 1}</td>
+                                                            {attributeKeys.map(k => <td key={k}>{String(row[k] || '-')}</td>)}
+                                                        </tr>
+                                                    ));
+                                                }
+
+                                                const paginatedFeatures = displayFeatures.slice(tablePageIndex * ITEMS_PER_PAGE, (tablePageIndex + 1) * ITEMS_PER_PAGE);
+
+                                                return paginatedFeatures.map((f, i) => {
                                                     const fId = f.id || JSON.stringify(f.geometry.coordinates);
-                                                    return selectedFeatures.some(sf => (sf.id || JSON.stringify(sf.geometry.coordinates)) === fId);
-                                                }) : allFeatures;
-
-                                            return displayFeatures.map((f, i) => {
-                                                const fId = f.id || JSON.stringify(f.geometry.coordinates);
-                                                const isHighlighted = selectedFeatures.some(sf => (sf.id || JSON.stringify(sf.geometry.coordinates)) === fId);
-                                                
-                                                return (
-                                                    <tr key={i} className={isHighlighted ? 'highlighted-row' : ''} onClick={() => {
-                                                        const coords = f.geometry?.type === 'Point' ? f.geometry.coordinates : (f.geometry?.coordinates?.[0]?.[0] || f.geometry?.coordinates?.[0]);
-                                                        if (coords && typeof coords[0] === 'number') {
-                                                            mapRef.current.flyTo({ center: coords, zoom: 16 });
-                                                            setSelectedFeatureInfo({ properties: f.properties || {}, longitude: coords[0], latitude: coords[1] });
-                                                        }
-                                                    }}>
-                                                        <td>{i + 1}</td>
-                                                        {attributeKeys.map(k => <td key={k}>{String(f.properties?.[k] || '-')}</td>)}
-                                                    </tr>
-                                                );
-                                            });
-                                        })()}
-                                    </tbody>
-                                </table>
+                                                    const isHighlighted = selectedFeatures.some(sf => (sf.id || JSON.stringify(sf.geometry.coordinates)) === fId);
+                                                    
+                                                    return (
+                                                        <tr key={i} className={isHighlighted ? 'highlighted-row' : ''} onClick={() => {
+                                                            const coords = f.geometry?.type === 'Point' ? f.geometry.coordinates : (f.geometry?.coordinates?.[0]?.[0] || f.geometry?.coordinates?.[0]);
+                                                            if (coords && typeof coords[0] === 'number') {
+                                                                mapRef.current.flyTo({ center: coords, zoom: 16 });
+                                                                setSelectedFeatureInfo({ properties: f.properties || {}, longitude: coords[0], latitude: coords[1] });
+                                                            }
+                                                        }}>
+                                                            <td>{tablePageIndex * ITEMS_PER_PAGE + i + 1}</td>
+                                                            {attributeKeys.map(k => <td key={k}>{String(f.properties?.[k] || '-')}</td>)}
+                                                        </tr>
+                                                    );
+                                                });
+                                            })()}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        );
+                    })()}
 
                     {/* Join Modal - Fixed & Centered Overlay */}
                     {isJoinModalOpen && (
