@@ -14308,12 +14308,12 @@ function closeAllInfoWindows() {
                             <div style={{ marginBottom: '20px', position: 'relative' }}>
                                 <textarea
                                     readOnly
-                                    value={`[\n  {\n    "AllowedOrigins": ["*"],\n    "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD", "OPTIONS"],\n    "AllowedHeaders": ["*"],\n    "ExposeHeaders": ["Content-Length", "Content-Type"],\n    "MaxAgeSeconds": 3000\n  }\n]`}
+                                    value={`[\n  {\n    "AllowedOrigins": ["*"],\n    "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD"],\n    "AllowedHeaders": ["*"],\n    "ExposeHeaders": ["Content-Length", "Content-Type"],\n    "MaxAgeSeconds": 3000\n  }\n]`}
                                     style={{ width: '100%', height: '140px', background: '#050C16', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '12px', color: '#06D6F2', fontFamily: 'monospace', fontSize: '0.8rem', outline: 'none', resize: 'none', direction: 'ltr' }}
                                 />
                                 <button
                                     onClick={() => {
-                                        navigator.clipboard.writeText(`[\n  {\n    "AllowedOrigins": ["*"],\n    "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD", "OPTIONS"],\n    "AllowedHeaders": ["*"],\n    "ExposeHeaders": ["Content-Length", "Content-Type"],\n    "MaxAgeSeconds": 3000\n  }\n]`);
+                                        navigator.clipboard.writeText(`[\n  {\n    "AllowedOrigins": ["*"],\n    "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD"],\n    "AllowedHeaders": ["*"],\n    "ExposeHeaders": ["Content-Length", "Content-Type"],\n    "MaxAgeSeconds": 3000\n  }\n]`);
                                         alert("📋 تم نسخ كود CORS بنجاح!");
                                     }}
                                     style={{ position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(6, 214, 242, 0.15)', border: '1px solid #06D6F2', color: '#06D6F2', borderRadius: '6px', padding: '5px 10px', fontSize: '0.75rem', cursor: 'pointer' }}
