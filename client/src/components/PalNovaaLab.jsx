@@ -5148,6 +5148,59 @@ out geom;`;
                         }
                     } catch (e) { console.error('Fit bounds error', e); }
                 }
+            } else if (response.data.code === 'LARGE_DATASET') {
+                const countFormatted = new Intl.NumberFormat().format(response.data.count);
+                const confirmRaster = window.confirm(
+                    `⚠️ هذه الطبقة ضخمة جداً وتحتوي على (${countFormatted}) معلم جرافي.\n` +
+                    `استيرادها بالكامل كمعالم تفاعلية (GeoJSON) سيؤدي لتجميد المتصفح أو بطء الخريطة.\n\n` +
+                    `هل تود استيرادها كطبقة صور ديناميكية (Raster Tile Layer) سريعة للغاية تعمل دون تحميل البيانات لجهازك؟`
+                );
+                
+                if (confirmRaster) {
+                    let baseUrl = importLink.split('?')[0];
+                    if (baseUrl.toLowerCase().endsWith('/query')) {
+                        baseUrl = baseUrl.replace(/\/query$/i, '');
+                    }
+                    
+                    let layerId = '0';
+                    const layerIdMatch = baseUrl.match(/\/(\d+)$/);
+                    if (layerIdMatch) {
+                        layerId = layerIdMatch[1];
+                        baseUrl = baseUrl.replace(/\/+\d+$/, '');
+                    }
+                    
+                    const tileUrl = `${baseUrl}/export?bbox={bbox-epsg-3857}&bboxSR=3857&layers=show%3A${layerId}&size=256%2C256&imageSR=3857&format=png32&transparent=true&f=image`;
+                    
+                    const newLayerId = Date.now().toString();
+                    const defaultColor = ['#06D6F2', '#F5A623', '#10D9A0', '#8B5CF6', '#EC4899'][geoLayers.length % 5];
+                    
+                    setGeoLayers(prev => [...prev, {
+                        id: newLayerId,
+                        name: (response.data.name || 'طبقة صور ديناميكية').substring(0, 19),
+                        type: 'raster-tile',
+                        url: tileUrl,
+                        dataUrl: tileUrl,
+                        color: defaultColor,
+                        isVisible: true
+                    }]);
+                    
+                    setLayerStyles(prev => ({
+                        ...prev,
+                        [newLayerId]: {
+                            color: defaultColor,
+                            outlineColor: '#ffffff',
+                            outlineWidth: 2,
+                            shape: 'circle',
+                            opacity: 0.8,
+                            fillOpacity: 0.3
+                        }
+                    }));
+                    
+                    setImportLink('');
+                    alert('✅ تم استيراد الطبقة كطبقة صور ديناميكية بنجاح! ستظهر فوراً على الخريطة.');
+                }
+            } else {
+                alert(`❌ فشل استيراد الرابط:\n${response.data.error || response.data.message || 'خطأ غير معروف'}`);
             }
         } catch (err) {
             console.error("Import error:", err);

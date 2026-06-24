@@ -244,6 +244,19 @@ exports.importArcGIS = async (req, res) => {
             if (idResponse.data && Array.isArray(idResponse.data.objectIds) && idResponse.data.objectIds.length > 0) {
                 const objectIds = idResponse.data.objectIds;
                 const totalIds = objectIds.length;
+                
+                // إذا كانت المعالم كثيرة جداً، نرفض استيرادها كـ GeoJSON لتجنب انهيار المتصفح والمهلة الزائدة
+                if (totalIds > 20000) {
+                    console.log(`[ArcGIS Import] Dataset is too large (${totalIds} features). Suggesting raster tiles fallback.`);
+                    return res.status(200).json({
+                        success: false,
+                        code: 'LARGE_DATASET',
+                        count: totalIds,
+                        name: layerName || 'Parcels_04',
+                        message: 'الطبقة ضخمة جداً لاستيرادها كـ GeoJSON تفاعلي.'
+                    });
+                }
+                
                 console.log(`[ArcGIS Import] Found ${totalIds} object IDs. Fetching features in batches...`);
                 
                 const idBatchSize = 1000;
@@ -320,6 +333,18 @@ exports.importArcGIS = async (req, res) => {
                 }
 
                 console.log(`[ArcGIS Import] Offset ${offset}: batch size = ${data.features.length}, new unique features = ${newFeaturesInBatch}`);
+
+                // فحص الأمان لتفادي استيراد المعالم الضخمة في طريقة الترقيم
+                if (features.length > 20000) {
+                    console.log(`[ArcGIS Import] Offset pagination reached 20,000 limit. Suggesting raster tiles fallback.`);
+                    return res.status(200).json({
+                        success: false,
+                        code: 'LARGE_DATASET',
+                        count: features.length,
+                        name: layerName || 'Parcels_04',
+                        message: 'الطبقة ضخمة جداً لاستيرادها كـ GeoJSON تفاعلي.'
+                    });
+                }
 
                 // إذا لم يتم إضافة أي معلم جديد في الدفعة، أو إذا كانت الدفعة أصغر من الحجم المطلوب، نوقف الحلقة
                 if (newFeaturesInBatch === 0 || data.features.length < batchSize) {
