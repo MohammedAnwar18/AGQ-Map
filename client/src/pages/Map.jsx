@@ -2277,8 +2277,8 @@ const MapComponent = () => {
                             </div>
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
-                        {/* الأخبار - مخفي مؤقتاً بطلب من المستخدم */}
-                        {false && (
+                        {/* الأخبار - مفعل بطلب من المستخدم */}
+                        {true && (
                             <button onClick={() => { setShowNews(true); setShowMoreMenu(false); }}>
                                 <div className="menu-item-content">
                                     <div className="menu-icon-wrapper">
@@ -2308,8 +2308,8 @@ const MapComponent = () => {
                             </svg>
                         </button>
 
-                        {/* الجولة الافتراضية - مخفي مؤقتاً بطلب من المستخدم */}
-                        {false && !isMobileDevice && (
+                        {/* الجولة الافتراضية - مفعل بطلب من المستخدم */}
+                        {true && (
                             <button
                                 onClick={() => { navigate('/virtual-tour'); setShowMoreMenu(false); }}
                             >
@@ -2327,8 +2327,8 @@ const MapComponent = () => {
                             </button>
                         )}
 
-                        {/* مختبر بالنوفا - مخفي مؤقتاً بطلب من المستخدم */}
-                        {false && !isMobileDevice && (
+                        {/* مختبر بالنوفا - مفعل بطلب من المستخدم */}
+                        {true && (
                             <button
                                 onClick={() => {
                                     setShowLabModal(true);
