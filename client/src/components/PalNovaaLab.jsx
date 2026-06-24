@@ -5151,7 +5151,8 @@ out geom;`;
             }
         } catch (err) {
             console.error("Import error:", err);
-            alert("فشل استيراد الرابط. تأكد من صحة الرابط وصيغة البيانات.");
+            const errMsg = err.response?.data?.error || err.response?.data?.message || err.message || "تأكد من صحة الرابط وصيغة البيانات.";
+            alert(`❌ فشل استيراد الرابط:\n${errMsg}`);
         } finally {
             setIsImporting(false);
         }
