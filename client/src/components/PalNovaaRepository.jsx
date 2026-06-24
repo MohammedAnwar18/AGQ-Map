@@ -2,15 +2,6 @@ import React, { useState, useMemo } from 'react';
 import { Warp } from "@paper-design/shaders-react";
 import './PalNovaaRepository.css';
 
-const INITIAL_LAYERS = [
-    { id: 1, name: "حدود البلديات والمحافظات", category: "حدود إدارية", format: "SHP / ZIP", size: "4.2 MB", description: "الحدود الرسمية للبلديات والمحافظات بدقة عالية ومحدثة لعام 2026." },
-    { id: 2, name: "شبكة الطرق والشوارع الرئيسية", category: "نقل ومواصلات", format: "KML / ZIP", size: "12.8 MB", description: "شبكة الطرق والمسارات السريعة والشوارع الفرعية مع بيانات حركة المرور الافتراضية." },
-    { id: 3, name: "مخطط الغطاء النباتي والاستخدام الزراعي", category: "بيئة طبيعية", format: "TIF / ZIP", size: "45.0 MB", description: "خرائط الغطاء النباتي المستخلصة من تصنيف صور الأقمار الصناعية (Sentinel-2)." },
-    { id: 4, name: "نموذج الارتفاعات الرقمي (DEM)", category: "تضاريس", format: "GeoTIFF / ZIP", size: "88.5 MB", description: "نموذج الارتفاعات الرقمي بدقة 30 متر يغطي المنطقة بالكامل." },
-    { id: 5, name: "طبقة المباني والمنشآت ثلاثية الأبعاد", category: "بنية تحتية", format: "3D Tiles / ZIP", size: "154.2 MB", description: "مجسمات المباني ثلاثية الأبعاد مع الارتفاعات وبيانات الاستخدام السكني والتجاري." },
-    { id: 6, name: "توزيع مصادر المياه والآبار الجوفية", category: "هيدرولوجيا", format: "GeoJSON / ZIP", size: "2.1 MB", description: "مواقع الآبار، مجاري المياه السطحية، والينابيع الطبيعية مع بيانات الجودة." }
-];
-
 const PalNovaaRepository = ({ onClose }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [isFocused, setIsFocused] = useState(false);
@@ -18,11 +9,12 @@ const PalNovaaRepository = ({ onClose }) => {
     const [isHovering, setIsHovering] = useState(false);
     
     // Repository & Admin States
-    const [layers, setLayers] = useState(INITIAL_LAYERS);
+    const [layers, setLayers] = useState([]);
     const [isAdminMode, setIsAdminMode] = useState(false);
     const [showSuggestions, setShowSuggestions] = useState(false);
 
     // Admin Upload Form State
+    const [selectedFile, setSelectedFile] = useState(null);
     const [newLayerName, setNewLayerName] = useState('');
     const [newLayerCategory, setNewLayerCategory] = useState('حدود إدارية');
     const [newLayerFormat, setNewLayerFormat] = useState('SHP');
@@ -65,7 +57,7 @@ const PalNovaaRepository = ({ onClose }) => {
     // Handle Upload Simulation
     const handleAdminUpload = (e) => {
         e.preventDefault();
-        if (!newLayerName || !newLayerSize || !newLayerDesc) return;
+        if (!selectedFile || !newLayerName || !newLayerSize || !newLayerDesc) return;
 
         setUploadingState('validating');
         setUploadProgress(15);
@@ -85,13 +77,18 @@ const PalNovaaRepository = ({ onClose }) => {
                     setUploadingState('success');
                     setUploadProgress(100);
                     
+                    // Create local object URL for the uploaded file so user can download it later
+                    const localUrl = URL.createObjectURL(selectedFile);
+                    
                     const newLayer = {
                         id: Date.now(),
                         name: newLayerName,
                         category: newLayerCategory,
                         format: `${newLayerFormat} / ZIP`,
                         size: newLayerSize,
-                        description: newLayerDesc
+                        description: newLayerDesc,
+                        fileUrl: localUrl,
+                        fileName: selectedFile.name
                     };
                     
                     setTimeout(() => {
@@ -99,8 +96,9 @@ const PalNovaaRepository = ({ onClose }) => {
                         setNewLayerName('');
                         setNewLayerSize('');
                         setNewLayerDesc('');
+                        setSelectedFile(null);
                         setUploadingState('idle');
-                        setIsAdminMode(false); // return to search view
+                        setIsAdminMode(false); // Return to search view to see the result
                     }, 1000);
                     
                 }, 1200);
@@ -108,11 +106,11 @@ const PalNovaaRepository = ({ onClose }) => {
         }, 800);
     };
 
-    // Handle Download Simulation
-    const handleDownload = (layerId) => {
+    // Handle Download Simulation & Trigger Real Browser Download
+    const handleDownload = (layer) => {
         if (downloadingId !== null) return;
         
-        setDownloadingId(layerId);
+        setDownloadingId(layer.id);
         setDownloadProgress(0);
 
         const interval = setInterval(() => {
@@ -121,7 +119,17 @@ const PalNovaaRepository = ({ onClose }) => {
                     clearInterval(interval);
                     setTimeout(() => {
                         setDownloadingId(null);
-                        setDownloadedIds(prevIds => [...prevIds, layerId]);
+                        setDownloadedIds(prevIds => [...prevIds, layer.id]);
+                        
+                        // Trigger actual browser download
+                        if (layer.fileUrl) {
+                            const link = document.createElement('a');
+                            link.href = layer.fileUrl;
+                            link.download = layer.fileName || `${layer.name}.zip`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        }
                     }, 400);
                     return 100;
                 }
@@ -300,7 +308,7 @@ const PalNovaaRepository = ({ onClose }) => {
                                             <span className="result-card-category">{layer.category}</span>
                                             <button 
                                                 className={`result-download-btn ${downloadingId === layer.id ? 'downloading' : ''} ${downloadedIds.includes(layer.id) ? 'downloaded' : ''}`}
-                                                onClick={() => handleDownload(layer.id)}
+                                                onClick={() => handleDownload(layer)}
                                                 disabled={downloadingId !== null}
                                             >
                                                 {downloadingId === layer.id ? (
@@ -322,7 +330,7 @@ const PalNovaaRepository = ({ onClose }) => {
                                                             <polyline points="7 10 12 15 17 10"></polyline>
                                                             <line x1="12" y1="15" x2="12" y2="3"></line>
                                                         </svg>
-                                                        <span>تحميل ZIP</span>
+                                                        <span>تحميل الملف</span>
                                                     </>
                                                 )}
                                             </button>
@@ -331,7 +339,10 @@ const PalNovaaRepository = ({ onClose }) => {
                                 ))
                             ) : (
                                 <div className="no-results-alert">
-                                    لا توجد طبقات جغرافية تطابق بحثك. جرب كتابة اسم آخر.
+                                    {layers.length === 0 
+                                        ? "لا توجد طبقات جغرافية مرفوعة حالياً. تفضل بالانتقال إلى لوحة المشرف لرفع أول ملف جغرافي."
+                                        : "لا توجد طبقات جغرافية تطابق بحثك. جرب كتابة اسم آخر."
+                                    }
                                 </div>
                             )}
                         </div>
@@ -342,6 +353,43 @@ const PalNovaaRepository = ({ onClose }) => {
                         <form onSubmit={handleAdminUpload} className="repository-admin-form">
                             <h2 className="admin-section-title">إضافة طبقة جغرافية جديدة</h2>
                             
+                            {/* File Upload Selector */}
+                            <div className="form-group file-upload-group" style={{ marginBottom: '10px' }}>
+                                <label>اختر الملف الجغرافي للرفع (ZIP, SHP, KML, GeoJSON, TIFF...)</label>
+                                <div className="custom-file-upload">
+                                    <input 
+                                        type="file" 
+                                        id="layer-file"
+                                        onChange={(e) => {
+                                            const file = e.target.files[0];
+                                            if (file) {
+                                                setSelectedFile(file);
+                                                setNewLayerName(file.name.substring(0, file.name.lastIndexOf('.')) || file.name);
+                                                // Format size
+                                                const sizeInMB = file.size / (1024 * 1024);
+                                                const sizeStr = sizeInMB < 0.1 
+                                                    ? `${(file.size / 1024).toFixed(1)} KB` 
+                                                    : `${sizeInMB.toFixed(2)} MB`;
+                                                setNewLayerSize(sizeStr);
+                                                // Extract extension
+                                                const ext = file.name.split('.').pop().toUpperCase();
+                                                setNewLayerFormat(ext);
+                                            }
+                                        }}
+                                        required
+                                        disabled={uploadingState !== 'idle'}
+                                    />
+                                    <label htmlFor="layer-file" className="file-upload-label">
+                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                            <path d="M21.2 15v3.8a2 2 0 0 1-2 2H4.8a2 2 0 0 1-2-2v-4"></path>
+                                            <polyline points="17 8 12 3 7 8"></polyline>
+                                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                                        </svg>
+                                        <span>{selectedFile ? `الملف المحدد: ${selectedFile.name}` : "اختر ملفاً من جهازك للبدء..."}</span>
+                                    </label>
+                                </div>
+                            </div>
+
                             <div className="form-row">
                                 <div className="form-group">
                                     <label>اسم الطبقة الجغرافية</label>
@@ -373,21 +421,18 @@ const PalNovaaRepository = ({ onClose }) => {
 
                             <div className="form-row">
                                 <div className="form-group">
-                                    <label>صيغة البيانات المصدرية</label>
-                                    <select 
-                                        value={newLayerFormat} 
+                                    <label>صيغة البيانات</label>
+                                    <input 
+                                        type="text"
+                                        placeholder="صيغة الملف"
+                                        value={newLayerFormat}
                                         onChange={(e) => setNewLayerFormat(e.target.value)}
+                                        required
                                         disabled={uploadingState !== 'idle'}
-                                    >
-                                        <option value="SHP">Shapefile (SHP)</option>
-                                        <option value="KML">KML / KMZ</option>
-                                        <option value="GeoJSON">GeoJSON</option>
-                                        <option value="TIF">GeoTIFF (Raster)</option>
-                                        <option value="3D Tiles">3D Tiles / OBJ</option>
-                                    </select>
+                                    />
                                 </div>
                                 <div className="form-group">
-                                    <label>حجم الملف الكلي</label>
+                                    <label>حجم الملف</label>
                                     <input 
                                         type="text" 
                                         placeholder="مثال: 5.4 MB"
@@ -403,7 +448,7 @@ const PalNovaaRepository = ({ onClose }) => {
                                 <label>وصف الطبقة ومحتواها الجغرافي</label>
                                 <textarea 
                                     placeholder="اكتب وصفاً تفصيلياً للطبقة الجغرافية ونظام الإسقاط المستخدم..."
-                                    rows="3"
+                                    rows="2"
                                     value={newLayerDesc}
                                     onChange={(e) => setNewLayerDesc(e.target.value)}
                                     required
@@ -431,7 +476,7 @@ const PalNovaaRepository = ({ onClose }) => {
                                         <polyline points="17 8 12 3 7 8"></polyline>
                                         <line x1="12" y1="3" x2="12" y2="15"></line>
                                     </svg>
-                                    <span>ضغط ورفع الملفات للمستودع</span>
+                                    <span>ضغط ورفع الملف للمستودع</span>
                                 </button>
                             )}
                         </form>
