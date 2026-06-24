@@ -32,6 +32,7 @@ import MunicipalityProfileModal from '../components/MunicipalityProfileModal';
 import SpatialReelsModal from '../components/SpatialReelsModal';
 import MagazineModal from '../components/MagazineModal';
 import PalNovaaLab from '../components/PalNovaaLab';
+import PalNovaaRepository from '../components/PalNovaaRepository';
 import LiveCameraModal from '../components/LiveCameraModal';
 import { postService, friendService, authService, notificationService, communityService, shopService, cameraService, getImageUrl } from '../services/api';
 import { isNative, startNativeTracking, stopNativeTracking } from '../utils/nativeLocation';
@@ -687,6 +688,7 @@ const MapComponent = () => {
     const [showNews, setShowNews] = useState(false);
     const [showMagazine, setShowMagazine] = useState(false);
     const [showLabModal, setShowLabModal] = useState(false);
+    const [showRepositoryModal, setShowRepositoryModal] = useState(false);
     const [showCommunities, setShowCommunities] = useState(false);
     const [showMoreMenu, setShowMoreMenu] = useState(false);
     const [isEmergencyActive, setIsEmergencyActive] = useState(false);
@@ -2219,6 +2221,20 @@ const MapComponent = () => {
                           )}
                       </div>
 
+                    {!isMobileDevice && (
+                        <button
+                            className={`top-nav-icon ${showRepositoryModal ? 'active' : ''}`}
+                            onClick={() => setShowRepositoryModal(true)}
+                            title="مستودع بالنوفا"
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
+                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                            </svg>
+                        </button>
+                    )}
+
                     <button className={`top-nav-icon ${showMoreMenu ? 'active' : ''}`} onClick={() => setShowMoreMenu(!showMoreMenu)}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
                             <line x1="3" y1="12" x2="21" y2="12"></line>
@@ -3199,6 +3215,7 @@ const MapComponent = () => {
             {/* Modals */}
             <React.Suspense fallback={null}>
             {showLabModal && <PalNovaaLab onClose={() => setShowLabModal(false)} />}
+            {showRepositoryModal && <PalNovaaRepository onClose={() => setShowRepositoryModal(false)} />}
             {showCreatePost && (
                 <CreatePostModal 
                     onClose={() => {
