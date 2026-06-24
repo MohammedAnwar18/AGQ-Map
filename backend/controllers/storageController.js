@@ -250,7 +250,15 @@ exports.importArcGIS = async (req, res) => {
                 f: 'json',
                 ...spatialParams
             };
-            const idResponse = await axios.get(queryUrl, { params: idParams, timeout: 60000, httpsAgent: insecureAgent });
+            const postDataIds = new URLSearchParams();
+            for (const key in idParams) {
+                postDataIds.append(key, idParams[key]);
+            }
+            const idResponse = await axios.post(queryUrl, postDataIds, {
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                timeout: 60000,
+                httpsAgent: insecureAgent
+            });
             if (idResponse.data && Array.isArray(idResponse.data.objectIds) && idResponse.data.objectIds.length > 0) {
                 const objectIds = idResponse.data.objectIds;
                 const totalIds = objectIds.length;
@@ -279,7 +287,15 @@ exports.importArcGIS = async (req, res) => {
                         returnGeometry: true,
                         outSR: 4326
                     };
-                    const batchResponse = await axios.get(queryUrl, { params: batchParams, timeout: 60000, httpsAgent: insecureAgent });
+                    const postDataBatch = new URLSearchParams();
+                    for (const key in batchParams) {
+                        postDataBatch.append(key, batchParams[key]);
+                    }
+                    const batchResponse = await axios.post(queryUrl, postDataBatch, {
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        timeout: 60000,
+                        httpsAgent: insecureAgent
+                    });
                     if (batchResponse.data && Array.isArray(batchResponse.data.features)) {
                         features = features.concat(batchResponse.data.features);
                     }
@@ -318,7 +334,15 @@ exports.importArcGIS = async (req, res) => {
                     ...spatialParams
                 };
 
-                const response = await axios.get(queryUrl, { params: queryParams, timeout: 60000, httpsAgent: insecureAgent });
+                const postDataQuery = new URLSearchParams();
+                for (const key in queryParams) {
+                    postDataQuery.append(key, queryParams[key]);
+                }
+                const response = await axios.post(queryUrl, postDataQuery, {
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    timeout: 60000,
+                    httpsAgent: insecureAgent
+                });
                 const data = response.data;
 
                 if (!data || !Array.isArray(data.features) || data.features.length === 0) {
