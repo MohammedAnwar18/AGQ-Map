@@ -56,8 +56,7 @@ exports.getPresignedUrl = async (req, res) => {
         const params = {
             Bucket: bucketName,
             Key: fileKey,
-            ContentType: contentType || 'application/json',
-            ACL: 'public-read'
+            ContentType: contentType || 'application/json'
         };
 
         const command = new PutObjectCommand(params);

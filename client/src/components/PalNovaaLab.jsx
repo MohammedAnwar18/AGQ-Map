@@ -302,6 +302,7 @@ const PalNovaaLab = ({ onClose }) => {
     const [publishName, setPublishName] = useState('');
     const [publishSlug, setPublishSlug] = useState('');
     const [isPublishing, setIsPublishing] = useState(false);
+    const [isCorsHelpModalOpen, setIsCorsHelpModalOpen] = useState(false);
     const [pageElements, setPageElements] = useState([]);
     const [selectedElId, setSelectedElId] = useState(null);
     const [previewDevice, setPreviewDevice] = useState('desktop'); // 'desktop' or 'mobile'
@@ -4464,8 +4465,8 @@ out geom;`;
                         if (presignedResponse.data && presignedResponse.data.success) {
                             const { uploadUrl, publicUrl } = presignedResponse.data;
 
-                            // 2. الرفع المباشر إلى Cloudflare R2 باستخدام PUT بدون إرسال توكن المصادقة بالرأس
-                            await axios.put(uploadUrl, json, {
+                            // 2. الرفع المباشر إلى Cloudflare R2 باستخدام PUT (مع تحويل الكائن إلى نص لمنع تشوه البيانات أو أخطاء التنسيق)
+                            await axios.put(uploadUrl, JSON.stringify(json), {
                                 headers: {
                                     'Content-Type': 'application/json'
                                 }
@@ -4473,9 +4474,27 @@ out geom;`;
 
                             dataUrl = publicUrl;
                             uploadSuccess = true;
+                            console.log("✅ Direct R2 upload successful!");
                         }
                     } catch (uploadErr) {
-                        console.warn("Could not upload geojson to Cloud Storage via presigned URL, falling back to local-only layer:", uploadErr);
+                        console.warn("Direct R2 upload failed, trying server-proxied upload as fallback:", uploadErr);
+                        
+                        // 2. المحاولة البديلة: الرفع عبر السيرفر الوسيط (للملفات الصغيرة في حال تعذر الرفع المباشر)
+                        try {
+                            const response = await api.post('/storage/upload', {
+                                geojson: json,
+                                layerName: file.name
+                            });
+
+                            if (response.data && response.data.success) {
+                                dataUrl = response.data.url;
+                                geojsonData = response.data.geojson || json;
+                                uploadSuccess = true;
+                                console.log("✅ Server-proxied upload successful as fallback!");
+                            }
+                        } catch (proxyErr) {
+                            console.error("Both direct and proxied uploads failed:", proxyErr);
+                        }
                     }
 
                     const newLayerId = Date.now().toString();
@@ -4558,6 +4577,7 @@ out geom;`;
                         alert(`✅ تم استيراد وتحميل ملف GeoJSON "${file.name}" بنجاح!`);
                     } else {
                         alert(`⚠️ تم تحميل ملف GeoJSON "${file.name}" محلياً بنجاح! (تعذر حفظ النسخة السحابية لضخامة الحجم أو عطل الاتصال)`);
+                        setIsCorsHelpModalOpen(true);
                     }
                 } else {
                     alert("❌ صيغة ملف GeoJSON غير مدعومة (يجب أن يكون FeatureCollection أو Feature أو Geometry صالحة)");
@@ -4696,8 +4716,8 @@ out geom;`;
     };
 
     const uploadLayerToCloud = async (geojson, layerName) => {
+        // 1. محاولة الرفع المباشر باستخدام رابط موقع مسبقاً
         try {
-            // 1. طلب رابط رفع موقع مسبقاً من السيرفر
             const presignedResponse = await api.post('/storage/presigned-url', {
                 fileName: `${layerName || 'layer'}.geojson`,
                 contentType: 'application/json'
@@ -4706,8 +4726,8 @@ out geom;`;
             if (presignedResponse.data && presignedResponse.data.success) {
                 const { uploadUrl, publicUrl } = presignedResponse.data;
 
-                // 2. الرفع المباشر إلى Cloudflare R2 باستخدام PUT بدون إرسال توكن المصادقة بالرأس
-                await axios.put(uploadUrl, geojson, {
+                // الرفع المباشر إلى Cloudflare R2 (مع تحويل الكائن إلى نص لمنع تشوه البيانات أو أخطاء التنسيق)
+                await axios.put(uploadUrl, JSON.stringify(geojson), {
                     headers: {
                         'Content-Type': 'application/json'
                     }
@@ -4715,11 +4735,21 @@ out geom;`;
 
                 return publicUrl;
             }
-            return null;
         } catch (err) {
-            console.error("Cloud Upload Failed:", err);
-            return null;
+            console.warn("Direct R2 upload in uploadLayerToCloud failed, trying server-proxy:", err);
+            
+            // 2. المحاولة البديلة: الرفع عبر السيرفر الوسيط
+            try {
+                const response = await api.post('/storage/upload', { geojson, layerName });
+                if (response.data && response.data.success) {
+                    return response.data.url;
+                }
+            } catch (proxyErr) {
+                console.error("Both uploads failed in uploadLayerToCloud:", proxyErr);
+                setIsCorsHelpModalOpen(true);
+            }
         }
+        return null;
     };
 
     const performInjection = async () => {
@@ -14239,6 +14269,66 @@ function closeAllInfoWindows() {
                                     onClick={() => setIsExportStudioOpen(false)}
                                 >
                                     إلغاء
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {isCorsHelpModalOpen && (
+                    <div className="ds-overlay active" style={{ display: 'grid', placeItems: 'center', zIndex: 99999, position: 'fixed', inset: 0, background: 'rgba(5, 12, 22, 0.85)', backdropFilter: 'blur(12px)' }}>
+                        <div className="ds-modal" style={{ width: '500px', background: '#0A1628', borderRadius: '24px', border: '1.5px solid rgba(245, 166, 35, 0.35)', padding: '30px', boxShadow: '0 30px 80px rgba(0,0,0,0.9)', direction: 'rtl', textAlign: 'right' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '15px' }}>
+                                <div style={{ width: '45px', height: '45px', background: 'rgba(245, 166, 35, 0.1)', borderRadius: '12px', display: 'grid', placeItems: 'center' }}>
+                                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#F5A623" strokeWidth="2.5">
+                                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                                        <line x1="12" y1="9" x2="12" y2="13"/>
+                                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#F5A623', fontWeight: 'bold' }}>تكوين CORS في Cloudflare R2</h3>
+                                    <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.6 }}>مطلوب لحفظ الملفات الجغرافية الكبيرة سحابياً</p>
+                                </div>
+                            </div>
+
+                            <div style={{ fontSize: '0.88rem', lineHeight: '1.6', marginBottom: '20px', color: 'rgba(255,255,255,0.85)' }}>
+                                <p style={{ margin: '0 0 10px 0' }}>
+                                    تم تحميل الملف <strong>محلياً بنجاح</strong> لتتمكن من العمل عليه الآن. ولكن لحفظه سحابياً بشكل دائم، يجب تفعيل سياسة CORS في حساب Cloudflare الخاص بك كالتالي:
+                                </p>
+                                <ol style={{ paddingRight: '20px', margin: '0 0 15px 0' }}>
+                                    <li>اذهب إلى لوحة تحكم <strong>Cloudflare</strong> ثم إلى <strong>R2</strong>.</li>
+                                    <li>اختر المستودع (Bucket) الخاص بك <code>palnovaa</code>.</li>
+                                    <li>انتقل إلى تبويب <strong>Settings</strong> (الإعدادات).</li>
+                                    <li>انزل لأسفل حتى تصل لقسم <strong>CORS Policy</strong> واضغط <strong>Add CORS policy</strong>.</li>
+                                    <li>انسخ كود الـ JSON أدناه والصقه هناك ثم احفظ الإعدادات.</li>
+                                </ol>
+                            </div>
+
+                            <div style={{ marginBottom: '20px', position: 'relative' }}>
+                                <textarea
+                                    readOnly
+                                    value={`[\n  {\n    "AllowedOrigins": ["*"],\n    "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD", "OPTIONS"],\n    "AllowedHeaders": ["*"],\n    "ExposeHeaders": ["Content-Length", "Content-Type"],\n    "MaxAgeSeconds": 3000\n  }\n]`}
+                                    style={{ width: '100%', height: '140px', background: '#050C16', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '12px', color: '#06D6F2', fontFamily: 'monospace', fontSize: '0.8rem', outline: 'none', resize: 'none', direction: 'ltr' }}
+                                />
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(`[\n  {\n    "AllowedOrigins": ["*"],\n    "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD", "OPTIONS"],\n    "AllowedHeaders": ["*"],\n    "ExposeHeaders": ["Content-Length", "Content-Type"],\n    "MaxAgeSeconds": 3000\n  }\n]`);
+                                        alert("📋 تم نسخ كود CORS بنجاح!");
+                                    }}
+                                    style={{ position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(6, 214, 242, 0.15)', border: '1px solid #06D6F2', color: '#06D6F2', borderRadius: '6px', padding: '5px 10px', fontSize: '0.75rem', cursor: 'pointer' }}
+                                >
+                                    نسخ الكود
+                                </button>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                <button
+                                    className="ds-btn primary"
+                                    style={{ height: '42px', padding: '0 25px', background: '#F5A623', border: 'none', color: 'black', fontWeight: 'bold' }}
+                                    onClick={() => setIsCorsHelpModalOpen(false)}
+                                >
+                                    حسناً، فهمت
                                 </button>
                             </div>
                         </div>
