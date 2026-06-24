@@ -21,6 +21,22 @@ const VirtualTourMap = () => {
     const [svCoords,         setSvCoords]         = useState(null);
     const [svPosition,       setSvPosition]       = useState(null);
 
+    // Mobile/Responsive Redesign States
+    const [isMobile,         setIsMobile]         = useState(window.innerWidth < 768);
+    const [showSplash,       setShowSplash]       = useState(window.innerWidth < 768);
+    const [activeTour,       setActiveTour]       = useState(null);
+    const [isDrawerOpen,     setIsDrawerOpen]     = useState(false);
+
+    useEffect(() => {
+        const handleResize = () => {
+            const mobile = window.innerWidth < 768;
+            setIsMobile(mobile);
+            if (!mobile) setShowSplash(false);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     // Dynamic Tour data from database
     const [tours,            setTours]            = useState([]);
     const [loadingTours,     setLoadingTours]     = useState(true);
@@ -223,6 +239,8 @@ const VirtualTourMap = () => {
         setSvCoords(null);
         setSvPosition(null);
         setIsSvMaximized(false);
+        setActiveTour(null);
+        setIsDrawerOpen(false);
     };
 
     // ── Map click ────────────────────────────────────────────────────────────
@@ -233,10 +251,271 @@ const VirtualTourMap = () => {
             setTempCoords({ lat: e.lngLat.lat, lng: e.lngLat.lng });
             return;
         }
-        if (mode !== 'street') return;
-        setSvCoords({ lat: e.lngLat.lat, lng: e.lngLat.lng });
-        setSvPosition(null);
+        if (mode === 'street') {
+            setSvCoords({ lat: e.lngLat.lat, lng: e.lngLat.lng });
+            setSvPosition(null);
+        } else if (mode === '360') {
+            setActiveTour(null);
+        }
     }, [mode, isAdding]);
+
+    // ── Mobile Redesign Renderers ────────────────────────────────────────────
+
+    const handleLocateClick = () => {
+        if (activeTour) {
+            mapRef.current?.easeTo({
+                center: [activeTour.lng, activeTour.lat],
+                zoom: 16,
+                duration: 1000
+            });
+            return;
+        }
+        
+        if (mode === 'street' && svCoords) {
+            mapRef.current?.easeTo({
+                center: [svPosition?.lng ?? svCoords.lng, svPosition?.lat ?? svCoords.lat],
+                zoom: 16,
+                duration: 1000
+            });
+            return;
+        }
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    mapRef.current?.flyTo({
+                        center: [lng, lat],
+                        zoom: 15,
+                        duration: 1500
+                    });
+                },
+                (error) => {
+                    console.error('GPS error:', error);
+                    alert('فشل الحصول على موقعك الحالي. تأكد من تفعيل الـ GPS وصلاحية الوصول.');
+                }
+            );
+        } else {
+            alert('خاصية تحديد الموقع غير مدعومة في متصفحك');
+        }
+    };
+
+    const renderWelcomeSplash = () => {
+        if (!showSplash) return null;
+
+        return (
+            <div className="orbis-splash-overlay">
+                <div className="orbis-splash-card">
+                    <div className="orbis-orbit-container">
+                        <div className="orbis-globe"></div>
+                        <div className="orbis-ring-1"></div>
+                        <div className="orbis-ring-2"></div>
+                    </div>
+                    
+                    <h1 className="orbis-title">PalNovaa Orbis</h1>
+                    <p className="orbis-subtitle">اكتشف المعالم التاريخية وجولات الشوارع ثلاثية الأبعاد</p>
+
+                    <div className="orbis-options-container">
+                        <div 
+                            className="orbis-option-card option-360"
+                            onClick={() => {
+                                setMode('360');
+                                setShowSplash(false);
+                            }}
+                        >
+                            <div className="orbis-option-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
+                                    <path d="M2 12h20"/>
+                                </svg>
+                            </div>
+                            <h3>جولة الأماكن 360°</h3>
+                            <p>استكشف المعالم والبلدات بجولات بانورامية تفاعلية</p>
+                        </div>
+
+                        <div 
+                            className="orbis-option-card option-street"
+                            onClick={() => {
+                                setMode('street');
+                                setShowSplash(false);
+                            }}
+                        >
+                            <div className="orbis-option-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <circle cx="12" cy="6" r="3"/>
+                                    <path d="M7 21v-3a5 5 0 0 1 10 0v3"/>
+                                </svg>
+                            </div>
+                            <h3>عرض الشارع</h3>
+                            <p>تجول في الشوارع والأزقة بنقرة واحدة على الخريطة</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const renderMobileBottomNav = () => {
+        if (!isMobile || showSplash) return null;
+
+        return (
+            <div className="vtmap-mobile-nav">
+                <button 
+                    className={`vtmap-mobile-nav-btn ${mode === '360' ? 'active-360' : ''}`}
+                    onClick={() => switchMode('360')}
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
+                        <path d="M2 12h20"/>
+                    </svg>
+                    <span>الأماكن</span>
+                </button>
+
+                <button 
+                    className="vtmap-mobile-nav-btn locate-btn"
+                    onClick={handleLocateClick}
+                >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
+                    </svg>
+                    <span>تحديد الموقع</span>
+                </button>
+
+                <button 
+                    className={`vtmap-mobile-nav-btn ${mode === 'street' ? 'active-street' : ''}`}
+                    onClick={() => switchMode('street')}
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <circle cx="12" cy="6" r="3"/>
+                        <path d="M7 21v-3a5 5 0 0 1 10 0v3"/>
+                    </svg>
+                    <span>الشوارع</span>
+                </button>
+            </div>
+        );
+    };
+
+    const renderMobilePlacesDrawer = () => {
+        if (!isMobile || mode !== '360' || showSplash) return null;
+
+        return (
+            <>
+                {!isDrawerOpen && !activeTour && (
+                    <button 
+                        className="vtmap-mobile-drawer-trigger"
+                        onClick={() => setIsDrawerOpen(true)}
+                    >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <line x1="3" y1="12" x2="21" y2="12"/>
+                            <line x1="3" y1="6" x2="21" y2="6"/>
+                            <line x1="3" y1="18" x2="21" y2="18"/>
+                        </svg>
+                        عرض قائمة الأماكن
+                    </button>
+                )}
+
+                {isDrawerOpen && (
+                    <div className="vtmap-mobile-drawer-overlay" onClick={() => setIsDrawerOpen(false)}>
+                        <div className="vtmap-mobile-drawer" onClick={(e) => e.stopPropagation()}>
+                            <div className="vtmap-mobile-drawer-header">
+                                <div className="vtmap-mobile-drawer-handle" />
+                                <h3>قائمة الأماكن المتاحة ({tours.length})</h3>
+                                <button className="close-drawer-btn" onClick={() => setIsDrawerOpen(false)}>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                        <line x1="18" y1="6" x2="6" y2="18"/>
+                                        <line x1="6" y1="6" x2="18" y2="18"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div className="vtmap-mobile-drawer-list">
+                                {loadingTours ? (
+                                    <div style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center', padding: '30px' }}>
+                                        جاري تحميل المواقع...
+                                    </div>
+                                ) : tours.length === 0 ? (
+                                    <div style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center', padding: '30px 10px' }}>
+                                        لا توجد جولات افتراضية متاحة حالياً.
+                                    </div>
+                                ) : (
+                                    tours.map((loc) => (
+                                        <div 
+                                            key={loc.id} 
+                                            className="vtmap-mobile-drawer-card"
+                                            onClick={() => {
+                                                setActiveTour(loc);
+                                                setIsDrawerOpen(false);
+                                            }}
+                                        >
+                                            <div className="vtmap-drawer-card-dot" style={{ background: loc.markerColor }} />
+                                            <div className="vtmap-drawer-card-text">
+                                                <span className="vtmap-drawer-card-name">{loc.name}</span>
+                                                <span className="vtmap-drawer-card-desc">{loc.description}</span>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </>
+        );
+    };
+
+    const renderMobilePreviewCard = () => {
+        if (!isMobile || !activeTour || showSplash) return null;
+
+        return (
+            <div className="vtmap-mobile-preview-card">
+                <div className="vtmap-preview-header">
+                    <div className="vtmap-preview-title-row">
+                        <div className="vtmap-preview-dot" style={{ background: activeTour.markerColor }} />
+                        <h3 className="vtmap-preview-name">{activeTour.name}</h3>
+                    </div>
+                    <button className="vtmap-preview-close" onClick={() => { setActiveTour(null); }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
+                <p className="vtmap-preview-desc">{activeTour.description}</p>
+                <div className="vtmap-preview-actions">
+                    <button 
+                        className="vtmap-preview-btn primary"
+                        onClick={() => setSelectedLocation(activeTour)}
+                    >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
+                            <path d="M2 12h20"/>
+                        </svg>
+                        دخول الجولة 360°
+                    </button>
+                    <button 
+                        className="vtmap-preview-btn secondary"
+                        onClick={() => {
+                            mapRef.current?.easeTo({
+                                center: [activeTour.lng, activeTour.lat],
+                                zoom: 16,
+                                duration: 800
+                            });
+                        }}
+                    >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
+                        </svg>
+                        تحديد على الخريطة
+                    </button>
+                </div>
+            </div>
+        );
+    };
 
     const svOpen = mode === 'street' && svCoords;
     const isAdmin = user?.role === 'admin';
@@ -245,65 +524,67 @@ const VirtualTourMap = () => {
         <div className="vtmap-root">
 
             {/* ══ HEADER ═══════════════════════════════════════════════════ */}
-            <div className="vtmap-header">
-                <button className="vtmap-back-btn" onClick={() => navigate('/map')}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" strokeWidth="2.5">
-                        <polyline points="15 18 9 12 15 6"/>
-                    </svg>
-                    العودة
-                </button>
-
-                <div className="vtmap-header-center">
-                    <div className="vtmap-logo-icon">
+            {(!isMobile || !showSplash) && (
+                <div className="vtmap-header">
+                    <button className="vtmap-back-btn" onClick={() => navigate('/map')}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" strokeWidth="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
-                            <path d="M2 12h20"/>
+                            stroke="currentColor" strokeWidth="2.5">
+                            <polyline points="15 18 9 12 15 6"/>
                         </svg>
-                    </div>
-                    <span className="vtmap-header-title">الجولة الافتراضية 360°</span>
-                    
-                    {/* Admin Add Button */}
-                    {isAdmin && !isAdding && (
-                        <button className="vtmap-admin-add-btn" onClick={() => setIsAdding(true)}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                stroke="currentColor" strokeWidth="2.5">
-                                <line x1="12" y1="5" x2="12" y2="19"/>
-                                <line x1="5" y1="12" x2="19" y2="12"/>
-                            </svg>
-                            إضافة جولة جديدة
-                        </button>
-                    )}
-                </div>
+                        العودة
+                    </button>
 
-                <div className="vtmap-mode-toggle">
-                    <button
-                        className={`vtmap-mode-btn ${mode === '360' ? 'active' : ''}`}
-                        onClick={() => switchMode('360')}
-                    >
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" strokeWidth="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
-                            <path d="M2 12h20"/>
-                        </svg>
-                        جولات 360°
-                    </button>
-                    <button
-                        className={`vtmap-mode-btn ${mode === 'street' ? 'active-street' : ''}`}
-                        onClick={() => switchMode('street')}
-                    >
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" strokeWidth="2">
-                            <circle cx="12" cy="6" r="3"/>
-                            <path d="M7 21v-3a5 5 0 0 1 10 0v3"/>
-                        </svg>
-                        عرض الشارع
-                    </button>
+                    <div className="vtmap-header-center">
+                        <div className="vtmap-logo-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" strokeWidth="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
+                                <path d="M2 12h20"/>
+                            </svg>
+                        </div>
+                        <span className="vtmap-header-title">الجولة الافتراضية 360°</span>
+                        
+                        {/* Admin Add Button */}
+                        {isAdmin && !isAdding && (
+                            <button className="vtmap-admin-add-btn" onClick={() => setIsAdding(true)}>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" strokeWidth="2.5">
+                                    <line x1="12" y1="5" x2="12" y2="19"/>
+                                    <line x1="5" y1="12" x2="19" y2="12"/>
+                                </svg>
+                                إضافة جولة جديدة
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="vtmap-mode-toggle">
+                        <button
+                            className={`vtmap-mode-btn ${mode === '360' ? 'active' : ''}`}
+                            onClick={() => switchMode('360')}
+                        >
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" strokeWidth="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
+                                <path d="M2 12h20"/>
+                            </svg>
+                            جولات 360°
+                        </button>
+                        <button
+                            className={`vtmap-mode-btn ${mode === 'street' ? 'active-street' : ''}`}
+                            onClick={() => switchMode('street')}
+                        >
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" strokeWidth="2">
+                                <circle cx="12" cy="6" r="3"/>
+                                <path d="M7 21v-3a5 5 0 0 1 10 0v3"/>
+                            </svg>
+                            عرض الشارع
+                        </button>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* ══ BODY ═════════════════════════════════════════════════════ */}
             <div className="vtmap-body">
@@ -411,10 +692,17 @@ const VirtualTourMap = () => {
                                 longitude={loc.lng}
                                 latitude={loc.lat}
                                 anchor="bottom"
-                                onClick={(e) => { e.originalEvent.stopPropagation(); setSelectedLocation(loc); }}
+                                onClick={(e) => { 
+                                    e.originalEvent.stopPropagation(); 
+                                    if (isMobile) {
+                                        setActiveTour(loc);
+                                    } else {
+                                        setSelectedLocation(loc);
+                                    }
+                                }}
                             >
                                 <div
-                                    className={`vtmap-marker ${hoveredId === loc.id ? 'hovered' : ''}`}
+                                    className={`vtmap-marker ${hoveredId === loc.id ? 'hovered' : ''} ${activeTour?.id === loc.id ? 'active-selected' : ''}`}
                                     onMouseEnter={() => setHoveredId(loc.id)}
                                     onMouseLeave={() => setHoveredId(null)}
                                     style={{ '--mc': loc.markerColor }}
@@ -686,6 +974,12 @@ const VirtualTourMap = () => {
                     onClose={() => setSelectedLocation(null)}
                 />
             )}
+
+            {/* Mobile specific UI layers */}
+            {renderWelcomeSplash()}
+            {renderMobileBottomNav()}
+            {renderMobilePlacesDrawer()}
+            {renderMobilePreviewCard()}
         </div>
     );
 };
