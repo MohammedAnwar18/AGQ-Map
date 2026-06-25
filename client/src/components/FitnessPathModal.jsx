@@ -638,20 +638,12 @@ export default function FitnessPathModal({ isOpen, onClose, onUpdateActivePath, 
                                 </div>
                             </div>
 
-                            <div className="summary-share-card">
-                                <p className="share-info">يمكنك نشر هذا المسار كخط تفاعلي على الخريطة ليراه أصدقاؤك. سيتم إقران اسمك وصورتك الشخصية، وسيتم حذفه تلقائياً بعد مرور 24 ساعة.</p>
-                            </div>
-
                             <div className="fitness-action-buttons">
                                 <button 
-                                    className="fitness-primary-btn btn-share-publish"
-                                    onClick={() => handlePublish(true)}
-                                    disabled={pathCoordsRef.current.length < 2}
+                                    className="fitness-primary-btn" 
+                                    onClick={() => handlePublish(false)}
                                 >
-                                    نشر المسار على الخريطة للأصدقاء
-                                </button>
-                                <button className="fitness-secondary-btn" onClick={() => handlePublish(false)}>
-                                    حفظ محلي فقط (تجاهل النشر)
+                                    حفظ المسار محلياً
                                 </button>
                                 <button className="fitness-danger-btn" onClick={() => { resetTracking(); setScreen('welcome'); }}>
                                     إلغاء وتجاهل
