@@ -761,6 +761,18 @@ const MapComponent = () => {
     const [showShopProfile, setShowShopProfile] = useState(false);
     const [selectedShopProfile, setSelectedShopProfile] = useState(null);
 
+    // Auto-center map on user's active fitness tracking coordinates
+    useEffect(() => {
+        if (activeTrackingPath && activeTrackingPath.length > 0) {
+            const lastPoint = activeTrackingPath[activeTrackingPath.length - 1];
+            mapRef.current?.easeTo({
+                center: lastPoint,
+                zoom: 17,
+                duration: 1000
+            });
+        }
+    }, [activeTrackingPath]);
+
     // Medical Center Profile State
     const [showMedicalProfile, setShowMedicalProfile] = useState(false);
     const [selectedMedicalProfile, setSelectedMedicalProfile] = useState(null);

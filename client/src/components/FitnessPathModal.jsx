@@ -30,6 +30,21 @@ export default function FitnessPathModal({ isOpen, onClose, onUpdateActivePath, 
     const timerRef = useRef(null);
     const lastPosRef = useRef(null);
 
+    // Dynamic Tracking Refs to prevent stale closures in setInterval
+    const speedRef = useRef(0);
+    const activityTypeRef = useRef(activityType);
+    const weightRef = useRef(weight);
+    const lastGPSUpdateRef = useRef(Date.now());
+
+    // Keep activity type and weight refs in sync with state
+    useEffect(() => {
+        activityTypeRef.current = activityType;
+    }, [activityType]);
+
+    useEffect(() => {
+        weightRef.current = weight;
+    }, [weight]);
+
     // Load history on mount
     useEffect(() => {
         const stored = localStorage.getItem('palnovaa_fitness_history');
@@ -49,6 +64,8 @@ export default function FitnessPathModal({ isOpen, onClose, onUpdateActivePath, 
             return;
         }
 
+        lastGPSUpdateRef.current = Date.now();
+
         // Request permission and start watching
         watchIdRef.current = navigator.geolocation.watchPosition(
             (position) => {
@@ -58,6 +75,7 @@ export default function FitnessPathModal({ isOpen, onClose, onUpdateActivePath, 
                 if (accuracy && accuracy > 35) return;
 
                 const newCoord = [longitude, latitude];
+                lastGPSUpdateRef.current = Date.now();
                 
                 if (lastPosRef.current) {
                     const distDiff = calculateDistance(
@@ -86,10 +104,12 @@ export default function FitnessPathModal({ isOpen, onClose, onUpdateActivePath, 
                         }
                         
                         // Cap speed to reasonable values
-                        if (activityType === 'walk' && computedSpeed > 8) computedSpeed = 5;
-                        if (activityType === 'run' && computedSpeed > 25) computedSpeed = 12;
-                        if (activityType === 'cycle' && computedSpeed > 60) computedSpeed = 20;
+                        const currentActType = activityTypeRef.current;
+                        if (currentActType === 'walk' && computedSpeed > 8) computedSpeed = 5;
+                        if (currentActType === 'run' && computedSpeed > 25) computedSpeed = 12;
+                        if (currentActType === 'cycle' && computedSpeed > 60) computedSpeed = 20;
 
+                        speedRef.current = computedSpeed;
                         setCurrentSpeed(Number(computedSpeed.toFixed(1)));
                         lastPosRef.current = { latitude, longitude };
                     }
@@ -142,20 +162,34 @@ export default function FitnessPathModal({ isOpen, onClose, onUpdateActivePath, 
                 setSeconds((prev) => {
                     const newSeconds = prev + 1;
                     
-                    // MET Calorie Calculation
-                    // Formula: Calories = MET * Weight(kg) * (1 / 3600) hours
-                    let met = MET_VALUES[activityType].base;
-                    if (activityType === 'walk') {
-                        met = currentSpeed < 4 ? MET_VALUES.walk.slow : MET_VALUES.walk.fast;
-                    } else if (activityType === 'run') {
-                        met = currentSpeed < 8 ? MET_VALUES.run.slow : MET_VALUES.run.fast;
-                    } else if (activityType === 'cycle') {
-                        met = currentSpeed < 15 ? MET_VALUES.cycle.slow : MET_VALUES.cycle.fast;
+                    // Stop detection: If GPS position has not updated for 4+ seconds, assume speed is 0
+                    const timeSinceLastGPS = Date.now() - lastGPSUpdateRef.current;
+                    if (timeSinceLastGPS > 4000) {
+                        speedRef.current = 0;
+                        setCurrentSpeed(0);
                     }
 
-                    const calIncrement = met * weight * (1 / 3600);
-                    caloriesRef.current += calIncrement;
-                    setCalories(Number(caloriesRef.current.toFixed(1)));
+                    const speedVal = speedRef.current;
+                    // Active calories count only when user is actually moving (speed >= 1.0 km/h)
+                    const isMoving = speedVal >= 1.0;
+
+                    if (isMoving) {
+                        const currentActType = activityTypeRef.current;
+                        const currentWeight = weightRef.current;
+
+                        let met = MET_VALUES[currentActType].base;
+                        if (currentActType === 'walk') {
+                            met = speedVal < 4 ? MET_VALUES.walk.slow : MET_VALUES.walk.fast;
+                        } else if (currentActType === 'run') {
+                            met = speedVal < 8 ? MET_VALUES.run.slow : MET_VALUES.run.fast;
+                        } else if (currentActType === 'cycle') {
+                            met = speedVal < 15 ? MET_VALUES.cycle.slow : MET_VALUES.cycle.fast;
+                        }
+
+                        const calIncrement = met * currentWeight * (1 / 3600);
+                        caloriesRef.current += calIncrement;
+                        setCalories(Number(caloriesRef.current.toFixed(1)));
+                    }
 
                     return newSeconds;
                 });
@@ -174,7 +208,6 @@ export default function FitnessPathModal({ isOpen, onClose, onUpdateActivePath, 
 
     if (!isOpen) return null;
 
-    // Reset tracking stats
     const resetTracking = () => {
         setIsTracking(false);
         setIsPaused(false);
@@ -185,6 +218,8 @@ export default function FitnessPathModal({ isOpen, onClose, onUpdateActivePath, 
         pathCoordsRef.current = [];
         distanceRef.current = 0;
         caloriesRef.current = 0;
+        speedRef.current = 0;
+        lastGPSUpdateRef.current = Date.now();
         onUpdateActivePath(null);
     };
 
