@@ -286,43 +286,6 @@ const MapComponent = () => {
         };
     }, [friendsActiveRuns]);
 
-    const postsWithPathsGeoJSON = useMemo(() => {
-        const features = [];
-        (posts || []).forEach(post => {
-            if (post.path_coordinates) {
-                let coords = null;
-                try {
-                    coords = typeof post.path_coordinates === 'string' ? JSON.parse(post.path_coordinates) : post.path_coordinates;
-                } catch (e) {
-                    console.error("Error parsing path_coordinates for post", post.id, e);
-                }
-                if (coords && Array.isArray(coords) && coords.length > 1) {
-                    features.push({
-                        type: "Feature",
-                        id: post.id,
-                        geometry: {
-                            type: "LineString",
-                            coordinates: coords
-                        },
-                        properties: {
-                            id: post.id,
-                            user_id: post.user?.id,
-                            username: post.user?.username,
-                            full_name: post.user?.full_name,
-                            profile_picture: post.user?.profile_picture,
-                            content: post.content,
-                            created_at: post.created_at
-                        }
-                    });
-                }
-            }
-        });
-        return {
-            type: "FeatureCollection",
-            features
-        };
-    }, [posts]);
-
     // MapTiler Configuration
     const MAPTILER_KEY = 'N6uNP3sTu25OIBUyi9G1';
     const MAPTILER_STYLE_URL = `https://api.maptiler.com/maps/019b8b76-e5e2-7f02-b5d1-74fd0cf725bb/style.json?key=${MAPTILER_KEY}`;
@@ -906,6 +869,43 @@ const MapComponent = () => {
     const [allFacilitiesMap, setAllFacilitiesMap] = useState([]);
     const [liveCameras, setLiveCameras] = useState([]);
     const [selectedCamera, setSelectedCamera] = useState(null);
+
+    const postsWithPathsGeoJSON = useMemo(() => {
+        const features = [];
+        (posts || []).forEach(post => {
+            if (post.path_coordinates) {
+                let coords = null;
+                try {
+                    coords = typeof post.path_coordinates === 'string' ? JSON.parse(post.path_coordinates) : post.path_coordinates;
+                } catch (e) {
+                    console.error("Error parsing path_coordinates for post", post.id, e);
+                }
+                if (coords && Array.isArray(coords) && coords.length > 1) {
+                    features.push({
+                        type: "Feature",
+                        id: post.id,
+                        geometry: {
+                            type: "LineString",
+                            coordinates: coords
+                        },
+                        properties: {
+                            id: post.id,
+                            user_id: post.user?.id,
+                            username: post.user?.username,
+                            full_name: post.user?.full_name,
+                            profile_picture: post.user?.profile_picture,
+                            content: post.content,
+                            created_at: post.created_at
+                        }
+                    });
+                }
+            }
+        });
+        return {
+            type: "FeatureCollection",
+            features
+        };
+    }, [posts]);
     
     useEffect(() => {
         console.log("Map State - Zoom:", viewState.zoom);
