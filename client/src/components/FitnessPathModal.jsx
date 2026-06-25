@@ -301,6 +301,59 @@ export default function FitnessPathModal({ isOpen, onClose, onUpdateActivePath, 
         return 'دراجة هوائية';
     };
 
+    if (screen === 'tracking') {
+        return (
+            <div className="fitness-modal-overlay tracking-active-overlay">
+                <div className="fitness-modal-container tracking-active-container">
+                    <div className="fitness-tracking-topbar">
+                        <div className="topbar-left-controls">
+                            <button 
+                                className={`topbar-btn ${isPaused ? 'btn-resume' : 'btn-pause'}`}
+                                onClick={handlePauseToggle}
+                                title={isPaused ? "استئناف" : "إيقاف مؤقت"}
+                            >
+                                {isPaused ? (
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                                ) : (
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                                )}
+                            </button>
+                            <button className="topbar-btn btn-stop" onClick={handleStopTracking} title="إنهاء">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M6 6h12v12H6z"/></svg>
+                            </button>
+                        </div>
+
+                        <div className="topbar-stats-row">
+                            <div className="topbar-stat">
+                                <span className="topbar-stat-lbl">المسافة</span>
+                                <strong className="topbar-stat-val text-cyan">{distance} <span className="topbar-stat-unit">كم</span></strong>
+                            </div>
+                            <div className="topbar-stat">
+                                <span className="topbar-stat-lbl">الوقت</span>
+                                <strong className="topbar-stat-val">{formatTime(seconds)}</strong>
+                            </div>
+                            <div className="topbar-stat">
+                                <span className="topbar-stat-lbl">السعرات</span>
+                                <strong className="topbar-stat-val text-orange">{calories} <span className="topbar-stat-unit">kcal</span></strong>
+                            </div>
+                            <div className="topbar-stat">
+                                <span className="topbar-stat-lbl">السرعة</span>
+                                <strong className="topbar-stat-val text-green">{currentSpeed} <span className="topbar-stat-unit">كم/س</span></strong>
+                            </div>
+                        </div>
+
+                        <div className="topbar-activity-indicator">
+                            <span className="badge-pulse"></span>
+                            <span className="activity-emoji font-icon">
+                                {activityType === 'walk' ? '🚶' : activityType === 'run' ? '🏃' : '🚴'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="fitness-modal-overlay">
             <div className="fitness-modal-container">
