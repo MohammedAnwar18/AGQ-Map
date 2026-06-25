@@ -354,6 +354,130 @@ export default function FitnessPathModal({ isOpen, onClose, onUpdateActivePath, 
         );
     }
 
+    if (screen === 'welcome') {
+        return (
+            <div className="fitness-modal-overlay">
+                <div className="fitness-modal-container fitness-welcome-container">
+                    {/* Background runner image */}
+                    <div className="welcome-bg-image-wrapper">
+                        <img 
+                            src="/images/runner.png" 
+                            alt="Runner Silhouette" 
+                            className="welcome-bg-image"
+                        />
+                        {/* Atmospheric overlays */}
+                        <div className="welcome-overlay-gradient-b" />
+                        <div className="welcome-overlay-radial" />
+                        {/* Neon glows */}
+                        <div className="welcome-neon-glow-left" />
+                        <div className="welcome-neon-glow-right" />
+                    </div>
+
+                    {/* Content */}
+                    <div className="welcome-content-wrapper">
+                        {/* Top bar */}
+                        <header className="welcome-topbar">
+                            <div className="welcome-logo-area">
+                                <span className="welcome-logo-badge">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="welcome-logo-icon">
+                                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                                    </svg>
+                                </span>
+                                <span className="welcome-logo-text">PEAK</span>
+                            </div>
+                            <button
+                                type="button"
+                                className="welcome-skip-btn"
+                                onClick={() => { resetTracking(); onClose(); }}
+                            >
+                                إغلاق
+                            </button>
+                        </header>
+
+                        {/* Floating stat chip */}
+                        <div className="welcome-floating-chip-area">
+                            <div className="welcome-floating-chip">
+                                <span className="welcome-chip-pulse-dot" />
+                                <span className="welcome-chip-text">تتبع مباشر للتمارين والمسارات</span>
+                            </div>
+                        </div>
+
+                        {/* Spacer to push card to bottom */}
+                        <div className="welcome-spacer" />
+
+                        {/* Glass card */}
+                        <div className="welcome-glass-card">
+                            {/* Stats row */}
+                            <div className="welcome-stats-row">
+                                <div className="welcome-stat-box">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="welcome-stat-icon text-cyan">
+                                        <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+                                    </svg>
+                                    <p className="welcome-stat-value">742</p>
+                                    <p className="welcome-stat-label">سعرة · kcal</p>
+                                </div>
+                                <div className="welcome-stat-box">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="welcome-stat-icon text-green">
+                                        <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+                                        <path d="M3.22 12H9.5l1.5-3 2 6 1.5-3h3.78"/>
+                                    </svg>
+                                    <p className="welcome-stat-value">138</p>
+                                    <p className="welcome-stat-label">نبضة · bpm</p>
+                                </div>
+                                <div className="welcome-stat-box">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="welcome-stat-icon text-orange">
+                                        <line x1="10" y1="2" x2="14" y2="2"/>
+                                        <line x1="12" y1="14" x2="15" y2="11"/>
+                                        <circle cx="12" cy="14" r="8"/>
+                                    </svg>
+                                    <p className="welcome-stat-value">4:52</p>
+                                    <p className="welcome-stat-label">الوتيرة · /كم</p>
+                                </div>
+                            </div>
+
+                            <p className="welcome-card-subtitle">أهلاً بك في</p>
+                            <h1 className="welcome-card-title">
+                                مسار اللياقة <span className="text-neon-green">المطور</span>
+                            </h1>
+                            <p className="welcome-card-description">
+                                تتبع كل خطوة، نبضة، ومسار جري أو دراجة مباشرة على الخريطة. تحليلات ذكية تتكيف مع أداء حركتك لتدفعك للأفضل كل يوم.
+                            </p>
+
+                            {/* CTA Action Buttons */}
+                            <div className="welcome-cta-buttons">
+                                <button 
+                                    type="button" 
+                                    className="welcome-primary-cta"
+                                    onClick={() => setScreen('setup')}
+                                >
+                                    ابدأ مسارك لصحة أفضل
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="welcome-cta-arrow">
+                                        <line x1="19" y1="12" x2="5" y2="12"/>
+                                        <polyline points="12 19 5 12 12 5"/>
+                                    </svg>
+                                </button>
+                                <button 
+                                    type="button" 
+                                    className="welcome-secondary-cta"
+                                    onClick={() => setScreen('history')}
+                                >
+                                    سجل الأنشطة السابقة
+                                </button>
+                            </div>
+
+                            {/* Progress dots decoration */}
+                            <div className="welcome-progress-dots">
+                                <span className="dot-active" />
+                                <span className="dot-inactive" />
+                                <span className="dot-inactive" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="fitness-modal-overlay">
             <div className="fitness-modal-container">
@@ -368,58 +492,7 @@ export default function FitnessPathModal({ isOpen, onClose, onUpdateActivePath, 
                 {/* Body Content depending on Screen */}
                 <div className="fitness-modal-body">
                     
-                    {/* 1. WELCOME SCREEN */}
-                    {screen === 'welcome' && (
-                        <div className="fitness-screen-welcome">
-                            {/* Animated SVG Runner */}
-                            <div className="runner-animation-wrapper">
-                                <svg viewBox="0 0 100 100" className="fitness-runner-svg">
-                                    <defs>
-                                        <radialGradient id="glow" cx="50%" cy="50%" r="50%">
-                                            <stop offset="0%" stopColor="#10D9A0" stopOpacity="0.4" />
-                                            <stop offset="100%" stopColor="#10D9A0" stopOpacity="0" />
-                                        </radialGradient>
-                                    </defs>
-                                    {/* Glowing aura */}
-                                    <circle cx="50" cy="55" r="30" fill="url(#glow)" className="runner-glow" />
-                                    
-                                    {/* Styled runner figure */}
-                                    <g className="runner-body-group">
-                                        {/* Back arm */}
-                                        <path d="M50 38 L65 48 L75 38" className="runner-limb arm-back" />
-                                        {/* Back leg */}
-                                        <path d="M48 56 L62 70 L52 88" className="runner-limb leg-back" />
-                                        {/* Torso */}
-                                        <path d="M50 35 L46 56" className="runner-torso" />
-                                        {/* Head */}
-                                        <circle cx="53" cy="27" r="6" className="runner-head" />
-                                        {/* Front leg */}
-                                        <path d="M48 56 L35 70 L48 86" className="runner-limb leg-front" />
-                                        {/* Front arm */}
-                                        <path d="M50 38 L36 46 L30 34" className="runner-limb arm-front" />
-                                    </g>
-                                    {/* Ground shadow/lines */}
-                                    <line x1="20" y1="90" x2="80" y2="90" className="runner-ground-line" />
-                                    <line x1="30" y1="94" x2="70" y2="94" className="runner-ground-line-sub" />
-                                </svg>
-                            </div>
-
-                            <div className="fitness-welcome-text">
-                                <h2>مسار اللياقة البدنية</h2>
-                                <p>تتبع خطواتك وجرياتك ومسارات الدراجة الهوائية مباشرة على الخريطة. شارك مساراتك المميزة مع أصدقائك بنمط نيون جذاب وعالي الدقة.</p>
-                            </div>
-
-                            <div className="fitness-action-buttons">
-                                <button className="fitness-primary-btn" onClick={() => setScreen('setup')}>
-                                    ابدأ مسارك لصحة أفضل
-                                </button>
-                                <button className="fitness-secondary-btn" onClick={() => setScreen('history')}>
-                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" style={{marginLeft: '8px'}}><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                    سجل الأنشطة السابقة
-                                </button>
-                            </div>
-                        </div>
-                    )}
+                    {/* 1. WELCOME SCREEN REMOVED - NOW HANDLED EARLY */}
 
                     {/* 2. SETUP SCREEN */}
                     {screen === 'setup' && (
