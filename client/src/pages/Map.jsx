@@ -34,7 +34,8 @@ import MagazineModal from '../components/MagazineModal';
 import PalNovaaLab from '../components/PalNovaaLab';
 import PalNovaaRepository from '../components/PalNovaaRepository';
 import LiveCameraModal from '../components/LiveCameraModal';
-import { postService, friendService, authService, notificationService, communityService, shopService, cameraService, getImageUrl } from '../services/api';
+import FitnessPathModal from '../components/FitnessPathModal';
+import { postService, friendService, authService, notificationService, communityService, shopService, cameraService, getImageUrl, fitnessService } from '../services/api';
 import { isNative, startNativeTracking, stopNativeTracking } from '../utils/nativeLocation';
 import './Map.css';
 
@@ -249,6 +250,33 @@ const MapComponent = () => {
         if (!MAPBOX_TOKEN) return null;
         return `https://api.mapbox.com/styles/v1/mohammed-1331/cmbseyy16010101qwf9d5a8m3?access_token=${MAPBOX_TOKEN}`;
     }, [MAPBOX_TOKEN]);
+
+    const friendsActiveRunsGeoJSON = useMemo(() => {
+        return {
+            type: "FeatureCollection",
+            features: (friendsActiveRuns || []).map(run => ({
+                type: "Feature",
+                id: run.id,
+                geometry: {
+                    type: "LineString",
+                    coordinates: run.path_coordinates
+                },
+                properties: {
+                    id: run.id,
+                    user_id: run.user_id,
+                    username: run.username,
+                    full_name: run.full_name,
+                    profile_picture: run.profile_picture,
+                    activity_type: run.activity_type,
+                    duration_seconds: run.duration_seconds,
+                    distance_km: run.distance_km,
+                    calories_burned: run.calories_burned,
+                    avg_speed_kmh: run.avg_speed_kmh,
+                    created_at: run.created_at
+                }
+            }))
+        };
+    }, [friendsActiveRuns]);
 
     // MapTiler Configuration
     const MAPTILER_KEY = 'N6uNP3sTu25OIBUyi9G1';
@@ -688,6 +716,11 @@ const MapComponent = () => {
     const [showNews, setShowNews] = useState(false);
     const [showMagazine, setShowMagazine] = useState(false);
     const [showLabModal, setShowLabModal] = useState(false);
+    const [showFitnessModal, setShowFitnessModal] = useState(false);
+    const [activeTrackingPath, setActiveTrackingPath] = useState(null);
+    const [friendsActiveRuns, setFriendsActiveRuns] = useState([]);
+    const [selectedFriendRun, setSelectedFriendRun] = useState(null);
+    const [popupCoords, setPopupCoords] = useState(null);
     const [showRepositoryModal, setShowRepositoryModal] = useState(false);
     const [showCommunities, setShowCommunities] = useState(false);
     const [showMoreMenu, setShowMoreMenu] = useState(false);
@@ -1364,6 +1397,27 @@ const MapComponent = () => {
     };
 
     const handleMapClick = (e) => {
+        const clickedFitnessFeature = e.features && e.features.find(f => f.layer.id.startsWith('friends-runs-layer'));
+        if (clickedFitnessFeature) {
+            const props = clickedFitnessFeature.properties;
+            const { lng, lat } = e.lngLat;
+            setSelectedFriendRun({
+                id: props.id,
+                user_id: props.user_id,
+                username: props.username,
+                full_name: props.full_name,
+                profile_picture: props.profile_picture,
+                activity_type: props.activity_type,
+                duration_seconds: parseInt(props.duration_seconds),
+                distance_km: parseFloat(props.distance_km),
+                calories_burned: parseFloat(props.calories_burned),
+                avg_speed_kmh: parseFloat(props.avg_speed_kmh),
+                created_at: props.created_at
+            });
+            setPopupCoords({ lng, lat });
+            return;
+        }
+
         if (isAdminPickingLocation) {
             const { lng, lat } = e.lngLat;
             setAdminPostDraft(prev => ({
@@ -1925,19 +1979,22 @@ const MapComponent = () => {
             setFollowedShopsMap([]);
             setManagedShopsMap([]);
             setHasManagedShops(false);
+            setFriendsActiveRuns([]);
             return;
         }
 
         const fetchPrivateData = async () => {
             try {
-                const [friendsData, shopsData, managedShopsData] = await Promise.all([
+                const [friendsData, shopsData, managedShopsData, fitnessData] = await Promise.all([
                     friendService.getFriends().catch(e => ({ friends: [] })),
                     shopService.getFollowing().catch(e => ({ shops: [] })),
-                    shopService.getManagedShops().catch(e => ({ shops: [] }))
+                    shopService.getManagedShops().catch(e => ({ shops: [] })),
+                    fitnessService.getActiveRuns().catch(e => ({ runs: [] }))
                 ]);
                 
                 setFriendsMap((friendsData?.friends || []).filter(f => f.last_latitude && f.last_longitude));
                 setFollowedShopsMap(shopsData?.shops || []);
+                setFriendsActiveRuns(fitnessData?.runs || []);
 
                 if (managedShopsData?.shops) {
                     setManagedShopsMap(managedShopsData.shops);
@@ -2324,6 +2381,26 @@ const MapComponent = () => {
                             </svg>
                         </button>
 
+                        {/* مسار اللياقة (Fitness Path) */}
+                        <button 
+                            onClick={() => { setShowFitnessModal(true); setShowMoreMenu(false); }}
+                            className="fitness-menu-item"
+                        >
+                            <div className="menu-item-content">
+                                <div className="menu-icon-wrapper" style={{ color: '#10D9A0' }}>
+                                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg">
+                                        <path d="M18.8 19c.4-1.2.6-2.5.6-3.8 0-4.4-3.6-8-8-8a8 8 0 00-6.8 3.8"/>
+                                        <path d="M2 19h20M9 19c.4-1.2.6-2.5.6-3.8M5 19a4 4 0 014-4"/>
+                                        <circle cx="12" cy="5" r="2"/>
+                                    </svg>
+                                </div>
+                                <span style={{ color: '#10D9A0', fontWeight: 'bold' }}>مسار اللياقة</span>
+                            </div>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#10D9A0" strokeWidth="2.5">
+                                <polyline points="9 18 15 12 9 6" />
+                            </svg>
+                        </button>
+
                         {/* الجولة الافتراضية - مفعل بطلب من المستخدم */}
                         {true && (
                             <button
@@ -2532,6 +2609,7 @@ const MapComponent = () => {
                     onLoad={onMapLoad}
                     style={{ width: '100%', height: '100%', cursor: isAdminPickingLocation ? 'crosshair' : 'grab' }}
                     onClick={handleMapClick}
+                    interactiveLayerIds={['friends-runs-layer-main', 'friends-runs-layer-glow']}
                     maxPitch={85}
                     attributionControl={false}
                 >
@@ -2551,6 +2629,68 @@ const MapComponent = () => {
                                         12, 4,
                                         18, 10
                                     ],
+                                    "line-opacity": 1.0
+                                }}
+                            />
+                        </Source>
+                    )}
+
+                    {/* Active Fitness Track Layer */}
+                    {activeTrackingPath && activeTrackingPath.length > 0 && (
+                        <Source id="active-fitness-track" type="geojson" data={{
+                            type: "Feature",
+                            geometry: {
+                                type: "LineString",
+                                coordinates: activeTrackingPath
+                            }
+                        }}>
+                            <Layer
+                                id="active-fitness-track-glow"
+                                type="line"
+                                beforeId={firstLabelLayerId}
+                                layout={{ "line-join": "round", "line-cap": "round" }}
+                                paint={{
+                                    "line-color": "#10D9A0",
+                                    "line-width": 14,
+                                    "line-opacity": 0.4
+                                }}
+                            />
+                            <Layer
+                                id="active-fitness-track-inner"
+                                type="line"
+                                beforeId={firstLabelLayerId}
+                                layout={{ "line-join": "round", "line-cap": "round" }}
+                                paint={{
+                                    "line-color": "#10D9A0",
+                                    "line-width": 6,
+                                    "line-opacity": 1.0
+                                }}
+                            />
+                        </Source>
+                    )}
+
+                    {/* Friends Active Published Paths Layer */}
+                    {friendsActiveRuns && friendsActiveRuns.length > 0 && (
+                        <Source id="friends-fitness-runs" type="geojson" data={friendsActiveRunsGeoJSON}>
+                            <Layer
+                                id="friends-runs-layer-glow"
+                                type="line"
+                                beforeId={firstLabelLayerId}
+                                layout={{ "line-join": "round", "line-cap": "round" }}
+                                paint={{
+                                    "line-color": "#00f0ff",
+                                    "line-width": 12,
+                                    "line-opacity": 0.45
+                                }}
+                            />
+                            <Layer
+                                id="friends-runs-layer-main"
+                                type="line"
+                                beforeId={firstLabelLayerId}
+                                layout={{ "line-join": "round", "line-cap": "round" }}
+                                paint={{
+                                    "line-color": "#0077ff",
+                                    "line-width": 5,
                                     "line-opacity": 1.0
                                 }}
                             />
@@ -3002,6 +3142,78 @@ const MapComponent = () => {
                         );
                     })}
 
+                    {selectedFriendRun && popupCoords && (
+                        <Popup
+                            longitude={popupCoords.lng}
+                            latitude={popupCoords.lat}
+                            onClose={() => { setSelectedFriendRun(null); setPopupCoords(null); }}
+                            closeOnClick={false}
+                            maxWidth="320px"
+                            className="fitness-route-popup"
+                        >
+                            <div className="fitness-popup-card">
+                                <div className="fitness-popup-header">
+                                    <img 
+                                        src={getImageUrl(selectedFriendRun.profile_picture) || '/default-avatar.png'} 
+                                        alt={selectedFriendRun.full_name} 
+                                        className="fitness-popup-avatar"
+                                    />
+                                    <div className="fitness-popup-user-info">
+                                        <h4>{selectedFriendRun.full_name || selectedFriendRun.username}</h4>
+                                        <span className="fitness-popup-time">
+                                            {new Date(selectedFriendRun.created_at).toLocaleDateString('ar-EG', {
+                                                month: 'short',
+                                                day: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            })}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <div className="fitness-popup-body">
+                                    <div className="fitness-popup-activity">
+                                        <span>النشاط:</span>
+                                        <strong>
+                                            {selectedFriendRun.activity_type === 'walk' ? '🚶 مشي' : 
+                                             selectedFriendRun.activity_type === 'run' ? '🏃 ركض' : '🚴 دراجة هوائية'}
+                                        </strong>
+                                    </div>
+                                    <div className="fitness-popup-stats-grid">
+                                        <div className="popup-stat-item">
+                                            <span className="popup-stat-lbl">المسافة</span>
+                                            <strong className="popup-stat-val text-cyan">{selectedFriendRun.distance_km} كم</strong>
+                                        </div>
+                                        <div className="popup-stat-item">
+                                            <span className="popup-stat-lbl">الوقت</span>
+                                            <strong className="popup-stat-val">
+                                                {(() => {
+                                                    const secs = selectedFriendRun.duration_seconds;
+                                                    const hrs = Math.floor(secs / 3600);
+                                                    const mins = Math.floor((secs % 3600) / 60);
+                                                    const scs = secs % 60;
+                                                    return [
+                                                        hrs > 0 ? String(hrs).padStart(2, '0') : null,
+                                                        String(mins).padStart(2, '0'),
+                                                        String(scs).padStart(2, '0')
+                                                    ].filter(Boolean).join(':');
+                                                })()}
+                                            </strong>
+                                        </div>
+                                        <div className="popup-stat-item">
+                                            <span className="popup-stat-lbl">السرعة</span>
+                                            <strong className="popup-stat-val text-green">{selectedFriendRun.avg_speed_kmh} كم/س</strong>
+                                        </div>
+                                        <div className="popup-stat-item">
+                                            <span className="popup-stat-lbl">السعرات</span>
+                                            <strong className="popup-stat-val text-orange">{selectedFriendRun.calories_burned} kcal</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </Popup>
+                    )}
+
                 </Map>
                     </>
                 )}
@@ -3215,6 +3427,23 @@ const MapComponent = () => {
             {/* Modals */}
             <React.Suspense fallback={null}>
             {showLabModal && <PalNovaaLab onClose={() => setShowLabModal(false)} />}
+            {showFitnessModal && (
+                <FitnessPathModal 
+                    isOpen={showFitnessModal}
+                    onClose={() => setShowFitnessModal(false)}
+                    onUpdateActivePath={(coords) => setActiveTrackingPath(coords)}
+                    onPublishSuccess={async () => {
+                        try {
+                            const data = await fitnessService.getActiveRuns();
+                            if (data && data.success) {
+                                setFriendsActiveRuns(data.runs || []);
+                            }
+                        } catch (err) {
+                            console.error('Failed to reload runs:', err);
+                        }
+                    }}
+                />
+            )}
             {showRepositoryModal && <PalNovaaRepository onClose={() => setShowRepositoryModal(false)} />}
             {showCreatePost && (
                 <CreatePostModal 

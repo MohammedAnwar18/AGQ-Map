@@ -783,4 +783,16 @@ export const arService = {
     }
 };
 
+// Fitness Services
+export const fitnessService = {
+    saveRun: async (runData) => {
+        const response = await api.post('/fitness', runData);
+        return response.data;
+    },
+    getActiveRuns: async () => {
+        const response = await api.get('/fitness/active');
+        return response.data;
+    }
+};
+
 export default api;

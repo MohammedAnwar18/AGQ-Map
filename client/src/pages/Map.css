@@ -1771,3 +1771,99 @@
     border: 1.5px solid #fbab15 !important;
     background: rgba(251, 171, 21, 0.15) !important;
 }
+
+/* Fitness Route Popup details */
+.fitness-route-popup .maplibregl-popup-content,
+.fitness-route-popup .mapboxgl-popup-content {
+    background: rgba(22, 24, 35, 0.95) !important;
+    border: 1px solid rgba(0, 240, 255, 0.25) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 240, 255, 0.1) !important;
+    padding: 14px !important;
+    color: #ffffff !important;
+}
+
+.fitness-route-popup .maplibregl-popup-close-button,
+.fitness-route-popup .mapboxgl-popup-close-button {
+    color: #ffffff !important;
+    font-size: 16px !important;
+    padding: 4px 8px !important;
+}
+
+.fitness-route-popup .maplibregl-popup-tip,
+.fitness-route-popup .mapboxgl-popup-tip {
+    border-top-color: rgba(22, 24, 35, 0.95) !important;
+}
+
+.fitness-popup-card {
+    direction: rtl;
+    text-align: right;
+    font-family: 'Tajawal', sans-serif;
+}
+
+.fitness-popup-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 8px;
+}
+
+.fitness-popup-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 1.5px solid #00f0ff;
+    object-fit: cover;
+}
+
+.fitness-popup-user-info h4 {
+    margin: 0 0 2px 0;
+    font-size: 0.95rem;
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.fitness-popup-time {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.fitness-popup-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.fitness-popup-activity {
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    justify-content: space-between;
+}
+
+.fitness-popup-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 10px;
+    padding: 8px;
+}
+
+.popup-stat-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.popup-stat-lbl {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.45);
+    margin-bottom: 1px;
+}
+
+.popup-stat-val {
+    font-size: 0.85rem;
+    color: #ffffff;
+}

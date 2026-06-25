@@ -1,0 +1,711 @@
+/* FitnessPathModal Premium CSS Styling */
+.fitness-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(10, 11, 16, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    padding: 16px;
+    direction: rtl;
+}
+
+.fitness-modal-container {
+    width: 100%;
+    max-width: 440px;
+    background: rgba(22, 24, 35, 0.95);
+    border: 1px solid rgba(16, 217, 160, 0.2);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(16, 217, 160, 0.1);
+    border-radius: 24px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    max-height: 85vh;
+    animation: fitnessModalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fitnessModalFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* Header */
+.fitness-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.fitness-modal-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #ffffff;
+    background: linear-gradient(135deg, #ffffff 30%, #10D9A0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.fitness-close-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+.fitness-close-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+}
+
+/* Body */
+.fitness-modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Welcome Screen & Runner Animation */
+.fitness-screen-welcome {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.runner-animation-wrapper {
+    width: 140px;
+    height: 140px;
+    margin-bottom: 24px;
+    position: relative;
+}
+
+.fitness-runner-svg {
+    width: 100%;
+    height: 100%;
+}
+
+/* Runner Animations */
+.runner-glow {
+    animation: runnerGlowPulse 2s infinite alternate ease-in-out;
+}
+
+@keyframes runnerGlowPulse {
+    0% { r: 24px; opacity: 0.3; }
+    100% { r: 34px; opacity: 0.6; }
+}
+
+.runner-body-group {
+    animation: bodyBobbing 0.6s infinite alternate ease-in-out;
+}
+
+@keyframes bodyBobbing {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-3px); }
+}
+
+/* Limb rotation setup (Origins calculated based on joints coords) */
+.runner-limb {
+    stroke: #10D9A0;
+    stroke-width: 5px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+}
+
+.runner-torso {
+    stroke: #ffffff;
+    stroke-width: 5px;
+    stroke-linecap: round;
+    fill: none;
+}
+
+.runner-head {
+    fill: #ffffff;
+}
+
+.arm-front {
+    transform-origin: 50px 38px;
+    animation: armSwing 0.7s infinite alternate ease-in-out;
+}
+
+.arm-back {
+    transform-origin: 50px 38px;
+    animation: armSwingReverse 0.7s infinite alternate ease-in-out;
+    opacity: 0.6;
+}
+
+.leg-front {
+    transform-origin: 48px 56px;
+    animation: legSwing 0.7s infinite alternate ease-in-out;
+}
+
+.leg-back {
+    transform-origin: 48px 56px;
+    animation: legSwingReverse 0.7s infinite alternate ease-in-out;
+    opacity: 0.6;
+}
+
+@keyframes armSwing {
+    0% { transform: rotate(-35deg); }
+    100% { transform: rotate(40deg); }
+}
+
+@keyframes armSwingReverse {
+    0% { transform: rotate(40deg); }
+    100% { transform: rotate(-35deg); }
+}
+
+@keyframes legSwing {
+    0% { transform: rotate(-40deg); }
+    100% { transform: rotate(35deg); }
+}
+
+@keyframes legSwingReverse {
+    0% { transform: rotate(35deg); }
+    100% { transform: rotate(-40deg); }
+}
+
+.runner-ground-line, .runner-ground-line-sub {
+    stroke: rgba(16, 217, 160, 0.3);
+    stroke-width: 2px;
+    stroke-linecap: round;
+}
+
+.runner-ground-line {
+    animation: groundScroll 0.3s infinite linear;
+}
+
+.runner-ground-line-sub {
+    opacity: 0.5;
+    animation: groundScrollSub 0.3s infinite linear 0.15s;
+}
+
+/* Button & Action elements */
+.fitness-welcome-text h2 {
+    color: #ffffff;
+    margin: 0 0 10px 0;
+    font-size: 1.4rem;
+}
+
+.fitness-welcome-text p {
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin: 0 0 24px 0;
+}
+
+.fitness-action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}
+
+.fitness-primary-btn {
+    width: 100%;
+    padding: 14px 20px;
+    background: linear-gradient(135deg, #10D9A0 0%, #0a9b71 100%);
+    border: none;
+    border-radius: 14px;
+    color: #0b0c10;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(16, 217, 160, 0.3);
+    transition: all 0.2s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.fitness-primary-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(16, 217, 160, 0.45);
+}
+
+.fitness-secondary-btn {
+    width: 100%;
+    padding: 13px 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.fitness-secondary-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.fitness-danger-btn {
+    width: 100%;
+    padding: 13px 20px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 14px;
+    color: #ef4444;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.fitness-danger-btn:hover {
+    background: rgba(239, 68, 68, 0.18);
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+/* Setup Screen */
+.fitness-screen-setup h4 {
+    color: #ffffff;
+    margin: 0 0 16px 0;
+    font-size: 1rem;
+    text-align: center;
+}
+
+.activity-selector-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.activity-select-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 16px 8px;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.activity-select-card.active {
+    background: rgba(16, 217, 160, 0.08);
+    border-color: #10D9A0;
+    color: #ffffff;
+    box-shadow: 0 0 15px rgba(16, 217, 160, 0.15);
+}
+
+.activity-icon {
+    font-size: 1.8rem;
+}
+
+.weight-slider-section {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 28px;
+}
+
+.weight-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    color: rgba(255, 255, 255, 0.85);
+    font-weight: 600;
+}
+
+.weight-val {
+    color: #10D9A0;
+    font-weight: 700;
+}
+
+.fitness-range-input {
+    width: 100%;
+    accent-color: #10D9A0;
+    cursor: pointer;
+    margin-bottom: 10px;
+}
+
+.weight-hint {
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.4);
+    display: block;
+    line-height: 1.4;
+}
+
+/* Tracking Screen */
+.fitness-screen-tracking {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.tracking-activity-badge {
+    background: rgba(16, 217, 160, 0.12);
+    border: 1px solid rgba(16, 217, 160, 0.3);
+    padding: 6px 16px;
+    border-radius: 20px;
+    color: #10D9A0;
+    font-size: 0.85rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.badge-pulse {
+    width: 8px;
+    height: 8px;
+    background-color: #10D9A0;
+    border-radius: 50%;
+    display: inline-block;
+    animation: trackingBadgePulse 1.2s infinite alternate ease-in-out;
+}
+
+@keyframes trackingBadgePulse {
+    0% { transform: scale(0.8); opacity: 0.5; }
+    100% { transform: scale(1.3); opacity: 1; box-shadow: 0 0 8px #10D9A0; }
+}
+
+.tracking-main-stats {
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+.stat-box-large {
+    background: radial-gradient(circle at center, rgba(16, 217, 160, 0.08) 0%, rgba(0,0,0,0) 80%);
+    border-radius: 20px;
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 4px;
+}
+
+.stat-value {
+    font-size: 3.5rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -1px;
+}
+
+.stat-unit {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-top: 6px;
+    font-weight: 600;
+}
+
+.neon-cyan {
+    color: #00f0ff;
+    text-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+}
+
+.neon-orange {
+    color: #ff9f1c;
+    text-shadow: 0 0 15px rgba(255, 159, 28, 0.4);
+}
+
+.neon-green {
+    color: #10D9A0;
+    text-shadow: 0 0 15px rgba(16, 217, 160, 0.4);
+}
+
+.tracking-grid-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    width: 100%;
+    margin-bottom: 32px;
+}
+
+.stat-sub-box {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+    padding: 12px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.stat-sub-label {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.4);
+    margin-bottom: 4px;
+}
+
+.stat-sub-value {
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+.stat-sub-unit {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: normal;
+}
+
+.tracking-controls-row {
+    display: flex;
+    gap: 16px;
+    width: 100%;
+}
+
+.fitness-control-btn {
+    flex: 1;
+    padding: 14px 20px;
+    border: none;
+    border-radius: 14px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+.btn-pause {
+    background: #ff9f1c;
+    color: #0b0c10;
+    box-shadow: 0 4px 15px rgba(255, 159, 28, 0.25);
+}
+
+.btn-resume {
+    background: #10D9A0;
+    color: #0b0c10;
+    box-shadow: 0 4px 15px rgba(16, 217, 160, 0.25);
+}
+
+.btn-stop {
+    background: #ef4444;
+    color: #ffffff;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.25);
+}
+
+.fitness-control-btn:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.1);
+}
+
+/* Summary Screen */
+.fitness-screen-summary {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.summary-success-icon {
+    font-size: 3rem;
+    margin-bottom: 12px;
+    animation: summaryBounce 1s ease infinite alternate;
+}
+
+@keyframes summaryBounce {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-8px); }
+}
+
+.fitness-screen-summary h4 {
+    color: #ffffff;
+    margin: 0 0 20px 0;
+    font-size: 1.15rem;
+}
+
+.summary-stats-list {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 16px;
+    padding: 8px 16px;
+    margin-bottom: 20px;
+}
+
+.summary-stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.summary-stat-row:last-child {
+    border-bottom: none;
+}
+
+.summary-stat-row span:first-child {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+}
+
+.summary-val {
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.text-cyan { color: #00f0ff; }
+.text-orange { color: #ff9f1c; }
+.text-green { color: #10D9A0; }
+
+.summary-share-card {
+    background: rgba(16, 217, 160, 0.05);
+    border: 1px dashed rgba(16, 217, 160, 0.25);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 24px;
+}
+
+.share-info {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.5;
+    margin: 0;
+}
+
+.btn-share-publish {
+    background: linear-gradient(135deg, #00f0ff 0%, #0077ff 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 15px rgba(0, 240, 255, 0.25);
+}
+
+/* History Screen */
+.fitness-screen-history {
+    display: flex;
+    flex-direction: column;
+}
+
+.fitness-screen-history h4 {
+    color: #ffffff;
+    margin: 0 0 16px 0;
+    font-size: 1rem;
+}
+
+.history-logs-container {
+    max-height: 280px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding-left: 4px;
+}
+
+.history-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 16px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.history-empty-state span {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+}
+
+.history-empty-state p {
+    font-size: 0.88rem;
+    margin: 0;
+    text-align: center;
+}
+
+.history-log-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 14px;
+    padding: 12px 16px;
+}
+
+.history-card-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    padding-bottom: 6px;
+}
+
+.history-type {
+    font-weight: 700;
+    color: #ffffff;
+    font-size: 0.85rem;
+}
+
+.history-date {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.history-card-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+}
+
+.history-stat {
+    display: flex;
+    flex-direction: column;
+}
+
+.hist-label {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.4);
+    margin-bottom: 2px;
+}
+
+.hist-val {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.font-icon {
+    font-family: initial; /* standard emoji display */
+}
+
+/* Custom Scrollbar for container */
+.history-logs-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.history-logs-container::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+}
+
+.history-logs-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+.history-logs-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+}

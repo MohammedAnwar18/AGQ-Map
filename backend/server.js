@@ -75,6 +75,23 @@ const pool = require('./config/database');
         `);
         await pool.query(`CREATE INDEX IF NOT EXISTS idx_virtual_tours_location ON virtual_tours (latitude, longitude)`);
         console.log('✅ virtual_tours table ready');
+
+        // ── جدول fitness_runs ─────────────────────────────
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS fitness_runs (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                activity_type VARCHAR(50) NOT NULL,
+                duration_seconds INTEGER NOT NULL,
+                distance_km DOUBLE PRECISION NOT NULL,
+                calories_burned DOUBLE PRECISION NOT NULL,
+                avg_speed_kmh DOUBLE PRECISION NOT NULL,
+                path_coordinates TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_fitness_runs_created_at ON fitness_runs(created_at)`);
+        console.log('✅ fitness_runs table ready');
     } catch (err) {
         console.error('⚠️ ar_contents migration error:', err.message);
     }
@@ -291,6 +308,7 @@ app.use('/api/storage', require('./routes/storageRoutes')); // <-- NEW STORAGE M
 app.use('/api/remote-sensing', require('./routes/remoteSensing'));
 app.use('/api/ar', require('./routes/ar'));
 app.use('/api/tours', require('./routes/tours'));
+app.use('/api/fitness', require('./routes/fitness'));
 
 
 
