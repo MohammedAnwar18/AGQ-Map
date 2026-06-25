@@ -221,6 +221,14 @@ const getNameBadgeTextColor = (category) => {
 const MapComponent = () => {
     const { user, logout, socket } = useAuth();
     const navigate = useNavigate();
+    
+    // Fitness states (Declared at top to prevent useMemo ReferenceError)
+    const [showFitnessModal, setShowFitnessModal] = useState(false);
+    const [activeTrackingPath, setActiveTrackingPath] = useState(null);
+    const [friendsActiveRuns, setFriendsActiveRuns] = useState([]);
+    const [selectedFriendRun, setSelectedFriendRun] = useState(null);
+    const [popupCoords, setPopupCoords] = useState(null);
+
     const [searchParams, setSearchParams] = useSearchParams();
     const shopIdQuery = searchParams.get('shopId');
     const facilityIdQuery = searchParams.get('facilityId');
@@ -716,11 +724,6 @@ const MapComponent = () => {
     const [showNews, setShowNews] = useState(false);
     const [showMagazine, setShowMagazine] = useState(false);
     const [showLabModal, setShowLabModal] = useState(false);
-    const [showFitnessModal, setShowFitnessModal] = useState(false);
-    const [activeTrackingPath, setActiveTrackingPath] = useState(null);
-    const [friendsActiveRuns, setFriendsActiveRuns] = useState([]);
-    const [selectedFriendRun, setSelectedFriendRun] = useState(null);
-    const [popupCoords, setPopupCoords] = useState(null);
     const [showRepositoryModal, setShowRepositoryModal] = useState(false);
     const [showCommunities, setShowCommunities] = useState(false);
     const [showMoreMenu, setShowMoreMenu] = useState(false);
