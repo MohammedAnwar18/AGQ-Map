@@ -92,6 +92,12 @@ const pool = require('./config/database');
         `);
         await pool.query(`CREATE INDEX IF NOT EXISTS idx_fitness_runs_created_at ON fitness_runs(created_at)`);
         console.log('✅ fitness_runs table ready');
+
+        // ── إضافة عمود path_coordinates لجدول posts ───────────────────────────
+        await pool.query(`
+            ALTER TABLE posts ADD COLUMN IF NOT EXISTS path_coordinates TEXT;
+        `);
+        console.log('✅ path_coordinates column verified on posts table');
     } catch (err) {
         console.error('⚠️ ar_contents migration error:', err.message);
     }

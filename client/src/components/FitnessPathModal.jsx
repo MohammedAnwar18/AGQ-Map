@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { fitnessService } from '../services/api';
+import { fitnessService, postService } from '../services/api';
 import './FitnessPathModal.css';
 
 const MET_VALUES = {
@@ -267,6 +267,34 @@ export default function FitnessPathModal({ isOpen, onClose, onUpdateActivePath, 
                     avg_speed_kmh: newRun.avg_speed_kmh,
                     path_coordinates: newRun.path_coordinates
                 });
+
+                // Also publish a Post on the map with the path polyline coordinates
+                const startCoord = pathCoordsRef.current[0];
+                const endCoord = pathCoordsRef.current[pathCoordsRef.current.length - 1];
+                const postLocation = startCoord || endCoord;
+
+                if (postLocation) {
+                    const activityNamesAr = {
+                        walk: 'مشي',
+                        run: 'ركض',
+                        cycle: 'قيادة دراجة هوائية'
+                    };
+                    const emoji = activityType === 'walk' ? '🚶' : activityType === 'run' ? '🏃' : '🚴';
+                    const actName = activityNamesAr[activityType] || 'تمرين رياضي';
+                    const durationText = formatTime(seconds);
+
+                    const postContent = `${emoji} لقد أكملت نشاط ${actName}!\n📏 المسافة: ${distance} كم\n⏱️ الوقت: ${durationText}\n🔥 السعرات: ${calories} kcal\n⚡ معدل السرعة: ${newRun.avg_speed_kmh} كم/س`;
+
+                    const formData = new FormData();
+                    formData.append('content', postContent);
+                    formData.append('latitude', postLocation[1]); // lat
+                    formData.append('longitude', postLocation[0]); // lon
+                    formData.append('address', `مسار لياقة بدنية (${actName})`);
+                    formData.append('path_coordinates', JSON.stringify(pathCoordsRef.current));
+
+                    await postService.createPost(formData);
+                }
+
                 if (onPublishSuccess) {
                     onPublishSuccess();
                 }
@@ -407,34 +435,6 @@ export default function FitnessPathModal({ isOpen, onClose, onUpdateActivePath, 
 
                         {/* Glass card */}
                         <div className="welcome-glass-card">
-                            {/* Stats row */}
-                            <div className="welcome-stats-row">
-                                <div className="welcome-stat-box">
-                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="welcome-stat-icon text-cyan">
-                                        <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
-                                    </svg>
-                                    <p className="welcome-stat-value">742</p>
-                                    <p className="welcome-stat-label">سعرة · kcal</p>
-                                </div>
-                                <div className="welcome-stat-box">
-                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="welcome-stat-icon text-green">
-                                        <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
-                                        <path d="M3.22 12H9.5l1.5-3 2 6 1.5-3h3.78"/>
-                                    </svg>
-                                    <p className="welcome-stat-value">138</p>
-                                    <p className="welcome-stat-label">نبضة · bpm</p>
-                                </div>
-                                <div className="welcome-stat-box">
-                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="welcome-stat-icon text-orange">
-                                        <line x1="10" y1="2" x2="14" y2="2"/>
-                                        <line x1="12" y1="14" x2="15" y2="11"/>
-                                        <circle cx="12" cy="14" r="8"/>
-                                    </svg>
-                                    <p className="welcome-stat-value">4:52</p>
-                                    <p className="welcome-stat-label">الوتيرة · /كم</p>
-                                </div>
-                            </div>
-
                             <p className="welcome-card-subtitle">أهلاً بك في</p>
                             <h1 className="welcome-card-title">
                                 مسار اللياقة <span className="text-neon-green">المطور</span>

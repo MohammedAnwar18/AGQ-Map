@@ -8,7 +8,7 @@ const pool = require('../config/database');
  */
 const createPost = async (req, res) => {
     try {
-        const { content, latitude, longitude, address, community_id } = req.body;
+        const { content, latitude, longitude, address, community_id, path_coordinates } = req.body;
         const userId = req.user.userId;
         const isAdmin = req.user.role === 'admin';
 
@@ -64,23 +64,23 @@ const createPost = async (req, res) => {
         let result;
         if (hasCoords) {
             result = await pool.query(
-                `INSERT INTO posts (user_id, content, image_url, media_urls, location, address, media_type, community_id)
-           VALUES ($1, $2, $3, $4, ST_SetSRID(ST_MakePoint($5, $6), 4326)::geography, $7, $8, $9)
-           RETURNING id, user_id, content, image_url, media_urls, media_type, community_id,
+                `INSERT INTO posts (user_id, content, image_url, media_urls, location, address, media_type, community_id, path_coordinates)
+           VALUES ($1, $2, $3, $4, ST_SetSRID(ST_MakePoint($5, $6), 4326)::geography, $7, $8, $9, $10)
+           RETURNING id, user_id, content, image_url, media_urls, media_type, community_id, path_coordinates,
                       ST_X(location::geometry) as longitude,
                       ST_Y(location::geometry) as latitude,
                       address, created_at`,
-                [userId, content, image_url, media_urls, parseFloat(longitude), parseFloat(latitude), address || null, media_type, community_id || null]
+                [userId, content, image_url, media_urls, parseFloat(longitude), parseFloat(latitude), address || null, media_type, community_id || null, path_coordinates || null]
             );
         } else {
             result = await pool.query(
-                `INSERT INTO posts (user_id, content, image_url, media_urls, location, address, media_type, community_id)
-           VALUES ($1, $2, $3, $4, NULL, $5, $6, $7)
-           RETURNING id, user_id, content, image_url, media_urls, media_type, community_id,
+                `INSERT INTO posts (user_id, content, image_url, media_urls, location, address, media_type, community_id, path_coordinates)
+           VALUES ($1, $2, $3, $4, NULL, $5, $6, $7, $8)
+           RETURNING id, user_id, content, image_url, media_urls, media_type, community_id, path_coordinates,
                       NULL as longitude,
                       NULL as latitude,
                       address, created_at`,
-                [userId, content, image_url, media_urls, address || null, media_type, community_id || null]
+                [userId, content, image_url, media_urls, address || null, media_type, community_id || null, path_coordinates || null]
             );
         }
 
@@ -144,7 +144,7 @@ const getPosts = async (req, res) => {
             // الحصول على المنشورات ضمن نطاق معين (فقط من الأصدقاء أو منشوري الخاص)
             query = `
         SELECT 
-          p.id, p.user_id, p.content, p.image_url, p.media_urls, p.media_type,
+          p.id, p.user_id, p.content, p.image_url, p.media_urls, p.media_type, p.path_coordinates,
           ST_X(p.location::geometry) as longitude,
           ST_Y(p.location::geometry) as latitude,
           p.address, p.created_at,
@@ -179,7 +179,7 @@ const getPosts = async (req, res) => {
             // الحصول على جميع المنشورات (فقط من الأصدقاء أو منشوري الخاص)
             query = `
         SELECT 
-          p.id, p.user_id, p.content, p.image_url, p.media_urls, p.media_type,
+          p.id, p.user_id, p.content, p.image_url, p.media_urls, p.media_type, p.path_coordinates,
           ST_X(p.location::geometry) as longitude,
           ST_Y(p.location::geometry) as latitude,
           p.address, p.created_at,
@@ -216,6 +216,7 @@ const getPosts = async (req, res) => {
                 image_url: post.image_url,
                 media_urls: post.media_urls || (post.image_url ? [post.image_url] : []),
                 media_type: post.media_type || 'image',
+                path_coordinates: post.path_coordinates,
                 location: {
                     latitude: post.latitude,
                     longitude: post.longitude

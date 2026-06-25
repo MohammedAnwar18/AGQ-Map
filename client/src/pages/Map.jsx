@@ -286,6 +286,43 @@ const MapComponent = () => {
         };
     }, [friendsActiveRuns]);
 
+    const postsWithPathsGeoJSON = useMemo(() => {
+        const features = [];
+        (posts || []).forEach(post => {
+            if (post.path_coordinates) {
+                let coords = null;
+                try {
+                    coords = typeof post.path_coordinates === 'string' ? JSON.parse(post.path_coordinates) : post.path_coordinates;
+                } catch (e) {
+                    console.error("Error parsing path_coordinates for post", post.id, e);
+                }
+                if (coords && Array.isArray(coords) && coords.length > 1) {
+                    features.push({
+                        type: "Feature",
+                        id: post.id,
+                        geometry: {
+                            type: "LineString",
+                            coordinates: coords
+                        },
+                        properties: {
+                            id: post.id,
+                            user_id: post.user?.id,
+                            username: post.user?.username,
+                            full_name: post.user?.full_name,
+                            profile_picture: post.user?.profile_picture,
+                            content: post.content,
+                            created_at: post.created_at
+                        }
+                    });
+                }
+            }
+        });
+        return {
+            type: "FeatureCollection",
+            features
+        };
+    }, [posts]);
+
     // MapTiler Configuration
     const MAPTILER_KEY = 'N6uNP3sTu25OIBUyi9G1';
     const MAPTILER_STYLE_URL = `https://api.maptiler.com/maps/019b8b76-e5e2-7f02-b5d1-74fd0cf725bb/style.json?key=${MAPTILER_KEY}`;
@@ -1431,6 +1468,16 @@ const MapComponent = () => {
             });
             setPopupCoords({ lng, lat });
             return;
+        }
+
+        const clickedPostPathFeature = e.features && e.features.find(f => f.layer.id.startsWith('posts-paths-layer'));
+        if (clickedPostPathFeature) {
+            const postId = clickedPostPathFeature.properties.id;
+            const matchedPost = (posts || []).find(p => p.id === parseInt(postId));
+            if (matchedPost) {
+                setSelectedPost(matchedPost);
+                return;
+            }
         }
 
         if (isAdminPickingLocation) {
@@ -2624,7 +2671,7 @@ const MapComponent = () => {
                     onLoad={onMapLoad}
                     style={{ width: '100%', height: '100%', cursor: isAdminPickingLocation ? 'crosshair' : 'grab' }}
                     onClick={handleMapClick}
-                    interactiveLayerIds={['friends-runs-layer-main', 'friends-runs-layer-glow']}
+                    interactiveLayerIds={['friends-runs-layer-main', 'friends-runs-layer-glow', 'posts-paths-layer-main', 'posts-paths-layer-glow']}
                     maxPitch={85}
                     attributionControl={false}
                 >
@@ -2705,6 +2752,34 @@ const MapComponent = () => {
                                 layout={{ "line-join": "round", "line-cap": "round" }}
                                 paint={{
                                     "line-color": "#0077ff",
+                                    "line-width": 5,
+                                    "line-opacity": 1.0
+                                }}
+                            />
+                        </Source>
+                    )}
+
+                    {/* Published Post Paths Layer (Phosphor Green #10D9A0) */}
+                    {postsWithPathsGeoJSON && postsWithPathsGeoJSON.features && postsWithPathsGeoJSON.features.length > 0 && (
+                        <Source id="posts-fitness-paths" type="geojson" data={postsWithPathsGeoJSON}>
+                            <Layer
+                                id="posts-paths-layer-glow"
+                                type="line"
+                                beforeId={firstLabelLayerId}
+                                layout={{ "line-join": "round", "line-cap": "round" }}
+                                paint={{
+                                    "line-color": "#10D9A0",
+                                    "line-width": 12,
+                                    "line-opacity": 0.45
+                                }}
+                            />
+                            <Layer
+                                id="posts-paths-layer-main"
+                                type="line"
+                                beforeId={firstLabelLayerId}
+                                layout={{ "line-join": "round", "line-cap": "round" }}
+                                paint={{
+                                    "line-color": "#10D9A0",
                                     "line-width": 5,
                                     "line-opacity": 1.0
                                 }}
@@ -3453,8 +3528,13 @@ const MapComponent = () => {
                             if (data && data.success) {
                                 setFriendsActiveRuns(data.runs || []);
                             }
+                            // Also fetch the posts to display the new path polyline immediately
+                            const postsResponse = await postService.getPosts();
+                            if (postsResponse && postsResponse.posts) {
+                                setPosts(postsResponse.posts);
+                            }
                         } catch (err) {
-                            console.error('Failed to reload runs:', err);
+                            console.error('Failed to reload runs or posts:', err);
                         }
                     }}
                 />

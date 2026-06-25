@@ -100,7 +100,7 @@ const getCommunityPosts = async (req, res) => {
 
         const query = `
         SELECT 
-          p.id, p.user_id, p.content, p.image_url, p.media_urls, p.media_type,
+          p.id, p.user_id, p.content, p.image_url, p.media_urls, p.media_type, p.path_coordinates,
           ST_X(p.location::geometry) as longitude,
           ST_Y(p.location::geometry) as latitude,
           p.address, p.created_at,
@@ -124,6 +124,7 @@ const getCommunityPosts = async (req, res) => {
                 image_url: post.image_url,
                 media_urls: post.media_urls || (post.image_url ? [post.image_url] : []),
                 media_type: post.media_type || 'image',
+                path_coordinates: post.path_coordinates,
                 location: {
                     latitude: post.latitude,
                     longitude: post.longitude
