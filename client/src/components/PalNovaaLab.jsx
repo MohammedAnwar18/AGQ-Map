@@ -307,6 +307,15 @@ const PalNovaaLab = ({ onClose }) => {
     const [isPublishing, setIsPublishing] = useState(false);
     const [isCorsHelpModalOpen, setIsCorsHelpModalOpen] = useState(false);
     const [tablePageIndex, setTablePageIndex] = useState(0);
+    const [showCustomSelectPanel, setShowCustomSelectPanel] = useState(false);
+    const [queryField, setQueryField] = useState('');
+    const [queryOperator, setQueryOperator] = useState('==');
+    const [queryValue, setQueryValue] = useState('');
+    const [queryUniqueValues, setQueryUniqueValues] = useState([]);
+    const [selectionMode, setSelectionMode] = useState('replace');
+    const [newLayerName, setNewLayerName] = useState('');
+    const [newLayerColor, setNewLayerColor] = useState('#3B82F6');
+    const [showSelectedOnly, setShowSelectedOnly] = useState(false);
     const [pageElements, setPageElements] = useState([]);
     const [selectedElId, setSelectedElId] = useState(null);
     const [previewDevice, setPreviewDevice] = useState('desktop'); // 'desktop' or 'mobile'
@@ -381,6 +390,11 @@ const PalNovaaLab = ({ onClose }) => {
 
     useEffect(() => {
         setTablePageIndex(0);
+        setQueryField('');
+        setQueryValue('');
+        setQueryUniqueValues([]);
+        setShowCustomSelectPanel(false);
+        setShowSelectedOnly(false);
     }, [activeTableLayerId]);
 
     useEffect(() => {
@@ -3295,6 +3309,154 @@ out geom;`;
             alert(`✅ تم استخراج ${selectedFeatures.length} معلم في طبقة مستقلة بنجاح!`);
         } catch (err) {
             console.error("Bulk extraction error:", err);
+        }
+    };
+
+    const handleApplyQuery = () => {
+        if (!queryField) {
+            alert("الرجاء اختيار حقل أولاً!");
+            return;
+        }
+        
+        const allFeatures = activeTableLayer.type === 'table' ? [] : (activeTableLayer.data?.features || []);
+        const dataArray = activeTableLayer.type === 'table' ? (activeTableLayer.data || []) : [];
+        const items = activeTableLayer.type === 'table' ? dataArray : allFeatures;
+        
+        if (items.length === 0) {
+            alert("لا توجد معالم في هذه الطبقة لتطبيق الاستعلام عليها!");
+            return;
+        }
+
+        const matched = items.filter(f => {
+            const val = activeTableLayer.type === 'table' ? f[queryField] : f.properties?.[queryField];
+            const strVal = val !== undefined && val !== null ? String(val).toLowerCase() : '';
+            const qVal = queryValue.toLowerCase();
+
+            // Type conversion helper
+            const numVal = Number(val);
+            const numQVal = Number(queryValue);
+            const isNum = !isNaN(numVal) && !isNaN(numQVal) && queryValue !== '';
+
+            switch (queryOperator) {
+                case '==':
+                    return isNum ? numVal === numQVal : strVal === qVal;
+                case '!=':
+                    return isNum ? numVal !== numQVal : strVal !== qVal;
+                case 'contains':
+                    return strVal.includes(qVal);
+                case '>':
+                    return isNum ? numVal > numQVal : strVal > qVal;
+                case '<':
+                    return isNum ? numVal < numQVal : strVal < qVal;
+                default:
+                    return false;
+            }
+        });
+
+        setSelectedFeatures(prev => {
+            let nextSelection = [...prev];
+            if (selectionMode === 'replace') {
+                nextSelection = matched;
+            } else if (selectionMode === 'add') {
+                matched.forEach(m => {
+                    const id = activeTableLayer.type === 'table' ? JSON.stringify(m) : (m.id || JSON.stringify(m.geometry.coordinates));
+                    if (!nextSelection.some(sf => {
+                        const sfId = activeTableLayer.type === 'table' ? JSON.stringify(sf) : (sf.id || JSON.stringify(sf.geometry.coordinates));
+                        return sfId === id;
+                    })) {
+                        nextSelection.push(m);
+                    }
+                });
+            } else if (selectionMode === 'filter') {
+                nextSelection = nextSelection.filter(sf => {
+                    const sfId = activeTableLayer.type === 'table' ? JSON.stringify(sf) : (sf.id || JSON.stringify(sf.geometry.coordinates));
+                    return matched.some(m => {
+                        const id = activeTableLayer.type === 'table' ? JSON.stringify(m) : (m.id || JSON.stringify(m.geometry.coordinates));
+                        return id === sfId;
+                    });
+                });
+            }
+            return nextSelection;
+        });
+
+        if (activeTableLayer.type !== 'table') {
+            setHighlightFeatures(prev => {
+                let nextSelection = [...prev];
+                if (selectionMode === 'replace') {
+                    nextSelection = matched;
+                } else if (selectionMode === 'add') {
+                    matched.forEach(m => {
+                        const id = m.id || JSON.stringify(m.geometry.coordinates);
+                        if (!nextSelection.some(sf => (sf.id || JSON.stringify(sf.geometry.coordinates)) === id)) {
+                            nextSelection.push(m);
+                        }
+                    });
+                } else if (selectionMode === 'filter') {
+                    nextSelection = nextSelection.filter(sf => {
+                        const sfId = sf.id || JSON.stringify(sf.geometry.coordinates);
+                        return matched.some(m => (m.id || JSON.stringify(m.geometry.coordinates)) === sfId);
+                    });
+                }
+                return nextSelection;
+            });
+        }
+
+        alert(`✅ تم العثور على ${matched.length} سجل/معلم مطابقة للشرط وتحديدها.`);
+    };
+
+    const handleCreateLayerFromSelection = () => {
+        if (selectedFeatures.length === 0) {
+            alert("لا توجد معالم محددة لإنشاء طبقة منها!");
+            return;
+        }
+
+        if (activeTableLayer.type === 'table') {
+            alert("الطبقات الجدولية الخالية من المعالم الجغرافية لا يمكن تحويلها لطبقة خريطة مباشرة دون إحداثيات.");
+            return;
+        }
+
+        try {
+            const newLayerId = `custom-sel-${Date.now()}`;
+            const finalName = newLayerName.trim() || `تحديد مخصص: ${activeTableLayer.name}`.substring(0, 19);
+            const finalColor = newLayerColor || '#3B82F6';
+
+            const newLayer = {
+                id: newLayerId,
+                name: finalName,
+                data: {
+                    type: 'FeatureCollection',
+                    features: selectedFeatures.map(f => ({
+                        ...f,
+                        properties: { ...f.properties, created_by_query: true, created_at: new Date().toISOString() }
+                    }))
+                },
+                color: finalColor,
+                isVisible: true
+            };
+
+            setGeoLayers(prev => [...prev, newLayer]);
+
+            setLayerStyles(prev => ({
+                ...prev,
+                [newLayerId]: {
+                    color: finalColor,
+                    outlineColor: '#ffffff',
+                    outlineWidth: 3,
+                    shape: 'circle',
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }
+            }));
+
+            setSelectedFeatures([]);
+            setHighlightFeatures([]);
+            setNewLayerName('');
+            setShowCustomSelectPanel(false);
+
+            alert(`✅ تم إنشاء الطبقة الجديدة "${finalName}" بنجاح وتلوينها باللون المحدد!`);
+        } catch (err) {
+            console.error("Error creating layer from selection:", err);
+            alert("حدث خطأ أثناء إنشاء الطبقة الجديدة!");
         }
     };
 
@@ -11858,7 +12020,7 @@ function closeAllInfoWindows() {
                     {showBottomTable && activeTableLayer && (() => {
                         const ITEMS_PER_PAGE = 100;
                         const allFeatures = activeTableLayer.type === 'table' ? [] : (activeTableLayer.data?.features || []);
-                        const displayFeatures = selectedFeatures.length > 0 ?
+                        const displayFeatures = showSelectedOnly && selectedFeatures.length > 0 ?
                             allFeatures.filter(f => {
                                 const fId = f.id || JSON.stringify(f.geometry.coordinates);
                                 return selectedFeatures.some(sf => (sf.id || JSON.stringify(sf.geometry.coordinates)) === fId);
@@ -11869,8 +12031,10 @@ function closeAllInfoWindows() {
                             : displayFeatures.length;
                         const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
 
+                        const itemsArray = activeTableLayer.type === 'table' ? (activeTableLayer.data || []) : allFeatures;
+
                         return (
-                            <div className="attribute-table-panel">
+                            <div className="attribute-table-panel" style={showCustomSelectPanel ? { height: '460px' } : {}}>
                                 <div className="table-panel-header">
                                     <div className="table-title">
                                         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
@@ -11878,7 +12042,7 @@ function closeAllInfoWindows() {
                                         <small>
                                             {activeTableLayer.type === 'table' 
                                                 ? `${activeTableLayer.data?.length || 0} سجل بيانات`
-                                                : (selectedFeatures.length > 0 ? `${selectedFeatures.length} معلم محدد` : `${activeTableLayer.data?.features?.length || 0} معلم`)}
+                                                : (selectedFeatures.length > 0 ? `${selectedFeatures.length} من ${activeTableLayer.data?.features?.length || 0} محدد` : `${activeTableLayer.data?.features?.length || 0} معلم`)}
                                         </small>
                                     </div>
                                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -11903,6 +12067,48 @@ function closeAllInfoWindows() {
                                                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
                                                 </button>
                                             </div>
+                                        )}
+
+                                        <button
+                                            className="ds-btn secondary small"
+                                            onClick={() => setShowCustomSelectPanel(prev => !prev)}
+                                            style={{
+                                                padding: '4px 12px',
+                                                fontSize: '0.7rem',
+                                                background: showCustomSelectPanel ? '#2563EB' : '#3B82F6',
+                                                color: 'white',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '5px',
+                                                border: 'none',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="3"><path d="M4 6h16M4 12h16M4 18h7" /></svg>
+                                            تحديد مخصص
+                                        </button>
+
+                                        {selectedFeatures.length > 0 && (
+                                            <button
+                                                className="ds-btn secondary small"
+                                                onClick={() => setShowSelectedOnly(prev => !prev)}
+                                                style={{
+                                                    padding: '4px 12px',
+                                                    fontSize: '0.7rem',
+                                                    background: showSelectedOnly ? '#10D9A0' : 'rgba(255,255,255,0.05)',
+                                                    color: showSelectedOnly ? 'black' : 'white',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '5px',
+                                                    border: 'none',
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="3"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                                                {showSelectedOnly ? 'عرض الكل' : 'عرض المحدد فقط'}
+                                            </button>
                                         )}
 
                                         {activeTableLayer.type !== 'table' && (
@@ -11932,6 +12138,264 @@ function closeAllInfoWindows() {
                                         </button>
                                     </div>
                                 </div>
+
+                                {showCustomSelectPanel && (
+                                    <div style={{
+                                        background: 'rgba(15, 23, 42, 0.95)',
+                                        borderBottom: '1px solid rgba(255,255,255,0.08)',
+                                        padding: '16px 20px',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '12px',
+                                        backdropFilter: 'blur(10px)',
+                                        zIndex: 10
+                                    }}>
+                                        {/* Row 1: Query Filters */}
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'flex-end' }}>
+                                            {/* Field selection */}
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flex: '1', minWidth: '150px' }}>
+                                                <label style={{ fontSize: '0.75rem', color: '#94a3b8' }}>حقل البيانات (Field):</label>
+                                                <select
+                                                    value={queryField}
+                                                    onChange={(e) => {
+                                                        const field = e.target.value;
+                                                        setQueryField(field);
+                                                        if (field && activeTableLayer) {
+                                                            const unique = new Set();
+                                                            const features = activeTableLayer.type === 'table' 
+                                                                ? (activeTableLayer.data || [])
+                                                                : (activeTableLayer.data?.features || []);
+                                                            
+                                                            features.forEach(f => {
+                                                                const val = activeTableLayer.type === 'table' ? f[field] : f.properties?.[field];
+                                                                if (val !== undefined && val !== null) {
+                                                                    unique.add(val);
+                                                                }
+                                                            });
+                                                            setQueryUniqueValues(Array.from(unique).slice(0, 50)); // Limit to first 50 unique values
+                                                        } else {
+                                                            setQueryUniqueValues([]);
+                                                        }
+                                                    }}
+                                                    style={{
+                                                        background: '#1e293b',
+                                                        border: '1px solid rgba(255,255,255,0.1)',
+                                                        color: 'white',
+                                                        padding: '6px 10px',
+                                                        borderRadius: '8px',
+                                                        fontSize: '0.8rem',
+                                                        outline: 'none'
+                                                    }}
+                                                >
+                                                    <option value="">-- اختر الحقل --</option>
+                                                    {attributeKeys.map(k => (
+                                                        <option key={k} value={k}>{k}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            {/* Operator Selection */}
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', width: '120px' }}>
+                                                <label style={{ fontSize: '0.75rem', color: '#94a3b8' }}>الشرط (Operator):</label>
+                                                <select
+                                                    value={queryOperator}
+                                                    onChange={(e) => setQueryOperator(e.target.value)}
+                                                    style={{
+                                                        background: '#1e293b',
+                                                        border: '1px solid rgba(255,255,255,0.1)',
+                                                        color: 'white',
+                                                        padding: '6px 10px',
+                                                        borderRadius: '8px',
+                                                        fontSize: '0.8rem',
+                                                        outline: 'none'
+                                                    }}
+                                                >
+                                                    <option value="==">يساوي (==)</option>
+                                                    <option value="!=">لا يساوي (!=)</option>
+                                                    <option value="contains">يحتوي على</option>
+                                                    <option value=">">أكبر من (&gt;)</option>
+                                                    <option value="<">أصغر من (&lt;)</option>
+                                                </select>
+                                            </div>
+
+                                            {/* Value Input / Selection */}
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flex: '1.5', minWidth: '200px' }}>
+                                                <label style={{ fontSize: '0.75rem', color: '#94a3b8' }}>القيمة (Value):</label>
+                                                <div style={{ display: 'flex', gap: '6px' }}>
+                                                    <input
+                                                        type="text"
+                                                        value={queryValue}
+                                                        onChange={(e) => setQueryValue(e.target.value)}
+                                                        placeholder="اكتب القيمة أو اختر..."
+                                                        style={{
+                                                            background: '#1e293b',
+                                                            border: '1px solid rgba(255,255,255,0.1)',
+                                                            color: 'white',
+                                                            padding: '6px 10px',
+                                                            borderRadius: '8px',
+                                                            fontSize: '0.8rem',
+                                                            flex: 1,
+                                                            outline: 'none'
+                                                        }}
+                                                    />
+                                                    {queryUniqueValues.length > 0 && (
+                                                        <select
+                                                            onChange={(e) => setQueryValue(e.target.value)}
+                                                            value=""
+                                                            style={{
+                                                                background: '#1e293b',
+                                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                                color: 'white',
+                                                                padding: '6px 10px',
+                                                                borderRadius: '8px',
+                                                                fontSize: '0.8rem',
+                                                                outline: 'none',
+                                                                maxWidth: '120px'
+                                                            }}
+                                                        >
+                                                            <option value="">قيم فريدة</option>
+                                                            {queryUniqueValues.map((v, i) => (
+                                                                <option key={i} value={String(v)}>{String(v)}</option>
+                                                            ))}
+                                                        </select>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Mode selection (Replace / Add / Filter) */}
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', width: '130px' }}>
+                                                <label style={{ fontSize: '0.75rem', color: '#94a3b8' }}>نوع التحديد:</label>
+                                                <select
+                                                    value={selectionMode}
+                                                    onChange={(e) => setSelectionMode(e.target.value)}
+                                                    style={{
+                                                        background: '#1e293b',
+                                                        border: '1px solid rgba(255,255,255,0.1)',
+                                                        color: 'white',
+                                                        padding: '6px 10px',
+                                                        borderRadius: '8px',
+                                                        fontSize: '0.8rem',
+                                                        outline: 'none'
+                                                    }}
+                                                >
+                                                    <option value="replace">تحديد جديد</option>
+                                                    <option value="add">إضافة للتحديد</option>
+                                                    <option value="filter">تصفية الحالي</option>
+                                                </select>
+                                            </div>
+
+                                            {/* Apply button */}
+                                            <button
+                                                className="ds-btn primary small"
+                                                onClick={handleApplyQuery}
+                                                style={{
+                                                    background: '#3B82F6',
+                                                    color: 'white',
+                                                    padding: '8px 18px',
+                                                    fontSize: '0.8rem',
+                                                    fontWeight: 'bold',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    border: 'none',
+                                                    borderRadius: '8px'
+                                                }}
+                                            >
+                                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                                تطبيق
+                                            </button>
+                                        </div>
+
+                                        {/* Row 2: Create Layer from selection */}
+                                        {selectedFeatures.length > 0 && activeTableLayer.type !== 'table' && (
+                                            <div style={{
+                                                display: 'flex',
+                                                flexWrap: 'wrap',
+                                                gap: '15px',
+                                                alignItems: 'flex-end',
+                                                paddingTop: '12px',
+                                                borderTop: '1px dashed rgba(255,255,255,0.1)',
+                                                marginTop: '4px'
+                                            }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flex: '1', minWidth: '150px' }}>
+                                                    <label style={{ fontSize: '0.75rem', color: '#10D9A0' }}>اسم الطبقة الجديدة:</label>
+                                                    <input
+                                                        type="text"
+                                                        value={newLayerName}
+                                                        onChange={(e) => setNewLayerName(e.target.value)}
+                                                        placeholder={`تحديد مخصص: ${activeTableLayer.name}`}
+                                                        style={{
+                                                            background: '#0f172a',
+                                                            border: '1px solid rgba(16, 217, 160, 0.3)',
+                                                            color: 'white',
+                                                            padding: '6px 10px',
+                                                            borderRadius: '8px',
+                                                            fontSize: '0.8rem',
+                                                            outline: 'none'
+                                                        }}
+                                                    />
+                                                </div>
+
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', width: '220px' }}>
+                                                    <label style={{ fontSize: '0.75rem', color: '#10D9A0' }}>لون الطبقة الجديدة:</label>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <input
+                                                            type="color"
+                                                            value={newLayerColor}
+                                                            onChange={(e) => setNewLayerColor(e.target.value)}
+                                                            style={{
+                                                                background: 'transparent',
+                                                                border: 'none',
+                                                                width: '32px',
+                                                                height: '32px',
+                                                                cursor: 'pointer',
+                                                                padding: 0
+                                                            }}
+                                                        />
+                                                        <div style={{ display: 'flex', gap: '4px' }}>
+                                                            {['#EF4444', '#F5A623', '#10D9A0', '#3B82F6', '#8B5CF6', '#EC4899'].map(c => (
+                                                                <button
+                                                                    key={c}
+                                                                    type="button"
+                                                                    onClick={() => setNewLayerColor(c)}
+                                                                    style={{
+                                                                        width: '16px',
+                                                                        height: '16px',
+                                                                        borderRadius: '50%',
+                                                                        background: c,
+                                                                        border: newLayerColor === c ? '2px solid white' : 'none',
+                                                                        cursor: 'pointer',
+                                                                        padding: 0
+                                                                    }}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <button
+                                                    className="ds-btn primary small"
+                                                    onClick={handleCreateLayerFromSelection}
+                                                    style={{
+                                                        background: '#10D9A0',
+                                                        color: '#0f172a',
+                                                        border: 'none',
+                                                        padding: '8px 18px',
+                                                        borderRadius: '8px',
+                                                        fontSize: '0.8rem',
+                                                        fontWeight: 'bold',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '6px'
+                                                    }}
+                                                >
+                                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                                                    إنشاء طبقة جديدة ({selectedFeatures.length})
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                                 <div className="table-panel-body">
                                     {fetchingLayers[activeTableLayer.id] ? (
                                         <div style={{
@@ -11968,6 +12432,28 @@ function closeAllInfoWindows() {
                                         <table className="opaque-table">
                                             <thead>
                                                 <tr>
+                                                    <th style={{ width: '40px', textAlign: 'center' }}>
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={itemsArray.length > 0 && itemsArray.every(item => {
+                                                                const id = activeTableLayer.type === 'table' ? JSON.stringify(item) : (item.id || JSON.stringify(item.geometry.coordinates));
+                                                                return selectedFeatures.some(sf => {
+                                                                    const sfId = activeTableLayer.type === 'table' ? JSON.stringify(sf) : (sf.id || JSON.stringify(sf.geometry.coordinates));
+                                                                    return sfId === id;
+                                                                });
+                                                            })}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) {
+                                                                    setSelectedFeatures(itemsArray);
+                                                                    setHighlightFeatures(activeTableLayer.type === 'table' ? [] : itemsArray);
+                                                                } else {
+                                                                    setSelectedFeatures([]);
+                                                                    setHighlightFeatures([]);
+                                                                }
+                                                            }}
+                                                            style={{ cursor: 'pointer' }}
+                                                        />
+                                                    </th>
                                                     <th>#</th>
                                                     {attributeKeys.map(k => <th key={k}>{k}</th>)}
                                                 </tr>
@@ -11977,28 +12463,66 @@ function closeAllInfoWindows() {
                                                     if (activeTableLayer.type === 'table') {
                                                         const dataArray = activeTableLayer.data || [];
                                                         const paginatedItems = dataArray.slice(tablePageIndex * ITEMS_PER_PAGE, (tablePageIndex + 1) * ITEMS_PER_PAGE);
-                                                        return paginatedItems.map((row, i) => (
-                                                            <tr key={i}>
-                                                                <td>{tablePageIndex * ITEMS_PER_PAGE + i + 1}</td>
-                                                                {attributeKeys.map(k => <td key={k}>{String(row[k] || '-')}</td>)}
-                                                            </tr>
-                                                        ));
+                                                        return paginatedItems.map((row, i) => {
+                                                            const itemId = JSON.stringify(row);
+                                                            const isSelected = selectedFeatures.some(sf => JSON.stringify(sf) === itemId);
+                                                            return (
+                                                                <tr key={i} className={isSelected ? 'highlighted-row' : ''}>
+                                                                    <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={isSelected}
+                                                                            onChange={() => {
+                                                                                setSelectedFeatures(prev => {
+                                                                                    const exists = prev.some(sf => JSON.stringify(sf) === itemId);
+                                                                                    if (exists) return prev.filter(sf => JSON.stringify(sf) !== itemId);
+                                                                                    return [...prev, row];
+                                                                                });
+                                                                            }}
+                                                                            style={{ cursor: 'pointer' }}
+                                                                        />
+                                                                    </td>
+                                                                    <td>{tablePageIndex * ITEMS_PER_PAGE + i + 1}</td>
+                                                                    {attributeKeys.map(k => <td key={k}>{String(row[k] || '-')}</td>)}
+                                                                </tr>
+                                                            );
+                                                        });
                                                     }
 
                                                     const paginatedFeatures = displayFeatures.slice(tablePageIndex * ITEMS_PER_PAGE, (tablePageIndex + 1) * ITEMS_PER_PAGE);
 
                                                     return paginatedFeatures.map((f, i) => {
                                                         const fId = f.id || JSON.stringify(f.geometry.coordinates);
-                                                        const isHighlighted = selectedFeatures.some(sf => (sf.id || JSON.stringify(sf.geometry.coordinates)) === fId);
+                                                        const isSelected = selectedFeatures.some(sf => (sf.id || JSON.stringify(sf.geometry.coordinates)) === fId);
                                                         
                                                         return (
-                                                            <tr key={i} className={isHighlighted ? 'highlighted-row' : ''} onClick={() => {
+                                                            <tr key={i} className={isSelected ? 'highlighted-row' : ''} onClick={(e) => {
+                                                                if (e.target.type === 'checkbox') return;
                                                                 const coords = f.geometry?.type === 'Point' ? f.geometry.coordinates : (f.geometry?.coordinates?.[0]?.[0] || f.geometry?.coordinates?.[0]);
                                                                 if (coords && typeof coords[0] === 'number') {
                                                                     mapRef.current.flyTo({ center: coords, zoom: 16 });
                                                                     setSelectedFeatureInfo({ properties: f.properties || {}, longitude: coords[0], latitude: coords[1] });
                                                                 }
                                                             }}>
+                                                                <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={isSelected}
+                                                                        onChange={() => {
+                                                                            setSelectedFeatures(prev => {
+                                                                                const exists = prev.some(sf => (sf.id || JSON.stringify(sf.geometry.coordinates)) === fId);
+                                                                                if (exists) return prev.filter(sf => (sf.id || JSON.stringify(sf.geometry.coordinates)) !== fId);
+                                                                                return [...prev, f];
+                                                                            });
+                                                                            setHighlightFeatures(prev => {
+                                                                                const exists = prev.some(sf => (sf.id || JSON.stringify(sf.geometry.coordinates)) === fId);
+                                                                                if (exists) return prev.filter(sf => (sf.id || JSON.stringify(sf.geometry.coordinates)) !== fId);
+                                                                                return [...prev, f];
+                                                                            });
+                                                                        }}
+                                                                        style={{ cursor: 'pointer' }}
+                                                                    />
+                                                                </td>
                                                                 <td>{tablePageIndex * ITEMS_PER_PAGE + i + 1}</td>
                                                                 {attributeKeys.map(k => <td key={k}>{String(f.properties?.[k] || '-')}</td>)}
                                                             </tr>
