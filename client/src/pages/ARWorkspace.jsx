@@ -1,11 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import QRCode from 'qrcode';
 import { useAuth } from '../context/AuthContext';
 import { arService } from '../services/api';
-import './ARWorkspace.css';
 
 export default function ARWorkspace() {
     const navigate = useNavigate();
@@ -17,33 +14,20 @@ export default function ARWorkspace() {
         const pairToken = params.get('pairToken');
         if (pairToken) {
             localStorage.setItem('token', pairToken);
-            // Redirect to clean path without query parameters
             window.location.href = window.location.origin + window.location.pathname;
         }
     }, []);
 
-    // Device selection / detection
-    const [deviceMode, setDeviceMode] = useState(null); // 'mobile' | 'desktop'
+    const [deviceMode, setDeviceMode] = useState(null);
     const [socketConnected, setSocketConnected] = useState(false);
     const [peerConnected, setPeerConnected] = useState(false);
-
-    // Snapshot list
     const [captures, setCaptures] = useState([]);
     const [isCapturing, setIsCapturing] = useState(false);
 
-    // Mobile camera refs
     const videoRef = useRef(null);
     const streamRef = useRef(null);
     const canvasRef = useRef(null);
 
-    // Desktop Three.js refs
-    const threeContainerRef = useRef(null);
-    const sceneRef = useRef(null);
-    const rendererRef = useRef(null);
-    const cameraRef = useRef(null);
-    const orbitControlsRef = useRef(null);
-
-    // QR pairing states
     const [showPairModal, setShowPairModal] = useState(false);
     const [qrCodeUrl, setQrCodeUrl] = useState('');
 
@@ -56,7 +40,6 @@ export default function ARWorkspace() {
         }
     }, [token, deviceMode]);
 
-    // Detect device type automatically
     useEffect(() => {
         const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
         const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -67,7 +50,6 @@ export default function ARWorkspace() {
         }
     }, []);
 
-    // Socket status checks
     useEffect(() => {
         if (!socket) return;
         setSocketConnected(socket.connected);
@@ -80,8 +62,6 @@ export default function ARWorkspace() {
 
         socket.on('connect', handleConnect);
         socket.on('disconnect', handleDisconnect);
-
-        // Tell peer we are online
         socket.emit('ar-spatial-update', { type: 'ping' });
 
         return () => {
@@ -90,58 +70,6 @@ export default function ARWorkspace() {
         };
     }, [socket]);
 
-    // Add captured image as a plane in ThreeJS scene
-    const addSpatialSnapshotToScene = (cap) => {
-        const scene = sceneRef.current;
-        if (!scene) return;
-
-        const loader = new THREE.TextureLoader();
-        loader.setCrossOrigin('anonymous');
-
-        let textureUrl = cap.dataUrl;
-        if (textureUrl && textureUrl.startsWith('http') && !textureUrl.includes(window.location.hostname) && !textureUrl.includes('localhost')) {
-            // Route through server proxy to bypass WebGL CORS policies
-            textureUrl = `/api/tours/proxy?url=${encodeURIComponent(textureUrl)}`;
-        }
-
-        loader.load(
-            textureUrl,
-            (texture) => {
-                // 16:9 aspect ratio plane
-                const geometry = new THREE.PlaneGeometry(3.2, 1.8);
-                const material = new THREE.MeshBasicMaterial({
-                    map: texture,
-                    side: THREE.DoubleSide,
-                    transparent: true
-                });
-                const plane = new THREE.Mesh(geometry, material);
-                
-                // Set position
-                plane.position.set(cap.position.x, cap.position.y, cap.position.z);
-                
-                // Make plane face current desktop camera (or default origin)
-                if (cameraRef.current) {
-                    plane.lookAt(cameraRef.current.position);
-                } else {
-                    plane.lookAt(0, 1.2, 0);
-                }
-
-                // Add billboard border
-                const borderGeo = new THREE.EdgesGeometry(geometry);
-                const borderMat = new THREE.LineBasicMaterial({ color: 0x00f0ff, linewidth: 2 });
-                const border = new THREE.LineSegments(borderGeo, borderMat);
-                plane.add(border);
-                
-                scene.add(plane);
-            },
-            undefined,
-            (err) => {
-                console.error("Failed to load spatial snapshot texture:", err);
-            }
-        );
-    };
-
-    // Handle incoming socket messages (on desktop)
     useEffect(() => {
         if (!socket) return;
 
@@ -160,25 +88,12 @@ export default function ARWorkspace() {
 
             if (deviceMode === 'desktop') {
                 if (data.type === 'snapshot' && data.dataUrl) {
-                    // Calculate spawn position in front of current OrbitControls camera
-                    let spawnPos = { x: (Math.random() - 0.5) * 2, y: 1.2, z: -3 };
-                    if (cameraRef.current) {
-                        const dir = new THREE.Vector3();
-                        cameraRef.current.getWorldDirection(dir);
-                        const pos = new THREE.Vector3()
-                            .copy(cameraRef.current.position)
-                            .add(dir.multiplyScalar(4)); // 4 meters ahead
-                        spawnPos = { x: pos.x, y: pos.y, z: pos.z };
-                    }
-
                     const newCap = {
                         id: `cap-${Date.now()}`,
                         dataUrl: data.dataUrl,
-                        timestamp: new Date().toLocaleTimeString(),
-                        position: spawnPos
+                        timestamp: new Date().toLocaleTimeString()
                     };
                     setCaptures(prev => [newCap, ...prev]);
-                    addSpatialSnapshotToScene(newCap);
                 }
             }
         };
@@ -189,7 +104,6 @@ export default function ARWorkspace() {
         };
     }, [socket, deviceMode]);
 
-    // Start camera stream on mobile
     useEffect(() => {
         if (deviceMode !== 'mobile') return;
 
@@ -214,7 +128,6 @@ export default function ARWorkspace() {
         };
     }, [deviceMode]);
 
-    // Capture Spatial Photo on mobile
     const handleSpatialCapture = async () => {
         if (isCapturing || !videoRef.current) return;
         setIsCapturing(true);
@@ -225,7 +138,6 @@ export default function ARWorkspace() {
             const video = videoRef.current;
             const canvas = canvasRef.current || document.createElement('canvas');
             
-            // Downscale to 640px for low-footprint payload
             let width = video.videoWidth || 640;
             let height = video.videoHeight || 480;
             const maxDim = 640;
@@ -244,9 +156,8 @@ export default function ARWorkspace() {
             
             const ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0, width, height);
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.45); // JPEG quality 0.45
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.45);
 
-            // Upload compressed image to Cloudflare R2
             let finalImageUrl = null;
             try {
                 const response = await arService.uploadSnapshot(dataUrl);
@@ -254,7 +165,7 @@ export default function ARWorkspace() {
                     finalImageUrl = response.imageUrl;
                 }
             } catch (uploadErr) {
-                console.error("R2 Upload failed, falling back to base64:", uploadErr);
+                console.error("Upload failed, falling back to base64:", uploadErr);
             }
 
             if (socket) {
@@ -264,11 +175,18 @@ export default function ARWorkspace() {
                 });
             }
             
-            // Flash feedback
             const flash = document.createElement('div');
-            flash.className = 'ar-capture-flash';
+            flash.style.position = 'absolute';
+            flash.style.top = 0; flash.style.left = 0; flash.style.right = 0; flash.style.bottom = 0;
+            flash.style.background = 'white';
+            flash.style.zIndex = 9999;
+            flash.style.opacity = 1;
+            flash.style.transition = 'opacity 0.3s';
             document.body.appendChild(flash);
-            setTimeout(() => flash.remove(), 300);
+            setTimeout(() => {
+                flash.style.opacity = 0;
+                setTimeout(() => flash.remove(), 300);
+            }, 50);
 
         } catch (err) {
             console.error("Capture failed:", err);
@@ -277,248 +195,100 @@ export default function ARWorkspace() {
         }
     };
 
-    // Init Three.js (on desktop)
-    useEffect(() => {
-        if (deviceMode !== 'desktop') return;
-
-        const container = threeContainerRef.current;
-        if (!container) return;
-
-        // Scene
-        const scene = new THREE.Scene();
-        sceneRef.current = scene;
-        scene.fog = new THREE.FogExp2(0x0f172a, 0.015);
-
-        // Camera
-        const camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 100);
-        camera.position.set(0, 3, 6);
-        cameraRef.current = camera;
-
-        // Renderer
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-        renderer.setSize(container.clientWidth, container.clientHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.setClearColor(0x0f172a, 1);
-        container.appendChild(renderer.domElement);
-        rendererRef.current = renderer;
-
-        // Controls
-        const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
-        controls.maxPolarAngle = Math.PI / 2 - 0.05; // don't go below ground
-        controls.minDistance = 2;
-        controls.maxDistance = 30;
-        orbitControlsRef.current = controls;
-
-        // Lights
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-        scene.add(ambientLight);
-
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight.position.set(10, 15, 10);
-        scene.add(dirLight);
-
-        // Grid & Floor
-        const gridHelper = new THREE.GridHelper(40, 40, 0x00f0ff, 0x1f2937);
-        gridHelper.position.y = 0;
-        scene.add(gridHelper);
-
-        const floorGeo = new THREE.PlaneGeometry(40, 40);
-        const floorMat = new THREE.MeshStandardMaterial({
-            color: 0x0f172a,
-            roughness: 0.8,
-            metalness: 0.2
-        });
-        const floor = new THREE.Mesh(floorGeo, floorMat);
-        floor.rotation.x = -Math.PI / 2;
-        scene.add(floor);
-
-        // Render loop
-        let animId;
-        const animate = () => {
-            animId = requestAnimationFrame(animate);
-            controls.update();
-            renderer.render(scene, camera);
-        };
-        animate();
-
-        // Resize handler
-        const handleResize = () => {
-            if (!container) return;
-            camera.aspect = container.clientWidth / container.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(container.clientWidth, container.clientHeight);
-        };
-        window.addEventListener('resize', handleResize);
-
-        // Load existing snapshots
-        captures.forEach(c => addSpatialSnapshotToScene(c));
-
-        return () => {
-            cancelAnimationFrame(animId);
-            window.removeEventListener('resize', handleResize);
-            if (rendererRef.current && rendererRef.current.domElement) {
-                container.removeChild(rendererRef.current.domElement);
-            }
-            scene.traverse(node => {
-                if (node instanceof THREE.Mesh) {
-                    node.geometry.dispose();
-                    if (Array.isArray(node.material)) {
-                        node.material.forEach(m => m.dispose());
-                    } else {
-                        node.material.dispose();
-                    }
-                }
-            });
-        };
-    }, [deviceMode]);
-
-    const handleToggleMode = () => {
-        if (deviceMode === 'mobile' && streamRef.current) {
-            streamRef.current.getTracks().forEach(t => t.stop());
-        }
-        setDeviceMode(prev => prev === 'mobile' ? 'desktop' : 'mobile');
-    };
-
     return (
-        <div className="arw-root font-outfit">
+        <div className="font-outfit" style={{ background: '#0f172a', minHeight: '100vh', color: 'white', direction: 'rtl' }}>
             
-            {/* ─── GLOBAL SCI-FI TOP BAR ─── */}
-            <header className="arw-header">
-                <div className="arw-logo-group">
-                    <button className="arw-back-btn" onClick={() => navigate('/map')} title="العودة للرئيسية">
-                        ←
+            <header style={{ padding: '15px 25px', background: '#1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #334155' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <button onClick={() => navigate('/map')} title="العودة للرئيسية" style={{ background: '#334155', border: 'none', color: 'white', padding: '8px 15px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+                        العودة
                     </button>
-                    <div className="arw-logo-text">
-                        <h2>جهاز عرض الصور ثلاثي الأبعاد</h2>
-                        <span>مشروع الكاميرا الفضائية الفورية</span>
-                    </div>
+                    <h2 style={{ margin: 0, fontSize: '1.3rem', color: '#fbab15' }}>مستقبل الصور</h2>
                 </div>
 
-                <div className="arw-status-bar">
-                    <div className="arw-indicator">
-                        <span className={`arw-dot ${socketConnected ? 'active' : ''}`} />
-                        <span>الشبكة: {socketConnected ? 'متصل' : 'جاري الاتصال...'}</span>
-                    </div>
-                    <div className="arw-indicator">
-                        <span className={`arw-dot ${peerConnected ? 'active' : ''}`} />
-                        <span>الهاتف: {peerConnected ? 'متصل' : 'بانتظار مسح رمز QR...'}</span>
+                <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem' }}>
+                        <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: socketConnected ? '#10b981' : '#ef4444' }} />
+                        <span>{socketConnected ? 'متصل' : 'جاري الاتصال'}</span>
                     </div>
                     {deviceMode === 'desktop' && (
-                        <button className="arw-pair-btn" onClick={() => setShowPairModal(true)}>
-                            ربط كاميرا الهاتف 📱
+                        <button onClick={() => setShowPairModal(true)} style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                            ربط الهاتف 📱
                         </button>
                     )}
-                    
-                    <button className="arw-mode-toggle" onClick={handleToggleMode}>
-                        محاكاة وضع {deviceMode === 'mobile' ? 'الكمبيوتر 💻' : 'الهاتف 📱'}
-                    </button>
                 </div>
             </header>
 
-            {/* ─── MOBILE CONTROLLER VIEW ─── */}
             {deviceMode === 'mobile' && (
-                <div className="arw-mobile-viewport">
-                    <video ref={videoRef} autoPlay playsInline muted className="arw-mobile-video" />
-                    <div className="arw-mobile-overlay-grid" />
-
-                    <div className="arw-mobile-status-badge">
-                        <span className={`status-dot ${socketConnected ? 'online' : 'offline'}`} />
-                        <span>{socketConnected ? 'متصل بمساحة العمل 💻' : 'جاري الاتصال بمساحة العمل...'}</span>
-                    </div>
-
-                    <div className="arw-mobile-actions">
+                <div style={{ position: 'relative', height: 'calc(100vh - 70px)', overflow: 'hidden', background: '#000' }}>
+                    <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <div style={{ position: 'absolute', bottom: '40px', left: '0', right: '0', display: 'flex', justifyContent: 'center' }}>
                         <button 
-                            className={`arw-capture-btn ${isCapturing ? 'capturing' : ''}`}
                             onClick={handleSpatialCapture}
                             disabled={isCapturing}
-                        >
-                            <span className="btn-inner" />
-                        </button>
-                        <span className="btn-hint">انقر لالتقاط صورة وإرسالها فوراً لمتصفح الكمبيوتر 🚀</span>
+                            style={{ 
+                                width: '75px', height: '75px', borderRadius: '50%', 
+                                background: 'rgba(255, 255, 255, 0.9)', border: '6px solid rgba(255, 255, 255, 0.4)', 
+                                cursor: 'pointer', transition: 'all 0.2s', opacity: isCapturing ? 0.5 : 1,
+                                boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
+                            }}
+                        />
                     </div>
                 </div>
             )}
 
-            {/* ─── DESKTOP 3D WORKSPACE VIEW ─── */}
             {deviceMode === 'desktop' && (
-                <div className="arw-desktop-workspace single-sidebar">
+                <div style={{ padding: '30px', maxWidth: '1200px', margin: '0 auto' }}>
                     
-                    {/* MAIN Three.js CANVAS CONTAINER */}
-                    <div ref={threeContainerRef} className="arw-canvas-container">
-                        <div className="canvas-sci-fi-overlay" />
+                    <div style={{ marginBottom: '30px', borderBottom: '1px solid #334155', paddingBottom: '15px' }}>
+                        <h3>الصور المستلمة من الهاتف ({captures.length})</h3>
                     </div>
 
-                    {/* RIGHT PANEL: Live Captures List */}
-                    <aside className="arw-sidebar right">
-                        <div className="sidebar-section">
-                            <h3>الصور المستلمة من الهاتف ({captures.length})</h3>
-                            <div className="captures-scroll-list">
-                                {captures.map(cap => (
-                                    <div key={cap.id} className="capture-card">
-                                        <div className="capture-img-wrap">
-                                            <img src={cap.dataUrl} alt="Captured" />
-                                        </div>
-                                        <div className="capture-details">
-                                            <h4>صورة ثلاثية الأبعاد</h4>
-                                            <span>الوقت: {cap.timestamp}</span>
-                                            <span>الموضع: X:{cap.position.x.toFixed(1)}, Y:{cap.position.y.toFixed(1)}, Z:{cap.position.z.toFixed(1)}</span>
-                                        </div>
-                                    </div>
-                                ))}
-
-                                {captures.length === 0 && (
-                                    <div className="empty-captures-state">
-                                        <div className="empty-icon">📷</div>
-                                        <p>بانتظار التقاط صور من كاميرا الهاتف لتظهر هنا في الفضاء ثلاثي الأبعاد...</p>
-                                    </div>
-                                )}
-                            </div>
+                    {captures.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '60px', background: '#1e293b', borderRadius: '16px', color: '#94a3b8' }}>
+                            <div style={{ fontSize: '3.5rem', marginBottom: '20px' }}>📷</div>
+                            <p style={{ fontSize: '1.1rem' }}>بانتظار التقاط صور من كاميرا الهاتف لتظهر هنا...</p>
                         </div>
-                    </aside>
+                    ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '25px' }}>
+                            {captures.map(cap => (
+                                <div key={cap.id} style={{ background: '#1e293b', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 6px 12px rgba(0,0,0,0.15)' }}>
+                                    <div style={{ height: '220px', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <img src={cap.dataUrl} alt="Captured" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                                    </div>
+                                    <div style={{ padding: '15px', borderTop: '1px solid #334155' }}>
+                                        <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>وقت الالتقاط: {cap.timestamp}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
 
-            {/* QR Pairing Modal */}
             {showPairModal && (
-                <div className="arw-modal-overlay" onClick={() => setShowPairModal(false)}>
-                    <div className="arw-modal-card" onClick={e => e.stopPropagation()}>
-                        <button className="arw-modal-close" onClick={() => setShowPairModal(false)}>✕</button>
-                        <h3>ربط كاميرا الهاتف 📱</h3>
-                        <p>امسح الرمز التالي بكاميرا الهاتف لتسجيل الدخول التلقائي والبدء بنقل الصور فوراً:</p>
+                <div onClick={() => setShowPairModal(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+                    <div onClick={e => e.stopPropagation()} style={{ background: '#1e293b', padding: '35px', borderRadius: '20px', maxWidth: '420px', width: '90%', textAlign: 'center', position: 'relative', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
+                        <button onClick={() => setShowPairModal(false)} style={{ position: 'absolute', top: '15px', right: '15px', background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '1.4rem', cursor: 'pointer' }}>✕</button>
+                        <h3 style={{ color: '#f8fafc', marginBottom: '15px', fontSize: '1.3rem' }}>ربط كاميرا الهاتف 📱</h3>
+                        <p style={{ color: '#94a3b8', marginBottom: '25px', fontSize: '0.95rem', lineHeight: '1.5' }}>امسح الرمز التالي بكاميرا الهاتف للبدء بنقل الصور فوراً:</p>
                         
-                        {window.location.hostname === 'localhost' && (
-                            <div className="arw-localhost-warning" style={{
-                                background: 'rgba(239, 68, 68, 0.15)',
-                                border: '1px solid rgba(239, 68, 68, 0.3)',
-                                borderRadius: '8px',
-                                padding: '12px',
-                                margin: '15px 0',
-                                color: '#fca5a5',
-                                fontSize: '0.8rem',
-                                textAlign: 'right',
-                                lineHeight: '1.5'
-                            }}>
-                                ⚠️ <strong>تنبيه هام للربط:</strong> متصفحك الحالي يفتح الصفحة عبر <code>localhost</code>. لكي يستطيع الهاتف الاتصال بالكمبيوتر، يجب أن يكون الهاتف متصلاً **بنفس شبكة الـ Wi-Fi**، ويجب فتح هذه الصفحة على الكمبيوتر باستخدام **عنوان الـ IP المحلي لجهازك** (مثال: <code>http://192.168.1.X:5173</code>) بدلاً من <code>localhost</code> ثم مسح الرمز.
-                            </div>
-                        )}
-
                         {qrCodeUrl ? (
-                            <div className="arw-qr-container">
-                                <img src={qrCodeUrl} alt="Pairing QR Code" />
+                            <div style={{ background: 'white', padding: '20px', borderRadius: '16px', display: 'inline-block', marginBottom: '25px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                                <img src={qrCodeUrl} alt="Pairing QR Code" style={{ width: '220px', height: '220px' }} />
                             </div>
                         ) : (
-                            <div className="arw-qr-placeholder">جاري توليد الرمز...</div>
+                            <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>جاري توليد الرمز...</div>
                         )}
                         
-                        <div className="arw-modal-info">
-                            <span>أو افتح الرابط التالي على الهاتف:</span>
+                        <div style={{ textAlign: 'right' }}>
+                            <span style={{ display: 'block', marginBottom: '10px', color: '#94a3b8', fontSize: '0.9rem' }}>أو افتح الرابط التالي يدوياً على الهاتف:</span>
                             <input 
                                 type="text" 
                                 readOnly 
                                 value={`${window.location.origin}/ar-workspace?pairToken=${token}`} 
                                 onClick={e => e.target.select()}
+                                style={{ width: '100%', padding: '12px', background: '#0f172a', border: '1px solid #334155', color: '#3b82f6', borderRadius: '8px', direction: 'ltr', outline: 'none' }}
                             />
                         </div>
                     </div>
