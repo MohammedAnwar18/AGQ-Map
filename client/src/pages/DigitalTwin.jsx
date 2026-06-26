@@ -1675,6 +1675,9 @@ export default function DigitalTwin({ user, onClose }) {
                     </div>
                 </div>
                 <div className="dt-header-actions">
+                    <button className="dt-btn-secondary" style={{ width: 'auto', padding: '8px 16px', fontSize: '0.82rem', marginLeft: '10px', background: 'rgba(59, 130, 246, 0.15)', border: '1px solid #3b82f6', color: '#3b82f6' }} onClick={loadSampleData}>
+                        ⚡ تحميل منطقة تجريبية (جامعة بيرزيت)
+                    </button>
                     {canEdit && (
                         <button className="dt-btn-primary" style={{ width: 'auto', padding: '8px 22px', fontSize: '0.82rem', background: '#059669', color: '#fff' }} onClick={publishProject} disabled={loadingProject}>
                             💾 حفظ ونشر التوأم الرقمي
@@ -1984,6 +1987,10 @@ export default function DigitalTwin({ user, onClose }) {
                                                 <button className={`dt-draw-btn ${drawMode === 'point' && selectedPlacementType === 'classic_lamp' ? 'active' : ''}`} onClick={() => { setDrawMode('point'); setSelectedPlacementType('classic_lamp'); }}>🪔 فانوس تراثي</button>
                                                 <button className={`dt-draw-btn ${drawMode === 'point' && selectedPlacementType === 'fountain' ? 'active' : ''}`} onClick={() => { setDrawMode('point'); setSelectedPlacementType('fountain'); }}>⛲ نافورة مياه</button>
                                                 <button className={`dt-draw-btn ${drawMode === 'point' && selectedPlacementType === 'wind_turbine' ? 'active' : ''}`} onClick={() => { setDrawMode('point'); setSelectedPlacementType('wind_turbine'); }}>🌀 توربين رياح</button>
+                                                <button className={`dt-draw-btn ${drawMode === 'point' && selectedPlacementType === 'traffic_light' ? 'active' : ''}`} onClick={() => { setDrawMode('point'); setSelectedPlacementType('traffic_light'); }}>🚦 إشارة مرور</button>
+                                                <button className={`dt-draw-btn ${drawMode === 'point' && selectedPlacementType === 'bench' ? 'active' : ''}`} onClick={() => { setDrawMode('point'); setSelectedPlacementType('bench'); }}>🪑 مقعد جلوس</button>
+                                                <button className={`dt-draw-btn ${drawMode === 'point' && selectedPlacementType === 'cctv' ? 'active' : ''}`} onClick={() => { setDrawMode('point'); setSelectedPlacementType('cctv'); }}>📹 كاميرا مراقبة</button>
+                                                <button className={`dt-draw-btn ${drawMode === 'point' && selectedPlacementType === 'beacon' ? 'active' : ''}`} onClick={() => { setDrawMode('point'); setSelectedPlacementType('beacon'); }}>📡 منارة هولوغرام</button>
                                             </div>
                                         </div>
                                     </>
