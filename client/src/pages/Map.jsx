@@ -2237,6 +2237,18 @@ const MapComponent = () => {
                 <div className="top-bar">
                 <div className="top-bar-left" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                     <button
+                        className={`top-nav-icon menu-top-icon ${showSidebar ? 'active' : ''}`}
+                        onClick={() => { setShowSidebar(true); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); setShowChat(false); }}
+                        style={{ border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        title="القائمة"
+                    >
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line>
+                        </svg>
+                    </button>
+                    <button
                         className={`top-nav-icon profile-top-icon ${showProfile ? 'active' : ''}`}
                         onClick={() => { setShowProfile(true); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); setShowChat(false); }}
                         style={{ padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', position: 'relative' }}
