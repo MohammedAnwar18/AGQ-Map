@@ -826,12 +826,32 @@ export const studySpaceService = {
         return response.data;
     },
     translate: async (text) => {
+        // كشف اللغة بناءً على النص: عربي → إنجليزي، غير ذلك → عربي
+        const hasArabic   = /[\u0600-\u06FF]/.test(text);
+        const hasChinese  = /[\u4E00-\u9FFF]/.test(text);
+        const hasFrench   = /[àâçéèêëîïôùûüæœ]/i.test(text);
+        const hasSpanish  = /[áéíóúüñ¿¡]/i.test(text);
+        const hasGerman   = /[äöüß]/i.test(text);
+
+        let srcLang = 'en'; // الافتراضي: إنجليزي → عربي
+        if (hasArabic)  srcLang = 'ar'; // عربي → إنجليزي (استثناء)
+        else if (hasChinese) srcLang = 'zh-CN';
+        else if (hasFrench)  srcLang = 'fr';
+        else if (hasSpanish) srcLang = 'es';
+        else if (hasGerman)  srcLang = 'de';
+
+        const tgtLang = hasArabic ? 'en' : 'ar'; // إذا المدخل عربي → ترجم لإنجليزي
+        const langpair = `${srcLang}|${tgtLang}`;
         const encoded = encodeURIComponent(text);
+
         const response = await fetch(
-            `https://api.mymemory.translated.net/get?q=${encoded}&langpair=auto|ar`
+            `https://api.mymemory.translated.net/get?q=${encoded}&langpair=${langpair}`
         );
         const data = await response.json();
-        return data?.responseData?.translatedText || text;
+        if (data?.responseStatus === 200) {
+            return data.responseData.translatedText;
+        }
+        throw new Error(data?.responseDetails || 'فشل في الترجمة');
     }
 };
 
