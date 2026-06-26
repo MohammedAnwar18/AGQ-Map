@@ -3572,7 +3572,7 @@ const MapComponent = () => {
                 <StudySpace user={user} onClose={() => setShowStudySpace(false)} />
             )}
             {showDigitalTwin && (
-                <DigitalTwin onClose={() => setShowDigitalTwin(false)} />
+                <DigitalTwin user={user} onClose={() => setShowDigitalTwin(false)} />
             )}
             {showFitnessModal && (
                 <FitnessPathModal 

@@ -2,29 +2,24 @@ import React, { useState, useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import * as THREE from 'three';
+import { digitalTwinService } from '../services/api';
 import './DigitalTwin.css';
 
-// ─── إحداثيات افتراضية لجامعة بيرزيت (فلسطين) لبدء المعاينة ────────────────
-const DEFAULT_CENTER = [35.1812, 31.9598]; 
+// ─── إحداثيات افتراضية لوسط فلسطين لبدء الرسم ──────────────────────────────
+const DEFAULT_CENTER = [35.2000, 31.9500]; 
 
-export default function DigitalTwin({ onClose }) {
+export default function DigitalTwin({ user, onClose }) {
     const mapContainerRef = useRef(null);
     const mapRef = useRef(null);
     
-    // البيانات والمشاريع
+    // الصلاحيات (أدمن فقط يمكنه النشر والتحرير، البقية استكشاف)
+    const canEdit = user?.role === 'admin';
+
+    // البيانات والطبقات
     const [geojsonData, setGeojsonData] = useState(null);
-    const [customPoints, setCustomPoints] = useState(() => {
-        const saved = localStorage.getItem('agq_dt_custom_points');
-        return saved ? JSON.parse(saved) : [];
-    });
-    const [customBuildings, setCustomBuildings] = useState(() => {
-        const saved = localStorage.getItem('agq_dt_custom_buildings');
-        return saved ? JSON.parse(saved) : [];
-    });
-    const [customStreets, setCustomStreets] = useState(() => {
-        const saved = localStorage.getItem('agq_dt_custom_streets');
-        return saved ? JSON.parse(saved) : [];
-    });
+    const [customPoints, setCustomPoints] = useState([]);
+    const [customBuildings, setCustomBuildings] = useState([]);
+    const [customStreets, setCustomStreets] = useState([]);
     
     const [stats, setStats] = useState({ polygons: 0, points: 0, streets: 0 });
     const [centerCoords, setCenterCoords] = useState(DEFAULT_CENTER);
@@ -42,7 +37,7 @@ export default function DigitalTwin({ onClose }) {
     // خيارات الخرائط
     const [activeBasemap, setActiveBasemap] = useState('dark');
     
-    // إعدادات البيئة
+    // إعدادات البيئة والطقس
     const [timeOfDay, setTimeOfDay] = useState(12); // من 0 إلى 24 ساعة
     const [weather, setWeather] = useState('clear');
     const [autoTour, setAutoTour] = useState(false);
@@ -54,6 +49,7 @@ export default function DigitalTwin({ onClose }) {
     
     // فاحص الكائنات (Inspector)
     const [selectedFeature, setSelectedFeature] = useState(null); 
+    
     // تفاصيل تعديل الكائن المحدد (Admin Details)
     const [editScale, setEditScale] = useState(1.0);
     const [editRotation, setEditRotation] = useState(0);
@@ -62,45 +58,402 @@ export default function DigitalTwin({ onClose }) {
     const [editHeight, setEditHeight] = useState(15);
     const [editSkin, setEditSkin] = useState('glass');
     const [editSolarRoof, setEditSolarRoof] = useState(true);
-    const [editColor, setEditColor] = useState('#10b981');
+    const [editColor, setEditColor] = useState('#3b82f6');
     const [editStreetWidth, setEditStreetWidth] = useState(8);
     const [editStreetStyle, setEditStreetStyle] = useState('asphalt');
 
     // تكوين تعيين النقاط إلى مجسمات (Point Object Mapping)
     const [pointMappings, setPointMappings] = useState({
         'tree': { model: 'tree', scale: 1.0, color: '#10b981' },
+        'palm': { model: 'palm', scale: 1.2, color: '#047857' },
         'car': { model: 'car', scale: 1.0, color: '#f43f5e' },
+        'sports_car': { model: 'sports_car', scale: 0.9, color: '#fbab15' },
+        'truck': { model: 'truck', scale: 1.3, color: '#3b82f6' },
         'streetlight': { model: 'streetlight', scale: 1.0, color: '#fbab15' },
+        'classic_lamp': { model: 'classic_lamp', scale: 1.0, color: '#f59e0b' },
         'wind_turbine': { model: 'wind_turbine', scale: 1.0, color: '#ffffff' },
         'traffic_light': { model: 'traffic_light', scale: 1.0, color: '#3b82f6' },
         'bench': { model: 'bench', scale: 1.0, color: '#854d0e' },
+        'fountain': { model: 'fountain', scale: 1.4, color: '#60a5fa' },
         'cctv': { model: 'cctv', scale: 1.0, color: '#64748b' },
         'beacon': { model: 'beacon', scale: 1.2, color: '#10b981' }
     });
 
-    // مراجع الـ Three.js للتحكم المباشر في الرندر والخامات
+    // مراجع الـ Three.js للتحكم المباشر في الرندر والخامات والأنيميشن
     const threeSceneRef = useRef(null);
     const threeLightsRef = useRef({});
     const meshesMapRef = useRef(new Map()); 
     const animatedRotorsRef = useRef([]);  
     const animatedBeaconsRef = useRef([]); 
-    const texturesCacheRef = useRef(new Map()); // لتفادي إعادة إنشاء الخامات بدون تغيير
+    const animatedWaterJetsRef = useRef([]); // لتحديث حركة النافورة
+    const texturesCacheRef = useRef(new Map()); 
     const timeRef = useRef(0);
+    const [loadingProject, setLoadingProject] = useState(false);
 
-    // ─── حفظ تلقائي للبيانات الجانبية في LocalStorage ──────────────────────────
+    // ─── 1. تحميل أحدث مشروع من قاعدة البيانات عند فتح الصفحة ──────────────
     useEffect(() => {
-        localStorage.setItem('agq_dt_custom_points', JSON.stringify(customPoints));
+        const fetchProject = async () => {
+            setLoadingProject(true);
+            try {
+                const data = await digitalTwinService.getLatestProject();
+                if (data && data.success && data.project) {
+                    const proj = data.project;
+                    
+                    if (proj.geojson_data || proj.geojsondata) setGeojsonData(proj.geojson_data || proj.geojsondata);
+                    if (proj.custom_points || proj.custompoints) setCustomPoints(proj.custom_points || proj.custompoints);
+                    if (proj.custom_buildings || proj.custombuildings) setCustomBuildings(proj.custom_buildings || proj.custombuildings);
+                    if (proj.custom_streets || proj.customstreets) setCustomStreets(proj.custom_streets || proj.customstreets);
+                    if (proj.point_mappings || proj.pointmappings) setPointMappings(proj.point_mappings || proj.pointmappings);
+                    if (proj.building_theme || proj.buildingtheme) setBuildingTheme(proj.building_theme || proj.buildingtheme);
+                    if (proj.building_color || proj.buildingcolor) setBuildingColor(proj.building_color || proj.buildingcolor);
+                    if (proj.height_prop || proj.heightprop) setHeightProp(proj.height_prop || proj.heightprop);
+                    if (proj.default_height || proj.defaultheight) setDefaultHeight(proj.default_height || proj.defaultheight);
+                    if (proj.active_basemap || proj.activebasemap) setActiveBasemap(proj.active_basemap || proj.activebasemap);
+                    if (proj.center_coords || proj.centercoords) {
+                        const coords = proj.center_coords || proj.centercoords;
+                        setCenterCoords(coords);
+                        mapRef.current?.flyTo({ center: coords, zoom: 17, pitch: 55, duration: 1000 });
+                    }
+                }
+            } catch (err) {
+                console.warn('Failed to load project from server, falling back to local storage.');
+                loadFromLocalStorage();
+            } finally {
+                setLoadingProject(false);
+            }
+        };
+
+        fetchProject();
+    }, []);
+
+    const loadFromLocalStorage = () => {
+        try {
+            const savedPoints = localStorage.getItem('agq_dt_custom_points');
+            const savedBuildings = localStorage.getItem('agq_dt_custom_buildings');
+            const savedStreets = localStorage.getItem('agq_dt_custom_streets');
+
+            if (savedPoints) setCustomPoints(JSON.parse(savedPoints));
+            if (savedBuildings) setCustomBuildings(JSON.parse(savedBuildings));
+            if (savedStreets) setCustomStreets(JSON.parse(savedStreets));
+        } catch {}
+    };
+
+    // حفظ تلقائي محلي عند التغيير
+    useEffect(() => {
+        if (customPoints.length > 0) localStorage.setItem('agq_dt_custom_points', JSON.stringify(customPoints));
     }, [customPoints]);
 
     useEffect(() => {
-        localStorage.setItem('agq_dt_custom_buildings', JSON.stringify(customBuildings));
+        if (customBuildings.length > 0) localStorage.setItem('agq_dt_custom_buildings', JSON.stringify(customBuildings));
     }, [customBuildings]);
 
     useEffect(() => {
-        localStorage.setItem('agq_dt_custom_streets', JSON.stringify(customStreets));
+        if (customStreets.length > 0) localStorage.setItem('agq_dt_custom_streets', JSON.stringify(customStreets));
     }, [customStreets]);
 
-    // ─── 1. إنشاء نسيج وخامات إجرائية واقعية (Canvas-Based Textures) ─────────
+    // ─── 2. حفظ التوأم الرقمي ونشره على السيرفر لقاعدة البيانات ─────────────
+    const publishProject = async () => {
+        if (!canEdit) return;
+        try {
+            const payload = {
+                projectName: "التوأم الرقمي المشترك - الحرم الذكي",
+                geojsonData,
+                customPoints,
+                customBuildings,
+                customStreets,
+                pointMappings,
+                buildingTheme,
+                buildingColor,
+                heightProp,
+                defaultHeight,
+                activeBasemap,
+                centerCoords
+            };
+            const res = await digitalTwinService.saveProject(payload);
+            if (res && res.success) {
+                alert('🎉 تم حفظ ونشر التوأم الرقمي بنجاح في السيرفر! يمكن الآن لجميع الزوار استكشاف هذا التصميم بدقة.');
+            }
+        } catch (err) {
+            alert('فشل حفظ المشروع على السيرفر. يرجى التحقق من الاتصال بالإنترنت.');
+        }
+    };
+
+    // تحديث الإحصائيات عند تغيير البيانات
+    useEffect(() => {
+        let polyCount = customBuildings.length;
+        let ptCount = customPoints.length;
+        let streetCount = customStreets.length;
+
+        if (geojsonData) {
+            const features = geojsonData.type === 'FeatureCollection' ? geojsonData.features : [geojsonData];
+            features.forEach(f => {
+                if (f.geometry && f.geometry.type) {
+                    if (f.geometry.type.includes('Polygon')) {
+                        polyCount++;
+                    } else if (f.geometry.type === 'Point') {
+                        ptCount++;
+                    } else if (f.geometry.type.includes('LineString')) {
+                        streetCount++;
+                    }
+                }
+            });
+        }
+
+        setStats({ polygons: polyCount, points: ptCount, streets: streetCount });
+    }, [geojsonData, customPoints, customBuildings, customStreets]);
+
+    // معالجة رفع ملف المشروع أو ملف GeoJSON
+    const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const parsed = JSON.parse(event.target.result);
+                if (parsed.projectName && (parsed.customPoints || parsed.customBuildings || parsed.customStreets)) {
+                    if (parsed.geojsonData) setGeojsonData(parsed.geojsonData);
+                    if (parsed.customPoints) setCustomPoints(parsed.customPoints);
+                    if (parsed.customBuildings) setCustomBuildings(parsed.customBuildings);
+                    if (parsed.customStreets) setCustomStreets(parsed.customStreets);
+                    if (parsed.pointMappings) setPointMappings(parsed.pointMappings);
+                    if (parsed.buildingTheme) setBuildingTheme(parsed.buildingTheme);
+                    if (parsed.buildingColor) setBuildingColor(parsed.buildingColor);
+                    if (parsed.heightProp) setHeightProp(parsed.heightProp);
+                    if (parsed.defaultHeight) setDefaultHeight(parsed.defaultHeight);
+                    if (parsed.activeBasemap) setActiveBasemap(parsed.activeBasemap);
+                    if (parsed.centerCoords) {
+                        setCenterCoords(parsed.centerCoords);
+                        mapRef.current?.flyTo({ center: parsed.centerCoords, zoom: 17, pitch: 55, duration: 1000 });
+                    }
+                    alert('🎉 تم تحميل ملف مشروع التوأم الرقمي بنجاح!');
+                } else {
+                    setGeojsonData(parsed);
+                    let coords = null;
+                    if (parsed.type === 'FeatureCollection' && parsed.features && parsed.features.length > 0) {
+                        const firstFeat = parsed.features[0];
+                        if (firstFeat.geometry && firstFeat.geometry.coordinates) {
+                            const geomType = firstFeat.geometry.type;
+                            if (geomType === 'Point') {
+                                coords = firstFeat.geometry.coordinates;
+                            } else if (geomType === 'LineString') {
+                                coords = firstFeat.geometry.coordinates[0];
+                            } else if (geomType === 'Polygon') {
+                                coords = firstFeat.geometry.coordinates[0][0];
+                            }
+                        }
+                    } else if (parsed.type === 'Feature' && parsed.geometry && parsed.geometry.coordinates) {
+                        const geomType = parsed.geometry.type;
+                        if (geomType === 'Point') {
+                            coords = parsed.geometry.coordinates;
+                        } else if (geomType === 'LineString') {
+                            coords = parsed.geometry.coordinates[0];
+                        } else if (geomType === 'Polygon') {
+                            coords = parsed.geometry.coordinates[0][0];
+                        }
+                    }
+                    
+                    if (coords && coords.length >= 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
+                        setCenterCoords(coords);
+                        mapRef.current?.flyTo({ center: coords, zoom: 17, pitch: 55, duration: 1000 });
+                    }
+                    alert('🎉 تم استيراد ملف الـ GeoJSON بنجاح كطبقة معالم للموقع!');
+                }
+            } catch (err) {
+                console.error('Error parsing uploaded file:', err);
+                alert('فشل في قراءة ملف المشروع. يرجى التأكد من أن الملف هو GeoJSON أو JSON صالح للمشروع.');
+            }
+        };
+        reader.readAsText(file);
+    };
+
+    // تحميل المنطقة التجريبية لجامعة بيرزيت
+    const loadSampleData = () => {
+        const birzeitCenter = [35.1806, 31.9600];
+        
+        const buildings = [
+            {
+                id: 'bld-bz-admin',
+                name: 'مبنى الإدارة والتسجيل الرئيسي',
+                height: 22,
+                skin: 'stone',
+                solarRoof: true,
+                color: '#eab308',
+                coordinates: [
+                    [35.1812, 31.9592],
+                    [35.1818, 31.9593],
+                    [35.1819, 31.9588],
+                    [35.1813, 31.9587],
+                    [35.1812, 31.9592]
+                ]
+            },
+            {
+                id: 'bld-bz-it',
+                name: 'كلية تكنولوجيا المعلومات والذكاء الاصطناعي',
+                height: 18,
+                skin: 'glass',
+                solarRoof: true,
+                color: '#3b82f6',
+                coordinates: [
+                    [35.1798, 31.9602],
+                    [35.1804, 31.9603],
+                    [35.1805, 31.9598],
+                    [35.1799, 31.9597],
+                    [35.1798, 31.9602]
+                ]
+            },
+            {
+                id: 'bld-bz-library',
+                name: 'مكتبة يوسف أحمد الغانم المركزية',
+                height: 16,
+                skin: 'concrete',
+                solarRoof: false,
+                color: '#708090',
+                coordinates: [
+                    [35.1811, 31.9607],
+                    [35.1817, 31.9608],
+                    [35.1818, 31.9603],
+                    [35.1812, 31.9602],
+                    [35.1811, 31.9607]
+                ]
+            },
+            {
+                id: 'bld-bz-science',
+                name: 'كلية العلوم والدراسات الرياضية',
+                height: 20,
+                skin: 'brick',
+                solarRoof: true,
+                color: '#b45309',
+                coordinates: [
+                    [35.1788, 31.9593],
+                    [35.1794, 31.9594],
+                    [35.1795, 31.9589],
+                    [35.1789, 31.9588],
+                    [35.1788, 31.9593]
+                ]
+            }
+        ];
+
+        const streets = [
+            {
+                id: 'st-bz-main',
+                name: 'شارع الحرم الجامعي الرئيسي',
+                width: 12,
+                style: 'asphalt',
+                coordinates: [
+                    [35.1780, 31.9590],
+                    [35.1800, 31.9595],
+                    [35.1810, 31.9598],
+                    [35.1825, 31.9602]
+                ]
+            },
+            {
+                id: 'st-bz-walkway',
+                name: 'ممر المشاة التراثي التوأم',
+                width: 6,
+                style: 'cobblestone',
+                coordinates: [
+                    [35.1805, 31.9598],
+                    [35.1808, 31.9605],
+                    [35.1812, 31.9610]
+                ]
+            }
+        ];
+
+        const points = [
+            {
+                type: "Feature",
+                properties: { name: "النافورة التفاعلية المركزية", type: "fountain", scale: 1.5, rotation: 0, offsetX: 0, offsetY: 0 },
+                geometry: { type: "Point", coordinates: [35.1809, 31.9600] }
+            },
+            {
+                type: "Feature",
+                properties: { name: "عنفات الرياح - طاقة نظيفة", type: "wind_turbine", scale: 1.3, rotation: 45, offsetX: 0, offsetY: 0 },
+                geometry: { type: "Point", coordinates: [35.1785, 31.9585] }
+            },
+            {
+                type: "Feature",
+                properties: { name: "نخلة زينة ممر الإدارة", type: "palm", scale: 1.2, rotation: 0, offsetX: 0, offsetY: 0 },
+                geometry: { type: "Point", coordinates: [35.1805, 31.9594] }
+            },
+            {
+                type: "Feature",
+                properties: { name: "نخلة زينة ممر الإدارة 2", type: "palm", scale: 1.2, rotation: 15, offsetX: 0, offsetY: 0 },
+                geometry: { type: "Point", coordinates: [35.1808, 31.9595] }
+            },
+            {
+                type: "Feature",
+                properties: { name: "شجرة صنوبر مدخل تكنولوجيا المعلومات", type: "tree", scale: 1.0, rotation: 0, offsetX: 0, offsetY: 0 },
+                geometry: { type: "Point", coordinates: [35.1797, 31.9598] }
+            },
+            {
+                type: "Feature",
+                properties: { name: "شجرة صنوبر مدخل تكنولوجيا المعلومات 2", type: "tree", scale: 1.1, rotation: 30, offsetX: 0, offsetY: 0 },
+                geometry: { type: "Point", coordinates: [35.1796, 31.9600] }
+            },
+            {
+                type: "Feature",
+                properties: { name: "عمود إنارة حديث 1", type: "streetlight", scale: 1.0, rotation: 90, offsetX: 0, offsetY: 0 },
+                geometry: { type: "Point", coordinates: [35.1790, 31.9592] }
+            },
+            {
+                type: "Feature",
+                properties: { name: "عمود إنارة حديث 2", type: "streetlight", scale: 1.0, rotation: 90, offsetX: 0, offsetY: 0 },
+                geometry: { type: "Point", coordinates: [35.1800, 31.9594] }
+            },
+            {
+                type: "Feature",
+                properties: { name: "فانوس تراثي ممر المكتبة", type: "classic_lamp", scale: 1.0, rotation: 0, offsetX: 0, offsetY: 0 },
+                geometry: { type: "Point", coordinates: [35.1807, 31.9603] }
+            },
+            {
+                type: "Feature",
+                properties: { name: "فانوس تراثي ممر المكتبة 2", type: "classic_lamp", scale: 1.0, rotation: 180, offsetX: 0, offsetY: 0 },
+                geometry: { type: "Point", coordinates: [35.1810, 31.9608] }
+            },
+            {
+                type: "Feature",
+                properties: { name: "سيارة زائر سيدان", type: "car", scale: 1.0, rotation: 120, offsetX: 0, offsetY: 0 },
+                geometry: { type: "Point", coordinates: [35.1803, 31.9605] }
+            },
+            {
+                type: "Feature",
+                properties: { name: "سيارة رئيس الجامعة الرياضية", type: "sports_car", scale: 0.95, rotation: 300, offsetX: 0, offsetY: 0 },
+                geometry: { type: "Point", coordinates: [35.1804, 31.9606] }
+            },
+            {
+                type: "Feature",
+                properties: { name: "شاحنة صيانة الجامعة", type: "truck", scale: 1.1, rotation: 10, offsetX: 0, offsetY: 0 },
+                geometry: { type: "Point", coordinates: [35.1787, 31.9591] }
+            },
+            {
+                type: "Feature",
+                properties: { name: "منارة هولوغرام مركزية", type: "beacon", scale: 1.2, rotation: 0, offsetX: 0, offsetY: 0 },
+                geometry: { type: "Point", coordinates: [35.1806, 31.9600] }
+            }
+        ];
+
+        setCenterCoords(birzeitCenter);
+        setCustomBuildings(buildings);
+        setCustomStreets(streets);
+        setCustomPoints(points);
+        setGeojsonData(null);
+
+        if (mapRef.current) {
+            mapRef.current.flyTo({
+                center: birzeitCenter,
+                zoom: 17.5,
+                pitch: 58,
+                bearing: -25,
+                duration: 1500
+            });
+        }
+
+        alert('🎉 تم تحميل المخطط الرقمي التفاعلي لجامعة بيرزيت بنجاح! تصفح المعالم ثلاثية الأبعاد المكسوة، والنافورة المتحركة، ومولدات طاقة الرياح.');
+    };
+
+
+    // ─── 3. خامات ونسيج إجرائي واقعي (Canvas Textures) ────────────────────
     const getProceduralTexture = (type, colorHex, isNight) => {
         const cacheKey = `${type}-${colorHex}-${isNight ? 'night' : 'day'}`;
         if (texturesCacheRef.current.has(cacheKey)) {
@@ -111,10 +464,9 @@ export default function DigitalTwin({ onClose }) {
         const ctx = canvas.getContext('2d');
 
         if (type === 'glass') {
-            // نسيج واجهة زجاجية ذكية
             canvas.width = 128;
             canvas.height = 128;
-            ctx.fillStyle = isNight ? '#0b132b' : '#334155';
+            ctx.fillStyle = isNight ? '#0a1128' : '#334155';
             ctx.fillRect(0, 0, 128, 128);
 
             const rows = 4;
@@ -130,17 +482,16 @@ export default function DigitalTwin({ onClose }) {
                     const y = paddingY + r * (wHeight + paddingY);
                     
                     if (isNight) {
-                        // إضاءة عشوائية للنوافذ ليلاً
                         const isLit = (r + c) % 3 === 0 || (r * c) % 5 === 1;
-                        ctx.fillStyle = isLit ? '#ffe082' : '#1e293b';
+                        ctx.fillStyle = isLit ? '#ffe082' : '#111827';
                         if (isLit) {
                             ctx.shadowColor = '#ffe082';
-                            ctx.shadowBlur = 4;
+                            ctx.shadowBlur = 5;
                         } else {
                             ctx.shadowBlur = 0;
                         }
                     } else {
-                        ctx.fillStyle = '#bae6fd'; // زجاج سماوي نهاراً
+                        ctx.fillStyle = '#bae6fd'; // زجاج أزرق نهاراً
                         ctx.shadowBlur = 0;
                     }
                     ctx.fillRect(x, y, wWidth, wHeight);
@@ -149,11 +500,46 @@ export default function DigitalTwin({ onClose }) {
                     ctx.strokeRect(x, y, wWidth, wHeight);
                 }
             }
+        } else if (type === 'stone') {
+            // نسيج الحجر التراثي الأبيض والأصفر المحلي
+            canvas.width = 128;
+            canvas.height = 128;
+            ctx.fillStyle = '#f5f5f4'; // خلفية حجرية فاتحة
+            ctx.fillRect(0, 0, 128, 128);
+
+            // خطوط الطوب
+            ctx.strokeStyle = '#d6d3d1';
+            ctx.lineWidth = 1.5;
+
+            // صفوف أفقية
+            for (let y = 0; y <= 128; y += 16) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(128, y);
+                ctx.stroke();
+            }
+
+            // فواصل رأسية متداخلة
+            for (let row = 0; row < 8; row++) {
+                const y = row * 16;
+                const offset = (row % 2) * 32;
+                for (let x = offset; x <= 128 + 32; x += 64) {
+                    ctx.beginPath();
+                    ctx.moveTo(x - 32, y);
+                    ctx.lineTo(x - 32, y + 16);
+                    ctx.stroke();
+                }
+            }
+
+            // إضافة تفاصيل نسيج للحجر
+            ctx.fillStyle = 'rgba(120, 113, 108, 0.08)';
+            for (let i = 0; i < 500; i++) {
+                ctx.fillRect(Math.random() * 128, Math.random() * 128, Math.random() * 4, Math.random() * 2);
+            }
         } else if (type === 'brick') {
-            // نسيج طوب كلاسيكي دقيق
             canvas.width = 64;
             canvas.height = 64;
-            ctx.fillStyle = '#b45309'; 
+            ctx.fillStyle = colorHex || '#b45309'; 
             ctx.fillRect(0, 0, 64, 64);
             ctx.strokeStyle = '#cbd5e1'; 
             ctx.lineWidth = 1;
@@ -176,29 +562,21 @@ export default function DigitalTwin({ onClose }) {
                 }
             }
         } else if (type === 'concrete') {
-            // خرسانة صناعية دقيقة
             canvas.width = 128;
             canvas.height = 128;
-            ctx.fillStyle = '#64748b';
+            ctx.fillStyle = '#cbd5e1';
             ctx.fillRect(0, 0, 128, 128);
 
-            // إضافة نسيج وشوائب خرسانية عشوائية
-            ctx.fillStyle = '#475569';
-            for (let i = 0; i < 400; i++) {
-                const size = Math.random() * 2;
-                ctx.fillRect(Math.random() * 128, Math.random() * 128, size, size);
+            ctx.fillStyle = '#94a3b8';
+            for (let i = 0; i < 500; i++) {
+                ctx.fillRect(Math.random() * 128, Math.random() * 128, Math.random() * 2, Math.random() * 2);
             }
-            // فواصل خرسانية
-            ctx.strokeStyle = '#334155';
-            ctx.lineWidth = 1.5;
-            ctx.strokeRect(4, 4, 120, 120);
         } else if (type === 'solar') {
-            // ألواح شمسية زرقاء ميتاليك للأسطح
             canvas.width = 64;
             canvas.height = 64;
             ctx.fillStyle = '#0f172a';
             ctx.fillRect(0, 0, 64, 64);
-            ctx.strokeStyle = '#94a3b8';
+            ctx.strokeStyle = '#64748b';
             ctx.lineWidth = 1.5;
 
             for (let i = 0; i <= 64; i += 16) {
@@ -218,193 +596,15 @@ export default function DigitalTwin({ onClose }) {
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
         
-        // تكرار النسيج ليتناسب مع حجم المجسم
-        if (type === 'brick') {
-            texture.repeat.set(5, 5);
-        } else {
-            texture.repeat.set(3, 3);
-        }
+        if (type === 'brick') texture.repeat.set(6, 6);
+        else if (type === 'stone') texture.repeat.set(4, 4);
+        else texture.repeat.set(3, 3);
 
         texturesCacheRef.current.set(cacheKey, texture);
         return texture;
     };
 
-    // ─── 2. البيانات التجريبية الغنية (Sample Smart District) ─────────────────
-    const loadSampleData = () => {
-        const sampleGeoJSON = {
-            type: "FeatureCollection",
-            features: [
-                {
-                    type: "Feature",
-                    properties: { name: "مبنى الإدارة الرئيسي", type: "building", height: 28, color: "#10b981" },
-                    geometry: {
-                        type: "Polygon",
-                        coordinates: [[
-                            [35.1805, 31.9605], [35.1815, 31.9605],
-                            [35.1815, 31.9598], [35.1805, 31.9598],
-                            [35.1805, 31.9605]
-                        ]]
-                    }
-                },
-                {
-                    type: "Feature",
-                    properties: { name: "مكتبة الحرم الجامعي", type: "building", height: 18, color: "#3b82f6" },
-                    geometry: {
-                        type: "Polygon",
-                        coordinates: [[
-                            [35.1820, 31.9602], [35.1828, 31.9602],
-                            [35.1828, 31.9595], [35.1820, 31.9595],
-                            [35.1820, 31.9602]
-                        ]]
-                    }
-                },
-                // نقاط الأشجار
-                { type: "Feature", properties: { name: "شجرة صنوبر 1", type: "tree" }, geometry: { type: "Point", coordinates: [35.1802, 31.9601] } },
-                { type: "Feature", properties: { name: "شجرة صنوبر 2", type: "tree" }, geometry: { type: "Point", coordinates: [35.1803, 31.9599] } },
-                // نقاط أعمدة الإنارة
-                { type: "Feature", properties: { name: "عمود إنارة الممر A", type: "streetlight" }, geometry: { type: "Point", coordinates: [35.1806, 31.9600] } },
-                { type: "Feature", properties: { name: "عمود إنارة الممر B", type: "streetlight" }, geometry: { type: "Point", coordinates: [35.1814, 31.9600] } },
-                // توربينات رياح طاقة متجددة
-                { type: "Feature", properties: { name: "توربين طاقة متجددة A", type: "wind_turbine" }, geometry: { type: "Point", coordinates: [35.1788, 31.9585] } }
-            ]
-        };
-
-        setCenterCoords([35.1810, 31.9595]);
-        setGeojsonData(sampleGeoJSON);
-        
-        // تحميل شوارع تجريبية
-        const sampleStreets = [
-            {
-                id: "st-sample-1",
-                name: "شارع الحرم الرئيسي",
-                width: 9,
-                style: "asphalt",
-                coordinates: [
-                    [35.1798, 31.9596],
-                    [35.1818, 31.9596],
-                    [35.1830, 31.9590]
-                ]
-            }
-        ];
-        setCustomStreets(sampleStreets);
-
-        // تحميل كائنات مخصصة تجريبية للمباني المكسوة
-        const sampleBuildings = [
-            {
-                id: "bld-sample-1",
-                name: "مجمع بالنوفا الذكي للابتكار",
-                height: 32,
-                skin: "glass",
-                solarRoof: true,
-                color: "#10b981",
-                coordinates: [
-                    [35.1807, 31.9592],
-                    [35.1817, 31.9592],
-                    [35.1817, 31.9585],
-                    [35.1807, 31.9585],
-                    [35.1807, 31.9592]
-                ]
-            }
-        ];
-        setCustomBuildings(sampleBuildings);
-
-        if (mapRef.current) {
-            mapRef.current.flyTo({
-                center: [35.1810, 31.9595],
-                zoom: 17.2,
-                pitch: 58,
-                bearing: -15,
-                duration: 2000
-            });
-        }
-    };
-
-    // ─── 3. الرفع والتصدير والاستيراد للمشاريع الكاملة ─────────────────────────
-    const handleFileUpload = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            try {
-                const parsed = JSON.parse(event.target.result);
-                if (parsed.isDigitalTwinProject) {
-                    if (parsed.geojsonData) setGeojsonData(parsed.geojsonData);
-                    if (parsed.customPoints) setCustomPoints(parsed.customPoints);
-                    if (parsed.customBuildings) setCustomBuildings(parsed.customBuildings);
-                    if (parsed.customStreets) setCustomStreets(parsed.customStreets);
-                    if (parsed.pointMappings) setPointMappings(parsed.pointMappings);
-                    if (parsed.buildingTheme) setBuildingTheme(parsed.buildingTheme);
-                    if (parsed.buildingColor) setBuildingColor(parsed.buildingColor);
-                    if (parsed.heightProp) setHeightProp(parsed.heightProp);
-                    if (parsed.defaultHeight) setDefaultHeight(parsed.defaultHeight);
-                    if (parsed.activeBasemap) setActiveBasemap(parsed.activeBasemap);
-                    if (parsed.centerCoords) {
-                        setCenterCoords(parsed.centerCoords);
-                        mapRef.current?.flyTo({ center: parsed.centerCoords, zoom: 17, pitch: 50 });
-                    }
-                } else if (parsed.type === 'FeatureCollection' || parsed.type === 'Feature') {
-                    setGeojsonData(parsed);
-                    setCustomPoints([]);
-                    setCustomBuildings([]);
-                    setCustomStreets([]);
-                }
-            } catch (err) {
-                alert('الملف غير صالح.');
-            }
-        };
-        reader.readAsText(file);
-    };
-
-    const exportProject = () => {
-        const projectData = {
-            isDigitalTwinProject: true,
-            projectName: "التوأم الرقمي الواقعي - " + new Date().toLocaleDateString('ar-EG'),
-            geojsonData,
-            customPoints,
-            customBuildings,
-            customStreets,
-            pointMappings,
-            buildingTheme,
-            buildingColor,
-            heightProp,
-            defaultHeight,
-            activeBasemap,
-            centerCoords
-        };
-
-        const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `digital-twin-real-editor-${Date.now()}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    };
-
-    // ─── 4. تحديث الإحصائيات عند تغيير البيانات ──────────────────────────────
-    useEffect(() => {
-        let polyCount = 0;
-        let ptCount = 0;
-
-        if (geojsonData) {
-            const features = geojsonData.type === 'FeatureCollection' ? geojsonData.features : [geojsonData];
-            features.forEach(f => {
-                if (f.geometry.type.includes('Polygon')) polyCount++;
-                if (f.geometry.type === 'Point') ptCount++;
-            });
-        }
-
-        setStats({
-            polygons: polyCount + customBuildings.length,
-            points: ptCount + customPoints.length,
-            streets: customStreets.length
-        });
-    }, [geojsonData, customPoints, customBuildings, customStreets]);
-
-    // ─── 5. تهيئة الخريطة وتحديث طبقاتها وتفاصيل الأبعاد الثلاثية ──────────
+    // ─── 4. تهيئة الخريطة وطبقاتها ──────────────────────────────────────────
     useEffect(() => {
         if (!mapContainerRef.current) return;
 
@@ -448,14 +648,13 @@ export default function DigitalTwin({ onClose }) {
             container: mapContainerRef.current,
             style: getStyleConfig(activeBasemap),
             center: centerCoords,
-            zoom: 17,
+            zoom: geojsonData || customBuildings.length > 0 ? 17 : 12, // بدء واسع إذا لم يكن هناك معالم
             pitch: 55,
             bearing: -10,
             antialias: true
         });
 
         mapRef.current = map;
-
         map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
 
         map.on('load', () => {
@@ -471,7 +670,7 @@ export default function DigitalTwin({ onClose }) {
         };
     }, [activeBasemap]);
 
-    // ─── 6. إعداد مصادر البيانات والطبقات في الخريطة ───────────────────────
+    // ─── 5. إعداد مصادر البيانات والطبقات ──────────────────────────────────
     const setupMapLayers = (map) => {
         // طبقة الرسم الإرشادي المؤقتة
         map.addSource('dt-drawing-source', {
@@ -506,35 +705,49 @@ export default function DigitalTwin({ onClose }) {
             data: getStreetsGeoJSON()
         });
 
-        // رصيف الشارع الأساسي (الأسفلت الداكن)
+        // الشارع الأساسي (طين/حصى/أسفلت طبقاً للستايل)
         map.addLayer({
             id: 'dt-custom-streets-base',
             type: 'line',
             source: 'dt-custom-streets-source',
             paint: {
-                'line-color': '#1e293b',
+                'line-color': [
+                    'match',
+                    ['get', 'style'],
+                    'gravel', '#854d0e',   // طريق ترابي بني
+                    'cobblestone', '#64748b', // ممر حجري رمادي
+                    'neon', '#090d16',        // نيون داكن
+                    '#1e293b'                 // أسفلت رمادي داكن افتراضي
+                ],
                 'line-width': [
                     'interpolate', ['linear'], ['zoom'],
-                    14, 5,
-                    17, 14,
-                    20, 32
+                    14, 4,
+                    17, 12,
+                    20, 28
                 ]
             }
         });
 
-        // خط الحارة الفاصل (الإنارة المتقطعة الصفراء)
+        // الخطوط والإضاءة المحددة للشارع
         map.addLayer({
             id: 'dt-custom-streets-stripe',
             type: 'line',
             source: 'dt-custom-streets-source',
             paint: {
-                'line-color': '#f59e0b',
+                'line-color': [
+                    'match',
+                    ['get', 'style'],
+                    'neon', '#10b981', // خطوط خضراء مضيئة
+                    'cobblestone', '#475569', // فواصل داكنة للحجارة
+                    'gravel', 'transparent', // لا خطوط للطريق الترابي
+                    '#f59e0b' // أصفر متقطع للأسفلت
+                ],
                 'line-width': 1.5,
                 'line-dasharray': [3, 4]
             }
         });
 
-        // فحص المباني ثنائية الأبعاد وتجسيمها في MapLibre
+        // تجسيم مضلعات الـ GeoJSON ثنائية الأبعاد
         if (geojsonData) {
             const polygonsOnly = {
                 type: "FeatureCollection",
@@ -584,7 +797,6 @@ export default function DigitalTwin({ onClose }) {
                 }
             });
 
-            // كليك للتفتيش عن المبنى
             map.on('click', 'dt-buildings-3d', (e) => {
                 if (e.features && e.features.length > 0) {
                     const feat = e.features[0];
@@ -598,17 +810,16 @@ export default function DigitalTwin({ onClose }) {
             });
         }
 
-        // دمج طبقة Three.js للمباني المكسوة والنقاط المخصصة
+        // دمج طبقة Three.js للمباني المكسوة والنقاط المخصصة والنافورة المتحركة
         addThreeJsCustomLayer(map);
     };
 
-    // تحديث الشوارع المرسومة ديناميكياً
     const getStreetsGeoJSON = () => {
         return {
             type: 'FeatureCollection',
             features: customStreets.map(st => ({
                 type: 'Feature',
-                properties: { name: st.name, width: st.width || 8 },
+                properties: { name: st.name, style: st.style, width: st.width || 8 },
                 geometry: { type: 'LineString', coordinates: st.coordinates }
             }))
         };
@@ -621,7 +832,6 @@ export default function DigitalTwin({ onClose }) {
         }
     }, [customStreets]);
 
-    // تحديث خط الرسم المؤقت بالخريطة
     useEffect(() => {
         const map = mapRef.current;
         if (!map || !map.getSource('dt-drawing-source')) return;
@@ -645,15 +855,19 @@ export default function DigitalTwin({ onClose }) {
         });
     }, [drawnCoords, drawMode]);
 
-    // ─── 7. معالجة الأحداث والضغط على الخريطة ─────────────────────────────
+    // ─── 6. معالجة الأحداث والضغط على الخريطة ─────────────────────────────
     const handleMapClick = (e, map) => {
-        // إذا كنا في وضع رسم مضلع أو خط
+        if (!canEdit) {
+            // الزائر يمكنه فقط تفتيش المعالم بدون تعديل
+            inspectClosestFeature(e);
+            return;
+        }
+
         if (drawMode === 'building' || drawMode === 'street') {
             setDrawnCoords(prev => [...prev, [e.lngLat.lng, e.lngLat.lat]]);
             return;
         }
 
-        // وضع إسقاط مجسم سريع للمسؤول (Admin placement)
         if (drawMode === 'point') {
             const newPt = {
                 type: "Feature",
@@ -675,7 +889,10 @@ export default function DigitalTwin({ onClose }) {
             return;
         }
 
-        // فحص كائن نقطة
+        inspectClosestFeature(e);
+    };
+
+    const inspectClosestFeature = (e) => {
         const allPoints = [];
         if (geojsonData) {
             const features = geojsonData.type === 'FeatureCollection' ? geojsonData.features : [geojsonData];
@@ -710,7 +927,6 @@ export default function DigitalTwin({ onClose }) {
                 coords: e.lngLat,
                 geometry: closest.geometry
             });
-            // تحميل قيم التعديل للوحة التحكم
             setEditScale(closest.properties.scale || 1.0);
             setEditRotation(closest.properties.rotation || 0);
             setEditOffsetX(closest.properties.offsetX || 0);
@@ -718,7 +934,6 @@ export default function DigitalTwin({ onClose }) {
             return;
         }
 
-        // فحص مبنى مرسوم بالنقاط في الفضاء المحلي للـ ThreeJS
         let closestBuilding = null;
         let bldMinDist = 0.0002;
         customBuildings.forEach((bld, idx) => {
@@ -747,7 +962,7 @@ export default function DigitalTwin({ onClose }) {
         }
     };
 
-    // ─── 8. طبقة الرندر ثلاثي الأبعاد المخصصة (Three.js Layer) ─────────────────
+    // ─── 7. طبقة الرندر ثلاثي الأبعاد المخصصة (Three.js Layer) ─────────────────
     const addThreeJsCustomLayer = (map) => {
         const anchorMerc = maplibregl.MercatorCoordinate.fromLngLat(centerCoords, 0);
         const meterScale = anchorMerc.meterInMercatorCoordinateUnits();
@@ -795,13 +1010,21 @@ export default function DigitalTwin({ onClose }) {
 
                 timeRef.current += 0.015;
                 
+                // أنيميشن شفرات التوربينات
                 animatedRotorsRef.current.forEach(rotor => {
                     rotor.rotation.z += 0.08;
                 });
 
+                // أنيميشن منارات الهولوغرام
                 animatedBeaconsRef.current.forEach(beacon => {
                     const pulse = 1.0 + Math.sin(timeRef.current * 4) * 0.15;
                     beacon.scale.set(pulse, 1.0, pulse);
+                });
+
+                // أنيميشن تدفق مياه النافورة المضيئة
+                animatedWaterJetsRef.current.forEach((jet, idx) => {
+                    const wave = 1.0 + Math.sin(timeRef.current * 9 + idx) * 0.28;
+                    jet.scale.set(wave, 1.0 + Math.sin(timeRef.current * 7 + idx) * 0.4, wave);
                 });
 
                 this.renderer.resetState();
@@ -814,28 +1037,26 @@ export default function DigitalTwin({ onClose }) {
         map.addLayer(customLayer);
     };
 
-    // ─── 9. إنشاء وتحديث الكائنات والمباني المكسوة بالخامات ثلاثية الأبعاد ──────
+    // ─── 8. إنشاء وتحديث الكائنات والمباني المكسوة بالخامات ثلاثية الأبعاد ──────
     const buildThreeJsScene = () => {
         const scene = threeSceneRef.current;
         if (!scene) return;
 
-        // مسح الكائنات القديمة
         meshesMapRef.current.forEach(mesh => scene.remove(mesh));
         meshesMapRef.current.clear();
         animatedRotorsRef.current = [];
         animatedBeaconsRef.current = [];
+        animatedWaterJetsRef.current = [];
 
         const anchorMerc = maplibregl.MercatorCoordinate.fromLngLat(centerCoords, 0);
         const meterScale = anchorMerc.meterInMercatorCoordinateUnits();
         const isNight = timeOfDay < 6 || timeOfDay > 18;
 
-        // أ. رندرة المباني المخصصة والمكسوة بالخامات الواقعية (Custom Extruded Buildings)
+        // أ. رندرة المباني المخصصة والمكسوة بالخامات الواقعية
         customBuildings.forEach((bld, idx) => {
             if (bld.coordinates.length < 3) return;
 
             const shape = new THREE.Shape();
-            
-            // تحويل الإحداثيات الجغرافية المحلية إلى إحداثيات مترية حول الارتكاز
             const localPoints = bld.coordinates.map(coord => {
                 const pMerc = maplibregl.MercatorCoordinate.fromLngLat(coord, 0);
                 const dx = (pMerc.x - anchorMerc.x) / meterScale;
@@ -849,32 +1070,26 @@ export default function DigitalTwin({ onClose }) {
             }
             shape.closePath();
 
-            // تجسيم المبنى واقعياً
             const height = bld.height || 15;
-            const extrudeSettings = {
-                depth: height,
-                bevelEnabled: false
-            };
-
+            const extrudeSettings = { depth: height, bevelEnabled: false };
             const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
 
-            // إعداد خامات الواجهة والخامات العلوية للسطح
+            // خامة الجدران والواجهات (زجاج، طوب، حجر تراثي، خرسانة)
             const wallTexture = getProceduralTexture(bld.skin || 'glass', bld.color || '#3b82f6', isNight);
             const wallMaterial = new THREE.MeshLambertMaterial({
                 map: wallTexture,
                 color: bld.color ? new THREE.Color(bld.color) : 0xffffff
             });
 
-            // خامة السطح (أما إسفلت/خرسانة مظلمة أو ألواح شمسية ذكية)
+            // خامة السطح (ألواح شمسية أو خرسانة)
             let roofMaterial;
             if (bld.solarRoof) {
                 const solarTexture = getProceduralTexture('solar', '#ffffff', false);
                 roofMaterial = new THREE.MeshLambertMaterial({ map: solarTexture });
             } else {
-                roofMaterial = new THREE.MeshLambertMaterial({ color: 0x222d3d }); // سقف عادي داكن
+                roofMaterial = new THREE.MeshLambertMaterial({ color: 0x27272a }); 
             }
 
-            // ExtrudeGeometry ينشئ مجموعتين من المواد: مجموعة 0 للأسقف والمجموعة 1 للجدران
             const materials = [roofMaterial, wallMaterial];
             const mesh = new THREE.Mesh(geometry, materials);
 
@@ -882,7 +1097,7 @@ export default function DigitalTwin({ onClose }) {
             meshesMapRef.current.set(`bld-${bld.id || idx}`, mesh);
         });
 
-        // ب. رندرة النقاط ثلاثية الأبعاد (Trees, Cars, Lights, etc.)
+        // ب. رندرة النقاط ثلاثية الأبعاد
         const allPoints = [];
         if (geojsonData) {
             const features = geojsonData.type === 'FeatureCollection' ? geojsonData.features : [geojsonData];
@@ -900,11 +1115,9 @@ export default function DigitalTwin({ onClose }) {
             const coords = p.geometry.coordinates;
             const pMerc = maplibregl.MercatorCoordinate.fromLngLat(coords, 0);
 
-            // الإحداثيات الجغرافية الأساسية
             let dx = (pMerc.x - anchorMerc.x) / meterScale;
             let dy = -(pMerc.y - anchorMerc.y) / meterScale;
 
-            // تطبيق إزاحة التعديل للمسؤول (X, Y Offset in meters)
             dx += p.properties?.offsetX || 0;
             dy += p.properties?.offsetY || 0;
 
@@ -914,7 +1127,6 @@ export default function DigitalTwin({ onClose }) {
             const group = new THREE.Group();
             group.position.set(dx, dy, 0);
             
-            // تطبيق دوران وحجم التعديل
             const scaleVal = (p.properties?.scale || 1.0) * (mapping.scale || 1.0);
             group.scale.set(scaleVal, scaleVal, scaleVal);
             
@@ -930,20 +1142,185 @@ export default function DigitalTwin({ onClose }) {
         updateEnvironmentLighting(isNight);
     };
 
-    // مراقبة التغييرات لإعادة التجسيم
-    useEffect(() => {
-        buildThreeJsScene();
-    }, [geojsonData, customPoints, customBuildings, pointMappings, timeOfDay, buildingTheme]);
-
-    // ─── 10. بناء المجسمات ثلاثية الأبعاد تفاعلياً ───────────────────────────
+    // ─── 9. مولّد الكائنات ثلاثية الأبعاد الإجرائي المتقدم ───────────────────
     const buildProceduralModel = (type, group, colorHex, isNight) => {
         const matColor = new THREE.Color(colorHex);
 
         switch (type) {
+            case 'palm': {
+                // شجرة نخيل واقعية
+                // جذع حجر حلقي متدرج
+                const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5a3e2b });
+                for (let i = 0; i < 7; i++) {
+                    const segment = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.12 - i * 0.008, 0.15 - i * 0.008, 0.45, 6),
+                        trunkMat
+                    );
+                    segment.position.z = 0.22 + i * 0.45;
+                    segment.rotation.x = Math.PI / 2;
+                    group.add(segment);
+                }
+
+                // سعف النخيل الممتد
+                const leafMat = new THREE.MeshLambertMaterial({ color: 0x064e3b });
+                for (let j = 0; j < 12; j++) {
+                    const leaf = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.4, 0.04), leafMat);
+                    leaf.position.set(0, 0, 3.2);
+                    
+                    // تدوير وانحناء السعفة
+                    const leafRotContainer = new THREE.Group();
+                    leafRotContainer.rotation.z = (j * Math.PI * 2) / 12;
+                    
+                    leaf.rotation.x = Math.PI / 4 + Math.random() * 0.1; // انحناء لأسفل
+                    leaf.position.y = 0.6; // إزاحة عن المركز
+                    
+                    leafRotContainer.add(leaf);
+                    group.add(leafRotContainer);
+                }
+                break;
+            }
+            case 'fountain': {
+                // نافورة مياه متحركة ومضيئة
+                // حوض حجري دائري
+                const baseGeo = new THREE.CylinderGeometry(1.2, 1.4, 0.35, 12);
+                const stoneMat = new THREE.MeshLambertMaterial({ color: 0x78716c });
+                const base = new THREE.Mesh(baseGeo, stoneMat);
+                base.position.z = 0.18;
+                base.rotation.x = Math.PI / 2;
+                group.add(base);
+
+                // عمود مائي مركزي
+                const post = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.8, 8), stoneMat);
+                post.position.set(0, 0, 0.4);
+                post.rotation.x = Math.PI / 2;
+                group.add(post);
+
+                // نفاثات المياه المتحركة
+                const waterMat = new THREE.MeshBasicMaterial({
+                    color: 0x60a5fa,
+                    transparent: true,
+                    opacity: 0.68
+                });
+
+                const jetGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.4, 6);
+                for (let k = 0; k < 6; k++) {
+                    const jet = new THREE.Mesh(jetGeo, waterMat);
+                    jet.rotation.x = Math.PI / 2;
+                    jet.position.set(
+                        Math.cos((k * Math.PI * 2) / 6) * 0.6,
+                        Math.sin((k * Math.PI * 2) / 6) * 0.6,
+                        0.7
+                    );
+                    // تدوير خفيف للخارج لتبدو كشلال متساقط
+                    jet.rotation.z = (k * Math.PI * 2) / 6;
+                    jet.rotation.y = 0.25;
+
+                    group.add(jet);
+                    animatedWaterJetsRef.current.push(jet);
+                }
+                break;
+            }
+            case 'classic_lamp': {
+                // فانوس كلاسيكي عتيق
+                const postGeo = new THREE.CylinderGeometry(0.05, 0.07, 3.2, 6);
+                const postMat = new THREE.MeshLambertMaterial({ color: 0x18181b });
+                const post = new THREE.Mesh(postGeo, postMat);
+                post.position.z = 1.6;
+                post.rotation.x = Math.PI / 2;
+                group.add(post);
+
+                // ذراع معلق
+                const arm = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 0.12), postMat);
+                arm.position.set(0, 0.2, 3.1);
+                group.add(arm);
+
+                // قفص المصباح الفانوس
+                const lantern = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.08, 0.35, 4), postMat);
+                lantern.position.set(0, 0.45, 2.9);
+                lantern.rotation.x = Math.PI / 2;
+                group.add(lantern);
+
+                // لمبة الإنارة الصفراء المتوهجة
+                const bulbMat = new THREE.MeshBasicMaterial({ color: isNight ? 0xffc107 : 0xeeeeee });
+                const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 6), bulbMat);
+                bulb.position.set(0, 0.45, 2.85);
+                group.add(bulb);
+
+                if (isNight) {
+                    const cone = new THREE.Mesh(
+                        new THREE.ConeGeometry(1.2, 2.8, 8, 1, true),
+                        new THREE.MeshBasicMaterial({ color: 0xffeaad, transparent: true, opacity: 0.22, side: THREE.DoubleSide })
+                    );
+                    cone.position.set(0, 0.45, 1.4);
+                    cone.rotation.x = Math.PI / 2;
+                    group.add(cone);
+                }
+                break;
+            }
+            case 'sports_car': {
+                // سيارة سباق رياضية منخفضة
+                const body = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.3, 2.4, 0.45),
+                    new THREE.MeshLambertMaterial({ color: matColor })
+                );
+                body.position.z = 0.3;
+                group.add(body);
+
+                // جناح رياضي خلفي (Spoiler)
+                const spoiler = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.2, 0.15), new THREE.MeshLambertMaterial({ color: 0x111111 }));
+                spoiler.position.set(0, -1.0, 0.65);
+                group.add(spoiler);
+
+                // كابينة زجاجية منخفضة
+                const cabin = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.9, 1.2, 0.35),
+                    new THREE.MeshPhysicalMaterial({ color: 0x111c24, transparent: true, opacity: 0.8, transmission: 0.5 })
+                );
+                cabin.position.set(0, -0.1, 0.6);
+                group.add(cabin);
+
+                // إطارات سوداء عريضة
+                const wheelGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.3, 8);
+                const wheelMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+                const wheelPos = [[-0.65, 0.7, 0.24], [0.65, 0.7, 0.24], [-0.65, -0.7, 0.24], [0.65, -0.7, 0.24]];
+                wheelPos.forEach(pos => {
+                    const w = new THREE.Mesh(wheelGeo, wheelMat);
+                    w.position.set(pos[0], pos[1], pos[2]);
+                    w.rotation.z = Math.PI / 2;
+                    group.add(w);
+                });
+                break;
+            }
+            case 'truck': {
+                // شاحنة نقل بضائع كبيرة
+                const chassisMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
+                const chassis = new THREE.Mesh(new THREE.BoxGeometry(1.4, 4.2, 0.3), chassisMat);
+                chassis.position.z = 0.35;
+                group.add(chassis);
+
+                // مقصورة القيادة البيضاء
+                const cab = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.2, 1.4), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+                cab.position.set(0, 1.3, 1.2);
+                group.add(cab);
+
+                // صندوق البضائع الفولاذي الخلفي
+                const box = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.8, 1.6), new THREE.MeshLambertMaterial({ color: matColor }));
+                box.position.set(0, -0.6, 1.3);
+                group.add(box);
+
+                const wheelGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.32, 8);
+                const wheelMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+                const wheelPos = [[-0.7, 1.2, 0.35], [0.7, 1.2, 0.35], [-0.7, -0.8, 0.35], [0.7, -0.8, 0.35], [-0.7, -1.6, 0.35], [0.7, -1.6, 0.35]];
+                wheelPos.forEach(pos => {
+                    const w = new THREE.Mesh(wheelGeo, wheelMat);
+                    w.position.set(pos[0], pos[1], pos[2]);
+                    w.rotation.z = Math.PI / 2;
+                    group.add(w);
+                });
+                break;
+            }
             case 'tree': {
-                const trunkGeo = new THREE.CylinderGeometry(0.15, 0.22, 1.2, 5);
-                const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5c4033 });
-                const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+                const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.22, 1.2, 5), new THREE.MeshLambertMaterial({ color: 0x5c4033 }));
                 trunk.position.z = 0.6;
                 trunk.rotation.x = Math.PI / 2;
                 group.add(trunk);
@@ -961,30 +1338,17 @@ export default function DigitalTwin({ onClose }) {
                 break;
             }
             case 'car': {
-                const bodyGeo = new THREE.BoxGeometry(1.2, 2.2, 0.6);
-                const bodyMat = new THREE.MeshLambertMaterial({ color: matColor });
-                const body = new THREE.Mesh(bodyGeo, bodyMat);
+                const body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.2, 0.6), new THREE.MeshLambertMaterial({ color: matColor }));
                 body.position.z = 0.45;
                 group.add(body);
 
-                const cabinGeo = new THREE.BoxGeometry(1.0, 1.1, 0.45);
-                const cabinMat = new THREE.MeshPhysicalMaterial({
-                    color: 0x111e2e,
-                    transparent: true,
-                    opacity: 0.8,
-                    roughness: 0.1,
-                    transmission: 0.6
-                });
-                const cabin = new THREE.Mesh(cabinGeo, cabinMat);
+                const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.1, 0.45), new THREE.MeshPhysicalMaterial({ color: 0x111e2e, transparent: true, opacity: 0.8, transmission: 0.6 }));
                 cabin.position.set(0, 0.1, 0.95);
                 group.add(cabin);
 
                 const wheelGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.25, 8);
                 const wheelMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
-                const wheelPositions = [
-                    [-0.6, 0.7, 0.24], [0.6, 0.7, 0.24],
-                    [-0.6, -0.7, 0.24], [0.6, -0.7, 0.24]
-                ];
+                const wheelPositions = [[-0.6, 0.7, 0.24], [0.6, 0.7, 0.24], [-0.6, -0.7, 0.24], [0.6, -0.7, 0.24]];
                 wheelPositions.forEach(pos => {
                     const wheel = new THREE.Mesh(wheelGeo, wheelMat);
                     wheel.position.set(pos[0], pos[1], pos[2]);
@@ -994,33 +1358,24 @@ export default function DigitalTwin({ onClose }) {
                 break;
             }
             case 'streetlight': {
-                const poleGeo = new THREE.CylinderGeometry(0.06, 0.08, 4.0, 6);
-                const poleMat = new THREE.MeshLambertMaterial({ color: 0x4f5d75 });
-                const pole = new THREE.Mesh(poleGeo, poleMat);
+                const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 4.0, 6), new THREE.MeshLambertMaterial({ color: 0x4f5d75 }));
                 pole.position.z = 2.0;
                 pole.rotation.x = Math.PI / 2;
                 group.add(pole);
 
-                const headGeo = new THREE.BoxGeometry(0.18, 0.6, 0.12);
-                const head = new THREE.Mesh(headGeo, poleMat);
+                const head = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.6, 0.12), new THREE.MeshLambertMaterial({ color: 0x4f5d75 }));
                 head.position.set(0, 0.24, 4.0);
                 group.add(head);
 
-                const bulbGeo = new THREE.SphereGeometry(0.15, 6, 6);
-                const bulbMat = new THREE.MeshBasicMaterial({ color: isNight ? 0xffeaad : 0xdddddd });
-                const bulb = new THREE.Mesh(bulbGeo, bulbMat);
+                const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 6), new THREE.MeshBasicMaterial({ color: isNight ? 0xffeaad : 0xdddddd }));
                 bulb.position.set(0, 0.45, 3.9);
                 group.add(bulb);
 
                 if (isNight) {
-                    const coneGeo = new THREE.ConeGeometry(1.6, 4.0, 8, 1, true);
-                    const coneMat = new THREE.MeshBasicMaterial({
-                        color: 0xffeaad,
-                        transparent: true,
-                        opacity: 0.18,
-                        side: THREE.DoubleSide
-                    });
-                    const cone = new THREE.Mesh(coneGeo, coneMat);
+                    const cone = new THREE.Mesh(
+                        new THREE.ConeGeometry(1.6, 4.0, 8, 1, true),
+                        new THREE.MeshBasicMaterial({ color: 0xffeaad, transparent: true, opacity: 0.18, side: THREE.DoubleSide })
+                    );
                     cone.position.set(0, 0.45, 1.9);
                     cone.rotation.x = Math.PI / 2;
                     group.add(cone);
@@ -1028,15 +1383,12 @@ export default function DigitalTwin({ onClose }) {
                 break;
             }
             case 'wind_turbine': {
-                const towerGeo = new THREE.CylinderGeometry(0.1, 0.25, 7.0, 8);
-                const towerMat = new THREE.MeshLambertMaterial({ color: 0xeeeeee });
-                const tower = new THREE.Mesh(towerGeo, towerMat);
+                const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.25, 7.0, 8), new THREE.MeshLambertMaterial({ color: 0xeeeeee }));
                 tower.position.z = 3.5;
                 tower.rotation.x = Math.PI / 2;
                 group.add(tower);
 
-                const generatorGeo = new THREE.BoxGeometry(0.4, 0.8, 0.4);
-                const generator = new THREE.Mesh(generatorGeo, towerMat);
+                const generator = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.8, 0.4), new THREE.MeshLambertMaterial({ color: 0xeeeeee }));
                 generator.position.set(0, 0, 7.0);
                 group.add(generator);
 
@@ -1045,7 +1397,7 @@ export default function DigitalTwin({ onClose }) {
                 
                 const bladeGeo = new THREE.BoxGeometry(0.12, 3.2, 0.04);
                 for (let i = 0; i < 3; i++) {
-                    const blade = new THREE.Mesh(bladeGeo, towerMat);
+                    const blade = new THREE.Mesh(bladeGeo, new THREE.MeshLambertMaterial({ color: 0xeeeeee }));
                     blade.rotation.z = (i * Math.PI * 2) / 3;
                     blade.position.y = 1.2;
                     const bladeContainer = new THREE.Group();
@@ -1058,15 +1410,12 @@ export default function DigitalTwin({ onClose }) {
                 break;
             }
             case 'traffic_light': {
-                const poleGeo = new THREE.CylinderGeometry(0.08, 0.08, 3.2, 6);
-                const poleMat = new THREE.MeshLambertMaterial({ color: 0x1f2937 });
-                const pole = new THREE.Mesh(poleGeo, poleMat);
+                const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3.2, 6), new THREE.MeshLambertMaterial({ color: 0x1f2937 }));
                 pole.position.z = 1.6;
                 pole.rotation.x = Math.PI / 2;
                 group.add(pole);
 
-                const boxGeo = new THREE.BoxGeometry(0.3, 0.3, 0.9);
-                const box = new THREE.Mesh(boxGeo, poleMat);
+                const box = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.9), new THREE.MeshLambertMaterial({ color: 0x1f2937 }));
                 box.position.set(0, 0, 2.8);
                 group.add(box);
 
@@ -1085,36 +1434,27 @@ export default function DigitalTwin({ onClose }) {
                 break;
             }
             case 'cctv': {
-                const poleGeo = new THREE.CylinderGeometry(0.05, 0.05, 3.0, 6);
-                const poleMat = new THREE.MeshLambertMaterial({ color: 0x374151 });
-                const pole = new THREE.Mesh(poleGeo, poleMat);
+                const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3.0, 6), new THREE.MeshLambertMaterial({ color: 0x374151 }));
                 pole.position.z = 1.5;
                 pole.rotation.x = Math.PI / 2;
                 group.add(pole);
 
-                const headGeo = new THREE.BoxGeometry(0.12, 0.35, 0.12);
-                const head = new THREE.Mesh(headGeo, poleMat);
+                const head = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.35, 0.12), new THREE.MeshLambertMaterial({ color: 0x374151 }));
                 head.position.set(0, 0.12, 3.0);
                 head.rotation.x = -Math.PI / 6;
                 group.add(head);
                 break;
             }
             case 'beacon': {
-                const baseGeo = new THREE.CylinderGeometry(0.4, 0.5, 0.15, 8);
-                const baseMat = new THREE.MeshLambertMaterial({ color: 0x1f2937 });
-                const base = new THREE.Mesh(baseGeo, baseMat);
+                const base = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 0.15, 8), new THREE.MeshLambertMaterial({ color: 0x1f2937 }));
                 base.position.z = 0.075;
                 base.rotation.x = Math.PI / 2;
                 group.add(base);
 
-                const beamGeo = new THREE.CylinderGeometry(0.24, 0.24, 3.0, 8, 1, true);
-                const beamMat = new THREE.MeshBasicMaterial({
-                    color: matColor,
-                    transparent: true,
-                    opacity: 0.45,
-                    side: THREE.DoubleSide
-                });
-                const beam = new THREE.Mesh(beamGeo, beamMat);
+                const beam = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.24, 0.24, 3.0, 8, 1, true),
+                    new THREE.MeshBasicMaterial({ color: matColor, transparent: true, opacity: 0.45, side: THREE.DoubleSide })
+                );
                 beam.position.z = 1.5;
                 beam.rotation.x = Math.PI / 2;
                 group.add(beam);
@@ -1124,18 +1464,13 @@ export default function DigitalTwin({ onClose }) {
             }
             case 'bench':
             default: {
-                const woodGeo = new THREE.BoxGeometry(0.8, 1.5, 0.08);
-                const woodMat = new THREE.MeshLambertMaterial({ color: 0x8b5a2b });
-                const seat = new THREE.Mesh(woodGeo, woodMat);
+                const seat = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.5, 0.08), new THREE.MeshLambertMaterial({ color: 0x8b5a2b }));
                 seat.position.set(0, 0, 0.4);
                 group.add(seat);
 
                 const legGeo = new THREE.BoxGeometry(0.1, 0.1, 0.4);
                 const legMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
-                const legPositions = [
-                    [-0.35, 0.6, 0.2], [0.35, 0.6, 0.2],
-                    [-0.35, -0.6, 0.2], [0.35, -0.6, 0.2]
-                ];
+                const legPositions = [[-0.35, 0.6, 0.2], [0.35, 0.6, 0.2], [-0.35, -0.6, 0.2], [0.35, -0.6, 0.2]];
                 legPositions.forEach(pos => {
                     const leg = new THREE.Mesh(legGeo, legMat);
                     leg.position.set(pos[0], pos[1], pos[2]);
@@ -1191,24 +1526,7 @@ export default function DigitalTwin({ onClose }) {
         }
     };
 
-    // استدعاء البيئة عند التغيير
-    useEffect(() => {
-        const isNight = timeOfDay < 6 || timeOfDay > 18;
-        updateEnvironmentLighting(isNight);
-    }, [timeOfDay, weather]);
-
-    // ─── 11. تحديث وتعديل تعيين العناصر وتأكيد حفظ التعديل الدقيق ────────
-    const updateMapping = (type, key, val) => {
-        setPointMappings(prev => ({
-            ...prev,
-            [type]: {
-                ...prev[type],
-                [key]: val
-            }
-        }));
-    };
-
-    // حفظ تعديل إزاحة أو حجم أو تدوير الكائن المحدد
+    // ─── 10. حفظ وحذف وتعديل النقاط والمباني والشوارع المرسومة يدوياً ─────────
     const handleSaveObjectEdits = () => {
         if (!selectedFeature || selectedFeature.type !== 'point') return;
         
@@ -1230,7 +1548,6 @@ export default function DigitalTwin({ onClose }) {
                 return copy;
             });
         } else {
-            // كائنات أساسية من ملف الـ GeoJSON
             setGeojsonData(prev => {
                 if (!prev) return prev;
                 const copy = { ...prev };
@@ -1251,7 +1568,6 @@ export default function DigitalTwin({ onClose }) {
         buildThreeJsScene();
     };
 
-    // حفظ تعديل خصائص المبنى المرسوم يدوياً
     const handleSaveBuildingEdits = () => {
         if (!selectedFeature || selectedFeature.type !== 'custom-building') return;
 
@@ -1274,7 +1590,6 @@ export default function DigitalTwin({ onClose }) {
         buildThreeJsScene();
     };
 
-    // حذف الكائنات المحددة
     const handleDeleteObject = () => {
         if (!selectedFeature) return;
 
@@ -1290,7 +1605,7 @@ export default function DigitalTwin({ onClose }) {
         buildThreeJsScene();
     };
 
-    // ─── 12. معالجة وإنهاء رسم الأشكال الهندسية (المباني والشوارع) ──────────
+    // ─── 11. معالجة وإنهاء رسم الأشكال الهندسية ───────────────────────────
     const handleFinishDrawing = () => {
         if (drawnCoords.length < 2) {
             alert('يرجى تحديد نقطتين على الأقل للرسم.');
@@ -1302,7 +1617,6 @@ export default function DigitalTwin({ onClose }) {
                 alert('المبنى يتطلب 3 نقاط على الأقل.');
                 return;
             }
-            // إغلاق المضلع
             const closedCoords = [...drawnCoords, drawnCoords[0]];
             const newBld = {
                 id: `bld-drawn-${Date.now()}`,
@@ -1336,11 +1650,11 @@ export default function DigitalTwin({ onClose }) {
 
     return (
         <div className="dt-container">
-            {/* واجهة إرشادية عند الرسم النشط (Drawing HUD) */}
+            {/* واجهة إرشادية عند الرسم النشط */}
             {drawMode !== 'none' && (
                 <div className="dt-placement-indicator">
                     <span>
-                        {drawMode === 'building' ? '📐 وضع رسم مبنى' : drawMode === 'street' ? '🛣️ وضع رسم شارع' : '📍 وضع إسقاط مجسم'}
+                        {drawMode === 'building' ? '📐 وضع رسم مبنى مخصص' : drawMode === 'street' ? '🛣️ وضع رسم طريق / شارع' : '📍 وضع إسقاط مجسم'}
                         {drawMode !== 'point' && ` — تم تحديد (${drawnCoords.length}) نقاط.`}
                     </span>
                     <div className="dt-placement-actions">
@@ -1361,9 +1675,11 @@ export default function DigitalTwin({ onClose }) {
                     </div>
                 </div>
                 <div className="dt-header-actions">
-                    <button className="dt-btn-primary" style={{ width: 'auto', padding: '8px 16px', fontSize: '0.8rem' }} onClick={exportProject} disabled={!geojsonData && customBuildings.length === 0}>
-                        📥 تصدير المشروع
-                    </button>
+                    {canEdit && (
+                        <button className="dt-btn-primary" style={{ width: 'auto', padding: '8px 22px', fontSize: '0.82rem', background: '#059669', color: '#fff' }} onClick={publishProject} disabled={loadingProject}>
+                            💾 حفظ ونشر التوأم الرقمي
+                        </button>
+                    )}
                     <button className="dt-close-btn" onClick={onClose}>✕</button>
                 </div>
             </div>
@@ -1376,11 +1692,11 @@ export default function DigitalTwin({ onClose }) {
                 {selectedFeature && (
                     <div className="dt-inspector">
                         <div className="dt-inspector-header">
-                            <span className="dt-inspector-title">🔎 فاحص العناصر والطبقات</span>
+                            <span className="dt-inspector-title">🔎 فاحص المعالم والطبقات</span>
                             <button className="dt-inspector-close" onClick={() => setSelectedFeature(null)}>✕</button>
                         </div>
                         <div className="dt-inspector-body">
-                            {/* فحص النقاط وتعديل الإحداثيات والدوران للمسؤول */}
+                            {/* فحص وتعديل النقاط */}
                             {selectedFeature.type === 'point' && (
                                 <>
                                     <div className="dt-section" style={{ borderBottom: 'none', paddingBottom: '0' }}>
@@ -1400,50 +1716,58 @@ export default function DigitalTwin({ onClose }) {
                                         )}
                                     </div>
 
-                                    <div className="dt-section" style={{ borderBottom: 'none', paddingBottom: '0' }}>
-                                        <span className="dt-section-title" style={{ fontSize: '0.85rem' }}>🔧 التحكم بالدوران والحجم</span>
-                                        <div className="dt-input-group">
-                                            <label>حجم الكائن: {editScale.toFixed(1)}x</label>
-                                            <div className="dt-slider-container">
-                                                <input type="range" className="dt-slider" min="0.3" max="4.0" step="0.1" value={editScale} onChange={e => setEditScale(parseFloat(e.target.value))} />
-                                                <span className="dt-slider-val">{editScale.toFixed(1)}x</span>
+                                    {canEdit ? (
+                                        <>
+                                            <div className="dt-section" style={{ borderBottom: 'none', paddingBottom: '0' }}>
+                                                <span className="dt-section-title" style={{ fontSize: '0.85rem' }}>🔧 التحكم بالدوران والحجم</span>
+                                                <div className="dt-input-group">
+                                                    <label>حجم الكائن: {editScale.toFixed(1)}x</label>
+                                                    <div className="dt-slider-container">
+                                                        <input type="range" className="dt-slider" min="0.3" max="4.0" step="0.1" value={editScale} onChange={e => setEditScale(parseFloat(e.target.value))} />
+                                                        <span className="dt-slider-val">{editScale.toFixed(1)}x</span>
+                                                    </div>
+                                                </div>
+                                                <div className="dt-input-group">
+                                                    <label>زاوية الدوران: {editRotation}°</label>
+                                                    <div className="dt-slider-container">
+                                                        <input type="range" className="dt-slider" min="0" max="360" value={editRotation} onChange={e => setEditRotation(parseInt(e.target.value))} />
+                                                        <span className="dt-slider-val">{editRotation}°</span>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="dt-input-group">
-                                            <label>زاوية الدوران: {editRotation}°</label>
-                                            <div className="dt-slider-container">
-                                                <input type="range" className="dt-slider" min="0" max="360" value={editRotation} onChange={e => setEditRotation(parseInt(e.target.value))} />
-                                                <span className="dt-slider-val">{editRotation}°</span>
-                                            </div>
-                                        </div>
-                                    </div>
 
-                                    <div className="dt-section" style={{ borderBottom: 'none', paddingBottom: '0' }}>
-                                        <span className="dt-section-title" style={{ fontSize: '0.85rem' }}>🎯 إزاحة الموقع الجغرافي الدقيقة</span>
-                                        <div className="dt-input-group">
-                                            <label>إزاحة شرقاً/غرباً (X Offset): {editOffsetX} متر</label>
-                                            <div className="dt-slider-container">
-                                                <input type="range" className="dt-slider" min="-15" max="15" step="0.5" value={editOffsetX} onChange={e => setEditOffsetX(parseFloat(e.target.value))} />
-                                                <span className="dt-slider-val">{editOffsetX} م</span>
+                                            <div className="dt-section" style={{ borderBottom: 'none', paddingBottom: '0' }}>
+                                                <span className="dt-section-title" style={{ fontSize: '0.85rem' }}>🎯 إزاحة الموقع الجغرافي الدقيقة</span>
+                                                <div className="dt-input-group">
+                                                    <label>إزاحة شرقاً/غرباً (X Offset): {editOffsetX} متر</label>
+                                                    <div className="dt-slider-container">
+                                                        <input type="range" className="dt-slider" min="-15" max="15" step="0.5" value={editOffsetX} onChange={e => setEditOffsetX(parseFloat(e.target.value))} />
+                                                        <span className="dt-slider-val">{editOffsetX} م</span>
+                                                    </div>
+                                                </div>
+                                                <div className="dt-input-group">
+                                                    <label>إزاحة شمالاً/جنوباً (Y Offset): {editOffsetY} متر</label>
+                                                    <div className="dt-slider-container">
+                                                        <input type="range" className="dt-slider" min="-15" max="15" step="0.5" value={editOffsetY} onChange={e => setEditOffsetY(parseFloat(e.target.value))} />
+                                                        <span className="dt-slider-val">{editOffsetY} م</span>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="dt-input-group">
-                                            <label>إزاحة شمالاً/جنوباً (Y Offset): {editOffsetY} متر</label>
-                                            <div className="dt-slider-container">
-                                                <input type="range" className="dt-slider" min="-15" max="15" step="0.5" value={editOffsetY} onChange={e => setEditOffsetY(parseFloat(e.target.value))} />
-                                                <span className="dt-slider-val">{editOffsetY} م</span>
-                                            </div>
-                                        </div>
-                                    </div>
 
-                                    <button className="dt-btn-primary" style={{ marginBottom: '8px' }} onClick={handleSaveObjectEdits}>💾 حفظ التعديلات</button>
-                                    {selectedFeature.isCustom && (
-                                        <button className="dt-btn-danger" style={{ width: '100%' }} onClick={handleDeleteObject}>🗑️ حذف هذا الكائن</button>
+                                            <button className="dt-btn-primary" style={{ marginBottom: '8px' }} onClick={handleSaveObjectEdits}>💾 حفظ التعديلات</button>
+                                            {selectedFeature.isCustom && (
+                                                <button className="dt-btn-danger" style={{ width: '100%' }} onClick={handleDeleteObject}>🗑️ حذف هذا الكائن</button>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--dt-muted)', marginTop: '10px' }}>
+                                            🔒 استكشاف فقط. لا تملك صلاحية تعديل أو تدوير الكائنات.
+                                        </div>
                                     )}
                                 </>
                             )}
 
-                            {/* فحص وتعديل المباني المرسومة وخاماتها */}
+                            {/* فحص وتعديل المباني المرسومة */}
                             {selectedFeature.type === 'custom-building' && (
                                 <>
                                     <div className="dt-section" style={{ borderBottom: 'none', paddingBottom: '0' }}>
@@ -1457,51 +1781,53 @@ export default function DigitalTwin({ onClose }) {
                                         </div>
                                     </div>
 
-                                    <div className="dt-section" style={{ borderBottom: 'none', paddingBottom: '0' }}>
-                                        <span className="dt-section-title" style={{ fontSize: '0.85rem' }}>🏬 إعدادات التجسيم والارتفاع</span>
-                                        <div className="dt-input-group">
-                                            <label>الارتفاع: {editHeight} متر</label>
-                                            <div className="dt-slider-container">
-                                                <input type="range" className="dt-slider" min="3" max="90" value={editHeight} onChange={e => setEditHeight(parseInt(e.target.value))} />
-                                                <span className="dt-slider-val">{editHeight} م</span>
-                                            </div>
-                                        </div>
-                                        <div className="dt-input-group" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            <input type="checkbox" id="solar-chk" checked={editSolarRoof} onChange={e => setEditSolarRoof(e.target.checked)} />
-                                            <label htmlFor="solar-chk" style={{ marginBottom: '0', cursor: 'pointer' }}>تثبيت ألواح شمسية على السطح (Solar Roof)</label>
-                                        </div>
-                                    </div>
-
-                                    <div className="dt-section" style={{ borderBottom: 'none', paddingBottom: '0' }}>
-                                        <span className="dt-section-title" style={{ fontSize: '0.85rem' }}>🧱 نسيج وإكساء الواجهة الخارجي (Facade Skins)</span>
-                                        <div className="dt-skin-grid">
-                                            <div className={`dt-skin-card ${editSkin === 'glass' ? 'active' : ''}`} onClick={() => setEditSkin('glass')}>
-                                                <div className="dt-skin-preview" style={{ background: 'linear-gradient(45deg, #0284c7, #38bdf8)' }} />
-                                                <span className="dt-skin-label">زجاج معزول</span>
-                                            </div>
-                                            <div className={`dt-skin-card ${editSkin === 'brick' ? 'active' : ''}`} onClick={() => setEditSkin('brick')}>
-                                                <div className="dt-skin-preview" style={{ background: 'linear-gradient(45deg, #b45309, #d97706)' }} />
-                                                <span className="dt-skin-label">طوب أحمر</span>
-                                            </div>
-                                            <div className={`dt-skin-card ${editSkin === 'concrete' ? 'active' : ''}`} onClick={() => setEditSkin('concrete')}>
-                                                <div className="dt-skin-preview" style={{ background: 'linear-gradient(45deg, #64748b, #94a3b8)' }} />
-                                                <span className="dt-skin-label">خرسانة صناعية</span>
-                                            </div>
-                                        </div>
-                                        {editSkin === 'brick' && (
-                                            <div className="dt-input-group" style={{ marginTop: '10px' }}>
-                                                <label>لون الطوب الأساسي</label>
-                                                <div className="dt-color-picker-wrapper">
-                                                    {['#b45309', '#7f1d1d', '#78350f', '#451a03', '#9a3412'].map(c => (
-                                                        <div key={c} className={`dt-color-bubble ${editColor === c ? 'active' : ''}`} style={{ backgroundColor: c }} onClick={() => setEditColor(c)} />
-                                                    ))}
+                                    {canEdit ? (
+                                        <>
+                                            <div className="dt-section" style={{ borderBottom: 'none', paddingBottom: '0' }}>
+                                                <span className="dt-section-title" style={{ fontSize: '0.85rem' }}>🏬 إعدادات التجسيم والارتفاع</span>
+                                                <div className="dt-input-group">
+                                                    <label>الارتفاع: {editHeight} متر</label>
+                                                    <div className="dt-slider-container">
+                                                        <input type="range" className="dt-slider" min="3" max="90" value={editHeight} onChange={e => setEditHeight(parseInt(e.target.value))} />
+                                                        <span className="dt-slider-val">{editHeight} م</span>
+                                                    </div>
+                                                </div>
+                                                <div className="dt-input-group" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                    <input type="checkbox" id="solar-chk" checked={editSolarRoof} onChange={e => setEditSolarRoof(e.target.checked)} />
+                                                    <label htmlFor="solar-chk" style={{ marginBottom: '0', cursor: 'pointer' }}>تثبيت ألواح شمسية على السطح</label>
                                                 </div>
                                             </div>
-                                        )}
-                                    </div>
 
-                                    <button className="dt-btn-primary" style={{ marginBottom: '8px' }} onClick={handleSaveBuildingEdits}>💾 حفظ التعديلات</button>
-                                    <button className="dt-btn-danger" style={{ width: '100%' }} onClick={handleDeleteObject}>🗑️ حذف هذا المبنى</button>
+                                            <div className="dt-section" style={{ borderBottom: 'none', paddingBottom: '0' }}>
+                                                <span className="dt-section-title" style={{ fontSize: '0.85rem' }}>🧱 نسيج وإكساء الواجهة الخارجي (Skins)</span>
+                                                <div className="dt-skin-grid">
+                                                    <div className={`dt-skin-card ${editSkin === 'glass' ? 'active' : ''}`} onClick={() => setEditSkin('glass')}>
+                                                        <div className="dt-skin-preview" style={{ background: 'linear-gradient(45deg, #0284c7, #38bdf8)' }} />
+                                                        <span className="dt-skin-label">زجاج معزول</span>
+                                                    </div>
+                                                    <div className={`dt-skin-card ${editSkin === 'stone' ? 'active' : ''}`} onClick={() => setEditSkin('stone')}>
+                                                        <div className="dt-skin-preview" style={{ background: 'linear-gradient(45deg, #f5f5f4, #d6d3d1)' }} />
+                                                        <span className="dt-skin-label">حجر محلي تراثي</span>
+                                                    </div>
+                                                    <div className={`dt-skin-card ${editSkin === 'brick' ? 'active' : ''}`} onClick={() => setEditSkin('brick')}>
+                                                        <div className="dt-skin-preview" style={{ background: 'linear-gradient(45deg, #b45309, #d97706)' }} />
+                                                        <span className="dt-skin-label">طوب أحمر</span>
+                                                    </div>
+                                                    <div className={`dt-skin-card ${editSkin === 'concrete' ? 'active' : ''}`} onClick={() => setEditSkin('concrete')}>
+                                                        <div className="dt-skin-preview" style={{ background: 'linear-gradient(45deg, #64748b, #94a3b8)' }} />
+                                                        <span className="dt-skin-label">خرسانة حديثة</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <button className="dt-btn-primary" style={{ marginBottom: '8px' }} onClick={handleSaveBuildingEdits}>💾 حفظ التعديلات</button>
+                                            <button className="dt-btn-danger" style={{ width: '100%' }} onClick={handleDeleteObject}>🗑️ حذف هذا المبنى</button>
+                                        </>
+                                    ) : (
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--dt-muted)', marginTop: '10px' }}>
+                                            🔒 استكشاف فقط. لا تملك صلاحية تعديل نسيج أو أبعاد المباني.
+                                        </div>
+                                    )}
                                 </>
                             )}
                         </div>
@@ -1532,13 +1858,19 @@ export default function DigitalTwin({ onClose }) {
                         {activeTab === 'data' && (
                             <div className="dt-tab-content">
                                 <div className="dt-section">
-                                    <span className="dt-section-title">رفع ملف المشروع</span>
-                                    <div className="dt-upload-area">
-                                        <div className="dt-upload-icon">📤</div>
-                                        <div className="dt-upload-text">اسحب وأفلت ملف GeoJSON أو مشروع التوأم هنا</div>
-                                        <div className="dt-upload-sub">يدعم صيغ .geojson و .json</div>
-                                        <input type="file" className="dt-file-input" accept=".geojson,.json" onChange={handleFileUpload} />
-                                    </div>
+                                    <span className="dt-section-title">رفع ملف المشروع المفتوح</span>
+                                    {canEdit ? (
+                                        <div className="dt-upload-area">
+                                            <div className="dt-upload-icon">📤</div>
+                                            <div className="dt-upload-text">اسحب وأفلت ملف GeoJSON أو مشروع التوأم هنا</div>
+                                            <div className="dt-upload-sub">يدعم صيغ .geojson و .json</div>
+                                            <input type="file" className="dt-file-input" accept=".geojson,.json" onChange={handleFileUpload} />
+                                        </div>
+                                    ) : (
+                                        <div style={{ padding: '15px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--dt-border2)', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--dt-muted)' }}>
+                                            🔒 رفع الملفات متاح للمسؤولين فقط لتفادي التعديل العشوائي.
+                                        </div>
+                                    )}
                                     <button className="dt-btn-secondary" onClick={loadSampleData}>
                                         ⚡ تحميل منطقة تجريبية (جامعة بيرزيت)
                                     </button>
@@ -1577,92 +1909,91 @@ export default function DigitalTwin({ onClose }) {
                         {/* 2. تبويب تعيين ورسم المعالم */}
                         {activeTab === 'mapping' && (
                             <div className="dt-tab-content">
-                                <div className="dt-section">
-                                    <span className="dt-section-title">أدوات رسم وإنشاء المعالم (Draw Tools)</span>
-                                    <div className="dt-draw-btn-container">
-                                        <button className={`dt-draw-btn ${drawMode === 'building' ? 'active' : ''}`} onClick={() => setDrawMode(drawMode === 'building' ? 'none' : 'building')}>
-                                            🏬 رسم مبنى ملموس
-                                        </button>
-                                        <button className={`dt-draw-btn ${drawMode === 'street' ? 'active' : ''}`} onClick={() => setDrawMode(drawMode === 'street' ? 'none' : 'street')}>
-                                            🛣️ رسم شارع أسفلت
-                                        </button>
-                                    </div>
-
-                                    {drawMode === 'street' && (
-                                        <div className="dt-input-group" style={{ marginTop: '12px' }}>
-                                            <label>عرض الشارع المراد رسمه: {editStreetWidth} متر</label>
-                                            <input type="range" className="dt-slider" min="4" max="18" value={editStreetWidth} onChange={e => setEditStreetWidth(parseInt(e.target.value))} />
-                                        </div>
-                                    )}
-
-                                    {/* قائمة العناصر التي رسمها المستخدم للتحكم بها */}
-                                    {(customBuildings.length > 0 || customStreets.length > 0) && (
-                                        <div style={{ marginTop: '16px' }}>
-                                            <label style={{ fontSize: '0.78rem', color: 'var(--dt-muted)' }}>الطبقات المرسومة الحالية</label>
-                                            <div className="dt-layer-list">
-                                                {customBuildings.map((b, i) => (
-                                                    <div className="dt-layer-row" key={b.id}>
-                                                        <div className="dt-layer-row-info">
-                                                            <span className="dt-layer-row-title">{b.name}</span>
-                                                            <span className="dt-layer-row-sub">مبنى - ارتفاع {b.height}م ({b.skin === 'glass' ? 'زجاج' : 'طوب'})</span>
-                                                        </div>
-                                                        <button className="dt-layer-delete" onClick={() => {
-                                                            setCustomBuildings(prev => prev.filter(x => x.id !== b.id));
-                                                        }}>🗑️</button>
-                                                    </div>
-                                                ))}
-                                                {customStreets.map((s, i) => (
-                                                    <div className="dt-layer-row" key={s.id}>
-                                                        <div className="dt-layer-row-info">
-                                                            <span className="dt-layer-row-title">{s.name}</span>
-                                                            <span className="dt-layer-row-sub">طريق إسفلت - عرض {s.width}م</span>
-                                                        </div>
-                                                        <button className="dt-layer-delete" onClick={() => {
-                                                            setCustomStreets(prev => prev.filter(x => x.id !== s.id));
-                                                        }}>🗑️</button>
-                                                    </div>
-                                                ))}
+                                {canEdit ? (
+                                    <>
+                                        <div className="dt-section">
+                                            <span className="dt-section-title">أدوات رسم وإنشاء المعالم (Draw Tools)</span>
+                                            <div className="dt-draw-btn-container">
+                                                <button className={`dt-draw-btn ${drawMode === 'building' ? 'active' : ''}`} onClick={() => setDrawMode(drawMode === 'building' ? 'none' : 'building')}>
+                                                    🏬 رسم مبنى ملموس
+                                                </button>
+                                                <button className={`dt-draw-btn ${drawMode === 'street' ? 'active' : ''}`} onClick={() => setDrawMode(drawMode === 'street' ? 'none' : 'street')}>
+                                                    🛣️ رسم شارع / ممر
+                                                </button>
                                             </div>
-                                        </div>
-                                    )}
-                                </div>
 
-                                <div className="dt-section">
-                                    <span className="dt-section-title">إسقاط كائنات المسؤول (Admin Objects Placement)</span>
-                                    <div className="dt-grid-2" style={{ marginBottom: '14px' }}>
-                                        <button className={`dt-draw-btn ${drawMode === 'point' && selectedPlacementType === 'tree' ? 'active' : ''}`} onClick={() => { setDrawMode('point'); setSelectedPlacementType('tree'); }}>🌲 شجرة</button>
-                                        <button className={`dt-draw-btn ${drawMode === 'point' && selectedPlacementType === 'car' ? 'active' : ''}`} onClick={() => { setDrawMode('point'); setSelectedPlacementType('car'); }}>🚗 سيارة</button>
-                                        <button className={`dt-draw-btn ${drawMode === 'point' && selectedPlacementType === 'streetlight' ? 'active' : ''}`} onClick={() => { setDrawMode('point'); setSelectedPlacementType('streetlight'); }}>💡 إنارة</button>
-                                        <button className={`dt-draw-btn ${drawMode === 'point' && selectedPlacementType === 'wind_turbine' ? 'active' : ''}`} onClick={() => { setDrawMode('point'); setSelectedPlacementType('wind_turbine'); }}>🌀 توربين</button>
-                                    </div>
-                                </div>
-
-                                <div className="dt-section">
-                                    <span className="dt-section-title">إعدادات الكائنات (Scale & Colors)</span>
-                                    <div className="dt-mapping-list">
-                                        {['tree', 'car', 'streetlight', 'wind_turbine'].map(type => {
-                                            const map = pointMappings[type];
-                                            if (!map) return null;
-                                            return (
-                                                <div className="dt-mapping-item" key={type} style={{ padding: '10px' }}>
-                                                    <div className="dt-mapping-item-header" style={{ marginBottom: '4px' }}>
-                                                        <span className="dt-mapping-item-title" style={{ fontSize: '0.8rem' }}>
-                                                            {type === 'tree' ? '🌲 الأشجار والغطاء النباتي' :
-                                                             type === 'car' ? '🚗 وسائل النقل والسيارات' :
-                                                             type === 'streetlight' ? '💡 مصابيح وإنارة الشوارع' : '🌀 توربينات طاقة متجددة'}
-                                                        </span>
+                                            {drawMode === 'street' && (
+                                                <div style={{ marginTop: '14px' }}>
+                                                    <div className="dt-input-group">
+                                                        <label>نمط الشارع المراد رسمه</label>
+                                                        <select className="dt-select" value={editStreetStyle} onChange={e => setEditStreetStyle(e.target.value)}>
+                                                            <option value="asphalt">🛣️ طريق أسفلتي سريع</option>
+                                                            <option value="cobblestone">🧱 ممشى مبلط بالأحجار التراثية</option>
+                                                            <option value="gravel">🏜️ طريق حصوي/ترابي ريفي</option>
+                                                            <option value="neon">🌐 شارع نيون مضيء</option>
+                                                        </select>
                                                     </div>
-                                                    <div className="dt-input-group" style={{ marginBottom: '0' }}>
-                                                        <div className="dt-slider-container">
-                                                            <input type="range" className="dt-slider" min="0.4" max="3.0" step="0.1" value={map.scale} onChange={e => updateMapping(type, 'scale', parseFloat(e.target.value))} />
-                                                            <span className="dt-slider-val">{map.scale.toFixed(1)}x</span>
-                                                        </div>
+                                                    <div className="dt-input-group">
+                                                        <label>عرض الشارع: {editStreetWidth} متر</label>
+                                                        <input type="range" className="dt-slider" min="4" max="18" value={editStreetWidth} onChange={e => setEditStreetWidth(parseInt(e.target.value))} />
                                                     </div>
                                                 </div>
-                                            );
-                                        })}
+                                            )}
+
+                                            {/* قائمة العناصر التي رسمها المستخدم */}
+                                            {(customBuildings.length > 0 || customStreets.length > 0) && (
+                                                <div style={{ marginTop: '16px' }}>
+                                                    <label style={{ fontSize: '0.78rem', color: 'var(--dt-muted)' }}>الطبقات المرسومة الحالية</label>
+                                                    <div className="dt-layer-list">
+                                                        {customBuildings.map((b, i) => (
+                                                            <div className="dt-layer-row" key={b.id}>
+                                                                <div className="dt-layer-row-info">
+                                                                    <span className="dt-layer-row-title">{b.name}</span>
+                                                                    <span className="dt-layer-row-sub">مبنى - ارتفاع {b.height}م ({b.skin === 'glass' ? 'زجاج' : 'طوب'})</span>
+                                                                </div>
+                                                                <button className="dt-layer-delete" onClick={() => {
+                                                                    setCustomBuildings(prev => prev.filter(x => x.id !== b.id));
+                                                                }}>🗑️</button>
+                                                            </div>
+                                                        ))}
+                                                        {customStreets.map((s, i) => (
+                                                            <div className="dt-layer-row" key={s.id}>
+                                                                <div className="dt-layer-row-info">
+                                                                    <span className="dt-layer-row-title">{s.name}</span>
+                                                                    <span className="dt-layer-row-sub">طريق {s.style === 'gravel' ? 'ترابي' : s.style === 'cobblestone' ? 'حجري' : 'أسفلت'} - {s.width}م</span>
+                                                                </div>
+                                                                <button className="dt-layer-delete" onClick={() => {
+                                                                    setCustomStreets(prev => prev.filter(x => x.id !== s.id));
+                                                                }}>🗑️</button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="dt-section">
+                                            <span className="dt-section-title">إسقاط كائنات المسؤول (Admin Objects)</span>
+                                            <div className="dt-grid-2" style={{ marginBottom: '14px' }}>
+                                                <button className={`dt-draw-btn ${drawMode === 'point' && selectedPlacementType === 'tree' ? 'active' : ''}`} onClick={() => { setDrawMode('point'); setSelectedPlacementType('tree'); }}>🌲 شجرة صنوبر</button>
+                                                <button className={`dt-draw-btn ${drawMode === 'point' && selectedPlacementType === 'palm' ? 'active' : ''}`} onClick={() => { setDrawMode('point'); setSelectedPlacementType('palm'); }}>🌴 شجرة نخيل</button>
+                                                <button className={`dt-draw-btn ${drawMode === 'point' && selectedPlacementType === 'car' ? 'active' : ''}`} onClick={() => { setDrawMode('point'); setSelectedPlacementType('car'); }}>🚗 سيارة عادية</button>
+                                                <button className={`dt-draw-btn ${drawMode === 'point' && selectedPlacementType === 'sports_car' ? 'active' : ''}`} onClick={() => { setDrawMode('point'); setSelectedPlacementType('sports_car'); }}>🏎️ سيارة سباق</button>
+                                                <button className={`dt-draw-btn ${drawMode === 'point' && selectedPlacementType === 'truck' ? 'active' : ''}`} onClick={() => { setDrawMode('point'); setSelectedPlacementType('truck'); }}>🚛 شاحنة نقل</button>
+                                                <button className={`dt-draw-btn ${drawMode === 'point' && selectedPlacementType === 'streetlight' ? 'active' : ''}`} onClick={() => { setDrawMode('point'); setSelectedPlacementType('streetlight'); }}>💡 إنارة حديثة</button>
+                                                <button className={`dt-draw-btn ${drawMode === 'point' && selectedPlacementType === 'classic_lamp' ? 'active' : ''}`} onClick={() => { setDrawMode('point'); setSelectedPlacementType('classic_lamp'); }}>🪔 فانوس تراثي</button>
+                                                <button className={`dt-draw-btn ${drawMode === 'point' && selectedPlacementType === 'fountain' ? 'active' : ''}`} onClick={() => { setDrawMode('point'); setSelectedPlacementType('fountain'); }}>⛲ نافورة مياه</button>
+                                                <button className={`dt-draw-btn ${drawMode === 'point' && selectedPlacementType === 'wind_turbine' ? 'active' : ''}`} onClick={() => { setDrawMode('point'); setSelectedPlacementType('wind_turbine'); }}>🌀 توربين رياح</button>
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div style={{ padding: '20px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--dt-border2)', borderRadius: '12px', fontSize: '0.85rem', color: 'var(--dt-muted)', textAlign: 'center' }}>
+                                        <div style={{ fontSize: '2.5rem', marginBottom: '10px' }}>🕵️</div>
+                                        <h3>وضع الاستكشاف نشط</h3>
+                                        <p style={{ marginTop: '6px', lineHeight: '1.6' }}>أنت تقوم حالياً باستكشاف التوأم الرقمي المعتمد من قبل المسؤولين. لا تملك صلاحية الرسم أو تعديل الكائنات.</p>
                                     </div>
-                                </div>
+                                )}
                             </div>
                         )}
 
@@ -1685,7 +2016,7 @@ export default function DigitalTwin({ onClose }) {
                                         </div>
                                     </div>
                                     <div style={{ fontSize: '0.78rem', color: 'var(--dt-muted)', background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '8px', border: '1px solid var(--dt-border2)' }}>
-                                        {timeOfDay < 6 || timeOfDay > 18 ? '🌃 وضع الرؤية الليلية نشط. أعمدة الإنارة تضيء الممرات وتظهر وهج نوافذ المباني الزجاجية!' : '☀️ وضع النهار نشط. ظلال الشمس ثلاثية الأبعاد تدور تدريجياً طبقاً للتوقيت.'}
+                                        {timeOfDay < 6 || timeOfDay > 18 ? '🌃 وضع الرؤية الليلية نشط. فوانيس الممرات ومصابيح الشوارع تضيء مسارات المشاة وتتوهج النوافذ تلقائياً!' : '☀️ وضع النهار نشط. ظلال الشمس ثلاثية الأبعاد تدور تدريجياً طبقاً للتوقيت.'}
                                     </div>
                                 </div>
 

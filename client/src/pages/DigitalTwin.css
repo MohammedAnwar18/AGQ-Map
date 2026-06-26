@@ -1,8 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&display=swap');
+
 /* ══════════════════════════════════════════════════════
    أنماط التوأم الرقمي ثلاثي الأبعاد — Digital Twin CSS
    ══════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&display=swap');
 
 :root {
     --dt-emerald:     #10b981;
