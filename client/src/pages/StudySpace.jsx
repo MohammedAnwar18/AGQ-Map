@@ -108,19 +108,31 @@ const FloatingTranslator = ({ onClose }) => {
     const [loading, setLoading] = useState(false);
     const [copied, setCopied] = useState(false);
     const [width, setWidth] = useState(420);
+    const [chunkInfo, setChunkInfo] = useState(null); // { total, current }
 
     const handleTranslate = async () => {
         const text = inputText.trim();
         if (!text) return;
         setLoading(true);
         setResult('');
+        // حساب عدد الأجزاء المتوقعة لعرض التقدم
+        const estimatedChunks = Math.ceil(text.length / 450);
+        setChunkInfo(estimatedChunks > 1 ? { total: estimatedChunks, current: 0 } : null);
         try {
             const translated = await studySpaceService.translate(text);
             setResult(translated);
-        } catch {
-            setResult('⚠️ فشل الترجمة، يرجى المحاولة مرة أخرى');
+        } catch (err) {
+            // إعادة المحاولة مرة واحدة قبل إظهار الخطأ
+            try {
+                const shortened = text.slice(0, 1500);
+                const translated = await studySpaceService.translate(shortened);
+                setResult(translated + (text.length > 1500 ? '\n\n[تمت ترجمة الجزء الأول فقط نظراً لطول النص]' : ''));
+            } catch {
+                setResult('⚠️ لم تتمكن من الترجمة، يرجى تقصير النص وإعادة المحاولة.');
+            }
         } finally {
             setLoading(false);
+            setChunkInfo(null);
         }
     };
 
@@ -183,7 +195,14 @@ const FloatingTranslator = ({ onClose }) => {
                     disabled={loading || !inputText.trim()}
                 >
                     {loading ? (
-                        <span className="ss-loading-dots"><span /><span /><span /></span>
+                        <div className="ss-translate-progress">
+                            <span className="ss-loading-dots"><span /><span /><span /></span>
+                            <span className="ss-progress-text">
+                                {chunkInfo
+                                    ? `جاري ترجمة النص الطويل...`
+                                    : 'جاري الترجمة...'}
+                            </span>
+                        </div>
                     ) : (
                         <>
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5">

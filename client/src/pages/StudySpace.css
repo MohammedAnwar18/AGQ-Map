@@ -1,3 +1,14 @@
+.ss-translate-btn--loading { background: rgba(251,171,21,0.2); color: var(--ss-gold); }
+
+/* مؤشر تقدم الترجمة */
+.ss-translate-progress {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.ss-progress-text {
+    font-size: 0.83rem; font-weight: 600;
+    color: var(--ss-gold); font-family: 'Outfit', sans-serif;
+}
+
 /* ══════════════════════════════════════════════════════
    مساحة دراسة — Study Space CSS v2
    ══════════════════════════════════════════════════════ */
