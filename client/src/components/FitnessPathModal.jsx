@@ -8,6 +8,31 @@ const MET_VALUES = {
     cycle: { base: 6.0, slow: 4.0, fast: 8.0 }
 };
 
+const getMetValue = (activityType, speedKmh) => {
+    if (activityType === 'walk') {
+        if (speedKmh < 3.0) return 2.0;
+        if (speedKmh < 4.5) return 3.0;
+        if (speedKmh < 5.5) return 3.5;
+        if (speedKmh < 7.0) return 4.5;
+        return 6.0;
+    } else if (activityType === 'run') {
+        if (speedKmh < 8.0) return 8.0;
+        if (speedKmh < 10.0) return 9.8;
+        if (speedKmh < 12.0) return 11.0;
+        if (speedKmh < 14.0) return 12.5;
+        if (speedKmh < 16.0) return 14.0;
+        return 16.0;
+    } else if (activityType === 'cycle') {
+        if (speedKmh < 10.0) return 4.0;
+        if (speedKmh < 15.0) return 6.0;
+        if (speedKmh < 20.0) return 8.0;
+        if (speedKmh < 25.0) return 10.0;
+        return 12.0;
+    }
+    return 3.0;
+};
+
+
 export default function FitnessPathModal({ isOpen, onClose, onUpdateActivePath, onPublishSuccess }) {
     const [screen, setScreen] = useState('welcome'); // welcome, setup, tracking, summary, history
     const [activityType, setActivityType] = useState('run'); // walk, run, cycle
@@ -71,11 +96,11 @@ export default function FitnessPathModal({ isOpen, onClose, onUpdateActivePath, 
             (position) => {
                 const { latitude, longitude, accuracy, speed } = position.coords;
                 
-                // Filter out inaccurate readings to prevent path jittering
-                if (accuracy && accuracy > 35) return;
+                // Filter out inaccurate readings to prevent path jittering (max 25 meters error margin)
+                if (accuracy && accuracy > 25) return;
 
                 const newCoord = [longitude, latitude];
-                lastGPSUpdateRef.current = Date.now();
+                const now = Date.now();
                 
                 if (lastPosRef.current) {
                     const distDiff = calculateDistance(
@@ -85,39 +110,56 @@ export default function FitnessPathModal({ isOpen, onClose, onUpdateActivePath, 
                         longitude
                     );
 
-                    // Only count movement if distance is greater than 4 meters (GPS jitter check)
-                    if (distDiff > 0.004) {
-                        distanceRef.current += distDiff;
-                        setDistance(Number(distanceRef.current.toFixed(2)));
-                        
-                        pathCoordsRef.current.push(newCoord);
-                        onUpdateActivePath([...pathCoordsRef.current]);
-                        
-                        // Calculate speed in km/h
-                        let computedSpeed = 0;
-                        if (speed !== null && speed !== undefined && speed >= 0) {
-                            computedSpeed = speed * 3.6; // convert m/s to km/h
-                        } else {
-                            // Fallback Speed = Distance / Time (approximate)
-                            const timeDiffHours = 1 / 3600; // 1 second update approx
-                            computedSpeed = distDiff / timeDiffHours;
-                        }
-                        
-                        // Cap speed to reasonable values
-                        const currentActType = activityTypeRef.current;
-                        if (currentActType === 'walk' && computedSpeed > 8) computedSpeed = 5;
-                        if (currentActType === 'run' && computedSpeed > 25) computedSpeed = 12;
-                        if (currentActType === 'cycle' && computedSpeed > 60) computedSpeed = 20;
+                    const timeDiffMs = now - lastPosRef.current.timestamp;
+                    const timeDiffSecs = timeDiffMs / 1000;
 
-                        speedRef.current = computedSpeed;
-                        setCurrentSpeed(Number(computedSpeed.toFixed(1)));
-                        lastPosRef.current = { latitude, longitude };
+                    // Only count movement if distance is greater than 5 meters and time elapsed is realistic
+                    if (distDiff > 0.005 && timeDiffSecs > 0) {
+                        const calculatedSpeedKmh = distDiff / (timeDiffMs / (1000 * 3600));
+                        
+                        // Speed validation to reject physical anomalies (GPS jumps)
+                        const currentActType = activityTypeRef.current;
+                        let isSpeedRealistic = true;
+                        if (currentActType === 'walk' && calculatedSpeedKmh > 15) isSpeedRealistic = false;
+                        if (currentActType === 'run' && calculatedSpeedKmh > 40) isSpeedRealistic = false;
+                        if (currentActType === 'cycle' && calculatedSpeedKmh > 100) isSpeedRealistic = false;
+                        
+                        // Ignore speeds < 1.0 km/h to prevent GPS drift/jitter while standing still
+                        const isNotDrift = calculatedSpeedKmh >= 1.0 || distDiff > 0.01;
+
+                        if (isSpeedRealistic && isNotDrift) {
+                            distanceRef.current += distDiff;
+                            setDistance(Number(distanceRef.current.toFixed(2)));
+                            
+                            pathCoordsRef.current.push(newCoord);
+                            onUpdateActivePath([...pathCoordsRef.current]);
+                            
+                            // Prefer device GPS speed if available, otherwise fallback to computed speed
+                            let finalSpeed = 0;
+                            if (speed !== null && speed !== undefined && speed >= 0) {
+                                finalSpeed = speed * 3.6; // convert m/s to km/h
+                            } else {
+                                finalSpeed = calculatedSpeedKmh;
+                            }
+                            
+                            // Prevent crazy speed spikes
+                            if (currentActType === 'walk' && finalSpeed > 10) finalSpeed = 6;
+                            if (currentActType === 'run' && finalSpeed > 28) finalSpeed = 12;
+                            if (currentActType === 'cycle' && finalSpeed > 60) finalSpeed = 22;
+
+                            speedRef.current = finalSpeed;
+                            setCurrentSpeed(Number(finalSpeed.toFixed(1)));
+                            
+                            lastPosRef.current = { latitude, longitude, timestamp: now };
+                            lastGPSUpdateRef.current = now;
+                        }
                     }
                 } else {
                     // First point
                     pathCoordsRef.current = [newCoord];
                     onUpdateActivePath([newCoord]);
-                    lastPosRef.current = { latitude, longitude };
+                    lastPosRef.current = { latitude, longitude, timestamp: now };
+                    lastGPSUpdateRef.current = now;
                 }
             },
             (error) => {
@@ -177,14 +219,7 @@ export default function FitnessPathModal({ isOpen, onClose, onUpdateActivePath, 
                         const currentActType = activityTypeRef.current;
                         const currentWeight = weightRef.current;
 
-                        let met = MET_VALUES[currentActType].base;
-                        if (currentActType === 'walk') {
-                            met = speedVal < 4 ? MET_VALUES.walk.slow : MET_VALUES.walk.fast;
-                        } else if (currentActType === 'run') {
-                            met = speedVal < 8 ? MET_VALUES.run.slow : MET_VALUES.run.fast;
-                        } else if (currentActType === 'cycle') {
-                            met = speedVal < 15 ? MET_VALUES.cycle.slow : MET_VALUES.cycle.fast;
-                        }
+                        const met = getMetValue(currentActType, speedVal);
 
                         const calIncrement = met * currentWeight * (1 / 3600);
                         caloriesRef.current += calIncrement;
@@ -334,23 +369,40 @@ export default function FitnessPathModal({ isOpen, onClose, onUpdateActivePath, 
             <div className="fitness-modal-overlay tracking-active-overlay">
                 <div className="fitness-modal-container tracking-active-container">
                     <div className="fitness-tracking-topbar">
-                        <div className="topbar-left-controls">
-                            <button 
-                                className={`topbar-btn ${isPaused ? 'btn-resume' : 'btn-pause'}`}
-                                onClick={handlePauseToggle}
-                                title={isPaused ? "استئناف" : "إيقاف مؤقت"}
-                            >
-                                {isPaused ? (
-                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                                ) : (
-                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                                )}
-                            </button>
-                            <button className="topbar-btn btn-stop" onClick={handleStopTracking} title="إنهاء">
-                                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M6 6h12v12H6z"/></svg>
-                            </button>
+                        {/* Header Row: Controls (Left) + Activity Text + Activity Indicator (Right) */}
+                        <div className="topbar-header-row">
+                            <div className="topbar-left-controls">
+                                <button 
+                                    className={`topbar-btn ${isPaused ? 'btn-resume' : 'btn-pause'}`}
+                                    onClick={handlePauseToggle}
+                                    title={isPaused ? "استئناف" : "إيقاف مؤقت"}
+                                >
+                                    {isPaused ? (
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                                    ) : (
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                                    )}
+                                </button>
+                                <button className="topbar-btn btn-stop" onClick={handleStopTracking} title="إنهاء">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 6h12v12H6z"/></svg>
+                                </button>
+                            </div>
+
+                            <div className="topbar-title-area">
+                                <span className="topbar-tracking-text">
+                                    {isPaused ? "تم إيقاف التتبع" : "تتبع حركة مباشر"}
+                                </span>
+                            </div>
+
+                            <div className="topbar-activity-indicator">
+                                <span className="badge-pulse"></span>
+                                <span className="activity-emoji font-icon">
+                                    {activityType === 'walk' ? '🚶' : activityType === 'run' ? '🏃' : '🚴'}
+                                </span>
+                            </div>
                         </div>
 
+                        {/* Stats Row: 4 columns in Grid */}
                         <div className="topbar-stats-row">
                             <div className="topbar-stat">
                                 <span className="topbar-stat-lbl">المسافة</span>
@@ -368,13 +420,6 @@ export default function FitnessPathModal({ isOpen, onClose, onUpdateActivePath, 
                                 <span className="topbar-stat-lbl">السرعة</span>
                                 <strong className="topbar-stat-val text-green">{currentSpeed} <span className="topbar-stat-unit">كم/س</span></strong>
                             </div>
-                        </div>
-
-                        <div className="topbar-activity-indicator">
-                            <span className="badge-pulse"></span>
-                            <span className="activity-emoji font-icon">
-                                {activityType === 'walk' ? '🚶' : activityType === 'run' ? '🏃' : '🚴'}
-                            </span>
                         </div>
                     </div>
                 </div>
@@ -411,7 +456,7 @@ export default function FitnessPathModal({ isOpen, onClose, onUpdateActivePath, 
                                         <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
                                     </svg>
                                 </span>
-                                <span className="welcome-logo-text">PEAK</span>
+                                <span className="welcome-logo-text">مسار اللياقة</span>
                             </div>
                             <button
                                 type="button"
