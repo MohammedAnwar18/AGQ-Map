@@ -2551,7 +2551,7 @@ const MapComponent = () => {
                                             <line x1="12" y1="22.08" x2="12" y2="12"/>
                                         </svg>
                                     </div>
-                                    <span style={{ color: '#10b981', fontWeight: 'bold' }}>التوأم الرقمي 3D</span>
+                                    <span style={{ color: '#f1f5f9', fontWeight: 'bold' }}>التوأم الرقمي 3D</span>
                                 </div>
                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#10b981" strokeWidth="2.5">
                                     <polyline points="9 18 15 12 9 6" />

@@ -9,9 +9,9 @@
     --dt-emerald-dim: rgba(16, 185, 129, 0.12);
     --dt-emerald-glow:rgba(16, 185, 129, 0.28);
     --dt-bg:          #080c14;
-    --dt-surface:     rgba(10, 17, 30, 0.88);
-    --dt-surf2:       rgba(20, 30, 50, 0.93);
-    --dt-border:      rgba(16, 185, 129, 0.22);
+    --dt-surface:     rgba(10, 17, 30, 0.90);
+    --dt-surf2:       rgba(20, 30, 50, 0.95);
+    --dt-border:      rgba(16, 185, 129, 0.25);
     --dt-border2:     rgba(255, 255, 255, 0.08);
     --dt-text:        #f1f5f9;
     --dt-muted:       #7e8f9f;
@@ -176,6 +176,13 @@
 /* الأقسام الداخلية */
 .dt-section {
     margin-bottom: 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    padding-bottom: 20px;
+}
+
+.dt-section:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
 }
 
 .dt-section-title {
@@ -238,7 +245,7 @@
     cursor: pointer;
 }
 
-/* زر البيانات التجريبية */
+/* الأزرار العامة */
 .dt-btn-secondary {
     width: 100%;
     padding: 12px;
@@ -283,6 +290,22 @@
 .dt-btn-primary:hover {
     background: #059669;
     box-shadow: 0 0 15px var(--dt-emerald-glow);
+}
+
+.dt-btn-danger {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(244, 63, 94, 0.3);
+    background: rgba(244, 63, 94, 0.1);
+    color: #fda4af;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.dt-btn-danger:hover {
+    background: var(--dt-red);
+    color: #fff;
 }
 
 /* إعدادات العناصر والخرائط */
@@ -372,12 +395,13 @@
     color: var(--dt-emerald);
 }
 
-/* لوحة الفحص (Inspector Panel) */
+/* لوحة فحص وتعديل الكائنات الدقيق (Inspector Panel) */
 .dt-inspector {
     position: absolute;
     top: 20px;
     left: 20px;
-    width: 320px;
+    bottom: 20px;
+    width: 340px;
     background: var(--dt-surface);
     border: 1px solid var(--dt-border);
     border-radius: var(--dt-radius);
@@ -387,6 +411,7 @@
     padding: 20px;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
 .dt-inspector-header {
@@ -416,6 +441,12 @@
     color: var(--dt-text);
 }
 
+.dt-inspector-body {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
 .dt-inspector-prop {
     display: flex;
     justify-content: space-between;
@@ -423,6 +454,7 @@
     margin-bottom: 8px;
     border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
     padding-bottom: 6px;
+    align-items: center;
 }
 
 .dt-inspector-prop-name {
@@ -433,7 +465,48 @@
     font-weight: 600;
 }
 
-/* شريط التحكم السفلي */
+/* شبكة اختيار النسيج المعماري (Building Texture Skins) */
+.dt-skin-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 6px;
+}
+
+.dt-skin-card {
+    border: 1px solid var(--dt-border2);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+    padding: 10px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+}
+
+.dt-skin-card:hover {
+    border-color: var(--dt-border);
+    background: rgba(16, 185, 129, 0.04);
+}
+
+.dt-skin-card.active {
+    border-color: var(--dt-emerald);
+    background: var(--dt-emerald-dim);
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.15);
+}
+
+.dt-skin-preview {
+    height: 40px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    opacity: 0.8;
+}
+
+.dt-skin-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+/* شريط التحكم السفلي السريع */
 .dt-bottom-bar {
     position: absolute;
     bottom: 20px;
@@ -562,137 +635,147 @@
     box-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
 }
 
-/* مؤشر لوضع الإضافة اليدوية */
+/* مؤشر لوضع الإضافة والرسم اليدوي (HUD) */
 .dt-placement-indicator {
     position: absolute;
     top: 20px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(16, 185, 129, 0.95);
-    color: #0c1813;
-    padding: 10px 24px;
+    background: rgba(10, 17, 30, 0.93);
+    border: 1px solid var(--dt-emerald);
+    color: var(--dt-text);
+    padding: 12px 28px;
     border-radius: 30px;
     font-weight: 700;
     font-size: 0.88rem;
     z-index: 6;
     display: flex;
     align-items: center;
-    gap: 10px;
-    box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
-    animation: dt-pulse-emerald 2s infinite;
+    gap: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    backdrop-filter: blur(8px);
 }
 
-.dt-placement-cancel {
-    background: rgba(0,0,0,0.25);
+.dt-placement-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.dt-btn-hud-save {
+    background: var(--dt-emerald);
+    color: #0b1510;
     border: none;
-    color: #fff;
-    font-size: 0.72rem;
-    padding: 3px 10px;
+    padding: 4px 14px;
     border-radius: 20px;
     cursor: pointer;
-    font-weight: 600;
-}
-
-.dt-placement-cancel:hover {
-    background: rgba(0,0,0,0.4);
-}
-
-/* قائمة المشاريع الجاهزة */
-.dt-projects-list {
-    margin-top: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.dt-project-row {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid var(--dt-border2);
-    border-radius: 8px;
-    padding: 10px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.8rem;
-}
-
-.dt-project-row-info {
-    display: flex;
-    flex-direction: column;
-}
-
-.dt-project-row-name {
     font-weight: 700;
-}
-
-.dt-project-row-meta {
-    font-size: 0.7rem;
-    color: var(--dt-muted);
-}
-
-.dt-project-row-btn {
-    background: var(--dt-emerald-dim);
-    color: var(--dt-emerald);
-    border: 1px solid rgba(16, 185, 129, 0.25);
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    cursor: pointer;
+    font-size: 0.78rem;
     transition: all 0.2s;
 }
 
-.dt-project-row-btn:hover {
+.dt-btn-hud-save:hover {
+    background: #059669;
+}
+
+.dt-btn-hud-cancel {
+    background: rgba(244, 63, 94, 0.15);
+    border: 1px solid rgba(244, 63, 94, 0.3);
+    color: #fda4af;
+    padding: 4px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 0.78rem;
+    transition: all 0.2s;
+}
+
+.dt-btn-hud-cancel:hover {
+    background: var(--dt-red);
+    color: #fff;
+}
+
+/* أزرار تفعيل الرسم */
+.dt-draw-btn-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.dt-draw-btn {
+    border: 1px solid var(--dt-border);
+    background: rgba(16, 185, 129, 0.04);
+    color: var(--dt-text);
+    border-radius: 8px;
+    padding: 10px 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.dt-draw-btn:hover {
+    background: var(--dt-emerald-dim);
+    border-color: var(--dt-emerald);
+}
+
+.dt-draw-btn.active {
     background: var(--dt-emerald);
     color: #0b1510;
+    border-color: var(--dt-emerald);
+    box-shadow: 0 0 10px var(--dt-emerald-glow);
 }
 
-/* الرسوم المتحركة */
-@keyframes dt-pulse-emerald {
-    0% {
-        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
-    }
-    70% {
-        box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
-    }
+/* قائمة الطبقات النشطة للرسم */
+.dt-layer-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+    max-height: 160px;
+    overflow-y: auto;
 }
 
-/* تنسيق النوافذ المبثوقة من الخريطة (Popups) */
-.dt-map-viewport .maplibregl-popup-content {
-    background: var(--dt-surface) !important;
-    border: 1px solid var(--dt-emerald) !important;
-    border-radius: 12px !important;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important;
-    color: var(--dt-text) !important;
-    padding: 12px 16px !important;
-    font-family: var(--dt-font) !important;
+.dt-layer-row {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--dt-border2);
+    border-radius: 6px;
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.78rem;
 }
 
-.dt-map-viewport .maplibregl-popup-close-button {
-    color: var(--dt-muted) !important;
-    padding: 4px 8px !important;
-    outline: none !important;
+.dt-layer-row-info {
+    display: flex;
+    flex-direction: column;
 }
 
-.dt-map-viewport .maplibregl-popup-close-button:hover {
-    color: var(--dt-text) !important;
-    background: transparent !important;
+.dt-layer-row-title {
+    font-weight: 600;
 }
 
-.dt-map-viewport .maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
-    border-top-color: var(--dt-emerald) !important;
+.dt-layer-row-sub {
+    font-size: 0.68rem;
+    color: var(--dt-muted);
 }
-.dt-map-viewport .maplibregl-popup-anchor-top .maplibregl-popup-tip {
-    border-bottom-color: var(--dt-emerald) !important;
+
+.dt-layer-delete {
+    background: transparent;
+    border: none;
+    color: var(--dt-muted);
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
 }
-.dt-map-viewport .maplibregl-popup-anchor-left .maplibregl-popup-tip {
-    border-right-color: var(--dt-emerald) !important;
-}
-.dt-map-viewport .maplibregl-popup-anchor-right .maplibregl-popup-tip {
-    border-left-color: var(--dt-emerald) !important;
+
+.dt-layer-delete:hover {
+    color: var(--dt-red);
 }
 
 /* الموبايل / الشاشات الصغيرة */
@@ -724,5 +807,13 @@
     .dt-bar-btn {
         padding: 4px 8px;
         font-size: 0.75rem;
+    }
+    .dt-inspector {
+        width: auto;
+        left: 20px;
+        right: 20px;
+        top: 80px;
+        bottom: auto;
+        height: 300px;
     }
 }
