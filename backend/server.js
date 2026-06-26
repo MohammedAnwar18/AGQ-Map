@@ -98,6 +98,32 @@ const pool = require('./config/database');
             ALTER TABLE posts ADD COLUMN IF NOT EXISTS path_coordinates TEXT;
         `);
         console.log('✅ path_coordinates column verified on posts table');
+
+        // ── جداول مساحة الدراسة Study Space ─────────────────────────────────
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS study_videos (
+                id            SERIAL PRIMARY KEY,
+                duration_hours NUMERIC(4,1) NOT NULL UNIQUE,
+                youtube_url   TEXT NOT NULL,
+                video_id      VARCHAR(20) NOT NULL,
+                title         VARCHAR(255) DEFAULT 'فيديو دراسة',
+                created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS study_books (
+                id            SERIAL PRIMARY KEY,
+                title         VARCHAR(255) NOT NULL,
+                author        VARCHAR(255),
+                description   TEXT,
+                file_url      TEXT NOT NULL,
+                cover_url     TEXT,
+                file_size_mb  NUMERIC(10,2),
+                created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        console.log('✅ study_videos & study_books tables ready');
     } catch (err) {
         console.error('⚠️ ar_contents migration error:', err.message);
     }
@@ -326,6 +352,7 @@ app.use('/api/remote-sensing', require('./routes/remoteSensing'));
 app.use('/api/ar', require('./routes/ar'));
 app.use('/api/tours', require('./routes/tours'));
 app.use('/api/fitness', require('./routes/fitness'));
+app.use('/api/study-space', require('./routes/studySpace'));
 
 
 

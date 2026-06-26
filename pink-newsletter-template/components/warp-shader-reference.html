@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Warp (from scratch, WebGL2)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    html, body { margin:0; height:100%; background:#0b0b0b; }
+    #wrap { height:500px; width:100%; display:grid; place-items:center; }
+    canvas { width:100%; height:100%; display:block; }
+  </style>
+</head>
+<body>
+  <div id="wrap"><canvas id="gl"></canvas></div>
+  <script>
+  // --- Config (mirrors your props) ------------------------------------------
+  const CFG = {
+    proportion: 0.45,
+    softness: 1.0,
+    distortion: 0.25,
+    swirl: 0.8,
+    swirlIterations: 10,
+    shapeScale: 0.1,
+    scale: 1.0,
+    rotation: 0.0,
+    speed: 1.0,
+    colors: [
+      "hsl(0, 0%, 7%)",
+      "hsl(255, 100%, 72%)",
+      "hsl(0, 0%, 7%)",
+      "hsl(264, 100%, 61%)",
+    ],
+  };
+
+  // --- Boilerplate: GL setup -------------------------------------------------
+  const canvas = document.getElementById("gl");
+  const gl = canvas.getContext("webgl2", { alpha: false, antialias: true });
+  if (!gl) { alert("WebGL2 not supported"); }
+
+  // Resize helper (pixel-perfect drawing buffer)
+  function resize() {
+    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    const rect = canvas.getBoundingClientRect();
+    const w = Math.max(1, Math.floor(rect.width  * dpr));
+    const h = Math.max(1, Math.floor(rect.height * dpr));
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w; canvas.height = h;
+      gl.viewport(0, 0, w, h);
+    }
+  }
+  new ResizeObserver(resize).observe(canvas);
+
+  // Compile helpers
+  function compile(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+      throw new Error(gl.getShaderInfoLog(s) || "shader compile error");
+    }
+    return s;
+  }
+  function link(vs, fs) {
+    const p = gl.createProgram();
+    gl.attachShader(p, vs); gl.attachShader(p, fs);
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(p) || "program link error");
+    }
+    return p;
+  }
+
+  // Fullscreen triangle
+  const vsrc = `#version 300 es
+  precision highp float;
+  const vec2 verts[3] = vec2[3](vec2(-1.0,-1.0), vec2(3.0,-1.0), vec2(-1.0,3.0));
+  out vec2 vPos;
+  void main(){
+    gl_Position = vec4(verts[gl_VertexID], 0.0, 1.0);
+    vPos = verts[gl_VertexID];
+  }`;
+
+  const fsrc = `#version 300 es
+  precision highp float;
+
+  uniform vec2  u_resolution;
+  uniform float u_time;
+  uniform float u_proportion;
+  uniform float u_softness;
+  uniform float u_distortion;
+  uniform float u_swirl;
+  uniform int   u_swirlIterations;
+  uniform float u_shapeScale;
+  uniform float u_scale;
+  uniform float u_rotation;
+  uniform float u_speed;
+  uniform int   u_colorCount;
+  uniform vec3  u_colors[8];
+
+  out vec4 fragColor;
+
+  #define PI 3.1415926535897932384626433832795
+
+  mat2 rot(float a){ float s=sin(a), c=cos(a); return mat2(c,-s,s,c); }
+
+  float hash(vec2 p){
+    p = fract(p*vec2(123.34, 234.56));
+    p += dot(p, p+34.45);
+    return fract(p.x*p.y);
+  }
+  float noise(vec2 p){
+    vec2 i=floor(p), f=fract(p);
+    float a=hash(i);
+    float b=hash(i+vec2(1.,0.));
+    float c=hash(i+vec2(0.,1.));
+    float d=hash(i+vec2(1.,1.));
+    vec2 u = f*f*(3.0-2.0*f);
+    return mix(mix(a,b,u.x), mix(c,d,u.x), u.y);
+  }
+  float fbm(vec2 p){
+    float v=0., amp=0.5;
+    for (int i=0;i<5;i++){
+      v += amp*noise(p);
+      p *= 2.0; amp *= 0.5;
+    }
+    return v;
+  }
+
+  // Soft-edged checker pattern
+  float checks(vec2 p, float scale, float softness){
+    p *= scale;
+    vec2 g = fract(p) - 0.5;
+    vec2 q = floor(p);
+    float parity = mod(q.x + q.y, 2.0);
+    vec2 edge = 0.5 - abs(g);
+    float m = min(edge.x, edge.y);
+    float s = clamp(softness, 1e-4, 1.0);
+    float border = smoothstep(0.0, s*0.5, m);
+    return mix(1.0 - border, border, parity);
+  }
+
+  vec3 palette(float t){
+    if (u_colorCount <= 0) return vec3(t);
+    if (u_colorCount == 1) return u_colors[0];
+    float segs = float(u_colorCount - 1);
+    float x = clamp(t,0.0,1.0) * segs;
+    float idx = floor(x);
+    float f = x - idx;
+    int i0 = int(idx);
+    int i1 = min(i0+1, u_colorCount-1);
+    return mix(u_colors[i0], u_colors[i1], smoothstep(0.0,1.0,f));
+  }
+
+  void main(){
+    // uv in -1..1, aspect corrected
+    vec2 uv = (gl_FragCoord.xy / u_resolution) * 2.0 - 1.0;
+    uv.x *= u_resolution.x / u_resolution.y;
+
+    // proportion squish (match your prop: closer to 1 = normal)
+    uv.y *= mix(0.5, 1.0, clamp(u_proportion, 0.0, 1.0));
+
+    // global rotation / scale
+    uv *= rot(u_rotation);
+    uv /= max(u_scale, 1e-4);
+
+    float t = u_time * u_speed;
+
+    // domain warp
+    float n1 = fbm(uv * 1.25 + vec2(0.0, t*0.1));
+    float n2 = fbm(uv * 2.5  + vec2(t*0.07, 0.0));
+    vec2 warp = vec2(n1, n2) - 0.5;
+    uv += warp * u_distortion * 0.75;
+
+    // swirl (iterative)
+    vec2 p = uv;
+    float r = length(p);
+    float base = u_swirl * 1.25 * (1.0 - smoothstep(0.0, 1.2, r));
+    int iters = clamp(u_swirlIterations, 0, 32);
+    for (int i=0;i<32;i++){
+      if (i >= iters) break;
+      float a = base * (0.6 + float(i)/float(max(iters,1)));
+      p = rot(a * r) * p;
+    }
+    uv = p;
+
+    // checks
+    float sScale = max(u_shapeScale, 1e-4) * 10.0;
+    float soft = clamp(u_softness, 0.0, 1.0);
+    float pattern = checks(uv, sScale, mix(0.001, 0.15, soft));
+
+    // slight drift
+    float drift = 0.15 * sin(t*0.5);
+    pattern = checks(uv + vec2(drift, -drift*0.6), sScale, mix(0.001, 0.15, soft));
+
+    // color
+    float shade = fbm(uv * 1.2 + t*0.03);
+    vec3 colA = palette(shade);
+    vec3 colB = palette(1.0 - shade*0.85);
+    vec3 col = mix(colA, colB, pattern);
+
+    fragColor = vec4(col, 1.0);
+  }`;
+
+  const prog = link(compile(gl.VERTEX_SHADER, vsrc), compile(gl.FRAGMENT_SHADER, fsrc));
+  gl.useProgram(prog);
+
+  // Quad using gl_VertexID: no VAO needed in WebGL2 if we just drawArrays
+  // But WebGL2 requires a VAO bound:
+  const vao = gl.createVertexArray();
+  gl.bindVertexArray(vao);
+
+  // Uniform locations
+  const loc = {
+    res: gl.getUniformLocation(prog, "u_resolution"),
+    time: gl.getUniformLocation(prog, "u_time"),
+    prop: gl.getUniformLocation(prog, "u_proportion"),
+    soft: gl.getUniformLocation(prog, "u_softness"),
+    dist: gl.getUniformLocation(prog, "u_distortion"),
+    swirl: gl.getUniformLocation(prog, "u_swirl"),
+    swirlIt: gl.getUniformLocation(prog, "u_swirlIterations"),
+    shapeScale: gl.getUniformLocation(prog, "u_shapeScale"),
+    scale: gl.getUniformLocation(prog, "u_scale"),
+    rotation: gl.getUniformLocation(prog, "u_rotation"),
+    speed: gl.getUniformLocation(prog, "u_speed"),
+    colorCount: gl.getUniformLocation(prog, "u_colorCount"),
+    colors: gl.getUniformLocation(prog, "u_colors[0]"),
+  };
+
+  // CSS color → [r,g,b]
+  function cssColorToRGB(css) {
+    const ctx = document.createElement('canvas').getContext('2d');
+    ctx.fillStyle = css;
+    const computed = ctx.fillStyle; // normalized css
+    // use DOM to parse: make a tiny element
+    const el = document.createElement('div');
+    el.style.color = computed;
+    document.body.appendChild(el);
+    const rgb = getComputedStyle(el).color; // e.g. "rgb(12, 34, 56)"
+    document.body.removeChild(el);
+    const m = rgb.match(/(\d+),\s*(\d+),\s*(\d+)/);
+    if (!m) return [1,1,1];
+    return [parseInt(m[1])/255, parseInt(m[2])/255, parseInt(m[3])/255];
+  }
+
+  const colors = (CFG.colors || []).slice(0,8).map(cssColorToRGB).flat();
+  // If less than 8, pad
+  while (colors.length < 8*3) colors.push(0,0,0);
+
+  // Set static uniforms
+  gl.uniform1f(loc.prop, CFG.proportion);
+  gl.uniform1f(loc.soft, CFG.softness);
+  gl.uniform1f(loc.dist, CFG.distortion);
+  gl.uniform1f(loc.swirl, CFG.swirl);
+  gl.uniform1i(loc.swirlIt, CFG.swirlIterations|0);
+  gl.uniform1f(loc.shapeScale, CFG.shapeScale);
+  gl.uniform1f(loc.scale, CFG.scale);
+  gl.uniform1f(loc.rotation, CFG.rotation);
+  gl.uniform1f(loc.speed, CFG.speed);
+  gl.uniform1i(loc.colorCount, Math.min(CFG.colors.length, 8));
+  gl.uniform3fv(loc.colors, new Float32Array(colors));
+
+  // Animate
+  const t0 = performance.now();
+  function frame() {
+    resize();
+    const t = (performance.now() - t0) / 1000;
+    gl.uniform1f(loc.time, t);
+    gl.uniform2f(loc.res, canvas.width, canvas.height);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    requestAnimationFrame(frame);
+  }
+  frame();
+  </script>
+</body>
+</html>

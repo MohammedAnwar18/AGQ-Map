@@ -36,6 +36,7 @@ import PalNovaaRepository from '../components/PalNovaaRepository';
 import LiveCameraModal from '../components/LiveCameraModal';
 import FitnessPathModal from '../components/FitnessPathModal';
 import { postService, friendService, authService, notificationService, communityService, shopService, cameraService, getImageUrl, fitnessService } from '../services/api';
+const StudySpace = React.lazy(() => import('./StudySpace'));
 import { isNative, startNativeTracking, stopNativeTracking } from '../utils/nativeLocation';
 import './Map.css';
 
@@ -724,6 +725,7 @@ const MapComponent = () => {
     const [showNews, setShowNews] = useState(false);
     const [showMagazine, setShowMagazine] = useState(false);
     const [showLabModal, setShowLabModal] = useState(false);
+    const [showStudySpace, setShowStudySpace] = useState(false);
     const [showRepositoryModal, setShowRepositoryModal] = useState(false);
     const [showCommunities, setShowCommunities] = useState(false);
     const [showMoreMenu, setShowMoreMenu] = useState(false);
@@ -2508,6 +2510,29 @@ const MapComponent = () => {
                             </button>
                         )}
 
+                        {/* مساحة دراسة */}
+                        {true && (
+                            <button
+                                onClick={() => {
+                                    setShowStudySpace(true);
+                                    setShowMoreMenu(false);
+                                }}
+                            >
+                                <div className="menu-item-content">
+                                    <div className="menu-icon-wrapper" style={{ color: '#818cf8' }}>
+                                        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg">
+                                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                                        </svg>
+                                    </div>
+                                    <span style={{ color: '#818cf8', fontWeight: 'bold' }}>مساحة دراسة</span>
+                                </div>
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#818cf8" strokeWidth="2.5">
+                                    <polyline points="9 18 15 12 9 6" />
+                                </svg>
+                            </button>
+                        )}
+
                         {/* PalNovaa Spatial Magazine - Hidden as requested
                         <button onClick={() => { setShowMagazine(true); setShowMoreMenu(false); }}>
                             <div className="menu-item-content">
@@ -3517,6 +3542,9 @@ const MapComponent = () => {
             {/* Modals */}
             <React.Suspense fallback={null}>
             {showLabModal && <PalNovaaLab onClose={() => setShowLabModal(false)} />}
+            {showStudySpace && (
+                <StudySpace user={user} onClose={() => setShowStudySpace(false)} />
+            )}
             {showFitnessModal && (
                 <FitnessPathModal 
                     isOpen={showFitnessModal}

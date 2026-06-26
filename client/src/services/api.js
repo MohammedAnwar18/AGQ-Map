@@ -799,4 +799,40 @@ export const fitnessService = {
     }
 };
 
+
+// Study Space Services
+export const studySpaceService = {
+    getVideos: async () => {
+        const response = await api.get('/study-space/videos');
+        return response.data;
+    },
+    upsertVideo: async (data) => {
+        const response = await api.post('/study-space/videos', data);
+        return response.data;
+    },
+    getBooks: async () => {
+        const response = await api.get('/study-space/books');
+        return response.data;
+    },
+    uploadBook: async (formData) => {
+        const response = await api.post('/study-space/books', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            timeout: 120000,
+        });
+        return response.data;
+    },
+    deleteBook: async (id) => {
+        const response = await api.delete(`/study-space/books/${id}`);
+        return response.data;
+    },
+    translate: async (text) => {
+        const encoded = encodeURIComponent(text);
+        const response = await fetch(
+            `https://api.mymemory.translated.net/get?q=${encoded}&langpair=auto|ar`
+        );
+        const data = await response.json();
+        return data?.responseData?.translatedText || text;
+    }
+};
+
 export default api;
