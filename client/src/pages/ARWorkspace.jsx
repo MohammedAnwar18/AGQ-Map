@@ -325,13 +325,28 @@ export default function ARWorkspace() {
         try {
             const video = videoRef.current;
             const canvas = canvasRef.current || document.createElement('canvas');
-            canvas.width = video.videoWidth || 640;
-            canvas.height = video.videoHeight || 480;
+            
+            // Limit photo resolution to a maximum width of 800px for instant socket transmission
+            let width = video.videoWidth || 640;
+            let height = video.videoHeight || 480;
+            const maxDim = 800;
+            if (width > maxDim || height > maxDim) {
+                if (width > height) {
+                    height = Math.round((height * maxDim) / width);
+                    width = maxDim;
+                } else {
+                    width = Math.round((width * maxDim) / height);
+                    height = maxDim;
+                }
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
             
             const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(video, 0, 0, width, height);
             
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.55); // compressed JPEG to reduce payload size
 
             // Calculate target position in 3D space: 5 meters in front of phone
             // Using spherical coordinates based on heading and pitch

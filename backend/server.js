@@ -111,7 +111,8 @@ const io = new Server(server, {
     cors: {
         origin: "*",
         methods: ["GET", "POST"]
-    }
+    },
+    maxHttpBufferSize: 1e7 // 10MB buffer size to support base64 image payloads
 });
 
 // 2. إعدادات Middleware والحماية برمجياً
