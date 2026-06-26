@@ -488,6 +488,22 @@ export default function ARWorkspace() {
                         <h3>ربط كاميرا الهاتف 📱</h3>
                         <p>امسح الرمز التالي بكاميرا الهاتف لتسجيل الدخول التلقائي والبدء بنقل الصور فوراً:</p>
                         
+                        {window.location.hostname === 'localhost' && (
+                            <div className="arw-localhost-warning" style={{
+                                background: 'rgba(239, 68, 68, 0.15)',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                borderRadius: '8px',
+                                padding: '12px',
+                                margin: '15px 0',
+                                color: '#fca5a5',
+                                fontSize: '0.8rem',
+                                textAlign: 'right',
+                                lineHeight: '1.5'
+                            }}>
+                                ⚠️ <strong>تنبيه هام للربط:</strong> متصفحك الحالي يفتح الصفحة عبر <code>localhost</code>. لكي يستطيع الهاتف الاتصال بالكمبيوتر، يجب أن يكون الهاتف متصلاً **بنفس شبكة الـ Wi-Fi**، ويجب فتح هذه الصفحة على الكمبيوتر باستخدام **عنوان الـ IP المحلي لجهازك** (مثال: <code>http://192.168.1.X:5173</code>) بدلاً من <code>localhost</code> ثم مسح الرمز.
+                            </div>
+                        )}
+
                         {qrCodeUrl ? (
                             <div className="arw-qr-container">
                                 <img src={qrCodeUrl} alt="Pairing QR Code" />
