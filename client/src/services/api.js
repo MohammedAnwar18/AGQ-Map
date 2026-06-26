@@ -780,6 +780,10 @@ export const arService = {
     deleteARContent: async (id) => {
         const response = await api.delete(`/ar/${id}`);
         return response.data;
+    },
+    uploadSnapshot: async (base64Image) => {
+        const response = await api.post('/ar/upload-snapshot', { image: base64Image });
+        return response.data;
     }
 };
 

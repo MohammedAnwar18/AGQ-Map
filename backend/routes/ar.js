@@ -13,6 +13,7 @@ router.post('/building', authenticateToken, ar.createBuilding);
 router.post('/story',    authenticateToken, ar.createStory);
 router.post('/nav-point',authenticateToken, ar.createNavPoint);
 router.post('/photo-marker', authenticateToken, upload.single('photo'), ar.createPhotoMarker);
+router.post('/upload-snapshot', authenticateToken, ar.uploadSnapshot);
 router.put('/:id',       authenticateToken, ar.updateARContent);
 router.get('/:id',       optionalAuth,    ar.getARContentById);
 router.delete('/:id',    authenticateToken, ar.deleteARContent);

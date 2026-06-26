@@ -529,6 +529,38 @@ async function getARContentById(req, res) {
 }
 
 // ---------------------------------------------------------------------------
+// POST /api/ar/upload-snapshot — Upload base64 snapshot to Cloudflare R2
+// ---------------------------------------------------------------------------
+async function uploadSnapshot(req, res) {
+  try {
+    const { image } = req.body;
+    if (!image) {
+      return res.status(400).json({ error: 'No image data provided' });
+    }
+
+    // Parse base64 data URL (e.g., data:image/jpeg;base64,...)
+    const matches = image.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) {
+      return res.status(400).json({ error: 'Invalid base64 image format' });
+    }
+
+    const mimeType = matches[1];
+    const base64Data = matches[2];
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    const { uploadToCloud } = require('../utils/storage');
+    const fileName = `ar_snapshot_${Date.now()}.jpg`;
+    
+    const imageUrl = await uploadToCloud(buffer, fileName, mimeType);
+
+    return res.status(200).json({ success: true, imageUrl });
+  } catch (err) {
+    console.error('[uploadSnapshot]', err);
+    return res.status(500).json({ error: 'Failed to upload snapshot to Cloudflare R2', details: err.message });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
 module.exports = {
@@ -543,4 +575,5 @@ module.exports = {
   getAllARContents,
   createPhotoMarker,
   getARContentById,
+  uploadSnapshot,
 };

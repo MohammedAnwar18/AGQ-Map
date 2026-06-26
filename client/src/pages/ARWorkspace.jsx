@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import QRCode from 'qrcode';
 import { useAuth } from '../context/AuthContext';
+import { arService } from '../services/api';
 import './ARWorkspace.css';
 
 // ═══════════════════════════════════════════════════
@@ -326,10 +327,10 @@ export default function ARWorkspace() {
             const video = videoRef.current;
             const canvas = canvasRef.current || document.createElement('canvas');
             
-            // Limit photo resolution to a maximum width of 800px for instant socket transmission
+            // Limit photo resolution to a maximum width of 640px for minimal size and high performance (lowest footprint)
             let width = video.videoWidth || 640;
             let height = video.videoHeight || 480;
-            const maxDim = 800;
+            const maxDim = 640;
             if (width > maxDim || height > maxDim) {
                 if (width > height) {
                     height = Math.round((height * maxDim) / width);
@@ -346,7 +347,7 @@ export default function ARWorkspace() {
             const ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0, width, height);
             
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.55); // compressed JPEG to reduce payload size
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.45); // highly compressed JPEG to reduce payload size
 
             // Calculate target position in 3D space: 5 meters in front of phone
             // Using spherical coordinates based on heading and pitch
@@ -358,10 +359,22 @@ export default function ARWorkspace() {
             const z = -Math.cos(radH) * Math.cos(radP) * 5;
             const y = Math.sin(radP) * 5;
 
+            // Upload compressed image to Cloudflare R2
+            let finalImageUrl = null;
+            try {
+                const response = await arService.uploadSnapshot(dataUrl);
+                if (response && response.success) {
+                    finalImageUrl = response.imageUrl;
+                    console.log("📸 Spatial snapshot uploaded to Cloudflare R2:", finalImageUrl);
+                }
+            } catch (uploadErr) {
+                console.error("Cloudflare R2 upload failed, falling back to base64 transmission:", uploadErr);
+            }
+
             if (socket) {
                 socket.emit('ar-spatial-update', {
                     type: 'snapshot',
-                    dataUrl,
+                    dataUrl: finalImageUrl || dataUrl, // Pass R2 URL or fallback to compressed base64
                     heading,
                     pitch,
                     position: { x, y, z }
@@ -429,30 +442,45 @@ export default function ARWorkspace() {
         if (!scene) return;
 
         const loader = new THREE.TextureLoader();
-        loader.load(cap.dataUrl, (texture) => {
-            // 16:9 aspect ratio plane
-            const geometry = new THREE.PlaneGeometry(3.2, 1.8);
-            const material = new THREE.MeshBasicMaterial({
-                map: texture,
-                side: THREE.DoubleSide,
-                transparent: true
-            });
-            const plane = new THREE.Mesh(geometry, material);
-            
-            // Set position
-            plane.position.set(cap.position.x, cap.position.y, cap.position.z);
-            
-            // Make plane face the origin (or camera)
-            plane.lookAt(0, 1.2, 0);
+        loader.setCrossOrigin('anonymous');
 
-            // Add billboard border
-            const borderGeo = new THREE.EdgesGeometry(geometry);
-            const borderMat = new THREE.LineBasicMaterial({ color: 0x00f0ff, linewidth: 2 });
-            const border = new THREE.LineSegments(borderGeo, borderMat);
-            plane.add(border);
-            
-            scene.add(plane);
-        });
+        let textureUrl = cap.dataUrl;
+        if (textureUrl && textureUrl.startsWith('http') && !textureUrl.includes(window.location.hostname) && !textureUrl.includes('localhost')) {
+            // external image (e.g. Cloudflare R2), route through server proxy to bypass WebGL CORS policies
+            textureUrl = `/api/tours/proxy?url=${encodeURIComponent(textureUrl)}`;
+        }
+
+        loader.load(
+            textureUrl,
+            (texture) => {
+                // 16:9 aspect ratio plane
+                const geometry = new THREE.PlaneGeometry(3.2, 1.8);
+                const material = new THREE.MeshBasicMaterial({
+                    map: texture,
+                    side: THREE.DoubleSide,
+                    transparent: true
+                });
+                const plane = new THREE.Mesh(geometry, material);
+                
+                // Set position
+                plane.position.set(cap.position.x, cap.position.y, cap.position.z);
+                
+                // Make plane face the origin (or camera)
+                plane.lookAt(0, 1.2, 0);
+
+                // Add billboard border
+                const borderGeo = new THREE.EdgesGeometry(geometry);
+                const borderMat = new THREE.LineBasicMaterial({ color: 0x00f0ff, linewidth: 2 });
+                const border = new THREE.LineSegments(borderGeo, borderMat);
+                plane.add(border);
+                
+                scene.add(plane);
+            },
+            undefined,
+            (err) => {
+                console.error("Failed to load spatial snapshot texture:", err);
+            }
+        );
     };
 
     // Add/Update 3D elements in Three.js Scene
