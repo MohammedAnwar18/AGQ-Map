@@ -3798,6 +3798,9 @@ const MapComponent = () => {
                     } else if (action === 'profile') {
                         setShowProfile(true);
                         setShowSidebar(false);
+                    } else if (action === 'ar-workspace') {
+                        navigate('/ar-workspace');
+                        setShowSidebar(false);
                     } else if (action === 'spatial-ar') {
                         navigate('/ar');
                         setShowSidebar(false);

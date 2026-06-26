@@ -234,8 +234,18 @@ io.on('connection', (socket) => {
         socket.to(`user_${receiverId}`).emit('user-stop-typing', { userId: socket.userId });
     });
 
+    // AR Workspace Synchronization
+    socket.on('ar-spatial-update', (data) => {
+        if (socket.userId) {
+            socket.to(`user_${socket.userId}`).emit('ar-spatial-update', data);
+        }
+    });
 
-
+    socket.on('ar-object-manipulation', (data) => {
+        if (socket.userId) {
+            socket.to(`user_${socket.userId}`).emit('ar-object-manipulation', data);
+        }
+    });
     socket.on('disconnect', async () => {
         console.log('User disconnected:', socket.userId);
         if (socket.userId) {

@@ -10,6 +10,7 @@ const LegalPages = React.lazy(() => import('./pages/LegalPages'));
 const Support = React.lazy(() => import('./pages/Support'));
 const PublishedView = React.lazy(() => import('./pages/PublishedView'));
 const ARView = React.lazy(() => import('./pages/ARView'));
+const ARWorkspace = React.lazy(() => import('./pages/ARWorkspace'));
 const VirtualTourMap = React.lazy(() => import('./pages/VirtualTourMap'));
 
 import OfflinePage from './components/OfflinePage';
@@ -139,6 +140,7 @@ function App() {
                                 <Route path="/privacy" element={<LegalPages type="privacy" />} />
                                 <Route path="/support" element={<Support />} />
                                 <Route path="/ar" element={<ProtectedRoute><ARView /></ProtectedRoute>} />
+                                <Route path="/ar-workspace" element={<ProtectedRoute><ARWorkspace /></ProtectedRoute>} />
                                 <Route path="/virtual-tour" element={<ProtectedRoute><VirtualTourMap /></ProtectedRoute>} />
                                 <Route path="/" element={<Navigate to="/map" />} />
                                 <Route path="*" element={<OfflinePage />} />
