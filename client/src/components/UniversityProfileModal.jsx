@@ -43,6 +43,11 @@ const ShareIcon = () => (
 
 const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChange, onFacilityClick, onShopClick }) => {
 
+    const [showWelcome, setShowWelcome] = useState(true);
+    const [ritajUsername, setRitajUsername] = useState('');
+    const [ritajPassword, setRitajPassword] = useState('');
+    const [isLoggingIn, setIsLoggingIn] = useState(false);
+    
     const [activeTab, setActiveTab] = useState('overview');
     const [selectedFacilityCategory, setSelectedFacilityCategory] = useState(null);
     const [facilities, setFacilities] = useState({});
@@ -103,6 +108,19 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
         loadFacilities();
         loadPanoramas();
     }, [university.id]);
+
+    const handleRitajLoginSubmit = (e) => {
+        e.preventDefault();
+        if (!ritajUsername || !ritajPassword) {
+            alert('الرجاء إدخال اسم المستخدم وكلمة المرور');
+            return;
+        }
+        setIsLoggingIn(true);
+        setTimeout(() => {
+            setIsLoggingIn(false);
+            setShowWelcome(false);
+        }, 1500);
+    };
 
     const loadPanoramas = async () => {
         try {
@@ -486,6 +504,111 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
             alert(e.response?.data?.error || 'فشل تعديل الاسم');
         }
     };
+
+    if (showWelcome) {
+        return (
+            <div className="university-modal-overlay fade-in" onClick={onClose}>
+                <div className="university-modal-container welcome-portal-container" onClick={e => e.stopPropagation()}>
+                    {/* Welcome Top bar */}
+                    <div className="welcome-portal-topbar">
+                        <button className="welcome-portal-close" onClick={onClose} title="إغلاق">&times;</button>
+                        <h2 className="welcome-portal-header-title">بوابة جامعة بيرزيت الرقمية</h2>
+                        <button 
+                            className="welcome-portal-share" 
+                            onClick={handleShare} 
+                            title="مشاركة"
+                        >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+                                <polyline points="16 6 12 2 8 6"></polyline>
+                                <line x1="12" y1="2" x2="12" y2="15"></line>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div className="welcome-portal-content">
+                        {/* Centennial Logo Badge */}
+                        <div className="welcome-portal-centennial-wrapper">
+                            <img 
+                                src="/images/birzeit_centennial.jpg" 
+                                alt="Birzeit Centennial Logo" 
+                                className="welcome-portal-centennial-logo"
+                            />
+                        </div>
+
+                        <div className="welcome-portal-titles">
+                            <h1 className="welcome-portal-main-title">بوابة الحرم الجامعي الذكي</h1>
+                            <p className="welcome-portal-subtitle">بمناسبة مئوية جامعة بيرزيت 1924 - 2024</p>
+                        </div>
+
+                        {/* Login Form */}
+                        <form onSubmit={handleRitajLoginSubmit} className="welcome-portal-form">
+                            <div className="welcome-form-group">
+                                <label className="welcome-form-label">بوابة ريتاج الأكاديمية (Ritaj)</label>
+                                <div className="welcome-input-wrapper">
+                                    <span className="welcome-input-icon">👤</span>
+                                    <input 
+                                        type="text" 
+                                        placeholder="رقم الطالب أو اسم المستخدم (ريتاج)" 
+                                        className="welcome-portal-input"
+                                        value={ritajUsername}
+                                        onChange={e => setRitajUsername(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="welcome-form-group">
+                                <div className="welcome-input-wrapper">
+                                    <span className="welcome-input-icon">🔒</span>
+                                    <input 
+                                        type="password" 
+                                        placeholder="كلمة المرور" 
+                                        className="welcome-portal-input"
+                                        value={ritajPassword}
+                                        onChange={e => setRitajPassword(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <button type="submit" className="welcome-portal-login-btn" disabled={isLoggingIn}>
+                                {isLoggingIn ? (
+                                    <div className="portal-spinner-wrapper">
+                                        <span className="portal-spinner"></span>
+                                        جاري الدخول لبوابة ريتاج...
+                                    </div>
+                                ) : (
+                                    "تسجيل الدخول عبر ريتاج"
+                                )}
+                            </button>
+                        </form>
+
+                        <div className="welcome-portal-divider">
+                            <span>أو</span>
+                        </div>
+
+                        <button 
+                            type="button" 
+                            className="welcome-portal-guest-btn"
+                            onClick={() => setShowWelcome(false)}
+                        >
+                            الدخول كزائر (تصفح الخريطة والمرافق)
+                        </button>
+                    </div>
+
+                    {/* Bottom Silhouette Overlay */}
+                    <div className="welcome-portal-footer-bg">
+                        <img 
+                            src="/images/birzeit_buildings.png" 
+                            alt="Birzeit Silhouette" 
+                            className="welcome-portal-silhouette"
+                        />
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="university-modal-overlay fade-in" onClick={onClose}>
