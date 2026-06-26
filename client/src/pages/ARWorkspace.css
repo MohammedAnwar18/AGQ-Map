@@ -761,3 +761,129 @@
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(0, 240, 255, 0.6);
 }
+
+/* Pairing button & Modal styles */
+.arw-pair-btn {
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 0, 127, 0.25);
+    background: rgba(255, 0, 127, 0.08);
+    color: var(--accent-pink);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.arw-pair-btn:hover {
+    background: var(--accent-pink);
+    color: #fff;
+    box-shadow: 0 0 15px rgba(255, 0, 127, 0.4);
+}
+
+.arw-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 11, 16, 0.85);
+    backdrop-filter: blur(12px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.arw-modal-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-glass);
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 400px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    position: relative;
+    backdrop-filter: blur(25px);
+}
+
+.arw-modal-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.arw-modal-close:hover {
+    color: #fff;
+}
+
+.arw-modal-card h3 {
+    margin-top: 0;
+    color: #fff;
+}
+
+.arw-modal-card p {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin: 10px 0 20px;
+}
+
+.arw-qr-container {
+    background: white;
+    padding: 16px;
+    border-radius: 12px;
+    display: inline-block;
+    box-shadow: 0 4px 20px rgba(0, 240, 255, 0.25);
+    margin-bottom: 20px;
+}
+
+.arw-qr-container img {
+    display: block;
+    width: 200px;
+    height: 200px;
+}
+
+.arw-qr-placeholder {
+    width: 200px;
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    margin: 0 auto 20px;
+}
+
+.arw-modal-info {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.arw-modal-info span {
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+}
+
+.arw-modal-info input {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-glass);
+    border-radius: 8px;
+    padding: 10px;
+    color: var(--accent-cyan);
+    font-size: 0.74rem;
+    font-family: monospace;
+    text-align: center;
+    cursor: pointer;
+}
+

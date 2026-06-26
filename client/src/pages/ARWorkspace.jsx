@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import QRCode from 'qrcode';
 import { useAuth } from '../context/AuthContext';
 import './ARWorkspace.css';
 
@@ -34,7 +35,18 @@ const getDirectionName = (h) => DIRS[Math.round(((h % 360) + 360) % 360 / 45) % 
 // ═══════════════════════════════════════════════════
 export default function ARWorkspace() {
     const navigate = useNavigate();
-    const { socket, user } = useAuth();
+    const { socket, user, token } = useAuth();
+
+    // Auto login via pairToken query parameter
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const pairToken = params.get('pairToken');
+        if (pairToken) {
+            localStorage.setItem('token', pairToken);
+            // Redirect to clean path without query parameters
+            window.location.href = window.location.origin + window.location.pathname;
+        }
+    }, []);
 
     // Device selection / detection
     const [deviceMode, setDeviceMode] = useState(null); // 'mobile' | 'desktop'
@@ -76,6 +88,19 @@ export default function ARWorkspace() {
 
     const [selectedObjectId, setSelectedObjectId] = useState(null);
     const [livePhoneOrientation, setLivePhoneOrientation] = useState({ alpha: 0, beta: 90, gamma: 0, heading: 0 });
+
+    // QR Pairing states
+    const [showPairModal, setShowPairModal] = useState(false);
+    const [qrCodeUrl, setQrCodeUrl] = useState('');
+
+    useEffect(() => {
+        if (token && deviceMode === 'desktop') {
+            const pairingUrl = `${window.location.origin}/ar-workspace?pairToken=${token}`;
+            QRCode.toDataURL(pairingUrl, { width: 256, margin: 2 }, (err, url) => {
+                if (!err) setQrCodeUrl(url);
+            });
+        }
+    }, [token, deviceMode]);
 
     // Detect device automatically but allow override
     useEffect(() => {
@@ -757,6 +782,11 @@ export default function ARWorkspace() {
                         <span className={`arw-dot ${peerConnected ? 'active' : ''}`} />
                         <span>الطرف الثاني: {peerConnected ? 'متصل' : 'بانتظار الطرف الآخر...'}</span>
                     </div>
+                    {deviceMode === 'desktop' && (
+                        <button className="arw-pair-btn" onClick={() => setShowPairModal(true)}>
+                            ربط هاتف جديد 📱
+                        </button>
+                    )}
                     
                     <button className="arw-mode-toggle" onClick={handleToggleMode}>
                         تبديل إلى وضع {deviceMode === 'mobile' ? 'الكمبيوتر 💻' : 'الهاتف 📱'}
@@ -1002,6 +1032,35 @@ export default function ARWorkspace() {
                             </div>
                         </div>
                     </aside>
+                </div>
+            )}
+
+            {/* QR Pairing Modal */}
+            {showPairModal && (
+                <div className="arw-modal-overlay" onClick={() => setShowPairModal(false)}>
+                    <div className="arw-modal-card" onClick={e => e.stopPropagation()}>
+                        <button className="arw-modal-close" onClick={() => setShowPairModal(false)}>✕</button>
+                        <h3>ربط كاشف الهاتف الذكي 📱</h3>
+                        <p>امسح الرمز التالي بكاميرا الهاتف لتسجيل الدخول التلقائي وربط الأجهزة فوراً:</p>
+                        
+                        {qrCodeUrl ? (
+                            <div className="arw-qr-container">
+                                <img src={qrCodeUrl} alt="Pairing QR Code" />
+                            </div>
+                        ) : (
+                            <div className="arw-qr-placeholder">جاري توليد الرمز...</div>
+                        )}
+                        
+                        <div className="arw-modal-info">
+                            <span>أو افتح الرابط التالي على الهاتف:</span>
+                            <input 
+                                type="text" 
+                                readOnly 
+                                value={`${window.location.origin}/ar-workspace?pairToken=${token}`} 
+                                onClick={e => e.target.select()}
+                            />
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
