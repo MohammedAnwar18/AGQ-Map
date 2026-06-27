@@ -645,59 +645,71 @@
 /* مؤشر لوضع الإضافة والرسم اليدوي (HUD) */
 .dt-placement-indicator {
     position: absolute;
-    top: 90px;
+    top: 80px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(10, 17, 30, 0.93);
-    border: 1px solid var(--dt-emerald);
+    background: rgba(6, 12, 22, 0.95);
+    border: 1.5px solid var(--dt-emerald);
     color: var(--dt-text);
-    padding: 12px 28px;
-    border-radius: 30px;
-    font-weight: 700;
+    padding: 12px 20px;
+    border-radius: 14px;
+    font-weight: 600;
     font-size: 0.88rem;
     z-index: 999;
     display: flex;
     align-items: center;
-    gap: 16px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    backdrop-filter: blur(8px);
+    gap: 20px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 20px rgba(16,185,129,0.2);
+    backdrop-filter: blur(12px);
+    animation: hud-appear 0.25s ease;
+    min-width: 340px;
+}
+
+@keyframes hud-appear {
+    from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
 .dt-placement-actions {
     display: flex;
-    gap: 10px;
+    gap: 8px;
+    flex-shrink: 0;
 }
 
 .dt-btn-hud-save {
     background: var(--dt-emerald);
     color: #0b1510;
     border: none;
-    padding: 4px 14px;
-    border-radius: 20px;
+    padding: 6px 14px;
+    border-radius: 8px;
     cursor: pointer;
     font-weight: 700;
     font-size: 0.78rem;
     transition: all 0.2s;
+    white-space: nowrap;
 }
 
 .dt-btn-hud-save:hover {
     background: #059669;
+    transform: translateY(-1px);
 }
 
 .dt-btn-hud-cancel {
-    background: rgba(244, 63, 94, 0.15);
+    background: rgba(244, 63, 94, 0.12);
     border: 1px solid rgba(244, 63, 94, 0.3);
     color: #fda4af;
-    padding: 4px 14px;
-    border-radius: 20px;
+    padding: 6px 12px;
+    border-radius: 8px;
     cursor: pointer;
     font-weight: 700;
     font-size: 0.78rem;
     transition: all 0.2s;
+    white-space: nowrap;
 }
 
 .dt-btn-hud-cancel:hover {
-    background: var(--dt-red);
+    background: rgba(239, 68, 68, 0.2);
+    border-color: var(--dt-red);
     color: #fff;
 }
 
@@ -741,35 +753,69 @@
 .dt-layer-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     margin-top: 8px;
-    max-height: 160px;
+    max-height: 220px;
     overflow-y: auto;
+    padding-right: 2px;
 }
 
+.dt-layer-list::-webkit-scrollbar { width: 4px; }
+.dt-layer-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+
 .dt-layer-row {
-    background: rgba(255,255,255,0.02);
-    border: 1px solid var(--dt-border2);
-    border-radius: 6px;
-    padding: 8px 12px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 8px;
+    padding: 8px 10px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     font-size: 0.78rem;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.dt-layer-row:hover {
+    border-color: rgba(16,185,129,0.35);
+    background: rgba(16,185,129,0.04);
 }
 
 .dt-layer-row-info {
     display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+}
+
+.dt-layer-row-info:hover .dt-layer-row-title {
+    color: var(--dt-emerald);
+}
+
+.dt-layer-row-icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.dt-layer-row-info > div {
+    display: flex;
     flex-direction: column;
+    min-width: 0;
 }
 
 .dt-layer-row-title {
     font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color 0.2s;
 }
 
 .dt-layer-row-sub {
     font-size: 0.68rem;
     color: var(--dt-muted);
+    margin-top: 1px;
 }
 
 .dt-layer-delete {
@@ -778,11 +824,16 @@
     color: var(--dt-muted);
     cursor: pointer;
     font-size: 0.85rem;
+    padding: 4px 6px;
+    border-radius: 4px;
     transition: all 0.2s;
+    flex-shrink: 0;
+    margin-right: -2px;
 }
 
 .dt-layer-delete:hover {
     color: var(--dt-red);
+    background: rgba(239,68,68,0.1);
 }
 
 /* الموبايل / الشاشات الصغيرة */

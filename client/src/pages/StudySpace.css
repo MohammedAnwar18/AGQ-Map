@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&display=swap');
+
 .ss-translate-btn--loading { background: rgba(251,171,21,0.2); color: var(--ss-gold); }
 
 /* مؤشر تقدم الترجمة */
@@ -12,8 +14,6 @@
 /* ══════════════════════════════════════════════════════
    مساحة دراسة — Study Space CSS v2
    ══════════════════════════════════════════════════════ */
-
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&display=swap');
 
 :root {
     --ss-gold:      #fbab15;

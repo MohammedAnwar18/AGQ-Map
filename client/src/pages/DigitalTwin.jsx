@@ -46,6 +46,21 @@ export default function DigitalTwin({ user, onClose }) {
     const [drawMode, setDrawMode] = useState('none'); // none, building, street, point
     const [drawnCoords, setDrawnCoords] = useState([]); // إحداثيات الشكل الجاري رسمه
     const [selectedPlacementType, setSelectedPlacementType] = useState('tree');
+
+    // ─── Refs للقراءة الحية من داخل closures الـ Three.js وحدث النقر ─────────
+    const drawModeRef = useRef('none');
+    const customBuildingsRef = useRef([]);
+    const customPointsRef = useRef([]);
+    const customStreetsRef = useRef([]);
+    const geojsonDataRef = useRef(null);
+    const centerCoordsRef = useRef(DEFAULT_CENTER);
+    const timeOfDayRef = useRef(12);
+    const autoTourRef = useRef(false);
+    const pointMappingsRef = useRef({});
+    const selectedPlacementTypeRef = useRef('tree');
+    const rebuildSceneRef = useRef(null); // callback لإعادة بناء المشهد
+    const drawnCoordsRef = useRef([]); // للقراءة من dblclick handler
+    const handleFinishDrawingRef = useRef(null); // ref لدالة إنهاء الرسم
     
     // فاحص الكائنات (Inspector)
     const [selectedFeature, setSelectedFeature] = useState(null); 
@@ -89,6 +104,19 @@ export default function DigitalTwin({ user, onClose }) {
     const texturesCacheRef = useRef(new Map()); 
     const timeRef = useRef(0);
     const [loadingProject, setLoadingProject] = useState(false);
+
+    // ─── مزامنة Refs مع الـ State لضمان القراءة الصحيحة من Closures ──────────
+    useEffect(() => { drawModeRef.current = drawMode; }, [drawMode]);
+    useEffect(() => { customBuildingsRef.current = customBuildings; }, [customBuildings]);
+    useEffect(() => { customPointsRef.current = customPoints; }, [customPoints]);
+    useEffect(() => { customStreetsRef.current = customStreets; }, [customStreets]);
+    useEffect(() => { geojsonDataRef.current = geojsonData; }, [geojsonData]);
+    useEffect(() => { centerCoordsRef.current = centerCoords; }, [centerCoords]);
+    useEffect(() => { timeOfDayRef.current = timeOfDay; }, [timeOfDay]);
+    useEffect(() => { autoTourRef.current = autoTour; }, [autoTour]);
+    useEffect(() => { pointMappingsRef.current = pointMappings; }, [pointMappings]);
+    useEffect(() => { selectedPlacementTypeRef.current = selectedPlacementType; }, [selectedPlacementType]);
+    useEffect(() => { drawnCoordsRef.current = drawnCoords; }, [drawnCoords]);
 
     // ─── دوال التحديث الحي المباشر للمعالم والطبقات ───────────────────
     const updateBuildingProperty = (index, key, value) => {
@@ -740,6 +768,20 @@ export default function DigitalTwin({ user, onClose }) {
             handleMapClick(e, map);
         });
 
+        // Double-click ينهي الرسم بدلاً من zoom الافتراضي
+        map.on('dblclick', (e) => {
+            if (drawModeRef.current !== 'none' && drawModeRef.current !== 'point') {
+                e.preventDefault();
+                // نستخدم setTimeout لأن dblclick يسبقه click مزدوج — نتحقق أن لدينا نقاط كافية
+                setTimeout(() => {
+                    const coords = drawnCoordsRef.current;
+                    if (coords.length >= 2) {
+                        handleFinishDrawingRef.current && handleFinishDrawingRef.current();
+                    }
+                }, 50);
+            }
+        });
+
         return () => {
             map.remove();
         };
@@ -965,25 +1007,85 @@ export default function DigitalTwin({ user, onClose }) {
         });
     }, [drawnCoords, drawMode]);
 
+    // تأثير تغيير شكل المؤشر حسب وضع الرسم
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map) return;
+        if (drawMode !== 'none') {
+            map.getCanvas().style.cursor = 'crosshair';
+        } else {
+            map.getCanvas().style.cursor = '';
+        }
+    }, [drawMode]);
+
+    // خط المعاينة اللحظي (يتتبع الماوس أثناء الرسم)
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map) return;
+
+        const onMouseMove = (e) => {
+            const mode = drawModeRef.current;
+            const coords = drawnCoords; // stale here is fine; refreshed on next click
+            const src = map.getSource('dt-drawing-source');
+            if (!src || (mode !== 'building' && mode !== 'street')) return;
+            if (drawnCoords.length === 0) return;
+
+            const mouseCoord = [e.lngLat.lng, e.lngLat.lat];
+            const previewLine = {
+                type: 'Feature',
+                properties: { type: 'preview' },
+                geometry: {
+                    type: 'LineString',
+                    coordinates: [...drawnCoords, mouseCoord]
+                }
+            };
+
+            // إعادة رسم مجموعة المعالم مع إضافة خط المعاينة
+            const features = drawnCoords.map((coord, index) => ({
+                type: 'Feature',
+                properties: { type: 'handle', index },
+                geometry: { type: 'Point', coordinates: coord }
+            }));
+            features.push(previewLine);
+            if (mode === 'building' && drawnCoords.length >= 3) {
+                features.push({
+                    type: 'Feature',
+                    properties: { type: 'polygon' },
+                    geometry: { type: 'Polygon', coordinates: [[...drawnCoords, mouseCoord, drawnCoords[0]]] }
+                });
+            }
+            src.setData({ type: 'FeatureCollection', features });
+        };
+
+        if (drawMode !== 'none') {
+            map.on('mousemove', onMouseMove);
+        }
+        return () => {
+            map.off('mousemove', onMouseMove);
+        };
+    }, [drawMode, drawnCoords]);
+
     // ─── 6. معالجة الأحداث والضغط على الخريطة ─────────────────────────────
     const handleMapClick = (e, map) => {
         if (!canEdit) {
-            // الزائر يمكنه فقط تفتيش المعالم بدون تعديل
             inspectClosestFeature(e);
             return;
         }
 
-        if (drawMode === 'building' || drawMode === 'street') {
+        const currentMode = drawModeRef.current;
+
+        if (currentMode === 'building' || currentMode === 'street') {
             setDrawnCoords(prev => [...prev, [e.lngLat.lng, e.lngLat.lat]]);
             return;
         }
 
-        if (drawMode === 'point') {
+        if (currentMode === 'point') {
+            const placementType = selectedPlacementTypeRef.current;
             const newPt = {
                 type: "Feature",
                 properties: {
-                    name: `${selectedPlacementType} مضاف حديثاً`,
-                    type: selectedPlacementType,
+                    name: `${placementType} مضاف حديثاً`,
+                    type: placementType,
                     scale: 1.0,
                     rotation: 0,
                     offsetX: 0,
@@ -994,22 +1096,24 @@ export default function DigitalTwin({ user, onClose }) {
                     coordinates: [e.lngLat.lng, e.lngLat.lat]
                 }
             };
-            setCustomPoints(prev => [...prev, newPt]);
-            
-            // تحديد الكائن النقطي الجديد تلقائياً لتعديله فوراً في المفتش (Inspector)
-            setSelectedFeature({
-                type: 'point',
-                id: `custom-${customPoints.length}`,
-                isCustom: true,
-                properties: newPt.properties,
-                coords: e.lngLat,
-                geometry: newPt.geometry
+            setCustomPoints(prev => {
+                const updated = [...prev, newPt];
+                // auto-select the new point immediately
+                setSelectedFeature({
+                    type: 'point',
+                    id: `custom-${prev.length}`,
+                    isCustom: true,
+                    index: prev.length,
+                    properties: newPt.properties,
+                    coords: e.lngLat,
+                    geometry: newPt.geometry
+                });
+                setEditScale(1.0);
+                setEditRotation(0);
+                setEditOffsetX(0);
+                setEditOffsetY(0);
+                return updated;
             });
-            setEditScale(newPt.properties.scale || 1.0);
-            setEditRotation(newPt.properties.rotation || 0);
-            setEditOffsetX(newPt.properties.offsetX || 0);
-            setEditOffsetY(newPt.properties.offsetY || 0);
-            
             setDrawMode('none');
             return;
         }
@@ -1094,14 +1198,12 @@ export default function DigitalTwin({ user, onClose }) {
 
     // ─── 7. طبقة الرندر ثلاثي الأبعاد المخصصة (Three.js Layer) ─────────────────
     const addThreeJsCustomLayer = (map) => {
-        const anchorMerc = maplibregl.MercatorCoordinate.fromLngLat(centerCoords, 0);
-        const meterScale = anchorMerc.meterInMercatorCoordinateUnits();
-
         const customLayer = {
             id: 'threejs-digital-twin-layer',
             type: 'custom',
             renderingMode: '3d',
             onAdd: function (mapInstance, gl) {
+                this.map = mapInstance;
                 this.camera = new THREE.Camera();
                 this.scene = new THREE.Scene();
 
@@ -1123,35 +1225,38 @@ export default function DigitalTwin({ user, onClose }) {
                 });
                 this.renderer.autoClear = false;
 
+                // Register rebuild callback so React state changes can trigger rebuild
+                rebuildSceneRef.current = () => buildThreeJsScene();
                 buildThreeJsScene();
             },
             render: function (gl, matrix) {
-                if (autoTour) {
-                    const currentBearing = mapInstance.getBearing();
-                    mapInstance.setBearing(currentBearing + 0.08);
+                if (autoTourRef.current && this.map) {
+                    const currentBearing = this.map.getBearing();
+                    this.map.setBearing(currentBearing + 0.08);
                 }
+
+                // Recompute anchor every frame so newly drawn features at any location render correctly
+                const anchor = maplibregl.MercatorCoordinate.fromLngLat(centerCoordsRef.current, 0);
+                const ms = anchor.meterInMercatorCoordinateUnits();
 
                 const m = new THREE.Matrix4().fromArray(matrix);
                 const l = new THREE.Matrix4()
-                    .makeTranslation(anchorMerc.x, anchorMerc.y, anchorMerc.z)
-                    .scale(new THREE.Vector3(meterScale, -meterScale, meterScale));
+                    .makeTranslation(anchor.x, anchor.y, anchor.z)
+                    .scale(new THREE.Vector3(ms, -ms, ms));
 
                 this.camera.projectionMatrix = m.multiply(l);
 
                 timeRef.current += 0.015;
                 
-                // أنيميشن شفرات التوربينات
                 animatedRotorsRef.current.forEach(rotor => {
                     rotor.rotation.z += 0.08;
                 });
 
-                // أنيميشن منارات الهولوغرام
                 animatedBeaconsRef.current.forEach(beacon => {
                     const pulse = 1.0 + Math.sin(timeRef.current * 4) * 0.15;
                     beacon.scale.set(pulse, 1.0, pulse);
                 });
 
-                // أنيميشن تدفق مياه النافورة المضيئة
                 animatedWaterJetsRef.current.forEach((jet, idx) => {
                     const wave = 1.0 + Math.sin(timeRef.current * 9 + idx) * 0.28;
                     jet.scale.set(wave, 1.0 + Math.sin(timeRef.current * 7 + idx) * 0.4, wave);
@@ -1160,7 +1265,7 @@ export default function DigitalTwin({ user, onClose }) {
                 this.renderer.resetState();
                 this.renderer.render(this.scene, this.camera);
                 
-                mapInstance.triggerRepaint();
+                if (this.map) this.map.triggerRepaint();
             }
         };
 
@@ -1178,13 +1283,21 @@ export default function DigitalTwin({ user, onClose }) {
         animatedBeaconsRef.current = [];
         animatedWaterJetsRef.current = [];
 
-        const anchorMerc = maplibregl.MercatorCoordinate.fromLngLat(centerCoords, 0);
+        // Read from refs so this always gets the latest state even inside stale closures
+        const currentCenter = centerCoordsRef.current;
+        const currentBuildings = customBuildingsRef.current;
+        const currentPoints = customPointsRef.current;
+        const currentGeoJSON = geojsonDataRef.current;
+        const currentMappings = pointMappingsRef.current;
+        const currentTimeOfDay = timeOfDayRef.current;
+
+        const anchorMerc = maplibregl.MercatorCoordinate.fromLngLat(currentCenter, 0);
         const meterScale = anchorMerc.meterInMercatorCoordinateUnits();
-        const isNight = timeOfDay < 6 || timeOfDay > 18;
+        const isNight = currentTimeOfDay < 6 || currentTimeOfDay > 18;
 
         // أ. رندرة المباني المخصصة والمكسوة بالخامات الواقعية
-        customBuildings.forEach((bld, idx) => {
-            if (bld.coordinates.length < 3) return;
+        currentBuildings.forEach((bld, idx) => {
+            if (!bld.coordinates || bld.coordinates.length < 3) return;
 
             const localPoints = bld.coordinates.map(coord => {
                 const pMerc = maplibregl.MercatorCoordinate.fromLngLat(coord, 0);
@@ -1193,7 +1306,7 @@ export default function DigitalTwin({ user, onClose }) {
                 return new THREE.Vector2(dx, dy);
             });
 
-            // حساب مركز المبنى (Centroid) لتسهيل الدوران والتكبير حول المحور المركزي
+            // حساب مركز المبنى (Centroid)
             let centerX = 0, centerY = 0;
             localPoints.forEach(p => {
                 centerX += p.x;
@@ -1203,7 +1316,6 @@ export default function DigitalTwin({ user, onClose }) {
             centerY /= localPoints.length;
 
             const shape = new THREE.Shape();
-            // مركزة الإحداثيات حول المركز
             const centeredPoints = localPoints.map(p => new THREE.Vector2(p.x - centerX, p.y - centerY));
 
             shape.moveTo(centeredPoints[0].x, centeredPoints[0].y);
@@ -1216,28 +1328,25 @@ export default function DigitalTwin({ user, onClose }) {
             const extrudeSettings = { depth: height, bevelEnabled: false };
             const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
 
-            // خامة الجدران والواجهات (زجاج، طوب، حجر تراثي، خرسانة)
             const wallTexture = getProceduralTexture(bld.skin || 'glass', bld.color || '#3b82f6', isNight);
             const wallMaterial = new THREE.MeshLambertMaterial({
                 map: wallTexture,
                 color: bld.color ? new THREE.Color(bld.color) : 0xffffff
             });
 
-            // خامة السطح (ألواح شمسية أو خرسانة)
             let roofMaterial;
             if (bld.solarRoof) {
                 const solarTexture = getProceduralTexture('solar', '#ffffff', false);
                 roofMaterial = new THREE.MeshLambertMaterial({ map: solarTexture });
             } else {
-                roofMaterial = new THREE.MeshLambertMaterial({ color: 0x27272a }); 
+                roofMaterial = new THREE.MeshLambertMaterial({ color: 0x27272a });
             }
 
             const materials = [roofMaterial, wallMaterial];
             const mesh = new THREE.Mesh(geometry, materials);
 
-            // تطبيق مقياس الحجم وتدوير وموقع المبنى المخصص في نفس اللحظة
             const scaleVal = bld.scale || 1.0;
-            mesh.scale.set(scaleVal, scaleVal, 1.0); // تكبير الـ Footprint دون التأثير على الارتفاع المحدّد بالعمق
+            mesh.scale.set(scaleVal, scaleVal, 1.0);
 
             const rotationDeg = bld.rotation || 0;
             mesh.rotation.z = (rotationDeg * Math.PI) / 180;
@@ -1252,19 +1361,20 @@ export default function DigitalTwin({ user, onClose }) {
 
         // ب. رندرة النقاط ثلاثية الأبعاد
         const allPoints = [];
-        if (geojsonData) {
-            const features = geojsonData.type === 'FeatureCollection' ? geojsonData.features : [geojsonData];
+        if (currentGeoJSON) {
+            const features = currentGeoJSON.type === 'FeatureCollection' ? currentGeoJSON.features : [currentGeoJSON];
             features.forEach((f, idx) => {
-                if (f.geometry.type === 'Point') {
+                if (f.geometry && f.geometry.type === 'Point') {
                     allPoints.push({ ...f, id: `base-${idx}` });
                 }
             });
         }
-        customPoints.forEach((p, idx) => {
+        currentPoints.forEach((p, idx) => {
             allPoints.push({ ...p, id: `custom-${idx}` });
         });
 
         allPoints.forEach((p) => {
+            if (!p.geometry || !p.geometry.coordinates) return;
             const coords = p.geometry.coordinates;
             const pMerc = maplibregl.MercatorCoordinate.fromLngLat(coords, 0);
 
@@ -1275,7 +1385,7 @@ export default function DigitalTwin({ user, onClose }) {
             dy += p.properties?.offsetY || 0;
 
             const type = p.properties?.type || 'tree';
-            const mapping = pointMappings[type] || { model: 'tree', scale: 1.0, color: '#10b981' };
+            const mapping = (currentMappings && currentMappings[type]) || { model: 'tree', scale: 1.0, color: '#10b981' };
 
             const group = new THREE.Group();
             group.position.set(dx, dy, 0);
@@ -1297,8 +1407,11 @@ export default function DigitalTwin({ user, onClose }) {
 
     // إعادة بناء مشهد Three.js تلقائياً عند تحديث الكائنات أو المباني أو الوقت أو البيانات
     useEffect(() => {
-        buildThreeJsScene();
-    }, [customPoints, customBuildings, geojsonData, timeOfDay]);
+        // rebuildSceneRef is registered after Three.js onAdd runs, so it's always safe
+        if (rebuildSceneRef.current) {
+            rebuildSceneRef.current();
+        }
+    }, [customPoints, customBuildings, geojsonData, timeOfDay, centerCoords]);
 
     // ─── 9. مولّد الكائنات ثلاثية الأبعاد الإجرائي المتقدم ───────────────────
     const buildProceduralModel = (type, group, colorHex, isNight) => {
@@ -1715,6 +1828,10 @@ export default function DigitalTwin({ user, onClose }) {
             return;
         }
 
+        // حساب مركز الشكل المرسوم لتحريك الـ anchor إليه
+        const avgLng = drawnCoords.reduce((s, c) => s + c[0], 0) / drawnCoords.length;
+        const avgLat = drawnCoords.reduce((s, c) => s + c[1], 0) / drawnCoords.length;
+
         if (drawMode === 'building') {
             if (drawnCoords.length < 3) {
                 alert('المبنى يتطلب 3 نقاط على الأقل.');
@@ -1723,35 +1840,46 @@ export default function DigitalTwin({ user, onClose }) {
             const closedCoords = [...drawnCoords, drawnCoords[0]];
             const newBld = {
                 id: `bld-drawn-${Date.now()}`,
-                name: `مبنى مرسوم #${customBuildings.length + 1}`,
+                name: `مبنى مرسوم #${customBuildingsRef.current.length + 1}`,
                 height: 15,
                 skin: 'glass',
                 solarRoof: true,
                 color: '#3b82f6',
                 coordinates: closedCoords
             };
-            setCustomBuildings(prev => [...prev, newBld]);
-            
-            // تحديد المبنى الجديد تلقائياً لتعديله فوراً في المفتش (Inspector)
-            setSelectedFeature({
-                type: 'custom-building',
-                id: newBld.id,
-                index: customBuildings.length,
-                properties: newBld,
-                coords: { lng: closedCoords[0][0], lat: closedCoords[0][1] }
+
+            // تحريك مركز الـ anchor إلى موقع المبنى الجديد
+            setCenterCoords([avgLng, avgLat]);
+
+            setCustomBuildings(prev => {
+                const updated = [...prev, newBld];
+                // Auto-select the new building
+                setSelectedFeature({
+                    type: 'custom-building',
+                    id: newBld.id,
+                    index: prev.length,
+                    properties: newBld,
+                    coords: { lng: closedCoords[0][0], lat: closedCoords[0][1] }
+                });
+                setEditHeight(newBld.height);
+                setEditSkin(newBld.skin);
+                setEditSolarRoof(newBld.solarRoof);
+                setEditColor(newBld.color);
+                setEditScale(1.0);
+                setEditRotation(0);
+                setEditOffsetX(0);
+                setEditOffsetY(0);
+                return updated;
             });
-            setEditHeight(newBld.height);
-            setEditSkin(newBld.skin);
-            setEditSolarRoof(newBld.solarRoof);
-            setEditColor(newBld.color);
-            setEditScale(1.0);
-            setEditRotation(0);
-            setEditOffsetX(0);
-            setEditOffsetY(0);
+
+            // تحريك الكاميرا لعرض المبنى الجديد مباشرة
+            if (mapRef.current) {
+                mapRef.current.flyTo({ center: [avgLng, avgLat], zoom: 17, pitch: 55, duration: 800 });
+            }
         } else if (drawMode === 'street') {
             const newStreet = {
                 id: `st-drawn-${Date.now()}`,
-                name: `شارع مرسوم #${customStreets.length + 1}`,
+                name: `شارع مرسوم #${customStreetsRef.current.length + 1}`,
                 width: editStreetWidth,
                 style: editStreetStyle,
                 coordinates: drawnCoords
@@ -1768,20 +1896,40 @@ export default function DigitalTwin({ user, onClose }) {
         setDrawnCoords([]);
     };
 
+    // ربط الـ ref لإتاحة الاستدعاء من الـ dblclick closure في الـ map
+    handleFinishDrawingRef.current = handleFinishDrawing;
+
     return (
         <div className="dt-container">
             {/* واجهة إرشادية عند الرسم النشط */}
             {drawMode !== 'none' && (
                 <div className="dt-placement-indicator">
-                    <span>
-                        {drawMode === 'building' ? '📐 وضع رسم مبنى مخصص' : drawMode === 'street' ? '🛣️ وضع رسم طريق / شارع' : '📍 وضع إسقاط مجسم'}
-                        {drawMode !== 'point' && ` — تم تحديد (${drawnCoords.length}) نقاط.`}
-                    </span>
-                    <div className="dt-placement-actions">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.92rem' }}>
+                            {drawMode === 'building' ? '📐 وضع رسم مبنى' : drawMode === 'street' ? '🛣️ وضع رسم شارع' : '📍 وضع إسقاط كائن'}
+                        </span>
                         {drawMode !== 'point' && (
-                            <button className="dt-btn-hud-save" onClick={handleFinishDrawing}>إنهاء وحفظ الطبقة</button>
+                            <span style={{ fontSize: '0.78rem', opacity: 0.75 }}>
+                                {drawnCoords.length === 0
+                                    ? 'انقر على الخريطة لتحديد أول نقطة'
+                                    : drawnCoords.length === 1
+                                    ? 'نقطة واحدة — استمر في النقر لإضافة نقاط'
+                                    : `${drawnCoords.length} نقاط مُضافة — انقر مرتين أو اضغط "إنهاء" للحفظ`
+                                }
+                            </span>
                         )}
-                        <button className="dt-btn-hud-cancel" onClick={handleCancelDrawing}>إلغاء</button>
+                        {drawMode === 'point' && (
+                            <span style={{ fontSize: '0.78rem', opacity: 0.75 }}>انقر مباشرة على الخريطة لإسقاط الكائن</span>
+                        )}
+                    </div>
+                    <div className="dt-placement-actions">
+                        {drawMode !== 'point' && drawnCoords.length > 0 && (
+                            <button className="dt-btn-hud-cancel" style={{ background: 'rgba(251,191,36,0.15)', borderColor: '#fbbf24', color: '#fbbf24' }} onClick={() => setDrawnCoords(prev => prev.slice(0, -1))}>↩ تراجع</button>
+                        )}
+                        {drawMode !== 'point' && drawnCoords.length >= 2 && (
+                            <button className="dt-btn-hud-save" onClick={handleFinishDrawing}>✅ إنهاء وحفظ</button>
+                        )}
+                        <button className="dt-btn-hud-cancel" onClick={handleCancelDrawing}>✕ إلغاء</button>
                     </div>
                 </div>
             )}
@@ -2277,26 +2425,52 @@ export default function DigitalTwin({ user, onClose }) {
                                             {/* قائمة العناصر التي رسمها المستخدم */}
                                             {(customBuildings.length > 0 || customStreets.length > 0) && (
                                                 <div style={{ marginTop: '16px' }}>
-                                                    <label style={{ fontSize: '0.78rem', color: 'var(--dt-muted)' }}>الطبقات المرسومة الحالية</label>
+                                                    <label style={{ fontSize: '0.78rem', color: 'var(--dt-muted)' }}>الطبقات المرسومة ({customBuildings.length + customStreets.length})</label>
                                                     <div className="dt-layer-list">
                                                         {customBuildings.map((b, i) => (
                                                             <div className="dt-layer-row" key={b.id}>
-                                                                <div className="dt-layer-row-info">
-                                                                    <span className="dt-layer-row-title">{b.name}</span>
-                                                                    <span className="dt-layer-row-sub">مبنى - ارتفاع {b.height}م ({b.skin === 'glass' ? 'زجاج' : 'طوب'})</span>
+                                                                <div className="dt-layer-row-info" style={{ cursor: 'pointer' }} onClick={() => {
+                                                                    setSelectedFeature({
+                                                                        type: 'custom-building',
+                                                                        id: b.id,
+                                                                        index: i,
+                                                                        properties: b,
+                                                                        coords: { lng: b.coordinates[0][0], lat: b.coordinates[0][1] }
+                                                                    });
+                                                                    setEditHeight(b.height || 15);
+                                                                    setEditSkin(b.skin || 'glass');
+                                                                    setEditSolarRoof(b.solarRoof || false);
+                                                                    setEditColor(b.color || '#3b82f6');
+                                                                    setEditScale(b.scale || 1.0);
+                                                                    setEditRotation(b.rotation || 0);
+                                                                    setEditOffsetX(b.offsetX || 0);
+                                                                    setEditOffsetY(b.offsetY || 0);
+                                                                    if (mapRef.current) {
+                                                                        mapRef.current.flyTo({ center: [b.coordinates[0][0], b.coordinates[0][1]], zoom: 17, pitch: 55, duration: 600 });
+                                                                    }
+                                                                }}>
+                                                                    <span className="dt-layer-row-icon">🏬</span>
+                                                                    <div>
+                                                                        <span className="dt-layer-row-title">{b.name}</span>
+                                                                        <span className="dt-layer-row-sub">{b.height}م · {b.skin === 'glass' ? 'زجاج' : b.skin === 'stone' ? 'حجر' : b.skin === 'brick' ? 'طوب' : 'خرسانة'}</span>
+                                                                    </div>
                                                                 </div>
-                                                                <button className="dt-layer-delete" onClick={() => {
+                                                                <button className="dt-layer-delete" title="حذف" onClick={() => {
                                                                     setCustomBuildings(prev => prev.filter(x => x.id !== b.id));
+                                                                    if (selectedFeature?.id === b.id) setSelectedFeature(null);
                                                                 }}>🗑️</button>
                                                             </div>
                                                         ))}
                                                         {customStreets.map((s, i) => (
                                                             <div className="dt-layer-row" key={s.id}>
                                                                 <div className="dt-layer-row-info">
-                                                                    <span className="dt-layer-row-title">{s.name}</span>
-                                                                    <span className="dt-layer-row-sub">طريق {s.style === 'gravel' ? 'ترابي' : s.style === 'cobblestone' ? 'حجري' : 'أسفلت'} - {s.width}م</span>
+                                                                    <span className="dt-layer-row-icon">🛣️</span>
+                                                                    <div>
+                                                                        <span className="dt-layer-row-title">{s.name}</span>
+                                                                        <span className="dt-layer-row-sub">{s.style === 'gravel' ? 'ترابي' : s.style === 'cobblestone' ? 'حجري' : s.style === 'neon' ? 'نيون' : 'أسفلت'} · {s.width}م</span>
+                                                                    </div>
                                                                 </div>
-                                                                <button className="dt-layer-delete" onClick={() => {
+                                                                <button className="dt-layer-delete" title="حذف" onClick={() => {
                                                                     setCustomStreets(prev => prev.filter(x => x.id !== s.id));
                                                                 }}>🗑️</button>
                                                             </div>
@@ -2393,10 +2567,11 @@ export default function DigitalTwin({ user, onClose }) {
                 {/* شريط التحكم السفلي السريع لتغيير نوع الخريطة */}
                 <div className="dt-bottom-bar">
                     <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--dt-muted)', marginLeft: '6px' }}>خريطة الأساس:</span>
-                    <button className={`dt-bar-btn ${activeBasemap === 'dark' ? 'active' : ''}`} onClick={() => setActiveBasemap('dark')}>🌌 التوأم المظلم</button>
-                    <button className={`dt-bar-btn ${activeBasemap === 'light' ? 'active' : ''}`} onClick={() => setActiveBasemap('light')}>☀️ المضيئة</button>
-                    <button className={`dt-bar-btn ${activeBasemap === 'grid' ? 'active' : ''}`} onClick={() => setActiveBasemap('grid')}>🔲 شبكة الفضاء</button>
-                    <button className={`dt-bar-btn ${activeBasemap === 'satellite' ? 'active' : ''}`} onClick={() => setActiveBasemap('satellite')}>🛰️ القمر الصناعي</button>
+                    <button className={`dt-bar-btn ${activeBasemap === 'dark' ? 'active' : ''}`} onClick={() => setActiveBasemap('dark')}>🌌 مظلم</button>
+                    <button className={`dt-bar-btn ${activeBasemap === 'light' ? 'active' : ''}`} onClick={() => setActiveBasemap('light')}>☀️ فاتح</button>
+                    <button className={`dt-bar-btn ${activeBasemap === 'osm' ? 'active' : ''}`} onClick={() => setActiveBasemap('osm')}>🗺️ OSM</button>
+                    <button className={`dt-bar-btn ${activeBasemap === 'satellite' ? 'active' : ''}`} onClick={() => setActiveBasemap('satellite')}>🛰️ قمر صناعي</button>
+                    <button className={`dt-bar-btn ${activeBasemap === 'grid' ? 'active' : ''}`} onClick={() => setActiveBasemap('grid')}>🔲 شبكة</button>
                 </div>
             </div>
         </div>
