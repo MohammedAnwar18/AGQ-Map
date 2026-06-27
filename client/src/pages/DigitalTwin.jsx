@@ -699,6 +699,19 @@ export default function DigitalTwin({ user, onClose }) {
             }
         });
 
+        map.addLayer({
+            id: 'dt-drawing-points',
+            type: 'circle',
+            source: 'dt-drawing-source',
+            filter: ['==', '$type', 'Point'],
+            paint: {
+                'circle-color': '#10b981',
+                'circle-radius': 6,
+                'circle-stroke-color': '#ffffff',
+                'circle-stroke-width': 2
+            }
+        });
+
         // طبقة رندرة الشوارع المرسومة يدوياً
         map.addSource('dt-custom-streets-source', {
             type: 'geojson',
@@ -836,22 +849,44 @@ export default function DigitalTwin({ user, onClose }) {
         const map = mapRef.current;
         if (!map || !map.getSource('dt-drawing-source')) return;
 
-        let geom = null;
-        if (drawnCoords.length > 0) {
-            if (drawMode === 'street') {
-                geom = { type: 'LineString', coordinates: drawnCoords };
-            } else if (drawMode === 'building') {
-                const closed = [...drawnCoords];
-                if (drawnCoords.length > 2) {
-                    closed.push(drawnCoords[0]);
+        const features = [];
+
+        // 1. أضف النقاط التي تم النقر عليها كدوائر مرئية لتسهيل الرسم والمتابعة
+        drawnCoords.forEach((coord, index) => {
+            features.push({
+                type: 'Feature',
+                properties: { type: 'handle', index },
+                geometry: { type: 'Point', coordinates: coord }
+            });
+        });
+
+        // 2. أضف الخط الرابط بين النقاط (الشارع أو أضلاع المبنى الجاري رسمه)
+        if (drawnCoords.length >= 2) {
+            features.push({
+                type: 'Feature',
+                properties: { type: 'path' },
+                geometry: {
+                    type: 'LineString',
+                    coordinates: drawnCoords
                 }
-                geom = { type: 'Polygon', coordinates: [closed] };
-            }
+            });
+        }
+
+        // 3. أضف المضلع المغلق للمبنى في حال تحديد 3 نقاط على الأقل
+        if (drawMode === 'building' && drawnCoords.length >= 3) {
+            features.push({
+                type: 'Feature',
+                properties: { type: 'polygon' },
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [[...drawnCoords, drawnCoords[0]]]
+                }
+            });
         }
 
         map.getSource('dt-drawing-source').setData({
             type: 'FeatureCollection',
-            features: geom ? [{ type: 'Feature', geometry: geom, properties: {} }] : []
+            features: features
         });
     }, [drawnCoords, drawMode]);
 
@@ -1141,6 +1176,11 @@ export default function DigitalTwin({ user, onClose }) {
 
         updateEnvironmentLighting(isNight);
     };
+
+    // إعادة بناء مشهد Three.js تلقائياً عند تحديث الكائنات أو المباني أو الوقت أو البيانات
+    useEffect(() => {
+        buildThreeJsScene();
+    }, [customPoints, customBuildings, geojsonData, timeOfDay]);
 
     // ─── 9. مولّد الكائنات ثلاثية الأبعاد الإجرائي المتقدم ───────────────────
     const buildProceduralModel = (type, group, colorHex, isNight) => {
