@@ -39,15 +39,19 @@
 
 /* شريط العنوان العلوي */
 .dt-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
     height: var(--dt-header-h);
-    background: rgba(8, 12, 20, 0.85);
+    background: rgba(8, 12, 20, 0.92);
     border-bottom: 1px solid var(--dt-border2);
-    backdrop-filter: blur(12px);
+    backdrop-filter: blur(16px);
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 24px;
-    z-index: 10;
+    z-index: 999;
 }
 
 .dt-header-title {
@@ -104,6 +108,7 @@
     position: relative;
     display: flex;
     overflow: hidden;
+    margin-top: var(--dt-header-h);
 }
 
 /* خريطة MapLibre */
@@ -639,7 +644,7 @@
 /* مؤشر لوضع الإضافة والرسم اليدوي (HUD) */
 .dt-placement-indicator {
     position: absolute;
-    top: 20px;
+    top: 90px;
     left: 50%;
     transform: translateX(-50%);
     background: rgba(10, 17, 30, 0.93);
@@ -649,7 +654,7 @@
     border-radius: 30px;
     font-weight: 700;
     font-size: 0.88rem;
-    z-index: 6;
+    z-index: 999;
     display: flex;
     align-items: center;
     gap: 16px;
