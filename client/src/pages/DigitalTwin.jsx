@@ -90,6 +90,81 @@ export default function DigitalTwin({ user, onClose }) {
     const timeRef = useRef(0);
     const [loadingProject, setLoadingProject] = useState(false);
 
+    // ─── دوال التحديث الحي المباشر للمعالم والطبقات ───────────────────
+    const updateBuildingProperty = (index, key, value) => {
+        setCustomBuildings(prev => {
+            const copy = [...prev];
+            if (copy[index]) {
+                copy[index] = {
+                    ...copy[index],
+                    [key]: value
+                };
+            }
+            return copy;
+        });
+
+        setSelectedFeature(prev => {
+            if (prev && prev.type === 'custom-building' && prev.index === index) {
+                return {
+                    ...prev,
+                    properties: {
+                        ...prev.properties,
+                        [key]: value
+                    }
+                };
+            }
+            return prev;
+        });
+    };
+
+    const updatePointProperty = (id, isCustom, key, value) => {
+        if (isCustom) {
+            const idx = parseInt(id.split('-')[1]);
+            setCustomPoints(prev => {
+                const copy = [...prev];
+                if (copy[idx]) {
+                    copy[idx] = {
+                        ...copy[idx],
+                        properties: {
+                            ...copy[idx].properties,
+                            [key]: value
+                        }
+                    };
+                }
+                return copy;
+            });
+        } else {
+            const idx = parseInt(id.split('-')[1]);
+            setGeojsonData(prev => {
+                if (!prev) return prev;
+                const copy = { ...prev };
+                if (copy.features && copy.features[idx]) {
+                    copy.features[idx] = {
+                        ...copy.features[idx],
+                        properties: {
+                            ...copy.features[idx].properties,
+                            [key]: value
+                        }
+                    };
+                }
+                return copy;
+            });
+        }
+
+        setSelectedFeature(prev => {
+            if (prev && prev.type === 'point' && prev.id === id) {
+                return {
+                    ...prev,
+                    properties: {
+                        ...prev.properties,
+                        [key]: value
+                    }
+                };
+            }
+            return prev;
+        });
+    };
+
     // ─── 1. تحميل أحدث مشروع من قاعدة البيانات عند فتح الصفحة ──────────────
     useEffect(() => {
         const fetchProject = async () => {
@@ -920,6 +995,21 @@ export default function DigitalTwin({ user, onClose }) {
                 }
             };
             setCustomPoints(prev => [...prev, newPt]);
+            
+            // تحديد الكائن النقطي الجديد تلقائياً لتعديله فوراً في المفتش (Inspector)
+            setSelectedFeature({
+                type: 'point',
+                id: `custom-${customPoints.length}`,
+                isCustom: true,
+                properties: newPt.properties,
+                coords: e.lngLat,
+                geometry: newPt.geometry
+            });
+            setEditScale(newPt.properties.scale || 1.0);
+            setEditRotation(newPt.properties.rotation || 0);
+            setEditOffsetX(newPt.properties.offsetX || 0);
+            setEditOffsetY(newPt.properties.offsetY || 0);
+            
             setDrawMode('none');
             return;
         }
@@ -933,12 +1023,12 @@ export default function DigitalTwin({ user, onClose }) {
             const features = geojsonData.type === 'FeatureCollection' ? geojsonData.features : [geojsonData];
             features.forEach((f, idx) => {
                 if (f.geometry.type === 'Point') {
-                    allPoints.push({ ...f, id: `base-${idx}`, isCustom: false });
+                    allPoints.push({ ...f, id: `base-${idx}`, isCustom: false, index: idx });
                 }
             });
         }
         customPoints.forEach((p, idx) => {
-            allPoints.push({ ...p, id: `custom-${idx}`, isCustom: true });
+            allPoints.push({ ...p, id: `custom-${idx}`, isCustom: true, index: idx });
         });
 
         let closest = null;
@@ -960,7 +1050,8 @@ export default function DigitalTwin({ user, onClose }) {
                 isCustom: closest.isCustom,
                 properties: closest.properties,
                 coords: e.lngLat,
-                geometry: closest.geometry
+                geometry: closest.geometry,
+                index: closest.index
             });
             setEditScale(closest.properties.scale || 1.0);
             setEditRotation(closest.properties.rotation || 0);
@@ -992,7 +1083,11 @@ export default function DigitalTwin({ user, onClose }) {
             setEditHeight(closestBuilding.height);
             setEditSkin(closestBuilding.skin);
             setEditSolarRoof(closestBuilding.solarRoof);
-            setEditColor(closestBuilding.color);
+            setEditColor(closestBuilding.color || '#3b82f6');
+            setEditScale(closestBuilding.scale || 1.0);
+            setEditRotation(closestBuilding.rotation || 0);
+            setEditOffsetX(closestBuilding.offsetX || 0);
+            setEditOffsetY(closestBuilding.offsetY || 0);
             return;
         }
     };
@@ -1091,7 +1186,6 @@ export default function DigitalTwin({ user, onClose }) {
         customBuildings.forEach((bld, idx) => {
             if (bld.coordinates.length < 3) return;
 
-            const shape = new THREE.Shape();
             const localPoints = bld.coordinates.map(coord => {
                 const pMerc = maplibregl.MercatorCoordinate.fromLngLat(coord, 0);
                 const dx = (pMerc.x - anchorMerc.x) / meterScale;
@@ -1099,9 +1193,22 @@ export default function DigitalTwin({ user, onClose }) {
                 return new THREE.Vector2(dx, dy);
             });
 
-            shape.moveTo(localPoints[0].x, localPoints[0].y);
-            for (let i = 1; i < localPoints.length; i++) {
-                shape.lineTo(localPoints[i].x, localPoints[i].y);
+            // حساب مركز المبنى (Centroid) لتسهيل الدوران والتكبير حول المحور المركزي
+            let centerX = 0, centerY = 0;
+            localPoints.forEach(p => {
+                centerX += p.x;
+                centerY += p.y;
+            });
+            centerX /= localPoints.length;
+            centerY /= localPoints.length;
+
+            const shape = new THREE.Shape();
+            // مركزة الإحداثيات حول المركز
+            const centeredPoints = localPoints.map(p => new THREE.Vector2(p.x - centerX, p.y - centerY));
+
+            shape.moveTo(centeredPoints[0].x, centeredPoints[0].y);
+            for (let i = 1; i < centeredPoints.length; i++) {
+                shape.lineTo(centeredPoints[i].x, centeredPoints[i].y);
             }
             shape.closePath();
 
@@ -1127,6 +1234,17 @@ export default function DigitalTwin({ user, onClose }) {
 
             const materials = [roofMaterial, wallMaterial];
             const mesh = new THREE.Mesh(geometry, materials);
+
+            // تطبيق مقياس الحجم وتدوير وموقع المبنى المخصص في نفس اللحظة
+            const scaleVal = bld.scale || 1.0;
+            mesh.scale.set(scaleVal, scaleVal, 1.0); // تكبير الـ Footprint دون التأثير على الارتفاع المحدّد بالعمق
+
+            const rotationDeg = bld.rotation || 0;
+            mesh.rotation.z = (rotationDeg * Math.PI) / 180;
+
+            const offsetX = bld.offsetX || 0;
+            const offsetY = bld.offsetY || 0;
+            mesh.position.set(centerX + offsetX, centerY + offsetY, 0);
 
             scene.add(mesh);
             meshesMapRef.current.set(`bld-${bld.id || idx}`, mesh);
@@ -1568,66 +1686,11 @@ export default function DigitalTwin({ user, onClose }) {
 
     // ─── 10. حفظ وحذف وتعديل النقاط والمباني والشوارع المرسومة يدوياً ─────────
     const handleSaveObjectEdits = () => {
-        if (!selectedFeature || selectedFeature.type !== 'point') return;
-        
-        const isCustom = selectedFeature.isCustom;
-        const idIdx = parseInt(selectedFeature.id.split('-')[1]);
-
-        if (isCustom) {
-            setCustomPoints(prev => {
-                const copy = [...prev];
-                if (copy[idIdx]) {
-                    copy[idIdx].properties = {
-                        ...copy[idIdx].properties,
-                        scale: editScale,
-                        rotation: editRotation,
-                        offsetX: editOffsetX,
-                        offsetY: editOffsetY
-                    };
-                }
-                return copy;
-            });
-        } else {
-            setGeojsonData(prev => {
-                if (!prev) return prev;
-                const copy = { ...prev };
-                if (copy.features && copy.features[idIdx]) {
-                    copy.features[idIdx].properties = {
-                        ...copy.features[idIdx].properties,
-                        scale: editScale,
-                        rotation: editRotation,
-                        offsetX: editOffsetX,
-                        offsetY: editOffsetY
-                    };
-                }
-                return copy;
-            });
-        }
-        
         setSelectedFeature(null);
-        buildThreeJsScene();
     };
 
     const handleSaveBuildingEdits = () => {
-        if (!selectedFeature || selectedFeature.type !== 'custom-building') return;
-
-        const idx = selectedFeature.index;
-        setCustomBuildings(prev => {
-            const copy = [...prev];
-            if (copy[idx]) {
-                copy[idx] = {
-                    ...copy[idx],
-                    height: editHeight,
-                    skin: editSkin,
-                    solarRoof: editSolarRoof,
-                    color: editColor
-                };
-            }
-            return copy;
-        });
-
         setSelectedFeature(null);
-        buildThreeJsScene();
     };
 
     const handleDeleteObject = () => {
@@ -1668,6 +1731,23 @@ export default function DigitalTwin({ user, onClose }) {
                 coordinates: closedCoords
             };
             setCustomBuildings(prev => [...prev, newBld]);
+            
+            // تحديد المبنى الجديد تلقائياً لتعديله فوراً في المفتش (Inspector)
+            setSelectedFeature({
+                type: 'custom-building',
+                id: newBld.id,
+                index: customBuildings.length,
+                properties: newBld,
+                coords: { lng: closedCoords[0][0], lat: closedCoords[0][1] }
+            });
+            setEditHeight(newBld.height);
+            setEditSkin(newBld.skin);
+            setEditSolarRoof(newBld.solarRoof);
+            setEditColor(newBld.color);
+            setEditScale(1.0);
+            setEditRotation(0);
+            setEditOffsetX(0);
+            setEditOffsetY(0);
         } else if (drawMode === 'street') {
             const newStreet = {
                 id: `st-drawn-${Date.now()}`,
@@ -1751,12 +1831,19 @@ export default function DigitalTwin({ user, onClose }) {
                                             <span className="dt-inspector-prop-name">التصنيف</span>
                                             <span className="dt-inspector-prop-val">{selectedFeature.properties?.type}</span>
                                         </div>
-                                        {selectedFeature.properties?.name && (
-                                            <div className="dt-inspector-prop">
-                                                <span className="dt-inspector-prop-name">الاسم</span>
-                                                <span className="dt-inspector-prop-val">{selectedFeature.properties.name}</span>
-                                            </div>
-                                        )}
+                                        <div className="dt-input-group">
+                                            <label>اسم المعلم</label>
+                                            <input 
+                                                type="text" 
+                                                className="dt-input" 
+                                                value={selectedFeature.properties?.name || ''} 
+                                                onChange={e => {
+                                                    const val = e.target.value;
+                                                    updatePointProperty(selectedFeature.id, selectedFeature.isCustom, 'name', val);
+                                                }}
+                                                placeholder="اسم المعلم..." 
+                                            />
+                                        </div>
                                     </div>
 
                                     {canEdit ? (
@@ -1766,14 +1853,37 @@ export default function DigitalTwin({ user, onClose }) {
                                                 <div className="dt-input-group">
                                                     <label>حجم الكائن: {editScale.toFixed(1)}x</label>
                                                     <div className="dt-slider-container">
-                                                        <input type="range" className="dt-slider" min="0.3" max="4.0" step="0.1" value={editScale} onChange={e => setEditScale(parseFloat(e.target.value))} />
+                                                        <input 
+                                                            type="range" 
+                                                            className="dt-slider" 
+                                                            min="0.3" 
+                                                            max="4.0" 
+                                                            step="0.1" 
+                                                            value={editScale} 
+                                                            onChange={e => {
+                                                                const val = parseFloat(e.target.value);
+                                                                setEditScale(val);
+                                                                updatePointProperty(selectedFeature.id, selectedFeature.isCustom, 'scale', val);
+                                                            }} 
+                                                        />
                                                         <span className="dt-slider-val">{editScale.toFixed(1)}x</span>
                                                     </div>
                                                 </div>
                                                 <div className="dt-input-group">
                                                     <label>زاوية الدوران: {editRotation}°</label>
                                                     <div className="dt-slider-container">
-                                                        <input type="range" className="dt-slider" min="0" max="360" value={editRotation} onChange={e => setEditRotation(parseInt(e.target.value))} />
+                                                        <input 
+                                                            type="range" 
+                                                            className="dt-slider" 
+                                                            min="0" 
+                                                            max="360" 
+                                                            value={editRotation} 
+                                                            onChange={e => {
+                                                                const val = parseInt(e.target.value);
+                                                                setEditRotation(val);
+                                                                updatePointProperty(selectedFeature.id, selectedFeature.isCustom, 'rotation', val);
+                                                            }} 
+                                                        />
                                                         <span className="dt-slider-val">{editRotation}°</span>
                                                     </div>
                                                 </div>
@@ -1784,20 +1894,44 @@ export default function DigitalTwin({ user, onClose }) {
                                                 <div className="dt-input-group">
                                                     <label>إزاحة شرقاً/غرباً (X Offset): {editOffsetX} متر</label>
                                                     <div className="dt-slider-container">
-                                                        <input type="range" className="dt-slider" min="-15" max="15" step="0.5" value={editOffsetX} onChange={e => setEditOffsetX(parseFloat(e.target.value))} />
+                                                        <input 
+                                                            type="range" 
+                                                            className="dt-slider" 
+                                                            min="-15" 
+                                                            max="15" 
+                                                            step="0.5" 
+                                                            value={editOffsetX} 
+                                                            onChange={e => {
+                                                                const val = parseFloat(e.target.value);
+                                                                setEditOffsetX(val);
+                                                                updatePointProperty(selectedFeature.id, selectedFeature.isCustom, 'offsetX', val);
+                                                            }} 
+                                                        />
                                                         <span className="dt-slider-val">{editOffsetX} م</span>
                                                     </div>
                                                 </div>
                                                 <div className="dt-input-group">
                                                     <label>إزاحة شمالاً/جنوباً (Y Offset): {editOffsetY} متر</label>
                                                     <div className="dt-slider-container">
-                                                        <input type="range" className="dt-slider" min="-15" max="15" step="0.5" value={editOffsetY} onChange={e => setEditOffsetY(parseFloat(e.target.value))} />
+                                                        <input 
+                                                            type="range" 
+                                                            className="dt-slider" 
+                                                            min="-15" 
+                                                            max="15" 
+                                                            step="0.5" 
+                                                            value={editOffsetY} 
+                                                            onChange={e => {
+                                                                const val = parseFloat(e.target.value);
+                                                                setEditOffsetY(val);
+                                                                updatePointProperty(selectedFeature.id, selectedFeature.isCustom, 'offsetY', val);
+                                                            }} 
+                                                        />
                                                         <span className="dt-slider-val">{editOffsetY} م</span>
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            <button className="dt-btn-primary" style={{ marginBottom: '8px' }} onClick={handleSaveObjectEdits}>💾 حفظ التعديلات</button>
+                                            <button className="dt-btn-primary" style={{ marginBottom: '8px' }} onClick={handleSaveObjectEdits}>تم وإغلاق</button>
                                             {selectedFeature.isCustom && (
                                                 <button className="dt-btn-danger" style={{ width: '100%' }} onClick={handleDeleteObject}>🗑️ حذف هذا الكائن</button>
                                             )}
@@ -1814,9 +1948,18 @@ export default function DigitalTwin({ user, onClose }) {
                             {selectedFeature.type === 'custom-building' && (
                                 <>
                                     <div className="dt-section" style={{ borderBottom: 'none', paddingBottom: '0' }}>
-                                        <div className="dt-inspector-prop">
-                                            <span className="dt-inspector-prop-name">الاسم</span>
-                                            <span className="dt-inspector-prop-val">{selectedFeature.properties?.name}</span>
+                                        <div className="dt-input-group">
+                                            <label>اسم المبنى</label>
+                                            <input 
+                                                type="text" 
+                                                className="dt-input" 
+                                                value={selectedFeature.properties?.name || ''} 
+                                                onChange={e => {
+                                                    const val = e.target.value;
+                                                    updateBuildingProperty(selectedFeature.index, 'name', val);
+                                                }}
+                                                placeholder="أدخل اسم المبنى..." 
+                                            />
                                         </div>
                                         <div className="dt-inspector-prop">
                                             <span className="dt-inspector-prop-name">النوع</span>
@@ -1831,39 +1974,187 @@ export default function DigitalTwin({ user, onClose }) {
                                                 <div className="dt-input-group">
                                                     <label>الارتفاع: {editHeight} متر</label>
                                                     <div className="dt-slider-container">
-                                                        <input type="range" className="dt-slider" min="3" max="90" value={editHeight} onChange={e => setEditHeight(parseInt(e.target.value))} />
+                                                        <input 
+                                                            type="range" 
+                                                            className="dt-slider" 
+                                                            min="3" 
+                                                            max="120" 
+                                                            value={editHeight} 
+                                                            onChange={e => {
+                                                                const val = parseInt(e.target.value);
+                                                                setEditHeight(val);
+                                                                updateBuildingProperty(selectedFeature.index, 'height', val);
+                                                            }} 
+                                                        />
                                                         <span className="dt-slider-val">{editHeight} م</span>
                                                     </div>
                                                 </div>
                                                 <div className="dt-input-group" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                    <input type="checkbox" id="solar-chk" checked={editSolarRoof} onChange={e => setEditSolarRoof(e.target.checked)} />
+                                                    <input 
+                                                        type="checkbox" 
+                                                        id="solar-chk" 
+                                                        checked={editSolarRoof} 
+                                                        onChange={e => {
+                                                            const val = e.target.checked;
+                                                            setEditSolarRoof(val);
+                                                            updateBuildingProperty(selectedFeature.index, 'solarRoof', val);
+                                                        }} 
+                                                    />
                                                     <label htmlFor="solar-chk" style={{ marginBottom: '0', cursor: 'pointer' }}>تثبيت ألواح شمسية على السطح</label>
+                                                </div>
+                                            </div>
+
+                                            <div className="dt-section" style={{ borderBottom: 'none', paddingBottom: '0' }}>
+                                                <span className="dt-section-title" style={{ fontSize: '0.85rem' }}>🎨 لون المبنى والواجهة</span>
+                                                <div className="dt-input-group">
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
+                                                        <input 
+                                                            type="color" 
+                                                            value={editColor || '#3b82f6'} 
+                                                            onChange={e => {
+                                                                const val = e.target.value;
+                                                                setEditColor(val);
+                                                                updateBuildingProperty(selectedFeature.index, 'color', val);
+                                                            }} 
+                                                            style={{
+                                                                border: 'none',
+                                                                width: '38px',
+                                                                height: '38px',
+                                                                borderRadius: '8px',
+                                                                cursor: 'pointer',
+                                                                background: 'none',
+                                                                padding: 0
+                                                            }} 
+                                                        />
+                                                        <input 
+                                                            type="text" 
+                                                            className="dt-input" 
+                                                            value={editColor || '#3b82f6'} 
+                                                            onChange={e => {
+                                                                const val = e.target.value;
+                                                                setEditColor(val);
+                                                                updateBuildingProperty(selectedFeature.index, 'color', val);
+                                                            }} 
+                                                            style={{ margin: 0, textTransform: 'uppercase' }} 
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
 
                                             <div className="dt-section" style={{ borderBottom: 'none', paddingBottom: '0' }}>
                                                 <span className="dt-section-title" style={{ fontSize: '0.85rem' }}>🧱 نسيج وإكساء الواجهة الخارجي (Skins)</span>
                                                 <div className="dt-skin-grid">
-                                                    <div className={`dt-skin-card ${editSkin === 'glass' ? 'active' : ''}`} onClick={() => setEditSkin('glass')}>
+                                                    <div className={`dt-skin-card ${editSkin === 'glass' ? 'active' : ''}`} onClick={() => {
+                                                        setEditSkin('glass');
+                                                        updateBuildingProperty(selectedFeature.index, 'skin', 'glass');
+                                                    }}>
                                                         <div className="dt-skin-preview" style={{ background: 'linear-gradient(45deg, #0284c7, #38bdf8)' }} />
                                                         <span className="dt-skin-label">زجاج معزول</span>
                                                     </div>
-                                                    <div className={`dt-skin-card ${editSkin === 'stone' ? 'active' : ''}`} onClick={() => setEditSkin('stone')}>
+                                                    <div className={`dt-skin-card ${editSkin === 'stone' ? 'active' : ''}`} onClick={() => {
+                                                        setEditSkin('stone');
+                                                        updateBuildingProperty(selectedFeature.index, 'skin', 'stone');
+                                                    }}>
                                                         <div className="dt-skin-preview" style={{ background: 'linear-gradient(45deg, #f5f5f4, #d6d3d1)' }} />
                                                         <span className="dt-skin-label">حجر محلي تراثي</span>
                                                     </div>
-                                                    <div className={`dt-skin-card ${editSkin === 'brick' ? 'active' : ''}`} onClick={() => setEditSkin('brick')}>
+                                                    <div className={`dt-skin-card ${editSkin === 'brick' ? 'active' : ''}`} onClick={() => {
+                                                        setEditSkin('brick');
+                                                        updateBuildingProperty(selectedFeature.index, 'skin', 'brick');
+                                                    }}>
                                                         <div className="dt-skin-preview" style={{ background: 'linear-gradient(45deg, #b45309, #d97706)' }} />
                                                         <span className="dt-skin-label">طوب أحمر</span>
                                                     </div>
-                                                    <div className={`dt-skin-card ${editSkin === 'concrete' ? 'active' : ''}`} onClick={() => setEditSkin('concrete')}>
+                                                    <div className={`dt-skin-card ${editSkin === 'concrete' ? 'active' : ''}`} onClick={() => {
+                                                        setEditSkin('concrete');
+                                                        updateBuildingProperty(selectedFeature.index, 'skin', 'concrete');
+                                                    }}>
                                                         <div className="dt-skin-preview" style={{ background: 'linear-gradient(45deg, #64748b, #94a3b8)' }} />
                                                         <span className="dt-skin-label">خرسانة حديثة</span>
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            <button className="dt-btn-primary" style={{ marginBottom: '8px' }} onClick={handleSaveBuildingEdits}>💾 حفظ التعديلات</button>
+                                            <div className="dt-section" style={{ borderBottom: 'none', paddingBottom: '0' }}>
+                                                <span className="dt-section-title" style={{ fontSize: '0.85rem' }}>📐 أبعاد ودوران وموقع المبنى</span>
+                                                <div className="dt-input-group">
+                                                    <label>مقياس الحجم (Scale): {editScale.toFixed(2)}x</label>
+                                                    <div className="dt-slider-container">
+                                                        <input 
+                                                            type="range" 
+                                                            className="dt-slider" 
+                                                            min="0.3" 
+                                                            max="3.0" 
+                                                            step="0.05" 
+                                                            value={editScale} 
+                                                            onChange={e => {
+                                                                const val = parseFloat(e.target.value);
+                                                                setEditScale(val);
+                                                                updateBuildingProperty(selectedFeature.index, 'scale', val);
+                                                            }} 
+                                                        />
+                                                        <span className="dt-slider-val">{editScale.toFixed(2)}x</span>
+                                                    </div>
+                                                </div>
+                                                <div className="dt-input-group">
+                                                    <label>زاوية الدوران: {editRotation}°</label>
+                                                    <div className="dt-slider-container">
+                                                        <input 
+                                                            type="range" 
+                                                            className="dt-slider" 
+                                                            min="0" 
+                                                            max="360" 
+                                                            value={editRotation} 
+                                                            onChange={e => {
+                                                                const val = parseInt(e.target.value);
+                                                                setEditRotation(val);
+                                                                updateBuildingProperty(selectedFeature.index, 'rotation', val);
+                                                            }} 
+                                                        />
+                                                        <span className="dt-slider-val">{editRotation}°</span>
+                                                    </div>
+                                                </div>
+                                                <div className="dt-input-group">
+                                                    <label>إزاحة X (شرقاً/غرباً): {editOffsetX} م</label>
+                                                    <div className="dt-slider-container">
+                                                        <input 
+                                                            type="range" 
+                                                            className="dt-slider" 
+                                                            min="-30" 
+                                                            max="30" 
+                                                            step="0.5" 
+                                                            value={editOffsetX} 
+                                                            onChange={e => {
+                                                                const val = parseFloat(e.target.value);
+                                                                setEditOffsetX(val);
+                                                                updateBuildingProperty(selectedFeature.index, 'offsetX', val);
+                                                            }} 
+                                                        />
+                                                        <span className="dt-slider-val">{editOffsetX} م</span>
+                                                    </div>
+                                                </div>
+                                                <div className="dt-input-group">
+                                                    <label>إزاحة Y (شمالاً/جنوباً): {editOffsetY} م</label>
+                                                    <div className="dt-slider-container">
+                                                        <input 
+                                                            type="range" 
+                                                            className="dt-slider" 
+                                                            min="-30" 
+                                                            max="30" 
+                                                            step="0.5" 
+                                                            value={editOffsetY} 
+                                                            onChange={e => {
+                                                                const val = parseFloat(e.target.value);
+                                                                setEditOffsetY(val);
+                                                                updateBuildingProperty(selectedFeature.index, 'offsetY', val);
+                                                            }} 
+                                                        />
+                                                        <span className="dt-slider-val">{editOffsetY} م</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <button className="dt-btn-primary" style={{ marginBottom: '8px' }} onClick={handleSaveBuildingEdits}>تم وإغلاق</button>
                                             <button className="dt-btn-danger" style={{ width: '100%' }} onClick={handleDeleteObject}>🗑️ حذف هذا المبنى</button>
                                         </>
                                     ) : (

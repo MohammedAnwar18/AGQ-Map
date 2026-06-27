@@ -364,7 +364,7 @@
     margin-bottom: 6px;
 }
 
-.dt-select {
+.dt-select, .dt-input {
     width: 100%;
     background: var(--dt-surf2);
     border: 1px solid var(--dt-border2);
@@ -374,9 +374,10 @@
     font-size: 0.85rem;
     outline: none;
     font-family: var(--dt-font);
+    box-sizing: border-box;
 }
 
-.dt-select:focus {
+.dt-select:focus, .dt-input:focus {
     border-color: var(--dt-emerald);
 }
 
