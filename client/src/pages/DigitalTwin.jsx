@@ -2227,7 +2227,7 @@ export default function DigitalTwin({ user, onClose }) {
         const matColor = new THREE.Color(colorHex);
         const plasticMat = new THREE.MeshLambertMaterial({ color: matColor });
         const metalMat = new THREE.MeshLambertMaterial({ color: 0x64748b }); // معدني
-        const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xbae6fd, transparent: true, opacity: 0.4, roughness: 0.1 });
+        const glassMat = new THREE.MeshLambertMaterial({ color: 0xbae6fd, transparent: true, opacity: 0.4 });
 
         switch (type) {
             case 'cashier': {
