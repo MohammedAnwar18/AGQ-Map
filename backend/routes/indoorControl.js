@@ -30,4 +30,7 @@ router.put('/tasks/:taskId', authenticateToken, ctrl.updateTaskStatus);
 // تسجيل عمليات مسح الـ QR والتحركات الداخلية
 router.post('/log', authenticateToken, ctrl.logScan);
 
+// تحديث المجسمات ثلاثية الأبعاد للمبنى
+router.put('/buildings/:buildingId/shapes', authenticateToken, ctrl.updateBuildingShapes);
+
 module.exports = router;

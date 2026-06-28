@@ -928,6 +928,10 @@ export const indoorControlService = {
     logScan: async (locationCode, actionType) => {
         const response = await api.post('/indoor-control/log', { location_code: locationCode, action_type: actionType });
         return response.data;
+    },
+    updateBuildingShapes: async (buildingId, shapesData) => {
+        const response = await api.put(`/indoor-control/buildings/${buildingId}/shapes`, { shapesData });
+        return response.data;
     }
 };
 

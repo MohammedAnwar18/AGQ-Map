@@ -337,3 +337,21 @@ exports.logScan = async (req, res) => {
         res.status(500).json({ error: 'فشل في تسجيل عملية المسح' });
     }
 };
+
+// 10. تحديث المجسمات ثلاثية الأبعاد للمبنى
+exports.updateBuildingShapes = async (req, res) => {
+    try {
+        const { buildingId } = req.params;
+        const { shapesData } = req.body;
+
+        await pool.query(
+            'UPDATE indoor_buildings SET shapes_data = $1 WHERE id = $2',
+            [shapesData, buildingId]
+        );
+
+        res.json({ success: true, message: 'تم تحديث المجسمات ثلاثية الأبعاد بنجاح' });
+    } catch (err) {
+        console.error('updateBuildingShapes error:', err);
+        res.status(500).json({ error: 'فشل في حفظ المجسمات ثلاثية الأبعاد' });
+    }
+};

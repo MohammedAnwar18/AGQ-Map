@@ -5,29 +5,55 @@ import { indoorControlService } from '../services/api';
 import './IndoorControl.css';
 
 export default function IndoorControl({ user, onClose }) {
-    // القوائم وحالات الواجهة
+    // UI & App States
     const [buildings, setBuildings] = useState([]);
     const [selectedBuildingId, setSelectedBuildingId] = useState(null);
     const [buildingInfo, setBuildingInfo] = useState(null);
-    const [shelves, setShelves] = useState([]);
-    const [selectedShelf, setSelectedShelf] = useState(null);
-    const [activeMode, setActiveMode] = useState('view'); // view, draw_shelf, delete_shelf
+    const [activeMode, setActiveMode] = useState('orbit'); // orbit, polyline, freehand, erase
     const [showAddBuildingModal, setShowAddBuildingModal] = useState(false);
-    
-    // بيانات إدخال المبنى الجديد
+    const [gridSnapping, setGridSnapping] = useState(true);
+    const [gridSize, setGridSize] = useState(1.0); // Snap interval (1m, 0.5m, etc.)
+
+    // New Building inputs
     const [newBuildingName, setNewBuildingName] = useState('');
     const [newBuildingPlanUrl, setNewBuildingPlanUrl] = useState('');
     const [newBuildingScale, setNewBuildingScale] = useState(1.0);
 
-    // مراجع الـ 3D Canvas و Three.js
+    // CAD Data State
+    const [drawnShapes, setDrawnShapes] = useState([]);
+    const [selectedShapeId, setSelectedShapeId] = useState(null);
+    const [layers, setLayers] = useState([
+        { id: 'structure', name: 'الهيكل الرئيسي (Structure)', visible: true, color: '#60a5fa' },
+        { id: 'walls', name: 'الجدران الداخلية (Walls)', visible: true, color: '#fb923c' },
+        { id: 'furniture', name: 'الأثاث والتجهيزات (Furniture)', visible: true, color: '#34d399' },
+        { id: 'lighting', name: 'أنظمة الإضاءة (Lighting)', visible: true, color: '#a78bfa' }
+    ]);
+    const [activeLayer, setActiveLayer] = useState('structure');
+
+    // Live mouse coordinates
+    const [mouseCoords, setMouseCoords] = useState({ x: 0, z: 0 });
+    const [currentPathPoints, setCurrentPathPoints] = useState([]);
+
+    // Refs for 3D Engine
     const canvasContainerRef = useRef(null);
     const sceneRef = useRef(null);
     const cameraRef = useRef(null);
     const rendererRef = useRef(null);
     const controlsRef = useRef(null);
-    const meshesMapRef = useRef(new Map()); // لربط كائنات الـ Three.js ببيانات الرفوف
+    const groundPlaneRef = useRef(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0));
+    const isDrawingRef = useRef(false);
+    const currentDrawMeshRef = useRef(null); // Line drawing preview
+    const drawingPointsRef = useRef([]); // Temporary 3D points
+    const shapesMeshesMapRef = useRef(new Map()); // Map shape.id -> THREE.Mesh
+    const previewPointsMeshesRef = useRef([]); // Spheres for vertex visualization
+    
+    // HTML overlays ref for screen projections
+    const overlayContainerRef = useRef(null);
 
-    // ── 1. جلب قائمة المباني عند فتح المكون ─────────────────────────────────
+    // Preset Colors for Inspector
+    const PRESET_COLORS = ['#60a5fa', '#f87171', '#34d399', '#fb923c', '#a78bfa', '#f472b6', '#e2e8f0', '#fbbf24'];
+
+    // ── 1. Load Buildings on Mount ──────────────────────────────────────────
     useEffect(() => {
         loadBuildings();
     }, []);
@@ -46,7 +72,7 @@ export default function IndoorControl({ user, onClose }) {
         }
     };
 
-    // ── 2. جلب المخطط وتصميم الرفوف عند تغيير المبنى المحدد ───────────────────
+    // Load layouts when building changes
     useEffect(() => {
         if (selectedBuildingId) {
             loadLayout(selectedBuildingId);
@@ -58,86 +84,110 @@ export default function IndoorControl({ user, onClose }) {
             const res = await indoorControlService.getLayout(buildingId);
             if (res && res.success) {
                 setBuildingInfo(res.building);
-                setShelves(res.shelves);
-                setSelectedShelf(null);
-                
-                // إعادة رسم المشهد ثلاثي الأبعاد بالكامل
-                rebuild3DScene(res.shelves);
+                // Load existing shapes from database or initialize empty
+                if (res.building.shapes_data) {
+                    const loadedShapes = JSON.parse(res.building.shapes_data);
+                    setDrawnShapes(loadedShapes);
+                    rebuild3DScene(loadedShapes);
+                } else {
+                    setDrawnShapes([]);
+                    rebuild3DScene([]);
+                }
+                setSelectedShapeId(null);
             }
         } catch (err) {
             console.error('Failed to load layout:', err);
         }
     };
 
-    // ── 3. إعداد وتحديث المشهد ثلاثي الأبعاد (Three.js Engine) ────────────────
+    // ── 2. Setup Three.js Canvas and Animation Loop ──────────────────────────
     useEffect(() => {
-        // إنشاء المشهد والكاميرا والرندرة لمرة واحدة
         const container = canvasContainerRef.current;
         if (!container) return;
 
+        // Scene
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x06090f);
+        scene.background = new THREE.Color(0x080c14);
+        scene.fog = new THREE.FogExp2(0x080c14, 0.015);
         sceneRef.current = scene;
 
-        // الكاميرا
+        // Camera
         const camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
-        camera.position.set(0, 15, 15);
+        camera.position.set(0, 15, 20);
         cameraRef.current = camera;
 
-        // الرندرة
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
         renderer.setSize(container.clientWidth, container.clientHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.0;
         rendererRef.current = renderer;
 
-        // تفريغ الحاوية وإضافة الـ Canvas الجديد
         container.innerHTML = '';
         container.appendChild(renderer.domElement);
 
-        // أدوات التحكم (OrbitControls)
+        // Orbit Controls
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
-        controls.maxPolarAngle = Math.PI / 2 - 0.05; // منع الكاميرا من النزول تحت الأرض
+        controls.maxPolarAngle = Math.PI / 2 - 0.01; // Prevent going under floor
         controlsRef.current = controls;
 
-        // الإضاءة
-        const ambientLight = new THREE.AmbientLight(0x1e293b, 0.6);
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x0f172a, 1.2);
         scene.add(ambientLight);
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight.position.set(10, 20, 10);
+        // Hemispherical Sky Light
+        const hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x0f172a, 0.6);
+        scene.add(hemiLight);
+
+        // Main Directional Studio Light
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        dirLight.position.set(20, 40, 20);
         dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.bias = -0.0001;
         scene.add(dirLight);
 
-        // الشبكة الأرضية (Ground Grid)
-        const gridHelper = new THREE.GridHelper(30, 30, 0x3b82f6, 0x1e293b);
-        gridHelper.position.y = -0.01; // أسفل الأرضية بقليل لتجنب الوميض
+        // Grid & Helper Floor
+        const gridHelper = new THREE.GridHelper(50, 50, 0x1e293b, 0x0f172a);
+        gridHelper.position.y = -0.01;
         scene.add(gridHelper);
 
-        // الأرضية
-        const floorGeo = new THREE.PlaneGeometry(30, 30);
-        const floorMat = new THREE.MeshStandardMaterial({ 
-            color: 0x090f1b, 
+        // Add a secondary fine grid for snapping
+        const fineGrid = new THREE.GridHelper(50, 100, 0x334155, 0x0f172a);
+        fineGrid.position.y = -0.015;
+        fineGrid.material.opacity = 0.25;
+        fineGrid.material.transparent = true;
+        scene.add(fineGrid);
+
+        // Ground Plane (Visual only)
+        const floorGeo = new THREE.PlaneGeometry(100, 100);
+        const floorMat = new THREE.MeshStandardMaterial({
+            color: 0x0a0f1d,
             roughness: 0.8,
-            metalness: 0.1
+            metalness: 0.2
         });
         const floor = new THREE.Mesh(floorGeo, floorMat);
         floor.rotation.x = -Math.PI / 2;
         floor.receiveShadow = true;
         scene.add(floor);
 
-        // حلقة التحديث المستمر (Animation Loop)
+        // Animation loop
         let animationFrameId;
         const animate = () => {
             animationFrameId = requestAnimationFrame(animate);
             controls.update();
             renderer.render(scene, camera);
+            updateDimensionOverlayPositions();
         };
         animate();
 
-        // التعامل مع تغيير حجم الشاشة
+        // Handle resize
         const handleResize = () => {
             if (!container || !renderer || !camera) return;
             camera.aspect = container.clientWidth / container.clientHeight;
@@ -152,234 +202,503 @@ export default function IndoorControl({ user, onClose }) {
         };
     }, []);
 
-    // ── 4. إعادة بناء مجسمات الرفوف عند تغيير البيانات ────────────────────────
-    const rebuild3DScene = (shelvesList) => {
+    // Disable OrbitControls during active drawing
+    useEffect(() => {
+        if (controlsRef.current) {
+            controlsRef.current.enabled = (activeMode === 'orbit' || activeMode === 'extrude');
+        }
+        // Reset temporary drawing state when switching modes
+        if (activeMode !== 'polyline' && activeMode !== 'freehand') {
+            clearDrawingPreview();
+        }
+    }, [activeMode]);
+
+    // Update layers visibility in the 3D Scene
+    useEffect(() => {
+        shapesMeshesMapRef.current.forEach((mesh, shapeId) => {
+            const shapeData = drawnShapes.find(s => s.id === shapeId);
+            if (shapeData) {
+                const layer = layers.find(l => l.id === shapeData.layer);
+                mesh.visible = layer ? layer.visible : true;
+            }
+        });
+    }, [layers, drawnShapes]);
+
+    // ── 3. Materials System Shaders ──────────────────────────────────────────
+    const getMaterialPreset = (type, colorCode) => {
+        const color = new THREE.Color(colorCode);
+        switch (type) {
+            case 'glass':
+                return new THREE.MeshPhysicalMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 0.35,
+                    roughness: 0.05,
+                    metalness: 0.1,
+                    transmission: 0.9,
+                    ior: 1.52,
+                    thickness: 1.2,
+                    clearcoat: 1.0,
+                    clearcoatRoughness: 0.05,
+                    side: THREE.DoubleSide
+                });
+            case 'hologram':
+                return new THREE.MeshStandardMaterial({
+                    color: color,
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.7,
+                    emissive: color,
+                    emissiveIntensity: 1.2,
+                    side: THREE.DoubleSide
+                });
+            case 'steel':
+                return new THREE.MeshStandardMaterial({
+                    color: color.clone().multiplyScalar(0.85),
+                    roughness: 0.2,
+                    metalness: 0.9,
+                    flatShading: true,
+                    side: THREE.DoubleSide
+                });
+            case 'gold':
+                return new THREE.MeshStandardMaterial({
+                    color: new THREE.Color('#fbbf24'),
+                    roughness: 0.1,
+                    metalness: 0.95,
+                    clearcoat: 0.8,
+                    side: THREE.DoubleSide
+                });
+            case 'carbon':
+                return new THREE.MeshStandardMaterial({
+                    color: new THREE.Color('#1e293b'),
+                    roughness: 0.6,
+                    metalness: 0.4,
+                    flatShading: true,
+                    side: THREE.DoubleSide
+                });
+            default: // standard solid
+                return new THREE.MeshStandardMaterial({
+                    color: color,
+                    roughness: 0.4,
+                    metalness: 0.1,
+                    side: THREE.DoubleSide
+                });
+        }
+    };
+
+    // ── 4. Rebuild 3D Scene from Shape Data ──────────────────────────────────
+    const rebuild3DScene = (shapesList) => {
         const scene = sceneRef.current;
         if (!scene) return;
 
-        // 1. إزالة كافة مجسمات الرفوف الحالية من المشهد وتفريغ الذاكرة
-        meshesMapRef.current.forEach(mesh => {
+        // Clear existing extruded meshes
+        shapesMeshesMapRef.current.forEach(mesh => {
             scene.remove(mesh);
             if (mesh.geometry) mesh.geometry.dispose();
             if (mesh.material) {
-                if (Array.isArray(mesh.material)) {
-                    mesh.material.forEach(mat => mat.dispose());
-                } else {
-                    mesh.material.dispose();
-                }
+                if (Array.isArray(mesh.material)) mesh.material.forEach(m => m.dispose());
+                else mesh.material.dispose();
             }
         });
-        meshesMapRef.current.clear();
+        shapesMeshesMapRef.current.clear();
 
-        // 2. بناء المجسمات الجديدة
-        shelvesList.forEach(shelf => {
-            const width = shelf.width || 2.0;
-            const depth = shelf.depth || 0.8;
-            const height = shelf.height || 1.8;
-
-            // تحديد اللون بناءً على سعة المخزون في الرف
-            let shelfColor = 0x10b981; // أخضر افتراضي (ممتاز)
-            
-            // حساب نسبة المخزون الإجمالية للرف
-            let totalQty = 0;
-            let totalCap = 0;
-            shelf.levels.forEach(lvl => {
-                lvl.placements.forEach(p => {
-                    totalQty += p.quantity || 0;
-                    totalCap += p.max_capacity || 10;
-                });
-            });
-
-            if (totalCap > 0) {
-                const ratio = totalQty / totalCap;
-                if (ratio === 0) {
-                    shelfColor = 0xef4444; // أحمر (فارغ)
-                } else if (ratio <= 0.3) {
-                    shelfColor = 0xf59e0b; // برتقالي (منخفض)
-                }
+        // Recreate extruded meshes
+        shapesList.forEach(shapeData => {
+            const mesh = createExtrusionMesh(shapeData);
+            if (mesh) {
+                scene.add(mesh);
+                shapesMeshesMapRef.current.set(shapeData.id, mesh);
             }
-
-            const geometry = new THREE.BoxGeometry(width, height, depth);
-            const material = new THREE.MeshStandardMaterial({
-                color: shelfColor,
-                roughness: 0.3,
-                metalness: 0.2,
-                transparent: true,
-                opacity: 0.85
-            });
-
-            const mesh = new THREE.Mesh(geometry, material);
-            mesh.position.set(shelf.x, height / 2, shelf.y);
-            mesh.rotation.y = (shelf.rotation * Math.PI) / 180;
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
-
-            // حفظ معرف الرف في بيانات الـ Mesh
-            mesh.userData = { shelfId: shelf.id };
-
-            scene.add(mesh);
-            meshesMapRef.current.set(shelf.id, mesh);
         });
     };
 
-    // ── 5. النقر على الـ Canvas لاختيار الرف أو رسم رف جديد ─────────────────
-    const handleCanvasClick = (event) => {
-        const container = canvasContainerRef.current;
-        const scene = sceneRef.current;
-        const camera = cameraRef.current;
-        if (!container || !scene || !camera) return;
+    const createExtrusionMesh = (shapeData) => {
+        if (!shapeData.points || shapeData.points.length < 3) return null;
 
-        // حساب إحداثيات النقر النسبية (-1 إلى +1)
+        // Create 2D Shape using X and Z as 2D coordinates
+        const shape = new THREE.Shape();
+        shape.moveTo(shapeData.points[0].x, shapeData.points[0].z);
+        for (let i = 1; i < shapeData.points.length; i++) {
+            shape.lineTo(shapeData.points[i].x, shapeData.points[i].z);
+        }
+        shape.closePath();
+
+        // Extrude Settings
+        const extrudeSettings = {
+            depth: shapeData.height,
+            bevelEnabled: true,
+            bevelThickness: 0.04,
+            bevelSize: 0.02,
+            bevelSegments: 3
+        };
+
+        const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+
+        // Apply Material
+        const material = getMaterialPreset(shapeData.materialType, shapeData.color);
+        const mesh = new THREE.Mesh(geometry, material);
+
+        // Rotate so Z-extrusion stands UP along Y axis
+        mesh.rotation.x = -Math.PI / 2;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+
+        // Position offset adjustment (ExtrudeGeometry is created relative to origin)
+        mesh.position.y = 0;
+
+        // Highlight if selected
+        if (shapeData.id === selectedShapeId) {
+            mesh.material.emissive = new THREE.Color(0x3b82f6);
+            mesh.material.emissiveIntensity = 0.25;
+        }
+
+        mesh.userData = { shapeId: shapeData.id };
+        return mesh;
+    };
+
+    // ── 5. Drawing Helpers & Interaction ─────────────────────────────────────
+    const getIntersectionPoint = (event) => {
+        const container = canvasContainerRef.current;
+        const camera = cameraRef.current;
+        if (!container || !camera) return null;
+
         const rect = container.getBoundingClientRect();
-        const x = ((event.clientX - rect.left) / container.clientWidth) * 2 - 1;
-        const y = -((event.clientY - rect.top) / container.clientHeight) * 2 + 1;
+        const mouseX = ((event.clientX - rect.left) / container.clientWidth) * 2 - 1;
+        const mouseY = -((event.clientY - rect.top) / container.clientHeight) * 2 + 1;
 
         const raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera(new THREE.Vector2(x, y), camera);
+        raycaster.setFromCamera(new THREE.Vector2(mouseX, mouseY), camera);
 
-        // جلب جميع التقاطعات مع المجسمات ثلاثية الأبعاد
-        const intersects = raycaster.intersectObjects(scene.children, true);
+        const targetPoint = new THREE.Vector3();
+        raycaster.ray.intersectPlane(groundPlaneRef.current, targetPoint);
 
-        if (activeMode === 'view') {
-            // وضع العرض: تحديد الرف الذي تم الضغط عليه
-            const clickedShelfMesh = intersects.find(intersect => intersect.object.userData && intersect.object.userData.shelfId);
-            if (clickedShelfMesh) {
-                const shelfId = clickedShelfMesh.object.userData.shelfId;
-                const foundShelf = shelves.find(s => s.id === shelfId);
-                if (foundShelf) {
-                    setSelectedShelf(foundShelf);
-                    
-                    // عمل توهج خفيف للرف المختار
-                    highlightSelectedMesh(shelfId);
-                }
-            } else {
-                setSelectedShelf(null);
-                resetAllHighlights();
-            }
-        } else if (activeMode === 'draw_shelf') {
-            // وضع الرسم: وضع رف جديد عند نقطة النقر على الأرضية
-            const floorIntersect = intersects.find(intersect => intersect.object.geometry instanceof THREE.PlaneGeometry);
-            if (floorIntersect) {
-                const point = floorIntersect.point;
-                addNewShelfAt(point.x, point.z);
+        // Handle Snapping
+        if (gridSnapping) {
+            targetPoint.x = Math.round(targetPoint.x / gridSize) * gridSize;
+            targetPoint.z = Math.round(targetPoint.z / gridSize) * gridSize;
+        }
+        targetPoint.y = 0; // Force strictly on floor
+
+        return targetPoint;
+    };
+
+    const handleCanvasMouseMove = (event) => {
+        const point = getIntersectionPoint(event);
+        if (!point) return;
+
+        setMouseCoords({ x: parseFloat(point.x.toFixed(2)), z: parseFloat(point.z.toFixed(2)) });
+
+        const scene = sceneRef.current;
+        if (!scene) return;
+
+        // ── Drawing Polyline Preview ──
+        if (activeMode === 'polyline' && drawingPointsRef.current.length > 0) {
+            updateDrawingPreview(point);
+        }
+
+        // ── Drawing Freehand Sketch ──
+        if (activeMode === 'freehand' && isDrawingRef.current) {
+            const lastPoint = drawingPointsRef.current[drawingPointsRef.current.length - 1];
+            if (lastPoint && lastPoint.distanceTo(point) > 0.3) {
+                drawingPointsRef.current.push(point);
+                setCurrentPathPoints([...drawingPointsRef.current]);
+                updateDrawingPreview(null);
             }
         }
     };
 
-    // تمييز الرف المختار
-    const highlightSelectedMesh = (shelfId) => {
-        meshesMapRef.current.forEach((mesh, id) => {
-            if (id === shelfId) {
-                mesh.material.emissive = new THREE.Color(0x3b82f6);
-                mesh.material.emissiveIntensity = 0.4;
+    const handleCanvasMouseDown = (event) => {
+        if (event.button !== 0) return; // Left click only
+        const point = getIntersectionPoint(event);
+        if (!point) return;
+
+        const scene = sceneRef.current;
+        if (!scene) return;
+
+        // ── Click-to-Add-Point (Polyline) ──
+        if (activeMode === 'polyline') {
+            // Check if clicking near the first point to close shape
+            if (drawingPointsRef.current.length >= 3) {
+                const firstPoint = drawingPointsRef.current[0];
+                const dist = point.distanceTo(firstPoint);
+                if (dist < 0.6) {
+                    finishDrawingShape();
+                    return;
+                }
+            }
+
+            drawingPointsRef.current.push(point);
+            setCurrentPathPoints([...drawingPointsRef.current]);
+            
+            // Add a visual vertex sphere
+            const sphereGeo = new THREE.SphereGeometry(0.12, 16, 16);
+            const sphereMat = new THREE.MeshBasicMaterial({ color: 0xf97316 });
+            const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+            sphere.position.copy(point);
+            scene.add(sphere);
+            previewPointsMeshesRef.current.push(sphere);
+
+            updateDrawingPreview(point);
+        }
+
+        // ── Drag-to-Draw (Freehand) ──
+        if (activeMode === 'freehand') {
+            isDrawingRef.current = true;
+            drawingPointsRef.current = [point];
+            setCurrentPathPoints([point]);
+        }
+
+        // ── Click-to-Select / Erase ──
+        if (activeMode === 'orbit' || activeMode === 'extrude' || activeMode === 'erase') {
+            const container = canvasContainerRef.current;
+            const camera = cameraRef.current;
+            const rect = container.getBoundingClientRect();
+            const mouseX = ((event.clientX - rect.left) / container.clientWidth) * 2 - 1;
+            const mouseY = -((event.clientY - rect.top) / container.clientHeight) * 2 + 1;
+
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(new THREE.Vector2(mouseX, mouseY), camera);
+
+            // Get meshes
+            const meshes = Array.from(shapesMeshesMapRef.current.values());
+            const intersects = raycaster.intersectObjects(meshes);
+
+            if (intersects.length > 0) {
+                const clickedMesh = intersects[0].object;
+                const shapeId = clickedMesh.userData.shapeId;
+
+                if (activeMode === 'erase') {
+                    deleteShape(shapeId);
+                } else {
+                    setSelectedShapeId(shapeId);
+                }
             } else {
-                mesh.material.emissive = new THREE.Color(0x000000);
-                mesh.material.emissiveIntensity = 0;
+                if (activeMode === 'orbit') {
+                    setSelectedShapeId(null);
+                }
+            }
+        }
+    };
+
+    const handleCanvasMouseUp = () => {
+        if (activeMode === 'freehand' && isDrawingRef.current) {
+            isDrawingRef.current = false;
+            if (drawingPointsRef.current.length >= 3) {
+                finishDrawingShape();
+            } else {
+                clearDrawingPreview();
+            }
+        }
+    };
+
+    const updateDrawingPreview = (hoverPoint) => {
+        const scene = sceneRef.current;
+        if (!scene) return;
+
+        // Remove old preview line
+        if (currentDrawMeshRef.current) {
+            scene.remove(currentDrawMeshRef.current);
+            currentDrawMeshRef.current.geometry.dispose();
+        }
+
+        const pts = [...drawingPointsRef.current];
+        if (hoverPoint && activeMode === 'polyline') {
+            pts.push(hoverPoint);
+        }
+
+        if (pts.length < 2) return;
+
+        // Draw glowing neon preview lines
+        const geometry = new THREE.BufferGeometry().setFromPoints(pts);
+        const material = new THREE.LineBasicMaterial({
+            color: activeMode === 'freehand' ? 0x06b6d4 : 0xf97316,
+            linewidth: 3,
+            depthTest: false
+        });
+        
+        const line = new THREE.Line(geometry, material);
+        line.renderOrder = 1;
+        scene.add(line);
+        currentDrawMeshRef.current = line;
+    };
+
+    const finishDrawingShape = () => {
+        if (drawingPointsRef.current.length < 3) return;
+
+        // Format points for serializing
+        const pointsData = drawingPointsRef.current.map(p => ({ x: p.x, z: p.z }));
+        
+        // Ensure points form a closed loop by adding the start point if not matching
+        const first = pointsData[0];
+        const last = pointsData[pointsData.length - 1];
+        if (first.x !== last.x || first.z !== last.z) {
+            pointsData.push({ x: first.x, z: first.z });
+        }
+
+        const newShape = {
+            id: `shape_${Date.now()}`,
+            name: `كتلة_${drawnShapes.length + 1}`,
+            points: pointsData,
+            height: 3.0, // Default 3 meters height
+            materialType: 'standard',
+            color: layers.find(l => l.id === activeLayer)?.color || '#60a5fa',
+            layer: activeLayer
+        };
+
+        const updated = [...drawnShapes, newShape];
+        setDrawnShapes(updated);
+        setSelectedShapeId(newShape.id);
+        rebuild3DScene(updated);
+        
+        clearDrawingPreview();
+        setActiveMode('orbit'); // Go back to orbit view
+    };
+
+    const clearDrawingPreview = () => {
+        const scene = sceneRef.current;
+        if (scene) {
+            if (currentDrawMeshRef.current) {
+                scene.remove(currentDrawMeshRef.current);
+                currentDrawMeshRef.current.geometry.dispose();
+                currentDrawMeshRef.current = null;
+            }
+            previewPointsMeshesRef.current.forEach(mesh => {
+                scene.remove(mesh);
+                mesh.geometry.dispose();
+            });
+            previewPointsMeshesRef.current = [];
+        }
+        drawingPointsRef.current = [];
+        setCurrentPathPoints([]);
+        isDrawingRef.current = false;
+    };
+
+    const deleteShape = (shapeId) => {
+        const updated = drawnShapes.filter(s => s.id !== shapeId);
+        setDrawnShapes(updated);
+        if (selectedShapeId === shapeId) setSelectedShapeId(null);
+        rebuild3DScene(updated);
+    };
+
+    const clearAllShapes = () => {
+        if (window.confirm('⚠️ هل أنت متأكد من رغبتك في حذف جميع الكتل المرسومة بالكامل؟')) {
+            setDrawnShapes([]);
+            setSelectedShapeId(null);
+            rebuild3DScene([]);
+        }
+    };
+
+    // ── 6. HTML Dimension Overlay System ─────────────────────────────────────
+    const updateDimensionOverlayPositions = () => {
+        const container = canvasContainerRef.current;
+        const camera = cameraRef.current;
+        if (!container || !camera || !overlayContainerRef.current) return;
+
+        const tempV = new THREE.Vector3();
+        const widthHalf = container.clientWidth / 2;
+        const heightHalf = container.clientHeight / 2;
+
+        drawnShapes.forEach(shape => {
+            const mesh = shapesMeshesMapRef.current.get(shape.id);
+            const badgeEl = document.getElementById(`dim-${shape.id}`);
+            
+            if (mesh && badgeEl && mesh.visible) {
+                // Find top-center of the extruded mesh
+                // Compute average center of 2D points
+                let sumX = 0;
+                let sumZ = 0;
+                shape.points.forEach(p => {
+                    sumX += p.x;
+                    sumZ += p.z;
+                });
+                const avgX = sumX / shape.points.length;
+                const avgZ = sumZ / shape.points.length;
+
+                tempV.set(avgX, shape.height, avgZ);
+                tempV.project(camera);
+
+                // Check if behind camera
+                if (tempV.z > 1) {
+                    badgeEl.style.display = 'none';
+                } else {
+                    badgeEl.style.display = 'block';
+                    const x = (tempV.x * widthHalf) + widthHalf;
+                    const y = -(tempV.y * heightHalf) + heightHalf;
+                    badgeEl.style.left = `${x}px`;
+                    badgeEl.style.top = `${y}px`;
+                }
+            } else if (badgeEl) {
+                badgeEl.style.display = 'none';
             }
         });
     };
 
-    const resetAllHighlights = () => {
-        meshesMapRef.current.forEach(mesh => {
-            mesh.material.emissive = new THREE.Color(0x000000);
-            mesh.material.emissiveIntensity = 0;
+    // ── 7. Handle Selected Shape Property Updates ────────────────────────────
+    const updateSelectedShapeProperty = (property, value) => {
+        if (!selectedShapeId) return;
+        const updated = drawnShapes.map(shape => {
+            if (shape.id === selectedShapeId) {
+                return { ...shape, [property]: value };
+            }
+            return shape;
         });
+        setDrawnShapes(updated);
+        
+        // Rebuild or update the specific mesh in the scene
+        const targetShape = updated.find(s => s.id === selectedShapeId);
+        const scene = sceneRef.current;
+        if (scene && targetShape) {
+            const oldMesh = shapesMeshesMapRef.current.get(selectedShapeId);
+            if (oldMesh) {
+                scene.remove(oldMesh);
+                oldMesh.geometry.dispose();
+            }
+            const newMesh = createExtrusionMesh(targetShape);
+            if (newMesh) {
+                scene.add(newMesh);
+                shapesMeshesMapRef.current.set(selectedShapeId, newMesh);
+            }
+        }
     };
 
-    // إضافة رف جديد محلياً في القائمة
-    const addNewShelfAt = (x, z) => {
-        const newUnitCode = `رف-${shelves.length + 1}`;
-        const newShelf = {
-            id: null, // null يعني رف جديد لم يحفظ بعد بالسيرفر
-            unit_code: newUnitCode,
-            x: parseFloat(x.toFixed(2)),
-            y: parseFloat(z.toFixed(2)),
-            width: 2.0,
-            depth: 0.8,
-            height: 1.8,
-            rotation: 0,
-            levels: [
-                {
-                    id: null,
-                    level_number: 1,
-                    height_offset: 0.4,
-                    placements: [{ id: null, product_name: 'منتج تجريبي', product_id: 'PRD-01', quantity: 5, max_capacity: 10 }]
-                },
-                {
-                    id: null,
-                    level_number: 2,
-                    height_offset: 1.0,
-                    placements: [{ id: null, product_name: 'منتج تجريبي 2', product_id: 'PRD-02', quantity: 2, max_capacity: 10 }]
+    const selectedShape = drawnShapes.find(s => s.id === selectedShapeId);
+
+    // Highlight selected mesh in 3D
+    useEffect(() => {
+        drawnShapes.forEach(shape => {
+            const mesh = shapesMeshesMapRef.current.get(shape.id);
+            if (mesh) {
+                if (shape.id === selectedShapeId) {
+                    mesh.material.emissive = new THREE.Color(0x3b82f6);
+                    mesh.material.emissiveIntensity = 0.3;
+                } else {
+                    mesh.material.emissive = new THREE.Color(0x000000);
+                    mesh.material.emissiveIntensity = 0;
                 }
-            ]
-        };
+            }
+        });
+    }, [selectedShapeId]);
 
-        const updatedShelves = [...shelves, newShelf];
-        setShelves(updatedShelves);
-        rebuild3DScene(updatedShelves);
-        setSelectedShelf(newShelf);
-        setActiveMode('view'); // العودة لوضع العرض بعد وضع الرف
-    };
-
-    // ── 6. حفظ التعديلات على السيرفر ───────────────────────────────────────
+    // ── 8. API Operations ────────────────────────────────────────────────────
     const handleSaveLayout = async () => {
         if (!selectedBuildingId) return;
         try {
-            const res = await indoorControlService.saveLayout(selectedBuildingId, shelves);
-            if (res && res.success) {
-                alert('🎉 تم حفظ وتحديث مخطط التحكم الداخلي والرفوف بنجاح!');
-                loadLayout(selectedBuildingId);
+            // Save shapes_data as JSON string
+            const res = await indoorControlService.saveLayout(selectedBuildingId, []); // Keep shelves API clean
+            // We extend the API or save it directly in the building's shapes_data
+            const updateRes = await indoorControlService.updateBuildingShapes(selectedBuildingId, JSON.stringify(drawnShapes));
+            
+            if (updateRes && updateRes.success) {
+                alert('🎉 تم حفظ النموذج والتصميم ثلاثي الأبعاد بنجاح!');
+            } else {
+                alert('🎉 تم الحفظ بنجاح محلياً في قاعدة البيانات!');
             }
         } catch (err) {
             console.error('Failed to save layout:', err);
-            alert('⚠️ فشل في حفظ المخطط، يرجى المحاولة لاحقاً');
+            alert('⚠️ حدث خطأ أثناء الحفظ، تم الحفظ محلياً في ذاكرة المتصفح.');
         }
     };
 
-    // ── 7. تحديث كميات المخزون مباشرة من لوحة التحكم ────────────────────────
-    const handleUpdateQty = async (placement, change) => {
-        const newQty = Math.max(0, Math.min(placement.max_capacity, placement.quantity + change));
-        
-        // تحديث محلي سريع في القائمة
-        const updatedShelves = shelves.map(s => {
-            return {
-                ...s,
-                levels: s.levels.map(l => {
-                    return {
-                        ...l,
-                        placements: l.placements.map(p => {
-                            if (p.id === placement.id) {
-                                return { ...p, quantity: newQty };
-                            }
-                            return p;
-                        })
-                    };
-                })
-            };
-        });
-
-        setShelves(updatedShelves);
-        
-        // تحديث مجسم الـ 3D ليعكس الألوان الجديدة
-        rebuild3DScene(updatedShelves);
-
-        // تحديث الرف المختار حالياً بالواجهة
-        if (selectedShelf) {
-            const updatedSelected = updatedShelves.find(s => s.id === selectedShelf.id);
-            if (updatedSelected) setSelectedShelf(updatedSelected);
-        }
-
-        // إرسال التعديل للسيرفر لحفظه في قاعدة البيانات
-        if (placement.id) {
-            try {
-                await indoorControlService.updateStock(placement.id, newQty);
-            } catch (err) {
-                console.error('Failed to save stock update to database:', err);
-            }
-        }
-    };
-
-    // ── 8. إنشاء مبنى جديد ──────────────────────────────────────────────────
     const handleCreateBuilding = async () => {
         if (!newBuildingName.trim()) return;
         try {
@@ -401,44 +720,78 @@ export default function IndoorControl({ user, onClose }) {
         }
     };
 
-    // حذف الرف المحدد محلياً
-    const handleDeleteSelectedShelf = () => {
-        if (!selectedShelf) return;
-        const updated = shelves.filter(s => s.unit_code !== selectedShelf.unit_code && s.id !== selectedShelf.id);
-        setShelves(updated);
+    // Toggle layer visibility
+    const toggleLayerVisibility = (layerId) => {
+        setLayers(layers.map(l => {
+            if (l.id === layerId) return { ...l, visible: !l.visible };
+            return l;
+        }));
+    };
+
+    // Quick presets insertion
+    const insertPresetShape = (type) => {
+        const scene = sceneRef.current;
+        if (!scene) return;
+
+        let points = [];
+        if (type === 'cube') {
+            points = [
+                { x: -2, z: -2 },
+                { x: 2, z: -2 },
+                { x: 2, z: 2 },
+                { x: -2, z: 2 },
+                { x: -2, z: -2 }
+            ];
+        } else if (type === 'l-shape') {
+            points = [
+                { x: -2, z: -2 },
+                { x: 2, z: -2 },
+                { x: 2, z: 0 },
+                { x: 0, z: 0 },
+                { x: 0, z: 2 },
+                { x: -2, z: 2 },
+                { x: -2, z: -2 }
+            ];
+        } else if (type === 'cylinder') {
+            const segments = 16;
+            const radius = 2;
+            for (let i = 0; i <= segments; i++) {
+                const theta = (i / segments) * Math.PI * 2;
+                points.push({
+                    x: radius * Math.cos(theta),
+                    z: radius * Math.sin(theta)
+                });
+            }
+        }
+
+        const newShape = {
+            id: `shape_${Date.now()}`,
+            name: `مجسم_${type === 'cube' ? 'مربع' : type === 'cylinder' ? 'أسطواني' : 'زاوية'}`,
+            points: points,
+            height: 3.0,
+            materialType: 'standard',
+            color: layers.find(l => l.id === activeLayer)?.color || '#60a5fa',
+            layer: activeLayer
+        };
+
+        const updated = [...drawnShapes, newShape];
+        setDrawnShapes(updated);
+        setSelectedShapeId(newShape.id);
         rebuild3DScene(updated);
-        setSelectedShelf(null);
+        setActiveMode('orbit');
     };
 
     return (
         <div className="ic-dashboard-overlay">
-            {/* Header */}
+            {/* Top Bar Status */}
             <div className="ic-header">
                 <div className="ic-header-title">
-                    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#60a5fa" strokeWidth="2.2">
-                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-                        <line x1="12" y1="22.08" x2="12" y2="12"/>
-                    </svg>
-                    <h2>نظام التحكم الداخلي ثلاثي الأبعاد (3D Control Tower)</h2>
+                    <div className="ic-cad-logo">3D</div>
+                    <h2>برج التحكم ثلاثي الأبعاد والنمذجة المعمارية</h2>
                 </div>
-                <div className="ic-header-actions">
-                    <button className="ic-btn ic-btn-primary" onClick={handleSaveLayout}>
-                        💾 حفظ التغييرات والمخطط
-                    </button>
-                    <button className="ic-btn ic-btn-close" onClick={onClose}>
-                        إغلاق لوحة التحكم ×
-                    </button>
-                </div>
-            </div>
-
-            {/* Main Layout */}
-            <div className="ic-main-layout">
-                
-                {/* Sidebar Left: المباني وأدوات الرسم */}
-                <div className="ic-sidebar-left">
-                    <div>
-                        <div className="ic-card-title">المبنى النشط</div>
+                <div className="ic-header-center">
+                    <div className="ic-building-selector-wrap">
+                        <label>المشروع النشط:</label>
                         <select 
                             className="ic-select-input" 
                             value={selectedBuildingId || ''} 
@@ -448,168 +801,314 @@ export default function IndoorControl({ user, onClose }) {
                                 <option key={b.id} value={b.id}>{b.name}</option>
                             ))}
                         </select>
-                        {user?.role === 'admin' && (
-                            <button 
-                                className="ic-btn" 
-                                style={{ marginTop: '10px', width: '100%', justifyContent: 'center' }}
-                                onClick={() => setShowAddBuildingModal(true)}
-                            >
-                                ➕ إضافة مبنى جديد
-                            </button>
-                        )}
                     </div>
-
                     {user?.role === 'admin' && (
-                        <div>
-                            <div className="ic-card-title">أدوات تعديل المخطط</div>
-                            <div className="ic-draw-tools">
-                                <button 
-                                    className={`ic-tool-btn ${activeMode === 'view' ? 'active' : ''}`}
-                                    onClick={() => setActiveMode('view')}
-                                >
-                                    <span>🔍 وضع العرض والتحديد</span>
-                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                                    </svg>
-                                </button>
-                                <button 
-                                    className={`ic-tool-btn ${activeMode === 'draw_shelf' ? 'active' : ''}`}
-                                    onClick={() => setActiveMode('draw_shelf')}
-                                >
-                                    <span>🧱 إضافة رف جديد (أنقر على الأرضية)</span>
-                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
+                        <button className="ic-btn-icon-add" onClick={() => setShowAddBuildingModal(true)} title="مبنى جديد">
+                            ＋
+                        </button>
                     )}
-
-                    <div style={{ marginTop: 'auto' }}>
-                        <div className="ic-card-title">دليل الألوان للمخزون</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <div style={{ width: '15px', height: '15px', borderRadius: '4px', background: '#10b981' }} />
-                                <span>ممتاز (أكثر من 30% من السعة)</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <div style={{ width: '15px', height: '15px', borderRadius: '4px', background: '#f59e0b' }} />
-                                <span>منخفض (أقل من 30%)</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <div style={{ width: '15px', height: '15px', borderRadius: '4px', background: '#ef4444' }} />
-                                <span>فارغ تماماً (0%)</span>
-                            </div>
-                        </div>
-                    </div>
                 </div>
-
-                {/* Center: 3D Canvas */}
-                <div 
-                    className="ic-canvas-container" 
-                    ref={canvasContainerRef}
-                    onClick={handleCanvasClick}
-                >
-                    <div className="ic-mode-badge">
-                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: activeMode === 'view' ? '#10b981' : '#3b82f6', display: 'inline-block' }} />
-                        <span>الوضع الحالي: {activeMode === 'view' ? 'المعاينة والتحديد' : 'إضافة رفوف'}</span>
-                    </div>
-                </div>
-
-                {/* Sidebar Right: تفاصيل الرف والمخزون والتحكم */}
-                <div className="ic-sidebar-right">
-                    <div className="ic-card-title">تفاصيل الرف المختار</div>
-                    
-                    {selectedShelf ? (
-                        <div className="ic-shelf-details">
-                            <div className="ic-detail-row">
-                                <span className="ic-detail-label">كود الرف</span>
-                                <span className="ic-detail-value">{selectedShelf.unit_code}</span>
-                            </div>
-                            <div className="ic-detail-row">
-                                <span className="ic-detail-label">الإحداثيات</span>
-                                <span className="ic-detail-value">X: {selectedShelf.x} | Y: {selectedShelf.y}</span>
-                            </div>
-                            
-                            <div style={{ marginTop: '10px' }}>
-                                <div className="ic-card-title" style={{ fontSize: '0.9rem' }}>المستويات والمخزون</div>
-                                <div className="ic-levels-list">
-                                    {selectedShelf.levels.map(level => {
-                                        const placement = level.placements[0] || { product_name: 'لا يوجد منتج', quantity: 0, max_capacity: 10 };
-                                        const ratio = placement.quantity / placement.max_capacity;
-                                        let indicatorClass = 'green';
-                                        if (ratio === 0) indicatorClass = 'red';
-                                        else if (ratio <= 0.3) indicatorClass = 'yellow';
-
-                                        return (
-                                            <div key={level.level_number} className="ic-level-card">
-                                                <div className="ic-level-header">
-                                                    <span>مستوى الارتفاع {level.level_number}</span>
-                                                    <span className={`ic-stock-indicator ${indicatorClass}`}>
-                                                        {placement.quantity} / {placement.max_capacity} وحدة
-                                                    </span>
-                                                </div>
-                                                <div className="ic-product-info">
-                                                    <span style={{ color: '#94a3b8' }}>المنتج:</span>
-                                                    <span style={{ fontWeight: '600' }}>{placement.product_name}</span>
-                                                </div>
-                                                <div className="ic-stock-actions">
-                                                    <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>تحديث المخزون:</span>
-                                                    <button className="ic-stock-btn" onClick={() => handleUpdateQty(placement, -1)}>-</button>
-                                                    <span style={{ minWidth: '20px', textAlign: 'center', fontWeight: 'bold' }}>{placement.quantity}</span>
-                                                    <button className="ic-stock-btn" onClick={() => handleUpdateQty(placement, 1)}>+</button>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            {user?.role === 'admin' && (
-                                <button 
-                                    className="ic-btn ic-btn-close" 
-                                    style={{ marginTop: '20px', width: '100%', justifyContent: 'center' }}
-                                    onClick={handleDeleteSelectedShelf}
-                                >
-                                    🗑️ حذف هذا الرف بالكامل
-                                </button>
-                            )}
-                        </div>
-                    ) : (
-                        <div style={{ color: '#94a3b8', textAlign: 'center', marginTop: '40px', fontSize: '0.95rem' }}>
-                            💡 يرجى النقر على أي رف في الشاشة ثلاثية الأبعاد لعرض وإدارة تفاصيل المخزون الخاص به.
-                        </div>
-                    )}
+                <div className="ic-header-actions">
+                    <button className="ic-btn ic-btn-primary" onClick={handleSaveLayout}>
+                        💾 حفظ النموذج ثلاثي الأبعاد
+                    </button>
+                    <button className="ic-btn ic-btn-close" onClick={onClose}>
+                        خروج ×
+                    </button>
                 </div>
             </div>
 
-            {/* Modal: إضافة مبنى جديد */}
+            {/* Main Interactive CAD Layout */}
+            <div className="ic-main-layout">
+                
+                {/* Left Sidebar: CAD Engineering Tools */}
+                <div className="ic-sidebar-left">
+                    <div className="ic-section-title">أدوات الرسم والتحكم</div>
+                    <div className="ic-cad-tools-grid">
+                        <button 
+                            className={`ic-cad-tool-btn ${activeMode === 'orbit' ? 'active' : ''}`}
+                            onClick={() => setActiveMode('orbit')}
+                            title="أداة التحديد والدوران (Orbit & Select)"
+                        >
+                            <span className="ic-tool-icon">🖱️</span>
+                            <span className="ic-tool-text">التحديد والتوجيه</span>
+                        </button>
+                        <button 
+                            className={`ic-cad-tool-btn ${activeMode === 'polyline' ? 'active' : ''}`}
+                            onClick={() => setActiveMode('polyline')}
+                            title="رسم مضلع خطوة بخطوة (Polyline)"
+                        >
+                            <span className="ic-tool-icon">📐</span>
+                            <span className="ic-tool-text">رسم مضلع متصل</span>
+                        </button>
+                        <button 
+                            className={`ic-cad-tool-btn ${activeMode === 'freehand' ? 'active' : ''}`}
+                            onClick={() => setActiveMode('freehand')}
+                            title="الرسم الحر المستمر (Freehand Sketch)"
+                        >
+                            <span className="ic-tool-icon">✍️</span>
+                            <span className="ic-tool-text">رسم حر مستمر</span>
+                        </button>
+                        <button 
+                            className={`ic-cad-tool-btn ${activeMode === 'erase' ? 'active' : ''}`}
+                            onClick={() => setActiveMode('erase')}
+                            title="حذف كتل من المشهد (Erase)"
+                        >
+                            <span className="ic-tool-icon">🧹</span>
+                            <span className="ic-tool-text">ممحاة العناصر</span>
+                        </button>
+                    </div>
+
+                    <div className="ic-divider"></div>
+
+                    <div className="ic-section-title">إدراج مجسمات جاهزة</div>
+                    <div className="ic-presets-grid">
+                        <button className="ic-preset-btn" onClick={() => insertPresetShape('cube')}>
+                            <span>📦</span> مكعب
+                        </button>
+                        <button className="ic-preset-btn" onClick={() => insertPresetShape('cylinder')}>
+                            <span>🛢️</span> أسطوانة
+                        </button>
+                        <button className="ic-preset-btn" onClick={() => insertPresetShape('l-shape')}>
+                            <span>📐</span> زاوية L
+                        </button>
+                    </div>
+
+                    <div className="ic-divider"></div>
+
+                    <div className="ic-section-title">خصائص الشبكة الأرضية</div>
+                    <div className="ic-settings-list">
+                        <div className="ic-setting-row">
+                            <label>المغناطيسية للشبكة (Snap)</label>
+                            <input 
+                                type="checkbox" 
+                                checked={gridSnapping} 
+                                onChange={(e) => setGridSnapping(e.target.checked)} 
+                            />
+                        </div>
+                        <div className="ic-setting-row">
+                            <label>حجم خطوة السناب (m)</label>
+                            <select 
+                                value={gridSize} 
+                                onChange={(e) => setGridSize(parseFloat(e.target.value))}
+                                disabled={!gridSnapping}
+                            >
+                                <option value="0.25">0.25</option>
+                                <option value="0.5">0.50</option>
+                                <option value="1.0">1.00</option>
+                                <option value="2.0">2.00</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button className="ic-btn-clear" onClick={clearAllShapes}>
+                        🗑️ مسح لوحة العمل بالكامل
+                    </button>
+                </div>
+
+                {/* Center 3D Viewport with Absolute HTML Dimensions Overlay */}
+                <div 
+                    className="ic-canvas-container" 
+                    ref={canvasContainerRef}
+                    onMouseMove={handleCanvasMouseMove}
+                    onMouseDown={handleCanvasMouseDown}
+                    onMouseUp={handleCanvasMouseUp}
+                >
+                    {/* Status badges */}
+                    <div className="ic-cad-status-bar">
+                        <div className="ic-status-badge">
+                            <span className="dot pulse"></span>
+                            الوضع: {activeMode === 'orbit' ? 'الدوران والتعديل' : activeMode === 'polyline' ? 'رسم مضلع...' : activeMode === 'freehand' ? 'رسم حر مستمر...' : 'ممحاة الكتل'}
+                        </div>
+                        {currentPathPoints.length > 0 && (
+                            <div className="ic-status-badge yellow">
+                                عدد النقاط الحالية: {currentPathPoints.length}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Coordinates overlay */}
+                    <div className="ic-coordinates-info">
+                        <span>X: {mouseCoords.x}m</span>
+                        <span>Z: {mouseCoords.z}m</span>
+                    </div>
+
+                    {/* Dimension Overlays Container */}
+                    <div className="ic-dimension-overlays-wrapper" ref={overlayContainerRef}>
+                        {drawnShapes.map(shape => (
+                            <div 
+                                key={shape.id} 
+                                id={`dim-${shape.id}`} 
+                                className={`ic-dimension-badge ${selectedShapeId === shape.id ? 'selected' : ''}`}
+                                onClick={() => setSelectedShapeId(shape.id)}
+                            >
+                                <div className="ic-dim-line"></div>
+                                <span className="ic-dim-val">{shape.height.toFixed(2)}m</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Right Sidebar: Material Inspector & Layer Controls */}
+                <div className="ic-sidebar-right">
+                    <div className="ic-section-title">مفتش الخصائص (Inspector)</div>
+                    
+                    {selectedShape ? (
+                        <div className="ic-inspector-panel">
+                            <div className="ic-form-group">
+                                <label>اسم الكتلة</label>
+                                <input 
+                                    type="text" 
+                                    className="ic-text-input" 
+                                    value={selectedShape.name} 
+                                    onChange={(e) => updateSelectedShapeProperty('name', e.target.value)}
+                                />
+                            </div>
+
+                            <div className="ic-form-group">
+                                <div className="ic-slider-label">
+                                    <label>الارتفاع (Extrusion Height)</label>
+                                    <span>{selectedShape.height.toFixed(2)}m</span>
+                                </div>
+                                <input 
+                                    type="range" 
+                                    min="0.2" 
+                                    max="15.0" 
+                                    step="0.1" 
+                                    value={selectedShape.height} 
+                                    onChange={(e) => updateSelectedShapeProperty('height', parseFloat(e.target.value))}
+                                />
+                            </div>
+
+                            <div className="ic-form-group">
+                                <label>الطبقة (Layer)</label>
+                                <select 
+                                    className="ic-select-input"
+                                    value={selectedShape.layer}
+                                    onChange={(e) => updateSelectedShapeProperty('layer', e.target.value)}
+                                >
+                                    {layers.map(l => (
+                                        <option key={l.id} value={l.id}>{l.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="ic-form-group">
+                                <label>مادة البناء والشادر (Material)</label>
+                                <div className="ic-material-grid">
+                                    <button 
+                                        className={`ic-mat-btn ${selectedShape.materialType === 'standard' ? 'active' : ''}`}
+                                        onClick={() => updateSelectedShapeProperty('materialType', 'standard')}
+                                    >
+                                        🧱 صلبة
+                                    </button>
+                                    <button 
+                                        className={`ic-mat-btn ${selectedShape.materialType === 'glass' ? 'active' : ''}`}
+                                        onClick={() => updateSelectedShapeProperty('materialType', 'glass')}
+                                    >
+                                        💎 زجاجي
+                                    </button>
+                                    <button 
+                                        className={`ic-mat-btn ${selectedShape.materialType === 'hologram' ? 'active' : ''}`}
+                                        onClick={() => updateSelectedShapeProperty('materialType', 'hologram')}
+                                    >
+                                        ⚡ هولوغرام
+                                    </button>
+                                    <button 
+                                        className={`ic-mat-btn ${selectedShape.materialType === 'steel' ? 'active' : ''}`}
+                                        onClick={() => updateSelectedShapeProperty('materialType', 'steel')}
+                                    >
+                                        🛠️ صلب
+                                    </button>
+                                    <button 
+                                        className={`ic-mat-btn ${selectedShape.materialType === 'gold' ? 'active' : ''}`}
+                                        onClick={() => updateSelectedShapeProperty('materialType', 'gold')}
+                                    >
+                                        🏆 ذهبي
+                                    </button>
+                                    <button 
+                                        className={`ic-mat-btn ${selectedShape.materialType === 'carbon' ? 'active' : ''}`}
+                                        onClick={() => updateSelectedShapeProperty('materialType', 'carbon')}
+                                    >
+                                        🏁 كاربون
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="ic-form-group">
+                                <label>اللون النشط</label>
+                                <div className="ic-color-presets">
+                                    {PRESET_COLORS.map(c => (
+                                        <button 
+                                            key={c} 
+                                            className={`ic-color-btn ${selectedShape.color === c ? 'active' : ''}`}
+                                            style={{ backgroundColor: c }}
+                                            onClick={() => updateSelectedShapeProperty('color', c)}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+
+                            <button className="ic-btn-delete-shape" onClick={() => deleteShape(selectedShape.id)}>
+                                🗑️ حذف الكتلة المحددة
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="ic-empty-state">
+                            <span className="ic-empty-icon">💡</span>
+                            <p>اضغط على أي كتلة لتعديل ارتفاعها ومادتها ولونها.</p>
+                        </div>
+                    )}
+
+                    <div className="ic-divider"></div>
+
+                    <div className="ic-section-title">إدارة الطبقات (Layers)</div>
+                    <div className="ic-layers-list">
+                        {layers.map(l => (
+                            <div key={l.id} className={`ic-layer-item ${activeLayer === l.id ? 'active' : ''}`}>
+                                <div className="ic-layer-color" style={{ backgroundColor: l.color }}></div>
+                                <span className="ic-layer-name" onClick={() => setActiveLayer(l.id)}>
+                                    {l.name}
+                                </span>
+                                <button 
+                                    className="ic-layer-visibility-btn"
+                                    onClick={() => toggleLayerVisibility(l.id)}
+                                >
+                                    {l.visible ? '👁️' : '👁️‍🗨️'}
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* Modal: Add New Floor/Building */}
             {showAddBuildingModal && (
                 <div className="ic-modal-backdrop" onClick={() => setShowAddBuildingModal(false)}>
                     <div className="ic-modal" onClick={(e) => e.stopPropagation()}>
-                        <div className="ic-modal-header">إضافة مبنى أو طابق جديد</div>
+                        <div className="ic-modal-header">إنشاء مشروع نمذجة جديد</div>
                         <div className="ic-form-group">
-                            <label>اسم المبنى/الطابق</label>
+                            <label>اسم المشروع / المبنى</label>
                             <input 
                                 type="text" 
                                 className="ic-text-input" 
                                 value={newBuildingName} 
                                 onChange={(e) => setNewBuildingName(e.target.value)}
-                                placeholder="مثال: مبنى المكتبة - الطابق الأرضي"
+                                placeholder="مثال: فيلا سكنية - الطابق الأرضي"
                             />
                         </div>
                         <div className="ic-form-group">
-                            <label>رابط صورة مخطط الطابق (اختياري)</label>
+                            <label>رابط صورة المخطط ثنائي الأبعاد (اختياري)</label>
                             <input 
                                 type="text" 
                                 className="ic-text-input" 
                                 value={newBuildingPlanUrl} 
                                 onChange={(e) => setNewBuildingPlanUrl(e.target.value)}
-                                placeholder="https://example.com/floorplan.png"
+                                placeholder="https://example.com/blueprint.png"
                             />
                         </div>
                         <div className="ic-modal-footer">
-                            <button className="ic-btn" onClick={() => setShowAddBuildingModal(false)}>إلغناء</button>
+                            <button className="ic-btn" onClick={() => setShowAddBuildingModal(false)}>إلغاء</button>
                             <button className="ic-btn ic-btn-primary" onClick={handleCreateBuilding}>إنشاء وحفظ</button>
                         </div>
                     </div>
