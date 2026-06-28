@@ -235,8 +235,8 @@ export default function IndoorControl({ user, onClose }) {
         if (!container) return;
 
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x080c14);
-        scene.fog = new THREE.FogExp2(0x080c14, 0.015);
+        scene.background = new THREE.Color(0xf1f5f9);
+        scene.fog = new THREE.FogExp2(0xf1f5f9, 0.015);
         sceneRef.current = scene;
 
         const camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
@@ -319,21 +319,21 @@ export default function IndoorControl({ user, onClose }) {
         scene.add(dirLight);
 
         // Grid & Floor
-        const gridHelper = new THREE.GridHelper(50, 50, 0x1e293b, 0x0f172a);
+        const gridHelper = new THREE.GridHelper(50, 50, 0x94a3b8, 0xe2e8f0);
         gridHelper.position.y = -0.01;
         scene.add(gridHelper);
 
-        const fineGrid = new THREE.GridHelper(50, 100, 0x334155, 0x0f172a);
+        const fineGrid = new THREE.GridHelper(50, 100, 0xcbd5e1, 0xf1f5f9);
         fineGrid.position.y = -0.015;
-        fineGrid.material.opacity = 0.2;
+        fineGrid.material.opacity = 0.35;
         fineGrid.material.transparent = true;
         scene.add(fineGrid);
 
         const floorGeo = new THREE.PlaneGeometry(100, 100);
         const floorMat = new THREE.MeshStandardMaterial({
-            color: 0x0a0f1d,
-            roughness: 0.8,
-            metalness: 0.2
+            color: 0xffffff,
+            roughness: 0.9,
+            metalness: 0.0
         });
         const floor = new THREE.Mesh(floorGeo, floorMat);
         floor.rotation.x = -Math.PI / 2;
