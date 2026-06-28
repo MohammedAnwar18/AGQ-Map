@@ -124,27 +124,7 @@ const pool = require('./config/database');
             )
         `);
         
-        // ── جدول التوأم الرقمي digital_twin_projects ────────────────────────────
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS digital_twin_projects (
-                id             SERIAL PRIMARY KEY,
-                project_name   VARCHAR(255) NOT NULL,
-                geojsonData    JSONB,
-                customPoints   JSONB,
-                customBuildings JSONB,
-                customStreets  JSONB,
-                pointMappings  JSONB,
-                buildingTheme  VARCHAR(50),
-                buildingColor  VARCHAR(50),
-                heightProp     VARCHAR(50),
-                defaultHeight  INTEGER,
-                activeBasemap  VARCHAR(50),
-                centerCoords   JSONB,
-                created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                created_by     INTEGER REFERENCES users(id) ON DELETE SET NULL
-            )
-        `);
-        console.log('✅ study_videos, study_books & digital_twin_projects tables ready');
+        console.log('✅ study_videos & study_books tables ready');
     } catch (err) {
         console.error('⚠️ ar_contents migration error:', err.message);
     }
@@ -374,7 +354,7 @@ app.use('/api/ar', require('./routes/ar'));
 app.use('/api/tours', require('./routes/tours'));
 app.use('/api/fitness', require('./routes/fitness'));
 app.use('/api/study-space', require('./routes/studySpace'));
-app.use('/api/digital-twin', require('./routes/digitalTwin'));
+
 
 
 

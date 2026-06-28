@@ -37,7 +37,7 @@ import LiveCameraModal from '../components/LiveCameraModal';
 import FitnessPathModal from '../components/FitnessPathModal';
 import { postService, friendService, authService, notificationService, communityService, shopService, cameraService, getImageUrl, fitnessService } from '../services/api';
 const StudySpace = React.lazy(() => import('./StudySpace'));
-const DigitalTwin = React.lazy(() => import('./DigitalTwin'));
+
 import { isNative, startNativeTracking, stopNativeTracking } from '../utils/nativeLocation';
 import './Map.css';
 
@@ -727,7 +727,7 @@ const MapComponent = () => {
     const [showMagazine, setShowMagazine] = useState(false);
     const [showLabModal, setShowLabModal] = useState(false);
     const [showStudySpace, setShowStudySpace] = useState(false);
-    const [showDigitalTwin, setShowDigitalTwin] = useState(false);
+
     const [showRepositoryModal, setShowRepositoryModal] = useState(false);
     const [showCommunities, setShowCommunities] = useState(false);
     const [showMoreMenu, setShowMoreMenu] = useState(false);
@@ -2535,29 +2535,7 @@ const MapComponent = () => {
                             </button>
                         )}
 
-                        {/* التوأم الرقمي ثلاثي الأبعاد */}
-                        {user?.role === 'admin' && (
-                            <button
-                                onClick={() => {
-                                    setShowDigitalTwin(true);
-                                    setShowMoreMenu(false);
-                                }}
-                            >
-                                <div className="menu-item-content">
-                                    <div className="menu-icon-wrapper" style={{ color: '#10b981' }}>
-                                        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg">
-                                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-                                            <line x1="12" y1="22.08" x2="12" y2="12"/>
-                                        </svg>
-                                    </div>
-                                    <span style={{ color: '#f1f5f9', fontWeight: 'bold' }}>التوأم الرقمي 3D</span>
-                                </div>
-                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#10b981" strokeWidth="2.5">
-                                    <polyline points="9 18 15 12 9 6" />
-                                </svg>
-                            </button>
-                        )}
+
 
                         {/* PalNovaa Spatial Magazine - Hidden as requested
                         <button onClick={() => { setShowMagazine(true); setShowMoreMenu(false); }}>
@@ -3571,9 +3549,7 @@ const MapComponent = () => {
             {showStudySpace && (
                 <StudySpace user={user} onClose={() => setShowStudySpace(false)} />
             )}
-            {showDigitalTwin && user?.role === 'admin' && (
-                <DigitalTwin user={user} onClose={() => setShowDigitalTwin(false)} />
-            )}
+
             {showFitnessModal && (
                 <FitnessPathModal 
                     isOpen={showFitnessModal}

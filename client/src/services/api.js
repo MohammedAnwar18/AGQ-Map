@@ -800,17 +800,7 @@ export const fitnessService = {
 };
 
 
-// Digital Twin Services
-export const digitalTwinService = {
-    getLatestProject: async () => {
-        const response = await api.get('/digital-twin/latest');
-        return response.data;
-    },
-    saveProject: async (projectData) => {
-        const response = await api.post('/digital-twin/save', projectData);
-        return response.data;
-    }
-};
+
 
 
 // Study Space Services
