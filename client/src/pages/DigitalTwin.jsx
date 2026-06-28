@@ -894,59 +894,74 @@ export default function DigitalTwin({ user, onClose }) {
             }
         });
 
-        // تجسيم مضلعات الـ GeoJSON ثنائية الأبعاد
-        if (geojsonData) {
-            const polygonsOnly = {
-                type: "FeatureCollection",
-                features: (geojsonData.type === 'FeatureCollection' ? geojsonData.features : [geojsonData])
-                    .filter(f => f.geometry.type.includes('Polygon'))
-            };
+        // تجسيم مضلعات الـ GeoJSON ثنائية الأبعاد والمباني المرسومة يدوياً
+        map.addSource('dt-buildings-source', {
+            type: 'geojson',
+            data: getBuildingsGeoJSON()
+        });
 
-            map.addSource('dt-buildings-source', {
-                type: 'geojson',
-                data: polygonsOnly
-            });
+        let fillColor = '#10b981';
+        let fillOpacity = 0.85;
 
-            let fillColor = '#10b981';
-            let fillOpacity = 0.85;
+        if (buildingTheme === 'glassmorphic') {
+            fillColor = '#38bdf8';
+            fillOpacity = 0.55;
+        } else if (buildingTheme === 'neon') {
+            fillColor = '#ec4899';
+            fillOpacity = 0.9;
+        }
 
-            if (buildingTheme === 'glassmorphic') {
-                fillColor = '#38bdf8';
-                fillOpacity = 0.55;
-            } else if (buildingTheme === 'neon') {
-                fillColor = '#ec4899';
-                fillOpacity = 0.9;
+        map.addLayer({
+            id: 'dt-buildings-3d',
+            type: 'fill-extrusion',
+            source: 'dt-buildings-source',
+            paint: {
+                'fill-extrusion-color': [
+                    'coalesce',
+                    ['get', 'color'],
+                    fillColor
+                ],
+                'fill-extrusion-height': [
+                    'coalesce',
+                    ['get', heightProp],
+                    ['get', 'height'],
+                    defaultHeight
+                ],
+                'fill-extrusion-base': [
+                    'coalesce',
+                    ['get', 'min_height'],
+                    ['get', 'base_height'],
+                    0
+                ],
+                'fill-extrusion-opacity': fillOpacity
             }
+        });
 
-            map.addLayer({
-                id: 'dt-buildings-3d',
-                type: 'fill-extrusion',
-                source: 'dt-buildings-source',
-                paint: {
-                    'fill-extrusion-color': [
-                        'coalesce',
-                        ['get', 'color'],
-                        fillColor
-                    ],
-                    'fill-extrusion-height': [
-                        'coalesce',
-                        ['get', heightProp],
-                        ['get', 'height'],
-                        defaultHeight
-                    ],
-                    'fill-extrusion-base': [
-                        'coalesce',
-                        ['get', 'min_height'],
-                        ['get', 'base_height'],
-                        0
-                    ],
-                    'fill-extrusion-opacity': fillOpacity
-                }
-            });
-
-            map.on('click', 'dt-buildings-3d', (e) => {
-                if (e.features && e.features.length > 0) {
-                    const feat = e.features[0];
+        map.on('click', 'dt-buildings-3d', (e) => {
+            if (e.features && e.features.length > 0) {
+                const feat = e.features[0];
+                const featId = feat.properties.id || feat.id;
+                
+                // تحقق مما إذا كان المبنى مخصصاً مرسوماً
+                const customIdx = customBuildingsRef.current.findIndex(b => b.id === featId);
+                if (customIdx !== -1) {
+                    const bld = customBuildingsRef.current[customIdx];
+                    setSelectedFeature({
+                        type: 'custom-building',
+                        id: bld.id,
+                        index: customIdx,
+                        properties: bld,
+                        coords: e.lngLat
+                    });
+                    setEditHeight(bld.height || 15);
+                    setEditSkin(bld.skin || 'glass');
+                    setEditSolarRoof(bld.solarRoof || false);
+                    setEditColor(bld.color || '#3b82f6');
+                    setEditScale(bld.scale || 1.0);
+                    setEditRotation(bld.rotation || 0);
+                    setEditOffsetX(bld.offsetX || 0);
+                    setEditOffsetY(bld.offsetY || 0);
+                } else {
                     setSelectedFeature({
                         type: 'building-base',
                         id: feat.id || Math.random().toString(),
@@ -954,11 +969,49 @@ export default function DigitalTwin({ user, onClose }) {
                         coords: e.lngLat
                     });
                 }
-            });
-        }
+            }
+        });
 
         // دمج طبقة Three.js للمباني المكسوة والنقاط المخصصة والنافورة المتحركة
         addThreeJsCustomLayer(map);
+    };
+
+    const getBuildingsGeoJSON = () => {
+        const features = [];
+        
+        // 1. أضف المباني الأساسية من GeoJSON
+        if (geojsonData) {
+            const baseFeatures = geojsonData.type === 'FeatureCollection' ? geojsonData.features : [geojsonData];
+            baseFeatures.forEach(f => {
+                if (f.geometry && f.geometry.type.includes('Polygon')) {
+                    features.push(f);
+                }
+            });
+        }
+        
+        // 2. أضف المباني المرسومة يدوياً من قبل المستخدم
+        customBuildings.forEach(bld => {
+            features.push({
+                type: 'Feature',
+                properties: {
+                    id: bld.id,
+                    name: bld.name,
+                    height: bld.height || 15,
+                    color: bld.color || '#3b82f6',
+                    skin: bld.skin || 'glass',
+                    solarRoof: bld.solarRoof || false
+                },
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [bld.coordinates]
+                }
+            });
+        });
+        
+        return {
+            type: 'FeatureCollection',
+            features: features
+        };
     };
 
     const getStreetsGeoJSON = () => {
@@ -978,6 +1031,13 @@ export default function DigitalTwin({ user, onClose }) {
             map.getSource('dt-custom-streets-source').setData(getStreetsGeoJSON());
         }
     }, [customStreets]);
+
+    useEffect(() => {
+        const map = mapRef.current;
+        if (map && map.getSource('dt-buildings-source')) {
+            map.getSource('dt-buildings-source').setData(getBuildingsGeoJSON());
+        }
+    }, [customBuildings, geojsonData]);
 
     useEffect(() => {
         const map = mapRef.current;
