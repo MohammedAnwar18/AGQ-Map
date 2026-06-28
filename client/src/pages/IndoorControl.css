@@ -1048,3 +1048,47 @@
 .ic-sidebar-left::-webkit-scrollbar-thumb:hover, .ic-sidebar-right::-webkit-scrollbar-thumb:hover {
     background: rgba(0, 0, 0, 0.15);
 }
+
+/* Floating Gizmo Toolbar */
+.ic-gizmo-toolbar {
+    position: absolute;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    border-radius: 14px;
+    display: flex;
+    padding: 4px;
+    gap: 4px;
+    z-index: 6;
+}
+
+.ic-gizmo-toolbar button {
+    background: transparent;
+    border: none;
+    color: #475569;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ic-gizmo-toolbar button:hover {
+    color: #0f172a;
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.ic-gizmo-toolbar button.active {
+    background: #0d9488;
+    color: white;
+    box-shadow: 0 4px 10px rgba(13, 148, 136, 0.15);
+}

@@ -45,6 +45,7 @@ export default function IndoorControl({ user, onClose }) {
     const [selectedNodeId, setSelectedNodeId] = useState(null);
     const [itemToPlace, setItemToPlace] = useState(null); 
     const [connectingStartNodeId, setConnectingStartNodeId] = useState(null); // For path_edge creation
+    const [gizmoMode, setGizmoMode] = useState('translate'); // translate, rotate, scale
 
     // Modal/Prompt state for new Zone
     const [showZoneModal, setShowZoneModal] = useState(false);
@@ -120,6 +121,7 @@ export default function IndoorControl({ user, onClose }) {
     const activeLayerRef = useRef(activeLayer);
     const layersRef = useRef(layers);
     const connectingStartNodeIdRef = useRef(connectingStartNodeId);
+    const gizmoModeRef = useRef(gizmoMode);
 
     useEffect(() => { activeModeRef.current = activeMode; }, [activeMode]);
     useEffect(() => { itemToPlaceRef.current = itemToPlace; }, [itemToPlace]);
@@ -138,6 +140,69 @@ export default function IndoorControl({ user, onClose }) {
     useEffect(() => { activeLayerRef.current = activeLayer; }, [activeLayer]);
     useEffect(() => { layersRef.current = layers; }, [layers]);
     useEffect(() => { connectingStartNodeIdRef.current = connectingStartNodeId; }, [connectingStartNodeId]);
+    useEffect(() => { gizmoModeRef.current = gizmoMode; }, [gizmoMode]);
+
+    // Snapping logic for doors & windows to walls
+    const snapToNearestWall = (point) => {
+        let nearestPoint = null;
+        let nearestRotation = 0;
+        let minDistance = Infinity;
+
+        const fId = currentFloorRef.current;
+        const walls = drawnShapesRef.current.filter(s => !s.floor || s.floor === fId);
+
+        walls.forEach(wall => {
+            for (let i = 0; i < wall.points.length - 1; i++) {
+                const pA = wall.points[i];
+                const pB = wall.points[i+1];
+
+                const abX = pB.x - pA.x;
+                const abZ = pB.z - pA.z;
+                const abLenSq = abX*abX + abZ*abZ;
+                if (abLenSq === 0) continue;
+
+                let t = ((point.x - pA.x) * abX + (point.z - pA.z) * abZ) / abLenSq;
+                t = Math.max(0, Math.min(1, t));
+
+                const projX = pA.x + t * abX;
+                const projZ = pA.z + t * abZ;
+
+                const dist = Math.sqrt((point.x - projX)**2 + (point.z - projZ)**2);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    nearestPoint = new THREE.Vector3(projX, 0, projZ);
+                    nearestRotation = -Math.atan2(abZ, abX) * 180 / Math.PI;
+                }
+            }
+        });
+
+        // Snap threshold: 1.5 meters
+        if (minDistance < 1.5) {
+            return { position: nearestPoint, rotation: nearestRotation };
+        }
+        return null;
+    };
+
+    const changeGizmoMode = (mode) => {
+        setGizmoMode(mode);
+        const tControls = transformControlsRef.current;
+        if (tControls) {
+            tControls.setMode(mode);
+            if (mode === 'translate') {
+                tControls.showX = true;
+                tControls.showY = false;
+                tControls.showZ = true;
+            } else if (mode === 'rotate') {
+                tControls.showX = false;
+                tControls.showY = true;
+                tControls.showZ = false;
+            } else if (mode === 'scale') {
+                tControls.showX = true;
+                tControls.showY = true;
+                tControls.showZ = true;
+            }
+        }
+    };
 
     // Rebuild 3D Scene when floor changes
     useEffect(() => {
@@ -150,6 +215,44 @@ export default function IndoorControl({ user, onClose }) {
         setConnectingStartNodeId(null);
         clearNavigationRoute();
     }, [currentFloor]);
+
+    // Automatically attach TransformControls to selected object or node
+    useEffect(() => {
+        const tControls = transformControlsRef.current;
+        if (!tControls) return;
+
+        tControls.detach();
+
+        if (selectedObjectId) {
+            const mesh = objectsMeshesMapRef.current.get(selectedObjectId);
+            if (mesh) {
+                tControls.setMode(gizmoMode);
+                if (gizmoMode === 'translate') {
+                    tControls.showX = true;
+                    tControls.showY = false;
+                    tControls.showZ = true;
+                } else if (gizmoMode === 'rotate') {
+                    tControls.showX = false;
+                    tControls.showY = true;
+                    tControls.showZ = false;
+                } else if (gizmoMode === 'scale') {
+                    tControls.showX = true;
+                    tControls.showY = true;
+                    tControls.showZ = true;
+                }
+                tControls.attach(mesh);
+            }
+        } else if (selectedNodeId) {
+            const mesh = nodesMeshesMapRef.current.get(selectedNodeId);
+            if (mesh) {
+                tControls.setMode('translate');
+                tControls.showX = true;
+                tControls.showY = false;
+                tControls.showZ = true;
+                tControls.attach(mesh);
+            }
+        }
+    }, [selectedObjectId, selectedNodeId, gizmoMode]);
 
     // ── 1. Load Buildings on Mount ──────────────────────────────────────────
     useEffect(() => {
@@ -266,6 +369,23 @@ export default function IndoorControl({ user, onClose }) {
         scene.add(tControls);
         transformControlsRef.current = tControls;
 
+        // Snapping during drag
+        tControls.addEventListener('change', () => {
+            if (tControls.object && tControls.dragging) {
+                const objId = tControls.object.userData.objectId;
+                if (objId) {
+                    const objData = placedObjectsRef.current.find(o => o.id === objId);
+                    if (objData && ['single_door', 'double_door', 'glass_window'].includes(objData.subType)) {
+                        const snapped = snapToNearestWall(tControls.object.position);
+                        if (snapped) {
+                            tControls.object.position.copy(snapped.position);
+                            tControls.object.rotation.y = (snapped.rotation * Math.PI) / 180;
+                        }
+                    }
+                }
+            }
+        });
+
         tControls.addEventListener('dragging-changed', (event) => {
             controls.enabled = !event.value;
             
@@ -278,12 +398,14 @@ export default function IndoorControl({ user, onClose }) {
 
                 if (objId) {
                     const rotY = (tControls.object.rotation.y * 180) / Math.PI;
+                    const sc = tControls.object.scale;
                     setPlacedObjects(prev => prev.map(obj => {
                         if (obj.id === objId) {
                             return {
                                 ...obj,
                                 position: { x: parseFloat(pos.x.toFixed(2)), y: parseFloat(pos.y.toFixed(2)), z: parseFloat(pos.z.toFixed(2)) },
-                                rotation: parseFloat(rotY.toFixed(2))
+                                rotation: parseFloat(rotY.toFixed(2)),
+                                scale: { x: parseFloat(sc.x.toFixed(2)), y: parseFloat(sc.y.toFixed(2)), z: parseFloat(sc.z.toFixed(2)) }
                             };
                         }
                         return obj;
@@ -897,12 +1019,24 @@ export default function IndoorControl({ user, onClose }) {
 
         // ── Drop / Place Item Mode ──
         if (activeModeRef.current === 'place_item' && itemToPlaceRef.current) {
+            let pos = { x: point.x, y: 0, z: point.z };
+            let rot = 0;
+
+            // Snap doors and windows to nearest wall
+            if (['single_door', 'double_door', 'glass_window'].includes(itemToPlaceRef.current)) {
+                const snapped = snapToNearestWall(point);
+                if (snapped) {
+                    pos = { x: snapped.position.x, y: 0, z: snapped.position.z };
+                    rot = snapped.rotation;
+                }
+            }
+
             const newObj = {
                 id: `obj_${Date.now()}`,
                 type: ['single_door', 'double_door', 'glass_window'].includes(itemToPlaceRef.current) ? 'door' : 'furniture',
                 subType: itemToPlaceRef.current,
-                position: { x: point.x, y: 0, z: point.z },
-                rotation: 0,
+                position: pos,
+                rotation: rot,
                 scale: { x: 1, y: 1, z: 1 },
                 isOpen: false,
                 color: '#60a5fa',
@@ -1069,19 +1203,28 @@ export default function IndoorControl({ user, onClose }) {
                 return;
             }
 
-            // 4. Raycast Walls
+            // 4. Raycast Walls (Recursive to support hollow wall box groups)
             const wallMeshes = Array.from(shapesMeshesMapRef.current.values());
-            const wallIntersects = raycaster.intersectObjects(wallMeshes);
+            const wallIntersects = raycaster.intersectObjects(wallMeshes, true);
 
             if (wallIntersects.length > 0) {
-                const wallId = wallIntersects[0].object.userData.shapeId;
-                if (activeModeRef.current === 'erase') {
-                    deleteShape(wallId);
-                } else {
-                    setSelectedShapeId(wallId);
-                    setSelectedObjectId(null);
-                    setSelectedZoneId(null);
-                    setSelectedNodeId(null);
+                let parent = wallIntersects[0].object;
+                while (parent && !parent.userData.shapeId) {
+                    parent = parent.parent;
+                }
+                if (parent) {
+                    const wallId = parent.userData.shapeId;
+                    if (activeModeRef.current === 'erase') {
+                        deleteShape(wallId);
+                    } else {
+                        setSelectedShapeId(wallId);
+                        setSelectedObjectId(null);
+                        setSelectedZoneId(null);
+                        setSelectedNodeId(null);
+                        
+                        // Detach transform controls if selecting a wall
+                        transformControlsRef.current?.detach();
+                    }
                 }
             } else {
                 setSelectedShapeId(null);
@@ -1669,31 +1812,41 @@ export default function IndoorControl({ user, onClose }) {
     const createExtrusionMesh = (shapeData) => {
         if (!shapeData.points || shapeData.points.length < 2) return null;
 
-        const shape = new THREE.Shape();
-        shape.moveTo(shapeData.points[0].x, shapeData.points[0].z);
-        for (let i = 1; i < shapeData.points.length; i++) {
-            shape.lineTo(shapeData.points[i].x, shapeData.points[i].z);
-        }
-        shape.closePath();
+        const group = new THREE.Group();
+        group.userData = { shapeId: shapeData.id };
 
-        const extrudeSettings = {
-            steps: 1,
-            depth: shapeData.height || 3.0,
-            bevelEnabled: false
-        };
-
-        const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+        const thickness = 0.15; // 15cm wall thickness
+        const height = shapeData.height || 3.0;
         const material = getMaterialPreset(shapeData.materialType || 'standard', shapeData.color || '#cbd5e1');
-        const mesh = new THREE.Mesh(geometry, material);
-        
-        mesh.rotation.x = -Math.PI / 2;
-        mesh.position.y = 0;
-        
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        mesh.userData = { shapeId: shapeData.id };
 
-        return mesh;
+        for (let i = 0; i < shapeData.points.length - 1; i++) {
+            const pA = shapeData.points[i];
+            const pB = shapeData.points[i+1];
+
+            const dx = pB.x - pA.x;
+            const dz = pB.z - pA.z;
+            const len = Math.sqrt(dx*dx + dz*dz);
+            if (len === 0) continue;
+
+            const wallGeo = new THREE.BoxGeometry(len, height, thickness);
+            const wallMesh = new THREE.Mesh(wallGeo, material);
+
+            // Position at midpoint of the segment
+            const midX = (pA.x + pB.x) / 2;
+            const midZ = (pA.z + pB.z) / 2;
+            wallMesh.position.set(midX, height / 2, midZ);
+
+            // Rotate Y to align with the segment
+            const angle = -Math.atan2(dz, dx);
+            wallMesh.rotation.y = angle;
+
+            wallMesh.castShadow = true;
+            wallMesh.receiveShadow = true;
+
+            group.add(wallMesh);
+        }
+
+        return group;
     };
 
     const selectedShape = drawnShapes.find(s => s.id === selectedShapeId);
@@ -2015,6 +2168,33 @@ export default function IndoorControl({ user, onClose }) {
                             </div>
                         )}
                     </div>
+
+                    {/* Gizmo Mode Toolbar (Only in Editor Mode when an object is selected) */}
+                    {!visitorMode && selectedObjectId && (
+                        <div className="ic-gizmo-toolbar">
+                            <button 
+                                className={gizmoMode === 'translate' ? 'active' : ''} 
+                                onClick={() => changeGizmoMode('translate')}
+                                title="تحريك العنصر (Move)"
+                            >
+                                ➡️ تحريك
+                            </button>
+                            <button 
+                                className={gizmoMode === 'rotate' ? 'active' : ''} 
+                                onClick={() => changeGizmoMode('rotate')}
+                                title="تدوير العنصر (Rotate)"
+                            >
+                                🔄 تدوير
+                            </button>
+                            <button 
+                                className={gizmoMode === 'scale' ? 'active' : ''} 
+                                onClick={() => changeGizmoMode('scale')}
+                                title="تكبير/تصغير العنصر (Scale)"
+                            >
+                                📐 تكبير/تصغير
+                            </button>
+                        </div>
+                    )}
 
                     {/* Coordinates overlay */}
                     <div className="ic-coordinates-info">
