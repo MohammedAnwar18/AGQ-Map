@@ -1544,6 +1544,160 @@ export default function IndoorControl({ user, onClose }) {
         }
     };
 
+    // --- Missing Helper Functions ---
+    const selectItemToPlace = (itemType) => {
+        setItemToPlace(itemType);
+        setActiveMode('place_item');
+        transformControlsRef.current?.detach();
+    };
+
+    const clearAllShapes = () => {
+        if (window.confirm('هل أنت متأكد من رغبتك في مسح لوحة العمل بالكامل؟')) {
+            setDrawnShapes([]);
+            setPlacedObjects([]);
+            setZones([]);
+            setWayfindingNodes([]);
+            setWayfindingEdges([]);
+            setSelectedShapeId(null);
+            setSelectedObjectId(null);
+            setSelectedZoneId(null);
+            setSelectedNodeId(null);
+            clearNavigationRoute();
+            rebuild3DScene([], [], [], [], []);
+        }
+    };
+
+    const updateSelectedShapeProperty = (property, value) => {
+        if (!selectedShapeId) return;
+        const updated = drawnShapes.map(shape => {
+            if (shape.id === selectedShapeId) {
+                return { ...shape, [property]: value };
+            }
+            return shape;
+        });
+        setDrawnShapes(updated);
+        rebuild3DScene(updated, placedObjects, zones, wayfindingNodes, wayfindingEdges);
+    };
+
+    const updateSelectedObjectProperty = (property, value) => {
+        if (!selectedObjectId) return;
+        const updated = placedObjects.map(obj => {
+            if (obj.id === selectedObjectId) {
+                return { ...obj, [property]: value };
+            }
+            return obj;
+        });
+        setPlacedObjects(updated);
+        rebuild3DScene(drawnShapes, updated, zones, wayfindingNodes, wayfindingEdges);
+    };
+
+    const toggleLayerVisibility = (layerId) => {
+        const updatedLayers = layers.map(l => {
+            if (l.id === layerId) {
+                return { ...l, visible: !l.visible };
+            }
+            return l;
+        });
+        setLayers(updatedLayers);
+        
+        const visible = updatedLayers.find(l => l.id === layerId).visible;
+        
+        if (layerId === 'walls') {
+            shapesMeshesMapRef.current.forEach(mesh => { mesh.visible = visible; });
+        } else if (layerId === 'furniture') {
+            objectsMeshesMapRef.current.forEach(group => { group.visible = visible; });
+        } else if (layerId === 'zones') {
+            zonesMeshesMapRef.current.forEach(mesh => { mesh.visible = visible; });
+        }
+    };
+
+    const handleCreateBuilding = async () => {
+        if (!newBuildingName) return;
+        try {
+            const res = await indoorControlService.createBuilding({
+                name: newBuildingName,
+                floor_plan_url: newBuildingPlanUrl,
+                scale: newBuildingScale
+            });
+            if (res && res.success) {
+                alert('🎉 تم إنشاء المشروع بنجاح!');
+                setShowAddBuildingModal(false);
+                setNewBuildingName('');
+                setNewBuildingPlanUrl('');
+                loadBuildings();
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const deleteShape = (shapeId) => {
+        const updated = drawnShapes.filter(s => s.id !== shapeId);
+        setDrawnShapes(updated);
+        if (selectedShapeId === shapeId) setSelectedShapeId(null);
+        rebuild3DScene(updated, placedObjects, zones, wayfindingNodes, wayfindingEdges);
+    };
+
+    const deletePlacedObject = (objId) => {
+        const updated = placedObjects.filter(o => o.id !== objId);
+        setPlacedObjects(updated);
+        if (selectedObjectId === objId) {
+            setSelectedObjectId(null);
+            transformControlsRef.current?.detach();
+        }
+        rebuild3DScene(drawnShapes, updated, zones, wayfindingNodes, wayfindingEdges);
+    };
+
+    const clearDrawingPreview = () => {
+        const scene = sceneRef.current;
+        if (scene && currentDrawMeshRef.current) {
+            scene.remove(currentDrawMeshRef.current);
+            currentDrawMeshRef.current.geometry.dispose();
+            currentDrawMeshRef.current.material.dispose();
+            currentDrawMeshRef.current = null;
+        }
+        previewPointsMeshesRef.current.forEach(sphere => {
+            if (scene) scene.remove(sphere);
+            sphere.geometry.dispose();
+            sphere.material.dispose();
+        });
+        previewPointsMeshesRef.current = [];
+        drawingPointsRef.current = [];
+        setCurrentPathPoints([]);
+    };
+
+    const createExtrusionMesh = (shapeData) => {
+        if (!shapeData.points || shapeData.points.length < 2) return null;
+
+        const shape = new THREE.Shape();
+        shape.moveTo(shapeData.points[0].x, shapeData.points[0].z);
+        for (let i = 1; i < shapeData.points.length; i++) {
+            shape.lineTo(shapeData.points[i].x, shapeData.points[i].z);
+        }
+        shape.closePath();
+
+        const extrudeSettings = {
+            steps: 1,
+            depth: shapeData.height || 3.0,
+            bevelEnabled: false
+        };
+
+        const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+        const material = getMaterialPreset(shapeData.materialType || 'standard', shapeData.color || '#cbd5e1');
+        const mesh = new THREE.Mesh(geometry, material);
+        
+        mesh.rotation.x = -Math.PI / 2;
+        mesh.position.y = 0;
+        
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        mesh.userData = { shapeId: shapeData.id };
+
+        return mesh;
+    };
+
+    const selectedShape = drawnShapes.find(s => s.id === selectedShapeId);
+    const selectedObject = placedObjects.find(o => o.id === selectedObjectId);
     const selectedZone = zones.find(z => z.id === selectedZoneId);
 
     return (
