@@ -103,6 +103,18 @@ export default function DigitalTwin({ user, onClose }) {
     const [simulatedTelemetry, setSimulatedTelemetry] = useState({});
     const [telemetryLogs, setTelemetryLogs] = useState([]);
 
+    // ─── إعدادات وضع التصميم الداخلي (Sims 4 Mode) ───────────────────────────
+    const [interiorModeActive, setInteriorModeActive] = useState(false);
+    const [activeBuildingId, setActiveBuildingId] = useState(null);
+    const [selectedInteriorAsset, setSelectedInteriorAsset] = useState(null);
+
+    const [editIntScale, setEditIntScale] = useState(1.0);
+    const [editIntRotation, setEditIntRotation] = useState(0);
+    const [editIntOffsetX, setEditIntOffsetX] = useState(0);
+    const [editIntOffsetY, setEditIntOffsetY] = useState(0);
+    const [editIntOffsetZ, setEditIntOffsetZ] = useState(0);
+    const [editIntColor, setEditIntColor] = useState('#8b5a2b');
+
     const gridSnappingRef = useRef(false);
     const gridSizeRef = useRef(0.5);
     const showGridHelperRef = useRef(false);
@@ -420,6 +432,13 @@ export default function DigitalTwin({ user, onClose }) {
                     [35.1805, 31.9598],
                     [35.1799, 31.9597],
                     [35.1798, 31.9602]
+                ],
+                interiorAssets: [
+                    { id: 'int-table-1', type: 'table', position: [0, 0, 0], rotation: 0, scale: 1.0, color: '#8b5a2b' },
+                    { id: 'int-chair-1', type: 'chair', position: [-0.6, 0, 0], rotation: 0, scale: 1.0, color: '#451a03' },
+                    { id: 'int-chair-2', type: 'chair', position: [0.6, 0, 0], rotation: 180, scale: 1.0, color: '#451a03' },
+                    { id: 'int-sofa-1', type: 'sofa', position: [0, 2.0, 0], rotation: 90, scale: 1.0, color: '#1e3a8a' },
+                    { id: 'int-shelf-1', type: 'shelf', position: [-2.0, -2.0, 0], rotation: 0, scale: 1.0, color: '#b45309' }
                 ]
             },
             {
@@ -1443,6 +1462,33 @@ export default function DigitalTwin({ user, onClose }) {
             }
             shape.closePath();
 
+            const group = new THREE.Group();
+            const isCurrentInteriorBuilding = bld.id === activeBuildingId && interiorModeActive;
+
+            // 1. أرضية المبنى الداخلية المخصصة
+            const floorGeo = new THREE.ShapeGeometry(shape);
+            const floorMat = new THREE.MeshLambertMaterial({ 
+                color: isCurrentInteriorBuilding ? 0x3f3f46 : 0x1e293b, 
+                side: THREE.DoubleSide 
+            });
+            const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+            floorMesh.position.z = 0.01; // فوق مستوى الأرضية لتفادي الوميض
+            group.add(floorMesh);
+
+            // 2. شبكة التصميم الداخلي الميكروية (Interior Grid Helper)
+            if (isCurrentInteriorBuilding) {
+                const gridHelper = new THREE.GridHelper(40, 80, 0x10b981, 0x27272a);
+                gridHelper.rotation.x = Math.PI / 2;
+                gridHelper.position.set(0, 0, 0.02);
+                if (gridHelper.material) {
+                    gridHelper.material.transparent = true;
+                    gridHelper.material.opacity = 0.35;
+                    gridHelper.material.depthWrite = false;
+                }
+                group.add(gridHelper);
+            }
+
+            // 3. الجدران والسقف
             const height = bld.height || 15;
             const extrudeSettings = { depth: height, bevelEnabled: false };
             const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
@@ -1462,21 +1508,44 @@ export default function DigitalTwin({ user, onClose }) {
                 roofMaterial = new THREE.MeshLambertMaterial({ color: 0x27272a, side: THREE.DoubleSide });
             }
 
+            // إخفاء السقف إذا كنا نقوم بالتصميم الداخلي لهذا المبنى (خيار Sims 4)
+            if (isCurrentInteriorBuilding) {
+                roofMaterial.visible = false;
+            }
+
             const materials = [roofMaterial, wallMaterial];
-            const mesh = new THREE.Mesh(geometry, materials);
+            const wallsMesh = new THREE.Mesh(geometry, materials);
+            group.add(wallsMesh);
+
+            // 4. أثاث وعناصر الفضاء الداخلي للمبنى
+            if (bld.interiorAssets && (isCurrentInteriorBuilding || bld.skin === 'glass')) {
+                bld.interiorAssets.forEach(asset => {
+                    const assetGroup = new THREE.Group();
+                    assetGroup.position.set(asset.position[0], asset.position[1], asset.position[2] || 0);
+                    
+                    const scaleVal = asset.scale || 1.0;
+                    assetGroup.scale.set(scaleVal, scaleVal, scaleVal);
+                    
+                    const rotationRad = ((asset.rotation || 0) * Math.PI) / 180;
+                    assetGroup.rotation.z = rotationRad;
+
+                    buildInteriorModel(asset.type, assetGroup, asset.color || '#8b5a2b');
+                    group.add(assetGroup);
+                });
+            }
 
             const scaleVal = bld.scale || 1.0;
-            mesh.scale.set(scaleVal, scaleVal, 1.0);
+            group.scale.set(scaleVal, scaleVal, 1.0);
 
             const rotationDeg = bld.rotation || 0;
-            mesh.rotation.z = (rotationDeg * Math.PI) / 180;
+            group.rotation.z = (rotationDeg * Math.PI) / 180;
 
             const offsetX = bld.offsetX || 0;
             const offsetY = bld.offsetY || 0;
-            mesh.position.set(centerX + offsetX, centerY + offsetY, 0);
+            group.position.set(centerX + offsetX, centerY + offsetY, 0);
 
-            scene.add(mesh);
-            meshesMapRef.current.set(`bld-${bld.id || idx}`, mesh);
+            scene.add(group);
+            meshesMapRef.current.set(`bld-${bld.id || idx}`, group);
         });
 
         // ب. رندرة النقاط ثلاثية الأبعاد
@@ -1523,6 +1592,11 @@ export default function DigitalTwin({ user, onClose }) {
         });
 
         updateEnvironmentLighting(isNight);
+        
+        // إجبار الخريطة على إعادة الرندرة فوراً لتفادي اختفاء الأصول المضافة حديثاً حتى تحريك الكاميرا
+        if (mapRef.current) {
+            mapRef.current.triggerRepaint();
+        }
     };
 
     // إعادة بناء مشهد Three.js تلقائياً عند تحديث الكائنات أو المباني أو الوقت أو البيانات
@@ -1531,7 +1605,7 @@ export default function DigitalTwin({ user, onClose }) {
         if (rebuildSceneRef.current) {
             rebuildSceneRef.current();
         }
-    }, [customPoints, customBuildings, geojsonData, timeOfDay, centerCoords, showGridHelper]);
+    }, [customPoints, customBuildings, geojsonData, timeOfDay, centerCoords, showGridHelper, interiorModeActive, activeBuildingId]);
 
     // تأثير محاكاة مستشعرات إنترنت الأشياء (IoT Telemetry Simulation)
     useEffect(() => {
@@ -2027,6 +2101,198 @@ export default function DigitalTwin({ user, onClose }) {
 
         setSelectedFeature(null);
         buildThreeJsScene();
+    };
+
+    // ─── 10.5. أدوات وضع وتعديل الأثاث الداخلي (Interior Sims Mode) ───────────
+    const buildInteriorModel = (type, group, colorHex) => {
+        const matColor = new THREE.Color(colorHex);
+        const woodMat = new THREE.MeshLambertMaterial({ color: matColor });
+        const metalMat = new THREE.MeshLambertMaterial({ color: 0x4b5563 });
+        const cushionMat = new THREE.MeshLambertMaterial({ color: 0xe2e8f0 });
+
+        switch (type) {
+            case 'chair': {
+                const legGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.45);
+                const legOffsets = [[-0.2, -0.2], [0.2, -0.2], [-0.2, 0.2], [0.2, 0.2]];
+                legOffsets.forEach(offset => {
+                    const leg = new THREE.Mesh(legGeo, metalMat);
+                    leg.position.set(offset[0], offset[1], 0.225);
+                    leg.rotation.x = Math.PI / 2;
+                    group.add(leg);
+                });
+                const seat = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.46, 0.06), woodMat);
+                seat.position.set(0, 0, 0.45);
+                group.add(seat);
+                const back = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.46, 0.4), woodMat);
+                back.position.set(-0.2, 0, 0.65);
+                group.add(back);
+                break;
+            }
+            case 'table': {
+                const legGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.72);
+                const legOffsets = [[-0.5, -0.3], [0.5, -0.3], [-0.5, 0.3], [0.5, 0.3]];
+                legOffsets.forEach(offset => {
+                    const leg = new THREE.Mesh(legGeo, metalMat);
+                    leg.position.set(offset[0], offset[1], 0.36);
+                    leg.rotation.x = Math.PI / 2;
+                    group.add(leg);
+                });
+                const top = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 0.06), woodMat);
+                top.position.set(0, 0, 0.72);
+                group.add(top);
+                break;
+            }
+            case 'sofa': {
+                const base = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.6, 0.25), woodMat);
+                base.position.set(0, 0, 0.125);
+                group.add(base);
+                const cushion = new THREE.Mesh(new THREE.BoxGeometry(0.65, 1.48, 0.12), cushionMat);
+                cushion.position.set(0.02, 0, 0.28);
+                group.add(cushion);
+                const back = new THREE.Mesh(new THREE.BoxGeometry(0.18, 1.6, 0.6), woodMat);
+                back.position.set(-0.26, 0, 0.45);
+                group.add(back);
+                const armL = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.12, 0.42), woodMat);
+                armL.position.set(0.06, 0.74, 0.3);
+                group.add(armL);
+                const armR = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.12, 0.42), woodMat);
+                armR.position.set(0.06, -0.74, 0.3);
+                group.add(armR);
+                break;
+            }
+            case 'shelf': {
+                const sideL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.04, 1.6), woodMat);
+                sideL.position.set(0, 0.48, 0.8);
+                group.add(sideL);
+                const sideR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.04, 1.6), woodMat);
+                sideR.position.set(0, -0.48, 0.8);
+                group.add(sideR);
+                const shelfGeo = new THREE.BoxGeometry(0.28, 0.92, 0.04);
+                const shelfHeights = [0.1, 0.5, 0.9, 1.3, 1.6];
+                shelfHeights.forEach(h => {
+                    const shelf = new THREE.Mesh(shelfGeo, woodMat);
+                    shelf.position.set(0, 0, h);
+                    group.add(shelf);
+                });
+                break;
+            }
+            case 'bed': {
+                const frame = new THREE.Mesh(new THREE.BoxGeometry(1.9, 1.3, 0.3), woodMat);
+                frame.position.set(0, 0, 0.15);
+                group.add(frame);
+                const mattress = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.2, 0.2), cushionMat);
+                mattress.position.set(0, 0, 0.35);
+                group.add(mattress);
+                const pillow = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.8, 0.08), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+                pillow.position.set(-0.7, 0, 0.48);
+                group.add(pillow);
+                break;
+            }
+            case 'door': {
+                const frame = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.9, 2.0), metalMat);
+                frame.position.set(0, 0, 1.0);
+                group.add(frame);
+                const knob = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 6), new THREE.MeshBasicMaterial({ color: 0xd4af37 }));
+                knob.position.set(0.06, 0.35, 1.0);
+                group.add(knob);
+                break;
+            }
+            case 'window': {
+                const frame = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.2, 1.0), metalMat);
+                frame.position.set(0, 0, 1.2);
+                group.add(frame);
+                const glass = new THREE.Mesh(new THREE.BoxGeometry(0.02, 1.1, 0.9), new THREE.MeshPhysicalMaterial({ color: 0xbae6fd, transparent: true, opacity: 0.4, roughness: 0.1 }));
+                glass.position.set(0, 0, 1.2);
+                group.add(glass);
+                break;
+            }
+            default: {
+                const box = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), woodMat);
+                box.position.set(0, 0, 0.25);
+                group.add(box);
+                break;
+            }
+        }
+    };
+
+    const handleAddInteriorAsset = (type) => {
+        if (!activeBuildingId) return;
+
+        const newAsset = {
+            id: `int-${type}-${Date.now()}`,
+            type: type,
+            position: [0, 0, 0], // مركز المبنى محلياً
+            rotation: 0,
+            scale: 1.0,
+            color: '#8b5a2b'
+        };
+
+        setCustomBuildings(prev => {
+            return prev.map(b => {
+                if (b.id === activeBuildingId) {
+                    const assets = b.interiorAssets || [];
+                    return {
+                        ...b,
+                        interiorAssets: [...assets, newAsset]
+                    };
+                }
+                return b;
+            });
+        });
+
+        setSelectedInteriorAsset(newAsset);
+        setEditIntScale(1.0);
+        setEditIntRotation(0);
+        setEditIntOffsetX(0);
+        setEditIntOffsetY(0);
+        setEditIntOffsetZ(0);
+        setEditIntColor('#8b5a2b');
+    };
+
+    const updateInteriorAssetProperty = (assetId, key, value) => {
+        setCustomBuildings(prev => {
+            return prev.map(b => {
+                if (b.id === activeBuildingId) {
+                    const assets = (b.interiorAssets || []).map(asset => {
+                        if (asset.id === assetId) {
+                            if (key === 'position') {
+                                return { ...asset, position: value };
+                            }
+                            return { ...asset, [key]: value };
+                        }
+                        return asset;
+                    });
+                    return { ...b, interiorAssets: assets };
+                }
+                return b;
+            });
+        });
+
+        setSelectedInteriorAsset(prev => {
+            if (prev && prev.id === assetId) {
+                if (key === 'position') {
+                    return { ...prev, position: value };
+                }
+                return { ...prev, [key]: value };
+            }
+            return prev;
+        });
+    };
+
+    const handleDeleteInteriorAsset = () => {
+        if (!selectedInteriorAsset || !activeBuildingId) return;
+
+        setCustomBuildings(prev => {
+            return prev.map(b => {
+                if (b.id === activeBuildingId) {
+                    const assets = (b.interiorAssets || []).filter(asset => asset.id !== selectedInteriorAsset.id);
+                    return { ...b, interiorAssets: assets };
+                }
+                return b;
+            });
+        });
+
+        setSelectedInteriorAsset(null);
     };
 
     // ─── 11. معالجة وإنهاء رسم الأشكال الهندسية ───────────────────────────
@@ -2542,6 +2808,30 @@ export default function DigitalTwin({ user, onClose }) {
                                                 </div>
                                             </div>
 
+                                            <button 
+                                                className="dt-btn-secondary" 
+                                                style={{ marginBottom: '8px', background: 'rgba(16, 185, 129, 0.15)', borderColor: 'var(--dt-emerald)', color: 'var(--dt-emerald)' }} 
+                                                onClick={() => {
+                                                    const bld = customBuildings[selectedFeature.index];
+                                                    setActiveBuildingId(bld.id);
+                                                    setInteriorModeActive(true);
+                                                    setSelectedFeature(null); // إغلاق لوحة الفحص الخارجية
+                                                    
+                                                    // حساب المركز لتركيز الكاميرا عليه في وضع التصميم الداخلي
+                                                    const sum = bld.coordinates.reduce((acc, c) => [acc[0] + c[0], acc[1] + c[1]], [0, 0]);
+                                                    const avgLng = sum[0] / bld.coordinates.length;
+                                                    const avgLat = sum[1] / bld.coordinates.length;
+                                                    
+                                                    mapRef.current?.flyTo({
+                                                        center: [avgLng, avgLat],
+                                                        zoom: 19.5, // زوم عميق جداً للدخول
+                                                        pitch: 62, // زاوية مائلة لرؤية الأثاث الداخلي كألعاب المحاكاة
+                                                        duration: 1200
+                                                    });
+                                                }}
+                                            >
+                                                🏠 تصميم داخلي (Sims Mode)
+                                            </button>
                                             <button className="dt-btn-primary" style={{ marginBottom: '8px' }} onClick={handleSaveBuildingEdits}>تم وإغلاق</button>
                                             <button className="dt-btn-danger" style={{ width: '100%' }} onClick={handleDeleteObject}>🗑️ حذف هذا المبنى</button>
                                         </>
@@ -2563,24 +2853,32 @@ export default function DigitalTwin({ user, onClose }) {
 
                 {/* لوحة التحكم والتحرير الجانبية */}
                 <div className={`dt-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
-                    <div className="dt-tabs">
-                        <button className={`dt-tab-btn ${activeTab === 'data' ? 'active' : ''}`} onClick={() => setActiveTab('data')} style={{ padding: '14px 6px', fontSize: '0.78rem' }}>
-                            📂 المشروع
-                        </button>
-                        <button className={`dt-tab-btn ${activeTab === 'mapping' ? 'active' : ''}`} onClick={() => setActiveTab('mapping')} style={{ padding: '14px 6px', fontSize: '0.78rem' }}>
-                            🌲 المعالم
-                        </button>
-                        <button className={`dt-tab-btn ${activeTab === 'visual' ? 'active' : ''}`} onClick={() => setActiveTab('visual')} style={{ padding: '14px 6px', fontSize: '0.78rem' }}>
-                            🌤️ البيئة
-                        </button>
-                        <button className={`dt-tab-btn ${activeTab === 'simulation' ? 'active' : ''}`} onClick={() => setActiveTab('simulation')} style={{ padding: '14px 6px', fontSize: '0.78rem' }}>
-                            📡 المحاكاة
-                        </button>
-                    </div>
+                    {!interiorModeActive ? (
+                        <div className="dt-tabs">
+                            <button className={`dt-tab-btn ${activeTab === 'data' ? 'active' : ''}`} onClick={() => setActiveTab('data')} style={{ padding: '14px 6px', fontSize: '0.78rem' }}>
+                                📂 المشروع
+                            </button>
+                            <button className={`dt-tab-btn ${activeTab === 'mapping' ? 'active' : ''}`} onClick={() => setActiveTab('mapping')} style={{ padding: '14px 6px', fontSize: '0.78rem' }}>
+                                🌲 المعالم
+                            </button>
+                            <button className={`dt-tab-btn ${activeTab === 'visual' ? 'active' : ''}`} onClick={() => setActiveTab('visual')} style={{ padding: '14px 6px', fontSize: '0.78rem' }}>
+                                🌤️ البيئة
+                            </button>
+                            <button className={`dt-tab-btn ${activeTab === 'simulation' ? 'active' : ''}`} onClick={() => setActiveTab('simulation')} style={{ padding: '14px 6px', fontSize: '0.78rem' }}>
+                                📡 المحاكاة
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="dt-tabs" style={{ background: 'rgba(16, 185, 129, 0.1)', borderBottom: '1px solid var(--dt-emerald)' }}>
+                            <div style={{ flex: 1, padding: '14px 16px', color: 'var(--dt-emerald)', fontSize: '0.85rem', fontWeight: '700', textAlign: 'center' }}>
+                                🛋️ وضع التصميم الداخلي (Sims 4)
+                            </div>
+                        </div>
+                    )}
 
                     <div className="dt-sidebar-content">
                         {/* 1. تبويب البيانات والمشروع */}
-                        {activeTab === 'data' && (
+                        {activeTab === 'data' && !interiorModeActive && (
                             <div className="dt-tab-content">
                                 <div className="dt-section">
                                     <span className="dt-section-title">رفع ملف المشروع المفتوح</span>
@@ -2632,7 +2930,7 @@ export default function DigitalTwin({ user, onClose }) {
                         )}
 
                         {/* 2. تبويب تعيين ورسم المعالم */}
-                        {activeTab === 'mapping' && (
+                        {activeTab === 'mapping' && !interiorModeActive && (
                             <div className="dt-tab-content">
                                 {canEdit ? (
                                     <>
@@ -2753,7 +3051,7 @@ export default function DigitalTwin({ user, onClose }) {
                         )}
 
                         {/* 3. تبويب البيئة والطقس */}
-                        {activeTab === 'visual' && (
+                        {activeTab === 'visual' && !interiorModeActive && (
                             <div className="dt-tab-content">
                                 <div className="dt-section">
                                     <span className="dt-section-title">محاكاة زمن اليوم (Time of Day)</span>
@@ -2806,7 +3104,7 @@ export default function DigitalTwin({ user, onClose }) {
                         )}
 
                         {/* 4. تبويب المحاكاة والشبكة */}
-                        {activeTab === 'simulation' && (
+                        {activeTab === 'simulation' && !interiorModeActive && (
                             <div className="dt-tab-content">
                                 <div className="dt-section">
                                     <span className="dt-section-title">📏 محاذاة للشبكة المغناطيسية (Grid Snap)</span>
@@ -2893,6 +3191,225 @@ export default function DigitalTwin({ user, onClose }) {
                                                 ))
                                             )}
                                         </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* واجهة وضع التصميم الداخلي (Interior Editor) */}
+                        {interiorModeActive && (
+                            <div className="dt-tab-content">
+                                <div style={{ marginBottom: '16px' }}>
+                                    <button 
+                                        className="dt-btn-secondary" 
+                                        onClick={() => {
+                                            setInteriorModeActive(false);
+                                            setActiveBuildingId(null);
+                                            setSelectedInteriorAsset(null);
+                                            // العودة لمستوى الزوم الخارجي
+                                            mapRef.current?.flyTo({ zoom: 17.5, pitch: 58, duration: 800 });
+                                        }}
+                                        style={{ background: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)', color: '#fda4af', marginTop: 0 }}
+                                    >
+                                        ↩ الخروج إلى المخطط الخارجي
+                                    </button>
+                                </div>
+
+                                <div className="dt-section">
+                                    <span className="dt-section-title">🛋️ إضافة أثاث وعناصر داخلية (Sims Catalog)</span>
+                                    <p style={{ fontSize: '0.76rem', color: 'var(--dt-muted)', marginBottom: '12px' }}>انقر على أي عنصر لإسقاطه في مركز المبنى:</p>
+                                    <div className="dt-grid-2" style={{ gap: '8px' }}>
+                                        <button className="dt-draw-btn" onClick={() => handleAddInteriorAsset('table')}>🟫 طاولة مكتب</button>
+                                        <button className="dt-draw-btn" onClick={() => handleAddInteriorAsset('chair')}>🪑 كرسي مريح</button>
+                                        <button className="dt-draw-btn" onClick={() => handleAddInteriorAsset('sofa')}>🛋️ أريكة صالون</button>
+                                        <button className="dt-draw-btn" onClick={() => handleAddInteriorAsset('shelf')}>📚 رفوف كتب</button>
+                                        <button className="dt-draw-btn" onClick={() => handleAddInteriorAsset('bed')}>🛏️ سرير نوم</button>
+                                        <button className="dt-draw-btn" onClick={() => handleAddInteriorAsset('door')}>🚪 باب داخلي</button>
+                                        <button className="dt-draw-btn" onClick={() => handleAddInteriorAsset('window')}>🖼️ نافذة زجاجية</button>
+                                    </div>
+                                </div>
+
+                                <div className="dt-section">
+                                    <span className="dt-section-title">📋 الأثاث الموجود في المبنى</span>
+                                    {(() => {
+                                        const currentBld = customBuildings.find(b => b.id === activeBuildingId);
+                                        const assets = currentBld?.interiorAssets || [];
+                                        if (assets.length === 0) {
+                                            return <div style={{ fontSize: '0.78rem', color: 'var(--dt-muted)', textAlign: 'center', padding: '15px' }}>لا يوجد أثاث حالياً. ابدأ بإضافة بعض العناصر!</div>;
+                                        }
+                                        return (
+                                            <div className="dt-layer-list">
+                                                {assets.map((asset, i) => (
+                                                    <div 
+                                                        className={`dt-layer-row ${selectedInteriorAsset?.id === asset.id ? 'active' : ''}`} 
+                                                        key={asset.id}
+                                                        style={{ 
+                                                            cursor: 'pointer', 
+                                                            borderColor: selectedInteriorAsset?.id === asset.id ? 'var(--dt-emerald)' : '',
+                                                            background: selectedInteriorAsset?.id === asset.id ? 'var(--dt-emerald-dim)' : ''
+                                                        }}
+                                                        onClick={() => {
+                                                            setSelectedInteriorAsset(asset);
+                                                            setEditIntScale(asset.scale || 1.0);
+                                                            setEditIntRotation(asset.rotation || 0);
+                                                            setEditIntOffsetX(asset.position[0]);
+                                                            setEditIntOffsetY(asset.position[1]);
+                                                            setEditIntOffsetZ(asset.position[2] || 0);
+                                                            setEditIntColor(asset.color || '#8b5a2b');
+                                                        }}
+                                                    >
+                                                        <div className="dt-layer-row-info">
+                                                            <span className="dt-layer-row-icon">
+                                                                {asset.type === 'table' ? '🟫' :
+                                                                 asset.type === 'chair' ? '🪑' :
+                                                                 asset.type === 'sofa' ? '🛋️' :
+                                                                 asset.type === 'shelf' ? '📚' :
+                                                                 asset.type === 'bed' ? '🛏️' :
+                                                                 asset.type === 'door' ? '🚪' : '🖼️'}
+                                                            </span>
+                                                            <div>
+                                                                <span className="dt-layer-row-title">
+                                                                    {asset.type === 'table' ? 'طاولة' :
+                                                                     asset.type === 'chair' ? 'كرسي' :
+                                                                     asset.type === 'sofa' ? 'أريكة' :
+                                                                     asset.type === 'shelf' ? 'رفوف' :
+                                                                     asset.type === 'bed' ? 'سرير' :
+                                                                     asset.type === 'door' ? 'باب' : 'نافذة'} #{i + 1}
+                                                                </span>
+                                                                <span className="dt-layer-row-sub">الموقع: [{asset.position[0].toFixed(1)}, {asset.position[1].toFixed(1)}]</span>
+                                                            </div>
+                                                        </div>
+                                                        <button 
+                                                            className="dt-layer-delete" 
+                                                            title="حذف" 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setCustomBuildings(prev => {
+                                                                    return prev.map(b => {
+                                                                        if (b.id === activeBuildingId) {
+                                                                            return { ...b, interiorAssets: (b.interiorAssets || []).filter(x => x.id !== asset.id) };
+                                                                        }
+                                                                        return b;
+                                                                    });
+                                                                });
+                                                                if (selectedInteriorAsset?.id === asset.id) setSelectedInteriorAsset(null);
+                                                            }}
+                                                        >
+                                                            🗑️
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+
+                                {selectedInteriorAsset && (
+                                    <div className="dt-section" style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--dt-border2)', borderRadius: '12px', padding: '14px' }}>
+                                        <span className="dt-section-title" style={{ fontSize: '0.85rem' }}>🔧 تعديل العنصر المختار</span>
+                                        
+                                        <div className="dt-input-group">
+                                            <label>إزاحة X (شرق/غرب): {editIntOffsetX.toFixed(2)} م</label>
+                                            <input 
+                                                type="range" 
+                                                className="dt-slider" 
+                                                min="-15" 
+                                                max="15" 
+                                                step="0.1" 
+                                                value={editIntOffsetX} 
+                                                onChange={e => {
+                                                    const val = parseFloat(e.target.value);
+                                                    setEditIntOffsetX(val);
+                                                    updateInteriorAssetProperty(selectedInteriorAsset.id, 'position', [val, editIntOffsetY, editIntOffsetZ]);
+                                                }} 
+                                            />
+                                        </div>
+
+                                        <div className="dt-input-group">
+                                            <label>إزاحة Y (شمال/جنوب): {editIntOffsetY.toFixed(2)} م</label>
+                                            <input 
+                                                type="range" 
+                                                className="dt-slider" 
+                                                min="-15" 
+                                                max="15" 
+                                                step="0.1" 
+                                                value={editIntOffsetY} 
+                                                onChange={e => {
+                                                    const val = parseFloat(e.target.value);
+                                                    setEditIntOffsetY(val);
+                                                    updateInteriorAssetProperty(selectedInteriorAsset.id, 'position', [editIntOffsetX, val, editIntOffsetZ]);
+                                                }} 
+                                            />
+                                        </div>
+
+                                        <div className="dt-input-group">
+                                            <label>الارتفاع Z (عن الأرضية): {editIntOffsetZ.toFixed(2)} م</label>
+                                            <input 
+                                                type="range" 
+                                                className="dt-slider" 
+                                                min="0" 
+                                                max="5" 
+                                                step="0.05" 
+                                                value={editIntOffsetZ} 
+                                                onChange={e => {
+                                                    const val = parseFloat(e.target.value);
+                                                    setEditIntOffsetZ(val);
+                                                    updateInteriorAssetProperty(selectedInteriorAsset.id, 'position', [editIntOffsetX, editIntOffsetY, val]);
+                                                }} 
+                                            />
+                                        </div>
+
+                                        <div className="dt-input-group">
+                                            <label>الحجم (Scale): {editIntScale.toFixed(2)}x</label>
+                                            <input 
+                                                type="range" 
+                                                className="dt-slider" 
+                                                min="0.4" 
+                                                max="3.0" 
+                                                step="0.05" 
+                                                value={editIntScale} 
+                                                onChange={e => {
+                                                    const val = parseFloat(e.target.value);
+                                                    setEditIntScale(val);
+                                                    updateInteriorAssetProperty(selectedInteriorAsset.id, 'scale', val);
+                                                }} 
+                                            />
+                                        </div>
+
+                                        <div className="dt-input-group">
+                                            <label>زاوية الدوران: {editIntRotation}°</label>
+                                            <input 
+                                                type="range" 
+                                                className="dt-slider" 
+                                                min="0" 
+                                                max="360" 
+                                                value={editIntRotation} 
+                                                onChange={e => {
+                                                    const val = parseInt(e.target.value);
+                                                    setEditIntRotation(val);
+                                                    updateInteriorAssetProperty(selectedInteriorAsset.id, 'rotation', val);
+                                                }} 
+                                            />
+                                        </div>
+
+                                        <div className="dt-input-group">
+                                            <label>لون العنصر</label>
+                                            <div className="dt-color-picker-wrapper">
+                                                {['#8b5a2b', '#b45309', '#1e3a8a', '#0f766e', '#374151', '#e2e8f0', '#b91c1c'].map(col => (
+                                                    <div 
+                                                        key={col} 
+                                                        className={`dt-color-bubble ${editIntColor === col ? 'active' : ''}`}
+                                                        style={{ background: col }}
+                                                        onClick={() => {
+                                                            setEditIntColor(col);
+                                                            updateInteriorAssetProperty(selectedInteriorAsset.id, 'color', col);
+                                                        }}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <button className="dt-btn-danger" style={{ width: '100%', marginTop: '12px' }} onClick={handleDeleteInteriorAsset}>🗑️ حذف هذا العنصر</button>
                                     </div>
                                 )}
                             </div>
