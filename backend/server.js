@@ -125,6 +125,71 @@ const pool = require('./config/database');
         `);
         
         console.log('✅ study_videos & study_books tables ready');
+
+        // ── جداول التحكم الداخلي 3D Indoor Control ────────────────────────────
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS indoor_buildings (
+                id             SERIAL PRIMARY KEY,
+                name           VARCHAR(255) NOT NULL,
+                floor_plan_url TEXT,
+                scale_ratio    NUMERIC(10,4) DEFAULT 1.0,
+                created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS shelving_units (
+                id             SERIAL PRIMARY KEY,
+                building_id    INTEGER REFERENCES indoor_buildings(id) ON DELETE CASCADE,
+                unit_code      VARCHAR(50) NOT NULL,
+                x              NUMERIC(10,2) NOT NULL,
+                y              NUMERIC(10,2) NOT NULL,
+                width          NUMERIC(10,2) NOT NULL,
+                depth          NUMERIC(10,2) NOT NULL,
+                height         NUMERIC(10,2) DEFAULT 1.8,
+                rotation       NUMERIC(10,2) DEFAULT 0.0,
+                created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS shelf_levels (
+                id             SERIAL PRIMARY KEY,
+                unit_id        INTEGER REFERENCES shelving_units(id) ON DELETE CASCADE,
+                level_number   INTEGER NOT NULL,
+                height_offset  NUMERIC(10,2) NOT NULL
+            )
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS product_placements (
+                id             SERIAL PRIMARY KEY,
+                shelf_level_id INTEGER REFERENCES shelf_levels(id) ON DELETE CASCADE,
+                product_name   VARCHAR(255) NOT NULL,
+                product_id     VARCHAR(100),
+                quantity       INTEGER DEFAULT 0,
+                max_capacity   INTEGER DEFAULT 10,
+                updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS indoor_tasks (
+                id             SERIAL PRIMARY KEY,
+                description    TEXT NOT NULL,
+                shelf_level_id INTEGER REFERENCES shelf_levels(id) ON DELETE SET NULL,
+                assigned_to    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                status         VARCHAR(50) DEFAULT 'pending',
+                created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_at   TIMESTAMP
+            )
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS indoor_logs (
+                id             SERIAL PRIMARY KEY,
+                user_id        INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                location_code  VARCHAR(100) NOT NULL,
+                action_type    VARCHAR(100) NOT NULL,
+                created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        console.log('✅ 3D Indoor Control tables ready');
     } catch (err) {
         console.error('⚠️ ar_contents migration error:', err.message);
     }
@@ -354,6 +419,7 @@ app.use('/api/ar', require('./routes/ar'));
 app.use('/api/tours', require('./routes/tours'));
 app.use('/api/fitness', require('./routes/fitness'));
 app.use('/api/study-space', require('./routes/studySpace'));
+app.use('/api/indoor-control', require('./routes/indoorControl'));
 
 
 

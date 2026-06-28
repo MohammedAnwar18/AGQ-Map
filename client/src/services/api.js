@@ -890,4 +890,46 @@ export const studySpaceService = {
     }
 };
 
+
+// ── خدمات التحكم الداخلي ثلاثي الأبعاد 3D Indoor Control ───────────────────
+export const indoorControlService = {
+    getBuildings: async () => {
+        const response = await api.get('/indoor-control/buildings');
+        return response.data;
+    },
+    createBuilding: async (buildingData) => {
+        const response = await api.post('/indoor-control/buildings', buildingData);
+        return response.data;
+    },
+    getLayout: async (buildingId) => {
+        const response = await api.get(`/indoor-control/layout/${buildingId}`);
+        return response.data;
+    },
+    saveLayout: async (buildingId, shelves) => {
+        const response = await api.post('/indoor-control/layout/save', { buildingId, shelves });
+        return response.data;
+    },
+    updateStock: async (placementId, quantity) => {
+        const response = await api.put(`/indoor-control/stock/${placementId}`, { quantity });
+        return response.data;
+    },
+    createTask: async (taskData) => {
+        const response = await api.post('/indoor-control/tasks', taskData);
+        return response.data;
+    },
+    getTasks: async () => {
+        const response = await api.get('/indoor-control/tasks');
+        return response.data;
+    },
+    updateTaskStatus: async (taskId, status) => {
+        const response = await api.put(`/indoor-control/tasks/${taskId}`, { status });
+        return response.data;
+    },
+    logScan: async (locationCode, actionType) => {
+        const response = await api.post('/indoor-control/log', { location_code: locationCode, action_type: actionType });
+        return response.data;
+    }
+};
+
 export default api;
+
