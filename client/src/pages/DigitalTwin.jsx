@@ -103,10 +103,10 @@ export default function DigitalTwin({ user, onClose }) {
     const [simulatedTelemetry, setSimulatedTelemetry] = useState({});
     const [telemetryLogs, setTelemetryLogs] = useState([]);
 
-    // ─── إعدادات وضع التصميم الداخلي (Sims 4 Mode) ───────────────────────────
     const [interiorModeActive, setInteriorModeActive] = useState(false);
     const [activeBuildingId, setActiveBuildingId] = useState(null);
     const [selectedInteriorAsset, setSelectedInteriorAsset] = useState(null);
+    const [currentFloorLevel, setCurrentFloorLevel] = useState(1);
 
     const [editIntScale, setEditIntScale] = useState(1.0);
     const [editIntRotation, setEditIntRotation] = useState(0);
