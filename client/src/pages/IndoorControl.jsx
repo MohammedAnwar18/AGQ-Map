@@ -73,6 +73,29 @@ export default function IndoorControl({ user, onClose }) {
     // Preset Colors for Inspector
     const PRESET_COLORS = ['#60a5fa', '#f87171', '#34d399', '#fb923c', '#a78bfa', '#f472b6', '#e2e8f0', '#fbbf24'];
 
+    // ── Refs to Solve Three.js Animation Loop & Event Closure Problems ─────
+    const activeModeRef = useRef(activeMode);
+    const itemToPlaceRef = useRef(itemToPlace);
+    const gridSnappingRef = useRef(gridSnapping);
+    const gridSizeRef = useRef(gridSize);
+    const drawnShapesRef = useRef(drawnShapes);
+    const placedObjectsRef = useRef(placedObjects);
+    const selectedShapeIdRef = useRef(selectedShapeId);
+    const selectedObjectIdRef = useRef(selectedObjectId);
+    const activeLayerRef = useRef(activeLayer);
+    const layersRef = useRef(layers);
+
+    useEffect(() => { activeModeRef.current = activeMode; }, [activeMode]);
+    useEffect(() => { itemToPlaceRef.current = itemToPlace; }, [itemToPlace]);
+    useEffect(() => { gridSnappingRef.current = gridSnapping; }, [gridSnapping]);
+    useEffect(() => { gridSizeRef.current = gridSize; }, [gridSize]);
+    useEffect(() => { drawnShapesRef.current = drawnShapes; }, [drawnShapes]);
+    useEffect(() => { placedObjectsRef.current = placedObjects; }, [placedObjects]);
+    useEffect(() => { selectedShapeIdRef.current = selectedShapeId; }, [selectedShapeId]);
+    useEffect(() => { selectedObjectIdRef.current = selectedObjectId; }, [selectedObjectId]);
+    useEffect(() => { activeLayerRef.current = activeLayer; }, [activeLayer]);
+    useEffect(() => { layersRef.current = layers; }, [layers]);
+
     // ── 1. Load Buildings on Mount ──────────────────────────────────────────
     useEffect(() => {
         loadBuildings();
@@ -105,12 +128,10 @@ export default function IndoorControl({ user, onClose }) {
             if (res && res.success) {
                 setBuildingInfo(res.building);
                 
-                // Initialize tracing template URL if available in building
                 if (res.building.floor_plan_url) {
                     setTracingTemplate(prev => ({ ...prev, url: res.building.floor_plan_url }));
                 }
 
-                // Load existing shapes and objects from database
                 if (res.building.shapes_data) {
                     try {
                         const parsedData = JSON.parse(res.building.shapes_data);
@@ -173,7 +194,7 @@ export default function IndoorControl({ user, onClose }) {
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
-        controls.maxPolarAngle = Math.PI / 2 - 0.01; // Prevent going under floor
+        controls.maxPolarAngle = Math.PI / 2 - 0.01;
         controlsRef.current = controls;
 
         // Transform Controls (3D Gizmo)
@@ -187,7 +208,6 @@ export default function IndoorControl({ user, onClose }) {
         tControls.addEventListener('dragging-changed', (event) => {
             controls.enabled = !event.value;
             
-            // Save final position & rotation to React state when dragging ends
             if (!event.value && tControls.object) {
                 const objId = tControls.object.userData.objectId;
                 if (objId) {
@@ -234,7 +254,7 @@ export default function IndoorControl({ user, onClose }) {
         fineGrid.material.transparent = true;
         scene.add(fineGrid);
 
-        // Ground Plane (Visual only)
+        // Ground Plane
         const floorGeo = new THREE.PlaneGeometry(100, 100);
         const floorMat = new THREE.MeshStandardMaterial({
             color: 0x0a0f1d,
@@ -245,6 +265,15 @@ export default function IndoorControl({ user, onClose }) {
         floor.rotation.x = -Math.PI / 2;
         floor.receiveShadow = true;
         scene.add(floor);
+
+        // ── Connect native canvas event listeners to solve event capturing ──
+        const canvas = renderer.domElement;
+        canvas.addEventListener('mousedown', handleCanvasMouseDown);
+        canvas.addEventListener('mousemove', handleCanvasMouseMove);
+        canvas.addEventListener('mouseup', handleCanvasMouseUp);
+
+        // Rebuild scene with any already loaded shapes/objects
+        rebuild3DScene(drawnShapesRef.current, placedObjectsRef.current);
 
         // Animation loop
         let animationFrameId;
@@ -268,6 +297,9 @@ export default function IndoorControl({ user, onClose }) {
         return () => {
             cancelAnimationFrame(animationFrameId);
             window.removeEventListener('resize', handleResize);
+            canvas.removeEventListener('mousedown', handleCanvasMouseDown);
+            canvas.removeEventListener('mousemove', handleCanvasMouseMove);
+            canvas.removeEventListener('mouseup', handleCanvasMouseUp);
         };
     }, []);
 
@@ -402,7 +434,7 @@ export default function IndoorControl({ user, onClose }) {
                     flatShading: true,
                     side: THREE.DoubleSide
                 });
-            default: // standard solid
+            default:
                 return new THREE.MeshStandardMaterial({
                     color: color,
                     roughness: 0.4,
@@ -431,7 +463,6 @@ export default function IndoorControl({ user, onClose }) {
         // Clear existing placed objects
         objectsMeshesMapRef.current.forEach(group => {
             scene.remove(group);
-            // Deep dispose of children
             group.traverse(child => {
                 if (child.geometry) child.geometry.dispose();
                 if (child.material) {
@@ -451,7 +482,7 @@ export default function IndoorControl({ user, onClose }) {
             }
         });
 
-        // 2. Recreate placed objects (Doors, Windows, Furniture)
+        // 2. Recreate placed objects
         objectsList.forEach(objData => {
             const group = createPlacedObjectMesh(objData);
             if (group) {
@@ -501,13 +532,11 @@ export default function IndoorControl({ user, onClose }) {
         const frameColor = 0x334155;
         const panelColor = objData.color || '#60a5fa';
 
-        // 📭 1. Doors
         if (objData.subType === 'single_door' || objData.subType === 'double_door') {
             const width = 1.6;
             const height = 2.4;
             const thickness = 0.08;
 
-            // Frame meshes
             const frameMat = new THREE.MeshStandardMaterial({ color: frameColor, roughness: 0.5 });
             const frameLeft = new THREE.Mesh(new THREE.BoxGeometry(0.1, height, 0.12), frameMat);
             frameLeft.position.set(-width / 2, height / 2, 0);
@@ -521,7 +550,6 @@ export default function IndoorControl({ user, onClose }) {
             const doorMat = new THREE.MeshStandardMaterial({ color: panelColor, roughness: 0.3, metalness: 0.1 });
 
             if (objData.subType === 'single_door') {
-                // Single Door Panel with Hinge Group
                 const hingeGroup = new THREE.Group();
                 hingeGroup.position.set(-width / 2 + 0.05, 0, 0);
                 
@@ -530,11 +558,10 @@ export default function IndoorControl({ user, onClose }) {
                 hingeGroup.add(panel);
 
                 if (objData.isOpen) {
-                    hingeGroup.rotation.y = Math.PI / 2; // Open 90deg
+                    hingeGroup.rotation.y = Math.PI / 2;
                 }
                 group.add(hingeGroup);
 
-                // Swing Arc Path (Blue dotted line on floor)
                 const arcPoints = [];
                 const radius = width - 0.1;
                 for (let i = 0; i <= 32; i++) {
@@ -550,7 +577,6 @@ export default function IndoorControl({ user, onClose }) {
                 group.add(arcLine);
 
             } else {
-                // Double Door Panels
                 const hingeLeft = new THREE.Group();
                 hingeLeft.position.set(-width / 2 + 0.05, 0, 0);
                 const panelLeft = new THREE.Mesh(new THREE.BoxGeometry((width - 0.1) / 2, height - 0.05, thickness), doorMat);
@@ -571,7 +597,6 @@ export default function IndoorControl({ user, onClose }) {
             }
         }
 
-        // 🖼️ 2. Windows
         else if (objData.subType === 'glass_window') {
             const width = 2.0;
             const height = 1.5;
@@ -599,10 +624,9 @@ export default function IndoorControl({ user, onClose }) {
             glass.position.set(0, height / 2, 0);
 
             group.add(frameBottom, frameTop, frameLeft, frameRight, glass);
-            group.position.y = 0.8; // Floating window height
+            group.position.y = 0.8;
         }
 
-        // 🗄️ 3. Retail Shelf
         else if (objData.subType === 'retail_shelf') {
             const width = 2.0;
             const height = 2.0;
@@ -611,7 +635,6 @@ export default function IndoorControl({ user, onClose }) {
             const woodMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.6 });
             const metalMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.8, roughness: 0.2 });
 
-            // Vertical support bars
             const barLeft = new THREE.Mesh(new THREE.BoxGeometry(0.06, height, depth), metalMat);
             barLeft.position.set(-width / 2, height / 2, 0);
             const barRight = new THREE.Mesh(new THREE.BoxGeometry(0.06, height, depth), metalMat);
@@ -619,7 +642,6 @@ export default function IndoorControl({ user, onClose }) {
 
             group.add(barLeft, barRight);
 
-            // Horizontal shelves
             for (let h = 0.3; h < height; h += 0.45) {
                 const shelf = new THREE.Mesh(new THREE.BoxGeometry(width, 0.03, depth), woodMat);
                 shelf.position.set(0, h, 0);
@@ -627,7 +649,6 @@ export default function IndoorControl({ user, onClose }) {
             }
         }
 
-        // 🛒 4. Checkout Counter
         else if (objData.subType === 'checkout_counter') {
             const width = 2.2;
             const height = 1.0;
@@ -647,16 +668,14 @@ export default function IndoorControl({ user, onClose }) {
             group.add(base, top);
         }
 
-        // 🍽️ 5. Display Table
         else if (objData.subType === 'display_table') {
             const width = 1.8;
             const height = 0.85;
             const depth = 1.2;
 
             const legMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8, roughness: 0.3 });
-            const topMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.4 }); // Wooden top
+            const topMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.4 });
 
-            // Legs
             const leg1 = new THREE.Mesh(new THREE.BoxGeometry(0.08, height - 0.05, 0.08), legMat);
             leg1.position.set(-width / 2 + 0.08, (height - 0.05) / 2, -depth / 2 + 0.08);
             const leg2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, height - 0.05, 0.08), legMat);
@@ -666,28 +685,22 @@ export default function IndoorControl({ user, onClose }) {
             const leg4 = new THREE.Mesh(new THREE.BoxGeometry(0.08, height - 0.05, 0.08), legMat);
             leg4.position.set(width / 2 - 0.08, (height - 0.05) / 2, depth / 2 - 0.08);
 
-            // Tabletop
             const top = new THREE.Mesh(new THREE.BoxGeometry(width, 0.05, depth), topMat);
             top.position.set(0, height - 0.025, 0);
 
             group.add(leg1, leg2, leg3, leg4, top);
         }
 
-        // 🛋️ 6. Lounge Chair
         else if (objData.subType === 'lounge_chair') {
             const size = 0.8;
             const chairMat = new THREE.MeshStandardMaterial({ color: panelColor, roughness: 0.7 });
-            const legMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.8 });
 
-            // Base cushion
             const cushion = new THREE.Mesh(new THREE.BoxGeometry(size, 0.25, size), chairMat);
             cushion.position.set(0, 0.35, 0);
 
-            // Backrest
             const back = new THREE.Mesh(new THREE.BoxGeometry(size, 0.5, 0.15), chairMat);
             back.position.set(0, 0.65, -size / 2 + 0.075);
 
-            // Armrests
             const armL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.4, size - 0.15), chairMat);
             armL.position.set(-size / 2 + 0.075, 0.45, 0.075);
             const armR = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.4, size - 0.15), chairMat);
@@ -696,14 +709,12 @@ export default function IndoorControl({ user, onClose }) {
             group.add(cushion, back, armL, armR);
         }
 
-        // 💡 7. Spot Light (Physical Light Source + Cone)
         else if (objData.subType === 'spot_light') {
             const coneMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9, roughness: 0.1 });
             const emitterMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
-            // Light Fixture Cone
             const cone = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.4, 16), coneMat);
-            cone.rotation.x = Math.PI; // Face downwards
+            cone.rotation.x = Math.PI;
             cone.position.set(0, 3.8, 0);
 
             const emitter = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.02, 16), emitterMat);
@@ -711,23 +722,21 @@ export default function IndoorControl({ user, onClose }) {
 
             group.add(cone, emitter);
 
-            // Interactive Three.js SpotLight Source
             const spotLight = new THREE.SpotLight(0xfffbeb, 8, 12, Math.PI / 4, 0.5, 1.0);
             spotLight.position.set(0, 3.6, 0);
             spotLight.target.position.set(0, 0, 0);
             spotLight.castShadow = true;
             spotLight.shadow.bias = -0.001;
             group.add(spotLight);
-            group.add(spotLight.target); // Target must be in scene
+            group.add(spotLight.target);
         }
 
-        // Highlight selected object in 3D
-        if (objData.id === selectedObjectId) {
+        if (objData.id === selectedObjectIdRef.current) {
             group.traverse(child => {
                 if (child.material) {
                     child.material = child.material.clone();
-                    child.material.emissive = new THREE.Color(0x60a5fa);
-                    child.material.emissiveIntensity = 0.2;
+                    child.material.emissive = new THREE.Color(0x3b82f6);
+                    child.material.emissiveIntensity = 0.25;
                 }
             });
         }
@@ -735,7 +744,31 @@ export default function IndoorControl({ user, onClose }) {
         return group;
     };
 
-    // ── 5. Drawing & Placement Interaction ───────────────────────────────────
+    // ── 5. Native Drawing & Placement Event Handlers ────────────────────────
+    const getIntersectionPoint = (event) => {
+        const container = canvasContainerRef.current;
+        const camera = cameraRef.current;
+        if (!container || !camera) return null;
+
+        const rect = container.getBoundingClientRect();
+        const mouseX = ((event.clientX - rect.left) / container.clientWidth) * 2 - 1;
+        const mouseY = -((event.clientY - rect.top) / container.clientHeight) * 2 + 1;
+
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(new THREE.Vector2(mouseX, mouseY), camera);
+
+        const targetPoint = new THREE.Vector3();
+        raycaster.ray.intersectPlane(groundPlaneRef.current, targetPoint);
+
+        if (gridSnappingRef.current) {
+            targetPoint.x = Math.round(targetPoint.x / gridSizeRef.current) * gridSizeRef.current;
+            targetPoint.z = Math.round(targetPoint.z / gridSizeRef.current) * gridSizeRef.current;
+        }
+        targetPoint.y = 0;
+
+        return targetPoint;
+    };
+
     const handleCanvasMouseMove = (event) => {
         const point = getIntersectionPoint(event);
         if (!point) return;
@@ -745,13 +778,11 @@ export default function IndoorControl({ user, onClose }) {
         const scene = sceneRef.current;
         if (!scene) return;
 
-        // ── Drawing Polyline Preview ──
-        if (activeMode === 'polyline' && drawingPointsRef.current.length > 0) {
+        if (activeModeRef.current === 'polyline' && drawingPointsRef.current.length > 0) {
             updateDrawingPreview(point);
         }
 
-        // ── Drawing Freehand Sketch ──
-        if (activeMode === 'freehand' && isDrawingRef.current) {
+        if (activeModeRef.current === 'freehand' && isDrawingRef.current) {
             const lastPoint = drawingPointsRef.current[drawingPointsRef.current.length - 1];
             if (lastPoint && lastPoint.distanceTo(point) > 0.3) {
                 drawingPointsRef.current.push(point);
@@ -770,23 +801,23 @@ export default function IndoorControl({ user, onClose }) {
         if (!scene) return;
 
         // ── Drop / Place Item Mode ──
-        if (activeMode === 'place_item' && itemToPlace) {
+        if (activeModeRef.current === 'place_item' && itemToPlaceRef.current) {
             const newObj = {
                 id: `obj_${Date.now()}`,
-                type: ['single_door', 'double_door', 'glass_window'].includes(itemToPlace) ? 'door' : 'furniture',
-                subType: itemToPlace,
+                type: ['single_door', 'double_door', 'glass_window'].includes(itemToPlaceRef.current) ? 'door' : 'furniture',
+                subType: itemToPlaceRef.current,
                 position: { x: point.x, y: 0, z: point.z },
                 rotation: 0,
                 scale: { x: 1, y: 1, z: 1 },
                 isOpen: false,
-                color: layers.find(l => l.id === activeLayer)?.color || '#34d399',
-                layer: activeLayer
+                color: layersRef.current.find(l => l.id === activeLayerRef.current)?.color || '#34d399',
+                layer: activeLayerRef.current
             };
 
-            const updated = [...placedObjects, newObj];
+            const updated = [...placedObjectsRef.current, newObj];
             setPlacedObjects(updated);
             setSelectedObjectId(newObj.id);
-            rebuild3DScene(drawnShapes, updated);
+            rebuild3DScene(drawnShapesRef.current, updated);
             
             setItemToPlace(null);
             setActiveMode('orbit');
@@ -794,7 +825,7 @@ export default function IndoorControl({ user, onClose }) {
         }
 
         // ── Click-to-Add-Point (Polyline) ──
-        if (activeMode === 'polyline') {
+        if (activeModeRef.current === 'polyline') {
             if (drawingPointsRef.current.length >= 3) {
                 const firstPoint = drawingPointsRef.current[0];
                 const dist = point.distanceTo(firstPoint);
@@ -818,15 +849,14 @@ export default function IndoorControl({ user, onClose }) {
         }
 
         // ── Drag-to-Draw (Freehand) ──
-        if (activeMode === 'freehand') {
+        if (activeModeRef.current === 'freehand') {
             isDrawingRef.current = true;
             drawingPointsRef.current = [point];
             setCurrentPathPoints([point]);
         }
 
         // ── Click-to-Select / Erase ──
-        if (activeMode === 'orbit' || activeMode === 'erase') {
-            // Ignore click if clicking TransformControls handles
+        if (activeModeRef.current === 'orbit' || activeModeRef.current === 'erase') {
             if (transformControlsRef.current?.dragging) return;
 
             const container = canvasContainerRef.current;
@@ -843,14 +873,13 @@ export default function IndoorControl({ user, onClose }) {
             const objIntersects = raycaster.intersectObjects(objGroups, true);
 
             if (objIntersects.length > 0) {
-                // Find parent group containing userData
                 let parent = objIntersects[0].object;
                 while (parent && !parent.userData.objectId) {
                     parent = parent.parent;
                 }
                 if (parent) {
                     const objId = parent.userData.objectId;
-                    if (activeMode === 'erase') {
+                    if (activeModeRef.current === 'erase') {
                         deletePlacedObject(objId);
                     } else {
                         setSelectedObjectId(objId);
@@ -866,14 +895,13 @@ export default function IndoorControl({ user, onClose }) {
 
             if (wallIntersects.length > 0) {
                 const wallId = wallIntersects[0].object.userData.shapeId;
-                if (activeMode === 'erase') {
+                if (activeModeRef.current === 'erase') {
                     deleteShape(wallId);
                 } else {
                     setSelectedShapeId(wallId);
                     setSelectedObjectId(null); // Clear object selection
                 }
             } else {
-                // Clicked on empty space
                 setSelectedShapeId(null);
                 setSelectedObjectId(null);
             }
@@ -881,7 +909,7 @@ export default function IndoorControl({ user, onClose }) {
     };
 
     const handleCanvasMouseUp = () => {
-        if (activeMode === 'freehand' && isDrawingRef.current) {
+        if (activeModeRef.current === 'freehand' && isDrawingRef.current) {
             isDrawingRef.current = false;
             if (drawingPointsRef.current.length >= 3) {
                 finishDrawingShape();
@@ -901,7 +929,7 @@ export default function IndoorControl({ user, onClose }) {
         }
 
         const pts = [...drawingPointsRef.current];
-        if (hoverPoint && activeMode === 'polyline') {
+        if (hoverPoint && activeModeRef.current === 'polyline') {
             pts.push(hoverPoint);
         }
 
@@ -909,7 +937,7 @@ export default function IndoorControl({ user, onClose }) {
 
         const geometry = new THREE.BufferGeometry().setFromPoints(pts);
         const material = new THREE.LineBasicMaterial({
-            color: activeMode === 'freehand' ? 0x06b6d4 : 0xf97316,
+            color: activeModeRef.current === 'freehand' ? 0x06b6d4 : 0xf97316,
             linewidth: 3,
             depthTest: false
         });
@@ -932,18 +960,18 @@ export default function IndoorControl({ user, onClose }) {
 
         const newShape = {
             id: `shape_${Date.now()}`,
-            name: `جدار_${drawnShapes.length + 1}`,
+            name: `جدار_${drawnShapesRef.current.length + 1}`,
             points: pointsData,
             height: 3.0,
             materialType: 'standard',
             color: '#e2e8f0',
-            layer: activeLayer
+            layer: activeLayerRef.current
         };
 
-        const updated = [...drawnShapes, newShape];
+        const updated = [...drawnShapesRef.current, newShape];
         setDrawnShapes(updated);
         setSelectedShapeId(newShape.id);
-        rebuild3DScene(updated, placedObjects);
+        rebuild3DScene(updated, placedObjectsRef.current);
         
         clearDrawingPreview();
         setActiveMode('orbit');
@@ -969,17 +997,17 @@ export default function IndoorControl({ user, onClose }) {
     };
 
     const deleteShape = (shapeId) => {
-        const updated = drawnShapes.filter(s => s.id !== shapeId);
+        const updated = drawnShapesRef.current.filter(s => s.id !== shapeId);
         setDrawnShapes(updated);
-        if (selectedShapeId === shapeId) setSelectedShapeId(null);
-        rebuild3DScene(updated, placedObjects);
+        if (selectedShapeIdRef.current === shapeId) setSelectedShapeId(null);
+        rebuild3DScene(updated, placedObjectsRef.current);
     };
 
     const deletePlacedObject = (objId) => {
-        const updated = placedObjects.filter(o => o.id !== objId);
+        const updated = placedObjectsRef.current.filter(o => o.id !== objId);
         setPlacedObjects(updated);
-        if (selectedObjectId === objId) setSelectedObjectId(null);
-        rebuild3DScene(drawnShapes, updated);
+        if (selectedObjectIdRef.current === objId) setSelectedObjectId(null);
+        rebuild3DScene(drawnShapesRef.current, updated);
     };
 
     const clearAllShapes = () => {
@@ -1002,7 +1030,7 @@ export default function IndoorControl({ user, onClose }) {
         const widthHalf = container.clientWidth / 2;
         const heightHalf = container.clientHeight / 2;
 
-        drawnShapes.forEach(shape => {
+        drawnShapesRef.current.forEach(shape => {
             const mesh = shapesMeshesMapRef.current.get(shape.id);
             const badgeEl = document.getElementById(`dim-${shape.id}`);
             
@@ -1354,9 +1382,6 @@ export default function IndoorControl({ user, onClose }) {
                 <div 
                     className="ic-canvas-container" 
                     ref={canvasContainerRef}
-                    onMouseMove={handleCanvasMouseMove}
-                    onMouseDown={handleCanvasMouseDown}
-                    onMouseUp={handleCanvasMouseUp}
                 >
                     {/* Status badges */}
                     <div className="ic-cad-status-bar">
@@ -1479,7 +1504,6 @@ export default function IndoorControl({ user, onClose }) {
                                 />
                             </div>
 
-                            {/* For Doors/Windows, show Open/Close toggle */}
                             {selectedObject.type === 'door' && (
                                 <div className="ic-setting-row">
                                     <label>حالة الفتح (Open / Swing)</label>
