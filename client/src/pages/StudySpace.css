@@ -265,11 +265,12 @@
     display: flex; align-items: center; gap: 12px;
 }
 .ss-timer-value {
-    font-size: 1.75rem; font-weight: 900;
+    font-size: 1.85rem; font-weight: 800;
+    font-family: 'Outfit', 'Courier New', Courier, monospace;
     color: var(--ss-gold);
-    letter-spacing: 3px;
+    letter-spacing: 2px;
     font-variant-numeric: tabular-nums;
-    text-shadow: 0 0 22px rgba(251,171,21,0.35);
+    text-shadow: 0 0 20px rgba(251,171,21,0.45);
     line-height: 1;
 }
 .ss-timer-block--done .ss-timer-value {

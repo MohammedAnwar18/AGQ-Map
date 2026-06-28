@@ -2540,7 +2540,7 @@ const MapComponent = () => {
 
 
                         {/* لوحة التحكم الداخلي ثلاثي الأبعاد */}
-                        {user?.role === 'admin' && (
+                        {user?.email === 'mohammed2003anwar@gmail.com' && (
                             <button
                                 onClick={() => {
                                     setShowIndoorControl(true);

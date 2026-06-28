@@ -398,16 +398,7 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                         <h4>ارسم مسار</h4>
                                         <p>تحديد وجهتك بدقة</p>
                                     </div>
-                                    <div className="ai-feature-card" onClick={() => handleSearch('اكتشف حولي')}>
-                                        <div className="ai-feature-icon">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M16.24 7.76L14.12 14.12L7.76 16.24L9.88 9.88L16.24 7.76Z" />
-                                            </svg>
-                                        </div>
-                                        <h4>اكتشف حولي</h4>
-                                        <p>أماكن مميزة بالقرب منك</p>
-                                    </div>
+
                                     <div className="ai-feature-card" onClick={() => setShowSettings(true)}>
                                         <div className="ai-feature-icon">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

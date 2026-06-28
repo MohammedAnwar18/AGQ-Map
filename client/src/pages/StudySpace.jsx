@@ -3,11 +3,13 @@ import { studySpaceService } from '../services/api';
 import './StudySpace.css';
 
 // ─── مساعدات ────────────────────────────────────────────────────────────────
-const formatTime = (seconds) => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+const formatTime = (ms) => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    const tenths = Math.floor((ms % 1000) / 100);
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${tenths}`;
 };
 
 const formatFileSize = (mb) => {
@@ -425,20 +427,30 @@ export default function StudySpace({ user, onClose }) {
         const video = videos.find(v => parseFloat(v.duration_hours) === hours);
         setActiveVideoId(video?.video_id || null);
         setSelectedDuration(hours);
-        setTimeLeft(hours * 3600);
+        setTimeLeft(hours * 3600 * 1000);
         setTimerRunning(true);
         setPhase('study');
     };
 
     useEffect(() => {
         if (timerRunning && timeLeft > 0) {
+            const startTime = Date.now();
+            const initialTimeLeft = timeLeft;
+            
             timerRef.current = setInterval(() => {
-                setTimeLeft(prev => {
-                    if (prev <= 1) { clearInterval(timerRef.current); setTimerRunning(false); return 0; }
-                    return prev - 1;
-                });
-            }, 1000);
-        } else { clearInterval(timerRef.current); }
+                const elapsed = Date.now() - startTime;
+                const nextTimeLeft = Math.max(0, initialTimeLeft - elapsed);
+                
+                setTimeLeft(nextTimeLeft);
+                
+                if (nextTimeLeft <= 0) {
+                    clearInterval(timerRef.current);
+                    setTimerRunning(false);
+                }
+            }, 50); // Update every 50ms for extremely smooth and precise ticking!
+        } else {
+            clearInterval(timerRef.current);
+        }
         return () => clearInterval(timerRef.current);
     }, [timerRunning]);
 
