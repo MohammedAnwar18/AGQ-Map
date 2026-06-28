@@ -94,6 +94,23 @@ export default function DigitalTwin({ user, onClose }) {
         'beacon': { model: 'beacon', scale: 1.2, color: '#10b981' }
     });
 
+    // ─── إعدادات الشبكة المغناطيسية والمحاكاة المتقدمة (Grid Snapping & IoT) ─────
+    const [gridSnapping, setGridSnapping] = useState(false);
+    const [gridSize, setGridSize] = useState(0.5); // بالمتر
+    const [showGridHelper, setShowGridHelper] = useState(false);
+    
+    const [iotSimulation, setIotSimulation] = useState(false);
+    const [simulatedTelemetry, setSimulatedTelemetry] = useState({});
+    const [telemetryLogs, setTelemetryLogs] = useState([]);
+
+    const gridSnappingRef = useRef(false);
+    const gridSizeRef = useRef(0.5);
+    const showGridHelperRef = useRef(false);
+
+    useEffect(() => { gridSnappingRef.current = gridSnapping; }, [gridSnapping]);
+    useEffect(() => { gridSizeRef.current = gridSize; }, [gridSize]);
+    useEffect(() => { showGridHelperRef.current = showGridHelper; }, [showGridHelper]);
+
     // مراجع الـ Three.js للتحكم المباشر في الرندر والخامات والأنيميشن
     const threeSceneRef = useRef(null);
     const threeLightsRef = useRef({});
@@ -1066,6 +1083,19 @@ export default function DigitalTwin({ user, onClose }) {
     }, [drawMode, drawnCoords]);
 
     // ─── 6. معالجة الأحداث والضغط على الخريطة ─────────────────────────────
+    // دالة محاذاة الإحداثيات الجغرافية لشبكة أمتار افتراضية دقيقة طبقاً لخط العرض الحالي للموقع
+    const snapCoords = (lng, lat, sizeInMeters = 0.5) => {
+        const latDegreePerMeter = 1 / 111132;
+        const lngDegreePerMeter = 1 / (111132 * Math.cos((lat * Math.PI) / 180));
+        
+        const latGridSize = sizeInMeters * latDegreePerMeter;
+        const lngGridSize = sizeInMeters * lngDegreePerMeter;
+        
+        const snappedLng = Math.round(lng / lngGridSize) * lngGridSize;
+        const snappedLat = Math.round(lat / latGridSize) * latGridSize;
+        return [snappedLng, snappedLat];
+    };
+
     const handleMapClick = (e, map) => {
         if (!canEdit) {
             inspectClosestFeature(e);
@@ -1073,9 +1103,17 @@ export default function DigitalTwin({ user, onClose }) {
         }
 
         const currentMode = drawModeRef.current;
+        let clickLng = e.lngLat.lng;
+        let clickLat = e.lngLat.lat;
+
+        if (gridSnappingRef.current) {
+            const snapped = snapCoords(clickLng, clickLat, gridSizeRef.current);
+            clickLng = snapped[0];
+            clickLat = snapped[1];
+        }
 
         if (currentMode === 'building' || currentMode === 'street') {
-            setDrawnCoords(prev => [...prev, [e.lngLat.lng, e.lngLat.lat]]);
+            setDrawnCoords(prev => [...prev, [clickLng, clickLat]]);
             return;
         }
 
@@ -1093,7 +1131,7 @@ export default function DigitalTwin({ user, onClose }) {
                 },
                 geometry: {
                     type: "Point",
-                    coordinates: [e.lngLat.lng, e.lngLat.lat]
+                    coordinates: [clickLng, clickLat]
                 }
             };
             setCustomPoints(prev => {
@@ -1105,7 +1143,7 @@ export default function DigitalTwin({ user, onClose }) {
                     isCustom: true,
                     index: prev.length,
                     properties: newPt.properties,
-                    coords: e.lngLat,
+                    coords: new maplibregl.LngLat(clickLng, clickLat),
                     geometry: newPt.geometry
                 });
                 setEditScale(1.0);
@@ -1283,6 +1321,27 @@ export default function DigitalTwin({ user, onClose }) {
         animatedBeaconsRef.current = [];
         animatedWaterJetsRef.current = [];
 
+        // إضافة شبكة هولوغرافية ثلاثية الأبعاد للمساعدة في القياس والاصطفاف الدقيق للأصول
+        if (showGridHelperRef.current) {
+            const gridHelper = new THREE.GridHelper(300, 60, 0x10b981, 0x1e293b);
+            gridHelper.rotation.x = Math.PI / 2; // محاذاة للسطح الأفقي لـ MapLibre
+            gridHelper.position.set(0, 0, 0.05); // مرتفع قليلاً عن الأرض لتجنب الـ Z-fighting مع الخريطة
+            
+            const applyGridMaterial = (mat) => {
+                mat.transparent = true;
+                mat.opacity = 0.22;
+                mat.depthWrite = false;
+            };
+            if (Array.isArray(gridHelper.material)) {
+                gridHelper.material.forEach(applyGridMaterial);
+            } else if (gridHelper.material) {
+                applyGridMaterial(gridHelper.material);
+            }
+            
+            scene.add(gridHelper);
+            meshesMapRef.current.set('grid-helper', gridHelper);
+        }
+
         // Read from refs so this always gets the latest state even inside stale closures
         const currentCenter = centerCoordsRef.current;
         const currentBuildings = customBuildingsRef.current;
@@ -1411,7 +1470,95 @@ export default function DigitalTwin({ user, onClose }) {
         if (rebuildSceneRef.current) {
             rebuildSceneRef.current();
         }
-    }, [customPoints, customBuildings, geojsonData, timeOfDay, centerCoords]);
+    }, [customPoints, customBuildings, geojsonData, timeOfDay, centerCoords, showGridHelper]);
+
+    // تأثير محاكاة مستشعرات إنترنت الأشياء (IoT Telemetry Simulation)
+    useEffect(() => {
+        if (!iotSimulation) return;
+
+        const interval = setInterval(() => {
+            setSimulatedTelemetry(prev => {
+                const next = { ...prev };
+
+                customPoints.forEach((p, idx) => {
+                    const id = `custom-${idx}`;
+                    const type = p.properties?.type || 'tree';
+
+                    if (!next[id]) {
+                        next[id] = {};
+                    }
+
+                    if (type === 'wind_turbine') {
+                        const windSpeed = 4.5 + Math.random() * 11; // m/s
+                        const rpm = Math.round(windSpeed * 7.2);
+                        const power = ((0.5 * 1.2 * Math.PI * 16 * Math.pow(windSpeed, 3) * 0.38) / 1000).toFixed(2); // kW
+                        next[id] = {
+                            status: 'توليد نشط',
+                            windSpeed: windSpeed.toFixed(1) + ' m/s',
+                            rpm: rpm + ' RPM',
+                            power: power + ' kW'
+                        };
+                    } else if (type === 'streetlight' || type === 'classic_lamp') {
+                        const isNight = timeOfDay < 6 || timeOfDay > 18;
+                        next[id] = {
+                            status: isNight ? 'مضيء' : 'مطفأ (توفير طاقة)',
+                            consumption: isNight ? (75 + Math.random() * 8).toFixed(1) + ' W' : '0 W',
+                            efficiency: '98.4%'
+                        };
+                    } else if (type === 'fountain') {
+                        next[id] = {
+                            status: 'ضخ مستمر',
+                            pressure: (2.2 + Math.sin(Date.now() / 1000) * 0.35).toFixed(2) + ' bar',
+                            height: (1.2 + Math.sin(Date.now() / 600) * 0.3).toFixed(2) + ' m'
+                        };
+                    } else if (type === 'beacon') {
+                        next[id] = {
+                            status: 'بث النبضة النشطة',
+                            frequency: (1.5 + Math.sin(Date.now() / 1500) * 0.15).toFixed(2) + ' Hz',
+                            signal: (-60 - Math.round(Math.random() * 7)) + ' dBm'
+                        };
+                    } else if (type === 'cctv') {
+                        const motionActive = Math.random() > 0.85;
+                        next[id] = {
+                            status: 'تسجيل مستمر (1080p)',
+                            fps: '30 fps',
+                            bandwidth: (3.8 + Math.random() * 1.4).toFixed(1) + ' Mbps',
+                            motion: motionActive ? '🚨 تم رصد حركة!' : 'مستقر'
+                        };
+                    } else {
+                        next[id] = {
+                            status: 'نشط',
+                            temperature: (23.2 + Math.sin(Date.now() / 4000) * 1.1).toFixed(1) + ' °C'
+                        };
+                    }
+                });
+
+                return next;
+            });
+
+            // إضافة سجل جديد في دفق البيانات
+            const types = ['wind_turbine', 'cctv', 'beacon', 'fountain', 'streetlight'];
+            const randomType = types[Math.floor(Math.random() * types.length)];
+            const timestamp = new Date().toLocaleTimeString('ar-EG');
+            let logText = '';
+
+            if (randomType === 'wind_turbine') {
+                logText = `[${timestamp}] 🌀 عنفة رياح: تم تحديث معدل الدوران؛ التوليد الحالي يبلغ ${(8 + Math.random() * 12).toFixed(1)} kW.`;
+            } else if (randomType === 'cctv') {
+                logText = `[${timestamp}] 📹 كاميرا: بث الفيديو مستمر، النطاق الترددي ${(3.5 + Math.random() * 1.5).toFixed(1)} Mbps.`;
+            } else if (randomType === 'beacon') {
+                logText = `[${timestamp}] 📡 منارة هولوغرام: تم إرسال نبضة مزامنة مكانية بنجاح.`;
+            } else if (randomType === 'fountain') {
+                logText = `[${timestamp}] ⛲ نافورة: تم ضبط تدفق ضخ المياه ديناميكياً لتأثير التموج.`;
+            } else {
+                logText = `[${timestamp}] 💡 إنارة الشوارع: الاستهلاك الكلي للمنطقة ${(180 + Math.random() * 20).toFixed(1)} W.`;
+            }
+
+            setTelemetryLogs(prev => [logText, ...prev.slice(0, 24)]);
+        }, 2000);
+
+        return () => clearInterval(interval);
+    }, [iotSimulation, customPoints, timeOfDay]);
 
     // ─── 9. مولّد الكائنات ثلاثية الأبعاد الإجرائي المتقدم ───────────────────
     const buildProceduralModel = (type, group, colorHex, isNight) => {
@@ -1970,6 +2117,38 @@ export default function DigitalTwin({ user, onClose }) {
                             {/* فحص وتعديل النقاط */}
                             {selectedFeature.type === 'point' && (
                                 <>
+                                    {/* عرض قراءات إنترنت الأشياء المباشرة إن وجدت وعقدت محاكاة */}
+                                    {iotSimulation && simulatedTelemetry[selectedFeature.id] && (
+                                        <div className="dt-section" style={{ background: 'rgba(16, 185, 129, 0.04)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: '8px', padding: '10px', marginBottom: '14px' }}>
+                                            <span className="dt-section-title" style={{ fontSize: '0.82rem', color: 'var(--dt-emerald)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <span className="dt-status-dot pulse" style={{ width: '7px', height: '7px', background: '#10b981', borderRadius: '50%', display: 'inline-block', boxShadow: '0 0 8px #10b981' }}></span>
+                                                📡 الحساسات الذكية (IoT Telemetry)
+                                            </span>
+                                            <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                {Object.entries(simulatedTelemetry[selectedFeature.id]).map(([key, val]) => (
+                                                    <div key={key} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.76rem' }}>
+                                                        <span style={{ color: 'var(--dt-muted)' }}>
+                                                            {key === 'windSpeed' ? '💨 سرعة الرياح' :
+                                                             key === 'rpm' ? '🔄 معدل الدوران' :
+                                                             key === 'power' ? '⚡ الطاقة المنتجة' :
+                                                             key === 'status' ? '🟢 حالة النظام' :
+                                                             key === 'consumption' ? '🔌 استهلاك الطاقة' :
+                                                             key === 'pressure' ? '💧 ضغط المياه' :
+                                                             key === 'height' ? '⛲ ارتفاع التدفق' :
+                                                             key === 'frequency' ? '🌐 تردد النبضة' :
+                                                             key === 'signal' ? '📶 قوة الإشارة' :
+                                                             key === 'fps' ? '🎞️ إطارات الفيديو' :
+                                                             key === 'bandwidth' ? '📡 معدل النقل' :
+                                                             key === 'motion' ? '🚨 الحركة المكتشفة' :
+                                                             key === 'temperature' ? '🌡️ درجة الحرارة' : key}
+                                                        </span>
+                                                        <span style={{ fontWeight: 'bold', color: '#f1f5f9' }}>{val}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <div className="dt-section" style={{ borderBottom: 'none', paddingBottom: '0' }}>
                                         <div className="dt-inspector-prop">
                                             <span className="dt-inspector-prop-name">النوع</span>
@@ -2324,14 +2503,17 @@ export default function DigitalTwin({ user, onClose }) {
                 {/* لوحة التحكم والتحرير الجانبية */}
                 <div className={`dt-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
                     <div className="dt-tabs">
-                        <button className={`dt-tab-btn ${activeTab === 'data' ? 'active' : ''}`} onClick={() => setActiveTab('data')}>
-                            📂 البيانات والمشروع
+                        <button className={`dt-tab-btn ${activeTab === 'data' ? 'active' : ''}`} onClick={() => setActiveTab('data')} style={{ padding: '14px 6px', fontSize: '0.78rem' }}>
+                            📂 المشروع
                         </button>
-                        <button className={`dt-tab-btn ${activeTab === 'mapping' ? 'active' : ''}`} onClick={() => setActiveTab('mapping')}>
-                            🌲 تعيين ورسم المعالم
+                        <button className={`dt-tab-btn ${activeTab === 'mapping' ? 'active' : ''}`} onClick={() => setActiveTab('mapping')} style={{ padding: '14px 6px', fontSize: '0.78rem' }}>
+                            🌲 المعالم
                         </button>
-                        <button className={`dt-tab-btn ${activeTab === 'visual' ? 'active' : ''}`} onClick={() => setActiveTab('visual')}>
-                            🌤️ البيئة والطقس
+                        <button className={`dt-tab-btn ${activeTab === 'visual' ? 'active' : ''}`} onClick={() => setActiveTab('visual')} style={{ padding: '14px 6px', fontSize: '0.78rem' }}>
+                            🌤️ البيئة
+                        </button>
+                        <button className={`dt-tab-btn ${activeTab === 'simulation' ? 'active' : ''}`} onClick={() => setActiveTab('simulation')} style={{ padding: '14px 6px', fontSize: '0.78rem' }}>
+                            📡 المحاكاة
                         </button>
                     </div>
 
@@ -2559,6 +2741,99 @@ export default function DigitalTwin({ user, onClose }) {
                                         </button>
                                     </div>
                                 </div>
+                            </div>
+                        )}
+
+                        {/* 4. تبويب المحاكاة والشبكة */}
+                        {activeTab === 'simulation' && (
+                            <div className="dt-tab-content">
+                                <div className="dt-section">
+                                    <span className="dt-section-title">📏 محاذاة للشبكة المغناطيسية (Grid Snap)</span>
+                                    <div className="dt-input-group" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            id="grid-snap-chk" 
+                                            checked={gridSnapping} 
+                                            onChange={e => setGridSnapping(e.target.checked)} 
+                                            style={{ accentColor: 'var(--dt-emerald)', width: '16px', height: '16px', cursor: 'pointer' }}
+                                        />
+                                        <label htmlFor="grid-snap-chk" style={{ cursor: 'pointer', fontWeight: '600', fontSize: '0.84rem' }}>تفعيل شبكة المحاذاة المغناطيسية</label>
+                                    </div>
+                                    
+                                    {gridSnapping && (
+                                        <div className="dt-input-group">
+                                            <label>دقة خطوة المحاذاة الجغرافية</label>
+                                            <select className="dt-select" value={gridSize} onChange={e => setGridSize(parseFloat(e.target.value))}>
+                                                <option value="0.1">0.1 متر (10 سم - دقة متناهية)</option>
+                                                <option value="0.5">0.5 متر (50 سم - قياسية)</option>
+                                                <option value="1.0">1.0 متر (1 متر)</option>
+                                                <option value="2.0">2.0 متر (مربعات متباعدة)</option>
+                                            </select>
+                                        </div>
+                                    )}
+
+                                    <div className="dt-input-group" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '12px' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            id="grid-helper-chk" 
+                                            checked={showGridHelper} 
+                                            onChange={e => setShowGridHelper(e.target.checked)} 
+                                            style={{ accentColor: 'var(--dt-emerald)', width: '16px', height: '16px', cursor: 'pointer' }}
+                                        />
+                                        <label htmlFor="grid-helper-chk" style={{ cursor: 'pointer', fontSize: '0.84rem' }}>عرض شبكة القياس الهولوغرافية ثلاثية الأبعاد</label>
+                                    </div>
+                                </div>
+
+                                <div className="dt-section">
+                                    <span className="dt-section-title">📡 مستشعرات إنترنت الأشياء (IoT Sim)</span>
+                                    <div className="dt-input-group" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            id="iot-sim-chk" 
+                                            checked={iotSimulation} 
+                                            onChange={e => setIotSimulation(e.target.checked)} 
+                                            style={{ accentColor: 'var(--dt-emerald)', width: '16px', height: '16px', cursor: 'pointer' }}
+                                        />
+                                        <label htmlFor="iot-sim-chk" style={{ cursor: 'pointer', fontWeight: '600', fontSize: '0.84rem', color: 'var(--dt-emerald)' }}>تفعيل محاكاة الحساسات الحية</label>
+                                    </div>
+                                    
+                                    <p style={{ fontSize: '0.78rem', color: 'var(--dt-muted)', lineHeight: '1.5' }}>
+                                        عند التفعيل، تقوم الأصول الذكية في الحرم الجامعي (عنفات الرياح، الإضاءة، النافورة، كاميرات المراقبة) بنقل وتحديث قراءات الحساسات المكانية كل ثانيتين.
+                                    </p>
+                                </div>
+
+                                {iotSimulation && (
+                                    <div className="dt-section">
+                                        <span className="dt-section-title">📊 تدفق حزم البيانات الفورية (Live Stream)</span>
+                                        <div style={{ 
+                                            background: 'rgba(2, 6, 23, 0.6)', 
+                                            border: '1px solid var(--dt-border2)', 
+                                            borderRadius: '8px', 
+                                            padding: '12px', 
+                                            height: '180px', 
+                                            overflowY: 'auto', 
+                                            fontFamily: 'Consolas, Monaco, monospace', 
+                                            fontSize: '0.72rem', 
+                                            color: '#34d399',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '6px',
+                                            lineHeight: '1.4',
+                                            textAlign: 'left',
+                                            direction: 'ltr'
+                                        }}>
+                                            {telemetryLogs.length === 0 ? (
+                                                <span style={{ color: 'var(--dt-muted)', textAlign: 'center', display: 'block', padding: '20px' }}>Waiting for telemetry packets...</span>
+                                            ) : (
+                                                telemetryLogs.map((log, idx) => (
+                                                    <div key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: '4px', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                                                        {log}
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>

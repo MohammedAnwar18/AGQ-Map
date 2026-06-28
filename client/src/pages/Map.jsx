@@ -2536,7 +2536,7 @@ const MapComponent = () => {
                         )}
 
                         {/* التوأم الرقمي ثلاثي الأبعاد */}
-                        {true && (
+                        {user?.role === 'admin' && (
                             <button
                                 onClick={() => {
                                     setShowDigitalTwin(true);
@@ -3571,7 +3571,7 @@ const MapComponent = () => {
             {showStudySpace && (
                 <StudySpace user={user} onClose={() => setShowStudySpace(false)} />
             )}
-            {showDigitalTwin && (
+            {showDigitalTwin && user?.role === 'admin' && (
                 <DigitalTwin user={user} onClose={() => setShowDigitalTwin(false)} />
             )}
             {showFitnessModal && (
