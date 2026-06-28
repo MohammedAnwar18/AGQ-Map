@@ -1390,15 +1390,16 @@ export default function DigitalTwin({ user, onClose }) {
             const wallTexture = getProceduralTexture(bld.skin || 'glass', bld.color || '#3b82f6', isNight);
             const wallMaterial = new THREE.MeshLambertMaterial({
                 map: wallTexture,
-                color: bld.color ? new THREE.Color(bld.color) : 0xffffff
+                color: bld.color ? new THREE.Color(bld.color) : 0xffffff,
+                side: THREE.DoubleSide // لضمان رؤية جدران المبنى بغض النظر عن اتجاه الرسم (مع عقارب الساعة أو عكسها) وتفادي الحذف الخلفي للوجوه
             });
 
             let roofMaterial;
             if (bld.solarRoof) {
                 const solarTexture = getProceduralTexture('solar', '#ffffff', false);
-                roofMaterial = new THREE.MeshLambertMaterial({ map: solarTexture });
+                roofMaterial = new THREE.MeshLambertMaterial({ map: solarTexture, side: THREE.DoubleSide });
             } else {
-                roofMaterial = new THREE.MeshLambertMaterial({ color: 0x27272a });
+                roofMaterial = new THREE.MeshLambertMaterial({ color: 0x27272a, side: THREE.DoubleSide });
             }
 
             const materials = [roofMaterial, wallMaterial];
