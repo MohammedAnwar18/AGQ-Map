@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls';
 import { indoorControlService } from '../services/api';
 import './IndoorControl.css';
 
@@ -9,19 +10,32 @@ export default function IndoorControl({ user, onClose }) {
     const [buildings, setBuildings] = useState([]);
     const [selectedBuildingId, setSelectedBuildingId] = useState(null);
     const [buildingInfo, setBuildingInfo] = useState(null);
-    const [activeMode, setActiveMode] = useState('orbit'); // orbit, polyline, freehand, erase
+    const [activeMode, setActiveMode] = useState('orbit'); // orbit, polyline, freehand, place_item, erase
     const [showAddBuildingModal, setShowAddBuildingModal] = useState(false);
     const [gridSnapping, setGridSnapping] = useState(true);
     const [gridSize, setGridSize] = useState(1.0); // Snap interval (1m, 0.5m, etc.)
+
+    // Tracing Template Underlay State
+    const [tracingTemplate, setTracingTemplate] = useState({
+        url: '',
+        opacity: 0.4,
+        scale: 20.0,
+        offsetX: 0.0,
+        offsetZ: 0.0
+    });
 
     // New Building inputs
     const [newBuildingName, setNewBuildingName] = useState('');
     const [newBuildingPlanUrl, setNewBuildingPlanUrl] = useState('');
     const [newBuildingScale, setNewBuildingScale] = useState(1.0);
 
-    // CAD Data State
+    // CAD Data State (Walls/Shapes & Placed Items)
     const [drawnShapes, setDrawnShapes] = useState([]);
+    const [placedObjects, setPlacedObjects] = useState([]); // Doors, windows, furniture
     const [selectedShapeId, setSelectedShapeId] = useState(null);
+    const [selectedObjectId, setSelectedObjectId] = useState(null);
+    const [itemToPlace, setItemToPlace] = useState(null); // Type of item selected to drop
+
     const [layers, setLayers] = useState([
         { id: 'structure', name: 'الهيكل الرئيسي (Structure)', visible: true, color: '#60a5fa' },
         { id: 'walls', name: 'الجدران الداخلية (Walls)', visible: true, color: '#fb923c' },
@@ -40,11 +54,17 @@ export default function IndoorControl({ user, onClose }) {
     const cameraRef = useRef(null);
     const rendererRef = useRef(null);
     const controlsRef = useRef(null);
+    const transformControlsRef = useRef(null);
     const groundPlaneRef = useRef(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0));
+    const tracingMeshRef = useRef(null);
+
     const isDrawingRef = useRef(false);
     const currentDrawMeshRef = useRef(null); // Line drawing preview
     const drawingPointsRef = useRef([]); // Temporary 3D points
+    
+    // Meshes mappings
     const shapesMeshesMapRef = useRef(new Map()); // Map shape.id -> THREE.Mesh
+    const objectsMeshesMapRef = useRef(new Map()); // Map object.id -> THREE.Group/Mesh
     const previewPointsMeshesRef = useRef([]); // Spheres for vertex visualization
     
     // HTML overlays ref for screen projections
@@ -84,16 +104,36 @@ export default function IndoorControl({ user, onClose }) {
             const res = await indoorControlService.getLayout(buildingId);
             if (res && res.success) {
                 setBuildingInfo(res.building);
-                // Load existing shapes from database or initialize empty
+                
+                // Initialize tracing template URL if available in building
+                if (res.building.floor_plan_url) {
+                    setTracingTemplate(prev => ({ ...prev, url: res.building.floor_plan_url }));
+                }
+
+                // Load existing shapes and objects from database
                 if (res.building.shapes_data) {
-                    const loadedShapes = JSON.parse(res.building.shapes_data);
-                    setDrawnShapes(loadedShapes);
-                    rebuild3DScene(loadedShapes);
+                    try {
+                        const parsedData = JSON.parse(res.building.shapes_data);
+                        const shapes = parsedData.shapes || [];
+                        const objects = parsedData.objects || [];
+                        
+                        setDrawnShapes(shapes);
+                        setPlacedObjects(objects);
+                        
+                        rebuild3DScene(shapes, objects);
+                    } catch (e) {
+                        console.error("Failed to parse shapes_data:", e);
+                        setDrawnShapes([]);
+                        setPlacedObjects([]);
+                        rebuild3DScene([], []);
+                    }
                 } else {
                     setDrawnShapes([]);
-                    rebuild3DScene([]);
+                    setPlacedObjects([]);
+                    rebuild3DScene([], []);
                 }
                 setSelectedShapeId(null);
+                setSelectedObjectId(null);
             }
         } catch (err) {
             console.error('Failed to load layout:', err);
@@ -136,16 +176,46 @@ export default function IndoorControl({ user, onClose }) {
         controls.maxPolarAngle = Math.PI / 2 - 0.01; // Prevent going under floor
         controlsRef.current = controls;
 
+        // Transform Controls (3D Gizmo)
+        const tControls = new TransformControls(camera, renderer.domElement);
+        tControls.size = 0.85;
+        tControls.showY = false; // Restrict translations to XZ plane
+        scene.add(tControls);
+        transformControlsRef.current = tControls;
+
+        // Prevent orbit controls conflict while dragging gizmo
+        tControls.addEventListener('dragging-changed', (event) => {
+            controls.enabled = !event.value;
+            
+            // Save final position & rotation to React state when dragging ends
+            if (!event.value && tControls.object) {
+                const objId = tControls.object.userData.objectId;
+                if (objId) {
+                    const pos = tControls.object.position;
+                    const rotY = (tControls.object.rotation.y * 180) / Math.PI;
+                    
+                    setPlacedObjects(prev => prev.map(obj => {
+                        if (obj.id === objId) {
+                            return {
+                                ...obj,
+                                position: { x: parseFloat(pos.x.toFixed(2)), y: parseFloat(pos.y.toFixed(2)), z: parseFloat(pos.z.toFixed(2)) },
+                                rotation: parseFloat(rotY.toFixed(2))
+                            };
+                        }
+                        return obj;
+                    }));
+                }
+            }
+        });
+
         // Lighting
-        const ambientLight = new THREE.AmbientLight(0x0f172a, 1.2);
+        const ambientLight = new THREE.AmbientLight(0x0f172a, 1.0);
         scene.add(ambientLight);
 
-        // Hemispherical Sky Light
-        const hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x0f172a, 0.6);
+        const hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x0f172a, 0.4);
         scene.add(hemiLight);
 
-        // Main Directional Studio Light
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
         dirLight.position.set(20, 40, 20);
         dirLight.castShadow = true;
         dirLight.shadow.mapSize.width = 2048;
@@ -158,10 +228,9 @@ export default function IndoorControl({ user, onClose }) {
         gridHelper.position.y = -0.01;
         scene.add(gridHelper);
 
-        // Add a secondary fine grid for snapping
         const fineGrid = new THREE.GridHelper(50, 100, 0x334155, 0x0f172a);
         fineGrid.position.y = -0.015;
-        fineGrid.material.opacity = 0.25;
+        fineGrid.material.opacity = 0.2;
         fineGrid.material.transparent = true;
         scene.add(fineGrid);
 
@@ -205,13 +274,46 @@ export default function IndoorControl({ user, onClose }) {
     // Disable OrbitControls during active drawing
     useEffect(() => {
         if (controlsRef.current) {
-            controlsRef.current.enabled = (activeMode === 'orbit' || activeMode === 'extrude');
+            const isDrawing = (activeMode === 'polyline' || activeMode === 'freehand' || activeMode === 'place_item');
+            controlsRef.current.enabled = !isDrawing;
         }
-        // Reset temporary drawing state when switching modes
         if (activeMode !== 'polyline' && activeMode !== 'freehand') {
             clearDrawingPreview();
         }
     }, [activeMode]);
+
+    // Handle Tracing Template Texture Loading
+    useEffect(() => {
+        const scene = sceneRef.current;
+        if (!scene) return;
+
+        if (tracingMeshRef.current) {
+            scene.remove(tracingMeshRef.current);
+            tracingMeshRef.current.geometry.dispose();
+            if (tracingMeshRef.current.material) tracingMeshRef.current.material.dispose();
+            tracingMeshRef.current = null;
+        }
+
+        if (!tracingTemplate.url) return;
+
+        const loader = new THREE.TextureLoader();
+        loader.load(tracingTemplate.url, (texture) => {
+            const geometry = new THREE.PlaneGeometry(tracingTemplate.scale, tracingTemplate.scale);
+            const material = new THREE.MeshBasicMaterial({
+                map: texture,
+                transparent: true,
+                opacity: tracingTemplate.opacity,
+                depthWrite: false
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.rotation.x = -Math.PI / 2;
+            mesh.position.set(tracingTemplate.offsetX, 0.005, tracingTemplate.offsetZ);
+            scene.add(mesh);
+            tracingMeshRef.current = mesh;
+        }, undefined, (err) => {
+            console.error("Failed to load tracing template texture:", err);
+        });
+    }, [tracingTemplate]);
 
     // Update layers visibility in the 3D Scene
     useEffect(() => {
@@ -222,7 +324,31 @@ export default function IndoorControl({ user, onClose }) {
                 mesh.visible = layer ? layer.visible : true;
             }
         });
-    }, [layers, drawnShapes]);
+        objectsMeshesMapRef.current.forEach((group, objId) => {
+            const objData = placedObjects.find(o => o.id === objId);
+            if (objData) {
+                const layer = layers.find(l => l.id === objData.layer);
+                group.visible = layer ? layer.visible : true;
+            }
+        });
+    }, [layers, drawnShapes, placedObjects]);
+
+    // Manage Transform Controls attachment
+    useEffect(() => {
+        const tControls = transformControlsRef.current;
+        if (!tControls) return;
+
+        if (selectedObjectId) {
+            const mesh = objectsMeshesMapRef.current.get(selectedObjectId);
+            if (mesh) {
+                tControls.attach(mesh);
+            } else {
+                tControls.detach();
+            }
+        } else {
+            tControls.detach();
+        }
+    }, [selectedObjectId, placedObjects]);
 
     // ── 3. Materials System Shaders ──────────────────────────────────────────
     const getMaterialPreset = (type, colorCode) => {
@@ -286,8 +412,8 @@ export default function IndoorControl({ user, onClose }) {
         }
     };
 
-    // ── 4. Rebuild 3D Scene from Shape Data ──────────────────────────────────
-    const rebuild3DScene = (shapesList) => {
+    // ── 4. Rebuild 3D Scene ──────────────────────────────────────────────────
+    const rebuild3DScene = (shapesList, objectsList) => {
         const scene = sceneRef.current;
         if (!scene) return;
 
@@ -302,7 +428,21 @@ export default function IndoorControl({ user, onClose }) {
         });
         shapesMeshesMapRef.current.clear();
 
-        // Recreate extruded meshes
+        // Clear existing placed objects
+        objectsMeshesMapRef.current.forEach(group => {
+            scene.remove(group);
+            // Deep dispose of children
+            group.traverse(child => {
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) {
+                    if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                    else child.material.dispose();
+                }
+            });
+        });
+        objectsMeshesMapRef.current.clear();
+
+        // 1. Recreate extruded meshes (Walls)
         shapesList.forEach(shapeData => {
             const mesh = createExtrusionMesh(shapeData);
             if (mesh) {
@@ -310,12 +450,20 @@ export default function IndoorControl({ user, onClose }) {
                 shapesMeshesMapRef.current.set(shapeData.id, mesh);
             }
         });
+
+        // 2. Recreate placed objects (Doors, Windows, Furniture)
+        objectsList.forEach(objData => {
+            const group = createPlacedObjectMesh(objData);
+            if (group) {
+                scene.add(group);
+                objectsMeshesMapRef.current.set(objData.id, group);
+            }
+        });
     };
 
     const createExtrusionMesh = (shapeData) => {
         if (!shapeData.points || shapeData.points.length < 3) return null;
 
-        // Create 2D Shape using X and Z as 2D coordinates
         const shape = new THREE.Shape();
         shape.moveTo(shapeData.points[0].x, shapeData.points[0].z);
         for (let i = 1; i < shapeData.points.length; i++) {
@@ -323,65 +471,271 @@ export default function IndoorControl({ user, onClose }) {
         }
         shape.closePath();
 
-        // Extrude Settings
-        const extrudeSettings = {
+        const geometry = new THREE.ExtrudeGeometry(shape, {
             depth: shapeData.height,
             bevelEnabled: true,
             bevelThickness: 0.04,
             bevelSize: 0.02,
             bevelSegments: 3
-        };
+        });
 
-        const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-
-        // Apply Material
         const material = getMaterialPreset(shapeData.materialType, shapeData.color);
         const mesh = new THREE.Mesh(geometry, material);
 
-        // Rotate so Z-extrusion stands UP along Y axis
         mesh.rotation.x = -Math.PI / 2;
         mesh.castShadow = true;
         mesh.receiveShadow = true;
-
-        // Position offset adjustment (ExtrudeGeometry is created relative to origin)
-        mesh.position.y = 0;
-
-        // Highlight if selected
-        if (shapeData.id === selectedShapeId) {
-            mesh.material.emissive = new THREE.Color(0x3b82f6);
-            mesh.material.emissiveIntensity = 0.25;
-        }
-
         mesh.userData = { shapeId: shapeData.id };
+
         return mesh;
     };
 
-    // ── 5. Drawing Helpers & Interaction ─────────────────────────────────────
-    const getIntersectionPoint = (event) => {
-        const container = canvasContainerRef.current;
-        const camera = cameraRef.current;
-        if (!container || !camera) return null;
+    // ── Create Custom 3D Compound Meshes ─────────────────────────────────────
+    const createPlacedObjectMesh = (objData) => {
+        const group = new THREE.Group();
+        group.position.set(objData.position.x, objData.position.y, objData.position.z);
+        group.rotation.y = (objData.rotation * Math.PI) / 180;
+        group.scale.set(objData.scale.x, objData.scale.y, objData.scale.z);
+        group.userData = { objectId: objData.id };
 
-        const rect = container.getBoundingClientRect();
-        const mouseX = ((event.clientX - rect.left) / container.clientWidth) * 2 - 1;
-        const mouseY = -((event.clientY - rect.top) / container.clientHeight) * 2 + 1;
+        const frameColor = 0x334155;
+        const panelColor = objData.color || '#60a5fa';
 
-        const raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera(new THREE.Vector2(mouseX, mouseY), camera);
+        // 📭 1. Doors
+        if (objData.subType === 'single_door' || objData.subType === 'double_door') {
+            const width = 1.6;
+            const height = 2.4;
+            const thickness = 0.08;
 
-        const targetPoint = new THREE.Vector3();
-        raycaster.ray.intersectPlane(groundPlaneRef.current, targetPoint);
+            // Frame meshes
+            const frameMat = new THREE.MeshStandardMaterial({ color: frameColor, roughness: 0.5 });
+            const frameLeft = new THREE.Mesh(new THREE.BoxGeometry(0.1, height, 0.12), frameMat);
+            frameLeft.position.set(-width / 2, height / 2, 0);
+            const frameRight = new THREE.Mesh(new THREE.BoxGeometry(0.1, height, 0.12), frameMat);
+            frameRight.position.set(width / 2, height / 2, 0);
+            const frameTop = new THREE.Mesh(new THREE.BoxGeometry(width + 0.1, 0.1, 0.12), frameMat);
+            frameTop.position.set(0, height, 0);
 
-        // Handle Snapping
-        if (gridSnapping) {
-            targetPoint.x = Math.round(targetPoint.x / gridSize) * gridSize;
-            targetPoint.z = Math.round(targetPoint.z / gridSize) * gridSize;
+            group.add(frameLeft, frameRight, frameTop);
+
+            const doorMat = new THREE.MeshStandardMaterial({ color: panelColor, roughness: 0.3, metalness: 0.1 });
+
+            if (objData.subType === 'single_door') {
+                // Single Door Panel with Hinge Group
+                const hingeGroup = new THREE.Group();
+                hingeGroup.position.set(-width / 2 + 0.05, 0, 0);
+                
+                const panel = new THREE.Mesh(new THREE.BoxGeometry(width - 0.1, height - 0.05, thickness), doorMat);
+                panel.position.set((width - 0.1) / 2, height / 2, 0);
+                hingeGroup.add(panel);
+
+                if (objData.isOpen) {
+                    hingeGroup.rotation.y = Math.PI / 2; // Open 90deg
+                }
+                group.add(hingeGroup);
+
+                // Swing Arc Path (Blue dotted line on floor)
+                const arcPoints = [];
+                const radius = width - 0.1;
+                for (let i = 0; i <= 32; i++) {
+                    const theta = -(i / 32) * (Math.PI / 2);
+                    const x = -width / 2 + 0.05 + radius * Math.cos(theta);
+                    const z = radius * Math.sin(theta);
+                    arcPoints.push(new THREE.Vector3(x, 0.02, z));
+                }
+                const arcGeo = new THREE.BufferGeometry().setFromPoints(arcPoints);
+                const arcMat = new THREE.LineDashedMaterial({ color: 0x60a5fa, dashSize: 0.15, gapSize: 0.1 });
+                const arcLine = new THREE.Line(arcGeo, arcMat);
+                arcLine.computeLineDistances();
+                group.add(arcLine);
+
+            } else {
+                // Double Door Panels
+                const hingeLeft = new THREE.Group();
+                hingeLeft.position.set(-width / 2 + 0.05, 0, 0);
+                const panelLeft = new THREE.Mesh(new THREE.BoxGeometry((width - 0.1) / 2, height - 0.05, thickness), doorMat);
+                panelLeft.position.set((width - 0.1) / 4, height / 2, 0);
+                hingeLeft.add(panelLeft);
+
+                const hingeRight = new THREE.Group();
+                hingeRight.position.set(width / 2 - 0.05, 0, 0);
+                const panelRight = new THREE.Mesh(new THREE.BoxGeometry((width - 0.1) / 2, height - 0.05, thickness), doorMat);
+                panelRight.position.set(-(width - 0.1) / 4, height / 2, 0);
+                hingeRight.add(panelRight);
+
+                if (objData.isOpen) {
+                    hingeLeft.rotation.y = Math.PI / 2;
+                    hingeRight.rotation.y = -Math.PI / 2;
+                }
+                group.add(hingeLeft, hingeRight);
+            }
         }
-        targetPoint.y = 0; // Force strictly on floor
 
-        return targetPoint;
+        // 🖼️ 2. Windows
+        else if (objData.subType === 'glass_window') {
+            const width = 2.0;
+            const height = 1.5;
+            const thickness = 0.08;
+
+            const frameMat = new THREE.MeshStandardMaterial({ color: frameColor, roughness: 0.4 });
+            const frameBottom = new THREE.Mesh(new THREE.BoxGeometry(width, 0.08, thickness), frameMat);
+            frameBottom.position.set(0, 0.04, 0);
+            const frameTop = new THREE.Mesh(new THREE.BoxGeometry(width, 0.08, thickness), frameMat);
+            frameTop.position.set(0, height - 0.04, 0);
+            const frameLeft = new THREE.Mesh(new THREE.BoxGeometry(0.08, height, thickness), frameMat);
+            frameLeft.position.set(-width / 2 + 0.04, height / 2, 0);
+            const frameRight = new THREE.Mesh(new THREE.BoxGeometry(0.08, height, thickness), frameMat);
+            frameRight.position.set(width / 2 - 0.04, height / 2, 0);
+
+            const glassMat = new THREE.MeshPhysicalMaterial({
+                color: 0xe0f2fe,
+                transparent: true,
+                opacity: 0.3,
+                roughness: 0.05,
+                metalness: 0.1,
+                transmission: 0.9
+            });
+            const glass = new THREE.Mesh(new THREE.BoxGeometry(width - 0.16, height - 0.16, 0.02), glassMat);
+            glass.position.set(0, height / 2, 0);
+
+            group.add(frameBottom, frameTop, frameLeft, frameRight, glass);
+            group.position.y = 0.8; // Floating window height
+        }
+
+        // 🗄️ 3. Retail Shelf
+        else if (objData.subType === 'retail_shelf') {
+            const width = 2.0;
+            const height = 2.0;
+            const depth = 0.6;
+
+            const woodMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.6 });
+            const metalMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.8, roughness: 0.2 });
+
+            // Vertical support bars
+            const barLeft = new THREE.Mesh(new THREE.BoxGeometry(0.06, height, depth), metalMat);
+            barLeft.position.set(-width / 2, height / 2, 0);
+            const barRight = new THREE.Mesh(new THREE.BoxGeometry(0.06, height, depth), metalMat);
+            barRight.position.set(width / 2, height / 2, 0);
+
+            group.add(barLeft, barRight);
+
+            // Horizontal shelves
+            for (let h = 0.3; h < height; h += 0.45) {
+                const shelf = new THREE.Mesh(new THREE.BoxGeometry(width, 0.03, depth), woodMat);
+                shelf.position.set(0, h, 0);
+                group.add(shelf);
+            }
+        }
+
+        // 🛒 4. Checkout Counter
+        else if (objData.subType === 'checkout_counter') {
+            const width = 2.2;
+            const height = 1.0;
+            const depth = 0.9;
+
+            const baseMat = new THREE.MeshStandardMaterial({ color: panelColor, roughness: 0.4 });
+            const topMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.2, metalness: 0.6 });
+
+            const base = new THREE.Mesh(new THREE.BoxGeometry(width, height - 0.06, depth), baseMat);
+            base.position.set(0, (height - 0.06) / 2, 0);
+            base.castShadow = true;
+            base.receiveShadow = true;
+
+            const top = new THREE.Mesh(new THREE.BoxGeometry(width + 0.1, 0.06, depth + 0.05), topMat);
+            top.position.set(0, height - 0.03, 0);
+
+            group.add(base, top);
+        }
+
+        // 🍽️ 5. Display Table
+        else if (objData.subType === 'display_table') {
+            const width = 1.8;
+            const height = 0.85;
+            const depth = 1.2;
+
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8, roughness: 0.3 });
+            const topMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.4 }); // Wooden top
+
+            // Legs
+            const leg1 = new THREE.Mesh(new THREE.BoxGeometry(0.08, height - 0.05, 0.08), legMat);
+            leg1.position.set(-width / 2 + 0.08, (height - 0.05) / 2, -depth / 2 + 0.08);
+            const leg2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, height - 0.05, 0.08), legMat);
+            leg2.position.set(width / 2 - 0.08, (height - 0.05) / 2, -depth / 2 + 0.08);
+            const leg3 = new THREE.Mesh(new THREE.BoxGeometry(0.08, height - 0.05, 0.08), legMat);
+            leg3.position.set(-width / 2 + 0.08, (height - 0.05) / 2, depth / 2 - 0.08);
+            const leg4 = new THREE.Mesh(new THREE.BoxGeometry(0.08, height - 0.05, 0.08), legMat);
+            leg4.position.set(width / 2 - 0.08, (height - 0.05) / 2, depth / 2 - 0.08);
+
+            // Tabletop
+            const top = new THREE.Mesh(new THREE.BoxGeometry(width, 0.05, depth), topMat);
+            top.position.set(0, height - 0.025, 0);
+
+            group.add(leg1, leg2, leg3, leg4, top);
+        }
+
+        // 🛋️ 6. Lounge Chair
+        else if (objData.subType === 'lounge_chair') {
+            const size = 0.8;
+            const chairMat = new THREE.MeshStandardMaterial({ color: panelColor, roughness: 0.7 });
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.8 });
+
+            // Base cushion
+            const cushion = new THREE.Mesh(new THREE.BoxGeometry(size, 0.25, size), chairMat);
+            cushion.position.set(0, 0.35, 0);
+
+            // Backrest
+            const back = new THREE.Mesh(new THREE.BoxGeometry(size, 0.5, 0.15), chairMat);
+            back.position.set(0, 0.65, -size / 2 + 0.075);
+
+            // Armrests
+            const armL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.4, size - 0.15), chairMat);
+            armL.position.set(-size / 2 + 0.075, 0.45, 0.075);
+            const armR = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.4, size - 0.15), chairMat);
+            armR.position.set(size / 2 - 0.075, 0.45, 0.075);
+
+            group.add(cushion, back, armL, armR);
+        }
+
+        // 💡 7. Spot Light (Physical Light Source + Cone)
+        else if (objData.subType === 'spot_light') {
+            const coneMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9, roughness: 0.1 });
+            const emitterMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+            // Light Fixture Cone
+            const cone = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.4, 16), coneMat);
+            cone.rotation.x = Math.PI; // Face downwards
+            cone.position.set(0, 3.8, 0);
+
+            const emitter = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.02, 16), emitterMat);
+            emitter.position.set(0, 3.6, 0);
+
+            group.add(cone, emitter);
+
+            // Interactive Three.js SpotLight Source
+            const spotLight = new THREE.SpotLight(0xfffbeb, 8, 12, Math.PI / 4, 0.5, 1.0);
+            spotLight.position.set(0, 3.6, 0);
+            spotLight.target.position.set(0, 0, 0);
+            spotLight.castShadow = true;
+            spotLight.shadow.bias = -0.001;
+            group.add(spotLight);
+            group.add(spotLight.target); // Target must be in scene
+        }
+
+        // Highlight selected object in 3D
+        if (objData.id === selectedObjectId) {
+            group.traverse(child => {
+                if (child.material) {
+                    child.material = child.material.clone();
+                    child.material.emissive = new THREE.Color(0x60a5fa);
+                    child.material.emissiveIntensity = 0.2;
+                }
+            });
+        }
+
+        return group;
     };
 
+    // ── 5. Drawing & Placement Interaction ───────────────────────────────────
     const handleCanvasMouseMove = (event) => {
         const point = getIntersectionPoint(event);
         if (!point) return;
@@ -415,9 +769,32 @@ export default function IndoorControl({ user, onClose }) {
         const scene = sceneRef.current;
         if (!scene) return;
 
+        // ── Drop / Place Item Mode ──
+        if (activeMode === 'place_item' && itemToPlace) {
+            const newObj = {
+                id: `obj_${Date.now()}`,
+                type: ['single_door', 'double_door', 'glass_window'].includes(itemToPlace) ? 'door' : 'furniture',
+                subType: itemToPlace,
+                position: { x: point.x, y: 0, z: point.z },
+                rotation: 0,
+                scale: { x: 1, y: 1, z: 1 },
+                isOpen: false,
+                color: layers.find(l => l.id === activeLayer)?.color || '#34d399',
+                layer: activeLayer
+            };
+
+            const updated = [...placedObjects, newObj];
+            setPlacedObjects(updated);
+            setSelectedObjectId(newObj.id);
+            rebuild3DScene(drawnShapes, updated);
+            
+            setItemToPlace(null);
+            setActiveMode('orbit');
+            return;
+        }
+
         // ── Click-to-Add-Point (Polyline) ──
         if (activeMode === 'polyline') {
-            // Check if clicking near the first point to close shape
             if (drawingPointsRef.current.length >= 3) {
                 const firstPoint = drawingPointsRef.current[0];
                 const dist = point.distanceTo(firstPoint);
@@ -430,7 +807,6 @@ export default function IndoorControl({ user, onClose }) {
             drawingPointsRef.current.push(point);
             setCurrentPathPoints([...drawingPointsRef.current]);
             
-            // Add a visual vertex sphere
             const sphereGeo = new THREE.SphereGeometry(0.12, 16, 16);
             const sphereMat = new THREE.MeshBasicMaterial({ color: 0xf97316 });
             const sphere = new THREE.Mesh(sphereGeo, sphereMat);
@@ -449,7 +825,10 @@ export default function IndoorControl({ user, onClose }) {
         }
 
         // ── Click-to-Select / Erase ──
-        if (activeMode === 'orbit' || activeMode === 'extrude' || activeMode === 'erase') {
+        if (activeMode === 'orbit' || activeMode === 'erase') {
+            // Ignore click if clicking TransformControls handles
+            if (transformControlsRef.current?.dragging) return;
+
             const container = canvasContainerRef.current;
             const camera = cameraRef.current;
             const rect = container.getBoundingClientRect();
@@ -459,23 +838,44 @@ export default function IndoorControl({ user, onClose }) {
             const raycaster = new THREE.Raycaster();
             raycaster.setFromCamera(new THREE.Vector2(mouseX, mouseY), camera);
 
-            // Get meshes
-            const meshes = Array.from(shapesMeshesMapRef.current.values());
-            const intersects = raycaster.intersectObjects(meshes);
+            // 1. Raycast Placed Objects
+            const objGroups = Array.from(objectsMeshesMapRef.current.values());
+            const objIntersects = raycaster.intersectObjects(objGroups, true);
 
-            if (intersects.length > 0) {
-                const clickedMesh = intersects[0].object;
-                const shapeId = clickedMesh.userData.shapeId;
+            if (objIntersects.length > 0) {
+                // Find parent group containing userData
+                let parent = objIntersects[0].object;
+                while (parent && !parent.userData.objectId) {
+                    parent = parent.parent;
+                }
+                if (parent) {
+                    const objId = parent.userData.objectId;
+                    if (activeMode === 'erase') {
+                        deletePlacedObject(objId);
+                    } else {
+                        setSelectedObjectId(objId);
+                        setSelectedShapeId(null); // Clear wall selection
+                    }
+                    return;
+                }
+            }
 
+            // 2. Raycast Walls
+            const wallMeshes = Array.from(shapesMeshesMapRef.current.values());
+            const wallIntersects = raycaster.intersectObjects(wallMeshes);
+
+            if (wallIntersects.length > 0) {
+                const wallId = wallIntersects[0].object.userData.shapeId;
                 if (activeMode === 'erase') {
-                    deleteShape(shapeId);
+                    deleteShape(wallId);
                 } else {
-                    setSelectedShapeId(shapeId);
+                    setSelectedShapeId(wallId);
+                    setSelectedObjectId(null); // Clear object selection
                 }
             } else {
-                if (activeMode === 'orbit') {
-                    setSelectedShapeId(null);
-                }
+                // Clicked on empty space
+                setSelectedShapeId(null);
+                setSelectedObjectId(null);
             }
         }
     };
@@ -495,7 +895,6 @@ export default function IndoorControl({ user, onClose }) {
         const scene = sceneRef.current;
         if (!scene) return;
 
-        // Remove old preview line
         if (currentDrawMeshRef.current) {
             scene.remove(currentDrawMeshRef.current);
             currentDrawMeshRef.current.geometry.dispose();
@@ -508,7 +907,6 @@ export default function IndoorControl({ user, onClose }) {
 
         if (pts.length < 2) return;
 
-        // Draw glowing neon preview lines
         const geometry = new THREE.BufferGeometry().setFromPoints(pts);
         const material = new THREE.LineBasicMaterial({
             color: activeMode === 'freehand' ? 0x06b6d4 : 0xf97316,
@@ -525,10 +923,7 @@ export default function IndoorControl({ user, onClose }) {
     const finishDrawingShape = () => {
         if (drawingPointsRef.current.length < 3) return;
 
-        // Format points for serializing
         const pointsData = drawingPointsRef.current.map(p => ({ x: p.x, z: p.z }));
-        
-        // Ensure points form a closed loop by adding the start point if not matching
         const first = pointsData[0];
         const last = pointsData[pointsData.length - 1];
         if (first.x !== last.x || first.z !== last.z) {
@@ -537,21 +932,21 @@ export default function IndoorControl({ user, onClose }) {
 
         const newShape = {
             id: `shape_${Date.now()}`,
-            name: `كتلة_${drawnShapes.length + 1}`,
+            name: `جدار_${drawnShapes.length + 1}`,
             points: pointsData,
-            height: 3.0, // Default 3 meters height
+            height: 3.0,
             materialType: 'standard',
-            color: layers.find(l => l.id === activeLayer)?.color || '#60a5fa',
+            color: '#e2e8f0',
             layer: activeLayer
         };
 
         const updated = [...drawnShapes, newShape];
         setDrawnShapes(updated);
         setSelectedShapeId(newShape.id);
-        rebuild3DScene(updated);
+        rebuild3DScene(updated, placedObjects);
         
         clearDrawingPreview();
-        setActiveMode('orbit'); // Go back to orbit view
+        setActiveMode('orbit');
     };
 
     const clearDrawingPreview = () => {
@@ -577,14 +972,23 @@ export default function IndoorControl({ user, onClose }) {
         const updated = drawnShapes.filter(s => s.id !== shapeId);
         setDrawnShapes(updated);
         if (selectedShapeId === shapeId) setSelectedShapeId(null);
-        rebuild3DScene(updated);
+        rebuild3DScene(updated, placedObjects);
+    };
+
+    const deletePlacedObject = (objId) => {
+        const updated = placedObjects.filter(o => o.id !== objId);
+        setPlacedObjects(updated);
+        if (selectedObjectId === objId) setSelectedObjectId(null);
+        rebuild3DScene(drawnShapes, updated);
     };
 
     const clearAllShapes = () => {
-        if (window.confirm('⚠️ هل أنت متأكد من رغبتك في حذف جميع الكتل المرسومة بالكامل؟')) {
+        if (window.confirm('⚠️ هل أنت متأكد من رغبتك في حذف كامل التصميم والقطع بالكامل؟')) {
             setDrawnShapes([]);
+            setPlacedObjects([]);
             setSelectedShapeId(null);
-            rebuild3DScene([]);
+            setSelectedObjectId(null);
+            rebuild3DScene([], []);
         }
     };
 
@@ -603,8 +1007,6 @@ export default function IndoorControl({ user, onClose }) {
             const badgeEl = document.getElementById(`dim-${shape.id}`);
             
             if (mesh && badgeEl && mesh.visible) {
-                // Find top-center of the extruded mesh
-                // Compute average center of 2D points
                 let sumX = 0;
                 let sumZ = 0;
                 shape.points.forEach(p => {
@@ -617,7 +1019,6 @@ export default function IndoorControl({ user, onClose }) {
                 tempV.set(avgX, shape.height, avgZ);
                 tempV.project(camera);
 
-                // Check if behind camera
                 if (tempV.z > 1) {
                     badgeEl.style.display = 'none';
                 } else {
@@ -633,7 +1034,7 @@ export default function IndoorControl({ user, onClose }) {
         });
     };
 
-    // ── 7. Handle Selected Shape Property Updates ────────────────────────────
+    // ── 7. Property Updates ──────────────────────────────────────────────────
     const updateSelectedShapeProperty = (property, value) => {
         if (!selectedShapeId) return;
         const updated = drawnShapes.map(shape => {
@@ -644,7 +1045,6 @@ export default function IndoorControl({ user, onClose }) {
         });
         setDrawnShapes(updated);
         
-        // Rebuild or update the specific mesh in the scene
         const targetShape = updated.find(s => s.id === selectedShapeId);
         const scene = sceneRef.current;
         if (scene && targetShape) {
@@ -661,41 +1061,60 @@ export default function IndoorControl({ user, onClose }) {
         }
     };
 
-    const selectedShape = drawnShapes.find(s => s.id === selectedShapeId);
-
-    // Highlight selected mesh in 3D
-    useEffect(() => {
-        drawnShapes.forEach(shape => {
-            const mesh = shapesMeshesMapRef.current.get(shape.id);
-            if (mesh) {
-                if (shape.id === selectedShapeId) {
-                    mesh.material.emissive = new THREE.Color(0x3b82f6);
-                    mesh.material.emissiveIntensity = 0.3;
-                } else {
-                    mesh.material.emissive = new THREE.Color(0x000000);
-                    mesh.material.emissiveIntensity = 0;
-                }
+    const updateSelectedObjectProperty = (property, value) => {
+        if (!selectedObjectId) return;
+        const updated = placedObjects.map(obj => {
+            if (obj.id === selectedObjectId) {
+                return { ...obj, [property]: value };
             }
+            return obj;
         });
-    }, [selectedShapeId]);
+        setPlacedObjects(updated);
+
+        const targetObj = updated.find(o => o.id === selectedObjectId);
+        const scene = sceneRef.current;
+        if (scene && targetObj) {
+            const oldGroup = objectsMeshesMapRef.current.get(selectedObjectId);
+            if (oldGroup) {
+                scene.remove(oldGroup);
+                oldGroup.traverse(child => {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) {
+                        if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                        else child.material.dispose();
+                    }
+                });
+            }
+            const newGroup = createPlacedObjectMesh(targetObj);
+            if (newGroup) {
+                scene.add(newGroup);
+                objectsMeshesMapRef.current.set(selectedObjectId, newGroup);
+            }
+        }
+    };
+
+    const selectedShape = drawnShapes.find(s => s.id === selectedShapeId);
+    const selectedObject = placedObjects.find(o => o.id === selectedObjectId);
 
     // ── 8. API Operations ────────────────────────────────────────────────────
     const handleSaveLayout = async () => {
         if (!selectedBuildingId) return;
         try {
-            // Save shapes_data as JSON string
-            const res = await indoorControlService.saveLayout(selectedBuildingId, []); // Keep shelves API clean
-            // We extend the API or save it directly in the building's shapes_data
-            const updateRes = await indoorControlService.updateBuildingShapes(selectedBuildingId, JSON.stringify(drawnShapes));
+            const shapesData = JSON.stringify({
+                shapes: drawnShapes,
+                objects: placedObjects
+            });
+            await indoorControlService.saveLayout(selectedBuildingId, []);
+            const updateRes = await indoorControlService.updateBuildingShapes(selectedBuildingId, shapesData);
             
             if (updateRes && updateRes.success) {
-                alert('🎉 تم حفظ النموذج والتصميم ثلاثي الأبعاد بنجاح!');
+                alert('🎉 تم حفظ التصميم والأثاث والمجسمات بالكامل بنجاح!');
             } else {
-                alert('🎉 تم الحفظ بنجاح محلياً في قاعدة البيانات!');
+                alert('🎉 تم الحفظ بنجاح محلياً في السيرفر!');
             }
         } catch (err) {
             console.error('Failed to save layout:', err);
-            alert('⚠️ حدث خطأ أثناء الحفظ، تم الحفظ محلياً في ذاكرة المتصفح.');
+            alert('⚠️ حدث خطأ أثناء الاتصال، تم الحفظ محلياً في ذاكرة المتصفح.');
         }
     };
 
@@ -720,7 +1139,6 @@ export default function IndoorControl({ user, onClose }) {
         }
     };
 
-    // Toggle layer visibility
     const toggleLayerVisibility = (layerId) => {
         setLayers(layers.map(l => {
             if (l.id === layerId) return { ...l, visible: !l.visible };
@@ -728,57 +1146,11 @@ export default function IndoorControl({ user, onClose }) {
         }));
     };
 
-    // Quick presets insertion
-    const insertPresetShape = (type) => {
-        const scene = sceneRef.current;
-        if (!scene) return;
-
-        let points = [];
-        if (type === 'cube') {
-            points = [
-                { x: -2, z: -2 },
-                { x: 2, z: -2 },
-                { x: 2, z: 2 },
-                { x: -2, z: 2 },
-                { x: -2, z: -2 }
-            ];
-        } else if (type === 'l-shape') {
-            points = [
-                { x: -2, z: -2 },
-                { x: 2, z: -2 },
-                { x: 2, z: 0 },
-                { x: 0, z: 0 },
-                { x: 0, z: 2 },
-                { x: -2, z: 2 },
-                { x: -2, z: -2 }
-            ];
-        } else if (type === 'cylinder') {
-            const segments = 16;
-            const radius = 2;
-            for (let i = 0; i <= segments; i++) {
-                const theta = (i / segments) * Math.PI * 2;
-                points.push({
-                    x: radius * Math.cos(theta),
-                    z: radius * Math.sin(theta)
-                });
-            }
-        }
-
-        const newShape = {
-            id: `shape_${Date.now()}`,
-            name: `مجسم_${type === 'cube' ? 'مربع' : type === 'cylinder' ? 'أسطواني' : 'زاوية'}`,
-            points: points,
-            height: 3.0,
-            materialType: 'standard',
-            color: layers.find(l => l.id === activeLayer)?.color || '#60a5fa',
-            layer: activeLayer
-        };
-
-        const updated = [...drawnShapes, newShape];
-        setDrawnShapes(updated);
-        setSelectedShapeId(newShape.id);
-        rebuild3DScene(updated);
-        setActiveMode('orbit');
+    const selectItemToPlace = (type) => {
+        setItemToPlace(type);
+        setActiveMode('place_item');
+        setSelectedObjectId(null);
+        setSelectedShapeId(null);
     };
 
     return (
@@ -786,12 +1158,12 @@ export default function IndoorControl({ user, onClose }) {
             {/* Top Bar Status */}
             <div className="ic-header">
                 <div className="ic-header-title">
-                    <div className="ic-cad-logo">3D</div>
-                    <h2>برج التحكم ثلاثي الأبعاد والنمذجة المعمارية</h2>
+                    <div className="ic-cad-logo">3D CAD</div>
+                    <h2>نظام تخطيط وتصميم الديكور الداخلي للمتاجر</h2>
                 </div>
                 <div className="ic-header-center">
                     <div className="ic-building-selector-wrap">
-                        <label>المشروع النشط:</label>
+                        <label>المتجر النشط:</label>
                         <select 
                             className="ic-select-input" 
                             value={selectedBuildingId || ''} 
@@ -803,14 +1175,14 @@ export default function IndoorControl({ user, onClose }) {
                         </select>
                     </div>
                     {user?.role === 'admin' && (
-                        <button className="ic-btn-icon-add" onClick={() => setShowAddBuildingModal(true)} title="مبنى جديد">
+                        <button className="ic-btn-icon-add" onClick={() => setShowAddBuildingModal(true)} title="مشروع جديد">
                             ＋
                         </button>
                     )}
                 </div>
                 <div className="ic-header-actions">
                     <button className="ic-btn ic-btn-primary" onClick={handleSaveLayout}>
-                        💾 حفظ النموذج ثلاثي الأبعاد
+                        💾 حفظ التصميم النهائي
                     </button>
                     <button className="ic-btn ic-btn-close" onClick={onClose}>
                         خروج ×
@@ -821,38 +1193,38 @@ export default function IndoorControl({ user, onClose }) {
             {/* Main Interactive CAD Layout */}
             <div className="ic-main-layout">
                 
-                {/* Left Sidebar: CAD Engineering Tools */}
+                {/* Left Sidebar: CAD Engineering Tools & Items Library */}
                 <div className="ic-sidebar-left">
-                    <div className="ic-section-title">أدوات الرسم والتحكم</div>
+                    <div className="ic-section-title">أدوات تخطيط الجدران</div>
                     <div className="ic-cad-tools-grid">
                         <button 
                             className={`ic-cad-tool-btn ${activeMode === 'orbit' ? 'active' : ''}`}
                             onClick={() => setActiveMode('orbit')}
-                            title="أداة التحديد والدوران (Orbit & Select)"
+                            title="أداة التحديد والدوران"
                         >
                             <span className="ic-tool-icon">🖱️</span>
-                            <span className="ic-tool-text">التحديد والتوجيه</span>
+                            <span className="ic-tool-text">التوجيه والتحكم</span>
                         </button>
                         <button 
                             className={`ic-cad-tool-btn ${activeMode === 'polyline' ? 'active' : ''}`}
                             onClick={() => setActiveMode('polyline')}
-                            title="رسم مضلع خطوة بخطوة (Polyline)"
+                            title="رسم جدار مضلع متصل"
                         >
-                            <span className="ic-tool-icon">📐</span>
-                            <span className="ic-tool-text">رسم مضلع متصل</span>
+                            <span className="ic-tool-icon">🧱</span>
+                            <span className="ic-tool-text">رسم جدار</span>
                         </button>
                         <button 
                             className={`ic-cad-tool-btn ${activeMode === 'freehand' ? 'active' : ''}`}
                             onClick={() => setActiveMode('freehand')}
-                            title="الرسم الحر المستمر (Freehand Sketch)"
+                            title="رسم مسارات حرة"
                         >
                             <span className="ic-tool-icon">✍️</span>
-                            <span className="ic-tool-text">رسم حر مستمر</span>
+                            <span className="ic-tool-text">رسم جدار حر</span>
                         </button>
                         <button 
                             className={`ic-cad-tool-btn ${activeMode === 'erase' ? 'active' : ''}`}
                             onClick={() => setActiveMode('erase')}
-                            title="حذف كتل من المشهد (Erase)"
+                            title="ممحاة العناصر"
                         >
                             <span className="ic-tool-icon">🧹</span>
                             <span className="ic-tool-text">ممحاة العناصر</span>
@@ -861,44 +1233,116 @@ export default function IndoorControl({ user, onClose }) {
 
                     <div className="ic-divider"></div>
 
-                    <div className="ic-section-title">إدراج مجسمات جاهزة</div>
+                    <div className="ic-section-title">مخطط التتبع ثنائي الأبعاد (Tracing)</div>
+                    <div className="ic-settings-list">
+                        <div className="ic-form-group-compact">
+                            <label>رابط صورة المخطط</label>
+                            <input 
+                                type="text" 
+                                className="ic-text-input-compact" 
+                                value={tracingTemplate.url}
+                                onChange={(e) => setTracingTemplate({ ...tracingTemplate, url: e.target.value })}
+                                placeholder="رابط صورة المخطط..."
+                            />
+                        </div>
+                        <div className="ic-slider-row">
+                            <label>الشفافية: {Math.round(tracingTemplate.opacity * 100)}%</label>
+                            <input 
+                                type="range" 
+                                min="0" max="1" step="0.05" 
+                                value={tracingTemplate.opacity}
+                                onChange={(e) => setTracingTemplate({ ...tracingTemplate, opacity: parseFloat(e.target.value) })}
+                            />
+                        </div>
+                        <div className="ic-slider-row">
+                            <label>المقياس (Scale): {tracingTemplate.scale}m</label>
+                            <input 
+                                type="range" 
+                                min="5" max="100" step="0.5" 
+                                value={tracingTemplate.scale}
+                                onChange={(e) => setTracingTemplate({ ...tracingTemplate, scale: parseFloat(e.target.value) })}
+                            />
+                        </div>
+                        <div className="ic-offset-grid">
+                            <div>
+                                <label>إزاحة X</label>
+                                <input 
+                                    type="number" 
+                                    step="0.5"
+                                    value={tracingTemplate.offsetX}
+                                    onChange={(e) => setTracingTemplate({ ...tracingTemplate, offsetX: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div>
+                                <label>إزاحة Z</label>
+                                <input 
+                                    type="number" 
+                                    step="0.5"
+                                    value={tracingTemplate.offsetZ}
+                                    onChange={(e) => setTracingTemplate({ ...tracingTemplate, offsetZ: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="ic-divider"></div>
+
+                    <div className="ic-section-title">العناصر المعمارية والأبواب</div>
                     <div className="ic-presets-grid">
-                        <button className="ic-preset-btn" onClick={() => insertPresetShape('cube')}>
-                            <span>📦</span> مكعب
+                        <button 
+                            className={`ic-preset-btn ${itemToPlace === 'single_door' ? 'active' : ''}`}
+                            onClick={() => selectItemToPlace('single_door')}
+                        >
+                            <span>🚪</span> باب مفرد
                         </button>
-                        <button className="ic-preset-btn" onClick={() => insertPresetShape('cylinder')}>
-                            <span>🛢️</span> أسطوانة
+                        <button 
+                            className={`ic-preset-btn ${itemToPlace === 'double_door' ? 'active' : ''}`}
+                            onClick={() => selectItemToPlace('double_door')}
+                        >
+                            <span>🚪🚪</span> باب مزدوج
                         </button>
-                        <button className="ic-preset-btn" onClick={() => insertPresetShape('l-shape')}>
-                            <span>📐</span> زاوية L
+                        <button 
+                            className={`ic-preset-btn ${itemToPlace === 'glass_window' ? 'active' : ''}`}
+                            onClick={() => selectItemToPlace('glass_window')}
+                        >
+                            <span>🖼️</span> نافذة زجاج
                         </button>
                     </div>
 
                     <div className="ic-divider"></div>
 
-                    <div className="ic-section-title">خصائص الشبكة الأرضية</div>
-                    <div className="ic-settings-list">
-                        <div className="ic-setting-row">
-                            <label>المغناطيسية للشبكة (Snap)</label>
-                            <input 
-                                type="checkbox" 
-                                checked={gridSnapping} 
-                                onChange={(e) => setGridSnapping(e.target.checked)} 
-                            />
-                        </div>
-                        <div className="ic-setting-row">
-                            <label>حجم خطوة السناب (m)</label>
-                            <select 
-                                value={gridSize} 
-                                onChange={(e) => setGridSize(parseFloat(e.target.value))}
-                                disabled={!gridSnapping}
-                            >
-                                <option value="0.25">0.25</option>
-                                <option value="0.5">0.50</option>
-                                <option value="1.0">1.00</option>
-                                <option value="2.0">2.00</option>
-                            </select>
-                        </div>
+                    <div className="ic-section-title">تجهيزات المتجر والأثاث</div>
+                    <div className="ic-presets-grid">
+                        <button 
+                            className={`ic-preset-btn ${itemToPlace === 'retail_shelf' ? 'active' : ''}`}
+                            onClick={() => selectItemToPlace('retail_shelf')}
+                        >
+                            <span>🗄️</span> رف منتجات
+                        </button>
+                        <button 
+                            className={`ic-preset-btn ${itemToPlace === 'checkout_counter' ? 'active' : ''}`}
+                            onClick={() => selectItemToPlace('checkout_counter')}
+                        >
+                            <span>🛒</span> كاونتر دفع
+                        </button>
+                        <button 
+                            className={`ic-preset-btn ${itemToPlace === 'display_table' ? 'active' : ''}`}
+                            onClick={() => selectItemToPlace('display_table')}
+                        >
+                            <span>🍽️</span> طاولة عرض
+                        </button>
+                        <button 
+                            className={`ic-preset-btn ${itemToPlace === 'lounge_chair' ? 'active' : ''}`}
+                            onClick={() => selectItemToPlace('lounge_chair')}
+                        >
+                            <span>🛋️</span> مقعد انتظار
+                        </button>
+                        <button 
+                            className={`ic-preset-btn ${itemToPlace === 'spot_light' ? 'active' : ''}`}
+                            onClick={() => selectItemToPlace('spot_light')}
+                        >
+                            <span>💡</span> سبوت لايت
+                        </button>
                     </div>
 
                     <button className="ic-btn-clear" onClick={clearAllShapes}>
@@ -906,7 +1350,7 @@ export default function IndoorControl({ user, onClose }) {
                     </button>
                 </div>
 
-                {/* Center 3D Viewport with Absolute HTML Dimensions Overlay */}
+                {/* Center 3D Viewport */}
                 <div 
                     className="ic-canvas-container" 
                     ref={canvasContainerRef}
@@ -918,11 +1362,16 @@ export default function IndoorControl({ user, onClose }) {
                     <div className="ic-cad-status-bar">
                         <div className="ic-status-badge">
                             <span className="dot pulse"></span>
-                            الوضع: {activeMode === 'orbit' ? 'الدوران والتعديل' : activeMode === 'polyline' ? 'رسم مضلع...' : activeMode === 'freehand' ? 'رسم حر مستمر...' : 'ممحاة الكتل'}
+                            الوضع: {
+                                activeMode === 'orbit' ? 'الدوران والتعديل' : 
+                                activeMode === 'polyline' ? 'رسم جدار...' : 
+                                activeMode === 'freehand' ? 'رسم جدار حر...' :
+                                activeMode === 'place_item' ? `إدراج عنصر: ${itemToPlace}...` : 'ممحاة العناصر'
+                            }
                         </div>
                         {currentPathPoints.length > 0 && (
                             <div className="ic-status-badge yellow">
-                                عدد النقاط الحالية: {currentPathPoints.length}
+                                عدد نقاط الجدار: {currentPathPoints.length}
                             </div>
                         )}
                     </div>
@@ -949,14 +1398,15 @@ export default function IndoorControl({ user, onClose }) {
                     </div>
                 </div>
 
-                {/* Right Sidebar: Material Inspector & Layer Controls */}
+                {/* Right Sidebar: Properties Inspector */}
                 <div className="ic-sidebar-right">
                     <div className="ic-section-title">مفتش الخصائص (Inspector)</div>
                     
-                    {selectedShape ? (
+                    {/* Selected Wall Properties */}
+                    {selectedShape && (
                         <div className="ic-inspector-panel">
                             <div className="ic-form-group">
-                                <label>اسم الكتلة</label>
+                                <label>اسم الجدار</label>
                                 <input 
                                     type="text" 
                                     className="ic-text-input" 
@@ -967,13 +1417,13 @@ export default function IndoorControl({ user, onClose }) {
 
                             <div className="ic-form-group">
                                 <div className="ic-slider-label">
-                                    <label>الارتفاع (Extrusion Height)</label>
+                                    <label>ارتفاع الجدار (Height)</label>
                                     <span>{selectedShape.height.toFixed(2)}m</span>
                                 </div>
                                 <input 
                                     type="range" 
-                                    min="0.2" 
-                                    max="15.0" 
+                                    min="0.5" 
+                                    max="8.0" 
                                     step="0.1" 
                                     value={selectedShape.height} 
                                     onChange={(e) => updateSelectedShapeProperty('height', parseFloat(e.target.value))}
@@ -981,26 +1431,13 @@ export default function IndoorControl({ user, onClose }) {
                             </div>
 
                             <div className="ic-form-group">
-                                <label>الطبقة (Layer)</label>
-                                <select 
-                                    className="ic-select-input"
-                                    value={selectedShape.layer}
-                                    onChange={(e) => updateSelectedShapeProperty('layer', e.target.value)}
-                                >
-                                    {layers.map(l => (
-                                        <option key={l.id} value={l.id}>{l.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="ic-form-group">
-                                <label>مادة البناء والشادر (Material)</label>
+                                <label>المادة والشادر (Material)</label>
                                 <div className="ic-material-grid">
                                     <button 
                                         className={`ic-mat-btn ${selectedShape.materialType === 'standard' ? 'active' : ''}`}
                                         onClick={() => updateSelectedShapeProperty('materialType', 'standard')}
                                     >
-                                        🧱 صلبة
+                                        🧱 خرسانة
                                     </button>
                                     <button 
                                         className={`ic-mat-btn ${selectedShape.materialType === 'glass' ? 'active' : ''}`}
@@ -1020,49 +1457,77 @@ export default function IndoorControl({ user, onClose }) {
                                     >
                                         🛠️ صلب
                                     </button>
-                                    <button 
-                                        className={`ic-mat-btn ${selectedShape.materialType === 'gold' ? 'active' : ''}`}
-                                        onClick={() => updateSelectedShapeProperty('materialType', 'gold')}
-                                    >
-                                        🏆 ذهبي
-                                    </button>
-                                    <button 
-                                        className={`ic-mat-btn ${selectedShape.materialType === 'carbon' ? 'active' : ''}`}
-                                        onClick={() => updateSelectedShapeProperty('materialType', 'carbon')}
-                                    >
-                                        🏁 كاربون
-                                    </button>
                                 </div>
                             </div>
 
+                            <button className="ic-btn-delete-shape" onClick={() => deleteShape(selectedShape.id)}>
+                                🗑️ حذف الجدار المحدد
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Selected Placed Object (Door/Furniture) Properties */}
+                    {selectedObject && (
+                        <div className="ic-inspector-panel">
                             <div className="ic-form-group">
-                                <label>اللون النشط</label>
+                                <label>نوع العنصر</label>
+                                <input 
+                                    type="text" 
+                                    className="ic-text-input" 
+                                    value={selectedObject.subType.toUpperCase().replace('_', ' ')} 
+                                    disabled
+                                />
+                            </div>
+
+                            {/* For Doors/Windows, show Open/Close toggle */}
+                            {selectedObject.type === 'door' && (
+                                <div className="ic-setting-row">
+                                    <label>حالة الفتح (Open / Swing)</label>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={selectedObject.isOpen} 
+                                        onChange={(e) => updateSelectedObjectProperty('isOpen', e.target.checked)} 
+                                    />
+                                </div>
+                            )}
+
+                            <div className="ic-form-group">
+                                <label>اللون والنمط</label>
                                 <div className="ic-color-presets">
                                     {PRESET_COLORS.map(c => (
                                         <button 
                                             key={c} 
-                                            className={`ic-color-btn ${selectedShape.color === c ? 'active' : ''}`}
+                                            className={`ic-color-btn ${selectedObject.color === c ? 'active' : ''}`}
                                             style={{ backgroundColor: c }}
-                                            onClick={() => updateSelectedShapeProperty('color', c)}
+                                            onClick={() => updateSelectedObjectProperty('color', c)}
                                         />
                                     ))}
                                 </div>
                             </div>
 
-                            <button className="ic-btn-delete-shape" onClick={() => deleteShape(selectedShape.id)}>
-                                🗑️ حذف الكتلة المحددة
+                            <div className="ic-divider"></div>
+
+                            <div className="ic-section-title" style={{ fontSize: '0.8rem' }}>التوجيه ثلاثي الأبعاد</div>
+                            <p style={{ fontSize: '0.75rem', color: '#94a3b8', lineHeight: '1.4' }}>
+                                💡 استخدم الأسهم الحمراء/الزرقاء للتحريك وحلقة الدوران الخضراء التي تظهر فوق العنصر في الشاشة لتغيير اتجاهه وموقعه بدقة.
+                            </p>
+
+                            <button className="ic-btn-delete-shape" onClick={() => deletePlacedObject(selectedObject.id)}>
+                                🗑️ حذف العنصر المحدد
                             </button>
                         </div>
-                    ) : (
+                    )}
+
+                    {!selectedShape && !selectedObject && (
                         <div className="ic-empty-state">
                             <span className="ic-empty-icon">💡</span>
-                            <p>اضغط على أي كتلة لتعديل ارتفاعها ومادتها ولونها.</p>
+                            <p>اضغط على أي جدار، باب، أو قطعة أثاث لتعديل خصائصها، أو استخدم أدوات التحريك ثلاثية الأبعاد.</p>
                         </div>
                     )}
 
                     <div className="ic-divider"></div>
 
-                    <div className="ic-section-title">إدارة الطبقات (Layers)</div>
+                    <div className="ic-section-title">إدارة طبقات التصميم (Layers)</div>
                     <div className="ic-layers-list">
                         {layers.map(l => (
                             <div key={l.id} className={`ic-layer-item ${activeLayer === l.id ? 'active' : ''}`}>
@@ -1098,7 +1563,7 @@ export default function IndoorControl({ user, onClose }) {
                             />
                         </div>
                         <div className="ic-form-group">
-                            <label>رابط صورة المخطط ثنائي الأبعاد (اختياري)</label>
+                            <label>رابط صورة المخطط ثنائي الأبعاد (مثال للتتبع)</label>
                             <input 
                                 type="text" 
                                 className="ic-text-input" 
