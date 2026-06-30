@@ -955,12 +955,78 @@ const MapComponent = () => {
 
     // Detect first label layer for professional "integrated" route placement beneath labels
     const onMapLoad = (e) => {
-        const layers = e.target.getStyle().layers;
+        const map = e.target;
+        const layers = map.getStyle().layers;
         if (layers) {
             // Find first symbol layer which is typically a label
             const labelLayer = layers.find(l => l.type === 'symbol' && (l.id.includes('label') || l.id.includes('text') || l.id.includes('place')));
             if (labelLayer) setFirstLabelLayerId(labelLayer.id);
         }
+
+        // Add 3D buildings layer if available
+        const add3DBuildingsLayer = () => {
+            if (map.getLayer('3d-buildings')) return;
+
+            const style = map.getStyle();
+            if (!style || !style.sources) return;
+
+            const sources = style.sources;
+            let buildingSource = null;
+            let buildingSourceLayer = null;
+
+            if (sources.openmaptiles) {
+                buildingSource = 'openmaptiles';
+                buildingSourceLayer = 'building';
+            } else if (sources.composite) {
+                buildingSource = 'composite';
+                buildingSourceLayer = 'building';
+            } else if (sources.maptiler_plan) {
+                buildingSource = 'maptiler_plan';
+                buildingSourceLayer = 'building';
+            }
+
+            if (buildingSource) {
+                const currentLayers = style.layers;
+                const labelLayer = currentLayers ? currentLayers.find(l => l.type === 'symbol' && (l.id.includes('label') || l.id.includes('text') || l.id.includes('place'))) : null;
+                const beforeId = labelLayer ? labelLayer.id : undefined;
+
+                map.addLayer({
+                    'id': '3d-buildings',
+                    'source': buildingSource,
+                    'source-layer': buildingSourceLayer,
+                    'type': 'fill-extrusion',
+                    'minzoom': 15,
+                    'paint': {
+                        'fill-extrusion-color': '#aaa',
+                        'fill-extrusion-height': [
+                            'interpolate',
+                            ['linear'],
+                            ['zoom'],
+                            15,
+                            0,
+                            15.05,
+                            ['get', 'height']
+                        ],
+                        'fill-extrusion-base': [
+                            'interpolate',
+                            ['linear'],
+                            ['zoom'],
+                            15,
+                            0,
+                            15.05,
+                            ['get', 'min_height']
+                        ],
+                        'fill-extrusion-opacity': 0.6
+                    }
+                }, beforeId);
+                console.log('🏢 3D Buildings layer successfully added to the map.');
+            }
+        };
+
+        add3DBuildingsLayer();
+
+        // Re-add 3D buildings layer when style changes
+        map.on('styledata', add3DBuildingsLayer);
     };
     // --- Dynamic Map Style ---
     const mapStyle = useMemo(() => {

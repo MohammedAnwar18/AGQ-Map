@@ -134,12 +134,16 @@ const pool = require('./config/database');
                 floor_plan_url TEXT,
                 scale_ratio    NUMERIC(10,4) DEFAULT 1.0,
                 shapes_data    TEXT,
+                latitude       DOUBLE PRECISION,
+                longitude      DOUBLE PRECISION,
                 created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-        // Ensure the column exists for already created databases
+        // Ensure the columns exist for already created databases
         await pool.query(`
-            ALTER TABLE indoor_buildings ADD COLUMN IF NOT EXISTS shapes_data TEXT
+            ALTER TABLE indoor_buildings ADD COLUMN IF NOT EXISTS shapes_data TEXT,
+                                         ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION,
+                                         ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION
         `);
         await pool.query(`
             CREATE TABLE IF NOT EXISTS shelving_units (

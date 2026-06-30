@@ -14,11 +14,11 @@ exports.getBuildings = async (req, res) => {
 // 2. إنشاء مبنى جديد
 exports.createBuilding = async (req, res) => {
     try {
-        const { name, floor_plan_url, scale_ratio } = req.body;
+        const { name, floor_plan_url, scale_ratio, latitude, longitude } = req.body;
         const result = await pool.query(
-            `INSERT INTO indoor_buildings (name, floor_plan_url, scale_ratio) 
-             VALUES ($1, $2, $3) RETURNING *`,
-            [name, floor_plan_url, scale_ratio || 1.0]
+            `INSERT INTO indoor_buildings (name, floor_plan_url, scale_ratio, latitude, longitude) 
+             VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+            [name, floor_plan_url, scale_ratio || 1.0, latitude ? parseFloat(latitude) : null, longitude ? parseFloat(longitude) : null]
         );
         res.json({ success: true, building: result.rows[0] });
     } catch (err) {

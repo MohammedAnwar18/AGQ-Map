@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls';
@@ -30,6 +30,11 @@ export default function IndoorControl({ user, onClose }) {
     const [newBuildingName, setNewBuildingName] = useState('');
     const [newBuildingPlanUrl, setNewBuildingPlanUrl] = useState('');
     const [newBuildingScale, setNewBuildingScale] = useState(1.0);
+    const [newBuildingLat, setNewBuildingLat] = useState('');
+    const [newBuildingLng, setNewBuildingLng] = useState('');
+
+    const floorMeshRef = useRef(null);
+    const selectedBuilding = useMemo(() => buildings.find(b => b.id === Number(selectedBuildingId)), [buildings, selectedBuildingId]);
 
     // CAD Data States (Partitioned by floor in rendering)
     const [drawnShapes, setDrawnShapes] = useState([]);
@@ -461,6 +466,7 @@ export default function IndoorControl({ user, onClose }) {
         floor.rotation.x = -Math.PI / 2;
         floor.receiveShadow = true;
         scene.add(floor);
+        floorMeshRef.current = floor;
 
         // Native canvas event listeners
         const canvas = renderer.domElement;
@@ -504,6 +510,49 @@ export default function IndoorControl({ user, onClose }) {
             canvas.removeEventListener('mouseup', handleCanvasMouseUp);
         };
     }, []);
+
+    // Dynamically update TransformControls snapping
+    useEffect(() => {
+        const tControls = transformControlsRef.current;
+        if (tControls) {
+            if (gridSnapping) {
+                tControls.setTranslationSnap(gridSize);
+                tControls.setRotationSnap(THREE.MathUtils.degToRad(15)); // 15 degrees snap
+            } else {
+                tControls.setTranslationSnap(null);
+                tControls.setRotationSnap(null);
+            }
+        }
+    }, [gridSnapping, gridSize]);
+
+    // Load Mapbox satellite map texture when selectedBuilding changes
+    useEffect(() => {
+        const floor = floorMeshRef.current;
+        if (!floor) return;
+
+        const lat = selectedBuilding?.latitude;
+        const lng = selectedBuilding?.longitude;
+
+        if (lat && lng) {
+            console.log('🗺️ Loading Mapbox Satellite texture for coordinates:', lat, lng);
+            const textureLoader = new THREE.TextureLoader();
+            const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
+            const mapUrl = `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/${lng},${lat},18.5,0/1024x1024?access_token=${mapboxToken}`;
+            
+            textureLoader.load(mapUrl, (texture) => {
+                floor.material.map = texture;
+                floor.material.color.setHex(0xffffff); // Reset color to white so texture renders properly
+                floor.material.needsUpdate = true;
+            }, undefined, (err) => {
+                console.error('Failed to load map texture:', err);
+            });
+        } else {
+            // Revert to plain white floor if no coordinates
+            floor.material.map = null;
+            floor.material.color.setHex(0xffffff);
+            floor.material.needsUpdate = true;
+        }
+    }, [selectedBuilding]);
 
     // ── 3. Materials System Shaders ──────────────────────────────────────────
     const getMaterialPreset = (type, colorCode) => {
@@ -841,7 +890,6 @@ export default function IndoorControl({ user, onClose }) {
             glass.position.set(0, height / 2, 0);
 
             group.add(frameBottom, frameTop, frameLeft, frameRight, glass);
-            group.position.y = 0.8;
         }
 
         else if (objData.subType === 'retail_shelf') {
@@ -1019,14 +1067,14 @@ export default function IndoorControl({ user, onClose }) {
 
         // ── Drop / Place Item Mode ──
         if (activeModeRef.current === 'place_item' && itemToPlaceRef.current) {
-            let pos = { x: point.x, y: 0, z: point.z };
+            let pos = { x: point.x, y: itemToPlaceRef.current === 'glass_window' ? 0.8 : 0, z: point.z };
             let rot = 0;
 
             // Snap doors and windows to nearest wall
             if (['single_door', 'double_door', 'glass_window'].includes(itemToPlaceRef.current)) {
                 const snapped = snapToNearestWall(point);
                 if (snapped) {
-                    pos = { x: snapped.position.x, y: 0, z: snapped.position.z };
+                    pos = { x: snapped.position.x, y: itemToPlaceRef.current === 'glass_window' ? 0.8 : 0, z: snapped.position.z };
                     rot = snapped.rotation;
                 }
             }
@@ -1760,13 +1808,17 @@ export default function IndoorControl({ user, onClose }) {
             const res = await indoorControlService.createBuilding({
                 name: newBuildingName,
                 floor_plan_url: newBuildingPlanUrl,
-                scale: newBuildingScale
+                scale_ratio: parseFloat(newBuildingScale),
+                latitude: newBuildingLat ? parseFloat(newBuildingLat) : null,
+                longitude: newBuildingLng ? parseFloat(newBuildingLng) : null
             });
             if (res && res.success) {
                 alert('🎉 تم إنشاء المشروع بنجاح!');
                 setShowAddBuildingModal(false);
                 setNewBuildingName('');
                 setNewBuildingPlanUrl('');
+                setNewBuildingLat('');
+                setNewBuildingLng('');
                 loadBuildings();
             }
         } catch (err) {
@@ -2516,6 +2568,30 @@ export default function IndoorControl({ user, onClose }) {
                                 onChange={(e) => setNewBuildingPlanUrl(e.target.value)}
                                 placeholder="https://example.com/blueprint.png"
                             />
+                        </div>
+                        <div className="ic-form-row" style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+                            <div className="ic-form-group" style={{ flex: 1, marginBottom: 0 }}>
+                                <label>خط العرض (Latitude)</label>
+                                <input 
+                                    type="number" 
+                                    step="any"
+                                    className="ic-text-input" 
+                                    value={newBuildingLat} 
+                                    onChange={(e) => setNewBuildingLat(e.target.value)}
+                                    placeholder="مثال: 32.22111"
+                                />
+                            </div>
+                            <div className="ic-form-group" style={{ flex: 1, marginBottom: 0 }}>
+                                <label>خط الطول (Longitude)</label>
+                                <input 
+                                    type="number" 
+                                    step="any"
+                                    className="ic-text-input" 
+                                    value={newBuildingLng} 
+                                    onChange={(e) => setNewBuildingLng(e.target.value)}
+                                    placeholder="مثال: 35.25444"
+                                />
+                            </div>
                         </div>
                         <div className="ic-modal-footer">
                             <button className="ic-btn" onClick={() => setShowAddBuildingModal(false)}>إلغاء</button>
