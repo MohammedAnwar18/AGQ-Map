@@ -2,8 +2,6 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useSearchParams, useNavigate } from 'react-router-dom';
 import Map, { Marker, Popup, NavigationControl, Source, Layer } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
-import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { Threebox } from 'threebox-plugin';
 import { map3DService } from '../services/api';
 import 'maplibre-gl/dist/maplibre-gl.css';
