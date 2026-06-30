@@ -355,3 +355,27 @@ exports.updateBuildingShapes = async (req, res) => {
         res.status(500).json({ error: 'فشل في حفظ المجسمات ثلاثية الأبعاد' });
     }
 };
+
+// 11. تحديث بيانات المبنى (الإحداثيات، الاسم، إلخ)
+exports.updateBuilding = async (req, res) => {
+    try {
+        const { buildingId } = req.params;
+        const { name, floor_plan_url, scale_ratio, latitude, longitude } = req.body;
+        
+        const result = await pool.query(
+            `UPDATE indoor_buildings 
+             SET name = $1, floor_plan_url = $2, scale_ratio = $3, latitude = $4, longitude = $5
+             WHERE id = $6 RETURNING *`,
+            [name, floor_plan_url, scale_ratio || 1.0, latitude ? parseFloat(latitude) : null, longitude ? parseFloat(longitude) : null, buildingId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'المبنى غير موجود' });
+        }
+
+        res.json({ success: true, building: result.rows[0] });
+    } catch (err) {
+        console.error('updateBuilding error:', err);
+        res.status(500).json({ error: 'فشل في تحديث بيانات المبنى' });
+    }
+};

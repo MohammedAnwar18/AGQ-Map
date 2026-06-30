@@ -9,6 +9,9 @@ router.get('/buildings', authenticateToken, ctrl.getBuildings);
 // إنشاء مبنى جديد
 router.post('/buildings', authenticateToken, ctrl.createBuilding);
 
+// تحديث بيانات المبنى (الإحداثيات، الاسم، إلخ)
+router.put('/buildings/:buildingId', authenticateToken, ctrl.updateBuilding);
+
 // جلب التصميم الكامل للمبنى (الرفوف، المستويات، والمنتجات)
 router.get('/layout/:buildingId', authenticateToken, ctrl.getLayout);
 

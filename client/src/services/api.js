@@ -901,6 +901,10 @@ export const indoorControlService = {
         const response = await api.post('/indoor-control/buildings', buildingData);
         return response.data;
     },
+    updateBuilding: async (buildingId, buildingData) => {
+        const response = await api.put(`/indoor-control/buildings/${buildingId}`, buildingData);
+        return response.data;
+    },
     getLayout: async (buildingId) => {
         const response = await api.get(`/indoor-control/layout/${buildingId}`);
         return response.data;

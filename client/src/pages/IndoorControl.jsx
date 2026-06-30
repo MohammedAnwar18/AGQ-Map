@@ -33,6 +33,9 @@ export default function IndoorControl({ user, onClose }) {
     const [newBuildingLat, setNewBuildingLat] = useState('');
     const [newBuildingLng, setNewBuildingLng] = useState('');
 
+    const [buildingLat, setBuildingLat] = useState('');
+    const [buildingLng, setBuildingLng] = useState('');
+
     const floorMeshRef = useRef(null);
     const selectedBuilding = useMemo(() => buildings.find(b => b.id === Number(selectedBuildingId)), [buildings, selectedBuildingId]);
 
@@ -553,6 +556,42 @@ export default function IndoorControl({ user, onClose }) {
             floor.material.needsUpdate = true;
         }
     }, [selectedBuilding]);
+
+    // Populate coordinates editing fields when selectedBuilding changes
+    useEffect(() => {
+        if (selectedBuilding) {
+            setBuildingLat(selectedBuilding.latitude || '');
+            setBuildingLng(selectedBuilding.longitude || '');
+        } else {
+            setBuildingLat('');
+            setBuildingLng('');
+        }
+    }, [selectedBuilding]);
+
+    // Save updated geographical coordinates for current building
+    const handleUpdateBuildingLocation = async () => {
+        if (!selectedBuildingId || !selectedBuilding) return;
+        try {
+            const res = await indoorControlService.updateBuilding(selectedBuildingId, {
+                name: selectedBuilding.name,
+                floor_plan_url: selectedBuilding.floor_plan_url,
+                scale_ratio: parseFloat(selectedBuilding.scale_ratio),
+                latitude: buildingLat ? parseFloat(buildingLat) : null,
+                longitude: buildingLng ? parseFloat(buildingLng) : null
+            });
+            if (res && res.success) {
+                alert('🗺️ تم تحديث الموقع الجغرافي للمبنى بنجاح!');
+                // Reload buildings to update coordinates in React state
+                const bList = await indoorControlService.getBuildings();
+                if (bList && bList.buildings) {
+                    setBuildings(bList.buildings);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to update building location:', err);
+            alert('❌ فشل في تحديث الموقع الجغرافي');
+        }
+    };
 
     // ── 3. Materials System Shaders ──────────────────────────────────────────
     const getMaterialPreset = (type, colorCode) => {
@@ -1915,17 +1954,26 @@ export default function IndoorControl({ user, onClose }) {
                 </div>
                 <div className="ic-header-center">
                     {!visitorMode && (
-                        <div className="ic-building-selector-wrap">
+                        <div className="ic-building-selector-wrap" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <label>المتجر:</label>
                             <select 
                                 className="ic-select-input" 
                                 value={selectedBuildingId || ''} 
                                 onChange={(e) => setSelectedBuildingId(Number(e.target.value))}
+                                style={{ minWidth: '130px' }}
                             >
                                 {buildings.map(b => (
                                     <option key={b.id} value={b.id}>{b.name}</option>
                                 ))}
                             </select>
+                            <button 
+                                className="ic-btn ic-btn-secondary" 
+                                style={{ padding: '2px 8px', fontSize: '16px', minWidth: 'auto', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                onClick={() => setShowAddBuildingModal(true)}
+                                title="إنشاء مبنى جديد"
+                            >
+                                +
+                            </button>
                         </div>
                     )}
                     
@@ -2096,6 +2144,45 @@ export default function IndoorControl({ user, onClose }) {
                             >
                                 <span className="ic-tool-icon">🔗</span>
                                 <span className="ic-tool-text">توصيل مسار</span>
+                            </button>
+                        </div>
+
+                        <div className="ic-divider"></div>
+
+                        <div className="ic-section-title">الموقع الجغرافي للمبنى (Map Location)</div>
+                        <div className="ic-settings-list" style={{ marginBottom: '15px' }}>
+                            <div className="ic-offset-grid" style={{ marginBottom: '10px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                <div>
+                                    <label style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '4px' }}>خط العرض (Lat)</label>
+                                    <input 
+                                        type="number" 
+                                        step="any"
+                                        className="ic-text-input-compact"
+                                        style={{ width: '100%', boxSizing: 'border-box' }}
+                                        value={buildingLat}
+                                        onChange={(e) => setBuildingLat(e.target.value)}
+                                        placeholder="مثال: 32.2211"
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '4px' }}>خط الطول (Lng)</label>
+                                    <input 
+                                        type="number" 
+                                        step="any"
+                                        className="ic-text-input-compact"
+                                        style={{ width: '100%', boxSizing: 'border-box' }}
+                                        value={buildingLng}
+                                        onChange={(e) => setBuildingLng(e.target.value)}
+                                        placeholder="مثال: 35.2544"
+                                    />
+                                </div>
+                            </div>
+                            <button 
+                                className="ic-btn ic-btn-secondary" 
+                                style={{ width: '100%', padding: '6px', fontSize: '12px', height: '30px' }}
+                                onClick={handleUpdateBuildingLocation}
+                            >
+                                حفظ الموقع الجغرافي 🗺️
                             </button>
                         </div>
 
