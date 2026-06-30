@@ -28,11 +28,11 @@ const saveFileLocally = async (fileBuffer, fileName) => {
 };
 
 /**
- * Uploads a file to Cloudflare R2 with a local fallback if R2 is not configured or fails
+ * Uploads a file with a local fallback, and a Base64 fallback for serverless (Vercel)
  * @param {Buffer} fileBuffer - File content
  * @param {string} fileName - Original file name
  * @param {string} mimeType - File mime type
- * @returns {Promise<string>} - Public URL or local path of the uploaded file
+ * @returns {Promise<string>} - Public URL, local path, or Base64 data URL
  */
 const uploadToCloud = async (fileBuffer, fileName, mimeType) => {
     try {
@@ -40,7 +40,12 @@ const uploadToCloud = async (fileBuffer, fileName, mimeType) => {
 
         // Check if R2 is configured
         if (!BUCKET_NAME || !PUBLIC_URL) {
-            console.log('⚠️ R2 not configured. Using local storage fallback.');
+            console.log('静态/R2 not configured. Checking environment for fallback.');
+            // On Vercel or serverless, local disk is read-only, so we store as Base64 in database
+            if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+                console.log('📦 Serverless environment (Vercel) detected. Storing as Base64.');
+                return `data:${mimeType || 'application/octet-stream'};base64,${fileBuffer.toString('base64')}`;
+            }
             return await saveFileLocally(fileBuffer, fileName);
         }
 
@@ -62,22 +67,32 @@ const uploadToCloud = async (fileBuffer, fileName, mimeType) => {
         return fileUrl;
 
     } catch (err) {
-        console.error('❌ R2 Upload Error, falling back to local storage:', err.message);
+        console.error('❌ Upload Error, trying fallbacks:', err.message);
         try {
+            // On Vercel or serverless, write will fail, so we catch and use Base64
+            if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+                return `data:${mimeType || 'application/octet-stream'};base64,${fileBuffer.toString('base64')}`;
+            }
             return await saveFileLocally(fileBuffer, fileName);
         } catch (localErr) {
-            console.error('❌ Local Storage Fallback Error:', localErr.message);
-            throw err; // throw the original R2 error if local also fails
+            console.log('📦 Local write failed. Falling back to Base64 database storage.');
+            return `data:${mimeType || 'application/octet-stream'};base64,${fileBuffer.toString('base64')}`;
         }
     }
 };
 
 /**
- * Deletes a file from Cloudflare R2 or local storage given its URL/path
- * @param {string} fileUrl - The full R2 URL or local path
+ * Deletes a file from Cloudflare R2, local storage, or ignores if Base64
+ * @param {string} fileUrl - The full R2 URL, local path, or Base64 URL
  */
 const deleteFileFromCloud = async (fileUrl) => {
     if (!fileUrl) return;
+
+    // Base64 files don't need deletion from storage
+    if (fileUrl.startsWith('data:')) {
+        console.log('Base64 model URL. No storage deletion needed.');
+        return;
+    }
 
     // Handle local file deletion
     if (fileUrl.startsWith('/uploads/')) {
