@@ -1079,7 +1079,8 @@ const MapComponent = () => {
                     antialias: true
                 });
                 this.renderer.autoClear = false;
-                this.camera = new THREE.Camera();
+                this.camera = new THREE.PerspectiveCamera();
+                this.camera.matrixAutoUpdate = false;
             },
             render: function (gl, matrix) {
                 const models = map3DModelsRef.current || [];
