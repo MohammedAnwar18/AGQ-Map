@@ -1112,9 +1112,14 @@ const MapComponent = () => {
             }
         };
 
-        if (!map.getLayer('3d-models-layer')) {
-            map.addLayer(customLayer);
-        }
+        const add3DModelsLayer = () => {
+            if (!map.getLayer('3d-models-layer')) {
+                map.addLayer(customLayer);
+            }
+        };
+
+        add3DModelsLayer();
+        map.on('styledata', add3DModelsLayer);
     };
     // --- Dynamic Map Style ---
     useEffect(() => {
