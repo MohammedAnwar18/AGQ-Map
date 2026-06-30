@@ -1082,18 +1082,50 @@ const MapComponent = () => {
                         loadedMeshesMap.set(model.id, modelGroup);
                         
                         const loader = new GLTFLoader();
-                        console.log(`⏳ Starting to load 3D model "${model.name}" from URL/Data...`);
-                        loader.load(getImageUrl(model.model_url), (gltf) => {
-                            console.log(`✅ Successfully loaded 3D model "${model.name}":`, gltf);
-                            modelGroup.add(gltf.scene);
-                            map.triggerRepaint(); // Trigger repaint immediately after load
-                        }, (xhr) => {
-                            if (xhr.total > 0) {
-                                console.log(`Loading "${model.name}": ${(xhr.loaded / xhr.total * 100).toFixed(1)}%`);
+                        const url = model.model_url;
+
+                        if (url && url.startsWith('data:')) {
+                            console.log(`⏳ Parsing 3D model "${model.name}" from Base64 data...`);
+                            try {
+                                const base64Marker = ';base64,';
+                                const base64Index = url.indexOf(base64Marker);
+                                if (base64Index !== -1) {
+                                    const base64 = url.substring(base64Index + base64Marker.length);
+                                    const raw = window.atob(base64);
+                                    const rawLength = raw.length;
+                                    const array = new Uint8Array(new ArrayBuffer(rawLength));
+                                    for (let i = 0; i < rawLength; i++) {
+                                        array[i] = raw.charCodeAt(i);
+                                    }
+                                    const arrayBuffer = array.buffer;
+                                    
+                                    loader.parse(arrayBuffer, '', (gltf) => {
+                                        console.log(`✅ Successfully parsed 3D model "${model.name}" from Base64!`, gltf);
+                                        modelGroup.add(gltf.scene);
+                                        map.triggerRepaint();
+                                    }, (err) => {
+                                        console.error(`❌ Error parsing 3D model "${model.name}" from Base64:`, err);
+                                    });
+                                } else {
+                                    console.error('Invalid Base64 data URL');
+                                }
+                            } catch (e) {
+                                console.error('Failed to decode Base64 data URL:', e);
                             }
-                        }, (err) => {
-                            console.error(`❌ Error loading 3D model "${model.name}":`, err);
-                        });
+                        } else {
+                            console.log(`⏳ Loading 3D model "${model.name}" from URL:`, getImageUrl(url));
+                            loader.load(getImageUrl(url), (gltf) => {
+                                console.log(`✅ Successfully loaded 3D model "${model.name}":`, gltf);
+                                modelGroup.add(gltf.scene);
+                                map.triggerRepaint();
+                            }, (xhr) => {
+                                if (xhr.total > 0) {
+                                    console.log(`Loading "${model.name}": ${(xhr.loaded / xhr.total * 100).toFixed(1)}%`);
+                                }
+                            }, (err) => {
+                                console.error(`❌ Error loading 3D model "${model.name}":`, err);
+                            });
+                        }
                         tbModelsScene.add(modelGroup);
                     }
 
