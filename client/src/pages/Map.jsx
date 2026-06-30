@@ -1070,6 +1070,11 @@ const MapComponent = () => {
             },
             render: function (gl, matrix) {
                 const models = map3DModelsRef.current || [];
+                
+                // Update camera projection matrix once
+                this.camera = tbModelsCamera;
+                this.camera.projectionMatrix = new THREE.Matrix4().fromArray(matrix);
+
                 models.forEach(model => {
                     let modelGroup = loadedMeshesMap.get(model.id);
                     if (!modelGroup) {
@@ -1091,31 +1096,18 @@ const MapComponent = () => {
                     );
                     const scale = modelAsMercator.meterInMercatorCoordinate() * (model.scale || 1);
 
-                    const rotationX = new THREE.Matrix4().makeRotationX((model.rotation_x || 0) * Math.PI / 180);
-                    const rotationY = new THREE.Matrix4().makeRotationY((model.rotation_y || 0) * Math.PI / 180);
-                    const rotationZ = new THREE.Matrix4().makeRotationZ((model.rotation_z || 0) * Math.PI / 180);
-
-                    const m = new THREE.Matrix4().fromArray(matrix);
-                    const l = new THREE.Matrix4()
-                        .makeTranslation(modelAsMercator.x, modelAsMercator.y, modelAsMercator.z)
-                        .scale(new THREE.Vector3(scale, -scale, scale))
-                        .multiply(rotationX)
-                        .multiply(rotationY)
-                        .multiply(rotationZ);
-
-                    this.camera = tbModelsCamera;
-                    this.camera.projectionMatrix = m.multiply(l);
-
-                    tbModelsScene.children.forEach(child => {
-                        if (child instanceof THREE.Group) {
-                            child.visible = (child === modelGroup);
-                        }
-                    });
-
-                    this.renderer.resetState();
-                    this.renderer.render(tbModelsScene, this.camera);
+                    // Position, scale, and rotate the group directly in Three.js
+                    modelGroup.position.set(modelAsMercator.x, modelAsMercator.y, modelAsMercator.z);
+                    modelGroup.scale.set(scale, -scale, scale);
+                    modelGroup.rotation.set(
+                        (model.rotation_x || 0) * Math.PI / 180,
+                        (model.rotation_y || 0) * Math.PI / 180,
+                        (model.rotation_z || 0) * Math.PI / 180
+                    );
                 });
 
+                this.renderer.resetState();
+                this.renderer.render(tbModelsScene, this.camera);
                 map.triggerRepaint();
             }
         };
