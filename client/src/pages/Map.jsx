@@ -3,7 +3,7 @@ import { useLocation, useSearchParams, useNavigate } from 'react-router-dom';
 import Map, { Marker, Popup, NavigationControl, Source, Layer } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
 
-import { map3DService } from '../services/api';
+import { map3DService } from '../services/api'; // kept for future use
 import 'maplibre-gl/dist/maplibre-gl.css';
 import axios from 'axios';
 import { io } from "socket.io-client";
@@ -732,18 +732,7 @@ const MapComponent = () => {
     const [showStudySpace, setShowStudySpace] = useState(false);
     const [showIndoorControl, setShowIndoorControl] = useState(false);
 
-    // 3D Models States
-    const [map3DModels, setMap3DModels] = useState([]);
-    const [show3DPanel, setShow3DPanel] = useState(false);
-    const [showUploadModelModal, setShowUploadModelModal] = useState(false);
-    const [newModelName, setNewModelName] = useState('');
-    const [newModelFile, setNewModelFile] = useState(null);
-    const [selectedPlacedModelId, setSelectedPlacedModelId] = useState(null);
-    
-    const map3DModelsRef = useRef([]);
-    useEffect(() => {
-        map3DModelsRef.current = map3DModels;
-    }, [map3DModels]);
+
 
     const [showRepositoryModal, setShowRepositoryModal] = useState(false);
     const [showCommunities, setShowCommunities] = useState(false);
@@ -976,7 +965,7 @@ const MapComponent = () => {
             return getImageUrl(url);
         }
         const baseUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL : 'http://localhost:5000/api';
-        return `${baseUrl}/map-3d-models/proxy?url=${encodeURIComponent(url)}`;
+        return url;
     };
 
     const onMapLoad = (e) => {
@@ -1053,172 +1042,8 @@ const MapComponent = () => {
         // Re-add 3D buildings layer when style changes
         map.on('styledata', add3DBuildingsLayer);
 
-        // ── 3D Models via MapLibre fill-extrusion (مدمج ويعمل 100%) ──────────
-        const add3DModelsLayer = () => {
-            const models = map3DModelsRef.current || [];
-
-            // Remove old layers/source if they exist
-            if (map.getLayer('3d-models-extrusion')) map.removeLayer('3d-models-extrusion');
-            if (map.getLayer('3d-models-labels')) map.removeLayer('3d-models-labels');
-            if (map.getSource('3d-models-source')) map.removeSource('3d-models-source');
-
-            if (models.length === 0) return;
-
-            const colors = ['#FF6B35', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
-
-            const geojson = {
-                type: 'FeatureCollection',
-                features: models.map((model, i) => ({
-                    type: 'Feature',
-                    properties: {
-                        name: model.name,
-                        height: Math.max((parseFloat(model.scale) || 10) * 2, 20),
-                        base: parseFloat(model.altitude) || 0,
-                        color: colors[i % colors.length]
-                    },
-                    geometry: {
-                        type: 'Polygon',
-                        coordinates: [[
-                            // مربع صغير حول الإحداثية المحددة
-                            [parseFloat(model.longitude) - 0.00005, parseFloat(model.latitude) - 0.00005],
-                            [parseFloat(model.longitude) + 0.00005, parseFloat(model.latitude) - 0.00005],
-                            [parseFloat(model.longitude) + 0.00005, parseFloat(model.latitude) + 0.00005],
-                            [parseFloat(model.longitude) - 0.00005, parseFloat(model.latitude) + 0.00005],
-                            [parseFloat(model.longitude) - 0.00005, parseFloat(model.latitude) - 0.00005],
-                        ]]
-                    }
-                }))
-            };
-
-            map.addSource('3d-models-source', { type: 'geojson', data: geojson });
-
-            // طبقة المجسم الثلاثي الأبعاد
-            map.addLayer({
-                id: '3d-models-extrusion',
-                type: 'fill-extrusion',
-                source: '3d-models-source',
-                paint: {
-                    'fill-extrusion-color': ['get', 'color'],
-                    'fill-extrusion-height': ['get', 'height'],
-                    'fill-extrusion-base': ['get', 'base'],
-                    'fill-extrusion-opacity': 0.85
-                }
-            });
-
-            // طبقة الاسم فوق المجسم
-            map.addLayer({
-                id: '3d-models-labels',
-                type: 'symbol',
-                source: '3d-models-source',
-                layout: {
-                    'text-field': ['get', 'name'],
-                    'text-size': 13,
-                    'text-anchor': 'bottom',
-                    'text-offset': [0, -1],
-                },
-                paint: {
-                    'text-color': '#ffffff',
-                    'text-halo-color': '#000000',
-                    'text-halo-width': 2
-                }
-            });
-
-            console.log(`✅ 3D Models layer added: ${models.length} models`);
-        };
-
-        add3DModelsLayer();
-        map.on('styledata', add3DModelsLayer);
     };
     // --- Dynamic Map Style ---
-    useEffect(() => {
-        load3DModels();
-    }, []);
-
-    const load3DModels = async () => {
-        try {
-            const res = await map3DService.getModels();
-            if (res && res.success) {
-                setMap3DModels(res.models);
-            }
-        } catch (err) {
-            console.error('Failed to load 3D models:', err);
-        }
-    };
-
-    const handleUpload3DModel = async () => {
-        if (!newModelName || !newModelFile) return;
-        try {
-            const center = mapRef.current?.getCenter();
-            const lat = center ? center.lat : 32.22111;
-            const lng = center ? center.lng : 35.25444;
-
-            const formData = new FormData();
-            formData.append('name', newModelName);
-            formData.append('file', newModelFile);
-            formData.append('latitude', lat);
-            formData.append('longitude', lng);
-            formData.append('altitude', 0);
-            formData.append('scale', 1);
-
-            const res = await map3DService.uploadModel(formData);
-            if (res && res.success) {
-                alert('🎉 تم رفع ووضع المجسم ثلاثي الأبعاد بنجاح في مركز الخريطة!');
-                setShowUploadModelModal(false);
-                setNewModelName('');
-                setNewModelFile(null);
-                load3DModels();
-            }
-        } catch (err) {
-            console.error('Failed to upload 3D model:', err);
-            alert('❌ فشل رفع المجسم');
-        }
-    };
-
-    const handleUpdateModelField = (modelId, field, value) => {
-        setMap3DModels(prev => prev.map(m => {
-            if (m.id === modelId) {
-                return { ...m, [field]: value };
-            }
-            return m;
-        }));
-    };
-
-    const handleSaveChanges3DModel = async (model) => {
-        try {
-            const res = await map3DService.updateModel(model.id, {
-                name: model.name,
-                latitude: parseFloat(model.latitude),
-                longitude: parseFloat(model.longitude),
-                altitude: parseFloat(model.altitude),
-                scale: parseFloat(model.scale),
-                rotation_x: parseFloat(model.rotation_x),
-                rotation_y: parseFloat(model.rotation_y),
-                rotation_z: parseFloat(model.rotation_z)
-            });
-            if (res && res.success) {
-                alert('💾 تم حفظ إحداثيات المجسم بنجاح!');
-                load3DModels();
-            }
-        } catch (err) {
-            console.error('Failed to save 3D model changes:', err);
-            alert('❌ فشل حفظ التعديلات');
-        }
-    };
-
-    const handleDelete3DModel = async (id) => {
-        if (!window.confirm('هل أنت متأكد من رغبتك في حذف هذا المجسم من الخريطة؟')) return;
-        try {
-            const res = await map3DService.deleteModel(id);
-            if (res && res.success) {
-                alert('🗑️ تم حذف المجسم بنجاح!');
-                if (selectedPlacedModelId === id) setSelectedPlacedModelId(null);
-                load3DModels();
-            }
-        } catch (err) {
-            console.error('Failed to delete 3D model:', err);
-            alert('❌ فشل حذف المجسم');
-        }
-    };
 
     const mapStyle = useMemo(() => {
         // Preference 1: Use MapTiler (requested for high street precision) during navigation!
@@ -2820,29 +2645,7 @@ const MapComponent = () => {
                             </button>
                         )}
 
-                        {/* مجسمات وبنية تحتية ثلاثية الأبعاد */}
-                        {user?.email === 'mohammed2003anwar@gmail.com' && (
-                            <button
-                                onClick={() => {
-                                    setShow3DPanel(true);
-                                    setShowMoreMenu(false);
-                                }}
-                            >
-                                <div className="menu-item-content">
-                                    <div className="menu-icon-wrapper" style={{ color: '#fbbf24' }}>
-                                        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg">
-                                            <polygon points="12 2 2 7 12 12 22 7 12 2"/>
-                                            <polyline points="2 17 12 22 22 17"/>
-                                            <polyline points="2 12 12 17 22 12"/>
-                                        </svg>
-                                    </div>
-                                    <span style={{ color: '#f1f5f9', fontWeight: 'bold' }}>مجسمات وبنية تحتية 3D</span>
-                                </div>
-                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fbbf24" strokeWidth="2.5">
-                                    <polyline points="9 18 15 12 9 6" />
-                                </svg>
-                            </button>
-                        )}
+
 
                         {/* PalNovaa Spatial Magazine - Hidden as requested
                         <button onClick={() => { setShowMagazine(true); setShowMoreMenu(false); }}>
@@ -3860,8 +3663,8 @@ const MapComponent = () => {
                 <IndoorControl user={user} onClose={() => setShowIndoorControl(false)} />
             )}
 
-            {/* 3D Infrastructure Panel */}
-            {show3DPanel && (
+            {/* 3D Infrastructure Panel - Removed */
+            false && (
                 <div style={{ 
                     position: 'absolute', 
                     top: '80px', 
