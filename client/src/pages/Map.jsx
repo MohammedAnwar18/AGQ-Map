@@ -1056,13 +1056,15 @@ const MapComponent = () => {
 
         // ── 3D Models Custom Three.js Layer ──────────────────────────────────
         const tbModelsScene = new THREE.Scene();
-        const tbModelsCamera = new THREE.Camera();
         
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
         tbModelsScene.add(ambientLight);
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight.position.set(0, -70, 100).normalize();
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        dirLight.position.set(1, 1, 1).normalize();
         tbModelsScene.add(dirLight);
+        const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight2.position.set(-1, -1, 1).normalize();
+        tbModelsScene.add(dirLight2);
 
         const loadedMeshesMap = new Map();
 
@@ -1077,88 +1079,74 @@ const MapComponent = () => {
                     antialias: true
                 });
                 this.renderer.autoClear = false;
+                this.camera = new THREE.Camera();
             },
             render: function (gl, matrix) {
                 const models = map3DModelsRef.current || [];
-                
-                // Update camera projection matrix once
-                this.camera = tbModelsCamera;
-                this.camera.projectionMatrix = new THREE.Matrix4().fromArray(matrix);
+                if (models.length === 0) return;
 
                 models.forEach(model => {
                     let modelGroup = loadedMeshesMap.get(model.id);
                     if (!modelGroup) {
                         modelGroup = new THREE.Group();
                         loadedMeshesMap.set(model.id, modelGroup);
-                        
+                        tbModelsScene.add(modelGroup);
+
                         const loader = new GLTFLoader();
                         const url = model.model_url;
 
                         if (url && url.startsWith('data:')) {
-                            console.log(`⏳ Parsing 3D model "${model.name}" from Base64 data...`);
                             try {
                                 const base64Marker = ';base64,';
-                                const base64Index = url.indexOf(base64Marker);
-                                if (base64Index !== -1) {
-                                    const base64 = url.substring(base64Index + base64Marker.length);
-                                    const raw = window.atob(base64);
-                                    const rawLength = raw.length;
-                                    const array = new Uint8Array(new ArrayBuffer(rawLength));
-                                    for (let i = 0; i < rawLength; i++) {
-                                        array[i] = raw.charCodeAt(i);
-                                    }
-                                    const arrayBuffer = array.buffer;
-                                    
-                                    loader.parse(arrayBuffer, '', (gltf) => {
-                                        console.log(`✅ Successfully parsed 3D model "${model.name}" from Base64!`, gltf);
-                                        modelGroup.add(gltf.scene);
-                                        map.triggerRepaint();
-                                    }, (err) => {
-                                        console.error(`❌ Error parsing 3D model "${model.name}" from Base64:`, err);
-                                    });
-                                } else {
-                                    console.error('Invalid Base64 data URL');
-                                }
-                            } catch (e) {
-                                console.error('Failed to decode Base64 data URL:', e);
-                            }
+                                const b64 = url.substring(url.indexOf(base64Marker) + base64Marker.length);
+                                const raw = window.atob(b64);
+                                const arr = new Uint8Array(raw.length);
+                                for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+                                loader.parse(arr.buffer, '', (gltf) => {
+                                    modelGroup.add(gltf.scene);
+                                    map.triggerRepaint();
+                                }, (err) => console.error('Base64 parse error:', err));
+                            } catch (e) { console.error('Base64 decode failed:', e); }
                         } else {
-                            console.log(`⏳ Loading 3D model "${model.name}" from URL:`, getModelUrl(url));
                             loader.load(getModelUrl(url), (gltf) => {
-                                console.log(`✅ Successfully loaded 3D model "${model.name}":`, gltf);
                                 modelGroup.add(gltf.scene);
                                 map.triggerRepaint();
-                            }, (xhr) => {
-                                if (xhr.total > 0) {
-                                    console.log(`Loading "${model.name}": ${(xhr.loaded / xhr.total * 100).toFixed(1)}%`);
-                                }
-                            }, (err) => {
-                                console.error(`❌ Error loading 3D model "${model.name}":`, err);
-                            });
+                            }, undefined, (err) => console.error('Load error:', err));
                         }
-                        tbModelsScene.add(modelGroup);
                     }
 
-                    const modelAsMercator = maplibregl.MercatorCoordinate.fromLngLat(
-                        [model.longitude, model.latitude],
-                        model.altitude || 0
+                    // ✅ الطريقة الرسمية الصحيحة من MapLibre + Three.js
+                    const origin = maplibregl.MercatorCoordinate.fromLngLat(
+                        [parseFloat(model.longitude), parseFloat(model.latitude)],
+                        parseFloat(model.altitude) || 0
                     );
-                    const scale = modelAsMercator.meterInMercatorCoordinate() * (model.scale || 1);
+                    const mScale = origin.meterInMercatorCoordinate() * (parseFloat(model.scale) || 1);
+                    const rx = (parseFloat(model.rotation_x) || 0) * Math.PI / 180;
+                    const ry = (parseFloat(model.rotation_y) || 0) * Math.PI / 180;
+                    const rz = (parseFloat(model.rotation_z) || 0) * Math.PI / 180;
 
-                    // Position, scale, and rotate the group directly in Three.js
-                    modelGroup.position.set(modelAsMercator.x, modelAsMercator.y, modelAsMercator.z);
-                    modelGroup.scale.set(scale, -scale, scale);
-                    modelGroup.rotation.set(
-                        (model.rotation_x || 0) * Math.PI / 180,
-                        (model.rotation_y || 0) * Math.PI / 180,
-                        (model.rotation_z || 0) * Math.PI / 180
-                    );
+                    // مصفوفة MapLibre × مصفوفة المجسم المحلية
+                    const m = new THREE.Matrix4().fromArray(matrix);
+                    const l = new THREE.Matrix4()
+                        .makeTranslation(origin.x, origin.y, origin.z)
+                        .scale(new THREE.Vector3(mScale, -mScale, mScale))
+                        .multiply(new THREE.Matrix4().makeRotationX(rx))
+                        .multiply(new THREE.Matrix4().makeRotationY(ry))
+                        .multiply(new THREE.Matrix4().makeRotationZ(rz));
+
+                    this.camera.projectionMatrix = m.multiply(l);
+
+                    tbModelsScene.children.forEach(child => {
+                        if (child instanceof THREE.Group) child.visible = (child === modelGroup);
+                    });
+
+                    this.renderer.resetState();
+                    this.renderer.render(tbModelsScene, this.camera);
                 });
 
-                this.renderer.resetState();
-                this.renderer.render(tbModelsScene, this.camera);
                 map.triggerRepaint();
             }
+
         };
 
         const add3DModelsLayer = () => {
