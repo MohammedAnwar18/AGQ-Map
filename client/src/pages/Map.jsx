@@ -3822,56 +3822,7 @@ const MapComponent = () => {
                 </div>
             )}
 
-            {/* Modal: Upload 3D Model */}
-            {showUploadModelModal && (
-                <div style={{ 
-                    position: 'fixed', 
-                    top: 0, 
-                    left: 0, 
-                    width: '100vw', 
-                    height: '100vh', 
-                    backgroundColor: 'rgba(0, 0, 0, 0.75)', 
-                    display: 'flex', 
-                    justifyContent: 'center', 
-                    alignItems: 'center', 
-                    zIndex: 99999 
-                }} onClick={() => setShowUploadModelModal(false)}>
-                    <div style={{ 
-                        backgroundColor: '#0f172a', 
-                        border: '1px solid #fbbf24', 
-                        borderRadius: '12px', 
-                        padding: '25px', 
-                        width: '400px', 
-                        maxWidth: '90%',
-                        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
-                    }} onClick={(e) => e.stopPropagation()}>
-                        <div style={{ color: '#fbbf24', fontSize: '18px', fontWeight: 'bold', marginBottom: '20px', textAlign: 'center' }}>رفع مجسم ثلاثي الأبعاد جديد</div>
-                        <div style={{ marginBottom: '15px' }}>
-                            <label style={{ color: '#94a3b8', display: 'block', marginBottom: '8px', fontSize: '13px' }}>اسم المجسم (مثل: عمود كهرباء، أنبوب مياه)</label>
-                            <input 
-                                type="text" 
-                                style={{ width: '100%', padding: '10px', backgroundColor: '#1e293b', border: '1px solid #334155', color: '#f1f5f9', borderRadius: '8px', boxSizing: 'border-box' }}
-                                value={newModelName} 
-                                onChange={(e) => setNewModelName(e.target.value)}
-                                placeholder="مثال: عمود إنارة رئيسي"
-                            />
-                        </div>
-                        <div style={{ marginBottom: '25px' }}>
-                            <label style={{ color: '#94a3b8', display: 'block', marginBottom: '8px', fontSize: '13px' }}>ملف المجسم (صيغة .glb أو .gltf)</label>
-                            <input 
-                                type="file" 
-                                accept=".glb,.gltf"
-                                onChange={(e) => setNewModelFile(e.target.files[0])}
-                                style={{ color: '#f1f5f9', width: '100%' }}
-                            />
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                            <button style={{ padding: '8px 16px', backgroundColor: '#334155', color: '#f1f5f9', border: 'none', borderRadius: '8px', cursor: 'pointer' }} onClick={() => setShowUploadModelModal(false)}>إلغاء</button>
-                            <button style={{ padding: '8px 16px', backgroundColor: '#fbbf24', color: '#0f172a', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }} onClick={handleUpload3DModel}>رفع وحفظ 📤</button>
-                        </div>
-                    </div>
-                </div>
-            )}
+
 
             {showFitnessModal && (
                 <FitnessPathModal 
