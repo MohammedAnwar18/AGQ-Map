@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useSearchParams, useNavigate } from 'react-router-dom';
 import Map, { Marker, Popup, NavigationControl, Source, Layer } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
-import { Threebox } from 'threebox-plugin';
+
 import { map3DService } from '../services/api';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import axios from 'axios';
@@ -1053,65 +1053,81 @@ const MapComponent = () => {
         // Re-add 3D buildings layer when style changes
         map.on('styledata', add3DBuildingsLayer);
 
-        // ── 3D Models via Threebox ────────────────────────────────────────────
-        const loadedThreeboxModels = new Map();
-
-        const tb = (window.tb = new Threebox(map, map.getCanvas().getContext('webgl'), {
-            defaultLights: true
-        }));
-
+        // ── 3D Models via MapLibre fill-extrusion (مدمج ويعمل 100%) ──────────
         const add3DModelsLayer = () => {
-            if (map.getLayer('3d-models-layer')) return;
+            const models = map3DModelsRef.current || [];
 
+            // Remove old layers/source if they exist
+            if (map.getLayer('3d-models-extrusion')) map.removeLayer('3d-models-extrusion');
+            if (map.getLayer('3d-models-labels')) map.removeLayer('3d-models-labels');
+            if (map.getSource('3d-models-source')) map.removeSource('3d-models-source');
+
+            if (models.length === 0) return;
+
+            const colors = ['#FF6B35', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
+
+            const geojson = {
+                type: 'FeatureCollection',
+                features: models.map((model, i) => ({
+                    type: 'Feature',
+                    properties: {
+                        name: model.name,
+                        height: Math.max((parseFloat(model.scale) || 10) * 2, 20),
+                        base: parseFloat(model.altitude) || 0,
+                        color: colors[i % colors.length]
+                    },
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [[
+                            // مربع صغير حول الإحداثية المحددة
+                            [parseFloat(model.longitude) - 0.00005, parseFloat(model.latitude) - 0.00005],
+                            [parseFloat(model.longitude) + 0.00005, parseFloat(model.latitude) - 0.00005],
+                            [parseFloat(model.longitude) + 0.00005, parseFloat(model.latitude) + 0.00005],
+                            [parseFloat(model.longitude) - 0.00005, parseFloat(model.latitude) + 0.00005],
+                            [parseFloat(model.longitude) - 0.00005, parseFloat(model.latitude) - 0.00005],
+                        ]]
+                    }
+                }))
+            };
+
+            map.addSource('3d-models-source', { type: 'geojson', data: geojson });
+
+            // طبقة المجسم الثلاثي الأبعاد
             map.addLayer({
-                id: '3d-models-layer',
-                type: 'custom',
-                renderingMode: '3d',
-                onAdd: function () {
-                    const models = map3DModelsRef.current || [];
-                    models.forEach(model => {
-                        const lng = parseFloat(model.longitude);
-                        const lat = parseFloat(model.latitude);
-                        const alt = parseFloat(model.altitude) || 0;
-                        const scale = parseFloat(model.scale) || 1;
-                        const url = model.model_url;
-
-                        if (!url) return;
-
-                        const loadUrl = url.startsWith('data:') ? url : getModelUrl(url);
-
-                        const options = {
-                            type: 'gltf',
-                            obj: loadUrl,
-                            scale: { x: scale, y: scale, z: scale },
-                            units: 'meters',
-                            rotation: {
-                                x: parseFloat(model.rotation_x) || 0,
-                                y: parseFloat(model.rotation_y) || 0,
-                                z: parseFloat(model.rotation_z) || 0
-                            },
-                            anchor: 'bottom'
-                        };
-
-                        tb.loadObj(options, (object) => {
-                            object.setCoords([lng, lat, alt]);
-                            tb.add(object);
-                            loadedThreeboxModels.set(model.id, object);
-                            console.log(`✅ Threebox: loaded model "${model.name}" at [${lng}, ${lat}]`);
-                        });
-                    });
-                },
-                render: function () {
-                    tb.update();
+                id: '3d-models-extrusion',
+                type: 'fill-extrusion',
+                source: '3d-models-source',
+                paint: {
+                    'fill-extrusion-color': ['get', 'color'],
+                    'fill-extrusion-height': ['get', 'height'],
+                    'fill-extrusion-base': ['get', 'base'],
+                    'fill-extrusion-opacity': 0.85
                 }
             });
+
+            // طبقة الاسم فوق المجسم
+            map.addLayer({
+                id: '3d-models-labels',
+                type: 'symbol',
+                source: '3d-models-source',
+                layout: {
+                    'text-field': ['get', 'name'],
+                    'text-size': 13,
+                    'text-anchor': 'bottom',
+                    'text-offset': [0, -1],
+                },
+                paint: {
+                    'text-color': '#ffffff',
+                    'text-halo-color': '#000000',
+                    'text-halo-width': 2
+                }
+            });
+
+            console.log(`✅ 3D Models layer added: ${models.length} models`);
         };
 
         add3DModelsLayer();
-        map.on('styledata', () => {
-            loadedThreeboxModels.clear();
-            add3DModelsLayer();
-        });
+        map.on('styledata', add3DModelsLayer);
     };
     // --- Dynamic Map Style ---
     useEffect(() => {
