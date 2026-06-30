@@ -1,22 +1,29 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Warp } from "@paper-design/shaders-react";
 import './PalNovaaRepository.css';
+import api from '../services/api';
 
 const PalNovaaRepository = ({ onClose }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [isFocused, setIsFocused] = useState(false);
     
-    // Repository & Admin States - Load from localStorage to persist when closed/reopened
-    const [layers, setLayers] = useState(() => {
-        try {
-            const saved = localStorage.getItem('palnovaa_repository_layers');
-            return saved ? JSON.parse(saved) : [];
-        } catch (e) {
-            return [];
-        }
-    });
+    // Repository & Admin States - Load from backend database
+    const [layers, setLayers] = useState([]);
     const [isAdminMode, setIsAdminMode] = useState(false);
     const [showSuggestions, setShowSuggestions] = useState(false);
+
+    // Fetch layers from backend on mount
+    useEffect(() => {
+        const fetchLayers = async () => {
+            try {
+                const response = await api.get('/storage/layers');
+                setLayers(response.data);
+            } catch (error) {
+                console.error('Error fetching repository layers:', error);
+            }
+        };
+        fetchLayers();
+    }, []);
 
     // Admin Upload Form State
     const [selectedFile, setSelectedFile] = useState(null);
@@ -147,8 +154,8 @@ const PalNovaaRepository = ({ onClose }) => {
         );
     }, [searchQuery, layers]);
 
-    // Handle Upload or Edit Submission & Local Persistence
-    const handleAdminUpload = (e) => {
+    // Handle Upload or Edit Submission & Server Persistence
+    const handleAdminUpload = async (e) => {
         e.preventDefault();
         
         // If we are creating a new layer, a file is required. If editing, it is optional.
@@ -156,97 +163,70 @@ const PalNovaaRepository = ({ onClose }) => {
         if (!newLayerName || !newLayerSize || !newLayerDesc) return;
 
         setUploadingState('validating');
-        setUploadProgress(15);
+        setUploadProgress(20);
 
-        // Step 1: Validating files
-        setTimeout(() => {
-            setUploadingState('compressing');
-            setUploadProgress(45);
-            
-            // Step 2: Compressing to ZIP (or saving changes)
-            setTimeout(() => {
-                setUploadingState('uploading');
-                setUploadProgress(80);
-                
-                // Step 3: Uploading to Cloudflare R2 / Saving
-                const localUrl = selectedFile ? URL.createObjectURL(selectedFile) : null;
-                
-                const saveLayer = (persistentFileUrl) => {
-                    setUploadingState('success');
-                    setUploadProgress(100);
-                    
-                    setTimeout(() => {
-                        setLayers(prev => {
-                            let updatedLayers;
-                            if (editingLayerId) {
-                                // Edit mode
-                                updatedLayers = prev.map(layer => {
-                                    if (layer.id === editingLayerId) {
-                                        return {
-                                            ...layer,
-                                            name: newLayerName,
-                                            category: newLayerCategory,
-                                            format: `${newLayerFormat} / ZIP`,
-                                            size: newLayerSize,
-                                            description: newLayerDesc,
-                                            // Only replace URL and name if a new file was chosen
-                                            ...(selectedFile ? {
-                                                fileUrl: persistentFileUrl || localUrl,
-                                                fileName: selectedFile.name,
-                                                isPersistent: !!persistentFileUrl
-                                            } : {})
-                                        };
-                                    }
-                                    return layer;
-                                });
-                            } else {
-                                // Create mode
-                                const newLayer = {
-                                    id: Date.now(),
-                                    name: newLayerName,
-                                    category: newLayerCategory,
-                                    format: `${newLayerFormat} / ZIP`,
-                                    size: newLayerSize,
-                                    description: newLayerDesc,
-                                    fileUrl: persistentFileUrl || localUrl,
-                                    fileName: selectedFile.name,
-                                    isPersistent: !!persistentFileUrl
-                                };
-                                updatedLayers = [newLayer, ...prev];
-                            }
-                            
-                            localStorage.setItem('palnovaa_repository_layers', JSON.stringify(updatedLayers));
-                            return updatedLayers;
-                        });
+        try {
+            const formData = new FormData();
+            formData.append('name', newLayerName);
+            formData.append('category', newLayerCategory);
+            formData.append('format', `${newLayerFormat} / ZIP`);
+            formData.append('size', newLayerSize);
+            formData.append('description', newLayerDesc);
+            if (selectedFile) {
+                formData.append('file', selectedFile);
+            }
 
-                        // Reset states
-                        setNewLayerName('');
-                        setNewLayerSize('');
-                        setNewLayerDesc('');
-                        setSelectedFile(null);
-                        setEditingLayerId(null);
-                        setUploadingState('idle');
-                        setIsAdminMode(false); // Return to search view to see the result
-                    }, 1000);
-                };
+            setUploadingState('uploading');
+            setUploadProgress(50);
 
-                // If a new file was uploaded and it is under 3.5MB, read it as Base64.
-                // Otherwise, save immediately.
-                if (selectedFile && selectedFile.size <= 3.5 * 1024 * 1024) {
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        saveLayer(event.target.result);
-                    };
-                    reader.onerror = () => {
-                        saveLayer(null);
-                    };
-                    reader.readAsDataURL(selectedFile);
-                } else {
-                    saveLayer(null);
-                }
+            let response;
+            if (editingLayerId) {
+                // Edit mode
+                response = await api.put(`/storage/layers/${editingLayerId}`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+            } else {
+                // Create mode
+                response = await api.post('/storage/layers', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+            }
+
+            setUploadProgress(90);
+
+            if (response.data && response.data.success) {
+                const savedLayer = response.data.layer;
                 
-            }, 1200);
-        }, 1200);
+                setLayers(prev => {
+                    if (editingLayerId) {
+                        return prev.map(layer => layer.id === editingLayerId ? savedLayer : layer);
+                    } else {
+                        return [savedLayer, ...prev];
+                    }
+                });
+
+                setUploadingState('success');
+                setUploadProgress(100);
+
+                setTimeout(() => {
+                    // Reset states
+                    setNewLayerName('');
+                    setNewLayerSize('');
+                    setNewLayerDesc('');
+                    setSelectedFile(null);
+                    setEditingLayerId(null);
+                    setUploadingState('idle');
+                    setIsAdminMode(false); // Return to search view to see the result
+                }, 1000);
+            } else {
+                throw new Error('Failed to save layer');
+            }
+
+        } catch (error) {
+            console.error('Upload failed:', error);
+            setUploadingState('idle');
+            alert('حدث خطأ أثناء رفع الطبقة الجغرافية. يرجى التأكد من اتصالك بالإنترنت والمحاولة مرة أخرى.');
+        }
     };
 
     // Populate form to edit layer
@@ -262,20 +242,22 @@ const PalNovaaRepository = ({ onClose }) => {
     };
 
     // Delete a layer
-    const handleDeleteClick = (layerId) => {
+    const handleDeleteClick = async (layerId) => {
         if (window.confirm("هل أنت متأكد من رغبتك في حذف هذه الطبقة الجغرافية نهائياً؟")) {
-            setLayers(prev => {
-                const updated = prev.filter(layer => layer.id !== layerId);
-                localStorage.setItem('palnovaa_repository_layers', JSON.stringify(updated));
-                return updated;
-            });
-            
-            if (editingLayerId === layerId) {
-                setEditingLayerId(null);
-                setNewLayerName('');
-                setNewLayerSize('');
-                setNewLayerDesc('');
-                setSelectedFile(null);
+            try {
+                await api.delete(`/storage/layers/${layerId}`);
+                setLayers(prev => prev.filter(layer => layer.id !== layerId));
+                
+                if (editingLayerId === layerId) {
+                    setEditingLayerId(null);
+                    setNewLayerName('');
+                    setNewLayerSize('');
+                    setNewLayerDesc('');
+                    setSelectedFile(null);
+                }
+            } catch (error) {
+                console.error('Delete failed:', error);
+                alert('حدث خطأ أثناء حذف الطبقة الجغرافية.');
             }
         }
     };
@@ -287,6 +269,9 @@ const PalNovaaRepository = ({ onClose }) => {
         setDownloadingId(layer.id);
         setDownloadProgress(0);
 
+        const fileUrl = layer.fileUrl || layer.file_url;
+        const fileName = layer.fileName || layer.file_name;
+
         const interval = setInterval(() => {
             setDownloadProgress(prev => {
                 if (prev >= 100) {
@@ -296,10 +281,10 @@ const PalNovaaRepository = ({ onClose }) => {
                         setDownloadedIds(prevIds => [...prevIds, layer.id]);
                         
                         // Trigger actual browser download
-                        if (layer.fileUrl) {
+                        if (fileUrl) {
                             const link = document.createElement('a');
-                            link.href = layer.fileUrl;
-                            link.download = layer.fileName || `${layer.name}.zip`;
+                            link.href = fileUrl;
+                            link.download = fileName || `${layer.name}.zip`;
                             document.body.appendChild(link);
                             link.click();
                             document.body.removeChild(link);

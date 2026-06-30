@@ -3,6 +3,7 @@ const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 const https = require('https');
+const pool = require('../config/database');
 
 // وكيل مخصص لتخطي مشاكل شهادات SSL غير الموثوقة أو منتهية الصلاحية للبلديات والجهات الحكومية
 const insecureAgent = new https.Agent({
@@ -533,5 +534,150 @@ exports.proxyGeoJSON = async (req, res) => {
     } catch (error) {
         console.error('GeoJSON Proxy Error:', error.message);
         res.status(500).json({ error: 'Failed to fetch GeoJSON from storage' });
+    }
+};
+
+/**
+ * جلب جميع الطبقات الجغرافية من المستودع
+ */
+exports.getLayers = async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM repository_layers ORDER BY created_at DESC');
+        res.status(200).json(result.rows);
+    } catch (error) {
+        console.error('Error fetching repository layers:', error);
+        res.status(500).json({ error: 'فشل جلب الطبقات الجغرافية' });
+    }
+};
+
+/**
+ * رفع طبقة جغرافية جديدة للمستودع (تخزينها في R2 وحفظ بياناتها في قاعدة البيانات)
+ */
+exports.uploadRepositoryLayer = async (req, res) => {
+    try {
+        const { name, category, format, size, description } = req.body;
+        if (!req.file) {
+            return res.status(400).json({ error: 'لم يتم اختيار ملف للرفع' });
+        }
+        if (!name || !category || !format || !size) {
+            return res.status(400).json({ error: 'جميع حقول البيانات مطلوبة' });
+        }
+
+        const { uploadToCloud } = require('../utils/storage');
+        const fileUrl = await uploadToCloud(req.file.buffer, req.file.originalname, req.file.mimetype);
+
+        const result = await pool.query(
+            `INSERT INTO repository_layers (name, category, format, size, description, file_url, file_name)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             RETURNING *`,
+            [name, category, format, size, description || null, fileUrl, req.file.originalname]
+        );
+
+        res.status(201).json({
+            success: true,
+            layer: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Error uploading repository layer:', error);
+        res.status(500).json({ error: 'فشل رفع وحفظ الطبقة الجغرافية' });
+    }
+};
+
+/**
+ * تحديث بيانات طبقة جغرافية موجودة (مع إمكانية استبدال الملف)
+ */
+exports.updateRepositoryLayer = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, category, format, size, description } = req.body;
+
+        if (!name || !category || !format || !size) {
+            return res.status(400).json({ error: 'جميع حقول البيانات مطلوبة' });
+        }
+
+        let fileUrl = null;
+        let fileName = null;
+
+        if (req.file) {
+            const { uploadToCloud, deleteFileFromCloud } = require('../utils/storage');
+            
+            // جلب الرابط القديم لحذف الملف من R2 لتوفير المساحة
+            const oldLayerResult = await pool.query('SELECT file_url FROM repository_layers WHERE id = $1', [id]);
+            if (oldLayerResult.rows.length > 0 && oldLayerResult.rows[0].file_url) {
+                await deleteFileFromCloud(oldLayerResult.rows[0].file_url);
+            }
+
+            fileUrl = await uploadToCloud(req.file.buffer, req.file.originalname, req.file.mimetype);
+            fileName = req.file.originalname;
+        }
+
+        let queryText;
+        let queryParams;
+
+        if (fileUrl) {
+            queryText = `
+                UPDATE repository_layers 
+                SET name = $1, category = $2, format = $3, size = $4, description = $5, file_url = $6, file_name = $7
+                WHERE id = $8
+                RETURNING *
+            `;
+            queryParams = [name, category, format, size, description || null, fileUrl, fileName, id];
+        } else {
+            queryText = `
+                UPDATE repository_layers 
+                SET name = $1, category = $2, format = $3, size = $4, description = $5
+                WHERE id = $6
+                RETURNING *
+            `;
+            queryParams = [name, category, format, size, description || null, id];
+        }
+
+        const result = await pool.query(queryText, queryParams);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'الطبقة الجغرافية غير موجودة' });
+        }
+
+        res.status(200).json({
+            success: true,
+            layer: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Error updating repository layer:', error);
+        res.status(500).json({ error: 'فشل تحديث الطبقة الجغرافية' });
+    }
+};
+
+/**
+ * حذف طبقة جغرافية نهائياً من قاعدة البيانات ومن R2
+ */
+exports.deleteRepositoryLayer = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { deleteFileFromCloud } = require('../utils/storage');
+
+        // جلب رابط الملف لحذفه من R2
+        const layerResult = await pool.query('SELECT file_url FROM repository_layers WHERE id = $1', [id]);
+        if (layerResult.rows.length === 0) {
+            return res.status(404).json({ error: 'الطبقة الجغرافية غير موجودة' });
+        }
+
+        const fileUrl = layerResult.rows[0].file_url;
+
+        // حذف الملف من R2
+        if (fileUrl) {
+            await deleteFileFromCloud(fileUrl);
+        }
+
+        // حذف السجل من قاعدة البيانات
+        await pool.query('DELETE FROM repository_layers WHERE id = $1', [id]);
+
+        res.status(200).json({
+            success: true,
+            message: 'تم حذف الطبقة الجغرافية بنجاح'
+        });
+    } catch (error) {
+        console.error('Error deleting repository layer:', error);
+        res.status(500).json({ error: 'فشل حذف الطبقة الجغرافية' });
     }
 };
