@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useSearchParams, useNavigate } from 'react-router-dom';
 import Map, { Marker, Popup, NavigationControl, Source, Layer } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { map3DService } from '../services/api';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import axios from 'axios';
 import { io } from "socket.io-client";
@@ -730,6 +733,19 @@ const MapComponent = () => {
     const [showStudySpace, setShowStudySpace] = useState(false);
     const [showIndoorControl, setShowIndoorControl] = useState(false);
 
+    // 3D Models States
+    const [map3DModels, setMap3DModels] = useState([]);
+    const [show3DPanel, setShow3DPanel] = useState(false);
+    const [showUploadModelModal, setShowUploadModelModal] = useState(false);
+    const [newModelName, setNewModelName] = useState('');
+    const [newModelFile, setNewModelFile] = useState(null);
+    const [selectedPlacedModelId, setSelectedPlacedModelId] = useState(null);
+    
+    const map3DModelsRef = useRef([]);
+    useEffect(() => {
+        map3DModelsRef.current = map3DModels;
+    }, [map3DModels]);
+
     const [showRepositoryModal, setShowRepositoryModal] = useState(false);
     const [showCommunities, setShowCommunities] = useState(false);
     const [showMoreMenu, setShowMoreMenu] = useState(false);
@@ -1027,8 +1043,178 @@ const MapComponent = () => {
 
         // Re-add 3D buildings layer when style changes
         map.on('styledata', add3DBuildingsLayer);
+
+        // ── 3D Models Custom Three.js Layer ──────────────────────────────────
+        const tbModelsScene = new THREE.Scene();
+        const tbModelsCamera = new THREE.Camera();
+        
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        tbModelsScene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(0, -70, 100).normalize();
+        tbModelsScene.add(dirLight);
+
+        const loadedMeshesMap = new Map();
+
+        const customLayer = {
+            id: '3d-models-layer',
+            type: 'custom',
+            renderingMode: '3d',
+            onAdd: function (mapInstance, gl) {
+                this.renderer = new THREE.WebGLRenderer({
+                    canvas: mapInstance.getCanvas(),
+                    context: gl,
+                    antialias: true
+                });
+                this.renderer.autoClear = false;
+            },
+            render: function (gl, matrix) {
+                const models = map3DModelsRef.current || [];
+                models.forEach(model => {
+                    let modelGroup = loadedMeshesMap.get(model.id);
+                    if (!modelGroup) {
+                        modelGroup = new THREE.Group();
+                        loadedMeshesMap.set(model.id, modelGroup);
+                        
+                        const loader = new GLTFLoader();
+                        loader.load(model.model_url, (gltf) => {
+                            modelGroup.add(gltf.scene);
+                        }, undefined, (err) => {
+                            console.error('Error loading glTF model:', err);
+                        });
+                        tbModelsScene.add(modelGroup);
+                    }
+
+                    const modelAsMercator = maplibregl.MercatorCoordinate.fromLngLat(
+                        [model.longitude, model.latitude],
+                        model.altitude || 0
+                    );
+                    const scale = modelAsMercator.meterInMercatorCoordinate() * (model.scale || 1);
+
+                    const rotationX = new THREE.Matrix4().makeRotationX((model.rotation_x || 0) * Math.PI / 180);
+                    const rotationY = new THREE.Matrix4().makeRotationY((model.rotation_y || 0) * Math.PI / 180);
+                    const rotationZ = new THREE.Matrix4().makeRotationZ((model.rotation_z || 0) * Math.PI / 180);
+
+                    const m = new THREE.Matrix4().fromArray(matrix);
+                    const l = new THREE.Matrix4()
+                        .makeTranslation(modelAsMercator.x, modelAsMercator.y, modelAsMercator.z)
+                        .scale(new THREE.Vector3(scale, -scale, scale))
+                        .multiply(rotationX)
+                        .multiply(rotationY)
+                        .multiply(rotationZ);
+
+                    this.camera = tbModelsCamera;
+                    this.camera.projectionMatrix = m.multiply(l);
+
+                    tbModelsScene.children.forEach(child => {
+                        if (child instanceof THREE.Group) {
+                            child.visible = (child === modelGroup);
+                        }
+                    });
+
+                    this.renderer.resetState();
+                    this.renderer.render(tbModelsScene, this.camera);
+                });
+
+                map.triggerRepaint();
+            }
+        };
+
+        if (!map.getLayer('3d-models-layer')) {
+            map.addLayer(customLayer);
+        }
     };
     // --- Dynamic Map Style ---
+    useEffect(() => {
+        load3DModels();
+    }, []);
+
+    const load3DModels = async () => {
+        try {
+            const res = await map3DService.getModels();
+            if (res && res.success) {
+                setMap3DModels(res.models);
+            }
+        } catch (err) {
+            console.error('Failed to load 3D models:', err);
+        }
+    };
+
+    const handleUpload3DModel = async () => {
+        if (!newModelName || !newModelFile) return;
+        try {
+            const center = mapRef.current?.getCenter();
+            const lat = center ? center.lat : 32.22111;
+            const lng = center ? center.lng : 35.25444;
+
+            const formData = new FormData();
+            formData.append('name', newModelName);
+            formData.append('file', newModelFile);
+            formData.append('latitude', lat);
+            formData.append('longitude', lng);
+            formData.append('altitude', 0);
+            formData.append('scale', 1);
+
+            const res = await map3DService.uploadModel(formData);
+            if (res && res.success) {
+                alert('🎉 تم رفع ووضع المجسم ثلاثي الأبعاد بنجاح في مركز الخريطة!');
+                setShowUploadModelModal(false);
+                setNewModelName('');
+                setNewModelFile(null);
+                load3DModels();
+            }
+        } catch (err) {
+            console.error('Failed to upload 3D model:', err);
+            alert('❌ فشل رفع المجسم');
+        }
+    };
+
+    const handleUpdateModelField = (modelId, field, value) => {
+        setMap3DModels(prev => prev.map(m => {
+            if (m.id === modelId) {
+                return { ...m, [field]: value };
+            }
+            return m;
+        }));
+    };
+
+    const handleSaveChanges3DModel = async (model) => {
+        try {
+            const res = await map3DService.updateModel(model.id, {
+                name: model.name,
+                latitude: parseFloat(model.latitude),
+                longitude: parseFloat(model.longitude),
+                altitude: parseFloat(model.altitude),
+                scale: parseFloat(model.scale),
+                rotation_x: parseFloat(model.rotation_x),
+                rotation_y: parseFloat(model.rotation_y),
+                rotation_z: parseFloat(model.rotation_z)
+            });
+            if (res && res.success) {
+                alert('💾 تم حفظ إحداثيات المجسم بنجاح!');
+                load3DModels();
+            }
+        } catch (err) {
+            console.error('Failed to save 3D model changes:', err);
+            alert('❌ فشل حفظ التعديلات');
+        }
+    };
+
+    const handleDelete3DModel = async (id) => {
+        if (!window.confirm('هل أنت متأكد من رغبتك في حذف هذا المجسم من الخريطة؟')) return;
+        try {
+            const res = await map3DService.deleteModel(id);
+            if (res && res.success) {
+                alert('🗑️ تم حذف المجسم بنجاح!');
+                if (selectedPlacedModelId === id) setSelectedPlacedModelId(null);
+                load3DModels();
+            }
+        } catch (err) {
+            console.error('Failed to delete 3D model:', err);
+            alert('❌ فشل حذف المجسم');
+        }
+    };
+
     const mapStyle = useMemo(() => {
         // Preference 1: Use MapTiler (requested for high street precision) during navigation!
         if (routePath) {
@@ -2629,6 +2815,30 @@ const MapComponent = () => {
                             </button>
                         )}
 
+                        {/* مجسمات وبنية تحتية ثلاثية الأبعاد */}
+                        {user?.email === 'mohammed2003anwar@gmail.com' && (
+                            <button
+                                onClick={() => {
+                                    setShow3DPanel(true);
+                                    setShowMoreMenu(false);
+                                }}
+                            >
+                                <div className="menu-item-content">
+                                    <div className="menu-icon-wrapper" style={{ color: '#fbbf24' }}>
+                                        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg">
+                                            <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                                            <polyline points="2 17 12 22 22 17"/>
+                                            <polyline points="2 12 12 17 22 12"/>
+                                        </svg>
+                                    </div>
+                                    <span style={{ color: '#f1f5f9', fontWeight: 'bold' }}>مجسمات وبنية تحتية 3D</span>
+                                </div>
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fbbf24" strokeWidth="2.5">
+                                    <polyline points="9 18 15 12 9 6" />
+                                </svg>
+                            </button>
+                        )}
+
                         {/* PalNovaa Spatial Magazine - Hidden as requested
                         <button onClick={() => { setShowMagazine(true); setShowMoreMenu(false); }}>
                             <div className="menu-item-content">
@@ -3643,6 +3853,183 @@ const MapComponent = () => {
             )}
             {showIndoorControl && (
                 <IndoorControl user={user} onClose={() => setShowIndoorControl(false)} />
+            )}
+
+            {/* 3D Infrastructure Panel */}
+            {show3DPanel && (
+                <div className="historical-timeline-panel" style={{ width: '340px', maxHeight: '80vh', overflowY: 'auto', zIndex: 10, display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                        <h3 style={{ margin: 0, color: '#fbbf24', fontSize: '18px', fontWeight: 'bold' }}>بنية تحتية ومجسمات 3D</h3>
+                        <button 
+                            onClick={() => setShow3DPanel(false)}
+                            style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '20px', cursor: 'pointer' }}
+                        >
+                            ✕
+                        </button>
+                    </div>
+                    
+                    <button 
+                        className="post-submit-btn" 
+                        style={{ width: '100%', padding: '10px', marginBottom: '15px', backgroundColor: '#fbbf24', color: '#0f172a', fontWeight: 'bold', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                        onClick={() => setShowUploadModelModal(true)}
+                    >
+                        رفع مجسم 3D جديد (.glb) 📤
+                    </button>
+                    
+                    <div className="ic-divider" style={{ margin: '15px 0', borderTop: '1px solid #334155' }}></div>
+                    
+                    <h4 style={{ margin: '0 0 10px 0', color: '#f1f5f9', fontSize: '14px' }}>المجسمات المضافة على الخريطة ({map3DModels.length})</h4>
+                    
+                    {map3DModels.length === 0 ? (
+                        <p style={{ color: '#64748b', fontSize: '12px', textAlign: 'center', margin: '20px 0' }}>لم يتم إضافة أي مجسمات بعد. قم برفع مجسم لإسقاطه على الخريطة.</p>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto', maxHeight: '250px' }}>
+                            {map3DModels.map(model => (
+                                <div 
+                                    key={model.id} 
+                                    style={{ 
+                                        padding: '10px', 
+                                        borderRadius: '8px', 
+                                        backgroundColor: selectedPlacedModelId === model.id ? '#1e293b' : '#0f172a', 
+                                        border: selectedPlacedModelId === model.id ? '1px solid #fbbf24' : '1px solid #334155',
+                                        cursor: 'pointer'
+                                    }}
+                                    onClick={() => setSelectedPlacedModelId(model.id)}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                                        <span style={{ color: '#f1f5f9', fontWeight: 'bold', fontSize: '13px' }}>{model.name}</span>
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDelete3DModel(model.id);
+                                            }}
+                                            style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '12px', cursor: 'pointer' }}
+                                        >
+                                            حذف
+                                        </button>
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                                        Lat: {model.latitude.toFixed(5)}, Lng: {model.longitude.toFixed(5)}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    
+                    {/* Edit Selected Placed Model Form */}
+                    {selectedPlacedModelId && (() => {
+                        const model = map3DModels.find(m => m.id === selectedPlacedModelId);
+                        if (!model) return null;
+                        return (
+                            <div style={{ marginTop: '20px', padding: '15px', borderRadius: '8px', backgroundColor: '#0f172a', border: '1px solid #334155' }}>
+                                <h4 style={{ margin: '0 0 15px 0', color: '#fbbf24', fontSize: '13px' }}>تعديل خصائص المجسم: {model.name}</h4>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                        <div>
+                                            <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>خط العرض (Lat)</label>
+                                            <input 
+                                                type="number" step="any" style={{ width: '100%', padding: '6px', backgroundColor: '#1e293b', border: '1px solid #334155', color: '#f1f5f9', borderRadius: '4px', boxSizing: 'border-box' }}
+                                                value={model.latitude}
+                                                onChange={(e) => handleUpdateModelField(model.id, 'latitude', parseFloat(e.target.value) || 0)}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>خط الطول (Lng)</label>
+                                            <input 
+                                                type="number" step="any" style={{ width: '100%', padding: '6px', backgroundColor: '#1e293b', border: '1px solid #334155', color: '#f1f5f9', borderRadius: '4px', boxSizing: 'border-box' }}
+                                                value={model.longitude}
+                                                onChange={(e) => handleUpdateModelField(model.id, 'longitude', parseFloat(e.target.value) || 0)}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                        <div>
+                                            <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>الارتفاع (Alt)</label>
+                                            <input 
+                                                type="number" step="any" style={{ width: '100%', padding: '6px', backgroundColor: '#1e293b', border: '1px solid #334155', color: '#f1f5f9', borderRadius: '4px', boxSizing: 'border-box' }}
+                                                value={model.altitude}
+                                                onChange={(e) => handleUpdateModelField(model.id, 'altitude', parseFloat(e.target.value) || 0)}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>الحجم (Scale)</label>
+                                            <input 
+                                                type="number" step="any" style={{ width: '100%', padding: '6px', backgroundColor: '#1e293b', border: '1px solid #334155', color: '#f1f5f9', borderRadius: '4px', boxSizing: 'border-box' }}
+                                                value={model.scale}
+                                                onChange={(e) => handleUpdateModelField(model.id, 'scale', parseFloat(e.target.value) || 1)}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '5px' }}>
+                                        <div>
+                                            <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>تدوير X</label>
+                                            <input 
+                                                type="number" style={{ width: '100%', padding: '6px', backgroundColor: '#1e293b', border: '1px solid #334155', color: '#f1f5f9', borderRadius: '4px', boxSizing: 'border-box' }}
+                                                value={model.rotation_x}
+                                                onChange={(e) => handleUpdateModelField(model.id, 'rotation_x', parseFloat(e.target.value) || 0)}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>تدوير Y</label>
+                                            <input 
+                                                type="number" style={{ width: '100%', padding: '6px', backgroundColor: '#1e293b', border: '1px solid #334155', color: '#f1f5f9', borderRadius: '4px', boxSizing: 'border-box' }}
+                                                value={model.rotation_y}
+                                                onChange={(e) => handleUpdateModelField(model.id, 'rotation_y', parseFloat(e.target.value) || 0)}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>تدوير Z</label>
+                                            <input 
+                                                type="number" style={{ width: '100%', padding: '6px', backgroundColor: '#1e293b', border: '1px solid #334155', color: '#f1f5f9', borderRadius: '4px', boxSizing: 'border-box' }}
+                                                value={model.rotation_z}
+                                                onChange={(e) => handleUpdateModelField(model.id, 'rotation_z', parseFloat(e.target.value) || 0)}
+                                            />
+                                        </div>
+                                    </div>
+                                    <button 
+                                        className="post-submit-btn" 
+                                        style={{ width: '100%', padding: '8px', marginTop: '5px', backgroundColor: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+                                        onClick={() => handleSaveChanges3DModel(model)}
+                                    >
+                                        حفظ إحداثيات المجسم 💾
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })()}
+                </div>
+            )}
+
+            {/* Modal: Upload 3D Model */}
+            {showUploadModelModal && (
+                <div className="ic-modal-backdrop" style={{ zIndex: 9999 }} onClick={() => setShowUploadModelModal(false)}>
+                    <div className="ic-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="ic-modal-header" style={{ color: '#fbbf24', fontSize: '18px', fontWeight: 'bold' }}>رفع مجسم ثلاثي الأبعاد جديد</div>
+                        <div className="ic-form-group" style={{ marginBottom: '15px' }}>
+                            <label style={{ color: '#94a3b8', display: 'block', marginBottom: '5px' }}>اسم المجسم (مثل: عمود كهرباء، أنبوب مياه)</label>
+                            <input 
+                                type="text" 
+                                className="ic-text-input" 
+                                value={newModelName} 
+                                onChange={(e) => setNewModelName(e.target.value)}
+                                placeholder="مثال: عمود إنارة رئيسي"
+                            />
+                        </div>
+                        <div className="ic-form-group" style={{ marginBottom: '20px' }}>
+                            <label style={{ color: '#94a3b8', display: 'block', marginBottom: '5px' }}>ملف المجسم (صيغة .glb أو .gltf)</label>
+                            <input 
+                                type="file" 
+                                accept=".glb,.gltf"
+                                onChange={(e) => setNewModelFile(e.target.files[0])}
+                                style={{ color: '#f1f5f9' }}
+                            />
+                        </div>
+                        <div className="ic-modal-footer">
+                            <button className="ic-btn" onClick={() => setShowUploadModelModal(false)}>إلغاء</button>
+                            <button className="ic-btn ic-btn-primary" style={{ backgroundColor: '#fbbf24', color: '#0f172a' }} onClick={handleUpload3DModel}>رفع وحفظ 📤</button>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {showFitnessModal && (

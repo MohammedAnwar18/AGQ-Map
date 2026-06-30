@@ -939,5 +939,27 @@ export const indoorControlService = {
     }
 };
 
+// ── خدمات المجسمات ثلاثية الأبعاد على الخريطة 3D Map Models ──────────────────
+export const map3DService = {
+    getModels: async () => {
+        const response = await api.get('/map-3d-models');
+        return response.data;
+    },
+    uploadModel: async (formData) => {
+        const response = await api.post('/map-3d-models', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    },
+    updateModel: async (id, modelData) => {
+        const response = await api.put(`/map-3d-models/${id}`, modelData);
+        return response.data;
+    },
+    deleteModel: async (id) => {
+        const response = await api.delete(`/map-3d-models/${id}`);
+        return response.data;
+    }
+};
+
 export default api;
 

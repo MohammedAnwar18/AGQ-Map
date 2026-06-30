@@ -36,7 +36,11 @@ export default function IndoorControl({ user, onClose }) {
     const [buildingLat, setBuildingLat] = useState('');
     const [buildingLng, setBuildingLng] = useState('');
 
+    const [showGridLines, setShowGridLines] = useState(true);
+
     const floorMeshRef = useRef(null);
+    const gridHelperRef = useRef(null);
+    const fineGridRef = useRef(null);
     const selectedBuilding = useMemo(() => buildings.find(b => b.id === Number(selectedBuildingId)), [buildings, selectedBuildingId]);
 
     // CAD Data States (Partitioned by floor in rendering)
@@ -452,12 +456,14 @@ export default function IndoorControl({ user, onClose }) {
         const gridHelper = new THREE.GridHelper(50, 50, 0x94a3b8, 0xe2e8f0);
         gridHelper.position.y = -0.01;
         scene.add(gridHelper);
+        gridHelperRef.current = gridHelper;
 
         const fineGrid = new THREE.GridHelper(50, 100, 0xcbd5e1, 0xf1f5f9);
         fineGrid.position.y = -0.015;
         fineGrid.material.opacity = 0.35;
         fineGrid.material.transparent = true;
         scene.add(fineGrid);
+        fineGridRef.current = fineGrid;
 
         const floorGeo = new THREE.PlaneGeometry(100, 100);
         const floorMat = new THREE.MeshStandardMaterial({
@@ -592,6 +598,12 @@ export default function IndoorControl({ user, onClose }) {
             alert('❌ فشل في تحديث الموقع الجغرافي');
         }
     };
+
+    // Dynamically show/hide grid lines
+    useEffect(() => {
+        if (gridHelperRef.current) gridHelperRef.current.visible = showGridLines;
+        if (fineGridRef.current) fineGridRef.current.visible = showGridLines;
+    }, [showGridLines]);
 
     // ── 3. Materials System Shaders ──────────────────────────────────────────
     const getMaterialPreset = (type, colorCode) => {
@@ -2145,6 +2157,30 @@ export default function IndoorControl({ user, onClose }) {
                                 <span className="ic-tool-icon">🔗</span>
                                 <span className="ic-tool-text">توصيل مسار</span>
                             </button>
+                        </div>
+
+                        <div className="ic-divider"></div>
+
+                        <div className="ic-section-title">إعدادات محاذاة العناصر (Snapping)</div>
+                        <div className="ic-settings-list" style={{ marginBottom: '15px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#1e293b', fontWeight: '500' }}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={gridSnapping} 
+                                        onChange={(e) => setGridSnapping(e.target.checked)}
+                                    />
+                                    الشبكة المغناطيسية (التصاق العناصر)
+                                </label>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#1e293b', fontWeight: '500' }}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={showGridLines} 
+                                        onChange={(e) => setShowGridLines(e.target.checked)}
+                                    />
+                                    إظهار خطوط شبكة الأرضية
+                                </label>
+                            </div>
                         </div>
 
                         <div className="ic-divider"></div>

@@ -179,6 +179,21 @@ const pool = require('./config/database');
             )
         `);
         await pool.query(`
+            CREATE TABLE IF NOT EXISTS map_3d_models (
+                id             SERIAL PRIMARY KEY,
+                name           VARCHAR(255) NOT NULL,
+                model_url      TEXT NOT NULL,
+                latitude       DOUBLE PRECISION NOT NULL,
+                longitude      DOUBLE PRECISION NOT NULL,
+                altitude       DOUBLE PRECISION DEFAULT 0,
+                scale          DOUBLE PRECISION DEFAULT 1,
+                rotation_x     DOUBLE PRECISION DEFAULT 0,
+                rotation_y     DOUBLE PRECISION DEFAULT 0,
+                rotation_z     DOUBLE PRECISION DEFAULT 0,
+                created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        await pool.query(`
             CREATE TABLE IF NOT EXISTS indoor_tasks (
                 id             SERIAL PRIMARY KEY,
                 description    TEXT NOT NULL,
@@ -429,6 +444,7 @@ app.use('/api/tours', require('./routes/tours'));
 app.use('/api/fitness', require('./routes/fitness'));
 app.use('/api/study-space', require('./routes/studySpace'));
 app.use('/api/indoor-control', require('./routes/indoorControl'));
+app.use('/api/map-3d-models', require('./routes/map3D'));
 
 
 
