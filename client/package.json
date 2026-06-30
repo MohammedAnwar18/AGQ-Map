@@ -36,7 +36,8 @@
         "react-webcam": "^7.2.0",
         "shpjs": "^6.2.0",
         "socket.io-client": "^4.6.1",
-        "three": "^0.182.0"
+        "three": "^0.182.0",
+        "threebox-plugin": "^2.2.7"
     },
     "devDependencies": {
         "@capacitor/cli": "^8.3.4",

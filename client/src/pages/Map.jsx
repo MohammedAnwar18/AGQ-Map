@@ -4,6 +4,7 @@ import Map, { Marker, Popup, NavigationControl, Source, Layer } from 'react-map-
 import maplibregl from 'maplibre-gl';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { Threebox } from 'threebox-plugin';
 import { map3DService } from '../services/api';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import axios from 'axios';
@@ -1054,110 +1055,65 @@ const MapComponent = () => {
         // Re-add 3D buildings layer when style changes
         map.on('styledata', add3DBuildingsLayer);
 
-        // ── 3D Models Custom Three.js Layer ──────────────────────────────────
-        const tbModelsScene = new THREE.Scene();
-        
-        const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
-        tbModelsScene.add(ambientLight);
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
-        dirLight.position.set(1, 1, 1).normalize();
-        tbModelsScene.add(dirLight);
-        const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight2.position.set(-1, -1, 1).normalize();
-        tbModelsScene.add(dirLight2);
+        // ── 3D Models via Threebox ────────────────────────────────────────────
+        const loadedThreeboxModels = new Map();
 
-        const loadedMeshesMap = new Map();
-
-        const customLayer = {
-            id: '3d-models-layer',
-            type: 'custom',
-            renderingMode: '3d',
-            onAdd: function (mapInstance, gl) {
-                this.renderer = new THREE.WebGLRenderer({
-                    canvas: mapInstance.getCanvas(),
-                    context: gl,
-                    antialias: true
-                });
-                this.renderer.autoClear = false;
-                this.camera = new THREE.PerspectiveCamera();
-                this.camera.matrixAutoUpdate = false;
-            },
-            render: function (gl, matrix) {
-                const models = map3DModelsRef.current || [];
-                if (models.length === 0) return;
-
-                models.forEach(model => {
-                    let modelGroup = loadedMeshesMap.get(model.id);
-                    if (!modelGroup) {
-                        modelGroup = new THREE.Group();
-                        loadedMeshesMap.set(model.id, modelGroup);
-                        tbModelsScene.add(modelGroup);
-
-                        const loader = new GLTFLoader();
-                        const url = model.model_url;
-
-                        if (url && url.startsWith('data:')) {
-                            try {
-                                const base64Marker = ';base64,';
-                                const b64 = url.substring(url.indexOf(base64Marker) + base64Marker.length);
-                                const raw = window.atob(b64);
-                                const arr = new Uint8Array(raw.length);
-                                for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
-                                loader.parse(arr.buffer, '', (gltf) => {
-                                    modelGroup.add(gltf.scene);
-                                    map.triggerRepaint();
-                                }, (err) => console.error('Base64 parse error:', err));
-                            } catch (e) { console.error('Base64 decode failed:', e); }
-                        } else {
-                            loader.load(getModelUrl(url), (gltf) => {
-                                modelGroup.add(gltf.scene);
-                                map.triggerRepaint();
-                            }, undefined, (err) => console.error('Load error:', err));
-                        }
-                    }
-
-                    // ✅ الطريقة الرسمية الصحيحة من MapLibre + Three.js
-                    const origin = maplibregl.MercatorCoordinate.fromLngLat(
-                        [parseFloat(model.longitude), parseFloat(model.latitude)],
-                        parseFloat(model.altitude) || 0
-                    );
-                    const mScale = origin.meterInMercatorCoordinate() * (parseFloat(model.scale) || 1);
-                    const rx = (parseFloat(model.rotation_x) || 0) * Math.PI / 180;
-                    const ry = (parseFloat(model.rotation_y) || 0) * Math.PI / 180;
-                    const rz = (parseFloat(model.rotation_z) || 0) * Math.PI / 180;
-
-                    // مصفوفة MapLibre × مصفوفة المجسم المحلية
-                    const m = new THREE.Matrix4().fromArray(matrix);
-                    const l = new THREE.Matrix4()
-                        .makeTranslation(origin.x, origin.y, origin.z)
-                        .scale(new THREE.Vector3(mScale, -mScale, mScale))
-                        .multiply(new THREE.Matrix4().makeRotationX(rx))
-                        .multiply(new THREE.Matrix4().makeRotationY(ry))
-                        .multiply(new THREE.Matrix4().makeRotationZ(rz));
-
-                    this.camera.projectionMatrix = m.multiply(l);
-
-                    tbModelsScene.children.forEach(child => {
-                        if (child instanceof THREE.Group) child.visible = (child === modelGroup);
-                    });
-
-                    this.renderer.resetState();
-                    this.renderer.render(tbModelsScene, this.camera);
-                });
-
-                map.triggerRepaint();
-            }
-
-        };
+        const tb = (window.tb = new Threebox(map, map.getCanvas().getContext('webgl'), {
+            defaultLights: true
+        }));
 
         const add3DModelsLayer = () => {
-            if (!map.getLayer('3d-models-layer')) {
-                map.addLayer(customLayer);
-            }
+            if (map.getLayer('3d-models-layer')) return;
+
+            map.addLayer({
+                id: '3d-models-layer',
+                type: 'custom',
+                renderingMode: '3d',
+                onAdd: function () {
+                    const models = map3DModelsRef.current || [];
+                    models.forEach(model => {
+                        const lng = parseFloat(model.longitude);
+                        const lat = parseFloat(model.latitude);
+                        const alt = parseFloat(model.altitude) || 0;
+                        const scale = parseFloat(model.scale) || 1;
+                        const url = model.model_url;
+
+                        if (!url) return;
+
+                        const loadUrl = url.startsWith('data:') ? url : getModelUrl(url);
+
+                        const options = {
+                            type: 'gltf',
+                            obj: loadUrl,
+                            scale: { x: scale, y: scale, z: scale },
+                            units: 'meters',
+                            rotation: {
+                                x: parseFloat(model.rotation_x) || 0,
+                                y: parseFloat(model.rotation_y) || 0,
+                                z: parseFloat(model.rotation_z) || 0
+                            },
+                            anchor: 'bottom'
+                        };
+
+                        tb.loadObj(options, (object) => {
+                            object.setCoords([lng, lat, alt]);
+                            tb.add(object);
+                            loadedThreeboxModels.set(model.id, object);
+                            console.log(`✅ Threebox: loaded model "${model.name}" at [${lng}, ${lat}]`);
+                        });
+                    });
+                },
+                render: function () {
+                    tb.update();
+                }
+            });
         };
 
         add3DModelsLayer();
-        map.on('styledata', add3DModelsLayer);
+        map.on('styledata', () => {
+            loadedThreeboxModels.clear();
+            add3DModelsLayer();
+        });
     };
     // --- Dynamic Map Style ---
     useEffect(() => {
