@@ -1082,10 +1082,17 @@ const MapComponent = () => {
                         loadedMeshesMap.set(model.id, modelGroup);
                         
                         const loader = new GLTFLoader();
+                        console.log(`⏳ Starting to load 3D model "${model.name}" from URL/Data...`);
                         loader.load(getImageUrl(model.model_url), (gltf) => {
+                            console.log(`✅ Successfully loaded 3D model "${model.name}":`, gltf);
                             modelGroup.add(gltf.scene);
-                        }, undefined, (err) => {
-                            console.error('Error loading glTF model:', err);
+                            map.triggerRepaint(); // Trigger repaint immediately after load
+                        }, (xhr) => {
+                            if (xhr.total > 0) {
+                                console.log(`Loading "${model.name}": ${(xhr.loaded / xhr.total * 100).toFixed(1)}%`);
+                            }
+                        }, (err) => {
+                            console.error(`❌ Error loading 3D model "${model.name}":`, err);
                         });
                         tbModelsScene.add(modelGroup);
                     }
