@@ -1077,7 +1077,7 @@ const MapComponent = () => {
                         loadedMeshesMap.set(model.id, modelGroup);
                         
                         const loader = new GLTFLoader();
-                        loader.load(model.model_url, (gltf) => {
+                        loader.load(getImageUrl(model.model_url), (gltf) => {
                             modelGroup.add(gltf.scene);
                         }, undefined, (err) => {
                             console.error('Error loading glTF model:', err);
