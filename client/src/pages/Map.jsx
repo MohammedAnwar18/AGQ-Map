@@ -3857,7 +3857,23 @@ const MapComponent = () => {
 
             {/* 3D Infrastructure Panel */}
             {show3DPanel && (
-                <div className="historical-timeline-panel" style={{ width: '340px', maxHeight: '80vh', overflowY: 'auto', zIndex: 10, display: 'flex', flexDirection: 'column' }}>
+                <div style={{ 
+                    position: 'absolute', 
+                    top: '80px', 
+                    right: '20px', 
+                    width: '340px', 
+                    maxHeight: '75vh', 
+                    overflowY: 'auto', 
+                    zIndex: 2000, 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid #fbbf24',
+                    borderRadius: '12px',
+                    padding: '20px',
+                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4)'
+                }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                         <h3 style={{ margin: 0, color: '#fbbf24', fontSize: '18px', fontWeight: 'bold' }}>بنية تحتية ومجسمات 3D</h3>
                         <button 
@@ -3869,14 +3885,13 @@ const MapComponent = () => {
                     </div>
                     
                     <button 
-                        className="post-submit-btn" 
                         style={{ width: '100%', padding: '10px', marginBottom: '15px', backgroundColor: '#fbbf24', color: '#0f172a', fontWeight: 'bold', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
                         onClick={() => setShowUploadModelModal(true)}
                     >
                         رفع مجسم 3D جديد (.glb) 📤
                     </button>
                     
-                    <div className="ic-divider" style={{ margin: '15px 0', borderTop: '1px solid #334155' }}></div>
+                    <div style={{ margin: '15px 0', borderTop: '1px solid #334155' }}></div>
                     
                     <h4 style={{ margin: '0 0 10px 0', color: '#f1f5f9', fontSize: '14px' }}>المجسمات المضافة على الخريطة ({map3DModels.length})</h4>
                     
@@ -3987,7 +4002,6 @@ const MapComponent = () => {
                                         </div>
                                     </div>
                                     <button 
-                                        className="post-submit-btn" 
                                         style={{ width: '100%', padding: '8px', marginTop: '5px', backgroundColor: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
                                         onClick={() => handleSaveChanges3DModel(model)}
                                     >
@@ -4002,31 +4016,50 @@ const MapComponent = () => {
 
             {/* Modal: Upload 3D Model */}
             {showUploadModelModal && (
-                <div className="ic-modal-backdrop" style={{ zIndex: 9999 }} onClick={() => setShowUploadModelModal(false)}>
-                    <div className="ic-modal" onClick={(e) => e.stopPropagation()}>
-                        <div className="ic-modal-header" style={{ color: '#fbbf24', fontSize: '18px', fontWeight: 'bold' }}>رفع مجسم ثلاثي الأبعاد جديد</div>
-                        <div className="ic-form-group" style={{ marginBottom: '15px' }}>
-                            <label style={{ color: '#94a3b8', display: 'block', marginBottom: '5px' }}>اسم المجسم (مثل: عمود كهرباء، أنبوب مياه)</label>
+                <div style={{ 
+                    position: 'fixed', 
+                    top: 0, 
+                    left: 0, 
+                    width: '100vw', 
+                    height: '100vh', 
+                    backgroundColor: 'rgba(0, 0, 0, 0.75)', 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    alignItems: 'center', 
+                    zIndex: 99999 
+                }} onClick={() => setShowUploadModelModal(false)}>
+                    <div style={{ 
+                        backgroundColor: '#0f172a', 
+                        border: '1px solid #fbbf24', 
+                        borderRadius: '12px', 
+                        padding: '25px', 
+                        width: '400px', 
+                        maxWidth: '90%',
+                        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+                    }} onClick={(e) => e.stopPropagation()}>
+                        <div style={{ color: '#fbbf24', fontSize: '18px', fontWeight: 'bold', marginBottom: '20px', textAlign: 'center' }}>رفع مجسم ثلاثي الأبعاد جديد</div>
+                        <div style={{ marginBottom: '15px' }}>
+                            <label style={{ color: '#94a3b8', display: 'block', marginBottom: '8px', fontSize: '13px' }}>اسم المجسم (مثل: عمود كهرباء، أنبوب مياه)</label>
                             <input 
                                 type="text" 
-                                className="ic-text-input" 
+                                style={{ width: '100%', padding: '10px', backgroundColor: '#1e293b', border: '1px solid #334155', color: '#f1f5f9', borderRadius: '8px', boxSizing: 'border-box' }}
                                 value={newModelName} 
                                 onChange={(e) => setNewModelName(e.target.value)}
                                 placeholder="مثال: عمود إنارة رئيسي"
                             />
                         </div>
-                        <div className="ic-form-group" style={{ marginBottom: '20px' }}>
-                            <label style={{ color: '#94a3b8', display: 'block', marginBottom: '5px' }}>ملف المجسم (صيغة .glb أو .gltf)</label>
+                        <div style={{ marginBottom: '25px' }}>
+                            <label style={{ color: '#94a3b8', display: 'block', marginBottom: '8px', fontSize: '13px' }}>ملف المجسم (صيغة .glb أو .gltf)</label>
                             <input 
                                 type="file" 
                                 accept=".glb,.gltf"
                                 onChange={(e) => setNewModelFile(e.target.files[0])}
-                                style={{ color: '#f1f5f9' }}
+                                style={{ color: '#f1f5f9', width: '100%' }}
                             />
                         </div>
-                        <div className="ic-modal-footer">
-                            <button className="ic-btn" onClick={() => setShowUploadModelModal(false)}>إلغاء</button>
-                            <button className="ic-btn ic-btn-primary" style={{ backgroundColor: '#fbbf24', color: '#0f172a' }} onClick={handleUpload3DModel}>رفع وحفظ 📤</button>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                            <button style={{ padding: '8px 16px', backgroundColor: '#334155', color: '#f1f5f9', border: 'none', borderRadius: '8px', cursor: 'pointer' }} onClick={() => setShowUploadModelModal(false)}>إلغاء</button>
+                            <button style={{ padding: '8px 16px', backgroundColor: '#fbbf24', color: '#0f172a', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }} onClick={handleUpload3DModel}>رفع وحفظ 📤</button>
                         </div>
                     </div>
                 </div>
