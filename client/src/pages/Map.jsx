@@ -970,6 +970,16 @@ const MapComponent = () => {
     }, [routePath]);
 
     // Detect first label layer for professional "integrated" route placement beneath labels
+    const getModelUrl = (url) => {
+        if (!url) return '';
+        if (url.startsWith('data:')) return url;
+        if (!url.startsWith('http')) {
+            return getImageUrl(url);
+        }
+        const baseUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL : 'http://localhost:5000/api';
+        return `${baseUrl}/map-3d-models/proxy?url=${encodeURIComponent(url)}`;
+    };
+
     const onMapLoad = (e) => {
         const map = e.target;
         const layers = map.getStyle().layers;
@@ -1113,8 +1123,8 @@ const MapComponent = () => {
                                 console.error('Failed to decode Base64 data URL:', e);
                             }
                         } else {
-                            console.log(`⏳ Loading 3D model "${model.name}" from URL:`, getImageUrl(url));
-                            loader.load(getImageUrl(url), (gltf) => {
+                            console.log(`⏳ Loading 3D model "${model.name}" from URL:`, getModelUrl(url));
+                            loader.load(getModelUrl(url), (gltf) => {
                                 console.log(`✅ Successfully loaded 3D model "${model.name}":`, gltf);
                                 modelGroup.add(gltf.scene);
                                 map.triggerRepaint();

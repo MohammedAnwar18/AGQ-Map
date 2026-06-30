@@ -17,4 +17,7 @@ router.put('/:id', authenticateToken, ctrl.updateModel);
 // Delete a 3D model
 router.delete('/:id', authenticateToken, ctrl.deleteModel);
 
+// Proxy endpoint to bypass CORS
+router.get('/proxy', ctrl.proxyModel);
+
 module.exports = router;

@@ -112,3 +112,29 @@ exports.deleteModel = async (req, res) => {
         res.status(500).json({ error: 'فشل في حذف المجسم ثلاثي الأبعاد' });
     }
 };
+
+const axios = require('axios');
+exports.proxyModel = async (req, res) => {
+    try {
+        const { url } = req.query;
+        if (!url) {
+            return res.status(400).json({ error: 'مطلوب رابط المجسم' });
+        }
+
+        const response = await axios({
+            method: 'get',
+            url: url,
+            responseType: 'stream'
+        });
+
+        res.setHeader('Content-Type', response.headers['content-type'] || 'application/octet-stream');
+        if (response.headers['content-length']) {
+            res.setHeader('Content-Length', response.headers['content-length']);
+        }
+
+        response.data.pipe(res);
+    } catch (err) {
+        console.error('Proxy error:', err.message);
+        res.status(500).json({ error: 'فشل في جلب ملف المجسم عبر البروكسي' });
+    }
+};
