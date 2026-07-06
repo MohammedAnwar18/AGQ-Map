@@ -113,7 +113,7 @@
 /* --- THE GOLDEN ROSE WAX SEAL --- */
 .seal-action-button {
     position: absolute;
-    top: 50%;
+    top: 45%;
     left: 50%;
     transform: translate(-50%, -50%);
     z-index: 1005;
@@ -133,7 +133,7 @@
 /* Cover Welcome Text (top) */
 .cover-welcome-text {
     position: absolute;
-    top: max(60px, 8dvh);
+    top: max(100px, 14dvh);
     left: 0;
     right: 0;
     text-align: center;
@@ -169,7 +169,7 @@
 /* Cover Date Text (bottom) */
 .cover-date-text {
     position: absolute;
-    bottom: max(160px, 24dvh);
+    bottom: max(200px, 28dvh);
     left: 0;
     right: 0;
     text-align: center;
