@@ -1,10 +1,10 @@
-/* Walid & Sheikha Premium Wedding Invitation Styles */
+/* Enas's Graduation Interactive Scrapbook & Envelope Styles */
 @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Cinzel:wght@300;400;600&family=Aref+Ruqaa:wght@400;700&family=Reem+Kufi:wght@400;700&display=swap');
 
 .wedding-invite-page {
     width: 100vw;
-    height: 100dvh; /* Dynamic viewport height to prevent mobile bar overflow */
-    height: 100vh;  /* Fallback */
+    height: 100dvh;
+    height: 100vh; /* Fallback */
     margin: 0;
     padding: 0;
     overflow: hidden;
@@ -26,7 +26,7 @@
     background-image: url('/images/garden-bokeh.jpg');
     background-size: cover;
     background-position: center;
-    filter: blur(10px) brightness(0.45);
+    filter: blur(10px) brightness(0.4);
     z-index: 1;
 }
 
@@ -68,7 +68,7 @@
     pointer-events: none;
 }
 
-/* Split Doors of Envelope with seamless full-screen background image */
+/* Split Doors of Envelope with new R2 embossed background (NO FLOWERS) */
 .envelope-half-door {
     width: 50%;
     height: 100%;
@@ -79,7 +79,7 @@
     justify-content: center;
     align-items: center;
     box-shadow: 0 0 35px rgba(0,0,0,0.45);
-    background-image: url("https://pub-6e55680fed9e448b82ffe80f9d92b020.r2.dev/uploads/e3797a6a-fc6d-47eb-9037-b4a358b95fc5.jpg");
+    background-image: url("https://pub-6e55680fed9e448b82ffe80f9d92b020.r2.dev/uploads/6e6f2dad-f860-45c7-b637-43e0ed056a50.png");
     background-repeat: no-repeat;
 }
 
@@ -87,14 +87,14 @@
     transform: translateX(0);
     background-size: 100vw 100vh;
     background-position: left center;
-    border-right: 1px solid rgba(229, 222, 201, 0.5);
+    border-right: 1px solid rgba(229, 222, 201, 0.4);
 }
 
 .door-right {
     transform: translateX(0);
     background-size: 100vw 100vh;
     background-position: right center;
-    border-left: 1px solid rgba(229, 222, 201, 0.5);
+    border-left: 1px solid rgba(229, 222, 201, 0.4);
 }
 
 /* Slide Open Transitions */
@@ -106,39 +106,7 @@
     transform: translateX(100%);
 }
 
-
-/* Exclusive Invitation Text on closed envelope */
-.exclusive-text {
-    position: absolute;
-    width: 180%;
-    font-family: 'Cinzel', serif;
-    font-size: 1.2rem;
-    font-weight: 400;
-    color: #8c764b;
-    text-align: center;
-    letter-spacing: 2px;
-    z-index: 10;
-}
-
-.door-left .exclusive-text {
-    left: 15px;
-    text-align: left;
-}
-
-.door-right .exclusive-text {
-    right: 15px;
-    text-align: right;
-}
-
-.text-top {
-    top: 25%;
-}
-
-.text-bottom {
-    bottom: 25%;
-}
-
-/* --- THE NEW GOLDEN ROSE WAX SEAL IMAGE --- */
+/* --- THE GOLDEN ROSE WAX SEAL --- */
 .seal-action-button {
     position: absolute;
     top: 50%;
@@ -164,7 +132,7 @@
     background-size: cover;
     background-position: center;
     border-radius: 50%;
-    filter: drop-shadow(0 8px 20px rgba(0,0,0,0.5));
+    filter: drop-shadow(0 8px 20px rgba(0,0,0,0.55));
     animation: sealHoverPulse 2s infinite alternate;
 }
 
@@ -178,36 +146,37 @@
 .seal-open-instruction {
     margin-top: 15px;
     color: #8c764b;
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     font-weight: bold;
     font-family: 'Aref+Ruqaa', serif;
-    text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+    text-shadow: 0 1px 2px rgba(255,255,255,0.9);
     animation: sealTextPulse 1.5s infinite;
 }
 
-/* --- THE REVEALED WEDDING CARD --- */
+/* --- THE REVEALED CARD CONTAINER --- */
 .revealed-wedding-card {
     width: 100%;
     height: 100%;
     box-sizing: border-box;
-    padding: 40px 30px; /* Safe padding */
-    background: #fbf8f3;
+    padding: 30px 20px;
+    background: #fdfbf7;
+    background-image: radial-gradient(circle at center, #ffffff 0%, #f7f5ed 100%);
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: center;
     position: relative;
     opacity: 0;
     transform: scale(0.96);
     transition: all 1s ease 0.4s;
     overflow-y: auto;
-    -webkit-overflow-scrolling: touch; /* Smooth iOS momentum scroll */
+    -webkit-overflow-scrolling: touch;
     z-index: 5;
 }
 
 @media (max-width: 480px) {
     .revealed-wedding-card {
-        padding: 50px 15px 40px 15px; /* Extra padding on top to prevent mobile status bar overlap */
+        padding: 55px 15px 40px 15px; /* Prevent upper notch overlap */
     }
 }
 
@@ -218,97 +187,216 @@
 
 .card-inner-frame {
     width: 100%;
-    max-width: 500px;
-    min-height: 520px; /* Ensures minimum room and enables scrolling */
-    border: 2px double #d4af37;
+    max-width: 480px;
+    border: 2px double #e0d0b0;
     box-sizing: border-box;
-    padding: 20px 15px;
+    padding: 24px 16px;
     display: flex;
     flex-direction: column;
-    justify-content: space-around; /* Better vertical space distribution */
     align-items: center;
     position: relative;
 }
 
-
-/* Dry Flowers top/bottom arrangements */
-.floral-header-decor, .floral-footer-decor {
+/* 2. GRADUATE GIRL IMAGE STYLE */
+.graduate-girl-container {
     width: 100%;
-    height: 90px;
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    opacity: 0.95;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
 }
 
-.floral-header-decor {
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100" fill="none"><path d="M100,50 Q200,80 300,50 Q200,20 100,50" fill="%23f7e5e9" opacity="0.4"/><circle cx="200" cy="50" r="18" fill="%23d8a7b1" opacity="0.8"/><circle cx="175" cy="55" r="12" fill="%23b0c2b4" opacity="0.6"/><circle cx="225" cy="45" r="14" fill="%23f6e3c5" opacity="0.7"/><path d="M150,55 Q200,30 250,55" stroke="%238c764b" stroke-width="1.5" stroke-dasharray="2,2"/><circle cx="160" cy="45" r="5" fill="%23d8a7b1"/><circle cx="240" cy="55" r="6" fill="%23f6e3c5"/></svg>');
+.graduate-girl-img {
+    width: 85%;
+    max-width: 250px;
+    height: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 8px 16px rgba(0,0,0,0.18));
+    border-radius: 12px;
 }
 
-.floral-footer-decor {
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100" fill="none"><path d="M100,50 Q200,80 300,50 Q200,20 100,50" fill="%23f7e5e9" opacity="0.4"/><circle cx="200" cy="50" r="18" fill="%23d8a7b1" opacity="0.8"/><circle cx="175" cy="45" r="14" fill="%23f6e3c5" opacity="0.7"/><circle cx="225" cy="55" r="12" fill="%23b0c2b4" opacity="0.6"/><path d="M150,45 Q200,70 250,45" stroke="%238c764b" stroke-width="1.5" stroke-dasharray="2,2"/><circle cx="160" cy="55" r="6" fill="%23f6e3c5"/><circle cx="240" cy="45" r="5" fill="%23d8a7b1"/></svg>');
-}
-
-/* Wedding Calligraphy Names */
-.names-calligraphy {
-    font-family: 'Aref+Ruqaa', 'Amiri', serif;
-    font-size: 3.2rem;
-    font-weight: bold;
-    margin: 10px 0;
+/* Calligraphy/Title */
+.names-calligraphy.enas-title {
+    font-family: 'Cinzel', serif;
+    font-size: 2.2rem;
+    font-weight: 600;
+    letter-spacing: 2px;
+    color: #1e1e24;
+    margin: 5px 0 10px 0;
     text-align: center;
-    background: linear-gradient(135deg, #a8782a 0%, #604212 50%, #b8860b 100%);
+    background: linear-gradient(135deg, #1e1e24 0%, #4a4a5a 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.15));
 }
 
-@media (max-width: 480px) {
-    .names-calligraphy {
-        font-size: 2.8rem;
-    }
-}
-
-.event-sub-message {
-    font-size: 1.25rem;
-    color: #4a4a4a;
-    margin-bottom: 10px;
-    font-weight: 500;
+.event-sub-message.graduation-sub {
+    font-family: 'Aref+Ruqaa', serif;
+    font-size: 1.35rem;
+    color: #8c764b;
+    margin-bottom: 20px;
+    font-weight: bold;
+    text-align: center;
 }
 
 .divider-line {
-    width: 60px;
+    width: 80%;
     height: 1px;
-    background: #d4af37;
-    margin: 5px 0;
+    background: #e0d0b0;
+    margin: 15px 0 25px 0;
     position: relative;
 }
 
 .divider-line::after {
-    content: '⚜';
+    content: '🎓';
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: #fbf8f3;
-    padding: 0 6px;
-    color: #d4af37;
-    font-size: 0.8rem;
+    background: #fdfbf7;
+    padding: 0 10px;
+    font-size: 1.1rem;
 }
 
-.event-date {
-    font-family: 'Reem+Kufi', serif;
-    font-size: 1.35rem;
-    color: #2b2b2b;
+/* --- INTERACTIVE MEMORIES ALBUM GRID --- */
+.album-interactive-section {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Camera button */
+.album-action-button {
+    background: linear-gradient(135deg, #b86f7c 0%, #9e5b67 100%);
+    border: none;
+    color: white;
+    padding: 14px 28px;
+    border-radius: 30px;
+    font-size: 1.1rem;
     font-weight: bold;
-    margin-top: 10px;
-    text-align: center;
-    line-height: 1.5;
+    font-family: 'Aref+Ruqaa', serif;
+    cursor: pointer;
+    box-shadow: 0 6px 15px rgba(158, 91, 103, 0.4);
+    transition: all 0.3s ease;
+    margin-bottom: 30px;
+    animation: btnPulse 2s infinite alternate;
 }
 
-.website-link {
-    margin-top: 15px;
-    font-family: 'Cinzel', serif;
+.album-action-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(158, 91, 103, 0.55);
+}
+
+.album-action-button:disabled {
+    background: #ccc;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+@keyframes btnPulse {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.03); }
+}
+
+/* Polaroid Grid (Scrapbook Look) */
+.polaroid-gallery-grid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* 2 columns on mobile for grid density */
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+@media (max-width: 360px) {
+    .polaroid-gallery-grid {
+        grid-template-columns: 1fr; /* Single column on tiny screens */
+    }
+}
+
+.gallery-status-msg {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: #888;
+    font-size: 0.95rem;
+    padding: 20px 0;
+    font-style: italic;
+}
+
+.gallery-status-msg.empty-msg {
+    font-family: 'Aref+Ruqaa', serif;
+    font-size: 1.1rem;
+    color: #8c764b;
+}
+
+/* Polaroid styled photo cards */
+.polaroid-card {
+    background: #ffffff;
+    padding: 10px 10px 14px 10px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    border: 1px solid #f0ebe0;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.polaroid-card:hover {
+    transform: scale(1.03) rotate(2deg);
+    box-shadow: 0 12px 25px rgba(0,0,0,0.15);
+}
+
+/* Slight rotational variance for realistic scrapbook look */
+.polaroid-card:nth-child(even) {
+    transform: rotate(1.5deg);
+}
+
+.polaroid-card:nth-child(odd) {
+    transform: rotate(-1.5deg);
+}
+
+.polaroid-image-wrapper {
+    width: 100%;
+    aspect-ratio: 1 / 1; /* Square photo window */
+    overflow: hidden;
+    background: #eee;
+    border: 1px solid #e5dec9;
+}
+
+.polaroid-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.polaroid-caption {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+}
+
+.uploader-badge {
+    font-family: 'Aref+Ruqaa', serif;
     font-size: 0.9rem;
+    color: #2c2c2c;
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+}
+
+.photo-time {
+    font-size: 0.75rem;
+    color: #999;
+}
+
+/* Branding footer */
+.website-link {
+    margin-top: 20px;
+    font-family: 'Cinzel', serif;
+    font-size: 0.85rem;
     color: #8c764b;
     letter-spacing: 1px;
     text-decoration: none;
@@ -316,11 +404,11 @@
     padding-bottom: 3px;
 }
 
-/* Re-seal helper (allows admin to test animation again) */
+/* Re-seal helper */
 .re-seal-btn {
     position: absolute;
-    bottom: 20px;
-    left: 20px;
+    bottom: 15px;
+    left: 15px;
     background: none;
     border: none;
     color: #999;
@@ -330,18 +418,142 @@
     transition: opacity 0.3s;
     z-index: 100;
 }
-
 .re-seal-btn:hover {
     opacity: 1;
+}
+
+/* --- NAME MODAL --- */
+.name-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    z-index: 2000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.name-modal-content {
+    background: #ffffff;
+    width: 100%;
+    max-width: 360px;
+    border-radius: 16px;
+    padding: 24px;
+    box-sizing: border-box;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+    direction: rtl;
+}
+
+.name-modal-content h3 {
+    margin-top: 0;
+    font-family: 'Aref+Ruqaa', serif;
+    font-size: 1.3rem;
+    color: #1e1e24;
+}
+
+.name-modal-content p {
+    font-size: 0.9rem;
+    color: #666;
+    line-height: 1.4;
+    margin-bottom: 20px;
+}
+
+.name-modal-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px 16px;
+    border: 1px solid #dcd5c5;
+    border-radius: 8px;
+    font-size: 1rem;
+    outline: none;
+    margin-bottom: 24px;
+    transition: border 0.3s;
+}
+
+.name-modal-input:focus {
+    border-color: #9e5b67;
+}
+
+.name-modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.modal-btn-cancel, .modal-btn-submit {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    font-family: 'Aref+Ruqaa', serif;
+    font-size: 1rem;
+}
+
+.modal-btn-cancel {
+    background: #f0ebe0;
+    color: #555;
+}
+
+.modal-btn-submit {
+    background: #9e5b67;
+    color: white;
+}
+
+/* --- LIGHTBOX --- */
+.lightbox-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.9);
+    z-index: 3000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.lightbox-image {
+    max-width: 95%;
+    max-height: 85%;
+    object-fit: contain;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    border-radius: 4px;
+}
+
+.lightbox-close {
+    position: absolute;
+    top: 20px;
+    right: 25px;
+    color: #fff;
+    font-size: 35px;
+    font-weight: bold;
+    cursor: pointer;
 }
 
 /* Animations */
 @keyframes sealHoverPulse {
     0% { transform: scale(1); filter: drop-shadow(0 5px 10px rgba(0,0,0,0.35)); }
-    100% { transform: scale(1.04); filter: drop-shadow(0 12px 25px rgba(0,0,0,0.5)); }
+    100% { transform: scale(1.04); filter: drop-shadow(0 12px 25px rgba(0,0,0,0.55)); }
 }
 
 @keyframes sealTextPulse {
     0% { opacity: 0.6; }
     100% { opacity: 1; }
+}
+
+.spinner-icon {
+    display: inline-block;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }

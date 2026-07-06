@@ -989,5 +989,21 @@ export const digitalLettersService = {
     }
 };
 
+export const eventPhotosService = {
+    getPhotos: async (slug = 'enas-graduation') => {
+        const response = await api.get(`/events/photos/${slug}`);
+        return response.data;
+    },
+    uploadPhoto: async (formData) => {
+        const response = await api.post(`/events/upload`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+        return response.data;
+    }
+};
+
 export default api;
+
 
