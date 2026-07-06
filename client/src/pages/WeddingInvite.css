@@ -12,7 +12,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    background-color: #0b0c10;
+    background-color: #fdfbf7;
 }
 
 /* 1. EMBOSSED PAPER PAGE BACKGROUND */
@@ -23,7 +23,9 @@
     left: 0;
     right: 0;
     bottom: 0;
+    background-color: #fdfbf7;
     background-image: url("https://pub-6e55680fed9e448b82ffe80f9d92b020.r2.dev/uploads/6e6f2dad-f860-45c7-b637-43e0ed056a50.png");
+
     background-size: cover;
     background-position: center;
     z-index: 1;
@@ -79,7 +81,8 @@
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    box-shadow: 0 0 35px rgba(0,0,0,0.45);
+    box-shadow: 0 0 20px rgba(0,0,0,0.12);
+    background-color: #fdfbf7;
     background-image: url("https://pub-6e55680fed9e448b82ffe80f9d92b020.r2.dev/uploads/6e6f2dad-f860-45c7-b637-43e0ed056a50.png");
     background-repeat: no-repeat;
 }
