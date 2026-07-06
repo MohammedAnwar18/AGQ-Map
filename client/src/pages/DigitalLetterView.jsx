@@ -9,7 +9,7 @@ const DigitalLetterView = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isOpen, setIsOpen] = useState(false);
-    const [showModal, setShowModal] = useState(false);
+    const [envelopeRemoved, setEnvelopeRemoved] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
     
     const audioRef = useRef(null);
@@ -38,7 +38,7 @@ const DigitalLetterView = () => {
         }
     }, [slug]);
 
-    // Handle envelope click/opening
+    // Handle envelope opening
     const handleOpenEnvelope = () => {
         if (isOpen) return;
         
@@ -51,9 +51,9 @@ const DigitalLetterView = () => {
                 .catch(err => console.log('Audio autoplay blocked or failed:', err));
         }
 
-        // Show the detailed card modal after envelope animations finish (~1.2s)
+        // Hide envelope element after split transition finishes (1.2s)
         setTimeout(() => {
-            setShowModal(true);
+            setEnvelopeRemoved(true);
         }, 1200);
     };
 
@@ -94,7 +94,7 @@ const DigitalLetterView = () => {
         );
     }
 
-    // Determine seal character/symbol based on seal design name
+    // Determine seal symbol based on design
     const getSealEmblem = (design) => {
         switch (design) {
             case 'heart-wax': return '❤';
@@ -106,6 +106,21 @@ const DigitalLetterView = () => {
                 return '✉';
         }
     };
+
+    // Split title by words to display on left and right flaps
+    const getSplitTitle = (fullTitle) => {
+        const words = (fullTitle || 'دعوة خاصة').split(' ');
+        if (words.length === 1) {
+            return { left: words[0], right: '' };
+        }
+        const mid = Math.ceil(words.length / 2);
+        return {
+            left: words.slice(0, mid).join(' '),
+            right: words.slice(mid).join(' ')
+        };
+    };
+
+    const splitTitle = getSplitTitle(letter.title);
 
     return (
         <div className="digital-letter-page">
@@ -125,92 +140,87 @@ const DigitalLetterView = () => {
                 </>
             )}
 
-            {/* Envelope Container */}
-            <div 
-                className={`envelope-container ${isOpen ? 'open' : ''}`} 
-                onClick={handleOpenEnvelope}
-            >
-                <div className={`envelope theme-${letter.envelope_color || 'maroon'}`}>
-                    {/* Top Flap */}
-                    <div className="envelope-flap"></div>
-
-                    {/* Pocket base (inside) */}
-                    <div className="envelope-pocket"></div>
-
-                    {/* Wax Seal */}
-                    <div className="wax-seal">
-                        <span className="wax-seal-emblem">
-                            {getSealEmblem(letter.seal_design)}
-                        </span>
+            {/* 1. FULL-SCREEN GATEFOLD ENVELOPE */}
+            {!envelopeRemoved && (
+                <div 
+                    className={`fullscreen-envelope-overlay theme-${letter.envelope_color || 'maroon'} ${isOpen ? 'open-envelope' : ''}`}
+                    onClick={handleOpenEnvelope}
+                >
+                    {/* Left Screen Half */}
+                    <div className="envelope-screen-half envelope-half-left">
+                        <div className="envelope-title-cover">{splitTitle.left}</div>
                     </div>
 
-                    {/* Card preview that slides up */}
-                    <div className="invitation-card">
-                        <div className="card-inner-border">
-                            <span className="card-header-ornament">⚜</span>
-                            <h3 className="card-title">{letter.title}</h3>
-                            {letter.sender_name && <p className="card-sender">من: {letter.sender_name}</p>}
-                            {letter.recipient_name && <p className="card-recipient">إلى: {letter.recipient_name}</p>}
-                            {letter.content && <p className="card-content-preview">{letter.content}</p>}
-                        </div>
+                    {/* Right Screen Half */}
+                    <div className="envelope-screen-half envelope-half-right">
+                        <div className="envelope-title-cover">{splitTitle.right}</div>
                     </div>
 
-                    {!isOpen && (
-                        <div className="click-hint">
-                            ✨ اضغط على الختم لفتح الرسالة ✨
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Fullscreen Invitation Card Overlay */}
-            {showModal && (
-                <div className="card-backdrop-overlay" onClick={() => setShowModal(false)}>
-                    <div className="fullscreen-invitation-card" onClick={(e) => e.stopPropagation()}>
-                        <div className="fs-card-inner">
-                            <span className="fs-ornament-top">⚜</span>
-                            
-                            <h2 className="fs-title">{letter.title}</h2>
-                            
-                            {letter.sender_name && (
-                                <p className="fs-sender">{letter.sender_name}</p>
-                            )}
-
-                            <div className="fs-divider"></div>
-
-                            {letter.recipient_name && (
-                                <span className="fs-recipient">إلى السيد/ة: {letter.recipient_name} المحترم/ة</span>
-                            )}
-
-                            {letter.image_url && (
-                                <img 
-                                    src={getImageUrl(letter.image_url)} 
-                                    alt="Invitation Visual" 
-                                    className="fs-card-image"
-                                />
-                            )}
-
-                            {letter.content && (
-                                <p className="fs-content">{letter.content}</p>
-                            )}
-
-                            <button 
-                                className="fs-close-btn" 
-                                onClick={() => {
-                                    setShowModal(false);
-                                    setIsOpen(false); // Reset to allow opening again
-                                }}
-                            >
-                                إغلاق الرسالة ✉
-                            </button>
-
-                            <div className="fs-powered-by">
-                                منصة بالنوفا المكانية • PalNovaa
+                    {/* Central Wax Seal */}
+                    <div className="wax-seal-split-button">
+                        {letter.seal_design === 'rose-wax' ? (
+                            <div 
+                                className="wax-seal-circle rose-wax-design"
+                                style={{ backgroundImage: 'url("/images/rose-seal.png")' }}
+                            ></div>
+                        ) : (
+                            <div className="wax-seal-circle">
+                                <span className="wax-seal-icon">
+                                    {getSealEmblem(letter.seal_design)}
+                                </span>
                             </div>
-                        </div>
+                        )}
+                        <span className="wax-seal-pulse-text">انقر لفتح الدعوة 🌹</span>
                     </div>
                 </div>
             )}
+
+            {/* 2. REVEALED PARCHMENT LETTER */}
+            <div className="revealed-letter-backdrop">
+                <div className="detailed-invitation-parchment">
+                    <div className="parchment-inner">
+                        <span className="parchment-header-ornament">⚜</span>
+                        
+                        <h2 className="parchment-title">{letter.title}</h2>
+                        
+                        {letter.sender_name && (
+                            <p className="parchment-sender">{letter.sender_name}</p>
+                        )}
+
+                        <div className="parchment-divider"></div>
+
+                        {letter.recipient_name && (
+                            <span className="parchment-recipient">إلى السيد/ة: {letter.recipient_name} المحترم/ة</span>
+                        )}
+
+                        {letter.image_url && (
+                            <img 
+                                src={getImageUrl(letter.image_url)} 
+                                alt="Invitation Visual" 
+                                className="parchment-image"
+                            />
+                        )}
+
+                        {letter.content && (
+                            <p className="parchment-content">{letter.content}</p>
+                        )}
+
+                        <button 
+                            className="parchment-close-btn" 
+                            onClick={() => {
+                                setIsOpen(false);
+                                setEnvelopeRemoved(false); // Bring back envelope to allow viewing again
+                            }}
+                        >
+                            إغلاق الرسالة ✉
+                        </button>
+
+                        <div className="parchment-powered">
+                            منصة بالنوفا المكانية • PalNovaa
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };

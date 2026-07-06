@@ -1,5 +1,5 @@
-/* 3D Digital Letter & Envelope Styles - PalNovaa Premium */
-@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Cinzel:wght@400;700&family=Reem+Kufi:wght@400;700&family=Great+Vibes&display=swap');
+/* 3D Full-Screen Split Gatefold Envelope Styles - PalNovaa Premium */
+@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Cinzel:wght@400;700&family=Aref+Ruqaa:wght@400;700&family=Reem+Kufi:wght@400;700&family=Great+Vibes&display=swap');
 
 .digital-letter-page {
     min-height: 100vh;
@@ -8,18 +8,18 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow-x: hidden;
+    overflow: hidden;
     position: relative;
-    font-family: 'Amiri', 'Segoe UI', serif;
+    font-family: 'Amiri', serif;
     direction: rtl;
 }
 
 /* Audio control button */
 .letter-audio-control {
     position: absolute;
-    top: 20px;
-    left: 20px;
-    z-index: 100;
+    top: 25px;
+    left: 25px;
+    z-index: 10100;
 }
 
 .audio-toggle-btn {
@@ -27,14 +27,14 @@
     backdrop-filter: blur(8px);
     border: 1px solid rgba(255, 255, 255, 0.2);
     color: white;
-    width: 45px;
-    height: 45px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.2rem;
+    font-size: 1.3rem;
     transition: all 0.3s ease;
     box-shadow: 0 4px 15px rgba(0,0,0,0.3);
 }
@@ -44,306 +44,233 @@
     transform: scale(1.1);
 }
 
-/* Envelope Container */
-.envelope-container {
-    position: relative;
-    width: 450px;
-    height: 320px;
-    perspective: 1500px;
-    cursor: pointer;
-    transition: transform 0.5s ease;
-}
-
-@media (max-width: 500px) {
-    .envelope-container {
-        width: 90vw;
-        height: calc(90vw * 0.71);
-    }
-}
-
-.envelope-container:hover {
-    transform: translateY(-5px);
-}
-
-/* The Envelope Wrapper */
-.envelope {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    background-color: #7b1113; /* Fallback maroon */
-    border-radius: 6px;
-    box-shadow: 0 15px 35px rgba(0,0,0,0.5);
-    transform-style: preserve-3d;
-}
-
-/* Envelope Color Themes */
-.envelope.theme-maroon {
-    background: linear-gradient(135deg, #6b0f1a 0%, #3e060e 100%);
-    border: 1px solid #8c202f;
-}
-.envelope.theme-navy {
-    background: linear-gradient(135deg, #0f1c3f 0%, #060c1e 100%);
-    border: 1px solid #1c2e61;
-}
-.envelope.theme-forest-green {
-    background: linear-gradient(135deg, #0d3c26 0%, #051a10 100%);
-    border: 1px solid #165638;
-}
-.envelope.theme-warm-cream {
-    background: linear-gradient(135deg, #dfd3c3 0%, #c7b198 100%);
-    border: 1px solid #ebe3d5;
-}
-.envelope.theme-royal-gold {
-    background: linear-gradient(135deg, #a77927 0%, #5d4210 100%);
-    border: 1px solid #c59b27;
-}
-
-/* Envelope parts */
-.envelope-flap {
-    position: absolute;
+/* --- FULL-SCREEN SPLIT ENVELOPE (GATEFOLD) --- */
+.fullscreen-envelope-overlay {
+    position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 0;
-    border-left: 225px solid transparent;
-    border-right: 225px solid transparent;
-    border-top: 160px solid #7b1113; /* Dynamic based on color via classes */
-    transform-origin: top;
-    transition: transform 0.6s ease-in-out;
-    z-index: 4;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999;
+    display: flex;
+    overflow: hidden;
+    pointer-events: auto;
+    transition: visibility 0.8s;
 }
 
-@media (max-width: 500px) {
-    .envelope-flap {
-        border-left-width: 45vw;
-        border-right-width: 45vw;
-        border-top-width: 32vw;
-    }
+.fullscreen-envelope-overlay.hide-envelope {
+    visibility: hidden;
+    pointer-events: none;
 }
 
-/* Color overrides for the flap border-top-color */
-.theme-maroon .envelope-flap { border-top-color: #6b0f1a; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2)); }
-.theme-navy .envelope-flap { border-top-color: #0f1c3f; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2)); }
-.theme-forest-green .envelope-flap { border-top-color: #0d3c26; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2)); }
-.theme-warm-cream .envelope-flap { border-top-color: #dfd3c3; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1)); }
-.theme-royal-gold .envelope-flap { border-top-color: #a77927; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2)); }
+/* Left & Right Halves */
+.envelope-screen-half {
+    width: 50vw;
+    height: 100vh;
+    position: relative;
+    transition: transform 1.2s cubic-bezier(0.77, 0, 0.175, 1);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    box-shadow: 0 0 40px rgba(0,0,0,0.6);
+}
 
-.envelope-pocket {
+.envelope-half-left {
+    transform: translateX(0);
+}
+
+.envelope-half-right {
+    transform: translateX(0);
+}
+
+/* Slide Open animation triggers */
+.fullscreen-envelope-overlay.open-envelope .envelope-half-left {
+    transform: translateX(-100%);
+}
+
+.fullscreen-envelope-overlay.open-envelope .envelope-half-right {
+    transform: translateX(100%);
+}
+
+/* --- COLOR THEME PRESETS FOR ENVELOPE HALVES --- */
+
+/* 1. Maroon (أحمر داكن) */
+.theme-maroon .envelope-screen-half {
+    background: linear-gradient(135deg, #5b0a12 0%, #300308 100%);
+    border-color: #801018;
+}
+.theme-maroon .envelope-half-left { border-right: 2px solid #801018; }
+.theme-maroon .envelope-half-right { border-left: 2px solid #801018; }
+.theme-maroon .envelope-screen-half::before {
+    content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    border-top: 15px solid #d4af37; border-bottom: 15px solid #d4af37;
+    border-left: 8px solid #d4af37; border-right: 8px solid #d4af37;
+    box-sizing: border-box; opacity: 0.6;
+}
+
+/* 2. Navy (أزرق ملكي) */
+.theme-navy .envelope-screen-half {
+    background: linear-gradient(135deg, #0f1c3f 0%, #060c1e 100%);
+    border-color: #1c2e61;
+}
+.theme-navy .envelope-half-left { border-right: 2px solid #1c2e61; }
+.theme-navy .envelope-half-right { border-left: 2px solid #1c2e61; }
+.theme-navy .envelope-screen-half::before {
+    content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    border-top: 15px solid #d4af37; border-bottom: 15px solid #d4af37;
+    border-left: 8px solid #d4af37; border-right: 8px solid #d4af37;
+    box-sizing: border-box; opacity: 0.6;
+}
+
+/* 3. Forest Green (أخضر زمردي) */
+.theme-forest-green .envelope-screen-half {
+    background: linear-gradient(135deg, #0d3c26 0%, #051a10 100%);
+    border-color: #165638;
+}
+.theme-forest-green .envelope-half-left { border-right: 2px solid #165638; }
+.theme-forest-green .envelope-half-right { border-left: 2px solid #165638; }
+.theme-forest-green .envelope-screen-half::before {
+    content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    border-top: 15px solid #ffd700; border-bottom: 15px solid #ffd700;
+    border-left: 8px solid #ffd700; border-right: 8px solid #ffd700;
+    box-sizing: border-box; opacity: 0.55;
+}
+
+/* 4. Warm Cream (بيج دافئ عتيق) */
+.theme-warm-cream .envelope-screen-half {
+    background: linear-gradient(135deg, #f6f5f0 0%, #ebe8df 100%);
+    border-color: #dcd9ce;
+}
+.theme-warm-cream .envelope-half-left { border-right: 2px solid #d4af37; }
+.theme-warm-cream .envelope-half-right { border-left: 2px solid #d4af37; }
+.theme-warm-cream .envelope-screen-half::before {
+    content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    border-top: 15px solid #d4af37; border-bottom: 15px solid #d4af37;
+    border-left: 8px solid #d4af37; border-right: 8px solid #d4af37;
+    box-sizing: border-box; opacity: 0.7;
+}
+
+/* 5. Royal Gold (ذهبي ملكي) */
+.theme-royal-gold .envelope-screen-half {
+    background: linear-gradient(135deg, #855f1c 0%, #46310b 100%);
+    border-color: #a77927;
+}
+.theme-royal-gold .envelope-half-left { border-right: 2px solid #a77927; }
+.theme-royal-gold .envelope-half-right { border-left: 2px solid #a77927; }
+.theme-royal-gold .envelope-screen-half::before {
+    content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    border-top: 15px solid #ffd700; border-bottom: 15px solid #ffd700;
+    border-left: 8px solid #ffd700; border-right: 8px solid #ffd700;
+    box-sizing: border-box; opacity: 0.65;
+}
+
+/* Cover Text details */
+.envelope-title-cover {
     position: absolute;
-    bottom: 0;
-    left: 0;
+    bottom: 120px;
+    font-family: 'Aref+Ruqaa', serif;
+    font-size: 2.5rem;
     width: 100%;
-    height: 100%;
-    background: transparent;
-    z-index: 3;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }
 
-.envelope-pocket::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 0;
-    border-left: 225px solid transparent;
-    border-right: 225px solid transparent;
-    border-bottom: 160px solid rgba(0,0,0,0.15); /* Shadow inside */
-    z-index: 2;
+.theme-warm-cream .envelope-title-cover {
+    color: #801018;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+.theme-maroon .envelope-title-cover,
+.theme-navy .envelope-title-cover,
+.theme-forest-green .envelope-title-cover,
+.theme-royal-gold .envelope-title-cover {
+    color: #ffd700;
 }
 
-.envelope-pocket::before {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 0;
-    border-left: 225px solid transparent;
-    border-right: 225px solid transparent;
-    border-bottom: 160px solid #5a0c0e; /* Base color slightly darker */
+.envelope-half-left .envelope-title-cover {
+    right: 30px;
+    text-align: left;
 }
 
-@media (max-width: 500px) {
-    .envelope-pocket::after, .envelope-pocket::before {
-        border-left-width: 45vw;
-        border-right-width: 45vw;
-        border-bottom-width: 32vw;
-    }
+.envelope-half-right .envelope-title-cover {
+    left: 30px;
+    text-align: right;
 }
 
-.theme-maroon .envelope-pocket::before { border-bottom-color: #550a12; }
-.theme-navy .envelope-pocket::before { border-bottom-color: #0b132b; }
-.theme-forest-green .envelope-pocket::before { border-bottom-color: #072215; }
-.theme-warm-cream .envelope-pocket::before { border-bottom-color: #b0a08e; }
-.theme-royal-gold .envelope-pocket::before { border-bottom-color: #855f1c; }
-
-/* The Wax Seal */
-.wax-seal {
+/* --- THE CENTRAL WAX SEAL --- */
+.wax-seal-split-button {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 70px;
-    height: 70px;
-    background: radial-gradient(circle, #e63946 0%, #9b1c26 100%);
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.wax-seal-circle {
+    width: 130px;
+    height: 130px;
     border-radius: 50%;
-    z-index: 5;
+    background: radial-gradient(circle, #e63946 0%, #9b1c26 100%);
+    border: 3px solid #801018;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.3);
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.3);
-    border: 3px solid #801018;
-    transition: all 0.5s ease;
+    animation: sealHoverPulse 2s infinite alternate;
 }
 
-.wax-seal::before {
-    content: '';
-    position: absolute;
-    width: 54px;
-    height: 54px;
-    border: 2px dashed rgba(255,255,255,0.25);
-    border-radius: 50%;
+/* Seal icon details */
+.wax-seal-icon {
+    font-size: 3.5rem;
+    color: #ffd700;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
 }
 
-.wax-seal-emblem {
-    font-size: 1.8rem;
-    color: #ffd700; /* Gold */
-    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.4));
-    animation: sealPulse 2s infinite alternate;
+/* Rose wax seal image style overrides if selected */
+.wax-seal-circle.rose-wax-design {
+    background: none;
+    border: none;
+    box-shadow: none;
+    width: 140px;
+    height: 140px;
+    background-size: cover;
+    background-position: center;
 }
 
-/* Wax seal theme overrides */
-.theme-warm-cream .wax-seal {
+/* Gold seal colors for specific themes */
+.theme-warm-cream .wax-seal-circle:not(.rose-wax-design),
+.theme-royal-gold .wax-seal-circle:not(.rose-wax-design) {
     background: radial-gradient(circle, #b8860b 0%, #7d5c07 100%);
     border-color: #614704;
 }
-.theme-royal-gold .wax-seal {
-    background: radial-gradient(circle, #9b1c26 0%, #60070e 100%);
-    border-color: #400308;
-}
 
-/* Click hint pulse text */
-.click-hint {
-    position: absolute;
-    bottom: -40px;
-    left: 50%;
-    transform: translateX(-50%);
+.wax-seal-pulse-text {
+    margin-top: 15px;
     color: #ffd700;
-    font-size: 1.1rem;
-    white-space: nowrap;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-    animation: hintPulse 1.5s infinite;
-    pointer-events: none;
-    font-weight: bold;
-}
-
-/* Invitation Card (Digital Letter) inside */
-.invitation-card {
-    position: absolute;
-    top: 15px;
-    left: 20px;
-    width: 410px;
-    height: 290px;
-    background: #fbf8f3; /* Premium parchment color */
-    border-radius: 4px;
-    z-index: 2;
-    padding: 20px;
-    box-sizing: border-box;
-    border: 2px solid #e6dfd3;
-    box-shadow: inset 0 0 20px rgba(0,0,0,0.05);
-    transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    transform: translateY(0);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    color: #2b2b2b;
-}
-
-@media (max-width: 500px) {
-    .invitation-card {
-        width: calc(90vw - 20px);
-        height: calc(90vw * 0.71 - 20px);
-        left: 10px;
-        top: 10px;
-        padding: 10px;
-    }
-}
-
-.card-inner-border {
-    width: 100%;
-    height: 100%;
-    border: 1px solid #d4af37; /* Gold border outline */
-    padding: 15px;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-}
-
-.card-header-ornament {
     font-size: 1.2rem;
-    color: #d4af37;
-    margin-bottom: 5px;
-}
-
-.card-title {
-    font-family: 'Reem+Kufi', serif;
-    font-size: 1.6rem;
-    color: #801018;
-    margin: 5px 0;
     font-weight: bold;
-    text-align: center;
+    font-family: 'Aref+Ruqaa', serif;
+    text-shadow: 0 2px 5px rgba(0,0,0,0.9);
+    animation: sealTextPulse 1.5s infinite;
 }
 
-.card-sender {
-    font-size: 1.1rem;
-    font-style: italic;
-    color: #666;
-    margin-bottom: 8px;
+.theme-warm-cream .wax-seal-pulse-text {
+    color: #5d4210;
+    text-shadow: 0 1px 2px rgba(255,255,255,0.8);
 }
 
-.card-recipient {
-    font-size: 1.15rem;
-    font-weight: bold;
-    color: #3e3e3e;
-    border-bottom: 1px dashed #d4af37;
-    padding-bottom: 5px;
-    margin-bottom: 10px;
-    text-align: center;
-}
-
-.card-content-preview {
-    font-size: 0.95rem;
-    line-height: 1.5;
-    text-align: center;
-    color: #4a4a4a;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-/* OPEN ENVELOPE STATES */
-.envelope-container.open .envelope-flap {
-    transform: rotateX(180deg);
-    z-index: 1; /* Behind the card once flipped */
-}
-
-.envelope-container.open .wax-seal {
+/* Animation disappears on open */
+.fullscreen-envelope-overlay.open-envelope .wax-seal-split-button {
     transform: translate(-50%, -50%) scale(0);
     opacity: 0;
+    pointer-events: none;
 }
 
-/* Once envelope is opened, the card slides up and scales in full screen */
-.envelope-container.open .invitation-card {
-    /* Slide out of the envelope and become a full size overlay card */
-    z-index: 10;
-}
-
-/* Full Screen Card Modal Backdrop */
-.card-backdrop-overlay {
+/* --- THE FULL DETAILED CARD OVERLAY VIEW --- */
+.revealed-letter-backdrop {
     position: fixed;
     top: 0;
     left: 0;
@@ -355,10 +282,19 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    animation: fadeIn 0.5s ease forwards;
+    opacity: 0;
+    transform: scale(0.95);
+    pointer-events: none;
+    transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.fullscreen-invitation-card {
+.fullscreen-envelope-overlay.open-envelope + .revealed-letter-backdrop {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+}
+
+.detailed-invitation-parchment {
     width: 650px;
     max-width: 90vw;
     height: auto;
@@ -370,48 +306,42 @@
     position: relative;
     padding: 30px;
     box-sizing: border-box;
-    animation: slideCardIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
     overflow-y: auto;
-    direction: rtl;
 }
 
-/* Premium Card Content styling inside modal */
-.fs-card-inner {
+.detailed-invitation-parchment::-webkit-scrollbar {
+    width: 6px;
+}
+.detailed-invitation-parchment::-webkit-scrollbar-thumb {
+    background: #d4af37;
+    border-radius: 4px;
+}
+
+.parchment-inner {
     border: 2px double #d4af37;
     padding: 25px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    min-height: 400px;
     position: relative;
 }
 
-/* Beautiful old scroll styling */
-.fs-card-inner::-webkit-scrollbar {
-    width: 6px;
-}
-.fs-card-inner::-webkit-scrollbar-thumb {
-    background: #d4af37;
-    border-radius: 4px;
-}
-
-.fs-ornament-top {
+.parchment-header-ornament {
     font-size: 2.2rem;
     color: #d4af37;
     margin-bottom: 10px;
 }
 
-.fs-title {
+.parchment-title {
     font-family: 'Reem+Kufi', serif;
     font-size: 2.5rem;
     color: #801018;
     margin: 10px 0;
     font-weight: 800;
-    text-shadow: 1px 1px 1px rgba(0,0,0,0.1);
     text-align: center;
 }
 
-.fs-sender {
+.parchment-sender {
     font-family: 'Great Vibes', cursive, 'Amiri';
     font-size: 1.8rem;
     color: #c59b27;
@@ -419,7 +349,7 @@
     text-align: center;
 }
 
-.fs-divider {
+.parchment-divider {
     width: 80px;
     height: 1px;
     background: #d4af37;
@@ -427,7 +357,7 @@
     position: relative;
 }
 
-.fs-divider::after {
+.parchment-divider::after {
     content: '⚜';
     position: absolute;
     top: 50%;
@@ -439,7 +369,7 @@
     font-size: 0.9rem;
 }
 
-.fs-recipient {
+.parchment-recipient {
     font-size: 1.5rem;
     font-weight: bold;
     color: #2b2b2b;
@@ -447,20 +377,9 @@
     border-bottom: 2px dotted #d4af37;
     padding-bottom: 8px;
     text-align: center;
-    display: inline-block;
 }
 
-.fs-content {
-    font-size: 1.3rem;
-    line-height: 1.8;
-    text-align: center;
-    color: #3e3e3e;
-    white-space: pre-line; /* Keeps paragraphs intact */
-    margin-bottom: 30px;
-    max-width: 95%;
-}
-
-.fs-card-image {
+.parchment-image {
     width: 100%;
     max-height: 350px;
     object-fit: cover;
@@ -471,17 +390,23 @@
     transition: transform 0.3s ease;
 }
 
-.fs-card-image:hover {
-    transform: scale(1.02);
+.parchment-content {
+    font-size: 1.35rem;
+    line-height: 1.8;
+    text-align: center;
+    color: #3e3e3e;
+    white-space: pre-line;
+    margin-bottom: 30px;
+    max-width: 95%;
 }
 
-.fs-close-btn {
+.parchment-close-btn {
     margin-top: 20px;
     background: linear-gradient(135deg, #a77927 0%, #855f1c 100%);
     border: 1px solid #c59b27;
     color: white;
     padding: 10px 30px;
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     font-weight: bold;
     border-radius: 20px;
     cursor: pointer;
@@ -489,57 +414,29 @@
     transition: all 0.3s ease;
 }
 
-.fs-close-btn:hover {
+.parchment-close-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(167,121,39,0.4);
 }
 
-.fs-powered-by {
+.parchment-powered {
     margin-top: 30px;
     font-size: 0.85rem;
     color: #999;
-    letter-spacing: 1px;
 }
 
 /* Animations */
-@keyframes sealPulse {
-    0% {
-        transform: scale(1);
-    }
-    100% {
-        transform: scale(1.06);
-        box-shadow: 0 4px 15px rgba(230, 57, 70, 0.6);
-    }
+@keyframes sealHoverPulse {
+    0% { transform: scale(1); filter: drop-shadow(0 5px 10px rgba(0,0,0,0.3)); }
+    100% { transform: scale(1.05); filter: drop-shadow(0 12px 25px rgba(0,0,0,0.5)); }
 }
 
-@keyframes hintPulse {
-    0% {
-        opacity: 0.6;
-        transform: translateX(-50%) translateY(0);
-    }
-    100% {
-        opacity: 1;
-        transform: translateX(-50%) translateY(-5px);
-    }
+@keyframes sealTextPulse {
+    0% { opacity: 0.6; }
+    100% { opacity: 1; }
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes slideCardIn {
-    0% {
-        opacity: 0;
-        transform: translateY(100px) scale(0.8);
-    }
-    100% {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-}
-
-/* Loading State styles */
+/* Loading Spinners */
 .letter-loading {
     display: flex;
     flex-direction: column;
@@ -570,9 +467,4 @@
     border-radius: 12px;
     border: 1px solid rgba(255,255,255,0.1);
     max-width: 400px;
-}
-
-.letter-error h3 {
-    color: #e63946;
-    margin-bottom: 10px;
 }
