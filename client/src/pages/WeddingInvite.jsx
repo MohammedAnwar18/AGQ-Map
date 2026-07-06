@@ -14,7 +14,7 @@ const getDeviceId = () => {
 };
 
 // Compress image via canvas before upload (faster network transfer)
-const compressImage = (file, maxWidth = 1200, quality = 0.82) => {
+const compressImage = (file, maxWidth = 900, quality = 0.70) => {
     return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onload = (e) => {

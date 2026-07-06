@@ -128,6 +128,19 @@ export const adminService = {
     sendNotification: async (targetUser, message) => {
         const response = await adminApi.post('/notifications/send', { targetUser, message });
         return response.data;
+    },
+
+    // Event Photos Management
+    getAllEventPhotos: async (search = '', page = 1, limit = 20) => {
+        const response = await adminApi.get('/event-photos', {
+            params: { search, page, limit }
+        });
+        return response.data;
+    },
+
+    deleteEventPhoto: async (photoId) => {
+        const response = await adminApi.delete(`/event-photos/${photoId}`);
+        return response.data;
     }
 };
 

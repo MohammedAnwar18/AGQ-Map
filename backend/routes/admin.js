@@ -19,7 +19,9 @@ const {
     toggleShopLock,
     sendAdminNotification,
     getOrganizationItems,
-    updateOrganizationItem
+    updateOrganizationItem,
+    getAllEventPhotos,
+    deleteEventPhoto
 } = require('../controllers/adminController');
 
 const upload = require('../middleware/upload');
@@ -51,6 +53,10 @@ router.patch('/shops/:shopId/lock', toggleShopLock);
 // Organization Management (Size, Zoom Controls)
 router.get('/organization-items', getOrganizationItems);
 router.put('/organization-items/:type/:id', updateOrganizationItem);
+
+// Event Photo Gallery Management
+router.get('/event-photos', getAllEventPhotos);
+router.delete('/event-photos/:photoId', deleteEventPhoto);
 
 // Admin Notifications
 router.post('/notifications/send', sendAdminNotification);

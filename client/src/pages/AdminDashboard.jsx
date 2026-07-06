@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { adminService } from '../services/adminApi';
-import { cameraService, shopService } from '../services/api';
+import { cameraService, shopService, getImageUrl } from '../services/api';
 
 import './AdminDashboard.css';
 import ARAdminPanel from './ARAdminPanel';
@@ -17,6 +17,7 @@ const AdminDashboard = () => {
     const [posts, setPosts] = useState([]);
     const [shops, setShops] = useState([]);
     const [cameras, setCameras] = useState([]);
+    const [eventPhotos, setEventPhotos] = useState([]);
     const [editingShopOrg, setEditingShopOrg] = useState(null);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -70,6 +71,10 @@ const AdminDashboard = () => {
                 const camerasData = await cameraService.getAll();
                 setCameras(camerasData || []);
                 setPagination(null);
+            } else if (activeTab === 'event-photos') {
+                const photosData = await adminService.getAllEventPhotos(searchQuery, currentPage, 16);
+                setEventPhotos(photosData.photos || []);
+                setPagination(photosData.pagination);
             } else if (activeTab === 'notifications') {
                 const usersData = await adminService.getAllUsers('', 1, 100);
                 setUsers(usersData.users);
@@ -78,6 +83,19 @@ const AdminDashboard = () => {
             console.error('Failed to load data:', error);
         } finally {
             setTimeout(() => setLoading(false), 400); // Smooth transition for premium feel
+        }
+    };
+
+    const handleDeleteEventPhoto = async (photoId) => {
+        if (window.confirm('هل أنت متأكد من حذف هذه الصورة نهائياً من ألبوم الدعوة؟')) {
+            try {
+                await adminService.deleteEventPhoto(photoId);
+                alert('تم حذف الصورة بنجاح ✅');
+                loadData();
+            } catch (error) {
+                console.error('Failed to delete event photo:', error);
+                alert('فشل في حذف الصورة');
+            }
         }
     };
 
@@ -241,6 +259,7 @@ const AdminDashboard = () => {
                         { id: 'notifications', icon: '📢', label: 'إرسال إشعارات' },
                         { id: 'ar', icon: '🕶️', label: 'إدارة الواقع المعزز' },
                         { id: 'letters', icon: '✉️', label: 'أظرف ودعوات 3D' },
+                        { id: 'event-photos', icon: '📸', label: 'صور الفعاليات/الدعوات' },
                     ].map(tab => (
                         <a
                             key={tab.id}
@@ -275,7 +294,8 @@ const AdminDashboard = () => {
                                                 activeTab === 'files' ? 'مكتبة الوسائط' :
                                                     activeTab === 'notifications' ? 'إرسال التنبيهات والبرودكاست' :
                                                         activeTab === 'ar' ? 'إدارة محتوى الواقع المعزز' : 
-                                                            activeTab === 'letters' ? 'إدارة الأظرف والدعوات الرقمية' : 'خارطة النشاط الموحدة'
+                                                            activeTab === 'letters' ? 'إدارة الأظرف والدعوات الرقمية' :
+                                                                activeTab === 'event-photos' ? 'إدارة صور ألبوم الفعاليات والدعوات' : 'خارطة النشاط الموحدة'
                         }</h2>
                         <p>مرحباً بك يا {user.full_name || user.username} • {new Date().toLocaleDateString('ar-SA', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                     </div>
@@ -1029,6 +1049,98 @@ const AdminDashboard = () => {
                 {/* Digital Letters Management */}
                 {activeTab === 'letters' && (
                     <AdminDigitalLetters />
+                )}
+
+                {/* Event Photos Management */}
+                {activeTab === 'event-photos' && (
+                    <div className="admin-content-card">
+                        <div className="content-header">
+                            <div>
+                                <h3>إدارة صور ألبوم الفعاليات والدعوات</h3>
+                                <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#94a3b8' }}>
+                                    {eventPhotos.length} صورة معروضة حالياً
+                                </p>
+                            </div>
+                            <div className="admin-search">
+                                <input
+                                    type="text"
+                                    placeholder="بحث باسم الفعالية أو الناشر..."
+                                    value={searchQuery}
+                                    onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                                />
+                                <span className="admin-search-icon">🔍</span>
+                            </div>
+                        </div>
+
+                        {loading ? (
+                            <div className="loading-container"><div className="spinner"></div></div>
+                        ) : (
+                            <>
+                                {eventPhotos.length === 0 ? (
+                                    <div className="empty-state">
+                                        <span>📸</span>
+                                        <p>لا توجد صور مرفوعة بعد أو لم يتم العثور على نتائج بحث.</p>
+                                    </div>
+                                ) : (
+                                    <div className="event-photos-grid">
+                                        {eventPhotos.map(p => (
+                                            <div key={p.id} className="event-photo-card">
+                                                <div className="event-photo-wrapper">
+                                                    <img 
+                                                        src={getImageUrl(p.image_url)} 
+                                                        alt={p.uploader || 'Event Photo'} 
+                                                        className="event-photo-img"
+                                                        onClick={() => window.open(getImageUrl(p.image_url), '_blank')}
+                                                        style={{ cursor: 'zoom-in' }}
+                                                    />
+                                                </div>
+                                                <div className="event-photo-info">
+                                                    <span className="event-photo-slug">{p.event_slug}</span>
+                                                    <div className="event-photo-meta">
+                                                        👤 <strong>الناشر:</strong> {p.uploader || 'ضيف بالنوفا'}
+                                                    </div>
+                                                    <div className="event-photo-meta" style={{ fontSize: '0.72rem', opacity: 0.7 }}>
+                                                        📅 {new Date(p.created_at).toLocaleString('ar-SA')}
+                                                    </div>
+                                                    {p.caption ? (
+                                                        <p className="event-photo-caption" title={p.caption}>
+                                                            {p.caption}
+                                                        </p>
+                                                    ) : (
+                                                        <p className="event-photo-caption" style={{ opacity: 0.3, fontStyle: 'italic' }}>
+                                                            بدون تعليق...
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <div className="event-photo-actions">
+                                                    <button 
+                                                        className="event-photo-delete-btn"
+                                                        onClick={() => handleDeleteEventPhoto(p.id)}
+                                                    >
+                                                        🗑️ حذف الصورة
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {pagination && pagination.totalPages > 1 && (
+                                    <div className="admin-pagination" style={{ marginTop: '2rem' }}>
+                                        {[...Array(pagination.totalPages)].map((_, i) => (
+                                            <button
+                                                key={i + 1}
+                                                className={currentPage === i + 1 ? 'active' : ''}
+                                                onClick={() => setCurrentPage(i + 1)}
+                                            >
+                                                {i + 1}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
                 )}
             </div>
         </div>

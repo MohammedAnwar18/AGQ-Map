@@ -615,6 +615,85 @@ const updateOrganizationItem = async (req, res) => {
     }
 };
 
+/**
+ * الحصول على جميع صور الفعاليات/الدعوات للأدمن
+ */
+const getAllEventPhotos = async (req, res) => {
+    try {
+        const { search, page = 1, limit = 20 } = req.query;
+        const offset = (page - 1) * limit;
+
+        let query = 'SELECT * FROM event_photos';
+        const params = [];
+        let paramCount = 1;
+
+        if (search) {
+            query += ` WHERE (event_slug ILIKE $${paramCount} OR uploader ILIKE $${paramCount} OR caption ILIKE $${paramCount})`;
+            params.push(`%${search}%`);
+            paramCount++;
+        }
+
+        query += ` ORDER BY created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+        params.push(parseInt(limit), parseInt(offset));
+
+        const result = await pool.query(query, params);
+
+        // Get total count
+        let countQuery = 'SELECT COUNT(*) as count FROM event_photos';
+        if (search) {
+            countQuery += ` WHERE (event_slug ILIKE $1 OR uploader ILIKE $1 OR caption ILIKE $1)`;
+        }
+        const countResult = await pool.query(countQuery, search ? [`%${search}%`] : []);
+        const total = parseInt(countResult.rows[0].count);
+
+        res.json({
+            success: true,
+            photos: result.rows,
+            pagination: {
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(total / limit)
+            }
+        });
+    } catch (error) {
+        console.error('Get all event photos error:', error);
+        res.status(500).json({ error: 'Server error fetching event photos' });
+    }
+};
+
+/**
+ * حذف صورة فعالية/دعوة من قبل الأدمن
+ */
+const deleteEventPhoto = async (req, res) => {
+    try {
+        const { photoId } = req.params;
+
+        const photoResult = await pool.query('SELECT image_url FROM event_photos WHERE id = $1', [photoId]);
+        if (photoResult.rowCount === 0) {
+            return res.status(404).json({ error: 'Photo not found' });
+        }
+
+        const imageUrl = photoResult.rows[0].image_url;
+
+        // Delete from DB first
+        await pool.query('DELETE FROM event_photos WHERE id = $1', [photoId]);
+
+        // Delete from storage (cloud or local)
+        try {
+            const { deleteFileFromCloud } = require('../utils/storage');
+            await deleteFileFromCloud(imageUrl);
+        } catch (storageErr) {
+            console.error('Failed to delete event photo from storage:', storageErr.message);
+        }
+
+        res.json({ success: true, message: 'Photo deleted successfully' });
+    } catch (error) {
+        console.error('Delete event photo error:', error);
+        res.status(500).json({ error: 'Server error deleting event photo' });
+    }
+};
+
 module.exports = {
     getDashboardStats,
     getAllUsers,
@@ -630,5 +709,7 @@ module.exports = {
     toggleShopLock,
     sendAdminNotification,
     getOrganizationItems,
-    updateOrganizationItem
+    updateOrganizationItem,
+    getAllEventPhotos,
+    deleteEventPhoto
 };
