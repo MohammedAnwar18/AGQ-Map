@@ -96,17 +96,25 @@ function App() {
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
 
+        const isCustomInvitePath = window.location.pathname === '/walid-sheikha';
+        const delay = isCustomInvitePath ? 0 : 5000;
+
         // Splash Screen Logic (Restored to original 1.8s)
         const timer = setTimeout(() => {
             const splash = document.getElementById('splash-screen');
             if (splash) {
-                splash.classList.add('fade-out');
-                document.body.classList.remove('splash-active');
-                setTimeout(() => {
+                if (isCustomInvitePath) {
                     splash.style.display = 'none';
-                }, 600);
+                    document.body.classList.remove('splash-active');
+                } else {
+                    splash.classList.add('fade-out');
+                    document.body.classList.remove('splash-active');
+                    setTimeout(() => {
+                        splash.style.display = 'none';
+                    }, 600);
+                }
             }
-        }, 5000);
+        }, delay);
 
         return () => {
             window.removeEventListener('online', handleOnline);
