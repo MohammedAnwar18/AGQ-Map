@@ -200,7 +200,7 @@ const WeddingInvite = () => {
 
                         {myPhotos.length === 0 && !uploading && (
                             <div className="gallery-status-msg empty-msg">
-                                التقط أول صورة للذكرى! ✨
+                                التقط أول صورة للذكرى ✨
                             </div>
                         )}
 
@@ -231,10 +231,6 @@ const WeddingInvite = () => {
                             </div>
                         )}
                     </div>
-
-                    <a href="https://palnovaa.com" className="website-link" target="_blank" rel="noopener noreferrer">
-                        palnovaa.com
-                    </a>
                 </div>
 
                 {isOpen && (

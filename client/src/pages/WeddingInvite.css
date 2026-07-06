@@ -1,5 +1,5 @@
 /* Enas's Graduation Interactive Scrapbook & Envelope Styles */
-@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Cinzel:wght@300;400;600&family=Aref+Ruqaa:wght@400;700&family=Reem+Kufi:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Cinzel:wght@400;600;700;800;900&family=Aref+Ruqaa:wght@400;700&family=Reem+Kufi:wght@400;700&display=swap');
 
 .wedding-invite-page {
     width: 100vw;
@@ -151,7 +151,7 @@
 .typewriter-welcome {
     font-family: 'Cinzel', serif;
     font-size: clamp(1.5rem, 6.5vw, 2.4rem);
-    font-weight: 400;
+    font-weight: 800;
     color: transparent;
     letter-spacing: clamp(2px, 0.6vw, 5px);
     display: inline-block;
@@ -169,7 +169,7 @@
 /* Cover Date Text (bottom) */
 .cover-date-text {
     position: absolute;
-    bottom: max(60px, 9dvh);
+    bottom: max(110px, 17dvh);
     left: 0;
     right: 0;
     text-align: center;
@@ -182,7 +182,7 @@
 .typewriter-date {
     font-family: 'Cinzel', serif;
     font-size: clamp(1.8rem, 8vw, 2.8rem);
-    font-weight: 700;
+    font-weight: 900;
     color: transparent;
     letter-spacing: clamp(4px, 1.2vw, 10px);
     display: inline-block;
