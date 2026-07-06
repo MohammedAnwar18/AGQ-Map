@@ -1,0 +1,558 @@
+/* Enas's Graduation Event Page & Gatefold Envelope Styles - PalNovaa Premium */
+@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Cinzel:wght@400;700&family=Aref+Ruqaa:wght@400;700&family=Reem+Kufi:wght@400;700&display=swap');
+
+.grad-event-page {
+    min-height: 100vh;
+    width: 100%;
+    background: radial-gradient(circle, #1a2238 0%, #0d121f 100%);
+    overflow-x: hidden;
+    position: relative;
+    font-family: 'Amiri', serif;
+    direction: rtl;
+    color: #f1f5f9;
+}
+
+/* --- FULLSCREEN ENVELOPE GATEFOLD SYSTEM --- */
+.gatefold-envelope-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999;
+    display: flex;
+    overflow: hidden;
+    pointer-events: auto;
+    transition: visibility 0.8s;
+}
+
+.gatefold-envelope-overlay.hide-envelope {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+/* Left & Right Envelope Screens */
+.envelope-half {
+    width: 50vw;
+    height: 100vh;
+    background-color: #f6f5f0; /* Ivory/Cream Paper color */
+    position: relative;
+    transition: transform 1.2s cubic-bezier(0.77, 0, 0.175, 1);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    box-shadow: 0 0 40px rgba(0,0,0,0.5);
+    background-image: radial-gradient(circle at center, #ffffff 0%, #f4f3eb 100%);
+}
+
+.envelope-half-left {
+    transform: translateX(0);
+    border-left: 2px solid #e1dfd5;
+}
+
+.envelope-half-right {
+    transform: translateX(0);
+    border-right: 2px solid #e1dfd5;
+}
+
+/* Left Half Inner Details */
+.envelope-half-left::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-top: 15px solid #d4af37; /* Gold foil border lines */
+    border-bottom: 15px solid #d4af37;
+    border-right: 8px solid #d4af37;
+    box-sizing: border-box;
+    opacity: 0.8;
+}
+
+/* Right Half Inner Details */
+.envelope-half-right::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    border-top: 15px solid #d4af37;
+    border-bottom: 15px solid #d4af37;
+    border-left: 8px solid #d4af37;
+    box-sizing: border-box;
+    opacity: 0.8;
+}
+
+/* Slide Open Transitions */
+.gatefold-envelope-overlay.open-envelope .envelope-half-left {
+    transform: translateX(-100%);
+}
+
+.gatefold-envelope-overlay.open-envelope .envelope-half-right {
+    transform: translateX(100%);
+}
+
+/* Wax Seal Centered (Positioned between both halves) */
+.rose-wax-seal-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.rose-wax-seal {
+    width: 140px;
+    height: 140px;
+    background-size: cover;
+    background-position: center;
+    border-radius: 50%;
+    filter: drop-shadow(0 10px 20px rgba(0,0,0,0.4));
+    transition: all 0.6s ease;
+    animation: sealHoverPulse 2s infinite alternate;
+}
+
+.rose-wax-seal-container:hover .rose-wax-seal {
+    transform: scale(1.1);
+}
+
+.rose-wax-seal-text {
+    margin-top: 15px;
+    color: #5d4210;
+    font-size: 1.25rem;
+    font-weight: bold;
+    font-family: 'Aref+Ruqaa', serif;
+    text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+    animation: sealTextPulse 1.5s infinite;
+}
+
+/* Seal breaks / vanishes when envelope splits */
+.gatefold-envelope-overlay.open-envelope .rose-wax-seal-container {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0;
+    pointer-events: none;
+}
+
+@keyframes sealHoverPulse {
+    0% { transform: scale(1); filter: drop-shadow(0 5px 10px rgba(0,0,0,0.3)); }
+    100% { transform: scale(1.04); filter: drop-shadow(0 12px 25px rgba(0,0,0,0.5)); }
+}
+
+@keyframes sealTextPulse {
+    0% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
+
+/* Congratulations cover title inside envelope */
+.envelope-cover-title {
+    position: absolute;
+    bottom: 120px;
+    font-family: 'Aref+Ruqaa', serif;
+    font-size: 2.2rem;
+    color: #801018;
+    text-align: center;
+    width: 100%;
+}
+
+.envelope-half-left .envelope-cover-title {
+    right: 20px;
+    text-align: left;
+}
+
+.envelope-half-right .envelope-cover-title {
+    left: 20px;
+    text-align: right;
+}
+
+/* --- THE MAIN GRADUATION PORTAL WORKSPACE --- */
+.grad-portal-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 30px 20px 100px 20px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 1s ease 0.6s; /* Fades in after gatefold slides away */
+}
+
+.grad-event-page.revealed .grad-portal-container {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Event Header Card */
+.grad-header-card {
+    text-align: center;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+    padding: 40px 20px;
+    margin-bottom: 40px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.grad-header-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 6px;
+    background: linear-gradient(90deg, #d4af37, #f7e089, #d4af37);
+}
+
+.grad-badge {
+    font-size: 3.5rem;
+    margin-bottom: 15px;
+    display: inline-block;
+    filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.4));
+}
+
+.grad-title {
+    font-family: 'Aref+Ruqaa', serif;
+    font-size: 2.8rem;
+    color: #ffd700;
+    margin: 10px 0;
+    font-weight: bold;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.4);
+}
+
+.grad-subtitle {
+    font-size: 1.3rem;
+    opacity: 0.8;
+    max-width: 600px;
+    margin: 10px auto;
+    line-height: 1.6;
+}
+
+/* Session setup/Name form */
+.guest-session-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 30px;
+    border: 1px dashed rgba(212, 175, 55, 0.3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.guest-session-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.guest-session-input {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 1rem;
+    outline: none;
+    width: 220px;
+    transition: all 0.3s ease;
+}
+
+.guest-session-input:focus {
+    border-color: #ffd700;
+}
+
+.guest-session-save-btn {
+    background: #ffd700;
+    color: #0d121f;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: bold;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.3s ease;
+}
+
+.guest-session-save-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+}
+
+/* Interactive Photo Grid */
+.album-section-title {
+    font-family: 'Aref+Ruqaa', serif;
+    font-size: 1.8rem;
+    color: #ffd700;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 25px;
+    margin-top: 20px;
+}
+
+/* Polaroid Premium Card Design */
+.polaroid-card {
+    background: #fdfdf9; /* Ivory polaroid style */
+    padding: 15px 15px 25px 15px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    border-radius: 4px;
+    transform: rotate(calc(var(--rotation, 0deg)));
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: 1px solid rgba(0,0,0,0.05);
+}
+
+.polaroid-card:hover {
+    transform: scale(1.05) rotate(0deg) !important;
+    z-index: 10;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+}
+
+.polaroid-image-container {
+    width: 100%;
+    aspect-ratio: 1;
+    overflow: hidden;
+    background: #e2e2e2;
+    border: 1px solid rgba(0,0,0,0.05);
+    border-radius: 2px;
+    position: relative;
+}
+
+.polaroid-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+}
+
+.polaroid-card:hover .polaroid-image {
+    transform: scale(1.08);
+}
+
+.polaroid-info {
+    margin-top: 15px;
+    text-align: center;
+    color: #2c3e50;
+    direction: rtl;
+}
+
+.polaroid-uploader {
+    font-family: 'Reem+Kufi', serif;
+    font-size: 1.1rem;
+    font-weight: bold;
+    margin-bottom: 4px;
+    color: #801018;
+}
+
+.polaroid-time {
+    font-size: 0.75rem;
+    color: #7f8c8d;
+}
+
+.polaroid-caption {
+    font-size: 0.85rem;
+    margin-top: 6px;
+    color: #34495e;
+    font-style: italic;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Floating Camera Action Button */
+.floating-camera-bar {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 999;
+}
+
+.camera-action-btn {
+    background: linear-gradient(135deg, #ffd700 0%, #c59b27 100%);
+    border: 2px solid #ffd700;
+    color: #0c111e;
+    padding: 18px 45px;
+    border-radius: 40px;
+    font-size: 1.3rem;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 10px 30px rgba(255, 215, 0, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: inherit;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.camera-action-btn:hover {
+    transform: scale(1.05) translateY(-3px);
+    box-shadow: 0 15px 35px rgba(255, 215, 0, 0.6);
+}
+
+.camera-action-btn:active {
+    transform: scale(0.98) translateY(0);
+}
+
+/* Photo Preview Modal */
+.preview-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(13, 18, 31, 0.9);
+    backdrop-filter: blur(10px);
+    z-index: 10000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.preview-modal-card {
+    background: #0f172a;
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 25px;
+    width: 450px;
+    max-width: 90vw;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.preview-image-holder {
+    width: 100%;
+    max-height: 300px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 3px solid rgba(255, 255, 255, 0.05);
+    margin-bottom: 20px;
+}
+
+.preview-image-holder img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.preview-input-group {
+    width: 100%;
+    margin-bottom: 15px;
+}
+
+.preview-input-group label {
+    display: block;
+    margin-bottom: 6px;
+    color: #94a3b8;
+    font-size: 0.9rem;
+}
+
+.preview-input-group input {
+    width: 100%;
+    padding: 10px 15px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: white;
+    border-radius: 8px;
+    font-family: inherit;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.preview-input-group input:focus {
+    border-color: #ffd700;
+}
+
+.preview-modal-actions {
+    display: flex;
+    gap: 15px;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.preview-btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    font-family: inherit;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.preview-btn-cancel {
+    background: #334155;
+    color: #f1f5f9;
+}
+
+.preview-btn-upload {
+    background: #ffd700;
+    color: #0f172a;
+}
+
+.preview-btn:hover {
+    transform: translateY(-1px);
+}
+
+/* Uploading Progress Overlay */
+.upload-loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(13, 18, 31, 0.85);
+    z-index: 10001;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Zoom Image Modal Overlay */
+.zoom-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(13, 18, 31, 0.95);
+    z-index: 10000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: zoom-out;
+}
+
+.zoom-image {
+    max-width: 95vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+    animation: zoomModalIn 0.3s ease-out;
+}
+
+@keyframes zoomModalIn {
+    from { transform: scale(0.85); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}

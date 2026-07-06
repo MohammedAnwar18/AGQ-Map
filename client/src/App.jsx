@@ -13,6 +13,7 @@ const ARView = React.lazy(() => import('./pages/ARView'));
 const ARWorkspace = React.lazy(() => import('./pages/ARWorkspace'));
 const VirtualTourMap = React.lazy(() => import('./pages/VirtualTourMap'));
 const DigitalLetterView = React.lazy(() => import('./pages/DigitalLetterView'));
+const GraduationEvent = React.lazy(() => import('./pages/GraduationEvent'));
 
 import OfflinePage from './components/OfflinePage';
 import PushNotificationManager from './components/PushNotificationManager';
@@ -122,6 +123,7 @@ function App() {
                     {/* 🌐 Public routes - completely outside AuthProvider */}
                     <Route path="/p/:slug" element={<PublishedView />} />
                     <Route path="/l/:slug" element={<DigitalLetterView />} />
+                    <Route path="/enas-graduation" element={<GraduationEvent />} />
 
                     {/* All other routes inside AuthProvider */}
                     <Route path="*" element={

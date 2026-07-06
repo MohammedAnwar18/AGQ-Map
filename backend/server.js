@@ -230,6 +230,18 @@ const pool = require('./config/database');
             )
         `);
         console.log('✅ digital_letters table ready');
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS event_photos (
+                id             SERIAL PRIMARY KEY,
+                event_slug     VARCHAR(100) DEFAULT 'enas-graduation',
+                image_url      TEXT NOT NULL,
+                caption        VARCHAR(255),
+                uploader       VARCHAR(100),
+                created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        console.log('✅ event_photos table ready');
     } catch (err) {
         console.error('⚠️ database auto-migration error:', err.message);
     }
@@ -461,6 +473,7 @@ app.use('/api/fitness', require('./routes/fitness'));
 app.use('/api/study-space', require('./routes/studySpace'));
 app.use('/api/map-3d-models', require('./routes/map3D'));
 app.use('/api/digital-letters', require('./routes/digitalLetters'));
+app.use('/api/events', require('./routes/events'));
 
 
 
