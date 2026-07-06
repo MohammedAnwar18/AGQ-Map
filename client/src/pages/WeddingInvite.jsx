@@ -232,14 +232,6 @@ const WeddingInvite = () => {
                         )}
                     </div>
                 </div>
-
-                {isOpen && (
-                    <button
-                        className="re-seal-btn"
-                        onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}
-                        title="إعادة إغلاق الظرف للتجربة"
-                    >🔄</button>
-                )}
             </div>
 
             {activeLightbox && (
