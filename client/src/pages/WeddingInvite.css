@@ -147,22 +147,14 @@
     }
 }
 
-.seal-open-instruction {
-    margin-top: 15px;
-    color: #8c764b;
-    font-size: 1.15rem;
-    font-weight: bold;
-    font-family: 'Aref+Ruqaa', serif;
-    text-shadow: 0 1px 2px rgba(255,255,255,0.9);
-    animation: sealTextPulse 1.5s infinite;
-}
+/* seal-open-instruction removed */
 
 /* --- THE REVEALED CARD CONTAINER --- */
 .revealed-wedding-card {
     width: 100%;
     height: 100%;
     box-sizing: border-box;
-    padding: 30px 20px;
+    padding: 30px 20px 60px 20px;
     background: #fdfbf7;
     background-image: radial-gradient(circle at center, #ffffff 0%, #f7f5ed 100%);
     display: flex;
@@ -173,14 +165,17 @@
     opacity: 0;
     transform: scale(0.96);
     transition: all 1s ease 0.4s;
-    overflow-y: auto;
+    overflow-y: scroll;
+    overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     z-index: 5;
+    scroll-behavior: smooth;
 }
 
 @media (max-width: 480px) {
     .revealed-wedding-card {
-        padding: 55px 15px 40px 15px; /* Prevent upper notch overlap */
+        padding: env(safe-area-inset-top, 50px) 15px 60px 15px;
+        padding-top: max(55px, env(safe-area-inset-top, 55px));
     }
 }
 
@@ -268,37 +263,58 @@
     align-items: center;
 }
 
-/* Camera button */
-.album-action-button {
-    background: linear-gradient(135deg, #b86f7c 0%, #9e5b67 100%);
-    border: none;
-    color: white;
-    padding: 14px 28px;
-    border-radius: 30px;
-    font-size: 1.1rem;
-    font-weight: bold;
-    font-family: 'Aref+Ruqaa', serif;
+/* Plus (+) Add Photo Card */
+.add-photo-card {
+    background: linear-gradient(145deg, #f5f0e8 0%, #ede7d9 100%);
+    border: 2px dashed #c4a882;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     cursor: pointer;
-    box-shadow: 0 6px 15px rgba(158, 91, 103, 0.4);
-    transition: all 0.3s ease;
-    margin-bottom: 30px;
-    animation: btnPulse 2s infinite alternate;
+    aspect-ratio: 1 / 1;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    position: relative;
+    overflow: hidden;
 }
 
-.album-action-button:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(158, 91, 103, 0.55);
+.add-photo-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(184, 111, 124, 0.08) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s;
 }
 
-.album-action-button:disabled {
-    background: #ccc;
-    box-shadow: none;
+.add-photo-card:hover::before,
+.add-photo-card:active::before {
+    opacity: 1;
+}
+
+.add-photo-card:hover {
+    border-color: #9e5b67;
+    transform: scale(1.04);
+    box-shadow: 0 8px 20px rgba(158, 91, 103, 0.18);
+}
+
+.add-photo-card.uploading {
     cursor: not-allowed;
+    opacity: 0.7;
 }
 
-@keyframes btnPulse {
-    0% { transform: scale(1); }
-    100% { transform: scale(1.03); }
+.plus-icon {
+    font-size: 3rem;
+    font-weight: 200;
+    color: #b06b78;
+    line-height: 1;
+    user-select: none;
+    transition: transform 0.2s;
+}
+
+.add-photo-card:hover .plus-icon {
+    transform: scale(1.15) rotate(90deg);
 }
 
 /* Polaroid Grid (Scrapbook Look) */
@@ -373,27 +389,19 @@
 }
 
 .polaroid-caption {
-    margin-top: 10px;
+    margin-top: 8px;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 3px;
+    gap: 2px;
 }
 
-.uploader-badge {
-    font-family: 'Aref+Ruqaa', serif;
-    font-size: 0.9rem;
-    color: #2c2c2c;
-    font-weight: bold;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    width: 100%;
-}
-
-.photo-time {
-    font-size: 0.75rem;
-    color: #999;
+.photo-datetime {
+    font-size: 0.72rem;
+    color: #888;
+    font-family: 'Cinzel', serif;
+    letter-spacing: 0.3px;
+    line-height: 1.4;
 }
 
 /* Branding footer */
