@@ -133,12 +133,12 @@
 /* Cover Welcome Text (top) */
 .cover-welcome-text {
     position: absolute;
-    top: 10%;
+    top: max(60px, 8dvh);
     left: 0;
     right: 0;
     text-align: center;
     z-index: 1006;
-    padding: 0 20px;
+    padding: 0 16px;
     pointer-events: none;
     transition: opacity 0.6s ease;
 }
@@ -150,11 +150,12 @@
 
 .typewriter-welcome {
     font-family: 'Cinzel', serif;
-    font-size: clamp(1.35rem, 5.5vw, 2rem);
+    font-size: clamp(1.5rem, 6.5vw, 2.4rem);
     font-weight: 400;
     color: transparent;
-    letter-spacing: 3px;
+    letter-spacing: clamp(2px, 0.6vw, 5px);
     display: inline-block;
+    white-space: nowrap;
     background: linear-gradient(135deg, #b8912a 0%, #f0d080 50%, #9e7020 100%);
     -webkit-background-clip: text;
     background-clip: text;
@@ -162,27 +163,28 @@
     animation:
         fadeRiseIn 1s cubic-bezier(0.22,1,0.36,1) 0.3s both,
         shimmerGold 3s linear 1.3s infinite;
-    filter: drop-shadow(0 2px 12px rgba(180,140,40,0.45));
+    filter: drop-shadow(0 2px 14px rgba(180,140,40,0.5));
 }
 
 /* Cover Date Text (bottom) */
 .cover-date-text {
     position: absolute;
-    bottom: 10%;
+    bottom: max(60px, 9dvh);
     left: 0;
     right: 0;
     text-align: center;
     z-index: 1006;
     pointer-events: none;
     transition: opacity 0.6s ease;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .typewriter-date {
     font-family: 'Cinzel', serif;
-    font-size: clamp(1.4rem, 6vw, 2.2rem);
-    font-weight: 600;
+    font-size: clamp(1.8rem, 8vw, 2.8rem);
+    font-weight: 700;
     color: transparent;
-    letter-spacing: 6px;
+    letter-spacing: clamp(4px, 1.2vw, 10px);
     display: inline-block;
     background: linear-gradient(135deg, #9e7020 0%, #f0d080 50%, #b8912a 100%);
     -webkit-background-clip: text;
@@ -191,7 +193,7 @@
     animation:
         fadeRiseIn 1s cubic-bezier(0.22,1,0.36,1) 1s both,
         shimmerGold 3s linear 2s infinite;
-    filter: drop-shadow(0 2px 16px rgba(180,140,40,0.5));
+    filter: drop-shadow(0 2px 18px rgba(180,140,40,0.55));
 }
 
 @keyframes fadeRiseIn {
@@ -210,14 +212,15 @@
     100% { background-position: 200% center; }
 }
 
-@media (max-width: 480px) {
+/* Tighten letter-spacing on very small screens to prevent overflow */
+@media (max-width: 380px) {
     .typewriter-welcome {
-        font-size: clamp(1.1rem, 5vw, 1.5rem);
-        letter-spacing: 2px;
+        font-size: clamp(1.2rem, 7vw, 1.8rem);
+        letter-spacing: 1px;
     }
     .typewriter-date {
-        font-size: clamp(1.2rem, 5.5vw, 1.7rem);
-        letter-spacing: 4px;
+        font-size: clamp(1.6rem, 9vw, 2.2rem);
+        letter-spacing: 3px;
     }
 }
 
