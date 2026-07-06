@@ -23,14 +23,10 @@ const WeddingInvite = () => {
                 onClick={handleOpenEnvelope}
             >
                 {/* Left Half Door */}
-                <div className="envelope-half-door door-left">
-                    <span className="exclusive-text text-top">This invitation is</span>
-                </div>
+                <div className="envelope-half-door door-left"></div>
 
                 {/* Right Half Door */}
-                <div className="envelope-half-door door-right">
-                    <span className="exclusive-text text-bottom">exclusive for you</span>
-                </div>
+                <div className="envelope-half-door door-right"></div>
 
                 {/* Centered Golden Rose Wax Seal Image */}
                 <div className="seal-action-button">
@@ -41,7 +37,6 @@ const WeddingInvite = () => {
 
                     <span className="seal-open-instruction">انقر لفتح المغلف 🌹</span>
                 </div>
-
             </div>
 
             {/* 2. REVEALED WEDDING PARCHMENT CARD */}
