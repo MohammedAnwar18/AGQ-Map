@@ -164,6 +164,12 @@ const WeddingInvite = () => {
                         />
 
                         {/* Photo Grid Gallery — MY photos only */}
+                        {myPhotos.length === 0 && !uploading && (
+                            <div className="gallery-status-msg empty-msg">
+                                التقط أول صورة للذكرى! ✨
+                            </div>
+                        )}
+
                         <div className="polaroid-gallery-grid">
                             {/* Plus button cell — always first */}
                             <div
@@ -177,12 +183,6 @@ const WeddingInvite = () => {
                                     <span className="plus-icon">+</span>
                                 )}
                             </div>
-
-                            {myPhotos.length === 0 && !uploading && (
-                                <div className="gallery-status-msg empty-msg">
-                                    التقط أول صورة للذكرى! ✨
-                                </div>
-                            )}
 
                             {myPhotos.map((photo, idx) => (
                                 <div
