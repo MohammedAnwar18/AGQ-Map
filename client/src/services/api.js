@@ -961,5 +961,33 @@ export const map3DService = {
     }
 };
 
+// ── خدمات الأظرف والدعوات الرقمية 3D Digital Letters ────────────────────────
+export const digitalLettersService = {
+    getAll: async () => {
+        const response = await api.get('/digital-letters');
+        return response.data;
+    },
+    getBySlug: async (slug) => {
+        const response = await api.get(`/digital-letters/slug/${slug}`);
+        return response.data;
+    },
+    create: async (formData) => {
+        const response = await api.post('/digital-letters', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    },
+    update: async (id, formData) => {
+        const response = await api.put(`/digital-letters/${id}`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    },
+    delete: async (id) => {
+        const response = await api.delete(`/digital-letters/${id}`);
+        return response.data;
+    }
+};
+
 export default api;
 

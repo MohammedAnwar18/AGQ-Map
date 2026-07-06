@@ -213,9 +213,25 @@ const pool = require('./config/database');
                 created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-        console.log('✅ 3D Indoor Control tables ready');
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS digital_letters (
+                id             SERIAL PRIMARY KEY,
+                slug           VARCHAR(100) UNIQUE NOT NULL,
+                title          VARCHAR(255) NOT NULL,
+                sender_name    VARCHAR(255),
+                recipient_name VARCHAR(255),
+                content        TEXT,
+                image_url      TEXT,
+                music_url      TEXT,
+                envelope_color VARCHAR(50) DEFAULT 'maroon',
+                seal_design    VARCHAR(50) DEFAULT 'wax-classic',
+                created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_by     INTEGER REFERENCES users(id) ON DELETE CASCADE
+            )
+        `);
+        console.log('✅ digital_letters table ready');
     } catch (err) {
-        console.error('⚠️ ar_contents migration error:', err.message);
+        console.error('⚠️ database auto-migration error:', err.message);
     }
 })();
 
@@ -443,8 +459,8 @@ app.use('/api/ar', require('./routes/ar'));
 app.use('/api/tours', require('./routes/tours'));
 app.use('/api/fitness', require('./routes/fitness'));
 app.use('/api/study-space', require('./routes/studySpace'));
-app.use('/api/indoor-control', require('./routes/indoorControl'));
 app.use('/api/map-3d-models', require('./routes/map3D'));
+app.use('/api/digital-letters', require('./routes/digitalLetters'));
 
 
 

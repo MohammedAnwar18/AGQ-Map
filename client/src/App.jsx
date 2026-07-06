@@ -12,6 +12,7 @@ const PublishedView = React.lazy(() => import('./pages/PublishedView'));
 const ARView = React.lazy(() => import('./pages/ARView'));
 const ARWorkspace = React.lazy(() => import('./pages/ARWorkspace'));
 const VirtualTourMap = React.lazy(() => import('./pages/VirtualTourMap'));
+const DigitalLetterView = React.lazy(() => import('./pages/DigitalLetterView'));
 
 import OfflinePage from './components/OfflinePage';
 import PushNotificationManager from './components/PushNotificationManager';
@@ -118,8 +119,9 @@ function App() {
         <BrowserRouter>
             <React.Suspense fallback={<SplashLoading />}>
                 <Routes>
-                    {/* 🌐 Public route - completely outside AuthProvider */}
+                    {/* 🌐 Public routes - completely outside AuthProvider */}
                     <Route path="/p/:slug" element={<PublishedView />} />
+                    <Route path="/l/:slug" element={<DigitalLetterView />} />
 
                     {/* All other routes inside AuthProvider */}
                     <Route path="*" element={

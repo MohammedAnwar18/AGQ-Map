@@ -1,0 +1,578 @@
+/* 3D Digital Letter & Envelope Styles - PalNovaa Premium */
+@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Cinzel:wght@400;700&family=Reem+Kufi:wght@400;700&family=Great+Vibes&display=swap');
+
+.digital-letter-page {
+    min-height: 100vh;
+    width: 100%;
+    background: radial-gradient(circle, #1a2238 0%, #0d121f 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow-x: hidden;
+    position: relative;
+    font-family: 'Amiri', 'Segoe UI', serif;
+    direction: rtl;
+}
+
+/* Audio control button */
+.letter-audio-control {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 100;
+}
+
+.audio-toggle-btn {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+.audio-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.1);
+}
+
+/* Envelope Container */
+.envelope-container {
+    position: relative;
+    width: 450px;
+    height: 320px;
+    perspective: 1500px;
+    cursor: pointer;
+    transition: transform 0.5s ease;
+}
+
+@media (max-width: 500px) {
+    .envelope-container {
+        width: 90vw;
+        height: calc(90vw * 0.71);
+    }
+}
+
+.envelope-container:hover {
+    transform: translateY(-5px);
+}
+
+/* The Envelope Wrapper */
+.envelope {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-color: #7b1113; /* Fallback maroon */
+    border-radius: 6px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+    transform-style: preserve-3d;
+}
+
+/* Envelope Color Themes */
+.envelope.theme-maroon {
+    background: linear-gradient(135deg, #6b0f1a 0%, #3e060e 100%);
+    border: 1px solid #8c202f;
+}
+.envelope.theme-navy {
+    background: linear-gradient(135deg, #0f1c3f 0%, #060c1e 100%);
+    border: 1px solid #1c2e61;
+}
+.envelope.theme-forest-green {
+    background: linear-gradient(135deg, #0d3c26 0%, #051a10 100%);
+    border: 1px solid #165638;
+}
+.envelope.theme-warm-cream {
+    background: linear-gradient(135deg, #dfd3c3 0%, #c7b198 100%);
+    border: 1px solid #ebe3d5;
+}
+.envelope.theme-royal-gold {
+    background: linear-gradient(135deg, #a77927 0%, #5d4210 100%);
+    border: 1px solid #c59b27;
+}
+
+/* Envelope parts */
+.envelope-flap {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 0;
+    border-left: 225px solid transparent;
+    border-right: 225px solid transparent;
+    border-top: 160px solid #7b1113; /* Dynamic based on color via classes */
+    transform-origin: top;
+    transition: transform 0.6s ease-in-out;
+    z-index: 4;
+}
+
+@media (max-width: 500px) {
+    .envelope-flap {
+        border-left-width: 45vw;
+        border-right-width: 45vw;
+        border-top-width: 32vw;
+    }
+}
+
+/* Color overrides for the flap border-top-color */
+.theme-maroon .envelope-flap { border-top-color: #6b0f1a; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2)); }
+.theme-navy .envelope-flap { border-top-color: #0f1c3f; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2)); }
+.theme-forest-green .envelope-flap { border-top-color: #0d3c26; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2)); }
+.theme-warm-cream .envelope-flap { border-top-color: #dfd3c3; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1)); }
+.theme-royal-gold .envelope-flap { border-top-color: #a77927; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2)); }
+
+.envelope-pocket {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    z-index: 3;
+}
+
+.envelope-pocket::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 0;
+    border-left: 225px solid transparent;
+    border-right: 225px solid transparent;
+    border-bottom: 160px solid rgba(0,0,0,0.15); /* Shadow inside */
+    z-index: 2;
+}
+
+.envelope-pocket::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 0;
+    border-left: 225px solid transparent;
+    border-right: 225px solid transparent;
+    border-bottom: 160px solid #5a0c0e; /* Base color slightly darker */
+}
+
+@media (max-width: 500px) {
+    .envelope-pocket::after, .envelope-pocket::before {
+        border-left-width: 45vw;
+        border-right-width: 45vw;
+        border-bottom-width: 32vw;
+    }
+}
+
+.theme-maroon .envelope-pocket::before { border-bottom-color: #550a12; }
+.theme-navy .envelope-pocket::before { border-bottom-color: #0b132b; }
+.theme-forest-green .envelope-pocket::before { border-bottom-color: #072215; }
+.theme-warm-cream .envelope-pocket::before { border-bottom-color: #b0a08e; }
+.theme-royal-gold .envelope-pocket::before { border-bottom-color: #855f1c; }
+
+/* The Wax Seal */
+.wax-seal {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 70px;
+    height: 70px;
+    background: radial-gradient(circle, #e63946 0%, #9b1c26 100%);
+    border-radius: 50%;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.3);
+    border: 3px solid #801018;
+    transition: all 0.5s ease;
+}
+
+.wax-seal::before {
+    content: '';
+    position: absolute;
+    width: 54px;
+    height: 54px;
+    border: 2px dashed rgba(255,255,255,0.25);
+    border-radius: 50%;
+}
+
+.wax-seal-emblem {
+    font-size: 1.8rem;
+    color: #ffd700; /* Gold */
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.4));
+    animation: sealPulse 2s infinite alternate;
+}
+
+/* Wax seal theme overrides */
+.theme-warm-cream .wax-seal {
+    background: radial-gradient(circle, #b8860b 0%, #7d5c07 100%);
+    border-color: #614704;
+}
+.theme-royal-gold .wax-seal {
+    background: radial-gradient(circle, #9b1c26 0%, #60070e 100%);
+    border-color: #400308;
+}
+
+/* Click hint pulse text */
+.click-hint {
+    position: absolute;
+    bottom: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #ffd700;
+    font-size: 1.1rem;
+    white-space: nowrap;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    animation: hintPulse 1.5s infinite;
+    pointer-events: none;
+    font-weight: bold;
+}
+
+/* Invitation Card (Digital Letter) inside */
+.invitation-card {
+    position: absolute;
+    top: 15px;
+    left: 20px;
+    width: 410px;
+    height: 290px;
+    background: #fbf8f3; /* Premium parchment color */
+    border-radius: 4px;
+    z-index: 2;
+    padding: 20px;
+    box-sizing: border-box;
+    border: 2px solid #e6dfd3;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.05);
+    transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transform: translateY(0);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #2b2b2b;
+}
+
+@media (max-width: 500px) {
+    .invitation-card {
+        width: calc(90vw - 20px);
+        height: calc(90vw * 0.71 - 20px);
+        left: 10px;
+        top: 10px;
+        padding: 10px;
+    }
+}
+
+.card-inner-border {
+    width: 100%;
+    height: 100%;
+    border: 1px solid #d4af37; /* Gold border outline */
+    padding: 15px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.card-header-ornament {
+    font-size: 1.2rem;
+    color: #d4af37;
+    margin-bottom: 5px;
+}
+
+.card-title {
+    font-family: 'Reem+Kufi', serif;
+    font-size: 1.6rem;
+    color: #801018;
+    margin: 5px 0;
+    font-weight: bold;
+    text-align: center;
+}
+
+.card-sender {
+    font-size: 1.1rem;
+    font-style: italic;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+.card-recipient {
+    font-size: 1.15rem;
+    font-weight: bold;
+    color: #3e3e3e;
+    border-bottom: 1px dashed #d4af37;
+    padding-bottom: 5px;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.card-content-preview {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    text-align: center;
+    color: #4a4a4a;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* OPEN ENVELOPE STATES */
+.envelope-container.open .envelope-flap {
+    transform: rotateX(180deg);
+    z-index: 1; /* Behind the card once flipped */
+}
+
+.envelope-container.open .wax-seal {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0;
+}
+
+/* Once envelope is opened, the card slides up and scales in full screen */
+.envelope-container.open .invitation-card {
+    /* Slide out of the envelope and become a full size overlay card */
+    z-index: 10;
+}
+
+/* Full Screen Card Modal Backdrop */
+.card-backdrop-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(13, 18, 31, 0.85);
+    backdrop-filter: blur(15px);
+    z-index: 999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.5s ease forwards;
+}
+
+.fullscreen-invitation-card {
+    width: 650px;
+    max-width: 90vw;
+    height: auto;
+    max-height: 85vh;
+    background: #fbf8f3;
+    border-radius: 12px;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.6);
+    border: 3px solid #d4af37;
+    position: relative;
+    padding: 30px;
+    box-sizing: border-box;
+    animation: slideCardIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    overflow-y: auto;
+    direction: rtl;
+}
+
+/* Premium Card Content styling inside modal */
+.fs-card-inner {
+    border: 2px double #d4af37;
+    padding: 25px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 400px;
+    position: relative;
+}
+
+/* Beautiful old scroll styling */
+.fs-card-inner::-webkit-scrollbar {
+    width: 6px;
+}
+.fs-card-inner::-webkit-scrollbar-thumb {
+    background: #d4af37;
+    border-radius: 4px;
+}
+
+.fs-ornament-top {
+    font-size: 2.2rem;
+    color: #d4af37;
+    margin-bottom: 10px;
+}
+
+.fs-title {
+    font-family: 'Reem+Kufi', serif;
+    font-size: 2.5rem;
+    color: #801018;
+    margin: 10px 0;
+    font-weight: 800;
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.fs-sender {
+    font-family: 'Great Vibes', cursive, 'Amiri';
+    font-size: 1.8rem;
+    color: #c59b27;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.fs-divider {
+    width: 80px;
+    height: 1px;
+    background: #d4af37;
+    margin: 15px 0;
+    position: relative;
+}
+
+.fs-divider::after {
+    content: '⚜';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fbf8f3;
+    padding: 0 8px;
+    color: #d4af37;
+    font-size: 0.9rem;
+}
+
+.fs-recipient {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #2b2b2b;
+    margin: 10px 0 25px 0;
+    border-bottom: 2px dotted #d4af37;
+    padding-bottom: 8px;
+    text-align: center;
+    display: inline-block;
+}
+
+.fs-content {
+    font-size: 1.3rem;
+    line-height: 1.8;
+    text-align: center;
+    color: #3e3e3e;
+    white-space: pre-line; /* Keeps paragraphs intact */
+    margin-bottom: 30px;
+    max-width: 95%;
+}
+
+.fs-card-image {
+    width: 100%;
+    max-height: 350px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 3px solid #ebe3d5;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    margin-bottom: 25px;
+    transition: transform 0.3s ease;
+}
+
+.fs-card-image:hover {
+    transform: scale(1.02);
+}
+
+.fs-close-btn {
+    margin-top: 20px;
+    background: linear-gradient(135deg, #a77927 0%, #855f1c 100%);
+    border: 1px solid #c59b27;
+    color: white;
+    padding: 10px 30px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    border-radius: 20px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+}
+
+.fs-close-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(167,121,39,0.4);
+}
+
+.fs-powered-by {
+    margin-top: 30px;
+    font-size: 0.85rem;
+    color: #999;
+    letter-spacing: 1px;
+}
+
+/* Animations */
+@keyframes sealPulse {
+    0% {
+        transform: scale(1);
+    }
+    100% {
+        transform: scale(1.06);
+        box-shadow: 0 4px 15px rgba(230, 57, 70, 0.6);
+    }
+}
+
+@keyframes hintPulse {
+    0% {
+        opacity: 0.6;
+        transform: translateX(-50%) translateY(0);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(-5px);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideCardIn {
+    0% {
+        opacity: 0;
+        transform: translateY(100px) scale(0.8);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Loading State styles */
+.letter-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: white;
+}
+
+.letter-spinner {
+    width: 60px;
+    height: 60px;
+    border: 4px solid rgba(212, 175, 55, 0.1);
+    border-top: 4px solid #d4af37;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.letter-error {
+    text-align: center;
+    color: white;
+    padding: 30px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    max-width: 400px;
+}
+
+.letter-error h3 {
+    color: #e63946;
+    margin-bottom: 10px;
+}

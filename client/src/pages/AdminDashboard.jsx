@@ -6,6 +6,7 @@ import { cameraService, shopService } from '../services/api';
 
 import './AdminDashboard.css';
 import ARAdminPanel from './ARAdminPanel';
+import AdminDigitalLetters from './AdminDigitalLetters';
 
 const AdminDashboard = () => {
     const { user, logout } = useAuth();
@@ -239,6 +240,7 @@ const AdminDashboard = () => {
                         { id: 'map', icon: '🌏', label: 'خارطة النشاط' },
                         { id: 'notifications', icon: '📢', label: 'إرسال إشعارات' },
                         { id: 'ar', icon: '🕶️', label: 'إدارة الواقع المعزز' },
+                        { id: 'letters', icon: '✉️', label: 'أظرف ودعوات 3D' },
                     ].map(tab => (
                         <a
                             key={tab.id}
@@ -272,7 +274,8 @@ const AdminDashboard = () => {
                                             activeTab === 'data' ? 'إدارة المحتوى والبيانات' :
                                                 activeTab === 'files' ? 'مكتبة الوسائط' :
                                                     activeTab === 'notifications' ? 'إرسال التنبيهات والبرودكاست' :
-                                                        activeTab === 'ar' ? 'إدارة محتوى الواقع المعزز' : 'خارطة النشاط الموحدة'
+                                                        activeTab === 'ar' ? 'إدارة محتوى الواقع المعزز' : 
+                                                            activeTab === 'letters' ? 'إدارة الأظرف والدعوات الرقمية' : 'خارطة النشاط الموحدة'
                         }</h2>
                         <p>مرحباً بك يا {user.full_name || user.username} • {new Date().toLocaleDateString('ar-SA', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                     </div>
@@ -1021,6 +1024,11 @@ const AdminDashboard = () => {
                 {/* AR Content Management */}
                 {activeTab === 'ar' && (
                     <ARAdminPanel onClose={() => setActiveTab('overview')} />
+                )}
+
+                {/* Digital Letters Management */}
+                {activeTab === 'letters' && (
+                    <AdminDigitalLetters />
                 )}
             </div>
         </div>
