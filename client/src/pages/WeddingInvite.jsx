@@ -36,8 +36,9 @@ const WeddingInvite = () => {
                 <div className="seal-action-button">
                     <div 
                         className="gold-rose-wax-seal"
-                        style={{ backgroundImage: 'url("/images/gold-rose-seal.jpg")' }}
+                        style={{ backgroundImage: 'url("https://pub-6e55680fed9e448b82ffe80f9d92b020.r2.dev/uploads/2c8fed7c-520a-40aa-97dc-07864d734ca1.jpg")' }}
                     ></div>
+
                     <span className="seal-open-instruction">انقر لفتح المغلف 🌹</span>
                 </div>
 
