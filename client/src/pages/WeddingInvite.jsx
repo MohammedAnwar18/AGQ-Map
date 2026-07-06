@@ -36,10 +36,11 @@ const WeddingInvite = () => {
                 <div className="seal-action-button">
                     <div 
                         className="gold-rose-wax-seal"
-                        style={{ backgroundImage: 'url("/images/gold-rose-seal.png")' }}
+                        style={{ backgroundImage: 'url("/images/gold-rose-seal.jpg")' }}
                     ></div>
                     <span className="seal-open-instruction">انقر لفتح المغلف 🌹</span>
                 </div>
+
             </div>
 
             {/* 2. REVEALED WEDDING PARCHMENT CARD */}
