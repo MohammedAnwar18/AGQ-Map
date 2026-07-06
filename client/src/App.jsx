@@ -14,7 +14,7 @@ const ARWorkspace = React.lazy(() => import('./pages/ARWorkspace'));
 const VirtualTourMap = React.lazy(() => import('./pages/VirtualTourMap'));
 const DigitalLetterView = React.lazy(() => import('./pages/DigitalLetterView'));
 const GraduationEvent = React.lazy(() => import('./pages/GraduationEvent'));
-const WeddingInvite = React.lazy(() => import('./pages/WeddingInvite'));
+import WeddingInvite from './pages/WeddingInvite';
 
 import OfflinePage from './components/OfflinePage';
 import PushNotificationManager from './components/PushNotificationManager';

@@ -15,23 +15,24 @@
     background-color: #0b0c10;
 }
 
-/* 1. BLURRED NIGHT GARDEN BOKEH BACKGROUND */
+/* 1. EMBOSSED PAPER PAGE BACKGROUND */
 .wedding-invite-page::before {
     content: '';
     position: absolute;
-    top: -10px;
-    left: -10px;
-    right: -10px;
-    bottom: -10px;
-    background-image: url('/images/garden-bokeh.jpg');
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url("https://pub-6e55680fed9e448b82ffe80f9d92b020.r2.dev/uploads/6e6f2dad-f860-45c7-b637-43e0ed056a50.png");
     background-size: cover;
     background-position: center;
-    filter: blur(10px) brightness(0.4);
     z-index: 1;
 }
 
+
 /* Ambient glow bokeh bubbles */
 .bokeh-bubble {
+    display: none;
     position: absolute;
     border-radius: 50%;
     background: rgba(253, 184, 39, 0.08);
