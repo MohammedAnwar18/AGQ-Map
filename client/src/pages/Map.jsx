@@ -2662,15 +2662,26 @@ const MapComponent = () => {
                         </button>
                         */}
                         {user?.role === 'admin' && (
-                            <button onClick={() => window.location.href = '/admin'}>
-                                <div className="menu-item-content">
-                                    <div className="menu-icon-wrapper" style={{ color: '#fbab15' }}>
-                                        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+                            <>
+                                <button onClick={() => window.location.href = '/admin'}>
+                                    <div className="menu-item-content">
+                                        <div className="menu-icon-wrapper" style={{ color: '#fbab15' }}>
+                                            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+                                        </div>
+                                        <span>لوحة الإدارة</span>
                                     </div>
-                                    <span>لوحة الإدارة</span>
-                                </div>
-                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
-                            </button>
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+                                </button>
+                                <button onClick={() => window.open('/walid-sheikha', '_blank')}>
+                                    <div className="menu-item-content">
+                                        <div className="menu-icon-wrapper" style={{ color: '#ec4899' }}>
+                                            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>
+                                        </div>
+                                        <span>دعوة</span>
+                                    </div>
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+                                </button>
+                            </>
                         )}
                         <div className="menu-divider"></div>
                         <button onClick={logout} className="logout-btn">
