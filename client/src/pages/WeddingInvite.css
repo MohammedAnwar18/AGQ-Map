@@ -155,7 +155,7 @@
     color: transparent;
     letter-spacing: clamp(2px, 0.6vw, 5px);
     display: inline-block;
-    white-space: nowrap;
+    line-height: 1.35;
     background: linear-gradient(135deg, #b8912a 0%, #f0d080 50%, #9e7020 100%);
     -webkit-background-clip: text;
     background-clip: text;
@@ -169,7 +169,7 @@
 /* Cover Date Text (bottom) */
 .cover-date-text {
     position: absolute;
-    bottom: max(110px, 17dvh);
+    bottom: max(160px, 24dvh);
     left: 0;
     right: 0;
     text-align: center;

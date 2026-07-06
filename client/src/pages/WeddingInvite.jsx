@@ -148,9 +148,9 @@ const WeddingInvite = () => {
                     ></div>
                 </div>
 
-                {/* Cover typewriter texts — top & bottom of envelope */}
+                {/* Cover texts — top & bottom of envelope */}
                 <div className="cover-welcome-text">
-                    <span className="typewriter-welcome">Welcome to Enas's Seminar</span>
+                    <span className="typewriter-welcome">Welcome to<br />Enas's Seminar</span>
                 </div>
                 <div className="cover-date-text">
                     <span className="typewriter-date">9 - 7 - 2026</span>
