@@ -23,8 +23,6 @@ import NotificationsModal from '../components/NotificationsModal';
 import AIChatModal from '../components/AIChatModal';
 import CommunitiesModal from '../components/CommunitiesModal';
 import NewsModal from '../components/NewsModal';
-import GeomolgViewer from '../components/GeomolgViewer';
-import GeopalViewer from '../components/GeopalViewer';
 import ManagedShopsModal from '../components/ManagedShopsModal';
 import ShopProfileModal from '../components/ShopProfileModal';
 import MedicalCenterProfileModal from '../components/MedicalCenterProfileModal';
@@ -1279,8 +1277,8 @@ const MapComponent = () => {
                 setDestination(endLoc);
 
                 if (!isRecalc) {
-                    // Ensure we are viewing the MapLibre map (not Geomolg or Geopal) before routing
-                    if (activeMapType === 'geomolg' || activeMapType === 'geopal' || (activeMapType && activeMapType.startsWith('geomolg-'))) setActiveMapType('satellite');
+                    // Ensure we are viewing the MapLibre map (not orthophoto) before routing
+                    if (activeMapType && activeMapType.startsWith('geomolg-')) setActiveMapType('satellite');
 
                     if (mapRef.current) {
                         // Smoothly transition to a Navigation Perspective (Direct Guidance)
@@ -2426,17 +2424,9 @@ const MapComponent = () => {
                                       </button>
 
                                       <button 
-                                          className={`dropdown-item ${activeMapType === 'geomolg' ? 'active' : ''}`}
-                                          onClick={() => { setActiveMapType('geomolg'); setShowMapLayersMenu(false); }}
-                                          title="بوابة جيومولج (Geomolg)"
-                                      >
-                                          <span className="item-icon">🗺️</span>
-                                      </button>
-
-                                      <button 
-                                          className={`dropdown-item ${activeMapType === 'geopal' ? 'active' : ''}`}
-                                          onClick={() => { setActiveMapType('geopal'); setShowMapLayersMenu(false); }}
-                                          title="خريطة جوية 2023 (Geopal)"
+                                          className={`dropdown-item ${activeMapType === 'geomolg-2025' ? 'active' : ''}`}
+                                          onClick={() => { setActiveMapType('geomolg-2025'); setShowMapLayersMenu(false); }}
+                                          title="صورة جوية 2025 (Ortho)"
                                       >
                                           <span className="item-icon">🛰️</span>
                                       </button>
@@ -4065,30 +4055,6 @@ const MapComponent = () => {
                             mapRef.current?.flyTo({ center: [parseFloat(shop.longitude), parseFloat(shop.latitude)], zoom: 18.5, pitch: 45 });
                         }
                     }}
-                />
-            )}
-
-            {/* Native Geomolg View with ArcGIS API */}
-            {activeMapType === 'geomolg' && (
-                <GeomolgViewer
-                    onClose={() => setActiveMapType('satellite')}
-                    userLocation={userLocation}
-                    posts={posts}
-                    friends={friendsMap}
-                    shops={[...followedShopsMap, ...managedShopsMap]}
-                    onShopClick={(shop) => {
-                        handleOpenShopProfile(shop);
-                    }}
-                    onPostClick={(post) => {
-                        setSelectedPost(post);
-                    }}
-                />
-            )}
-
-            {/* Geopal 2023 Aerial Map Viewer */}
-            {activeMapType === 'geopal' && (
-                <GeopalViewer
-                    onClose={() => setActiveMapType('satellite')}
                 />
             )}
 
