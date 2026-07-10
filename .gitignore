@@ -51,3 +51,7 @@ backend/env-template.txt
 client/CREATE_ENV_FILE.txt
 client/env-template.txt
 client/public/test-map.html
+
+# Scratch Files
+scratch/
+task.md
