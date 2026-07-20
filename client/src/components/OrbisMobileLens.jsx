@@ -243,11 +243,21 @@ const OrbisMobileLens = ({ onClose }) => {
 
     // 5. Main AI Loop running COCO-SSD
     const detectLoop = async () => {
-        if (!videoRef.current || videoRef.current.paused || videoRef.current.ended) return;
+        if (!videoRef.current) return;
 
         const video = videoRef.current;
         const canvas = canvasRef.current;
-        if (!canvas) return;
+
+        // Wait if video frame is not ready
+        if (video.paused || video.ended || video.readyState < 2) {
+            requestAnimationFrame(detectLoop);
+            return;
+        }
+
+        if (!canvas) {
+            requestAnimationFrame(detectLoop);
+            return;
+        }
 
         const ctx = canvas.getContext('2d');
         
@@ -309,8 +319,8 @@ const OrbisMobileLens = ({ onClose }) => {
             console.error('Frame inference error:', e);
         }
 
-        // Keep loop alive
-        if (cameraActive) {
+        // Schedule next check
+        if (videoRef.current) {
             setTimeout(() => {
                 requestAnimationFrame(detectLoop);
             }, 60); // Max ~16 FPS to avoid overheating mobile CPU
