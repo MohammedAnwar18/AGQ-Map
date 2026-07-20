@@ -385,6 +385,24 @@ const OrbisMobileLens = ({ onClose }) => {
                 const [x, y, w, h] = pred.bbox;
                 const type = pred.class === 'person' ? 'person' : 'car';
                 const label = type === 'person' ? 'إنسان' : 'مركبة';
+                
+                // ── AI Analytics & Centroid Tracking ───────────────────────────────
+                const { track } = trackCentroid(type, x, y, w, h);
+                const centerX = x + w / 2;
+
+                const primaryColor = getObjectColor(video, pred.bbox);
+                const movementDirection = trackDirection(track.id, centerX);
+
+                // Wait 3 seconds of steady tracking before capturing
+                const trackDuration = Date.now() - track.createdTime;
+                const secondsRemaining = Math.max(0, Math.ceil((3000 - trackDuration) / 1000));
+                
+                let focusLabel = '';
+                if (track.uploaded) {
+                    focusLabel = ' ✅ تم الالتقاط';
+                } else {
+                    focusLabel = ` ⏳ التركيز (${secondsRemaining}ث)`;
+                }
 
                 // Bounding Box Colors: Orange for Cars, Purple for People
                 const color = type === 'person' ? '#a855f7' : '#fbab15';
@@ -397,21 +415,17 @@ const OrbisMobileLens = ({ onClose }) => {
                 // Draw Label Background
                 ctx.fillStyle = color;
                 ctx.font = 'bold 16px Tajawal, sans-serif';
-                const textWidth = ctx.measureText(`${label} ${(pred.score * 100).toFixed(0)}%`).width;
+                const displayMsg = `${label} ${(pred.score * 100).toFixed(0)}% | ${focusLabel}`;
+                const textWidth = ctx.measureText(displayMsg).width;
                 ctx.fillRect(x, y - 28, textWidth + 12, 28);
 
                 // Draw Label Text
                 ctx.fillStyle = '#020617';
-                ctx.fillText(`${label} ${(pred.score * 100).toFixed(0)}%`, x + 6, y - 8);
+                ctx.fillText(displayMsg, x + 6, y - 8);
 
-                // ── AI Analytics pipeline ───────────────────────────────
-                const { trackId, isNew } = trackCentroid(type, x, y, w, h);
-                const centerX = x + w / 2;
-
-                const primaryColor = getObjectColor(video, pred.bbox);
-                const movementDirection = trackDirection(trackId, centerX);
-
-                if (isNew) {
+                // Trigger upload after 3 seconds focus
+                if (trackDuration >= 3000 && !track.uploaded) {
+                    track.uploaded = true; // Mark as uploaded to prevent duplicate uploads
                     triggerEventUpload(video, pred.bbox, type, primaryColor, movementDirection);
                 }
             });
