@@ -46,13 +46,25 @@ const OrbisMobileLens = ({ onClose }) => {
         const initAI = async () => {
             try {
                 setLoadingMsg('جاري تحميل TensorFlow.js...');
-                await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js');
+                await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js');
                 
                 if (!isMounted) return;
                 setLoadingMsg('جاري تحميل نموذج COCO-SSD...');
-                await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js');
+                await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js');
 
                 if (!isMounted) return;
+                
+                // Activate WebGL acceleration
+                if (window.tf) {
+                    await window.tf.ready();
+                    try {
+                        await window.tf.setBackend('webgl');
+                        console.log('✅ Orbis: WebGL backend activated successfully.');
+                    } catch (e) {
+                        console.warn('⚠️ Orbis: WebGL not supported, falling back to CPU.');
+                    }
+                }
+
                 if (window.cocoSsd) {
                     setLoadingMsg('جاري تفعيل نموذج كشف الكائنات...');
                     modelRef.current = await window.cocoSsd.load({
@@ -139,16 +151,26 @@ const OrbisMobileLens = ({ onClose }) => {
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
-                videoRef.current.onloadedmetadata = () => {
-                    videoRef.current.play();
-                    setCameraActive(true);
-                    
-                    // Start rendering overlay and running AI
-                    requestAnimationFrame(detectLoop);
-
-                    // Start streaming compressed frames to laptop dashboard
-                    startFrameStreaming();
+                
+                const handleMetadata = () => {
+                    if (videoRef.current) {
+                        videoRef.current.play()
+                            .then(() => {
+                                setCameraActive(true);
+                                // Start rendering overlay and running AI
+                                requestAnimationFrame(detectLoop);
+                                // Start streaming compressed frames to laptop dashboard
+                                startFrameStreaming();
+                            })
+                            .catch(e => console.warn('Autoplay error:', e.message));
+                    }
                 };
+
+                if (videoRef.current.readyState >= 1) {
+                    handleMetadata();
+                } else {
+                    videoRef.current.onloadedmetadata = handleMetadata;
+                }
             }
         } catch (err) {
             console.error('Camera capture error:', err);
@@ -248,8 +270,8 @@ const OrbisMobileLens = ({ onClose }) => {
         const video = videoRef.current;
         const canvas = canvasRef.current;
 
-        // Wait if video frame is not ready
-        if (video.paused || video.ended || video.readyState < 2) {
+        // Wait if video frame is not ready or has 0 dimensions
+        if (video.paused || video.ended || video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) {
             requestAnimationFrame(detectLoop);
             return;
         }
