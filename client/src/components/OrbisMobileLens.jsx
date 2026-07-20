@@ -21,8 +21,28 @@ const OrbisMobileLens = ({ onClose }) => {
     const modelRef = useRef(null);
     const gpsRef = useRef({ lat: 31.9522, lng: 35.2332 }); // Ramallah default
 
-    const API_URL = import.meta.env.VITE_API_URL || '/api';
-    const SOCKET_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : window.location.origin;
+    const getDynamicUrls = () => {
+        const hostname = window.location.hostname;
+        const isLocal = hostname === 'localhost' || 
+                        hostname === '127.0.0.1' || 
+                        hostname.startsWith('192.168.') || 
+                        hostname.startsWith('10.') || 
+                        (hostname.startsWith('172.') && parseInt(hostname.split('.')[1], 10) >= 16 && parseInt(hostname.split('.')[1], 10) <= 31);
+                        
+        if (isLocal) {
+            return {
+                apiUrl: `${window.location.protocol}//${hostname}:5000/api`,
+                socketUrl: `${window.location.protocol}//${hostname}:5000`
+            };
+        }
+        
+        const apiUrl = import.meta.env.VITE_API_URL || `${window.location.origin}/api`;
+        const socketUrl = import.meta.env.VITE_WS_URL || (import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : window.location.origin);
+        
+        return { apiUrl, socketUrl };
+    };
+
+    const { apiUrl: API_URL, socketUrl: SOCKET_URL } = getDynamicUrls();
 
     // 1. Load TensorFlow.js and COCO-SSD dynamically
     useEffect(() => {
