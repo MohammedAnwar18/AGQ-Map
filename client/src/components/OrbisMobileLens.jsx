@@ -20,6 +20,7 @@ const OrbisMobileLens = ({ onClose }) => {
     const streamIntervalRef = useRef(null);
     const modelRef = useRef(null);
     const gpsRef = useRef({ lat: 31.9522, lng: 35.2332 }); // Ramallah default
+    const activeTracksRef = useRef([]);
 
     const getDynamicUrls = () => {
         const hostname = window.location.hostname;
@@ -71,6 +72,10 @@ const OrbisMobileLens = ({ onClose }) => {
                 if (!isMounted) return;
                 setLoadingMsg('جاري تحميل نموذج COCO-SSD...');
                 await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js');
+
+                if (!isMounted) return;
+                setLoadingMsg('جاري تحميل محرك قراءة اللوحات (OCR)...');
+                await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5.0.5/dist/tesseract.min.js');
 
                 if (!isMounted) return;
                 
@@ -225,45 +230,103 @@ const OrbisMobileLens = ({ onClose }) => {
         }, 150); // ~6.7 FPS
     };
 
-    // Helper: Analyze color from crop area
-    const getObjectColor = (ctx, x, y, width, height) => {
+    // Helper: Analyze color from video element crop area
+    const getObjectColor = (video, bbox) => {
         try {
-            const centerX = Math.floor(x + width / 2);
-            const centerY = Math.floor(y + height / 2);
-            const samplePoints = [
-                { x: centerX, y: centerY },
-                { x: Math.max(0, centerX - 10), y: centerY },
-                { x: Math.min(ctx.canvas.width - 1, centerX + 10), y: centerY },
-                { x: centerX, y: Math.max(0, centerY - 10) },
-                { x: centerX, y: Math.min(ctx.canvas.height - 1, centerY + 10) }
-            ];
-
+            const [x, y, w, h] = bbox;
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = 10;
+            tempCanvas.height = 10;
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            // Draw a small 10x10 area from the center of the detected object
+            const centerX = Math.max(0, x + w / 2 - 5);
+            const centerY = Math.max(0, y + h / 2 - 5);
+            
+            tempCtx.drawImage(
+                video,
+                Math.floor(centerX), Math.floor(centerY), 10, 10,
+                0, 0, 10, 10
+            );
+            
+            const imgData = tempCtx.getImageData(0, 0, 10, 10).data;
             let rSum = 0, gSum = 0, bSum = 0, count = 0;
-            for (const pt of samplePoints) {
-                const pixel = ctx.getImageData(pt.x, pt.y, 1, 1).data;
-                rSum += pixel[0];
-                gSum += pixel[1];
-                bSum += pixel[2];
+            
+            for (let i = 0; i < imgData.length; i += 4) {
+                rSum += imgData[i];
+                gSum += imgData[i+1];
+                bSum += imgData[i+2];
                 count++;
             }
+            
             const r = rSum / count;
             const g = gSum / count;
             const b = bSum / count;
 
-            if (r > 200 && g > 200 && b > 200) return 'أبيض';
-            if (r < 55 && g < 55 && b < 55) return 'أسود';
-            if (Math.abs(r - g) < 20 && Math.abs(g - b) < 20 && Math.abs(r - b) < 20) return 'رمادي';
+            if (r > 210 && g > 210 && b > 210) return 'أبيض';
+            if (r < 50 && g < 50 && b < 50) return 'أسود';
+            
+            const maxVal = Math.max(r, g, b);
+            const minVal = Math.min(r, g, b);
+            const diff = maxVal - minVal;
+            if (diff < 20) return 'رمادي';
             
             if (r > g && r > b) {
-                if (g > 140 && b < 70) return 'أصفر';
+                if (g > 140 && b < 80) return 'أصفر';
+                if (g > 60 && g < 140 && b < 60) return 'برتقالي';
                 return 'أحمر';
             }
-            if (g > r && g > b) return 'أخضر';
-            if (b > r && b > g) return 'أزرق';
+            if (g > r && g > b) {
+                if (r > 140 && b < 80) return 'أصفر';
+                return 'أخضر';
+            }
+            if (b > r && b > g) {
+                if (g > 120) return 'سماوي';
+                return 'أزرق';
+            }
+            if (r > 120 && b > 120 && g < 100) return 'بنفسجي';
             
-            return 'متعدد الألوان';
+            return 'رمادي';
         } catch (e) {
+            console.error("Color detection error:", e);
             return 'غير محدد';
+        }
+    };
+
+    // Helper: Track object centroids for dynamic de-duplication
+    const trackCentroid = (type, x, y, w, h) => {
+        const cx = x + w / 2;
+        const cy = y + h / 2;
+        const now = Date.now();
+        
+        // Clean up tracks older than 2.5 seconds
+        activeTracksRef.current = activeTracksRef.current.filter(t => now - t.lastSeen < 2500);
+
+        let closestTrack = null;
+        let minDistance = Infinity;
+
+        for (const track of activeTracksRef.current) {
+            if (track.type === type) {
+                const dist = Math.hypot(cx - track.x, cy - track.y);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    closestTrack = track;
+                }
+            }
+        }
+
+        const THRESHOLD = 100; // pixels
+
+        if (closestTrack && minDistance < THRESHOLD) {
+            closestTrack.x = cx;
+            closestTrack.y = cy;
+            closestTrack.lastSeen = now;
+            return { trackId: closestTrack.id, isNew: false };
+        } else {
+            const trackId = `${type}_${now}_${Math.floor(Math.random() * 1000)}`;
+            const newTrack = { id: trackId, type, x: cx, y: cy, lastSeen: now };
+            activeTracksRef.current.push(newTrack);
+            return { trackId, isNew: true };
         }
     };
 
@@ -342,18 +405,13 @@ const OrbisMobileLens = ({ onClose }) => {
                 ctx.fillText(`${label} ${(pred.score * 100).toFixed(0)}%`, x + 6, y - 8);
 
                 // ── AI Analytics pipeline ───────────────────────────────
-                const objectId = `${type}_${Math.floor(x/30)}_${Math.floor(y/30)}`;
+                const { trackId, isNew } = trackCentroid(type, x, y, w, h);
                 const centerX = x + w / 2;
 
-                const primaryColor = getObjectColor(ctx, x, y, w, h);
-                const movementDirection = trackDirection(objectId, centerX);
+                const primaryColor = getObjectColor(video, pred.bbox);
+                const movementDirection = trackDirection(trackId, centerX);
 
-                // Track upload cooldown (avoid spamming, upload once every 7s per object)
-                const now = Date.now();
-                const lastUpload = trackerRef.current[objectId] || 0;
-
-                if (now - lastUpload > 7000) {
-                    trackerRef.current[objectId] = now;
+                if (isNew) {
                     triggerEventUpload(video, pred.bbox, type, primaryColor, movementDirection);
                 }
             });
@@ -374,26 +432,63 @@ const OrbisMobileLens = ({ onClose }) => {
         try {
             const [x, y, w, h] = bbox;
 
-            // Crop object image using secondary canvas
+            // Safe boundary calculations in case bbox is slightly off-camera
+            const srcX = Math.max(0, Math.floor(x));
+            const srcY = Math.max(0, Math.floor(y));
+            const srcW = Math.min(Math.floor(w), video.videoWidth - srcX);
+            const srcH = Math.min(Math.floor(h), video.videoHeight - srcY);
+
+            // Crop object image at exact bounding box resolution (no aspect ratio stretching)
             const cropCanvas = document.createElement('canvas');
-            cropCanvas.width = Math.min(w, 400);
-            cropCanvas.height = Math.min(h, 400);
+            cropCanvas.width = srcW;
+            cropCanvas.height = srcH;
             const cropCtx = cropCanvas.getContext('2d');
             
-            // Draw cropped video frame
-            cropCtx.drawImage(
-                video,
-                Math.max(0, x), Math.max(0, y), Math.min(w, video.videoWidth - x), Math.min(h, video.videoHeight - y),
-                0, 0, cropCanvas.width, cropCanvas.height
-            );
+            // Draw cropped video frame without compression distortions
+            cropCtx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
+            const imageBase64 = cropCanvas.toDataURL('image/jpeg', 0.9);
 
-            const imageBase64 = cropCanvas.toDataURL('image/jpeg', 0.85);
+            // Run Tesseract.js OCR on the license plate area (typically bottom 40% of the vehicle)
+            let licensePlate = undefined;
+            if (type === 'car' && window.Tesseract) {
+                try {
+                    const plateCanvas = document.createElement('canvas');
+                    const plateW = srcW;
+                    const plateH = Math.floor(srcH * 0.4);
+                    plateCanvas.width = plateW;
+                    plateCanvas.height = plateH;
+                    const plateCtx = plateCanvas.getContext('2d');
+                    
+                    plateCtx.drawImage(
+                        video,
+                        srcX, srcY + Math.floor(srcH * 0.55), srcW, plateH,
+                        0, 0, plateW, plateH
+                    );
+                    
+                    const ocrResult = await window.Tesseract.recognize(plateCanvas, 'eng');
+                    const text = ocrResult.data.text || '';
+                    const digits = text.replace(/[^0-9]/g, '');
+                    
+                    if (digits.length >= 4) {
+                        // Format Palestinian plate
+                        if (digits.length === 7) {
+                            licensePlate = `${digits.substring(0, 3)}-${digits.substring(3, 7)}`;
+                        } else if (digits.length === 8) {
+                            licensePlate = `${digits.substring(0, 3)}-${digits.substring(3, 5)}-${digits.substring(5, 8)}`;
+                        } else {
+                            licensePlate = digits;
+                        }
+                    }
+                } catch (ocrErr) {
+                    console.warn('Local OCR failed, fallback used:', ocrErr);
+                }
+            }
 
             // Assemble Metadata JSON
             const metadata = {
                 colors: [objectColor],
                 direction: direction,
-                license_plate: type === 'car' ? 'Unknown' : undefined, // server fills in random simulated OCR
+                license_plate: type === 'car' ? (licensePlate || 'Unknown') : undefined,
                 model: type === 'car' ? 'Unknown' : undefined,
                 detected_at: new Date().toLocaleTimeString('ar-EG')
             };
