@@ -11,6 +11,7 @@ const OrbisMobileLens = ({ onClose }) => {
     const [isLaptopConnected, setIsLaptopConnected] = useState(false);
     const [trackingLog, setTrackingLog] = useState([]);
     const [cameraError, setCameraError] = useState(null);
+    const [aiActive, setAiActive] = useState(false);
 
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
@@ -151,10 +152,13 @@ const OrbisMobileLens = ({ onClose }) => {
             setIsLaptopConnected(laptopConnected);
         });
 
-        // Initialize Camera Stream
-        startCamera();
+        // Initialize Camera Stream with a small delay for React DOM rendering
+        const timer = setTimeout(() => {
+            startCamera();
+        }, 150);
 
         return () => {
+            clearTimeout(timer);
             stopCamera();
             if (socket) socket.disconnect();
         };
@@ -375,6 +379,9 @@ const OrbisMobileLens = ({ onClose }) => {
         try {
             // Run prediction
             const predictions = await modelRef.current.detect(video);
+            
+            // Set AI engine active
+            if (!aiActive) setAiActive(true);
 
             // Filter predictions for cars/people with >45% confidence
             const targets = predictions.filter(p => 
@@ -573,6 +580,9 @@ const OrbisMobileLens = ({ onClose }) => {
                     }}></span>
                     <span style={{ fontSize: '14px', fontWeight: 'bold' }}>
                         {isLaptopConnected ? 'متصل بنظام المراقبة' : 'في انتظار اللابتوب...'}
+                        <span style={{ fontSize: '11px', color: '#94a3b8', marginRight: '10px' }}>
+                            • الذكاء الاصطناعي: {aiActive ? 'نشط 🟢' : 'خامل 🔴'}
+                        </span>
                     </span>
                 </div>
                 <button 
