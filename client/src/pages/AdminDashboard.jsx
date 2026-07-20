@@ -7,6 +7,62 @@ import { cameraService, shopService, getImageUrl } from '../services/api';
 import './AdminDashboard.css';
 import ARAdminPanel from './ARAdminPanel';
 import AdminDigitalLetters from './AdminDigitalLetters';
+import OrbisControlCenter from '../components/OrbisControlCenter';
+import OrbisMobileLens from '../components/OrbisMobileLens';
+
+const OrbisDashboard = ({ setActiveTab }) => {
+    const [forceMode, setForceMode] = useState(null);
+    const [isMobileDevice, setIsMobileDevice] = useState(window.innerWidth < 768);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobileDevice(window.innerWidth < 768);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    const renderMobile = forceMode !== null ? forceMode : isMobileDevice;
+
+    if (renderMobile) {
+        return (
+            <OrbisMobileLens 
+                onClose={() => {
+                    if (forceMode !== null) {
+                        setForceMode(false);
+                    } else {
+                        setActiveTab('overview');
+                    }
+                }} 
+            />
+        );
+    }
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 10px' }}>
+                <button
+                    onClick={() => setForceMode(true)}
+                    style={{
+                        background: 'rgba(251, 171, 21, 0.1)',
+                        border: '1px solid rgba(251, 171, 21, 0.3)',
+                        color: '#fbab15',
+                        padding: '8px 16px',
+                        borderRadius: '12px',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        fontWeight: 'bold',
+                        transition: 'all 0.2s',
+                        fontFamily: 'Tajawal, sans-serif'
+                    }}
+                >
+                    📸 التبديل إلى وضع عدسة الهاتف
+                </button>
+            </div>
+            <OrbisControlCenter />
+        </div>
+    );
+};
 
 const AdminDashboard = () => {
     const { user, logout } = useAuth();
@@ -260,6 +316,7 @@ const AdminDashboard = () => {
                         { id: 'ar', icon: '🕶️', label: 'إدارة الواقع المعزز' },
                         { id: 'letters', icon: '✉️', label: 'أظرف ودعوات 3D' },
                         { id: 'event-photos', icon: '📸', label: 'صور الفعاليات/الدعوات' },
+                        { id: 'palnovaa-orbis', icon: '🛰️', label: 'PalNovaa Orbis' },
                     ].map(tab => (
                         <a
                             key={tab.id}
@@ -295,7 +352,8 @@ const AdminDashboard = () => {
                                                     activeTab === 'notifications' ? 'إرسال التنبيهات والبرودكاست' :
                                                         activeTab === 'ar' ? 'إدارة محتوى الواقع المعزز' : 
                                                             activeTab === 'letters' ? 'إدارة الأظرف والدعوات الرقمية' :
-                                                                activeTab === 'event-photos' ? 'إدارة صور ألبوم الفعاليات والدعوات' : 'خارطة النشاط الموحدة'
+                                                                activeTab === 'event-photos' ? 'إدارة صور ألبوم الفعاليات والدعوات' :
+                                                                    activeTab === 'palnovaa-orbis' ? 'نظام PalNovaa Orbis للمراقبة والتحليل بالذكاء الاصطناعي' : 'خارطة النشاط الموحدة'
                         }</h2>
                         <p>مرحباً بك يا {user.full_name || user.username} • {new Date().toLocaleDateString('ar-SA', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                     </div>
@@ -1141,6 +1199,10 @@ const AdminDashboard = () => {
                             </>
                         )}
                     </div>
+                )}
+
+                {activeTab === 'palnovaa-orbis' && (
+                    <OrbisDashboard setActiveTab={setActiveTab} />
                 )}
             </div>
         </div>

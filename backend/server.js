@@ -242,6 +242,23 @@ const pool = require('./config/database');
             )
         `);
         console.log('✅ event_photos table ready');
+
+        // ── جدول Orbis للكشف وتتبع الكاميرا بالذكاء الاصطناعي ──────────
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS orbis_detections (
+                id SERIAL PRIMARY KEY,
+                admin_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                object_type VARCHAR(50) NOT NULL,
+                image_url TEXT,
+                metadata JSONB DEFAULT '{}',
+                location GEOGRAPHY(Point, 4326),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_orbis_detections_location ON orbis_detections USING GIST(location)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_orbis_detections_timestamp ON orbis_detections(timestamp)`);
+        console.log('✅ orbis_detections table ready');
     } catch (err) {
         console.error('⚠️ database auto-migration error:', err.message);
     }
@@ -391,9 +408,40 @@ io.on('connection', (socket) => {
             socket.to(`user_${socket.userId}`).emit('ar-object-manipulation', data);
         }
     });
+
+    // 📡 Orbis AI Remote Lens Pairing & Streaming Sockets
+    socket.on('orbis-register', ({ userId, role }) => {
+        socket.userId = userId;
+        socket.orbisRole = role; // 'laptop' or 'mobile'
+        
+        socket.join(`user_${userId}`);
+        socket.join(`user_${userId}_${role}`);
+        
+        console.log(`📡 Orbis: Admin ${userId} registered as ${role} (Socket ${socket.id})`);
+        
+        // Broadcast connection status to the entire user room
+        io.to(`user_${userId}`).emit('orbis-peer-status', {
+            laptopConnected: io.sockets.adapter.rooms.get(`user_${userId}_laptop`)?.size > 0,
+            mobileConnected: io.sockets.adapter.rooms.get(`user_${userId}_mobile`)?.size > 0
+        });
+    });
+
+    socket.on('orbis-frame', (data) => {
+        if (socket.userId) {
+            socket.to(`user_${socket.userId}_laptop`).emit('orbis-frame', data);
+        }
+    });
+
     socket.on('disconnect', async () => {
         console.log('User disconnected:', socket.userId);
         if (socket.userId) {
+            if (socket.orbisRole) {
+                // Notify remaining sockets about status change
+                io.to(`user_${socket.userId}`).emit('orbis-peer-status', {
+                    laptopConnected: io.sockets.adapter.rooms.get(`user_${socket.userId}_laptop`)?.size > 0,
+                    mobileConnected: io.sockets.adapter.rooms.get(`user_${socket.userId}_mobile`)?.size > 0
+                });
+            }
             try {
                 const pool = require('./config/database');
                 await pool.query(
@@ -474,6 +522,8 @@ app.use('/api/study-space', require('./routes/studySpace'));
 app.use('/api/map-3d-models', require('./routes/map3D'));
 app.use('/api/digital-letters', require('./routes/digitalLetters'));
 app.use('/api/events', require('./routes/events'));
+app.use('/orbis', require('./routes/orbis'));
+app.use('/api/orbis', require('./routes/orbis'));
 
 
 

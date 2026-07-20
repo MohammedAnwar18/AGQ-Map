@@ -39,7 +39,7 @@ const getPool = () => {
       // إعدادات مثالية للـ Serverless Functions (Vercel)
       max: 1, 
       idleTimeoutMillis: 10000, // إغلاق الاتصالات الخاملة بسرعة
-      connectionTimeoutMillis: 5000, // عدم الانتظار طويلاً إذا كانت القاعدة مشغولة
+      connectionTimeoutMillis: 15000, // عدم الانتظار طويلاً إذا كانت القاعدة مشغولة
     });
 
     pool.on('error', (err) => {
