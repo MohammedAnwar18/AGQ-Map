@@ -12,15 +12,7 @@ import OrbisMobileLens from '../components/OrbisMobileLens';
 
 const OrbisDashboard = ({ setActiveTab }) => {
     const [forceMode, setForceMode] = useState(null);
-    const [isMobileDevice, setIsMobileDevice] = useState(window.innerWidth < 768);
-
-    useEffect(() => {
-        const handleResize = () => {
-            setIsMobileDevice(window.innerWidth < 768);
-        };
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
+    const [isMobileDevice] = useState(() => /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent));
 
     const renderMobile = forceMode !== null ? forceMode : isMobileDevice;
 
