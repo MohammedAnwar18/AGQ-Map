@@ -68,6 +68,7 @@ const AdminDashboard = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('overview');
+    const [sidebarOpen, setSidebarOpen] = useState(false);
     const [stats, setStats] = useState(null);
     const [users, setUsers] = useState([]);
     const [posts, setPosts] = useState([]);
@@ -296,8 +297,24 @@ const AdminDashboard = () => {
 
     return (
         <div className="admin-dashboard">
+            {/* Mobile Menu Toggle Button */}
+            <button 
+                className="admin-mobile-toggle"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+            >
+                ☰ القائمة
+            </button>
+
+            {/* Background overlay for mobile sidebar */}
+            {sidebarOpen && (
+                <div 
+                    className="admin-sidebar-overlay" 
+                    onClick={() => setSidebarOpen(false)}
+                />
+            )}
+
             {/* Design Enhanced Sidebar */}
-            <div className="admin-sidebar">
+            <div className={`admin-sidebar ${sidebarOpen ? 'open' : ''}`}>
                 <div className="admin-logo">
                     <h1>📍 PalNovaa</h1>
                     <p>SUPER ADMIN PANEL</p>
@@ -322,7 +339,7 @@ const AdminDashboard = () => {
                             key={tab.id}
                             href="#"
                             className={`admin-nav-item ${activeTab === tab.id ? 'active' : ''}`}
-                            onClick={(e) => { e.preventDefault(); setActiveTab(tab.id); setCurrentPage(1); }}
+                            onClick={(e) => { e.preventDefault(); setActiveTab(tab.id); setCurrentPage(1); setSidebarOpen(false); }}
                         >
                             <span className="admin-nav-icon">{tab.icon}</span>
                             <span>{tab.label}</span>
