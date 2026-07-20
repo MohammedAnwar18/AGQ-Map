@@ -261,9 +261,9 @@ const OrbisMobileLens = ({ onClose }) => {
             // Run prediction
             const predictions = await modelRef.current.detect(video);
 
-            // Filter predictions for cars/people with >60% confidence
+            // Filter predictions for cars/people with >45% confidence
             const targets = predictions.filter(p => 
-                ['person', 'car', 'truck', 'bus'].includes(p.class) && p.score > 0.60
+                ['person', 'car', 'truck', 'bus'].includes(p.class) && p.score > 0.45
             );
 
             targets.forEach((pred, index) => {
