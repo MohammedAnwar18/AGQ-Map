@@ -3,6 +3,7 @@ import { io } from 'socket.io-client';
 import Map, { Marker, Popup, NavigationControl } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import axios from 'axios';
+import QRCode from 'qrcode';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../services/api';
 
@@ -18,6 +19,8 @@ const OrbisControlCenter = () => {
     const [soundEnabled, setSoundEnabled] = useState(true);
     const [stats, setStats] = useState({ cars: 0, people: 0 });
     const [loading, setLoading] = useState(true);
+    const [qrCodeUrl, setQrCodeUrl] = useState('');
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     
     // Map View State
     const [viewState, setViewState] = useState({
@@ -28,6 +31,13 @@ const OrbisControlCenter = () => {
 
     const socketRef = useRef(null);
     const mapRef = useRef(null);
+
+    useEffect(() => {
+        // Generate QR code pointing to the current admin dashboard URL
+        QRCode.toDataURL(window.location.href)
+            .then(url => setQrCodeUrl(url))
+            .catch(err => console.error('Failed generating pairing QR code:', err));
+    }, []);
     const API_URL = import.meta.env.VITE_API_URL || '/api';
     const SOCKET_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : window.location.origin;
 
@@ -400,6 +410,70 @@ const OrbisControlCenter = () => {
                 border: '1px solid rgba(255, 255, 255, 0.05)',
                 boxShadow: 'var(--card-shadow)'
             }}>
+                {/* Floating QR Pairing Guide Card */}
+                {!isMobileConnected && (
+                    <div style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: '380px',
+                        background: 'rgba(9, 13, 22, 0.95)',
+                        backdropFilter: 'blur(30px)',
+                        border: '1px solid rgba(251, 171, 21, 0.2)',
+                        borderRadius: '24px',
+                        padding: '24px',
+                        zIndex: 100,
+                        boxShadow: '0 30px 60px rgba(0, 0, 0, 0.7)',
+                        textAlign: 'center',
+                        fontFamily: 'Tajawal, sans-serif'
+                    }}>
+                        <h3 style={{ margin: '0 0 10px 0', color: '#fbab15', fontSize: '18px', fontWeight: '900' }}>
+                            🔗 ربط عدسة الهاتف المحمول
+                        </h3>
+                        <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: '#94a3b8', lineHeight: '1.6' }}>
+                            للبدء برصد المركبات والناس، افتح حساب الأدمن من هاتفك الذكي وتوجه لنفس التبويب لتفعيل الكاميرا.
+                        </p>
+
+                        {/* QR Code Container */}
+                        {qrCodeUrl ? (
+                            <div style={{
+                                background: '#fff',
+                                padding: '12px',
+                                borderRadius: '16px',
+                                display: 'inline-block',
+                                marginBottom: '20px',
+                                boxShadow: '0 8px 30px rgba(0,0,0,0.3)'
+                            }}>
+                                <img src={qrCodeUrl} alt="QR Code" style={{ width: '150px', height: '150px', display: 'block' }} />
+                            </div>
+                        ) : (
+                            <div style={{ padding: '40px 0', color: '#94a3b8', fontSize: '12px' }}>جاري إنشاء رمز الاستجابة...</div>
+                        )}
+
+                        <div style={{
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            border: '1px solid rgba(255, 255, 255, 0.05)',
+                            borderRadius: '14px',
+                            padding: '12px',
+                            fontSize: '12px',
+                            color: '#e2e8f0',
+                            textAlign: 'right',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px'
+                        }}>
+                            <div><strong>1.</strong> تأكد من اتصال الهاتف واللابتوب بـ <strong>نفس شبكة الـ Wi-Fi</strong>.</div>
+                            <div><strong>2.</strong> امسح الرمز أعلاه بكاميرا الهاتف لفتح الرابط مباشرة.</div>
+                            {isLocalhost && (
+                                <div style={{ color: '#fbab15', fontSize: '11px', borderTop: '1px solid rgba(251, 171, 21, 0.1)', paddingTop: '6px', marginTop: '4px' }}>
+                                    ⚠️ <strong>تنبيه localhost:</strong> يفضل فتح الموقع من اللابتوب باستخدام آي بي الشبكة (مثل <code>http://192.168.1.X:5173/admin</code>) قبل مسح الرمز.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 <Map
                     ref={mapRef}
                     {...viewState}
