@@ -1,746 +1,603 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
 const OrbisMobileLens = ({ onClose }) => {
     const { user } = useAuth();
-    const [modelLoaded, setModelLoaded] = useState(false);
-    const [loadingMsg, setLoadingMsg] = useState('جاري تحميل مكتبات الذكاء الاصطناعي...');
-    const [cameraActive, setCameraActive] = useState(false);
+
+    // ── State ──────────────────────────────────────────────────────────────────
+    const [phase, setPhase]               = useState('loading'); // loading | ready | active | error
+    const [loadingMsg, setLoadingMsg]     = useState('جاري تحميل الذكاء الاصطناعي...');
+    const [errorMsg, setErrorMsg]         = useState('');
     const [isLaptopConnected, setIsLaptopConnected] = useState(false);
-    const [trackingLog, setTrackingLog] = useState([]);
-    const [cameraError, setCameraError] = useState(null);
-    const [aiActive, setAiActive] = useState(false);
+    const [aiActive, setAiActive]         = useState(false);
+    const [trackingLog, setTrackingLog]   = useState([]);
 
-    const videoRef = useRef(null);
-    const canvasRef = useRef(null);
-    const socketRef = useRef(null);
-    const trackerRef = useRef({}); // Tracks detected objects for cooldowns
-    const historyRef = useRef({}); // Tracks horizontal centers for direction
-    const streamIntervalRef = useRef(null);
-    const modelRef = useRef(null);
-    const gpsRef = useRef({ lat: 31.9522, lng: 35.2332 }); // Ramallah default
+    // ── Refs (never cause re-renders) ──────────────────────────────────────────
+    const videoRef        = useRef(null);
+    const canvasRef       = useRef(null);
+    const modelRef        = useRef(null);
+    const socketRef       = useRef(null);
+    const gpsRef          = useRef({ lat: 31.9522, lng: 35.2332 });
     const activeTracksRef = useRef([]);
+    const historyRef      = useRef({});
+    const loopActiveRef   = useRef(false); // prevents multiple loops
+    const streamTimerRef  = useRef(null);
 
+    // ── URL helpers ────────────────────────────────────────────────────────────
     const getDynamicUrls = () => {
-        const hostname = window.location.hostname;
-        const isLocal = hostname === 'localhost' || 
-                        hostname === '127.0.0.1' || 
-                        hostname.startsWith('192.168.') || 
-                        hostname.startsWith('10.') || 
-                        (hostname.startsWith('172.') && parseInt(hostname.split('.')[1], 10) >= 16 && parseInt(hostname.split('.')[1], 10) <= 31);
-                        
+        const h = window.location.hostname;
+        const isLocal = h === 'localhost' || h === '127.0.0.1' ||
+                        h.startsWith('192.168.') || h.startsWith('10.');
         if (isLocal) {
             return {
-                apiUrl: `${window.location.protocol}//${hostname}:5000/api`,
-                socketUrl: `${window.location.protocol}//${hostname}:5000`
+                apiUrl:    `${window.location.protocol}//${h}:5000/api`,
+                socketUrl: `${window.location.protocol}//${h}:5000`
             };
         }
-        
-        const apiUrl = import.meta.env.VITE_API_URL || `${window.location.origin}/api`;
-        const socketUrl = import.meta.env.VITE_WS_URL || (import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : window.location.origin);
-        
-        return { apiUrl, socketUrl };
+        return {
+            apiUrl:    import.meta.env.VITE_API_URL || `${window.location.origin}/api`,
+            socketUrl: import.meta.env.VITE_WS_URL  || window.location.origin
+        };
     };
-
     const { apiUrl: API_URL, socketUrl: SOCKET_URL } = getDynamicUrls();
 
-    // 1. Load TensorFlow.js and COCO-SSD dynamically
+    // ── 1. Load AI libraries ───────────────────────────────────────────────────
     useEffect(() => {
-        let isMounted = true;
+        let alive = true;
 
-        const loadScript = (src) => {
-            return new Promise((resolve, reject) => {
-                if (document.querySelector(`script[src="${src}"]`)) {
-                    resolve();
-                    return;
-                }
-                const script = document.createElement('script');
-                script.src = src;
-                script.async = true;
-                script.onload = () => resolve();
-                script.onerror = (err) => reject(err);
-                document.body.appendChild(script);
-            });
-        };
+        const loadScript = (src) => new Promise((res, rej) => {
+            if (document.querySelector(`script[src="${src}"]`)) { res(); return; }
+            const s = document.createElement('script');
+            s.src = src; s.async = true;
+            s.onload = res;
+            s.onerror = rej;
+            document.body.appendChild(s);
+        });
 
-        const initAI = async () => {
+        (async () => {
             try {
                 setLoadingMsg('جاري تحميل TensorFlow.js...');
                 await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js');
-                
-                if (!isMounted) return;
-                setLoadingMsg('جاري تحميل نموذج COCO-SSD...');
+                if (!alive) return;
+
+                setLoadingMsg('جاري تحميل نموذج الكشف (COCO-SSD)...');
                 await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js');
+                if (!alive) return;
 
-                if (!isMounted) return;
-                setLoadingMsg('جاري تحميل محرك قراءة اللوحات (OCR)...');
-                await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5.0.5/dist/tesseract.min.js');
+                setLoadingMsg('جاري تحميل محرك قراءة اللوحات...');
+                await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
+                if (!alive) return;
 
-                if (!isMounted) return;
-                
-                // Activate WebGL acceleration
+                // activate GPU
                 if (window.tf) {
                     await window.tf.ready();
-                    try {
-                        await window.tf.setBackend('webgl');
-                        console.log('✅ Orbis: WebGL backend activated successfully.');
-                    } catch (e) {
-                        console.warn('⚠️ Orbis: WebGL not supported, falling back to CPU.');
-                    }
+                    try { await window.tf.setBackend('webgl'); } catch (_) {}
                 }
 
-                if (window.cocoSsd) {
-                    setLoadingMsg('جاري تفعيل نموذج كشف الكائنات...');
-                    modelRef.current = await window.cocoSsd.load({
-                        base: 'lite_mobilenet_v2' // Lightweight for mobile devices
-                    });
-                    setModelLoaded(true);
-                    setLoadingMsg('');
-                } else {
-                    throw new Error('Failed to bind COCO-SSD model to window object.');
-                }
+                setLoadingMsg('جاري تفعيل نموذج الكشف...');
+                if (!window.cocoSsd) throw new Error('cocoSsd not found on window');
+                modelRef.current = await window.cocoSsd.load({ base: 'lite_mobilenet_v2' });
+
+                if (!alive) return;
+                setLoadingMsg('');
+                setPhase('ready');
             } catch (err) {
-                console.error('AI loading error:', err);
-                if (isMounted) {
-                    setCameraError('فشل تحميل محرك الذكاء الاصطناعي. يرجى التحقق من اتصال الإنترنت.');
+                console.error('AI load error:', err);
+                if (alive) {
+                    setErrorMsg('فشل تحميل الذكاء الاصطناعي. تحقق من الاتصال بالإنترنت وأعد تحميل الصفحة.');
+                    setPhase('error');
                 }
             }
-        };
+        })();
 
-        initAI();
-
-        // 2. Setup Geolocation Tracking
-        let watchId = null;
-        if (navigator.geolocation) {
-            watchId = navigator.geolocation.watchPosition(
-                (pos) => {
-                    gpsRef.current = {
-                        lat: pos.coords.latitude,
-                        lng: pos.coords.longitude
-                    };
-                },
-                (err) => console.warn('GPS Error:', err.message),
-                { enableHighAccuracy: true, maximumAge: 30000, timeout: 27000 }
-            );
-        }
-
-        return () => {
-            isMounted = false;
-            if (watchId) navigator.geolocation.clearWatch(watchId);
-        };
+        return () => { alive = false; };
     }, []);
 
-    // 3. Connect Socket and setup Streaming
+    // ── 2. Socket connection ───────────────────────────────────────────────────
     useEffect(() => {
-        if (!modelLoaded) return;
+        if (phase !== 'ready' && phase !== 'active') return;
 
-        // Establish Socket Connection
-        const socket = io(SOCKET_URL, {
-            transports: ['websocket'],
-            upgrade: false
-        });
+        const socket = io(SOCKET_URL, { transports: ['websocket'], upgrade: false });
         socketRef.current = socket;
 
         socket.on('connect', () => {
-            console.log('Orbis Mobile Socket connected:', socket.id);
-            socket.emit('orbis-register', { userId: user.id, role: 'mobile' });
+            socket.emit('orbis-register', { userId: user?.id, role: 'mobile' });
         });
-
         socket.on('orbis-peer-status', ({ laptopConnected }) => {
             setIsLaptopConnected(laptopConnected);
         });
 
-        // Initialize Camera Stream with a small delay for React DOM rendering
-        const timer = setTimeout(() => {
-            startCamera();
-        }, 150);
+        return () => socket.disconnect();
+    }, [phase]);
 
-        return () => {
-            clearTimeout(timer);
-            stopCamera();
-            if (socket) socket.disconnect();
-        };
-    }, [modelLoaded]);
+    // ── 3. Start camera when ready ─────────────────────────────────────────────
+    useEffect(() => {
+        if (phase !== 'ready') return;
 
-    const startCamera = async () => {
-        try {
-            setCameraError(null);
-            const constraints = {
-                video: {
-                    facingMode: 'environment', // Rear camera
-                    width: { ideal: 640 },
-                    height: { ideal: 480 },
-                    frameRate: { ideal: 24 }
-                },
-                audio: false
-            };
+        const start = async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+                    audio: false
+                });
+                const video = videoRef.current;
+                if (!video) return;
 
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-                
-                const handleMetadata = () => {
-                    if (videoRef.current) {
-                        videoRef.current.play()
-                            .then(() => {
-                                setCameraActive(true);
-                                // Start rendering overlay and running AI
-                                requestAnimationFrame(detectLoop);
-                                // Start streaming compressed frames to laptop dashboard
-                                startFrameStreaming();
-                            })
-                            .catch(e => console.warn('Autoplay error:', e.message));
-                    }
+                video.srcObject = stream;
+                video.setAttribute('playsinline', '');
+                video.setAttribute('muted', '');
+
+                video.onloadedmetadata = () => {
+                    video.play()
+                        .then(() => {
+                            setPhase('active');
+                        })
+                        .catch(e => console.warn('play() rejected:', e));
                 };
 
-                if (videoRef.current.readyState >= 1) {
-                    handleMetadata();
-                } else {
-                    videoRef.current.onloadedmetadata = handleMetadata;
+                // fallback for readyState already ready
+                if (video.readyState >= 2) {
+                    video.play()
+                        .then(() => setPhase('active'))
+                        .catch(() => {});
                 }
+            } catch (err) {
+                console.error('Camera error:', err);
+                setErrorMsg('فشل فتح الكاميرا. تأكد من منح صلاحية الكاميرا وأن الموقع يعمل عبر HTTPS.');
+                setPhase('error');
             }
-        } catch (err) {
-            console.error('Camera capture error:', err);
-            setCameraError('فشل فتح الكاميرا. تأكد من إعطاء الصلاحيات الكافية واستخدام بروتوكول HTTPS.');
-        }
-    };
+        };
 
-    const stopCamera = () => {
-        if (streamIntervalRef.current) {
-            clearInterval(streamIntervalRef.current);
-        }
-        if (videoRef.current && videoRef.current.srcObject) {
-            videoRef.current.srcObject.getTracks().forEach(track => track.stop());
-            videoRef.current.srcObject = null;
-        }
-        setCameraActive(false);
-    };
-
-    // 4. Send low-res frames via socket to Laptop picture-in-picture
-    const startFrameStreaming = () => {
-        const streamCanvas = document.createElement('canvas');
-        streamCanvas.width = 240;
-        streamCanvas.height = 180;
-        const streamCtx = streamCanvas.getContext('2d');
-
-        streamIntervalRef.current = setInterval(() => {
-            if (videoRef.current && cameraActive && socketRef.current?.connected) {
-                streamCtx.drawImage(videoRef.current, 0, 0, streamCanvas.width, streamCanvas.height);
-                const jpegBase64 = streamCanvas.toDataURL('image/jpeg', 0.4); // High compression for low latency
-                socketRef.current.emit('orbis-frame', jpegBase64);
+        // tiny delay so React finishes rendering the <video> element
+        const t = setTimeout(start, 200);
+        return () => {
+            clearTimeout(t);
+            // stop stream
+            if (videoRef.current?.srcObject) {
+                videoRef.current.srcObject.getTracks().forEach(t => t.stop());
             }
-        }, 150); // ~6.7 FPS
-    };
+        };
+    }, [phase]);
 
-    // Helper: Analyze color from video element crop area
-    const getObjectColor = (video, bbox) => {
-        try {
-            const [x, y, w, h] = bbox;
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = 10;
-            tempCanvas.height = 10;
-            const tempCtx = tempCanvas.getContext('2d');
-            
-            // Draw a small 10x10 area from the center of the detected object
-            const centerX = Math.max(0, x + w / 2 - 5);
-            const centerY = Math.max(0, y + h / 2 - 5);
-            
-            tempCtx.drawImage(
-                video,
-                Math.floor(centerX), Math.floor(centerY), 10, 10,
-                0, 0, 10, 10
-            );
-            
-            const imgData = tempCtx.getImageData(0, 0, 10, 10).data;
-            let rSum = 0, gSum = 0, bSum = 0, count = 0;
-            
-            for (let i = 0; i < imgData.length; i += 4) {
-                rSum += imgData[i];
-                gSum += imgData[i+1];
-                bSum += imgData[i+2];
-                count++;
-            }
-            
-            const r = rSum / count;
-            const g = gSum / count;
-            const b = bSum / count;
+    // ── 4. AI detection loop ───────────────────────────────────────────────────
+    useEffect(() => {
+        if (phase !== 'active') return;
+        loopActiveRef.current = true;
 
-            if (r > 210 && g > 210 && b > 210) return 'أبيض';
-            if (r < 50 && g < 50 && b < 50) return 'أسود';
-            
-            const maxVal = Math.max(r, g, b);
-            const minVal = Math.min(r, g, b);
-            const diff = maxVal - minVal;
-            if (diff < 20) return 'رمادي';
-            
-            if (r > g && r > b) {
-                if (g > 140 && b < 80) return 'أصفر';
-                if (g > 60 && g < 140 && b < 60) return 'برتقالي';
-                return 'أحمر';
-            }
-            if (g > r && g > b) {
-                if (r > 140 && b < 80) return 'أصفر';
-                return 'أخضر';
-            }
-            if (b > r && b > g) {
-                if (g > 120) return 'سماوي';
-                return 'أزرق';
-            }
-            if (r > 120 && b > 120 && g < 100) return 'بنفسجي';
-            
-            return 'رمادي';
-        } catch (e) {
-            console.error("Color detection error:", e);
-            return 'غير محدد';
-        }
-    };
+        const detectLoop = async () => {
+            if (!loopActiveRef.current) return;
 
-    // Helper: Track object centroids for dynamic de-duplication
-    const trackCentroid = (type, x, y, w, h) => {
-        const cx = x + w / 2;
-        const cy = y + h / 2;
-        const now = Date.now();
-        
-        // Clean up tracks older than 2.5 seconds
-        activeTracksRef.current = activeTracksRef.current.filter(t => now - t.lastSeen < 2500);
-
-        let closestTrack = null;
-        let minDistance = Infinity;
-
-        for (const track of activeTracksRef.current) {
-            if (track.type === type) {
-                const dist = Math.hypot(cx - track.x, cy - track.y);
-                if (dist < minDistance) {
-                    minDistance = dist;
-                    closestTrack = track;
-                }
-            }
-        }
-
-        const THRESHOLD = 100; // pixels
-
-        if (closestTrack && minDistance < THRESHOLD) {
-            closestTrack.x = cx;
-            closestTrack.y = cy;
-            closestTrack.lastSeen = now;
-            return { trackId: closestTrack.id, isNew: false };
-        } else {
-            const trackId = `${type}_${now}_${Math.floor(Math.random() * 1000)}`;
-            const newTrack = { id: trackId, type, x: cx, y: cy, lastSeen: now };
-            activeTracksRef.current.push(newTrack);
-            return { trackId, isNew: true };
-        }
-    };
-
-    // Helper: Track motion direction
-    const trackDirection = (objId, currentCenterX) => {
-        if (!historyRef.current[objId]) {
-            historyRef.current[objId] = [];
-        }
-        const history = historyRef.current[objId];
-        history.push(currentCenterX);
-        if (history.length > 5) history.shift();
-
-        if (history.length < 2) return 'ثابت';
-
-        const diff = history[history.length - 1] - history[0];
-        if (Math.abs(diff) < 20) return 'ثابت';
-        return diff > 0 ? 'يمين' : 'يسار';
-    };
-
-    // 5. Main AI Loop running COCO-SSD
-    const detectLoop = async () => {
-        if (!videoRef.current) return;
-
-        const video = videoRef.current;
-        const canvas = canvasRef.current;
-
-        // Wait if video frame is not ready or has 0 dimensions
-        if (video.paused || video.ended || video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) {
-            requestAnimationFrame(detectLoop);
-            return;
-        }
-
-        if (!canvas) {
-            requestAnimationFrame(detectLoop);
-            return;
-        }
-
-        const ctx = canvas.getContext('2d');
-        
-        // Match canvas dimensions to video
-        if (canvas.width !== video.videoWidth) canvas.width = video.videoWidth;
-        if (canvas.height !== video.videoHeight) canvas.height = video.videoHeight;
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        try {
-            // Run prediction
-            const predictions = await modelRef.current.detect(video);
-            
-            // Set AI engine active
-            if (!aiActive) setAiActive(true);
-
-            // Filter predictions for cars/people with >45% confidence
-            const targets = predictions.filter(p => 
-                ['person', 'car', 'truck', 'bus'].includes(p.class) && p.score > 0.45
-            );
-
-            targets.forEach((pred, index) => {
-                const [x, y, w, h] = pred.bbox;
-                const type = pred.class === 'person' ? 'person' : 'car';
-                const label = type === 'person' ? 'إنسان' : 'مركبة';
-                
-                // ── AI Analytics & Centroid Tracking ───────────────────────────────
-                const { track } = trackCentroid(type, x, y, w, h);
-                const centerX = x + w / 2;
-
-                const primaryColor = getObjectColor(video, pred.bbox);
-                const movementDirection = trackDirection(track.id, centerX);
-
-                // Wait 3 seconds of steady tracking before capturing
-                const trackDuration = Date.now() - track.createdTime;
-                const secondsRemaining = Math.max(0, Math.ceil((3000 - trackDuration) / 1000));
-                
-                let focusLabel = '';
-                if (track.uploaded) {
-                    focusLabel = ' ✅ تم الالتقاط';
-                } else {
-                    focusLabel = ` ⏳ التركيز (${secondsRemaining}ث)`;
-                }
-
-                // Bounding Box Colors: Orange for Cars, Purple for People
-                const color = type === 'person' ? '#a855f7' : '#fbab15';
-                
-                // Draw Box
-                ctx.strokeStyle = color;
-                ctx.lineWidth = 4;
-                ctx.strokeRect(x, y, w, h);
-
-                // Draw Label Background
-                ctx.fillStyle = color;
-                ctx.font = 'bold 16px Tajawal, sans-serif';
-                const displayMsg = `${label} ${(pred.score * 100).toFixed(0)}% | ${focusLabel}`;
-                const textWidth = ctx.measureText(displayMsg).width;
-                ctx.fillRect(x, y - 28, textWidth + 12, 28);
-
-                // Draw Label Text
-                ctx.fillStyle = '#020617';
-                ctx.fillText(displayMsg, x + 6, y - 8);
-
-                // Trigger upload after 3 seconds focus
-                if (trackDuration >= 3000 && !track.uploaded) {
-                    track.uploaded = true; // Mark as uploaded to prevent duplicate uploads
-                    triggerEventUpload(video, pred.bbox, type, primaryColor, movementDirection);
-                }
-            });
-        } catch (e) {
-            console.error('Frame inference error:', e);
-        }
-
-        // Schedule next check
-        if (videoRef.current) {
-            setTimeout(() => {
+            const video  = videoRef.current;
+            const canvas = canvasRef.current;
+            if (!video || !canvas || !modelRef.current) {
                 requestAnimationFrame(detectLoop);
-            }, 60); // Max ~16 FPS to avoid overheating mobile CPU
+                return;
+            }
+
+            // wait for real video pixels
+            if (video.paused || video.ended || video.readyState < 2 ||
+                video.videoWidth === 0 || video.videoHeight === 0) {
+                requestAnimationFrame(detectLoop);
+                return;
+            }
+
+            // match canvas pixels to video pixels exactly
+            if (canvas.width  !== video.videoWidth)  canvas.width  = video.videoWidth;
+            if (canvas.height !== video.videoHeight) canvas.height = video.videoHeight;
+
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            try {
+                const predictions = await modelRef.current.detect(video);
+                if (!aiActive) setAiActive(true);
+
+                const targets = predictions.filter(p =>
+                    ['car', 'truck', 'bus', 'person'].includes(p.class) && p.score > 0.40
+                );
+
+                targets.forEach(pred => {
+                    const [x, y, w, h] = pred.bbox;
+                    const isVehicle    = pred.class !== 'person';
+                    const label        = isVehicle ? 'مركبة' : 'إنسان';
+                    const boxColor     = isVehicle ? '#fbab15' : '#a855f7';
+
+                    // centroid tracking for 3-second focus timer
+                    const { track } = trackCentroid(pred.class, x, y, w, h);
+                    const elapsed   = Date.now() - track.createdTime;
+                    const secLeft   = Math.max(0, Math.ceil((3000 - elapsed) / 1000));
+                    const status    = track.uploaded ? '✅ تم الالتقاط' : `⏳ ${secLeft}ث`;
+
+                    // ─ Draw bounding box ─
+                    ctx.strokeStyle = boxColor;
+                    ctx.lineWidth   = 3;
+                    ctx.strokeRect(x, y, w, h);
+
+                    // corner marks
+                    const cs = 18;
+                    ctx.lineWidth = 5;
+                    [[x,y],[x+w,y],[x,y+h],[x+w,y+h]].forEach(([cx,cy]) => {
+                        const sx = cx === x ? 1 : -1;
+                        const sy = cy === y ? 1 : -1;
+                        ctx.beginPath();
+                        ctx.moveTo(cx, cy + sy * cs);
+                        ctx.lineTo(cx, cy);
+                        ctx.lineTo(cx + sx * cs, cy);
+                        ctx.stroke();
+                    });
+
+                    // ─ Draw label ─
+                    ctx.lineWidth = 1;
+                    const conf = `${(pred.score * 100).toFixed(0)}%`;
+                    const msg  = `${label} ${conf} | ${status}`;
+                    ctx.font   = `bold 15px Arial, sans-serif`;
+                    const tw   = ctx.measureText(msg).width;
+                    const lh   = 24;
+                    const lx   = x;
+                    const ly   = Math.max(lh, y - 4);
+                    ctx.fillStyle = boxColor;
+                    ctx.fillRect(lx, ly - lh, tw + 12, lh);
+                    ctx.fillStyle = '#0f172a';
+                    ctx.fillText(msg, lx + 6, ly - 6);
+
+                    // ─ Trigger upload after 3 seconds ─
+                    if (elapsed >= 3000 && !track.uploaded) {
+                        track.uploaded = true;
+                        const color = getObjectColor(video, pred.bbox);
+                        const dir   = trackDirection(track.id, x + w / 2);
+                        triggerUpload(video, pred.bbox, isVehicle ? 'car' : 'person', color, dir);
+                    }
+                });
+
+                // stream thumbnail to laptop
+                streamFrame(video);
+
+            } catch (e) {
+                console.warn('detectLoop error:', e);
+            }
+
+            // schedule next frame
+            setTimeout(() => {
+                if (loopActiveRef.current) requestAnimationFrame(detectLoop);
+            }, 80); // ~12 FPS
+        };
+
+        requestAnimationFrame(detectLoop);
+
+        return () => {
+            loopActiveRef.current = false;
+        };
+    }, [phase]);
+
+    // ── Helper: centroid tracker ───────────────────────────────────────────────
+    const trackCentroid = (type, x, y, w, h) => {
+        const cx  = x + w / 2;
+        const cy  = y + h / 2;
+        const now = Date.now();
+
+        // prune stale tracks
+        activeTracksRef.current = activeTracksRef.current.filter(t => now - t.lastSeen < 3000);
+
+        let found = null;
+        let minD  = Infinity;
+        for (const t of activeTracksRef.current) {
+            if (t.type !== type) continue;
+            const d = Math.hypot(cx - t.x, cy - t.y);
+            if (d < 120 && d < minD) { minD = d; found = t; }
         }
+
+        if (found) {
+            found.x = cx; found.y = cy; found.lastSeen = now;
+            return { track: found };
+        }
+
+        const newTrack = {
+            id: `${type}_${now}`,
+            type,
+            x: cx, y: cy,
+            lastSeen: now,
+            createdTime: now,
+            uploaded: false
+        };
+        activeTracksRef.current.push(newTrack);
+        return { track: newTrack };
     };
 
-    // 6. Upload Cropped Image and Metadata to Server
-    const triggerEventUpload = async (video, bbox, type, objectColor, direction) => {
+    // ── Helper: get dominant color ─────────────────────────────────────────────
+    const getObjectColor = (video, [x, y, w, h]) => {
         try {
-            const [x, y, w, h] = bbox;
+            const tmp = document.createElement('canvas');
+            tmp.width = 10; tmp.height = 10;
+            const tctx = tmp.getContext('2d');
+            const cx = Math.max(0, x + w / 2 - 5);
+            const cy = Math.max(0, y + h / 2 - 5);
+            tctx.drawImage(video, cx, cy, 10, 10, 0, 0, 10, 10);
+            const [r, g, b] = tctx.getImageData(5, 5, 1, 1).data;
+            if (r > 210 && g > 210 && b > 210) return 'أبيض';
+            if (r < 50  && g < 50  && b < 50)  return 'أسود';
+            const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+            if (mx - mn < 25) return 'رمادي';
+            if (r > g && r > b) return g > 140 ? 'أصفر' : g > 60 ? 'برتقالي' : 'أحمر';
+            if (g > r && g > b) return 'أخضر';
+            if (b > r && b > g) return g > 120 ? 'سماوي' : 'أزرق';
+            return 'رمادي';
+        } catch (_) { return 'غير محدد'; }
+    };
 
-            // Safe boundary calculations in case bbox is slightly off-camera
-            const srcX = Math.max(0, Math.floor(x));
-            const srcY = Math.max(0, Math.floor(y));
-            const srcW = Math.min(Math.floor(w), video.videoWidth - srcX);
-            const srcH = Math.min(Math.floor(h), video.videoHeight - srcY);
+    // ── Helper: direction tracker ──────────────────────────────────────────────
+    const trackDirection = (id, cx) => {
+        if (!historyRef.current[id]) historyRef.current[id] = [];
+        const h = historyRef.current[id];
+        h.push(cx);
+        if (h.length > 8) h.shift();
+        if (h.length < 2) return 'ثابت';
+        const diff = h[h.length - 1] - h[0];
+        return Math.abs(diff) < 20 ? 'ثابت' : diff > 0 ? 'يمين' : 'يسار';
+    };
 
-            // Crop object image at exact bounding box resolution (no aspect ratio stretching)
-            const cropCanvas = document.createElement('canvas');
-            cropCanvas.width = srcW;
-            cropCanvas.height = srcH;
-            const cropCtx = cropCanvas.getContext('2d');
-            
-            // Draw cropped video frame without compression distortions
-            cropCtx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
-            const imageBase64 = cropCanvas.toDataURL('image/jpeg', 0.9);
+    // ── Helper: stream thumbnail ───────────────────────────────────────────────
+    const streamFrame = (() => {
+        let lastStream = 0;
+        return (video) => {
+            const now = Date.now();
+            if (now - lastStream < 500) return; // max 2 FPS for streaming
+            lastStream = now;
+            if (!socketRef.current?.connected || !video.videoWidth) return;
+            try {
+                const sc = document.createElement('canvas');
+                sc.width = 240; sc.height = 180;
+                sc.getContext('2d').drawImage(video, 0, 0, 240, 180);
+                socketRef.current.emit('orbis-frame', { frame: sc.toDataURL('image/jpeg', 0.4) });
+            } catch (_) {}
+        };
+    })();
 
-            // Run Tesseract.js OCR on the license plate area (typically bottom 40% of the vehicle)
-            let licensePlate = undefined;
+    // ── Helper: upload detection ───────────────────────────────────────────────
+    const triggerUpload = async (video, [x, y, w, h], type, color, direction) => {
+        try {
+            const sx = Math.max(0, Math.floor(x));
+            const sy = Math.max(0, Math.floor(y));
+            const sw = Math.min(Math.floor(w), video.videoWidth  - sx);
+            const sh = Math.min(Math.floor(h), video.videoHeight - sy);
+
+            const crop = document.createElement('canvas');
+            crop.width = sw; crop.height = sh;
+            crop.getContext('2d').drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
+            const imageBase64 = crop.toDataURL('image/jpeg', 0.9);
+
+            // client-side OCR for license plate
+            let license = undefined;
             if (type === 'car' && window.Tesseract) {
                 try {
-                    const plateCanvas = document.createElement('canvas');
-                    const plateW = srcW;
-                    const plateH = Math.floor(srcH * 0.4);
-                    plateCanvas.width = plateW;
-                    plateCanvas.height = plateH;
-                    const plateCtx = plateCanvas.getContext('2d');
-                    
-                    plateCtx.drawImage(
-                        video,
-                        srcX, srcY + Math.floor(srcH * 0.55), srcW, plateH,
-                        0, 0, plateW, plateH
-                    );
-                    
-                    const ocrResult = await window.Tesseract.recognize(plateCanvas, 'eng');
-                    const text = ocrResult.data.text || '';
-                    const digits = text.replace(/[^0-9]/g, '');
-                    
-                    if (digits.length >= 4) {
-                        // Format Palestinian plate
-                        if (digits.length === 7) {
-                            licensePlate = `${digits.substring(0, 3)}-${digits.substring(3, 7)}`;
-                        } else if (digits.length === 8) {
-                            licensePlate = `${digits.substring(0, 3)}-${digits.substring(3, 5)}-${digits.substring(5, 8)}`;
-                        } else {
-                            licensePlate = digits;
-                        }
-                    }
-                } catch (ocrErr) {
-                    console.warn('Local OCR failed, fallback used:', ocrErr);
-                }
+                    const pc = document.createElement('canvas');
+                    const ph = Math.floor(sh * 0.35);
+                    pc.width = sw; pc.height = ph;
+                    pc.getContext('2d').drawImage(video, sx, sy + Math.floor(sh * 0.6), sw, ph, 0, 0, sw, ph);
+                    const { data: { text } } = await window.Tesseract.recognize(pc, 'eng');
+                    const digits = text.replace(/[^0-9A-Za-z]/g, '');
+                    if (digits.length >= 4) license = digits.toUpperCase();
+                } catch (_) {}
             }
 
-            // Assemble Metadata JSON
-            const metadata = {
-                colors: [objectColor],
-                direction: direction,
-                license_plate: type === 'car' ? (licensePlate || 'Unknown') : undefined,
-                model: type === 'car' ? 'Unknown' : undefined,
-                detected_at: new Date().toLocaleTimeString('ar-EG')
-            };
-
-            // Post detection to backend database
             const token = localStorage.getItem('token');
-            const response = await axios.post(`${API_URL}/orbis/detections`, {
-                object_type: type,
-                latitude: gpsRef.current.lat,
-                longitude: gpsRef.current.lng,
+            const res = await axios.post(`${API_URL}/orbis/detections`, {
+                object_type:  type,
+                latitude:     gpsRef.current.lat,
+                longitude:    gpsRef.current.lng,
                 image_base64: imageBase64,
-                metadata: metadata
-            }, {
-                headers: {
-                    Authorization: `Bearer ${token}`
+                metadata: {
+                    colors:         [color],
+                    direction,
+                    license_plate:  license || 'Unknown',
+                    model:          type === 'car' ? 'Unknown' : undefined,
+                    detected_at:    new Date().toLocaleTimeString('ar-EG')
                 }
-            });
+            }, { headers: { Authorization: `Bearer ${token}` } });
 
-            const newLog = {
-                id: response.data.id,
-                time: new Date().toLocaleTimeString('ar-EG'),
-                type: type === 'person' ? 'إنسان' : 'مركبة',
-                details: type === 'person' 
-                    ? `اللون: ${objectColor} | الحركة: ${direction}` 
-                    : `اللون: ${objectColor} | اللوحة: ${response.data.metadata.license_plate}`
-            };
+            const d = res.data;
+            setTrackingLog(prev => [{
+                id:      d.id || Date.now(),
+                time:    new Date().toLocaleTimeString('ar-EG'),
+                type:    type === 'car' ? '🚗 مركبة' : '🧍 شخص',
+                details: `${color} | ${d.metadata?.license_plate || ''} | ${direction}`
+            }, ...prev].slice(0, 20));
 
-            setTrackingLog(prev => [newLog, ...prev.slice(0, 4)]);
-
+            // notify laptop
+            if (socketRef.current?.connected) {
+                socketRef.current.emit('orbis-detection', d);
+            }
         } catch (err) {
-            console.error('Failed uploading detection event:', err.message);
+            console.warn('Upload failed:', err.message);
         }
     };
 
+    // ── Render ─────────────────────────────────────────────────────────────────
     return (
-        <div className="orbis-mobile-lens" style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100vw',
-            height: '100vh',
-            backgroundColor: '#020617',
-            color: '#f8fafc',
-            zIndex: 9999,
+        <div style={{
+            position: 'fixed', inset: 0,
+            background: '#090d16',
+            color: '#f1f5f9',
+            fontFamily: "'Tajawal', 'Arial', sans-serif",
+            direction: 'rtl',
             display: 'flex',
             flexDirection: 'column',
-            fontFamily: 'Tajawal, sans-serif',
-            overflow: 'hidden'
+            zIndex: 9999
         }}>
-            {/* Header Status Bar */}
+            {/* ── Top bar ── */}
             <div style={{
-                padding: '1.25rem 1.5rem',
-                background: 'rgba(15, 23, 42, 0.85)',
+                padding: '12px 16px',
+                background: 'rgba(15,23,42,0.9)',
                 backdropFilter: 'blur(10px)',
+                borderBottom: '1px solid rgba(255,255,255,0.08)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                borderBottom: '1px solid rgba(255, 255, 255, 0.08)'
+                flexShrink: 0
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{
-                        width: '12px',
-                        height: '12px',
-                        borderRadius: '50%',
-                        backgroundColor: isLaptopConnected ? '#10b981' : '#ef4444',
-                        display: 'inline-block',
-                        boxShadow: isLaptopConnected ? '0 0 10px #10b981' : '0 0 10px #ef4444'
-                    }}></span>
-                    <span style={{ fontSize: '14px', fontWeight: 'bold' }}>
-                        {isLaptopConnected ? 'متصل بنظام المراقبة' : 'في انتظار اللابتوب...'}
-                        <span style={{ fontSize: '11px', color: '#94a3b8', marginRight: '10px' }}>
-                            • الذكاء الاصطناعي: {aiActive ? 'نشط 🟢' : 'خامل 🔴'}
-                        </span>
+                        width: 11, height: 11, borderRadius: '50%',
+                        background: isLaptopConnected ? '#10b981' : '#ef4444',
+                        boxShadow: `0 0 8px ${isLaptopConnected ? '#10b981' : '#ef4444'}`
+                    }} />
+                    <span style={{ fontSize: 13, fontWeight: 'bold' }}>
+                        {isLaptopConnected ? 'متصل بالمراقبة' : 'في انتظار اللابتوب'}
+                    </span>
+                    <span style={{ fontSize: 11, color: '#64748b', marginRight: 6 }}>
+                        | ذكاء اصطناعي: {aiActive ? '🟢 نشط' : '🔴 خامل'}
                     </span>
                 </div>
-                <button 
-                    onClick={() => { stopCamera(); onClose(); }}
-                    style={{
-                        background: 'rgba(239, 68, 68, 0.2)',
-                        border: '1px solid rgba(239, 68, 68, 0.4)',
-                        color: '#ef4444',
-                        padding: '6px 14px',
-                        borderRadius: '12px',
-                        cursor: 'pointer',
-                        fontSize: '13px',
-                        fontWeight: 'bold'
+                <button
+                    onClick={() => {
+                        loopActiveRef.current = false;
+                        if (videoRef.current?.srcObject) {
+                            videoRef.current.srcObject.getTracks().forEach(t => t.stop());
+                        }
+                        onClose();
                     }}
-                >
-                    إغلاق العدسة
-                </button>
+                    style={{
+                        background: 'rgba(239,68,68,0.15)',
+                        border: '1px solid rgba(239,68,68,0.4)',
+                        color: '#ef4444',
+                        padding: '5px 14px',
+                        borderRadius: 10,
+                        fontSize: 13,
+                        fontWeight: 'bold',
+                        cursor: 'pointer'
+                    }}
+                >إغلاق</button>
             </div>
 
-            {/* Error or Loading overlays */}
-            {cameraError && (
-                <div style={{
-                    position: 'absolute',
-                    top: '25%',
-                    left: '5%',
-                    width: '90%',
-                    background: 'rgba(220, 38, 38, 0.9)',
-                    border: '1px solid #ef4444',
-                    padding: '20px',
-                    borderRadius: '20px',
-                    zIndex: 100,
-                    textAlign: 'center'
-                }}>
-                    <h3 style={{ margin: '0 0 10px 0' }}>⚠️ خطأ في الكاميرا</h3>
-                    <p style={{ margin: 0, fontSize: '14px', lineHeight: '1.5' }}>{cameraError}</p>
-                    <button 
-                        onClick={startCamera} 
-                        style={{
-                            marginTop: '15px',
-                            background: '#fff',
-                            color: '#ef4444',
-                            border: 'none',
-                            padding: '8px 18px',
-                            borderRadius: '10px',
-                            fontWeight: 'bold'
-                        }}
-                    >
-                        إعادة المحاولة
-                    </button>
-                </div>
-            )}
+            {/* ── Video viewport ── */}
+            <div style={{ flex: 1, position: 'relative', background: '#000', overflow: 'hidden' }}>
 
-            {loadingMsg && (
-                <div style={{
-                    position: 'absolute',
-                    top: 0, left: 0, width: '100%', height: '100%',
-                    background: '#090d16',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    zIndex: 90
-                }}>
-                    <div className="spinner" style={{
-                        width: '50px', height: '50px',
-                        border: '5px solid rgba(251, 171, 21, 0.1)',
-                        borderTop: '5px solid #fbab15',
-                        borderRadius: '50%',
-                        animation: 'spin 1s linear infinite',
-                        marginBottom: '20px'
-                    }}></div>
-                    <p style={{ color: '#94a3b8', fontSize: '15px', fontWeight: 'bold' }}>{loadingMsg}</p>
-                    <style>{`
-                        @keyframes spin {
-                            0% { transform: rotate(0deg); }
-                            100% { transform: rotate(360deg); }
-                        }
-                    `}</style>
-                </div>
-            )}
-
-            {/* Camera Viewport Area */}
-            <div style={{
-                flex: 1,
-                position: 'relative',
-                width: '100%',
-                backgroundColor: '#000',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-            }}>
-                <video 
+                {/* video element — always in DOM, hidden until active */}
+                <video
                     ref={videoRef}
-                    playsInline
-                    muted
+                    playsInline muted
                     style={{
-                        width: '100%',
-                        height: '100%',
+                        position: 'absolute', inset: 0,
+                        width: '100%', height: '100%',
                         objectFit: 'cover',
-                        display: cameraActive ? 'block' : 'none'
+                        display: phase === 'active' ? 'block' : 'none'
                     }}
                 />
-                
-                <canvas 
+
+                {/* canvas overlay — same position, same size */}
+                <canvas
                     ref={canvasRef}
                     style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
+                        position: 'absolute', inset: 0,
+                        width: '100%', height: '100%',
                         objectFit: 'cover',
                         pointerEvents: 'none',
-                        zIndex: 2
+                        zIndex: 2,
+                        display: phase === 'active' ? 'block' : 'none'
                     }}
                 />
 
-                {/* Grid Overlay for Tech aesthetics */}
-                <div style={{
-                    position: 'absolute',
-                    top: 0, left: 0, width: '100%', height: '100%',
-                    backgroundImage: 'radial-gradient(rgba(251, 171, 21, 0.05) 1px, transparent 0)',
-                    backgroundSize: '24px 24px',
-                    pointerEvents: 'none',
-                    zIndex: 3
-                }}></div>
+                {/* dot grid overlay */}
+                {phase === 'active' && (
+                    <div style={{
+                        position: 'absolute', inset: 0,
+                        backgroundImage: 'radial-gradient(rgba(251,171,21,0.06) 1px, transparent 0)',
+                        backgroundSize: '22px 22px',
+                        pointerEvents: 'none',
+                        zIndex: 3
+                    }} />
+                )}
+
+                {/* Loading overlay */}
+                {phase === 'loading' && (
+                    <div style={{
+                        position: 'absolute', inset: 0,
+                        display: 'flex', flexDirection: 'column',
+                        alignItems: 'center', justifyContent: 'center',
+                        gap: 16, background: '#090d16'
+                    }}>
+                        <div style={{
+                            width: 48, height: 48,
+                            border: '4px solid rgba(251,171,21,0.15)',
+                            borderTop: '4px solid #fbab15',
+                            borderRadius: '50%',
+                            animation: 'spin 0.9s linear infinite'
+                        }} />
+                        <p style={{ fontSize: 14, color: '#94a3b8', margin: 0 }}>{loadingMsg}</p>
+                        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+                    </div>
+                )}
+
+                {/* Error overlay */}
+                {phase === 'error' && (
+                    <div style={{
+                        position: 'absolute', inset: 0,
+                        display: 'flex', flexDirection: 'column',
+                        alignItems: 'center', justifyContent: 'center',
+                        gap: 14, padding: 24, textAlign: 'center'
+                    }}>
+                        <span style={{ fontSize: 40 }}>⚠️</span>
+                        <p style={{ color: '#ef4444', fontSize: 14, margin: 0 }}>{errorMsg}</p>
+                        <button
+                            onClick={() => window.location.reload()}
+                            style={{
+                                background: '#fbab15', color: '#0f172a',
+                                border: 'none', padding: '10px 22px',
+                                borderRadius: 10, fontWeight: 'bold', cursor: 'pointer'
+                            }}
+                        >إعادة التحميل</button>
+                    </div>
+                )}
+
+                {/* Waiting for camera to activate */}
+                {phase === 'ready' && (
+                    <div style={{
+                        position: 'absolute', inset: 0,
+                        display: 'flex', flexDirection: 'column',
+                        alignItems: 'center', justifyContent: 'center', gap: 12
+                    }}>
+                        <div style={{
+                            width: 48, height: 48,
+                            border: '4px solid rgba(168,85,247,0.2)',
+                            borderTop: '4px solid #a855f7',
+                            borderRadius: '50%',
+                            animation: 'spin 0.9s linear infinite'
+                        }} />
+                        <p style={{ fontSize: 13, color: '#94a3b8', margin: 0 }}>جاري تشغيل الكاميرا...</p>
+                    </div>
+                )}
             </div>
 
-            {/* Diagnostics Panel (Logs overlay on bottom) */}
+            {/* ── Log panel ── */}
             <div style={{
-                background: 'rgba(9, 13, 22, 0.95)',
-                backdropFilter: 'blur(20px)',
-                padding: '1.25rem',
-                borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-                maxHeight: '180px',
-                overflowY: 'auto'
+                background: 'rgba(9,13,22,0.97)',
+                borderTop: '1px solid rgba(255,255,255,0.07)',
+                padding: '12px 14px',
+                maxHeight: 165,
+                overflowY: 'auto',
+                flexShrink: 0
             }}>
                 <p style={{
-                    margin: '0 0 10px 0',
-                    fontSize: '11px',
-                    color: '#fbab15',
-                    fontWeight: 'bold',
-                    textTransform: 'uppercase',
-                    letterSpacing: '1px'
-                }}>📟 سجل الرصد المباشر (الأحدث):</p>
+                    margin: '0 0 8px 0', fontSize: 10,
+                    color: '#fbab15', fontWeight: 'bold',
+                    textTransform: 'uppercase', letterSpacing: 1
+                }}>📟 سجل الرصد المباشر:</p>
+
                 {trackingLog.length === 0 ? (
-                    <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>وجه الكاميرا نحو الشارع لكشف المارة والمركبات...</p>
+                    <p style={{ color: '#475569', fontSize: 12, margin: 0 }}>
+                        وجّه الكاميرا نحو سيارة أو شخص لبدء الكشف...
+                    </p>
                 ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {trackingLog.map((log) => (
-                            <div 
-                                key={log.id} 
-                                style={{ 
-                                    display: 'flex', 
-                                    justifyContent: 'space-between', 
-                                    fontSize: '12px',
-                                    borderBottom: '1px solid rgba(255, 255, 255, 0.03)',
-                                    paddingBottom: '4px'
-                                }}
-                            >
-                                <span style={{ color: '#a855f7' }}>[{log.time}]</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {trackingLog.map(log => (
+                            <div key={log.id} style={{
+                                display: 'flex', gap: 8,
+                                fontSize: 11,
+                                borderBottom: '1px solid rgba(255,255,255,0.04)',
+                                paddingBottom: 4
+                            }}>
+                                <span style={{ color: '#64748b' }}>{log.time}</span>
                                 <span style={{ fontWeight: 'bold', color: '#f1f5f9' }}>{log.type}</span>
                                 <span style={{ color: '#94a3b8' }}>{log.details}</span>
                             </div>
