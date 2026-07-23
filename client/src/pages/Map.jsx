@@ -1055,28 +1055,9 @@ const MapComponent = () => {
             return MAPTILER_STYLE_URL;
         }
 
-        // Preference 3: Geomolg Layer (Handled by Overlay in return, so we use a base here or nothing)
-        if (activeMapType === 'geomolg') {
-            // We can return a very simple base or satellite while Geomolg overlay loads
-            return {
-                version: 8,
-                name: "Geomolg Base",
-                sprite: "https://demotiles.maplibre.org/styles/osm-bright-gl-style/sprite",
-                glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
-                sources: {
-                    'raster-tiles': {
-                        type: 'raster',
-                        tiles: [`https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}`],
-                        tileSize: 256
-                    }
-                },
-                layers: [{ id: 'simple-tiles', type: 'raster', source: 'raster-tiles' }]
-            };
-        }
-
-        // Check if it is a specific year orthophoto from Geomolg
-        if (activeMapType && activeMapType.startsWith('geomolg-')) {
-            const year = activeMapType.split('-')[1];
+        // Preference 3: Geomolg Layer (Or specific year orthophotos from Geomolg)
+        if (activeMapType === 'geomolg' || (activeMapType && activeMapType.startsWith('geomolg-'))) {
+            const year = (activeMapType && activeMapType.includes('-')) ? activeMapType.split('-')[1] : '2025';
             
             // Map GS year (Gaza has specific years: 2025, 2024, 2022, 2018)
             let gazaYear = '2024';
@@ -1109,14 +1090,14 @@ const MapComponent = () => {
                         type: 'raster',
                         tiles: [wbUrl],
                         tileSize: 256,
-                        maxzoom: 19,
+                        maxzoom: 22,
                         attribution: `© Geomolg WB ${year}`
                     },
                     'geomolg-gaza': {
                         type: 'raster',
                         tiles: [gazaUrl],
                         tileSize: 256,
-                        maxzoom: 19,
+                        maxzoom: 22,
                         attribution: `© Geomolg Gaza ${gazaYear}`
                     }
                 },
@@ -1277,9 +1258,6 @@ const MapComponent = () => {
                 setDestination(endLoc);
 
                 if (!isRecalc) {
-                    // Ensure we are viewing the MapLibre map (not orthophoto) before routing
-                    if (activeMapType && activeMapType.startsWith('geomolg-')) setActiveMapType('satellite');
-
                     if (mapRef.current) {
                         // Smoothly transition to a Navigation Perspective (Direct Guidance)
                         mapRef.current.flyTo({
