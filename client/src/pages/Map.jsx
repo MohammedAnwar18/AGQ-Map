@@ -571,7 +571,7 @@ const MapComponent = () => {
     }, [user]);
 
     const mapRef = useRef(null);
-    const [activeMapType, setActiveMapType] = useState('satellite');
+    const [activeMapType, setActiveMapType] = useState('geomolg-2025');
     const [showMapLayersMenu, setShowMapLayersMenu] = useState(false);
 
     const PALESTINIAN_CITIES = [
@@ -2376,7 +2376,7 @@ const MapComponent = () => {
 
                     <div className="map-layers-menu-wrapper" style={{ position: 'relative' }}>
                         <button
-                            className={`top-nav-icon ${activeMapType === 'satellite' ? 'active' : ''}`}
+                            className={`top-nav-icon ${showMapLayersMenu ? 'active' : ''}`}
                             onClick={() => {
                                 const nextVal = !showMapLayersMenu;
                                 setShowMapLayersMenu(nextVal);
@@ -2408,27 +2408,27 @@ const MapComponent = () => {
                                   />
                                   <div className="map-layers-dropdown geomolg-layers-compact">
                                       <button 
-                                          className={`dropdown-item ${activeMapType === 'streets' ? 'active' : ''}`}
-                                          onClick={() => { setActiveMapType('streets'); setShowMapLayersMenu(false); }}
-                                          title="خريطة الشوارع"
+                                          className={`dropdown-item ${activeMapType === 'geomolg-2025' ? 'active' : ''}`}
+                                          onClick={() => { setActiveMapType('geomolg-2025'); setShowMapLayersMenu(false); }}
+                                          title="خريطة جيومولج الجوية (GeoMOLG)"
                                       >
-                                          <span className="item-icon">🛣️</span>
+                                          <span className="item-icon">🛰️</span>
                                       </button>
-                                      
+
                                       <button 
                                           className={`dropdown-item ${activeMapType === 'satellite' ? 'active' : ''}`}
                                           onClick={() => { setActiveMapType('satellite'); setShowMapLayersMenu(false); }}
-                                          title="قمر صناعي (Google)"
+                                          title="قمر صناعي (Google Satellite)"
                                       >
                                           <span className="item-icon">🌍</span>
                                       </button>
 
                                       <button 
-                                          className={`dropdown-item ${activeMapType === 'geomolg-2025' ? 'active' : ''}`}
-                                          onClick={() => { setActiveMapType('geomolg-2025'); setShowMapLayersMenu(false); }}
-                                          title="صورة جوية 2025 (Ortho)"
+                                          className={`dropdown-item ${activeMapType === 'streets' ? 'active' : ''}`}
+                                          onClick={() => { setActiveMapType('streets'); setShowMapLayersMenu(false); }}
+                                          title="خريطة الشوارع (Streets)"
                                       >
-                                          <span className="item-icon">🛰️</span>
+                                          <span className="item-icon">🛣️</span>
                                       </button>
                                   </div>
                               </>
@@ -3641,7 +3641,7 @@ const MapComponent = () => {
                         setActiveCustomStart(null);
                         setAiResults([]); // Also clear the destination marker
                         setIsTracking(false); // Stop tracking when nav ends
-                        setActiveMapType('satellite'); // REVERT TO DEFAULT MAP
+                        setActiveMapType('geomolg-2025'); // REVERT TO DEFAULT MAP
                     }}
                 />
             )}
