@@ -571,7 +571,7 @@ const MapComponent = () => {
     }, [user]);
 
     const mapRef = useRef(null);
-    const [activeMapType, setActiveMapType] = useState('geomolg-2025');
+    const [activeMapType, setActiveMapType] = useState('geomolg-2024');
     const [showMapLayersMenu, setShowMapLayersMenu] = useState(false);
 
     const PALESTINIAN_CITIES = [
@@ -1057,21 +1057,32 @@ const MapComponent = () => {
 
         // Preference 3: Geomolg Layer (Or specific year orthophotos from Geomolg)
         if (activeMapType === 'geomolg' || (activeMapType && activeMapType.startsWith('geomolg-'))) {
-            const year = (activeMapType && activeMapType.includes('-')) ? activeMapType.split('-')[1] : '2025';
+            const year = (activeMapType && activeMapType.includes('-')) ? activeMapType.split('-')[1] : '2024';
             
-            // Map GS year (Gaza has specific years: 2025, 2024, 2022, 2018)
-            let gazaYear = '2024';
-            if (year === '2025') gazaYear = '2025';
-            else if (year === '2024') gazaYear = '2024';
-            else if (year === '2022') gazaYear = '2022';
-            else gazaYear = '2018'; // Fallback for older years in Gaza
-            
-            let gazaService = `Orthophotos_GS_2024_m12_Satellite_tif_PG1923`;
-            if (gazaYear === '2025') gazaService = `Orthophotos_GS_2025_m03_Satellite_tif_PG1923`;
-            else if (gazaYear === '2022') gazaService = `Orthophotos_GS_2022_m12_Satellite_tif_PG1923`;
-            else if (gazaYear === '2018') gazaService = `Orthophotos_GS_2018_Satellite_tif_PG1923`;
+            let wbService = 'Orthophotos_WB_2024_15cm_tif_PG1923';
+            let gazaService = 'Orthophotos_GS_2024_m12_Satellite_tif_PG1923';
 
-            const wbUrl = `https://orthophotos.geomolg.ps/adaptor/rest/services/Orthophotos_WB_${year}_15cm_tif_PG1923/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&transparent=true&f=image`;
+            if (year === '2024') {
+                wbService = 'Orthophotos_WB_2024_15cm_tif_PG1923';
+                gazaService = 'Orthophotos_GS_2024_m12_Satellite_tif_PG1923';
+            } else if (year === '2023') {
+                wbService = 'Orthophotos_WB_2023_15cm_jp2_PG1923_jp2';
+                gazaService = 'Orthophotos_GS_2022_Satellite_40cm_jp2_PG1923';
+            } else if (year === '2022') {
+                wbService = 'Orthophotos_WB_2022_15cm_tif_PG1923_05';
+                gazaService = 'Orthophotos_GS_2022_Satellite_40cm_jp2_PG1923';
+            } else if (year === '2021') {
+                wbService = 'Orthophotos_WB_2021_15cm_tif_PG1923';
+                gazaService = 'Orthophotos_GS_2021_Satellite_52cm_jp2_PG1923';
+            } else if (year === '2020') {
+                wbService = 'Orthophotos_WB_2020_25cm_jpg_PG1923';
+                gazaService = 'Orthophotos_GS_2018_Satellite_50cm_TIF_PG1923';
+            } else if (year === '2018') {
+                wbService = 'Orthophotos_WB_2018_Aerial_10cm_jpg_PG1923';
+                gazaService = 'Orthophotos_GS_2018_Satellite_50cm_TIF_PG1923';
+            }
+
+            const wbUrl = `https://orthophotos.geomolg.ps/adaptor/rest/services/${wbService}/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&transparent=true&f=image`;
             const gazaUrl = `https://orthophotos.geomolg.ps/adaptor/rest/services/${gazaService}/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&transparent=true&f=image`;
 
             return {
@@ -1098,7 +1109,7 @@ const MapComponent = () => {
                         tiles: [gazaUrl],
                         tileSize: 256,
                         maxzoom: 22,
-                        attribution: `© Geomolg Gaza ${gazaYear}`
+                        attribution: `© Geomolg Gaza ${year}`
                     }
                 },
                 layers: [
@@ -3619,7 +3630,7 @@ const MapComponent = () => {
                         setActiveCustomStart(null);
                         setAiResults([]); // Also clear the destination marker
                         setIsTracking(false); // Stop tracking when nav ends
-                        setActiveMapType('geomolg-2025'); // REVERT TO DEFAULT MAP
+                        setActiveMapType('geomolg-2024'); // REVERT TO DEFAULT MAP
                     }}
                 />
             )}
