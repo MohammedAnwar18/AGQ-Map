@@ -17,6 +17,12 @@ export default defineConfig({
                         if (id.includes('three')) {
                             return 'vendor-three';
                         }
+                        // react-leaflet MUST come before leaflet check:
+                        // it uses React.createContext so it must be in vendor-react
+                        // otherwise "Cannot read properties of undefined (reading 'createContext')"
+                        if (id.includes('react-leaflet')) {
+                            return 'vendor-react';
+                        }
                         if (id.includes('leaflet') || id.includes('esri')) {
                             return 'vendor-leaflet';
                         }
