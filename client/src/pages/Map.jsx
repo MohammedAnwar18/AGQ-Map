@@ -3,7 +3,6 @@ import { useLocation, useSearchParams, useNavigate } from 'react-router-dom';
 import Map, { Marker, Popup, NavigationControl, Source, Layer } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
 
-import { map3DService } from '../services/api'; // kept for future use
 import 'maplibre-gl/dist/maplibre-gl.css';
 import axios from 'axios';
 import { io } from "socket.io-client";
@@ -13,33 +12,35 @@ import NavigationPanel from '../components/NavigationPanel';
 import HistoricalTimelinePanel from '../components/HistoricalTimelinePanel';
 import SplashLoading from '../components/SplashLoading';
 
-import CreatePostModal from '../components/CreatePostModal';
-import PostDetailModal from '../components/PostDetailModal';
-import ChatModal from '../components/ChatModal';
-import FriendsModal from '../components/FriendsModal';
-import SearchModal from '../components/SearchModal';
-import ProfileModal from '../components/ProfileModal';
-import NotificationsModal from '../components/NotificationsModal';
-import AIChatModal from '../components/AIChatModal';
-import CommunitiesModal from '../components/CommunitiesModal';
-import NewsModal from '../components/NewsModal';
-import ManagedShopsModal from '../components/ManagedShopsModal';
-import ShopProfileModal from '../components/ShopProfileModal';
-import MedicalCenterProfileModal from '../components/MedicalCenterProfileModal';
-import UniversityProfileModal from '../components/UniversityProfileModal';
-import FacilityProfileModal from '../components/FacilityProfileModal';
-import MunicipalitiesModal from '../components/MunicipalitiesModal';
-import MunicipalityProfileModal from '../components/MunicipalityProfileModal';
-import SpatialReelsModal from '../components/SpatialReelsModal';
-import MagazineModal from '../components/MagazineModal';
-import PalNovaaLab from '../components/PalNovaaLab';
-import PalNovaaRepository from '../components/PalNovaaRepository';
-import LiveCameraModal from '../components/LiveCameraModal';
-import FitnessPathModal from '../components/FitnessPathModal';
-import { postService, friendService, authService, notificationService, communityService, shopService, cameraService, getImageUrl, fitnessService } from '../services/api';
-const StudySpace = React.lazy(() => import('./StudySpace'));
-const IndoorControl = React.lazy(() => import('./IndoorControl'));
+// ─── Lazy-loaded modals: only downloaded when the user opens them ─────────────
+const CreatePostModal       = React.lazy(() => import('../components/CreatePostModal'));
+const PostDetailModal       = React.lazy(() => import('../components/PostDetailModal'));
+const ChatModal             = React.lazy(() => import('../components/ChatModal'));
+const FriendsModal          = React.lazy(() => import('../components/FriendsModal'));
+const SearchModal           = React.lazy(() => import('../components/SearchModal'));
+const ProfileModal          = React.lazy(() => import('../components/ProfileModal'));
+const NotificationsModal    = React.lazy(() => import('../components/NotificationsModal'));
+const AIChatModal           = React.lazy(() => import('../components/AIChatModal'));
+const CommunitiesModal      = React.lazy(() => import('../components/CommunitiesModal'));
+const NewsModal             = React.lazy(() => import('../components/NewsModal'));
+const ManagedShopsModal     = React.lazy(() => import('../components/ManagedShopsModal'));
+const ShopProfileModal      = React.lazy(() => import('../components/ShopProfileModal'));
+const MedicalCenterProfileModal = React.lazy(() => import('../components/MedicalCenterProfileModal'));
+const UniversityProfileModal    = React.lazy(() => import('../components/UniversityProfileModal'));
+const FacilityProfileModal      = React.lazy(() => import('../components/FacilityProfileModal'));
+const MunicipalitiesModal       = React.lazy(() => import('../components/MunicipalitiesModal'));
+const MunicipalityProfileModal  = React.lazy(() => import('../components/MunicipalityProfileModal'));
+const SpatialReelsModal     = React.lazy(() => import('../components/SpatialReelsModal'));
+const MagazineModal         = React.lazy(() => import('../components/MagazineModal'));
+const PalNovaaLab           = React.lazy(() => import('../components/PalNovaaLab'));
+const PalNovaaRepository    = React.lazy(() => import('../components/PalNovaaRepository'));
+const LiveCameraModal       = React.lazy(() => import('../components/LiveCameraModal'));
+const FitnessPathModal      = React.lazy(() => import('../components/FitnessPathModal'));
+const StudySpace            = React.lazy(() => import('./StudySpace'));
+const IndoorControl         = React.lazy(() => import('./IndoorControl'));
+// ─────────────────────────────────────────────────────────────────────────────
 
+import { postService, friendService, authService, notificationService, communityService, shopService, cameraService, getImageUrl, fitnessService } from '../services/api';
 import { isNative, startNativeTracking, stopNativeTracking } from '../utils/nativeLocation';
 import './Map.css';
 

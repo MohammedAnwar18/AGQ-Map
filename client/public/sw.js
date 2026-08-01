@@ -5,9 +5,7 @@ const APP_SHELL = [
     '/',
     '/manifest.json',
     '/logo.png',
-    '/favicon.png',
-    'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
-    'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+    '/favicon.png'
 ];
 
 // ─── Install: cache app shell ───────────────────────────────────────────────
