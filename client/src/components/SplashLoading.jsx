@@ -1,7 +1,25 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import './SplashLoading.css';
 
 const SplashLoading = () => {
+    useEffect(() => {
+        // Safety net: if this component is shown for too long (e.g., failed chunk load),
+        // force reload the page so the user doesn't see a permanent black screen.
+        const timer = setTimeout(() => {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then((registrations) => {
+                    for (let registration of registrations) {
+                        registration.unregister();
+                    }
+                    window.location.reload(true);
+                });
+            } else {
+                window.location.reload(true);
+            }
+        }, 12000);
+        return () => clearTimeout(timer);
+    }, []);
+
     return (
         <div className="splash-screen">
             <div className="splash-content">
