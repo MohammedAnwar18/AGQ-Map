@@ -64,11 +64,22 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Static assets (images, icons, fonts) → cache first, update in background
+    // ─── /assets/ JS/CSS bundles → NEVER cache (Vite renames them on every build)
+    // Serving stale JS chunks = "Failed to fetch dynamically imported module" = black screen
+    if (url.pathname.startsWith('/assets/')) {
+        event.respondWith(
+            fetch(request).catch(() => {
+                // If offline and we have a cached version use it, otherwise return nothing
+                return caches.match(request);
+            })
+        );
+        return;
+    }
+
+    // Static images, icons → cache first, update in background
     if (
         request.destination === 'image' ||
         url.pathname.startsWith('/images/') ||
-        url.pathname.startsWith('/assets/') ||
         url.pathname === '/logo.png' ||
         url.pathname === '/favicon.png' ||
         url.hostname.includes('openstreetmap.org') ||
@@ -87,7 +98,7 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // JS/CSS bundles → network first with cache fallback (so updates apply)
+    // External CDN (Leaflet, etc.) → network first with cache fallback
     if (request.destination === 'script' || request.destination === 'style' || url.hostname.includes('unpkg.com')) {
         event.respondWith(
             fetch(request)
