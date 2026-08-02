@@ -2548,8 +2548,8 @@ const MapComponent = () => {
                             </svg>
                         </button>
 
-                        {/* الجولة الافتراضية - مفعل بطلب من المستخدم */}
-                        {true && (
+                        {/* الجولة الافتراضية - مخفية مؤقتاً */}
+                        {false && (
                             <button
                                 onClick={() => { navigate('/virtual-tour'); setShowMoreMenu(false); }}
                             >
