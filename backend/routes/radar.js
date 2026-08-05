@@ -1,5 +1,12 @@
 const express = require('express');
 const router = express.Router();
+const axios = require('axios');
+
+// Cache variables for Telegram scraper
+let cachedTelegramPosts = [];
+let lastTelegramFetchTime = 0;
+const TELEGRAM_CACHE_TTL = 3 * 60 * 1000; // 3 minutes cache
+
 
 // Proxy for Israeli Alerts (Rocket Sirens)
 router.get('/alerts', async (req, res) => {
@@ -138,20 +145,63 @@ router.get('/intel', async (req, res) => {
 // Telegram Scraper PROXY (High Density News Feed)
 router.get('/telegram', async (req, res) => {
     try {
-        const tgramData = [
-            { channel: 'مراسل الضفة', text: "عاجل: اندلاع اشتباكات مسلحة عنيفة بين مقاومين وقوات الاحتلال التي تقتحم مدينة جنين ومخيمها من عدة محاور الآن.", date: new Date().toISOString() },
-            { channel: 'أخبار غزة (عاجل)', text: "عاجل: غارات جوية صهيونية عنيفة وحزام ناري يستهدف مناطق متفرقة في خانيونس وجنوب قطاع غزة.", date: new Date(Date.now() - 450000).toISOString() },
-            { channel: 'الإعلام الحربي - لبنان', text: "المقاومة الإسلامية تطلق رشقة صاروخية مكثفة نحو الشمال رداً على استهداف المدنيين والقرى الآمنة في الجنوب.", date: new Date(Date.now() - 600000).toISOString() },
-            { channel: 'مراسل القدس', text: "عاجل: قوات الاحتلال تقتحم المسجد الأقصى المبارك وتعتدي على المصلين وتخرجهم بالقوة من داخل المصليات.", date: new Date(Date.now() - 150000).toISOString() },
-            { channel: 'أخبار طولكرم', text: "كتيبة طولكرم: جندنا جندنا.. تمكنا من استهداف آليات الاحتلال بوابل كثيف من الرصاص في حارة الدمج.", date: new Date(Date.now() - 250000).toISOString() },
-            { channel: 'مراسل جنين', text: "تمكن مجاهدونا من تفجير عبوة ناسفة شديدة الانفجار في جرافة عسكرية من نوع D9 بمخيم جنين وإيقاع إصابات محققة.", date: new Date(Date.now() - 350000).toISOString() },
-            { channel: 'الأرصاد الجوية الإقليمية', text: "تحذير: موجة غبار كثيفة قادمة من شبه الجزيرة العربية والعراق تضرب بلاد الشام وفلسطين وتؤدي لانعدام الرؤية.", date: new Date(Date.now() - 900000).toISOString() },
-            { channel: 'أخبار الاقتصاد', text: "تحسن ملحوظ في حركة التبادل التجاري عبر المعابر البرية اليوم وتوقعات بنمو القطاع السياحي.", date: new Date(Date.now() - 300000).toISOString() },
-            { channel: 'عاجل - اليمن', text: "مصادر يمنية: الدفاعات الجوية تنجح في إسقاط طائرة تجسس أمريكية من طراز MQ-9 في أجواء محافظة مأرب.", date: new Date(Date.now() - 1200000).toISOString() }
-        ];
-        res.json({ posts: tgramData });
+        const now = Date.now();
+        // If cache is fresh, return it
+        if (cachedTelegramPosts.length > 0 && (now - lastTelegramFetchTime) < TELEGRAM_CACHE_TTL) {
+            console.log("Serving Telegram posts from cache");
+            return res.json({ posts: cachedTelegramPosts });
+        }
+
+        console.log("Fetching live news from Telegram channel: Akhbaraldfeal3agla2...");
+        const response = await axios.get('https://t.me/s/Akhbaraldfeal3agla2', {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'text/html'
+            },
+            timeout: 5000
+        });
+
+        const html = response.data;
+        const blocks = html.split('class="tgme_widget_message ');
+        const posts = [];
+
+        for (let i = 1; i < blocks.length; i++) {
+            const block = blocks[i];
+            const textMatch = block.match(/<div class="tgme_widget_message_text[^"]*"[^>]*>([\s\S]*?)<\/div>/);
+            const dateMatch = block.match(/<time[^>]*datetime="([^"]+)"/);
+
+            if (textMatch) {
+                let text = textMatch[1]
+                    .replace(/<br\s*\/?>/g, '\n') // Keep linebreaks
+                    .replace(/<[^>]+>/g, '') // Remove HTML tags
+                    .replace(/&amp;/g, '&')
+                    .replace(/&lt;/g, '<')
+                    .replace(/&gt;/g, '>')
+                    .replace(/&quot;/g, '"')
+                    .trim();
+
+                const date = dateMatch ? dateMatch[1] : new Date().toISOString();
+                
+                posts.push({
+                    channel: 'أخبار الضفة العاجلة',
+                    text,
+                    date
+                });
+            }
+        }
+
+        if (posts.length > 0) {
+            // Reverse so that the newest posts appear first in the feed
+            posts.reverse();
+            cachedTelegramPosts = posts;
+            lastTelegramFetchTime = now;
+        }
+
+        res.json({ posts: cachedTelegramPosts.length > 0 ? cachedTelegramPosts : posts });
     } catch (e) {
-        res.json({ posts: [] });
+        console.error("Telegram scraping error:", e.message);
+        // Fallback to cache if request fails, or empty array
+        res.json({ posts: cachedTelegramPosts });
     }
 });
 
