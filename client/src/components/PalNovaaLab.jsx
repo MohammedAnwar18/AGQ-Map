@@ -334,6 +334,13 @@ const PalNovaaLab = ({ onClose }) => {
     const [palDataStats, setPalDataStats] = useState(null);
     const [palDataSelectedCategories, setPalDataSelectedCategories] = useState(Object.keys(PAL_DATA_CATEGORIES));
 
+    // Edit/Drag Mode States
+    const [editModeActive, setEditModeActive] = useState(false);
+    const [editDragState, setEditDragState] = useState(null); // { layerId, featureIdx, startLngLat, startCoords }
+    const isDraggingRef = useRef(false);
+    const geoJsonFileInputRef = useRef(null);
+
+
     // Hydro Grid Resolution
     const [gridResolution, setGridResolution] = useState(256);
 
@@ -2819,10 +2826,15 @@ const PalNovaaLab = ({ onClose }) => {
         const latDim = Math.abs(north - south);
         const lngDim = Math.abs(east - west);
         const area = latDim * lngDim;
-        if (area > 0.05) {
-            alert("⚠️ النطاق المحدد واسع جداً! يرجى تكبير الخريطة أو تحديد منطقة أصغر لتجنب بطء الاستجابة.");
+        if (area > 0.12) {
+            alert("⚠️ النطاق المحدد واسع جداً! يرجى تكبير الخريطة (zoom in) أو تحديد منطقة أصغر.");
             return;
         }
+        if (area > 0.06) {
+            const ok = window.confirm("⚠️ المنطقة كبيرة نسبياً - قد يستغرق الجلب وقتاً أطول. هل تريد المتابعة؟");
+            if (!ok) return;
+        }
+
 
         setPalDataLoading(true);
         setPalDataProgress("جاري الاتصال بخادم OpenStreetMap...");
@@ -2844,11 +2856,11 @@ const PalNovaaLab = ({ onClose }) => {
             });
         });
 
-        const query = `[out:json][timeout:60];
+        const query = `[out:json][timeout:90];
 (
   ${clauses.join('\n  ')}
 );
-out geom;`;
+out body geom qt;`;
 
         const overpassEndpoints = [
             "https://overpass-api.de/api/interpreter",
@@ -3006,56 +3018,77 @@ out geom;`;
                 });
             }
             else if (element.type === 'relation' && element.members) {
+                // Collect outer and inner rings separately
+                const outerWays = [];
+                const innerWays = [];
+
                 element.members.forEach(member => {
                     if (member.type === 'way' && member.geometry && member.geometry.length > 0) {
                         const coords = member.geometry.map(pt => [pt.lon, pt.lat]);
-                        
-                        if (polygonFilterCoords && polygonFilterCoords[0]) {
-                            const outerRing = polygonFilterCoords[0];
-                            const isInside = coords.some(pt => isPointInPolygon(pt, outerRing));
-                            if (!isInside) return;
-                        }
-
-                        const isClosed = coords.length > 2 && 
-                                       coords[0][0] === coords[coords.length - 1][0] && 
-                                       coords[0][1] === coords[coords.length - 1][1];
-                        
-                        const isArea = isClosed && (
-                            tags.building || 
-                            tags.landuse || 
-                            tags.amenity || 
-                            tags.leisure || 
-                            tags.shop || 
-                            tags.natural || 
-                            tags.water || 
-                            tags.boundary || 
-                            tags.area === 'yes'
-                        );
-
-                        if (stats.hasOwnProperty(palCategory)) {
-                            stats[palCategory]++;
+                        if (member.role === 'inner') {
+                            innerWays.push(coords);
                         } else {
-                            stats.other++;
+                            // outer or no role
+                            outerWays.push(coords);
                         }
+                    }
+                });
 
+                if (outerWays.length === 0) return; // nothing to render
+
+                // polygon filter check using first outer way centroid
+                if (polygonFilterCoords && polygonFilterCoords[0]) {
+                    const outerRing = polygonFilterCoords[0];
+                    const representative = outerWays[0][0];
+                    if (representative && !isPointInPolygon(representative, outerRing)) return;
+                }
+
+                const isRelationArea = !!(
+                    tags.building || tags.landuse || tags.amenity || tags.leisure ||
+                    tags.shop || tags.natural || tags.water || tags.boundary || tags.area === 'yes'
+                );
+
+                if (stats.hasOwnProperty(palCategory)) stats[palCategory]++;
+                else stats.other++;
+
+                if (isRelationArea && outerWays.length > 0) {
+                    // Build Polygon or MultiPolygon
+                    const rings = [...outerWays, ...innerWays];
+                    const geometry = outerWays.length === 1
+                        ? { type: 'Polygon', coordinates: rings }
+                        : { type: 'MultiPolygon', coordinates: outerWays.map((outer, i) => [outer, ...(i === 0 ? innerWays : [])]) };
+
+                    features.push({
+                        type: 'Feature',
+                        id: element.id || Math.floor(Math.random() * 10000000),
+                        geometry,
+                        properties: {
+                            id: element.id,
+                            name: tags.name || tags.name_ar || tags.name_en || tags.boundary || 'معلم مساحي (علاقة)',
+                            palCategory,
+                            isPalData: true,
+                            ...tags
+                        }
+                    });
+                } else {
+                    // Render each way as LineString
+                    outerWays.forEach((coords, wi) => {
                         features.push({
                             type: 'Feature',
-                            id: member.ref || Math.floor(Math.random() * 10000000),
-                            geometry: {
-                                type: isArea ? 'Polygon' : 'LineString',
-                                coordinates: isArea ? [coords] : coords
-                            },
+                            id: element.id ? element.id * 100 + wi : Math.floor(Math.random() * 10000000),
+                            geometry: { type: 'LineString', coordinates: coords },
                             properties: {
-                                id: member.ref,
-                                name: tags.name || tags.name_ar || tags.name_en || tags.boundary || 'معلم مساحي (علاقة)',
+                                id: element.id,
+                                name: tags.name || tags.name_ar || tags.name_en || tags.highway || 'معلم خطي (علاقة)',
                                 palCategory,
                                 isPalData: true,
                                 ...tags
                             }
                         });
-                    }
-                });
+                    });
+                }
             }
+
         });
 
         if (features.length === 0) {
@@ -3096,6 +3129,166 @@ out geom;`;
         setPalDataLoading(false);
         setPalDataProgress("");
         alert(`✅ تم رسم ${features.length} معلم جغرافي بنجاح وتصنيفها كطبقة حية!`);
+    };
+
+    // ─── GeoJSON File Import ──────────────────────────────────────────────────
+    const importGeoJsonFile = (file) => {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const raw = JSON.parse(e.target.result);
+                let parsedFeatures = [];
+
+                if (raw.type === 'FeatureCollection' && Array.isArray(raw.features)) {
+                    parsedFeatures = raw.features;
+                } else if (raw.type === 'Feature') {
+                    parsedFeatures = [raw];
+                } else if (raw.type && raw.coordinates) {
+                    // bare geometry
+                    parsedFeatures = [{ type: 'Feature', geometry: raw, properties: {} }];
+                } else {
+                    alert("❌ الملف ليس ملف GeoJSON صالح.");
+                    return;
+                }
+
+                if (parsedFeatures.length === 0) {
+                    alert("⚠️ الملف فارغ، لا توجد معالم للاستيراد.");
+                    return;
+                }
+
+                // Determine dominant geometry type for auto-styling
+                const hasPoly = parsedFeatures.some(f => f.geometry?.type?.includes('Polygon'));
+                const hasLine = parsedFeatures.some(f => f.geometry?.type?.includes('LineString'));
+                const defaultColor = hasPoly ? '#8B5CF6' : hasLine ? '#06D6F2' : '#F5A623';
+
+                const newLayerId = `geojson-import-${Date.now()}`;
+                const layerName = `📂 ${file.name.replace(/\.(geojson|json)$/i, '')} [${parsedFeatures.length}]`;
+
+                const geojson = { type: 'FeatureCollection', features: parsedFeatures };
+
+                setGeoLayers(prev => [...prev, {
+                    id: newLayerId,
+                    name: layerName,
+                    data: geojson,
+                    color: defaultColor,
+                    isVisible: true,
+                    isImportedGeoJson: true
+                }]);
+
+                setLayerStyles(prev => ({
+                    ...prev,
+                    [newLayerId]: {
+                        color: defaultColor,
+                        outlineColor: '#ffffff',
+                        outlineWidth: 1.5,
+                        shape: 'circle',
+                        opacity: 1,
+                        fillOpacity: 0.35
+                    }
+                }));
+
+                alert(`✅ تم استيراد ${parsedFeatures.length} معلم من الملف "${file.name}" بنجاح!`);
+            } catch (err) {
+                console.error('GeoJSON parse error:', err);
+                alert(`❌ خطأ في قراءة الملف: ${err.message}`);
+            }
+        };
+        reader.readAsText(file);
+    };
+
+    // ─── Edit/Drag Feature Handlers ──────────────────────────────────────────
+    const handleEditMouseDown = (e) => {
+        if (!editModeActive) return;
+        const map = mapRef.current?.getMap();
+        if (!map) return;
+
+        // Query rendered features at click point
+        const bbox = [
+            [e.point.x - 8, e.point.y - 8],
+            [e.point.x + 8, e.point.y + 8]
+        ];
+        const rendered = map.queryRenderedFeatures(bbox);
+        const myFeature = rendered.find(f =>
+            f.layer.id.startsWith('poly-') ||
+            f.layer.id.startsWith('line-') ||
+            f.layer.id.startsWith('point-')
+        );
+
+        if (!myFeature) return;
+
+        e.preventDefault();
+
+        const layerId = myFeature.layer.id
+            .replace('poly-', '').replace('line-', '').replace('point-', '');
+
+        const targetLayer = geoLayers.find(l => l.id === layerId);
+        if (!targetLayer || !targetLayer.data?.features) return;
+
+        // Find the matching feature index by comparing geometry coordinates
+        const clickedGeoType = myFeature.geometry.type;
+        let featureIdx = -1;
+        targetLayer.data.features.forEach((f, idx) => {
+            if (featureIdx !== -1) return;
+            if (f.geometry.type === clickedGeoType) featureIdx = idx;
+        });
+
+        if (featureIdx === -1) return;
+
+        isDraggingRef.current = true;
+        map.dragPan.disable();
+
+        setEditDragState({
+            layerId,
+            featureIdx,
+            startLngLat: [e.lngLat.lng, e.lngLat.lat],
+            originalGeometry: JSON.parse(JSON.stringify(targetLayer.data.features[featureIdx].geometry))
+        });
+    };
+
+    const handleEditMouseMove = (e) => {
+        if (!editModeActive || !isDraggingRef.current || !editDragState) return;
+
+        const dLng = e.lngLat.lng - editDragState.startLngLat[0];
+        const dLat = e.lngLat.lat - editDragState.startLngLat[1];
+
+        const translateCoord = (c) => [c[0] + dLng, c[1] + dLat];
+        const translateRing = (ring) => ring.map(translateCoord);
+
+        const origGeom = editDragState.originalGeometry;
+        let newCoordinates;
+
+        if (origGeom.type === 'Point') {
+            newCoordinates = translateCoord(origGeom.coordinates);
+        } else if (origGeom.type === 'LineString') {
+            newCoordinates = origGeom.coordinates.map(translateCoord);
+        } else if (origGeom.type === 'Polygon') {
+            newCoordinates = origGeom.coordinates.map(translateRing);
+        } else if (origGeom.type === 'MultiPolygon') {
+            newCoordinates = origGeom.coordinates.map(poly => poly.map(translateRing));
+        } else if (origGeom.type === 'MultiLineString') {
+            newCoordinates = origGeom.coordinates.map(line => line.map(translateCoord));
+        } else {
+            return;
+        }
+
+        setGeoLayers(prev => prev.map(layer => {
+            if (layer.id !== editDragState.layerId) return layer;
+            const features = [...layer.data.features];
+            features[editDragState.featureIdx] = {
+                ...features[editDragState.featureIdx],
+                geometry: { ...origGeom, coordinates: newCoordinates }
+            };
+            return { ...layer, data: { ...layer.data, features } };
+        }));
+    };
+
+    const handleEditMouseUp = () => {
+        if (!isDraggingRef.current) return;
+        isDraggingRef.current = false;
+        const map = mapRef.current?.getMap();
+        if (map) map.dragPan.enable();
+        setEditDragState(null);
     };
 
     const handleExportLayer = (layer) => {
@@ -3993,6 +4186,7 @@ out geom;`;
     };
 
     const handleToolClick = (tool) => {
+        setEditModeActive(false); // deactivate edit mode when switching drawing tools
         if (drawingMode === tool) {
             finishDrawing();
         } else {
@@ -4001,6 +4195,7 @@ out geom;`;
             setMeasurement(tool === 'measure' ? 0 : null);
         }
     };
+
 
     const draftGeoJson = useMemo(() => {
         if (draftCoordinates.length === 0) return null;
@@ -11619,22 +11814,25 @@ function closeAllInfoWindows() {
                             ref={mapRef}
                             {...mapState}
                             onMove={evt => setMapState(evt.viewState)}
-                            onClick={handleMapClick}
-                            onMouseMove={handleMapMouseMove}
+                            onClick={editModeActive ? undefined : handleMapClick}
+                            onMouseDown={editModeActive ? handleEditMouseDown : undefined}
+                            onMouseMove={editModeActive ? handleEditMouseMove : handleMapMouseMove}
+                            onMouseUp={editModeActive ? handleEditMouseUp : undefined}
                             onDblClick={handleMapDblClick}
-                            doubleClickZoom={!drawingMode}
+                            doubleClickZoom={!drawingMode && !editModeActive}
                             onLoad={e => handleMainMapLoad(e.target)}
                             onContextMenu={handleContextMenu}
                             onMouseEnter={onMouseEnter}
                             onMouseLeave={onMouseLeave}
                             interactiveLayerIds={[...geoLayers.flatMap(l => [`poly-${l.id}`, `line-${l.id}`, `point-${l.id}`]), 'drawn-polygon', 'drawn-line', 'drawn-point']}
-                            cursor={drawingMode ? 'crosshair' : 'auto'}
+                            cursor={editModeActive ? (isDraggingRef.current ? 'grabbing' : 'grab') : drawingMode ? 'crosshair' : 'auto'}
                             mapStyle={mapStyle}
                             style={{ width: '100%', height: '100%' }}
                             maxPitch={85}
                             attributionControl={false}
                             preserveDrawingBuffer={true}
                         >
+
                             <NavigationControl position="bottom-right" />
 
                             {filteredLayerData.filter(l => l.isVisible !== false).map(layer => {
@@ -13286,7 +13484,50 @@ function closeAllInfoWindows() {
                                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/></svg>
                                             {drawingMode === 'paldata_poly' ? 'إلغاء الرسم المخصص' : 'رسم منطقة مخصصة (مضلع)'}
                                         </button>
+
+                                        {/* GeoJSON File Import */}
+                                        <input
+                                            ref={geoJsonFileInputRef}
+                                            type="file"
+                                            accept=".geojson,.json"
+                                            style={{ display: 'none' }}
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) importGeoJsonFile(file);
+                                                e.target.value = '';
+                                            }}
+                                        />
+                                        <button
+                                            className="ds-btn outline w-100"
+                                            onClick={() => geoJsonFileInputRef.current?.click()}
+                                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', borderRadius: '10px', borderColor: 'rgba(139,92,246,0.5)', color: '#a78bfa' }}
+                                        >
+                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                                            استيراد ملف GeoJSON
+                                        </button>
                                     </div>
+                                </div>
+
+                                {/* Edit/Drag Mode Section */}
+                                <div className="panel-section" style={{ background: editModeActive ? 'rgba(251,171,21,0.06)' : 'rgba(255,255,255,0.01)', border: editModeActive ? '1px solid rgba(251,171,21,0.3)' : '1px solid rgba(255,255,255,0.03)', borderRadius: '16px', padding: '16px', transition: 'all 0.3s ease' }}>
+                                    <div className="panel-section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span>✏️ وضع تعديل المعالم</span>
+                                        {editModeActive && <span style={{ fontSize: '0.7rem', color: '#fbab15', background: 'rgba(251,171,21,0.15)', padding: '2px 8px', borderRadius: '10px' }}>نشط</span>}
+                                    </div>
+                                    <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: '1.5', margin: '8px 0 12px 0' }}>
+                                        في وضع التعديل يمكنك سحب أي معلم (نقطة، خط، مضلع) على الخريطة لتغيير موقعه. التغييرات تُحفظ مباشرة في الطبقة.
+                                    </p>
+                                    <button
+                                        className={`ds-btn ${editModeActive ? 'primary' : 'secondary'} w-100`}
+                                        onClick={() => {
+                                            setEditModeActive(prev => !prev);
+                                            setDrawingMode(null);
+                                        }}
+                                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', borderRadius: '10px' }}
+                                    >
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                        {editModeActive ? 'إيقاف وضع التعديل' : 'تفعيل وضع السحب والتعديل'}
+                                    </button>
                                 </div>
 
                                 {palDataLoading && (
