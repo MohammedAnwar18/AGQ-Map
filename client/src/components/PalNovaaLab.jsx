@@ -390,6 +390,63 @@ const PalNovaaLab = ({ onClose }) => {
     });
 
     useEffect(() => {
+        const map = mapRef.current?.getMap();
+        if (!map) return;
+
+        const shapes = {
+            square: 'M3 3h18v18H3z',
+            diamond: 'M12 2l9 10-9 10-9-10z',
+            triangle: 'M12 2l10 18H2z',
+            star: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
+            cross: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'
+        };
+
+        const addShapeIcon = (name, svgPath) => {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = 64; canvas.height = 64;
+                const ctx = canvas.getContext('2d');
+                const path = new Path2D(svgPath);
+                ctx.translate(32, 32);
+                ctx.scale(2, 2);
+                ctx.translate(-12, -12);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill(path);
+                const imageData = ctx.getImageData(0, 0, 64, 64);
+                if (!map.hasImage('shape-' + name)) {
+                    map.addImage('shape-' + name, imageData, { sdf: true });
+                }
+            } catch (err) {
+                console.error("Failed to add shape image:", name, err);
+            }
+        };
+
+        const loadAll = () => {
+            Object.entries(shapes).forEach(([k, v]) => addShapeIcon(k, v));
+        };
+
+        if (map.isStyleLoaded()) {
+            loadAll();
+        } else {
+            map.once('style.load', loadAll);
+        }
+
+        const missingImageHandler = (e) => {
+            if (e.id.startsWith('shape-')) {
+                const name = e.id.replace('shape-', '');
+                if (shapes[name]) {
+                    addShapeIcon(name, shapes[name]);
+                }
+            }
+        };
+        map.on('styleimagemissing', missingImageHandler);
+
+        return () => {
+            map.off('styleimagemissing', missingImageHandler);
+        };
+    }, [mapStyle, mapRef.current]);
+
+    useEffect(() => {
         setTablePageIndex(0);
         setQueryField('');
         setQueryValue('');
@@ -11741,6 +11798,7 @@ function closeAllInfoWindows() {
                                                  <>
                                                      <Layer
                                                          id={`point-${layer.id}`}
+                                                         source={`src-${layer.id}`}
                                                          type="circle"
                                                          filter={
                                                              (style.imageUrl || (style.shape && style.shape !== 'circle'))
@@ -11797,6 +11855,7 @@ function closeAllInfoWindows() {
                                                      {(!style.imageUrl && style.shape && style.shape !== 'circle') && (
                                                          <Layer
                                                              id={`point-symbol-${layer.id}`}
+                                                             source={`src-${layer.id}`}
                                                              type="symbol"
                                                              filter={
                                                                  layer.isPalData 
