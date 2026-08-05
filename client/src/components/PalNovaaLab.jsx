@@ -11805,7 +11805,7 @@ function closeAllInfoWindows() {
                                                                  ? ['==', '$type', 'NONE_MATCH'] 
                                                                  : (layer.isPalData 
                                                                      ? ['==', '$type', 'Point'] 
-                                                                     : ['all', ['==', '$type', 'Point'], ['!', ['has', 'point_image']]])
+                                                                     : ['all', ['==', '$type', 'Point'], ['!has', 'point_image']])
                                                          }
                                                          paint={{
                                                              'circle-radius': layer.isPalData ? 5.5 : (layer.isRemoteSensing ? [
