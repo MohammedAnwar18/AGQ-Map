@@ -11802,10 +11802,10 @@ function closeAllInfoWindows() {
                                                          type="circle"
                                                          filter={
                                                              (style.imageUrl || (style.shape && style.shape !== 'circle'))
-                                                                 ? ['false'] 
+                                                                 ? ['==', '$type', 'NONE_MATCH'] 
                                                                  : (layer.isPalData 
                                                                      ? ['==', '$type', 'Point'] 
-                                                                     : ['all', ['==', '$type', 'Point'], ['!', ['has', 'image']]])
+                                                                     : ['all', ['==', '$type', 'Point'], ['!', ['has', 'point_image']]])
                                                          }
                                                          paint={{
                                                              'circle-radius': layer.isPalData ? 5.5 : (layer.isRemoteSensing ? [
@@ -11844,9 +11844,9 @@ function closeAllInfoWindows() {
                                                                      (layer.minElevation + layer.maxElevation)/2 || 100, '#10b981',
                                                                      layer.maxElevation || 500, '#ef4444'
                                                                  ]
-                                                             ) : getLayerColor('#10D9A0'),
-                                                             'circle-stroke-width': layer.isPalData ? 1.5 : style.outlineWidth,
-                                                             'circle-stroke-color': layer.isPalData ? '#ffffff' : style.outlineColor,
+                                                             ) : (style.color || layer.color || '#F5A623'),
+                                                             'circle-stroke-width': layer.isPalData ? 1.5 : (style.outlineWidth ?? 2),
+                                                             'circle-stroke-color': layer.isPalData ? '#ffffff' : (style.outlineColor || '#ffffff'),
                                                              'circle-opacity': style.opacity ?? 1,
                                                              'circle-stroke-opacity': style.opacity ?? 1
                                                          }}
