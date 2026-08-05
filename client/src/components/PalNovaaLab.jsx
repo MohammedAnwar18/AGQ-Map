@@ -250,6 +250,7 @@ const PalNovaaLab = ({ onClose }) => {
     const [editingImageFeature, setEditingImageFeature] = useState(null); // { layerId, featureId }
     const [tempImageUrl, setTempImageUrl] = useState('');
     const [draftCoordinates, setDraftCoordinates] = useState([]);
+    const [hoverCoordinate, setHoverCoordinate] = useState(null);
     const [drawnFeatures, setDrawnFeatures] = useState({ type: 'FeatureCollection', features: [] });
     const [measurement, setMeasurement] = useState(null);
     const [showBottomTable, setShowBottomTable] = useState(false);
@@ -3159,6 +3160,7 @@ out geom;`;
         }
         setDraftCoordinates([]);
         setDrawingMode(null);
+        setHoverCoordinate(null);
     };
 
     const handleRenameLayer = (id, newName) => {
@@ -3548,6 +3550,65 @@ out geom;`;
         setGisElevProfile(profile);
     };
 
+    const handleMainMapLoad = (mapInstance) => {
+        console.log("Main Map Loaded, adding custom shapes...");
+        const shapes = {
+            square: 'M3 3h18v18H3z',
+            diamond: 'M12 2l9 10-9 10-9-10z',
+            triangle: 'M12 2l10 18H2z',
+            star: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
+            cross: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'
+        };
+
+        const addShapeIcon = (name, svgPath) => {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = 64; canvas.height = 64;
+                const ctx = canvas.getContext('2d');
+                const path = new Path2D(svgPath);
+                ctx.translate(32, 32);
+                ctx.scale(2, 2);
+                ctx.translate(-12, -12);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill(path);
+                const imageData = ctx.getImageData(0, 0, 64, 64);
+                if (!mapInstance.hasImage('shape-' + name)) {
+                    mapInstance.addImage('shape-' + name, imageData, { sdf: true });
+                }
+            } catch (err) {
+                console.error("Failed to add shape image:", name, err);
+            }
+        };
+
+        // Add initially
+        Object.entries(shapes).forEach(([k, v]) => addShapeIcon(k, v));
+
+        // Add listener for style changes
+        mapInstance.on('styleimagemissing', (e) => {
+            if (e.id.startsWith('shape-')) {
+                const name = e.id.replace('shape-', '');
+                if (shapes[name]) {
+                    addShapeIcon(name, shapes[name]);
+                }
+            }
+        });
+    };
+
+    const handleMapMouseMove = (e) => {
+        if (drawingMode && ['line', 'polygon', 'measure', 'paldata_poly'].includes(drawingMode)) {
+            setHoverCoordinate([e.lngLat.lng, e.lngLat.lat]);
+        } else if (hoverCoordinate) {
+            setHoverCoordinate(null);
+        }
+    };
+
+    const handleMapDblClick = (e) => {
+        if (drawingMode && ['line', 'polygon', 'measure', 'paldata_poly'].includes(drawingMode)) {
+            e.preventDefault();
+            finishDrawing();
+        }
+    };
+
     const handleMapClick = (e) => {
         const coord = [e.lngLat.lng, e.lngLat.lat];
 
@@ -3886,20 +3947,51 @@ out geom;`;
 
     const draftGeoJson = useMemo(() => {
         if (draftCoordinates.length === 0) return null;
-        if (draftCoordinates.length === 1) {
-            return { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: draftCoordinates[0] } }] };
+        
+        let coords = [...draftCoordinates];
+        if (hoverCoordinate && ['line', 'polygon', 'measure', 'paldata_poly'].includes(drawingMode)) {
+            coords.push(hoverCoordinate);
         }
-        return {
-            type: 'FeatureCollection',
-            features: [{
+
+        const features = [];
+
+        // Always show the points/vertices
+        coords.forEach(c => {
+            features.push({
                 type: 'Feature',
                 geometry: {
-                    type: 'LineString',
-                    coordinates: draftCoordinates
+                    type: 'Point',
+                    coordinates: c
                 }
-            }]
+            });
+        });
+
+        // Show the line or polygon
+        if (coords.length > 1) {
+            if (drawingMode === 'polygon' && coords.length >= 3) {
+                features.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [[...coords, coords[0]]]
+                    }
+                });
+            } else {
+                features.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: coords
+                    }
+                });
+            }
+        }
+
+        return {
+            type: 'FeatureCollection',
+            features
         };
-    }, [draftCoordinates]);
+    }, [draftCoordinates, hoverCoordinate, drawingMode]);
 
     const isFeatureMatchingTime = (f, yearVal) => {
         const props = f.properties || {};
@@ -11471,6 +11563,10 @@ function closeAllInfoWindows() {
                             {...mapState}
                             onMove={evt => setMapState(evt.viewState)}
                             onClick={handleMapClick}
+                            onMouseMove={handleMapMouseMove}
+                            onDblClick={handleMapDblClick}
+                            doubleClickZoom={!drawingMode}
+                            onLoad={e => handleMainMapLoad(e.target)}
                             onContextMenu={handleContextMenu}
                             onMouseEnter={onMouseEnter}
                             onMouseLeave={onMouseLeave}
@@ -11642,60 +11738,84 @@ function closeAllInfoWindows() {
                                                      }}
                                                  />
                                              ) : (
-                                                 <Layer
-                                                     id={`point-${layer.id}`}
-                                                     type="circle"
-                                                     filter={
-                                                         style.imageUrl 
-                                                             ? ['false'] 
-                                                             : (layer.isPalData 
-                                                                 ? ['==', '$type', 'Point'] 
-                                                                 : ['all', ['==', '$type', 'Point'], ['!', ['has', 'image']]])
-                                                     }
-                                                     paint={{
-                                                         'circle-radius': layer.isPalData ? 5.5 : (layer.isRemoteSensing ? [
-                                                             'interpolate',
-                                                             ['linear'],
-                                                             ['zoom'],
-                                                             10, 4,
-                                                             14, 12,
-                                                             17, 30
-                                                         ] : 7),
-                                                         'circle-color': layer.isRemoteSensing ? (
-                                                             layer.colorRamp === 'grayscale' ? [
-                                                                 'interpolate', ['linear'], ['get', 'elevation'],
-                                                                 layer.minElevation || 0, '#000000',
-                                                                 layer.maxElevation || 500, '#ffffff'
-                                                             ] : layer.colorRamp === 'viridis' ? [
-                                                                 'interpolate', ['linear'], ['get', 'elevation'],
-                                                                 layer.minElevation || 0, '#440154',
-                                                                 (layer.minElevation + layer.maxElevation)/2 || 100, '#21918c',
-                                                                 layer.maxElevation || 500, '#fde725'
-                                                             ] : layer.colorRamp === 'terrain' ? [
-                                                                 'interpolate', ['linear'], ['get', 'elevation'],
-                                                                 layer.minElevation || 0, '#22c55e',
-                                                                 (layer.minElevation + layer.maxElevation)/2 || 100, '#eab308',
-                                                                 layer.maxElevation || 500, '#ffffff'
-                                                             ] : layer.colorRamp === 'rainbow' ? [
-                                                                 'interpolate', ['linear'], ['get', 'elevation'],
-                                                                 layer.minElevation || 0, '#0000ff',
-                                                                 layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.25 || 100, '#00ffff',
-                                                                 layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.5 || 200, '#00ff00',
-                                                                 layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.75 || 300, '#ffff00',
-                                                                 layer.maxElevation || 500, '#ff0000'
-                                                             ] : [
-                                                                 'interpolate', ['linear'], ['get', 'elevation'],
-                                                                 layer.minElevation || 0, '#312e81',
-                                                                 (layer.minElevation + layer.maxElevation)/2 || 100, '#10b981',
-                                                                 layer.maxElevation || 500, '#ef4444'
-                                                             ]
-                                                         ) : getLayerColor('#10D9A0'),
-                                                         'circle-stroke-width': layer.isPalData ? 1.5 : style.outlineWidth,
-                                                         'circle-stroke-color': layer.isPalData ? '#ffffff' : style.outlineColor,
-                                                         'circle-opacity': style.opacity ?? 1,
-                                                         'circle-stroke-opacity': style.opacity ?? 1
-                                                     }}
-                                                 />
+                                                 <>
+                                                     <Layer
+                                                         id={`point-${layer.id}`}
+                                                         type="circle"
+                                                         filter={
+                                                             (style.imageUrl || (style.shape && style.shape !== 'circle'))
+                                                                 ? ['false'] 
+                                                                 : (layer.isPalData 
+                                                                     ? ['==', '$type', 'Point'] 
+                                                                     : ['all', ['==', '$type', 'Point'], ['!', ['has', 'image']]])
+                                                         }
+                                                         paint={{
+                                                             'circle-radius': layer.isPalData ? 5.5 : (layer.isRemoteSensing ? [
+                                                                 'interpolate',
+                                                                 ['linear'],
+                                                                 ['zoom'],
+                                                                 10, 4,
+                                                                 14, 12,
+                                                                 17, 30
+                                                             ] : 7),
+                                                             'circle-color': layer.isRemoteSensing ? (
+                                                                 layer.colorRamp === 'grayscale' ? [
+                                                                     'interpolate', ['linear'], ['get', 'elevation'],
+                                                                     layer.minElevation || 0, '#000000',
+                                                                     layer.maxElevation || 500, '#ffffff'
+                                                                 ] : layer.colorRamp === 'viridis' ? [
+                                                                     'interpolate', ['linear'], ['get', 'elevation'],
+                                                                     layer.minElevation || 0, '#440154',
+                                                                     (layer.minElevation + layer.maxElevation)/2 || 100, '#21918c',
+                                                                     layer.maxElevation || 500, '#fde725'
+                                                                 ] : layer.colorRamp === 'terrain' ? [
+                                                                     'interpolate', ['linear'], ['get', 'elevation'],
+                                                                     layer.minElevation || 0, '#22c55e',
+                                                                     (layer.minElevation + layer.maxElevation)/2 || 100, '#eab308',
+                                                                     layer.maxElevation || 500, '#ffffff'
+                                                                 ] : layer.colorRamp === 'rainbow' ? [
+                                                                     'interpolate', ['linear'], ['get', 'elevation'],
+                                                                     layer.minElevation || 0, '#0000ff',
+                                                                     layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.25 || 100, '#00ffff',
+                                                                     layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.5 || 200, '#00ff00',
+                                                                     layer.minElevation + (layer.maxElevation - layer.minElevation) * 0.75 || 300, '#ffff00',
+                                                                     layer.maxElevation || 500, '#ff0000'
+                                                                 ] : [
+                                                                     'interpolate', ['linear'], ['get', 'elevation'],
+                                                                     layer.minElevation || 0, '#312e81',
+                                                                     (layer.minElevation + layer.maxElevation)/2 || 100, '#10b981',
+                                                                     layer.maxElevation || 500, '#ef4444'
+                                                                 ]
+                                                             ) : getLayerColor('#10D9A0'),
+                                                             'circle-stroke-width': layer.isPalData ? 1.5 : style.outlineWidth,
+                                                             'circle-stroke-color': layer.isPalData ? '#ffffff' : style.outlineColor,
+                                                             'circle-opacity': style.opacity ?? 1,
+                                                             'circle-stroke-opacity': style.opacity ?? 1
+                                                         }}
+                                                     />
+
+                                                     {(!style.imageUrl && style.shape && style.shape !== 'circle') && (
+                                                         <Layer
+                                                             id={`point-symbol-${layer.id}`}
+                                                             type="symbol"
+                                                             filter={
+                                                                 layer.isPalData 
+                                                                     ? ['==', '$type', 'Point'] 
+                                                                     : ['all', ['==', '$type', 'Point'], ['!', ['has', 'image']]]
+                                                             }
+                                                             layout={{
+                                                                 'icon-image': 'shape-' + style.shape,
+                                                                 'icon-size': 0.65,
+                                                                 'icon-allow-overlap': true,
+                                                                 'icon-ignore-placement': true
+                                                             }}
+                                                             paint={{
+                                                                 'icon-color': getLayerColor('#10D9A0'),
+                                                                 'icon-opacity': style.opacity ?? 1
+                                                             }}
+                                                         />
+                                                     )}
+                                                 </>
                                              )}
                                         </Source>
 
@@ -11867,8 +11987,10 @@ function closeAllInfoWindows() {
 
                             {draftGeoJson && (
                                 <Source id="draft-source" type="geojson" data={draftGeoJson}>
-                                    <Layer id="draft-line" type="line" paint={{ 'line-color': '#fbab15', 'line-width': 3, 'line-dasharray': [2, 2] }} />
-                                    <Layer id="draft-point" type="circle" paint={{ 'circle-radius': 6, 'circle-color': '#fbab15', 'circle-stroke-width': 2, 'circle-stroke-color': 'white' }} />
+                                    <Layer id="draft-polygon" type="fill" filter={['==', '$type', 'Polygon']} paint={{ 'fill-color': '#fbab15', 'fill-opacity': 0.25 }} />
+                                    <Layer id="draft-polygon-outline" type="line" filter={['==', '$type', 'Polygon']} paint={{ 'line-color': '#fbab15', 'line-width': 3, 'line-dasharray': [2, 2] }} />
+                                    <Layer id="draft-line" type="line" filter={['==', '$type', 'LineString']} paint={{ 'line-color': '#fbab15', 'line-width': 3, 'line-dasharray': [2, 2] }} />
+                                    <Layer id="draft-point" type="circle" filter={['==', '$type', 'Point']} paint={{ 'circle-radius': 6, 'circle-color': '#fbab15', 'circle-stroke-width': 2, 'circle-stroke-color': 'white' }} />
                                 </Source>
                             )}
 
