@@ -39,16 +39,38 @@ app.set('io', io);
 
 // Middleware
 app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: (origin, callback) => {
+        const allowed = [
+            process.env.CLIENT_URL,
+            'http://localhost:5173',
+            'http://localhost:3000',
+            'https://palnovaa.com',
+            'https://www.palnovaa.com',
+        ].filter(Boolean);
+        // السماح بأي origin على Vercel أو في حال عدم وجود origin (server-to-server)
+        if (!origin || allowed.includes(origin) || (origin && origin.includes('vercel.app'))) {
+            callback(null, true);
+        } else {
+            callback(null, true); // السماح بالجميع مؤقتاً للإنتاج
+        }
+    },
     credentials: true
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// إنشاء مجلد uploads إذا لم يكن موجوداً
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
+// إنشاء مجلد uploads - في Vercel يكون نظام الملفات Read-Only لذا نستخدم /tmp
+const isVercel = process.env.VERCEL || process.env.VERCEL_ENV;
+const uploadsDir = isVercel
+    ? '/tmp/uploads'
+    : path.join(__dirname, 'uploads');
+
+try {
+    if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+} catch (err) {
+    console.warn('⚠️ Could not create uploads dir (likely read-only filesystem):', err.message);
 }
 
 // تقديم الملفات الثابتة
@@ -233,13 +255,16 @@ app.use((err, req, res, next) => {
     });
 });
 
-// تشغيل السيرفر
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-    console.log('Server running on port ' + PORT);
-    console.log('📡 WebSocket server ready');
-    console.log('🌐 API: http://localhost:' + PORT);
-});
+// تشغيل السيرفر — في Vercel لا نحتاج listen (Vercel يدير HTTP بنفسه)
+if (!isVercel) {
+    const PORT = process.env.PORT || 5000;
+    server.listen(PORT, () => {
+        console.log('Server running on port ' + PORT);
+        console.log('📡 WebSocket server ready');
+        console.log('🌐 API: http://localhost:' + PORT);
+    });
+}
 
-module.exports = { app, server, io };
+module.exports = app;
+
 
