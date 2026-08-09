@@ -762,7 +762,7 @@ const CreatePostModal = ({
                     {error && (
                         <div className="error-message">
                             <span className="error-icon">⚠️</span>
-                            {error}
+                            {typeof error === 'string' ? error : (error.message || JSON.stringify(error))}
                         </div>
                     )}
 

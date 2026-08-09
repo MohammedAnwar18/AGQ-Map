@@ -190,11 +190,17 @@ const Login = () => {
             const detail = error.message;
 
             let errorStr = 'حدث خطأ في الاتصال بالسيرفر';
-            if (status) errorStr += ` (Status: ${status})`;
-            if (dataError) errorStr = dataError;
-            else if (detail) errorStr += ` - [${detail}]`;
+            if (dataError) {
+                if (typeof dataError === 'string') {
+                    errorStr = dataError;
+                } else if (typeof dataError === 'object' && dataError !== null) {
+                    errorStr = dataError.message || dataError.error || dataError.code || JSON.stringify(dataError);
+                }
+            } else if (detail) {
+                errorStr = `حدث خطأ في الاتصال بالسيرفر (${status || ''}) - [${detail}]`;
+            }
 
-            setError(errorStr);
+            setError(String(errorStr));
         } finally {
             setLoading(false);
         }
@@ -287,7 +293,7 @@ const Login = () => {
                         {error && (
                             <div className="error-message">
                                 <span className="error-icon">⚠️</span>
-                                {error}
+                                {typeof error === 'string' ? error : (error.message || JSON.stringify(error))}
                             </div>
                         )}
 
