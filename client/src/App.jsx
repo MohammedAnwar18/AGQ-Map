@@ -14,6 +14,8 @@ const ARWorkspace = React.lazy(() => import('./pages/ARWorkspace'));
 const VirtualTourMap = React.lazy(() => import('./pages/VirtualTourMap'));
 const DigitalLetterView = React.lazy(() => import('./pages/DigitalLetterView'));
 const GraduationEvent = React.lazy(() => import('./pages/GraduationEvent'));
+const GeoportalDesigner = React.lazy(() => import('./pages/GeoportalDesigner'));
+const GeoportalViewer = React.lazy(() => import('./pages/GeoportalViewer'));
 import WeddingInvite from './pages/WeddingInvite';
 
 import OfflinePage from './components/OfflinePage';
@@ -129,7 +131,9 @@ function App() {
         <BrowserRouter>
             <React.Suspense fallback={<SplashLoading />}>
                 <Routes>
-                    {/* 🌐 Public routes - completely outside AuthProvider */}
+                    {/* 🌐 Public Geoportal Viewer routes */}
+                    <Route path="/geoportal/:slug" element={<GeoportalViewer />} />
+                    <Route path="/geoportal" element={<GeoportalViewer />} />
                     <Route path="/p/:slug" element={<PublishedView />} />
                     <Route path="/l/:slug" element={<DigitalLetterView />} />
                     <Route path="/enas-graduation" element={<GraduationEvent />} />
@@ -149,6 +153,7 @@ function App() {
                                 <Route path="/map" element={<ProtectedRoute><Map /></ProtectedRoute>} />
                                 <Route path="/streets" element={<ProtectedRoute><StreetMap /></ProtectedRoute>} />
                                 <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+                                <Route path="/admin/geoportal" element={<AdminRoute><GeoportalDesigner /></AdminRoute>} />
                                 <Route path="/admin/users/:userId" element={<AdminRoute><AdminUserDetails /></AdminRoute>} />
                                 <Route path="/terms" element={<LegalPages type="terms" />} />
                                 <Route path="/privacy" element={<LegalPages type="privacy" />} />

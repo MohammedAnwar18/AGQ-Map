@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 
 /**
- * Middleware للتحقق من JWT Token (إلزامي)
+ * Middleware للتحقق من JWT Token
  */
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -11,42 +11,12 @@ const authenticateToken = (req, res, next) => {
         return res.status(401).json({ error: 'Access token required' });
     }
 
-    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
         if (err) {
             return res.status(403).json({ error: 'Invalid or expired token' });
         }
 
-        // Robust user object: ensure userId exists for all controllers
-        req.user = {
-            ...decoded,
-            userId: decoded.userId || decoded.id // Handle both legacy and current formats
-        };
-
-        next();
-    });
-};
-
-/**
- * Middleware اختياري: يحلل الـ Token إذا وُجد لكن لا يرفض الطلب إن لم يكن موجوداً
- */
-const optionalAuth = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (!token) {
-        req.user = null;
-        return next();
-    }
-
-    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-        if (err) {
-            req.user = null;
-        } else {
-            req.user = {
-                ...decoded,
-                userId: decoded.userId || decoded.id
-            };
-        }
+        req.user = user; // { userId, username, email, role }
         next();
     });
 };
@@ -59,4 +29,17 @@ const isAdmin = (req, res, next) => {
     }
 };
 
-module.exports = { authenticateToken, optionalAuth, isAdmin };
+const optionalAuth = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (token) {
+        jwt.verify(token, process.env.JWT_SECRET || 'secret', (err, user) => {
+            if (!err) req.user = user;
+            next();
+        });
+    } else {
+        next();
+    }
+};
+
+module.exports = { authenticateToken, isAdmin, optionalAuth };

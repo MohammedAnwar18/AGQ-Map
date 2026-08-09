@@ -6,7 +6,7 @@ const pool = require('../config/database');
 const searchUsers = async (req, res) => {
     try {
         const { query } = req.query;
-        const currentUserId = req.user.id || req.user.userId;
+        const currentUserId = req.user.userId;
 
         if (!query || query.trim().length < 2) {
             return res.status(400).json({ error: 'Search query must be at least 2 characters' });
@@ -16,7 +16,7 @@ const searchUsers = async (req, res) => {
 
         const result = await pool.query(
             `SELECT 
-        u.id, u.username, u.full_name, u.bio, u.profile_picture, u.role,
+        u.id, u.username, u.full_name, u.bio, u.profile_picture,
         CASE 
           WHEN f.id IS NOT NULL THEN true 
           ELSE false 
@@ -48,28 +48,20 @@ const searchUsers = async (req, res) => {
 };
 
 /**
- * الحصول على ملف مستخدم مع احترام إعدادات الخصوصية
+ * الحصول على ملف مستخدم
  */
 const getUserProfile = async (req, res) => {
     try {
         const { userId } = req.params;
-        const currentUserId = req.user.id || req.user.userId;
-        const isOwnProfile = String(userId) === String(currentUserId);
+        const currentUserId = req.user.userId;
 
         const result = await pool.query(
             `SELECT 
         u.id, u.username, u.full_name, u.bio, u.profile_picture, u.created_at, u.date_of_birth, u.gender,
-        u.marital_status, u.workplace, u.education, u.institution, u.role,
-        COALESCE(u.privacy_settings, '{}') as privacy_settings,
         CASE 
           WHEN f.id IS NOT NULL THEN true 
           ELSE false 
-        END as is_friend,
-        EXISTS(
-          SELECT 1 FROM friend_requests 
-          WHERE (sender_id = $2 AND receiver_id = u.id AND status = 'pending') 
-             OR (sender_id = u.id AND receiver_id = $2 AND status = 'pending')
-        ) as has_pending_request
+        END as is_friend
       FROM users u
       LEFT JOIN friendships f ON (
         (f.user1_id = $2 AND f.user2_id = u.id) OR
@@ -81,26 +73,6 @@ const getUserProfile = async (req, res) => {
 
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'User not found' });
-        }
-
-        const userRow = { ...result.rows[0] };
-
-        // Apply privacy settings for non-own profiles
-        if (!isOwnProfile) {
-            let privacy = {};
-            try {
-                privacy = typeof userRow.privacy_settings === 'string'
-                    ? JSON.parse(userRow.privacy_settings)
-                    : (userRow.privacy_settings || {});
-            } catch (e) { privacy = {}; }
-
-            if (privacy.hide_username) userRow.username = null;
-            if (privacy.hide_age) userRow.date_of_birth = null;
-            if (privacy.hide_marital_status) userRow.marital_status = null;
-            if (privacy.hide_workplace) userRow.workplace = null;
-            if (privacy.hide_education) { userRow.education = null; userRow.institution = null; }
-            if (privacy.hide_gender) userRow.gender = null;
-            if (privacy.hide_bio) userRow.bio = null;
         }
 
         // عدد المنشورات
@@ -125,7 +97,7 @@ const getUserProfile = async (req, res) => {
 
         res.json({
             user: {
-                ...userRow,
+                ...result.rows[0],
                 posts_count: parseInt(postsCount.rows[0].count),
                 friends_count: parseInt(friendsCount.rows[0].count),
                 likes_count: parseInt(likesCount.rows[0].count)
@@ -138,22 +110,13 @@ const getUserProfile = async (req, res) => {
 };
 
 /**
- * تحديث الملف الشخصي مع دعم إعدادات الخصوصية
+ * تحديث الملف الشخصي
  */
 const updateProfile = async (req, res) => {
     try {
-        const userId = req.user.id || req.user.userId;
-        const { full_name, bio, gender, date_of_birth, marital_status, workplace, education, institution, privacy_settings } = req.body;
-        const { uploadToSupabase, deleteFileFromCloud } = require('../utils/storage');
-
-        // Fetch old profile picture to delete later if needed
-        const oldUserRes = await pool.query('SELECT profile_picture FROM users WHERE id = $1', [userId]);
-        const oldProfilePic = oldUserRes.rows[0]?.profile_picture;
-
-        let profile_picture = null;
-        if (req.file) {
-            profile_picture = await uploadToSupabase(req.file.buffer, req.file.originalname, req.file.mimetype);
-        }
+        const userId = req.user.userId;
+        const { full_name, bio, gender, date_of_birth } = req.body;
+        const profile_picture = req.file ? `/uploads/${req.file.filename}` : null;
 
         let query = 'UPDATE users SET';
         let params = [];
@@ -176,32 +139,7 @@ const updateProfile = async (req, res) => {
             params.push(dobValue);
             query += ` date_of_birth = $${paramCount++},`;
         }
-        if (marital_status !== undefined && marital_status !== 'undefined' && marital_status !== 'null') {
-            params.push(marital_status === '' ? null : marital_status);
-            query += ` marital_status = $${paramCount++},`;
-        }
-        if (workplace !== undefined && workplace !== 'undefined' && workplace !== 'null') {
-            params.push(workplace === '' ? null : workplace);
-            query += ` workplace = $${paramCount++},`;
-        }
-        if (education !== undefined && education !== 'undefined' && education !== 'null') {
-            params.push(education === '' ? null : education);
-            query += ` education = $${paramCount++},`;
-        }
-        if (institution !== undefined && institution !== 'undefined' && institution !== 'null') {
-            params.push(institution === '' ? null : institution);
-            query += ` institution = $${paramCount++},`;
-        }
-        if (privacy_settings !== undefined) {
-            try {
-                const ps = typeof privacy_settings === 'string' ? JSON.parse(privacy_settings) : privacy_settings;
-                params.push(JSON.stringify(ps));
-                query += ` privacy_settings = $${paramCount++},`;
-            } catch (e) {
-                // ignore invalid privacy settings
-            }
-        }
-        if (profile_picture) {
+        if (profile_picture && profile_picture !== 'undefined' && profile_picture !== 'null') {
             params.push(profile_picture);
             query += ` profile_picture = $${paramCount++},`;
         }
@@ -213,14 +151,9 @@ const updateProfile = async (req, res) => {
         // إزالة الفاصلة الأخيرة
         query = query.slice(0, -1);
         params.push(userId);
-        query += ` WHERE id = $${paramCount} RETURNING id, username, email, full_name, bio, profile_picture, gender, date_of_birth, marital_status, workplace, education, institution, role, privacy_settings`;
+        query += ` WHERE id = $${paramCount} RETURNING id, username, email, full_name, bio, profile_picture, gender, date_of_birth`;
 
         const result = await pool.query(query, params);
-
-        // Cleanup old profile picture if replaced
-        if (profile_picture && oldProfilePic) {
-            deleteFileFromCloud(oldProfilePic);
-        }
 
         res.json({
             message: 'Profile updated successfully',

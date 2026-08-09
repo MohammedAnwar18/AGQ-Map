@@ -9,6 +9,7 @@ import ARAdminPanel from './ARAdminPanel';
 import AdminDigitalLetters from './AdminDigitalLetters';
 import OrbisControlCenter from '../components/OrbisControlCenter';
 import OrbisMobileLens from '../components/OrbisMobileLens';
+import GeoportalDesigner from './GeoportalDesigner';
 
 const OrbisDashboard = ({ setActiveTab }) => {
     const [forceMode, setForceMode] = useState(null);
@@ -315,6 +316,7 @@ const AdminDashboard = () => {
                 <nav className="admin-nav">
                     {[
                         { id: 'overview', icon: '📊', label: 'الرئيسية' },
+                        { id: 'geoportal', icon: '🗺️', label: 'تصميم Geoportal' },
                         { id: 'users', icon: '👥', label: 'المستخدمين' },
                         { id: 'shops', icon: '🏪', label: 'إدارة المحلات' },
                         { id: 'cameras', icon: '📹', label: 'إدارة الكاميرات' },
@@ -377,6 +379,11 @@ const AdminDashboard = () => {
                 </div>
 
                 {/* Dashboard Tabs Rendering */}
+                {activeTab === 'geoportal' && (
+                    <div style={{ height: 'calc(100vh - 80px)', margin: '-20px' }}>
+                        <GeoportalDesigner />
+                    </div>
+                )}
                 {activeTab === 'overview' && (
                     <div className="admin-tab-content">
                         {loading ? (

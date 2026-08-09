@@ -1,0 +1,14 @@
+PORT=5000
+NODE_ENV=development
+
+# قم بتعديل username و password حسب إعدادات PostgreSQL لديك
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/spatial_social_network
+
+JWT_SECRET=spatial_social_network_secret_key_2024_change_in_production
+
+# Mapbox Token الخاص بك
+MAPBOX_TOKEN=pk.YOUR_MAPBOX_TOKEN_HERE
+
+CLIENT_URL=http://localhost:5173
+MAX_FILE_SIZE=5242880
+UPLOAD_PATH=./uploads

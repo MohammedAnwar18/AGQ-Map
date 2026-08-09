@@ -1,5 +1,4 @@
 const pool = require('../config/database');
-const { sendPushNotification } = require('../utils/pushHelper');
 
 // Get user notifications
 const getNotifications = async (req, res) => {
@@ -13,27 +12,11 @@ const getNotifications = async (req, res) => {
                 n.message,
                 n.is_read,
                 n.created_at,
-                CASE 
-                    WHEN n.type = 'admin_alert' THEN NULL
-                    ELSE u.id 
-                END as sender_id,
-                CASE 
-                    WHEN n.type = 'admin_alert' THEN 'PalNovaa'
-                    ELSE COALESCE(u.username, 'PalNovaa')
-                END as sender_name,
-                CASE 
-                    WHEN n.type = 'admin_alert' THEN '/logo.png'
-                    ELSE COALESCE(u.profile_picture, '/logo.png')
-                END as sender_picture,
-                u.date_of_birth,
-                u.gender,
-                u.marital_status,
-                u.workplace,
-                u.education,
-                u.institution
+                u.username as sender_name,
+                u.profile_picture as sender_picture
             FROM notifications n
             LEFT JOIN users u ON n.sender_id = u.id
-            WHERE n.user_id = $1 AND n.type != 'message'
+            WHERE n.user_id = $1
             ORDER BY n.created_at DESC
             LIMIT 50`,
             [userId]
@@ -70,7 +53,7 @@ const markAllAsRead = async (req, res) => {
         const userId = req.user.id || req.user.userId;
 
         await pool.query(
-            "UPDATE notifications SET is_read = true WHERE user_id = $1 AND type != 'message'",
+            'UPDATE notifications SET is_read = true WHERE user_id = $1',
             [userId]
         );
 
@@ -87,7 +70,7 @@ const getUnreadCount = async (req, res) => {
         const userId = req.user.id || req.user.userId;
 
         const result = await pool.query(
-            "SELECT COUNT(*) as count FROM notifications WHERE user_id = $1 AND is_read = false AND type != 'message'",
+            'SELECT COUNT(*) as count FROM notifications WHERE user_id = $1 AND is_read = false',
             [userId]
         );
 
@@ -98,23 +81,6 @@ const getUnreadCount = async (req, res) => {
     }
 };
 
-// Get unread messages count separately
-const getUnreadMessagesCount = async (req, res) => {
-    try {
-        const userId = req.user.id || req.user.userId;
-
-        const result = await pool.query(
-            "SELECT COUNT(*) as count FROM notifications WHERE user_id = $1 AND is_read = false AND type = 'message'",
-            [userId]
-        );
-
-        res.json({ count: parseInt(result.rows[0].count) });
-    } catch (error) {
-        console.error('Error getting unread messages count:', error);
-        res.status(500).json({ error: 'Failed to get unread messages count' });
-    }
-};
-
 // Create notification (helper function)
 const createNotification = async (userId, senderId, type, message) => {
     try {
@@ -122,98 +88,35 @@ const createNotification = async (userId, senderId, type, message) => {
             'INSERT INTO notifications (user_id, sender_id, type, message) VALUES ($1, $2, $3, $4)',
             [userId, senderId, type, message]
         );
-
-        // Fetch user push subscriptions
-        const subResult = await pool.query(
-            'SELECT id, subscription FROM push_subscriptions WHERE user_id = $1',
-            [userId]
-        );
-
-        if (subResult.rows.length > 0) {
-            // Fetch sender info for better notification
-            const senderResult = await pool.query(
-                'SELECT username FROM users WHERE id = $1',
-                [senderId]
-            );
-            const senderName = senderResult.rows[0]?.username || 'مستخدم';
-
-            let title = '🔔 تنبيه جديد';
-            let body = message || `لديك تنبيه جديد من ${senderName}`;
-
-            if (type === 'friend_request') {
-                title = '👥 طلب صداقة جديد';
-                body = `أرسل لك ${senderName} طلب صداقة`;
-            } else if (type === 'friend_accepted') {
-                title = '✅ تم قبول الصداقة';
-                body = `وافق ${senderName} على طلب صداقتك`;
-            } else if (type === 'message') {
-                title = '💬 رسالة جديدة';
-                body = `${senderName}: ${message || 'أرسل لك رسالة'}`;
-            } else if (type === 'like') {
-                title = '❤️ إعجاب جديد';
-                body = `أعجب ${senderName} بمنشورك`;
-            } else if (type === 'comment') {
-                title = '📝 تعليق جديد';
-                body = `علق ${senderName} على منشورك`;
-            } else if (type === 'reply') {
-                title = '↩️ رد جديد';
-                body = `رد ${senderName} على تعليقك`;
-            } else if (type === 'shop_notification' || type === 'shop_update') {
-                title = '🏪 إشعار من محل';
-                body = message || `هناك تحديث جديد من ${senderName}`;
-            } else if (type === 'geofence') {
-                title = '🎓 جامعة بيرزيت';
-                body = message || 'مرحباً بك في جامعة بيرزيت! 🎓 نتمنى لك يوماً دراسياً موفقاً.';
-            }
-
-            const payload = {
-                title,
-                body,
-                icon: '/logo.png', // Need to ensure this exists or use a default
-                data: {
-                    url: '/notifications',
-                    type
-                }
-            };
-
-            // Send to all registered devices for this user
-            subResult.rows.forEach(async (row) => {
-                const sendResult = await sendPushNotification(row.subscription, payload);
-                if (sendResult.expired) {
-                    // Subscription is no longer valid, delete it
-                    await pool.query('DELETE FROM push_subscriptions WHERE id = $1', [row.id]);
-                }
-            });
-        }
     } catch (error) {
-        // إنشاء الإشعار اختياري - لا نوقف العملية إذا فشل
-        console.warn('⚠️ Notification creation/push failed (optional):', error.message);
+        // إنشاء الإشعار اختياري - لا نوقف العملية إذا فشل (مثلاً الجدول غير موجود)
+        console.warn('⚠️ Notification creation failed (optional):', error.message);
     }
 };
 
-// Create geofence notification endpoint
-const createGeofenceNotification = async (req, res) => {
+const getUnreadMessagesCount = async (req, res) => {
     try {
         const userId = req.user.id || req.user.userId;
-
-        // Check if user was already notified today
-        const checkResult = await pool.query(
-            "SELECT id FROM notifications WHERE user_id = $1 AND type = 'geofence' AND created_at::date = CURRENT_DATE",
+        const result = await pool.query(
+            'SELECT COUNT(*) as count FROM messages WHERE receiver_id = $1 AND is_read = false',
             [userId]
         );
-
-        if (checkResult.rows.length > 0) {
-            return res.json({ success: true, message: 'Already notified today' });
-        }
-
-        const message = "مرحباً بك في جامعة بيرزيت! 🎓 نتمنى لك يوماً دراسياً موفقاً.";
-        
-        await createNotification(userId, null, 'geofence', message);
-        
-        res.json({ success: true });
+        res.json({ count: parseInt(result.rows[0]?.count || 0) });
     } catch (error) {
-        console.error('Error creating geofence notification:', error);
-        res.status(500).json({ error: 'Failed to create geofence notification' });
+        console.error('Error getting unread messages count:', error);
+        res.status(500).json({ error: 'Failed to get unread messages count' });
+    }
+};
+
+const createGeofenceNotification = async (req, res) => {
+    try {
+        const { message, shopId } = req.body;
+        const userId = req.user.id || req.user.userId;
+        await createNotification(userId, null, 'geofence', message || 'دخلت في نطاق متجر جديد!');
+        res.json({ message: 'Geofence notification triggered' });
+    } catch (error) {
+        console.error('Geofence notification error:', error);
+        res.status(500).json({ error: 'Geofence notification failed' });
     }
 };
 
@@ -223,6 +126,6 @@ module.exports = {
     markAllAsRead,
     getUnreadCount,
     getUnreadMessagesCount,
-    createNotification,
-    createGeofenceNotification
+    createGeofenceNotification,
+    createNotification
 };

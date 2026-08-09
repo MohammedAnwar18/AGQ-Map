@@ -21,32 +21,6 @@ const getAllCommunities = async (req, res) => {
     }
 };
 
-// Create a community (Admin only)
-const createCommunity = async (req, res) => {
-    try {
-        const { name, description } = req.body;
-        
-        if (!name) {
-            return res.status(400).json({ error: 'Name is required' });
-        }
-
-        const query = `
-            INSERT INTO communities (name, description)
-            VALUES ($1, $2)
-            RETURNING *,
-            false as is_joined,
-            0 as members_count
-        `;
-        
-        const result = await pool.query(query, [name, description || '']);
-        
-        res.status(201).json({ community: result.rows[0], message: 'Community created successfully' });
-    } catch (error) {
-        console.error('Create community error:', error);
-        res.status(500).json({ error: 'Server error creating community' });
-    }
-};
-
 // Join a community
 const joinCommunity = async (req, res) => {
     try {
@@ -100,7 +74,7 @@ const getCommunityPosts = async (req, res) => {
 
         const query = `
         SELECT 
-          p.id, p.user_id, p.content, p.image_url, p.media_urls, p.media_type, p.path_coordinates,
+          p.id, p.user_id, p.content, p.image_url, p.media_urls, p.media_type,
           ST_X(p.location::geometry) as longitude,
           ST_Y(p.location::geometry) as latitude,
           p.address, p.created_at,
@@ -124,7 +98,6 @@ const getCommunityPosts = async (req, res) => {
                 image_url: post.image_url,
                 media_urls: post.media_urls || (post.image_url ? [post.image_url] : []),
                 media_type: post.media_type || 'image',
-                path_coordinates: post.path_coordinates,
                 location: {
                     latitude: post.latitude,
                     longitude: post.longitude
@@ -146,6 +119,20 @@ const getCommunityPosts = async (req, res) => {
     } catch (error) {
         console.error('Get community posts error:', error);
         res.status(500).json({ error: 'Server error fetching community posts' });
+    }
+};
+
+const createCommunity = async (req, res) => {
+    try {
+        const { name, description, category, icon, cover_image } = req.body;
+        const result = await pool.query(
+            'INSERT INTO communities (name, description, category, icon, cover_image) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [name, description, category, icon, cover_image]
+        );
+        res.status(201).json({ message: 'Community created successfully', community: result.rows[0] });
+    } catch (error) {
+        console.error('Create community error:', error);
+        res.status(500).json({ error: 'Server error creating community' });
     }
 };
 

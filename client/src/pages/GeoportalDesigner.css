@@ -1,0 +1,289 @@
+/* ================================================================
+   Geoportal Designer CSS — PalNova Admin GIS Studio
+   ================================================================ */
+.geoportal-designer-container {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    background-color: #050B16;
+    color: #FFFFFF;
+    font-family: 'Tajawal', system-ui, sans-serif;
+    overflow: hidden;
+}
+
+/* Sidebar Drawer */
+.designer-sidebar {
+    width: 440px;
+    min-width: 440px;
+    height: 100%;
+    background: rgba(10, 22, 40, 0.95);
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    flex-direction: column;
+    z-index: 20;
+    backdrop-filter: blur(16px);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+}
+
+.designer-header {
+    padding: 18px 24px;
+    background: linear-gradient(135deg, rgba(15, 30, 51, 0.8) 0%, rgba(20, 43, 71, 0.9) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.designer-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.designer-title h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #FFFFFF;
+    margin: 0;
+}
+
+.designer-title span {
+    font-size: 0.8rem;
+    color: #F5A623;
+    background: rgba(245, 166, 35, 0.15);
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(245, 166, 35, 0.3);
+}
+
+.designer-tabs {
+    display: flex;
+    background: rgba(5, 11, 22, 0.6);
+    padding: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    gap: 4px;
+    overflow-x: auto;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 10px 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.tab-btn:hover {
+    color: #FFFFFF;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.tab-btn.active {
+    color: #050B16;
+    background: #F5A623;
+    box-shadow: 0 4px 12px rgba(245, 166, 35, 0.3);
+}
+
+.designer-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px;
+}
+
+.designer-section {
+    margin-bottom: 24px;
+    background: rgba(20, 43, 71, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 18px;
+}
+
+.section-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #F5A623;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.75);
+    margin-bottom: 6px;
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px 14px;
+    background: rgba(5, 11, 22, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    color: #FFFFFF;
+    font-size: 0.9rem;
+    transition: border-color 0.2s ease;
+}
+
+.form-control:focus {
+    border-color: #F5A623;
+}
+
+/* Layer list item */
+.layer-item {
+    background: rgba(15, 30, 51, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 12px;
+    transition: all 0.2s ease;
+}
+
+.layer-item:hover {
+    border-color: rgba(245, 166, 35, 0.4);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.layer-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.layer-name-tag {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.layer-color-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.layer-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.icon-btn {
+    padding: 6px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.7);
+    transition: all 0.2s ease;
+}
+
+.icon-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #FFFFFF;
+}
+
+.icon-btn.danger:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #EF4444;
+}
+
+.layer-controls-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+/* Drag & Drop Upload Zone */
+.upload-zone {
+    border: 2px dashed rgba(245, 166, 35, 0.4);
+    background: rgba(245, 166, 35, 0.04);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.upload-zone:hover {
+    border-color: #F5A623;
+    background: rgba(245, 166, 35, 0.08);
+}
+
+.upload-icon {
+    font-size: 2rem;
+    color: #F5A623;
+    margin-bottom: 8px;
+}
+
+/* Primary Action Button */
+.btn-primary {
+    background: linear-gradient(135deg, #F5A623 0%, #D88B0E 100%);
+    color: #050B16;
+    font-weight: 700;
+    padding: 12px 20px;
+    border-radius: 10px;
+    width: 100%;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 16px rgba(245, 166, 35, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(245, 166, 35, 0.45);
+}
+
+/* Map Preview Container */
+.designer-map-container {
+    flex: 1;
+    height: 100%;
+    position: relative;
+    background: #050B16;
+}
+
+.map-viewport {
+    width: 100%;
+    height: 100%;
+}
+
+.preview-badge {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 1000;
+    background: rgba(5, 11, 22, 0.85);
+    border: 1px solid rgba(245, 166, 35, 0.4);
+    color: #F5A623;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.preview-badge::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #10D9A0;
+    box-shadow: 0 0 8px #10D9A0;
+}

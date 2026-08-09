@@ -11,7 +11,7 @@ const getComments = async (req, res) => {
 
         const result = await pool.query(
             `SELECT 
-                c.id, c.content, c.created_at, c.parent_id,
+                c.id, c.content, c.created_at,
                 u.id as user_id, u.username, u.full_name, u.profile_picture
              FROM comments c
              JOIN users u ON c.user_id = u.id
@@ -28,47 +28,38 @@ const getComments = async (req, res) => {
 };
 
 /**
- * إضافة تعليق جديد أو رد
+ * إضافة تعليق جديد
  */
 const addComment = async (req, res) => {
     try {
         const { postId } = req.params;
-        const { content, parentId } = req.body; // parentId for replies
+        const { content } = req.body;
         const userId = req.user.userId;
 
         if (!content || !content.trim()) {
             return res.status(400).json({ error: 'Comment content is required' });
         }
 
+        // Get Post Owner to notify
+        const postResult = await pool.query('SELECT user_id FROM posts WHERE id = $1', [postId]);
+        if (postResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Post not found' });
+        }
+        const postOwnerId = postResult.rows[0].user_id;
+
         const result = await pool.query(
-            `INSERT INTO comments (post_id, user_id, content, parent_id)
-             VALUES ($1, $2, $3, $4)
-             RETURNING id, content, created_at, parent_id`,
-            [postId, userId, content, parentId || null]
+            `INSERT INTO comments (post_id, user_id, content)
+             VALUES ($1, $2, $3)
+             RETURNING id, content, created_at`,
+            [postId, userId, content]
         );
 
         const newComment = result.rows[0];
 
-        // 1. Notify Post Owner (if top-level comment or not the owner)
-        const postResult = await pool.query('SELECT user_id FROM posts WHERE id = $1', [postId]);
-        if (postResult.rows.length > 0) {
-            const postOwnerId = postResult.rows[0].user_id;
-            if (postOwnerId !== userId && !parentId) {
-                const preview = content.length > 20 ? content.substring(0, 20) + '...' : content;
-                await createNotification(postOwnerId, userId, 'comment', `علق على منشورك: ${preview}`);
-            }
-        }
-
-        // 2. Notify Parent Comment Owner (if it's a reply)
-        if (parentId) {
-            const parentResult = await pool.query('SELECT user_id FROM comments WHERE id = $1', [parentId]);
-            if (parentResult.rows.length > 0) {
-                const parentOwnerId = parentResult.rows[0].user_id;
-                if (parentOwnerId !== userId) {
-                    const preview = content.length > 20 ? content.substring(0, 20) + '...' : content;
-                    await createNotification(parentOwnerId, userId, 'reply', `رد على تعليقك: ${preview}`);
-                }
-            }
+        // Notify Post Owner
+        if (postOwnerId !== userId) {
+            const preview = content.length > 20 ? content.substring(0, 20) + '...' : content;
+            await createNotification(postOwnerId, userId, 'comment', `علق على منشورك: ${preview}`);
         }
 
         // Get user details to return with the comment
@@ -91,28 +82,15 @@ const addComment = async (req, res) => {
     }
 };
 
-/**
- * حذف تعليق
- */
 const deleteComment = async (req, res) => {
     try {
         const { commentId } = req.params;
         const userId = req.user.userId;
-
-        // Check if comment exists and belongs to user
-        const commentResult = await pool.query('SELECT user_id FROM comments WHERE id = $1', [commentId]);
-        
-        if (commentResult.rows.length === 0) {
-            return res.status(404).json({ error: 'Comment not found' });
+        const result = await pool.query('DELETE FROM comments WHERE id = $1 AND (user_id = $2 OR $3 = \'admin\') RETURNING id', [commentId, userId, req.user.role]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Comment not found or unauthorized' });
         }
-
-        if (commentResult.rows[0].user_id !== userId) {
-            return res.status(403).json({ error: 'Not authorized to delete this comment' });
-        }
-
-        await pool.query('DELETE FROM comments WHERE id = $1', [commentId]);
-
-        res.json({ message: 'Comment deleted successfully' });
+        res.json({ message: 'Comment deleted' });
     } catch (error) {
         console.error('Delete comment error:', error);
         res.status(500).json({ error: 'Server error deleting comment' });

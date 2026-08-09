@@ -1,548 +1,245 @@
-// PalNovaa Backend Server v3.6 - Production Ready
+
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 const http = require('http');
 const { Server } = require('socket.io');
-const jwt = require('jsonwebtoken');
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+const path = require('path');
+const fs = require('fs');
+require('dotenv').config();
+
 const pool = require('./config/database');
 
-// Auto-migration: تأكد من وجود جدول ar_contents عند بدء تشغيل السيرفر
-(async () => {
-    try {
-        // ── جدول ar_contents الأساسي ─────────────────────────────
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS ar_contents (
-                id         SERIAL PRIMARY KEY,
-                latitude   NUMERIC(12,8) NOT NULL,
-                longitude  NUMERIC(12,8) NOT NULL,
-                title      VARCHAR(255)  NOT NULL,
-                content    TEXT,
-                shape      VARCHAR(50)   DEFAULT 'panel',
-                bearing    NUMERIC(7,3)  DEFAULT 0,
-                pitch      NUMERIC(7,3)  DEFAULT 90,
-                created_at TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
-                owner_id   INTEGER REFERENCES users(id) ON DELETE SET NULL
-            )
-        `);
+// Routes
+const authRoutes = require('./routes/auth');
+const postRoutes = require('./routes/posts');
+const userRoutes = require('./routes/users');
+const friendRoutes = require('./routes/friends');
+const aiRoutes = require('./routes/ai');
+const commentRoutes = require('./routes/comments');
+const notificationRoutes = require('./routes/notifications');
+const newsRoutes = require('./routes/news');
+const communityRoutes = require('./routes/communities');
+const adminRoutes = require('./routes/admin');
+const shopRoutes = require('./routes/shops');
 
-        // ── ترقية الأعمدة القديمة ────────────────────────────────
-        await pool.query(`ALTER TABLE ar_contents ALTER COLUMN latitude  TYPE NUMERIC(12,8)`);
-        await pool.query(`ALTER TABLE ar_contents ALTER COLUMN longitude TYPE NUMERIC(12,8)`);
-        await pool.query(`ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS pitch NUMERIC(7,3) DEFAULT 90`);
 
-        // ── أعمدة نظام AR المتقدم (v2) ──────────────────────────
-        const newCols = [
-            `ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS type          VARCHAR(30)   DEFAULT 'story'`,
-            `ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS subtitle      TEXT`,
-            `ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS model_url     TEXT`,
-            `ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS image_url     TEXT`,
-            `ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS trigger_radius INTEGER      DEFAULT 50`,
-            `ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS fov_angle     INTEGER       DEFAULT 25`,
-            `ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS scale_x       FLOAT         DEFAULT 1.0`,
-            `ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS scale_y       FLOAT         DEFAULT 1.0`,
-            `ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS scale_z       FLOAT         DEFAULT 1.0`,
-            `ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS elevation      FLOAT         DEFAULT 0`,
-            `ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS era_year      INTEGER`,
-            `ALTER TABLE ar_contents ADD COLUMN IF NOT EXISTS tags          TEXT[]`,
-        ];
-        for (const sql of newCols) {
-            await pool.query(sql);
-        }
-
-        // ── فهارس ────────────────────────────────────────────────
-        await pool.query(`CREATE INDEX IF NOT EXISTS ar_contents_lat_idx  ON ar_contents (latitude)`);
-        await pool.query(`CREATE INDEX IF NOT EXISTS ar_contents_lon_idx  ON ar_contents (longitude)`);
-        await pool.query(`CREATE INDEX IF NOT EXISTS ar_contents_type_idx ON ar_contents (type)`);
-
-        console.log('✅ ar_contents table ready (v2 — buildings, stories, nav_points)');
-
-        // ── جدول virtual_tours ─────────────────────────────
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS virtual_tours (
-                id          SERIAL PRIMARY KEY,
-                name        VARCHAR(255)  NOT NULL,
-                description TEXT,
-                latitude    DOUBLE PRECISION NOT NULL,
-                longitude   DOUBLE PRECISION NOT NULL,
-                image_url   VARCHAR(500)  NOT NULL,
-                created_at  TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
-                created_by  INTEGER REFERENCES users(id) ON DELETE SET NULL
-            )
-        `);
-        await pool.query(`CREATE INDEX IF NOT EXISTS idx_virtual_tours_location ON virtual_tours (latitude, longitude)`);
-        console.log('✅ virtual_tours table ready');
-
-        // ── جدول fitness_runs ─────────────────────────────
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS fitness_runs (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                activity_type VARCHAR(50) NOT NULL,
-                duration_seconds INTEGER NOT NULL,
-                distance_km DOUBLE PRECISION NOT NULL,
-                calories_burned DOUBLE PRECISION NOT NULL,
-                avg_speed_kmh DOUBLE PRECISION NOT NULL,
-                path_coordinates TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-        await pool.query(`CREATE INDEX IF NOT EXISTS idx_fitness_runs_created_at ON fitness_runs(created_at)`);
-        console.log('✅ fitness_runs table ready');
-
-        // ── إضافة عمود path_coordinates لجدول posts ───────────────────────────
-        await pool.query(`
-            ALTER TABLE posts ADD COLUMN IF NOT EXISTS path_coordinates TEXT;
-        `);
-        console.log('✅ path_coordinates column verified on posts table');
-
-        // ── جداول مساحة الدراسة Study Space ─────────────────────────────────
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS study_videos (
-                id            SERIAL PRIMARY KEY,
-                duration_hours NUMERIC(4,1) NOT NULL UNIQUE,
-                youtube_url   TEXT NOT NULL,
-                video_id      VARCHAR(20) NOT NULL,
-                title         VARCHAR(255) DEFAULT 'فيديو دراسة',
-                created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS study_books (
-                id            SERIAL PRIMARY KEY,
-                title         VARCHAR(255) NOT NULL,
-                author        VARCHAR(255),
-                description   TEXT,
-                file_url      TEXT NOT NULL,
-                cover_url     TEXT,
-                file_size_mb  NUMERIC(10,2),
-                created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-        
-        console.log('✅ study_videos & study_books tables ready');
-
-        // ── جداول التحكم الداخلي 3D Indoor Control ────────────────────────────
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS indoor_buildings (
-                id             SERIAL PRIMARY KEY,
-                name           VARCHAR(255) NOT NULL,
-                floor_plan_url TEXT,
-                scale_ratio    NUMERIC(10,4) DEFAULT 1.0,
-                shapes_data    TEXT,
-                latitude       DOUBLE PRECISION,
-                longitude      DOUBLE PRECISION,
-                created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-        // Ensure the columns exist for already created databases
-        await pool.query(`
-            ALTER TABLE indoor_buildings ADD COLUMN IF NOT EXISTS shapes_data TEXT,
-                                         ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION,
-                                         ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION
-        `);
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS shelving_units (
-                id             SERIAL PRIMARY KEY,
-                building_id    INTEGER REFERENCES indoor_buildings(id) ON DELETE CASCADE,
-                unit_code      VARCHAR(50) NOT NULL,
-                x              NUMERIC(10,2) NOT NULL,
-                y              NUMERIC(10,2) NOT NULL,
-                width          NUMERIC(10,2) NOT NULL,
-                depth          NUMERIC(10,2) NOT NULL,
-                height         NUMERIC(10,2) DEFAULT 1.8,
-                rotation       NUMERIC(10,2) DEFAULT 0.0,
-                created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS shelf_levels (
-                id             SERIAL PRIMARY KEY,
-                unit_id        INTEGER REFERENCES shelving_units(id) ON DELETE CASCADE,
-                level_number   INTEGER NOT NULL,
-                height_offset  NUMERIC(10,2) NOT NULL
-            )
-        `);
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS product_placements (
-                id             SERIAL PRIMARY KEY,
-                shelf_level_id INTEGER REFERENCES shelf_levels(id) ON DELETE CASCADE,
-                product_name   VARCHAR(255) NOT NULL,
-                product_id     VARCHAR(100),
-                quantity       INTEGER DEFAULT 0,
-                max_capacity   INTEGER DEFAULT 10,
-                updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS map_3d_models (
-                id             SERIAL PRIMARY KEY,
-                name           VARCHAR(255) NOT NULL,
-                model_url      TEXT NOT NULL,
-                latitude       DOUBLE PRECISION NOT NULL,
-                longitude      DOUBLE PRECISION NOT NULL,
-                altitude       DOUBLE PRECISION DEFAULT 0,
-                scale          DOUBLE PRECISION DEFAULT 1,
-                rotation_x     DOUBLE PRECISION DEFAULT 0,
-                rotation_y     DOUBLE PRECISION DEFAULT 0,
-                rotation_z     DOUBLE PRECISION DEFAULT 0,
-                created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS indoor_tasks (
-                id             SERIAL PRIMARY KEY,
-                description    TEXT NOT NULL,
-                shelf_level_id INTEGER REFERENCES shelf_levels(id) ON DELETE SET NULL,
-                assigned_to    INTEGER REFERENCES users(id) ON DELETE SET NULL,
-                status         VARCHAR(50) DEFAULT 'pending',
-                created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                completed_at   TIMESTAMP
-            )
-        `);
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS indoor_logs (
-                id             SERIAL PRIMARY KEY,
-                user_id        INTEGER REFERENCES users(id) ON DELETE SET NULL,
-                location_code  VARCHAR(100) NOT NULL,
-                action_type    VARCHAR(100) NOT NULL,
-                created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS digital_letters (
-                id             SERIAL PRIMARY KEY,
-                slug           VARCHAR(100) UNIQUE NOT NULL,
-                title          VARCHAR(255) NOT NULL,
-                sender_name    VARCHAR(255),
-                recipient_name VARCHAR(255),
-                content        TEXT,
-                image_url      TEXT,
-                music_url      TEXT,
-                envelope_color VARCHAR(50) DEFAULT 'maroon',
-                seal_design    VARCHAR(50) DEFAULT 'wax-classic',
-                created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                created_by     INTEGER REFERENCES users(id) ON DELETE CASCADE
-            )
-        `);
-        console.log('✅ digital_letters table ready');
-
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS event_photos (
-                id             SERIAL PRIMARY KEY,
-                event_slug     VARCHAR(100) DEFAULT 'enas-graduation',
-                image_url      TEXT NOT NULL,
-                caption        VARCHAR(255),
-                uploader       VARCHAR(100),
-                created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-        console.log('✅ event_photos table ready');
-
-        // ── جدول Orbis للكشف وتتبع الكاميرا بالذكاء الاصطناعي ──────────
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS orbis_detections (
-                id SERIAL PRIMARY KEY,
-                admin_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                object_type VARCHAR(50) NOT NULL,
-                image_url TEXT,
-                metadata JSONB DEFAULT '{}',
-                location GEOGRAPHY(Point, 4326),
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-        await pool.query(`CREATE INDEX IF NOT EXISTS idx_orbis_detections_location ON orbis_detections USING GIST(location)`);
-        await pool.query(`CREATE INDEX IF NOT EXISTS idx_orbis_detections_timestamp ON orbis_detections(timestamp)`);
-        console.log('✅ orbis_detections table ready');
-    } catch (err) {
-        console.error('⚠️ database auto-migration error:', err.message);
-    }
-})();
-
-// 1. إنشاء التطبيق
+// إنشاء Express App
 const app = express();
-// Note: Gzip compression is handled automatically by Vercel's edge network
 const server = http.createServer(app);
+
+// إعداد Socket.IO للدردشة
 const io = new Server(server, {
     cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    },
-    maxHttpBufferSize: 1e7 // 10MB buffer size to support base64 image payloads
+        origin: process.env.CLIENT_URL || 'http://localhost:5173',
+        methods: ['GET', 'POST']
+    }
 });
 
-// 2. إعدادات Middleware والحماية برمجياً
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, 
-    max: 300, 
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: "طلبات كثيرة جداً، يرجى المحاولة لاحقاً" }
-});
+app.set('io', io);
 
-app.use(limiter);
-app.use(helmet({
-    contentSecurityPolicy: false, 
-    crossOriginResourcePolicy: false 
+// Middleware
+app.use(cors({
+    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    credentials: true
 }));
-app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// 3. Socket.io Logic
+// إنشاء مجلد uploads إذا لم يكن موجوداً
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// تقديم الملفات الثابتة
+app.use('/uploads', express.static(uploadsDir));
+
+const geoportalRoutes = require('./routes/geoportal');
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/posts', postRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/friends', friendRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/comments', commentRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/news', newsRoutes);
+app.use('/api/communities', communityRoutes);
+app.use('/api/shops', shopRoutes);
+app.use('/api/geoportals', geoportalRoutes);
+
+
+// صفحة البداية
+app.get('/', (req, res) => {
+    res.json({
+        message: '🗺️ Spatial Social Network API',
+        version: '1.0.0',
+        endpoints: {
+            auth: '/api/auth',
+            posts: '/api/posts',
+            users: '/api/users',
+            friends: '/api/friends'
+        }
+    });
+});
+
+// Socket.IO للدردشة الفورية
+const connectedUsers = new Map(); // userId -> socketId
+
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
-    // Authentication middleware for socket (optional but recommended)
-    // Here we handle registration after connection
+    // تسجيل المستخدم
     socket.on('register', async (userId) => {
+        connectedUsers.set(userId.toString(), socket.id);
         socket.userId = userId;
-        socket.join(`user_${userId}`);
-        console.log(`User ${userId} registered to room user_${userId}`);
 
-        // Mark user as online in DB and broadcast to all connected sockets
-        try {
-            const pool = require('./config/database');
-            await pool.query(
-                'UPDATE users SET is_online = true, last_seen = CURRENT_TIMESTAMP WHERE id = $1',
-                [userId]
-            );
-            // Broadcast to all other clients so friend lists update
-            socket.broadcast.emit('user_online', { userId });
-        } catch (err) {
-            console.warn('Failed to set user online:', err.message);
-        }
+        // تحديث حالة المستخدم في قاعدة البيانات
+        await pool.query(
+            'UPDATE users SET is_online = true, last_seen = CURRENT_TIMESTAMP WHERE id = $1',
+            [userId]
+        );
+
+        console.log('User registered:', userId, 'with socket', socket.id);
+
+        // إخبار جميع الأصدقاء أن المستخدم أصبح متصلاً
+        socket.broadcast.emit('user-online', userId);
     });
 
-    // Real-time Messaging
+    // إرسال رسالة
     socket.on('send-message', async (data) => {
-        const { receiverId, content, imageUrl, senderId: explicitSenderId } = data;
-        const senderId = data.senderId || socket.userId;
-        console.log(`💬 Message from ${senderId} to ${receiverId}`);
-        
         try {
-            const pool = require('./config/database');
-            const result = await pool.query(
-                `INSERT INTO messages (sender_id, receiver_id, content, image_url, created_at)
-                 VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
-                 RETURNING *`,
-                [senderId, receiverId, content, imageUrl || null]
-            );
-            
-            const newMessage = result.rows[0];
-            console.log('✅ Message saved with ID:', newMessage.id);
-            
-            // Emit to receiver
-            io.to(`user_${receiverId}`).emit('receive-message', newMessage);
-            // Emit to sender for confirmation
-            socket.emit('receive-message', newMessage);
-            
-            // Create notification
-            const { createNotification } = require('./controllers/notificationController');
-            await createNotification(receiverId, senderId, 'message', null);
-            
+            const { receiverId, content, imageUrl } = data;
+            const senderId = socket.userId;
+
+            if (!senderId || !receiverId || (!content && !imageUrl)) {
+                return;
+            }
+
+            // حفظ الرسالة في قاعدة البيانات
+            const query = "INSERT INTO messages(sender_id, receiver_id, content, image_url) VALUES($1, $2, $3, $4) RETURNING id, sender_id, receiver_id, content, image_url, is_read, created_at";
+            const result = await pool.query(query, [senderId, receiverId, content || '', imageUrl || null]);
+
+            const message = result.rows[0];
+
+            // إرسال الرسالة للمستقبل إذا كان متصلاً
+            const receiverSocketId = connectedUsers.get(receiverId.toString());
+            if (receiverSocketId) {
+                io.to(receiverSocketId).emit('receive-message', message);
+            }
+
+            // تأكيد الإرسال للمرسل
+            socket.emit('message-sent', message);
+
         } catch (error) {
-            console.error('Socket send-message error:', error);
+            console.error('Send message error:', error);
+            socket.emit('error', { message: 'Failed to send message' });
         }
     });
 
-    socket.on('get-messages', async ({ friendId, userId: explicitUserId }) => {
-        const userId = socket.userId || explicitUserId;
-        console.log(`📥 Loading messages for user ${userId} with friend ${friendId}`);
+    // تحميل المحادثات
+    socket.on('get-messages', async (data) => {
         try {
-            const pool = require('./config/database');
-            const result = await pool.query(
-                `SELECT * FROM messages 
-                 WHERE (sender_id = $1 AND receiver_id = $2)
-                 OR (sender_id = $2 AND receiver_id = $1)
-                 ORDER BY created_at ASC`,
-                [userId, friendId]
-            );
-            
-            console.log(`📍 Found ${result.rows.length} messages`);
+            const { friendId } = data;
+            const userId = socket.userId;
 
-            // Mark as read
-            await pool.query(
-                `UPDATE messages SET is_read = true 
-                 WHERE receiver_id = $1 AND sender_id = $2`,
-                [userId, friendId]
-            );
+            const query = "SELECT * FROM messages WHERE (sender_id = $1 AND receiver_id = $2) OR (sender_id = $2 AND receiver_id = $1) ORDER BY created_at ASC LIMIT 100";
+            const result = await pool.query(query, [userId, friendId]);
 
-            // Mark notifications as read too
-            await pool.query(
-                `UPDATE notifications SET is_read = true 
-                 WHERE user_id = $1 AND sender_id = $2 AND type = 'message'`,
-                [userId, friendId]
-            );
-            
             socket.emit('messages-loaded', result.rows);
+
+            // تحديث الرسائل كمقروءة
+            const updateQuery = "UPDATE messages SET is_read = true WHERE receiver_id = $1 AND sender_id = $2 AND is_read = false";
+            await pool.query(updateQuery, [userId, friendId]);
+
         } catch (error) {
-            console.error('Socket get-messages error:', error);
+            console.error('Get messages error:', error);
+            socket.emit('error', { message: 'Failed to load messages' });
         }
     });
 
-    socket.on('typing', ({ receiverId }) => {
-        socket.to(`user_${receiverId}`).emit('user-typing', { userId: socket.userId });
-    });
-
-    socket.on('stop-typing', ({ receiverId }) => {
-        socket.to(`user_${receiverId}`).emit('user-stop-typing', { userId: socket.userId });
-    });
-
-    // AR Workspace Synchronization
-    socket.on('ar-spatial-update', (data) => {
-        if (socket.userId) {
-            socket.to(`user_${socket.userId}`).emit('ar-spatial-update', data);
+    // الكتابة
+    socket.on('typing', (data) => {
+        const { receiverId } = data;
+        const receiverSocketId = connectedUsers.get(receiverId.toString());
+        if (receiverSocketId) {
+            io.to(receiverSocketId).emit('user-typing', { userId: socket.userId });
         }
     });
 
-    socket.on('ar-object-manipulation', (data) => {
-        if (socket.userId) {
-            socket.to(`user_${socket.userId}`).emit('ar-object-manipulation', data);
+    // توقف عن الكتابة
+    socket.on('stop-typing', (data) => {
+        const { receiverId } = data;
+        const receiverSocketId = connectedUsers.get(receiverId.toString());
+        if (receiverSocketId) {
+            io.to(receiverSocketId).emit('user-stop-typing', { userId: socket.userId });
         }
     });
 
-    // 📡 Orbis AI Remote Lens Pairing & Streaming Sockets
-    socket.on('orbis-register', ({ userId, role }) => {
-        socket.userId = userId;
-        socket.orbisRole = role; // 'laptop' or 'mobile'
-        
-        socket.join(`user_${userId}`);
-        socket.join(`user_${userId}_${role}`);
-        
-        console.log(`📡 Orbis: Admin ${userId} registered as ${role} (Socket ${socket.id})`);
-        
-        // Broadcast connection status to the entire user room
-        io.to(`user_${userId}`).emit('orbis-peer-status', {
-            laptopConnected: io.sockets.adapter.rooms.get(`user_${userId}_laptop`)?.size > 0,
-            mobileConnected: io.sockets.adapter.rooms.get(`user_${userId}_mobile`)?.size > 0
-        });
-    });
+    // الإعجاب برسالة
+    socket.on('like-message', async (data) => {
+        try {
+            const { messageId, receiverId } = data;
 
-    socket.on('orbis-frame', (data) => {
-        if (socket.userId) {
-            socket.to(`user_${socket.userId}_laptop`).emit('orbis-frame', data);
+            // Toggle like status
+            const result = await pool.query(
+                'UPDATE messages SET is_liked = NOT COALESCE(is_liked, false) WHERE id = $1 RETURNING *',
+                [messageId]
+            );
+
+            if (result.rows.length > 0) {
+                const updatedMessage = result.rows[0];
+
+                // Emit to receiver
+                const receiverSocketId = connectedUsers.get(receiverId.toString());
+                if (receiverSocketId) {
+                    io.to(receiverSocketId).emit('message-updated', updatedMessage);
+                }
+
+                // Emit back to sender (to confirm and update UI)
+                socket.emit('message-updated', updatedMessage);
+            }
+        } catch (error) {
+            console.error('Like message error:', error);
         }
     });
 
+    // قطع الاتصال
     socket.on('disconnect', async () => {
-        console.log('User disconnected:', socket.userId);
+        console.log('User disconnected:', socket.id);
+
         if (socket.userId) {
-            if (socket.orbisRole) {
-                // Notify remaining sockets about status change
-                io.to(`user_${socket.userId}`).emit('orbis-peer-status', {
-                    laptopConnected: io.sockets.adapter.rooms.get(`user_${socket.userId}_laptop`)?.size > 0,
-                    mobileConnected: io.sockets.adapter.rooms.get(`user_${socket.userId}_mobile`)?.size > 0
-                });
-            }
-            try {
-                const pool = require('./config/database');
-                await pool.query(
-                    'UPDATE users SET is_online = false, last_seen = CURRENT_TIMESTAMP WHERE id = $1',
-                    [socket.userId]
-                );
-                // Broadcast offline to all other clients
-                socket.broadcast.emit('user_offline', { userId: socket.userId });
-            } catch (err) {
-                console.warn('Failed to set user offline:', err.message);
-            }
+            connectedUsers.delete(socket.userId.toString());
+
+            // تحديث حالة المستخدم في قاعدة البيانات
+            await pool.query(
+                'UPDATE users SET is_online = false, last_seen = CURRENT_TIMESTAMP WHERE id = $1',
+                [socket.userId]
+            );
+
+            // إخبار جميع الأصدقاء أن المستخدم قطع الاتصال
+            socket.broadcast.emit('user-offline', socket.userId);
         }
     });
 });
 
-// Attach socket logic manually or inject into req
-app.set('io', io);
-
-// 4. تفعيل الثقة في البروكسي (مهم لبرنامج تحديد الاستهلاك على Vercel/Heroku)
-app.set('trust proxy', 1);
-
-// 5. مسار الصحة الأساسي
-app.get('/health', async (req, res) => {
-    try {
-        const pool = require('./config/database');
-        const supabase = require('./config/supabase');
-        await pool.query('SELECT NOW()');
-        res.json({ status: "SUCCESS", database: "CONNECTED", time: new Date() });
-    } catch (e) {
-        res.status(500).json({ status: "ERROR", error: e.message });
-    }
-});
-
-// 6. تحميل المسارات
-app.use('/auth', require('./routes/auth'));
-app.use('/users', require('./routes/users'));
-app.use('/friends', require('./routes/friends'));
-app.use('/messages', require('./routes/messages'));
-app.use('/posts', require('./routes/posts'));
-app.use('/comments', require('./routes/comments'));
-app.use('/ai', require('./routes/ai'));
-app.use('/notifications', require('./routes/notifications'));
-app.use('/news', require('./routes/news'));
-app.use('/communities', require('./routes/communities'));
-app.use('/shops', require('./routes/shops'));
-app.use('/cameras', require('./routes/cameras'));
-app.use('/admin', require('./routes/admin'));
-app.use('/reels', require('./routes/reels'));
-app.use('/magazines', require('./routes/magazine'));
-app.use('/ar', require('./routes/ar'));
-app.use('/tours', require('./routes/tours'));
-
-// API Aliases
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/users', require('./routes/users'));
-app.use('/api/friends', require('./routes/friends'));
-app.use('/api/messages', require('./routes/messages'));
-app.use('/api/posts', require('./routes/posts'));
-app.use('/api/notifications', require('./routes/notifications'));
-app.use('/api/shops', require('./routes/shops'));
-app.use('/api/cameras', require('./routes/cameras'));
-app.use('/api/news', require('./routes/news'));
-app.use('/api/communities', require('./routes/communities'));
-app.use('/api/ai', require('./routes/ai'));
-app.use('/api/admin', require('./routes/admin'));
-app.use('/api/comments', require('./routes/comments'));
-app.use('/api/reels', require('./routes/reels'));
-app.use('/api/magazines', require('./routes/magazine'));
-app.use('/api/push', require('./routes/push'));
-app.use('/api/radar', require('./routes/radar')); // <-- NEW RADAR MOUNT
-app.use('/api/pages', require('./routes/pages')); // <-- NEW PAGES MOUNT
-app.use('/api/storage', require('./routes/storageRoutes')); // <-- NEW STORAGE MOUNT
-app.use('/api/remote-sensing', require('./routes/remoteSensing'));
-app.use('/api/ar', require('./routes/ar'));
-app.use('/api/tours', require('./routes/tours'));
-app.use('/api/fitness', require('./routes/fitness'));
-app.use('/api/study-space', require('./routes/studySpace'));
-app.use('/api/map-3d-models', require('./routes/map3D'));
-app.use('/api/digital-letters', require('./routes/digitalLetters'));
-app.use('/api/events', require('./routes/events'));
-app.use('/orbis', require('./routes/orbis'));
-app.use('/api/orbis', require('./routes/orbis'));
-
-
-
-
-// Global Error Handler
+// معالجة الأخطاء
 app.use((err, req, res, next) => {
-    console.error('Global Error:', err);
+    console.error('Error:', err);
     res.status(err.status || 500).json({
-        error: err.message || 'حدث خطأ داخلي في الخادم',
-        details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+        error: err.message || 'Internal server error'
     });
 });
 
-// 7. التشغيل المحلي (فقط للمبرمج)
-if (!process.env.VERCEL) {
-    const PORT = process.env.PORT || 5000;
-    server.listen(PORT, () => console.log(`🚀 API & Sockets at http://localhost:${PORT}`));
-}
+// تشغيل السيرفر
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+    console.log('Server running on port ' + PORT);
+    console.log('📡 WebSocket server ready');
+    console.log('🌐 API: http://localhost:' + PORT);
+});
 
-// 7. تصدير التطبيق لـ Vercel
-module.exports = app;
+module.exports = { app, server, io };
 

@@ -1,0 +1,10 @@
+# 🚨 مهم: قم بنسخ محتوى هذا الملف إلى ملف جديد اسمه .env.local
+
+# تعليمات:
+# 1. افتح مجلد client
+# 2. أنشئ ملف جديد اسمه .env.local
+# 3. انسخ كل المحتوى التالي فيه
+
+VITE_API_URL=/api
+VITE_WS_URL=http://localhost:5000
+VITE_MAPBOX_TOKEN=pk.YOUR_MAPBOX_TOKEN_HERE

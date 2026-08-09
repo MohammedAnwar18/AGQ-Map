@@ -8,40 +8,28 @@ const pool = require('../config/database');
  */
 const createPost = async (req, res) => {
     try {
-        const { content, latitude, longitude, address, community_id, path_coordinates } = req.body;
+        const { content, latitude, longitude, address, community_id } = req.body;
         const userId = req.user.userId;
-        const isAdmin = req.user.role === 'admin';
 
-        const hasCoords = latitude !== undefined && latitude !== null && String(latitude).trim() !== '' &&
-                          longitude !== undefined && longitude !== null && String(longitude).trim() !== '';
-
-        if (!hasCoords && !isAdmin) {
+        if (!latitude || !longitude) {
             return res.status(400).json({ error: 'Location (latitude, longitude) is required' });
         }
 
-        // التحقق من صحة الإحداثيات إن وُجدت
-        if (hasCoords) {
-            const latNum = parseFloat(latitude);
-            const lonNum = parseFloat(longitude);
-            if (isNaN(latNum) || latNum < -90 || latNum > 90 || isNaN(lonNum) || lonNum < -180 || lonNum > 180) {
-                return res.status(400).json({ error: 'Invalid coordinates' });
-            }
+        // التحقق من صحة الإحداثيات
+        if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+            return res.status(400).json({ error: 'Invalid coordinates' });
         }
 
-        // معالجة الملفات المتعددة ورفعها لـ Supabase
-        const { uploadToSupabase } = require('../utils/storage');
+        // معالجة الملفات المتعددة
         let media_urls = [];
         let image_url = null;
         let media_type = 'text';
 
         if (req.files && req.files.length > 0) {
-            // رفع كل الملفات بالتوازي لـ Supabase
-            const uploadPromises = req.files.map(file =>
-                uploadToSupabase(file.buffer, file.originalname, file.mimetype)
-            );
-            media_urls = await Promise.all(uploadPromises);
+            // Map all files to their URLs
+            media_urls = req.files.map(file => `/uploads/${file.filename}`);
 
-            // تحديد النوع والصورة الرئيسية
+            // Set defaults from the first file
             image_url = media_urls[0];
             const firstFile = req.files[0];
             if (firstFile.mimetype.startsWith('video/')) {
@@ -50,8 +38,8 @@ const createPost = async (req, res) => {
                 media_type = 'image';
             }
         } else if (req.file) {
-            // معالجة ملف واحد
-            image_url = await uploadToSupabase(req.file.buffer, req.file.originalname, req.file.mimetype);
+            // Fallback for single file upload if needed (though route is array now)
+            image_url = `/uploads/${req.file.filename}`;
             media_urls = [image_url];
             if (req.file.mimetype.startsWith('video/')) {
                 media_type = 'video';
@@ -60,29 +48,16 @@ const createPost = async (req, res) => {
             }
         }
 
-        // إنشاء نقطة جغرافية (اختيارية للأدمن)
-        let result;
-        if (hasCoords) {
-            result = await pool.query(
-                `INSERT INTO posts (user_id, content, image_url, media_urls, location, address, media_type, community_id, path_coordinates)
-           VALUES ($1, $2, $3, $4, ST_SetSRID(ST_MakePoint($5, $6), 4326)::geography, $7, $8, $9, $10)
-           RETURNING id, user_id, content, image_url, media_urls, media_type, community_id, path_coordinates,
-                      ST_X(location::geometry) as longitude,
-                      ST_Y(location::geometry) as latitude,
-                      address, created_at`,
-                [userId, content, image_url, media_urls, parseFloat(longitude), parseFloat(latitude), address || null, media_type, community_id || null, path_coordinates || null]
-            );
-        } else {
-            result = await pool.query(
-                `INSERT INTO posts (user_id, content, image_url, media_urls, location, address, media_type, community_id, path_coordinates)
-           VALUES ($1, $2, $3, $4, NULL, $5, $6, $7, $8)
-           RETURNING id, user_id, content, image_url, media_urls, media_type, community_id, path_coordinates,
-                      NULL as longitude,
-                      NULL as latitude,
-                      address, created_at`,
-                [userId, content, image_url, media_urls, address || null, media_type, community_id || null, path_coordinates || null]
-            );
-        }
+        // إنشاء نقطة جغرافية
+        const result = await pool.query(
+            `INSERT INTO posts (user_id, content, image_url, media_urls, location, address, media_type, community_id)
+       VALUES ($1, $2, $3, $4, ST_SetSRID(ST_MakePoint($5, $6), 4326)::geography, $7, $8, $9)
+       RETURNING id, user_id, content, image_url, media_urls, media_type, community_id,
+                 ST_X(location::geometry) as longitude,
+                 ST_Y(location::geometry) as latitude,
+                 address, created_at`,
+            [userId, content, image_url, media_urls, longitude, latitude, address, media_type, community_id || null]
+        );
 
         const post = result.rows[0];
 
@@ -122,10 +97,7 @@ const createPost = async (req, res) => {
         });
     } catch (error) {
         console.error('Create post error:', error);
-        res.status(500).json({ 
-            error: 'Server error creating post',
-            details: error.message 
-        });
+        res.status(500).json({ error: 'Server error creating post' });
     }
 };
 
@@ -141,10 +113,10 @@ const getPosts = async (req, res) => {
         let params;
 
         if (latitude && longitude) {
-            // الحصول على المنشورات ضمن نطاق معين (فقط من الأصدقاء أو منشوري الخاص)
+            // الحصول على المنشورات ضمن نطاق معين
             query = `
         SELECT 
-          p.id, p.user_id, p.content, p.image_url, p.media_urls, p.media_type, p.path_coordinates,
+          p.id, p.user_id, p.content, p.image_url, p.media_urls, p.media_type,
           ST_X(p.location::geometry) as longitude,
           ST_Y(p.location::geometry) as latitude,
           p.address, p.created_at,
@@ -152,8 +124,6 @@ const getPosts = async (req, res) => {
           (SELECT COUNT(*)::int FROM comments WHERE post_id = p.id) as comments_count,
           (SELECT COUNT(*)::int FROM likes WHERE post_id = p.id) as likes_count,
           EXISTS(SELECT 1 FROM likes WHERE post_id = p.id AND user_id = $4) as is_liked,
-          EXISTS(SELECT 1 FROM friendships WHERE (user1_id = $4 AND user2_id = u.id) OR (user1_id = u.id AND user2_id = $4)) as is_friend,
-          EXISTS(SELECT 1 FROM friend_requests WHERE (sender_id = $4 AND receiver_id = u.id) OR (sender_id = u.id AND receiver_id = $4)) as has_pending_request,
           ST_Distance(p.location, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography) as distance
         FROM posts p
         JOIN users u ON p.user_id = u.id
@@ -164,41 +134,46 @@ const getPosts = async (req, res) => {
         )
         AND p.community_id IS NULL
         AND (
-          p.user_id = $4 OR 
-          EXISTS (
-            SELECT 1 FROM friendships 
-            WHERE (user1_id = $4 AND user2_id = p.user_id) 
-            OR (user1_id = p.user_id AND user2_id = $4)
+          p.user_id = $4
+          OR p.user_id IN (
+            SELECT CASE 
+              WHEN user1_id = $4 THEN user2_id 
+              ELSE user1_id 
+            END
+            FROM friendships
+            WHERE user1_id = $4 OR user2_id = $4
           )
         )
+        OR (p.user_id = $4 AND p.community_id IS NULL)
         ORDER BY distance, p.created_at DESC
         LIMIT 100
       `;
             params = [longitude, latitude, radius, userId];
         } else {
-            // الحصول على جميع المنشورات (فقط من الأصدقاء أو منشوري الخاص)
+            // الحصول على جميع منشورات الأصدقاء
             query = `
         SELECT 
-          p.id, p.user_id, p.content, p.image_url, p.media_urls, p.media_type, p.path_coordinates,
+          p.id, p.user_id, p.content, p.image_url, p.media_urls, p.media_type,
           ST_X(p.location::geometry) as longitude,
           ST_Y(p.location::geometry) as latitude,
           p.address, p.created_at,
           (SELECT COUNT(*)::int FROM comments WHERE post_id = p.id) as comments_count,
           (SELECT COUNT(*)::int FROM likes WHERE post_id = p.id) as likes_count,
           EXISTS(SELECT 1 FROM likes WHERE post_id = p.id AND user_id = $1) as is_liked,
-          EXISTS(SELECT 1 FROM friendships WHERE (user1_id = $1 AND user2_id = u.id) OR (user1_id = u.id AND user2_id = $1)) as is_friend,
-          EXISTS(SELECT 1 FROM friend_requests WHERE (sender_id = $1 AND receiver_id = u.id) OR (sender_id = u.id AND receiver_id = $1)) as has_pending_request,
           u.username, u.full_name, u.profile_picture
         FROM posts p
         JOIN users u ON p.user_id = u.id
         WHERE 
           p.community_id IS NULL
           AND (
-            p.user_id = $1 OR 
-            EXISTS (
-              SELECT 1 FROM friendships 
-              WHERE (user1_id = $1 AND user2_id = p.user_id) 
-              OR (user1_id = p.user_id AND user2_id = $1)
+            p.user_id = $1
+            OR p.user_id IN (
+              SELECT CASE 
+                WHEN user1_id = $1 THEN user2_id 
+                ELSE user1_id 
+              END
+              FROM friendships
+              WHERE user1_id = $1 OR user2_id = $1
             )
           )
         ORDER BY p.created_at DESC
@@ -216,7 +191,6 @@ const getPosts = async (req, res) => {
                 image_url: post.image_url,
                 media_urls: post.media_urls || (post.image_url ? [post.image_url] : []),
                 media_type: post.media_type || 'image',
-                path_coordinates: post.path_coordinates,
                 location: {
                     latitude: post.latitude,
                     longitude: post.longitude
@@ -228,9 +202,7 @@ const getPosts = async (req, res) => {
                     id: post.user_id,
                     username: post.username,
                     full_name: post.full_name,
-                    profile_picture: post.profile_picture,
-                    is_friend: post.is_friend || false,
-                    has_pending_request: post.has_pending_request || false
+                    profile_picture: post.profile_picture
                 },
                 comments_count: post.comments_count || 0,
                 likes_count: post.likes_count || 0,
@@ -250,32 +222,14 @@ const deletePost = async (req, res) => {
     try {
         const { postId } = req.params;
         const userId = req.user.userId;
-        const { deleteFileFromCloud } = require('../utils/storage');
 
-        // Fetch post details first to get image URLs
-        const postData = await pool.query(
-            'SELECT image_url, media_urls FROM posts WHERE id = $1 AND user_id = $2',
+        const result = await pool.query(
+            'DELETE FROM posts WHERE id = $1 AND user_id = $2 RETURNING id',
             [postId, userId]
         );
 
-        if (postData.rows.length === 0) {
+        if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Post not found or unauthorized' });
-        }
-
-        const { image_url, media_urls } = postData.rows[0];
-
-        // Delete from database
-        await pool.query(
-            'DELETE FROM posts WHERE id = $1 AND user_id = $2',
-            [postId, userId]
-        );
-
-        // Delete from Cloudinary asynchronously
-        if (image_url) deleteFileFromCloud(image_url);
-        if (media_urls && Array.isArray(media_urls)) {
-            media_urls.forEach(url => {
-                if (url !== image_url) deleteFileFromCloud(url);
-            });
         }
 
         res.json({ message: 'Post deleted successfully' });

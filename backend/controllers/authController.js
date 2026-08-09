@@ -12,22 +12,10 @@ const register = async (req, res) => {
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
-            return res.status(400).json({ error: errors.array()[0].msg });
+            return res.status(400).json({ errors: errors.array() });
         }
 
-        let { username, email, password, full_name, date_of_birth, gender } = req.body;
-
-        // Convert empty strings to null for PostgreSQL compatibility
-        if (date_of_birth === '') date_of_birth = null;
-        if (gender === '') gender = null;
-        if (full_name === '') full_name = null;
-
-        // التحقق من صحة صيغة تاريخ الميلاد لتفادي خطأ قاعدة البيانات
-        if (date_of_birth) {
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(date_of_birth) || isNaN(new Date(date_of_birth).getTime())) {
-                return res.status(400).json({ error: 'صيغة تاريخ الميلاد غير صالحة. يرجى استخدام التنسيق YYYY-MM-DD' });
-            }
-        }
+        const { username, email, password, full_name, date_of_birth, gender } = req.body;
 
         // التحقق من وجود المستخدم
         const userExists = await pool.query(
@@ -36,47 +24,43 @@ const register = async (req, res) => {
         );
 
         if (userExists.rows.length > 0) {
-            const field = userExists.rows[0].email === email ? 'البريد الإلكتروني' : 'اسم المستخدم';
-            return res.status(400).json({ error: `${field} مسجل مسبقاً` });
+            return res.status(400).json({ error: 'Username or email already exists' });
         }
 
         // تشفير كلمة المرور
         const saltRounds = 10;
         const password_hash = await bcrypt.hash(password, saltRounds);
 
-        // إنشاء كود التحقق (متوافق مع كل نسخ Node)
-        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        // إنشاء كود التحقق
+        const otpCode = crypto.randomInt(100000, 999999).toString();
         const otpExpiresAt = new Date(Date.now() + 5 * 60000); // صالح لمدة 5 دقائق
 
-        // إضافة المستخدم (غير مفعل بشكل افتراضي ليتم التحقق عبر الإيميل)
+        // إضافة المستخدم (غير مفعل افتراضياً)
         const result = await pool.query(
             `INSERT INTO users (username, email, password_hash, full_name, date_of_birth, gender, otp_code, otp_expires_at, is_verified) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, FALSE) 
-       RETURNING id, username, email, full_name, bio, profile_picture, role`,
+       RETURNING id, username, email`,
             [username, email, password_hash, full_name, date_of_birth, gender, otpCode, otpExpiresAt]
         );
 
         const user = result.rows[0];
 
-        // إرسال الإيميل للمستخدم الجديد
+        // إرسال كود التحقق
         const emailSent = await sendOtpEmail(user.email, otpCode);
-
         if (!emailSent) {
-            console.log(`⚠️ Email failed during register. OTP for ${user.email}: ${otpCode}`);
+            console.log(`⚠️ Email failed (Check .env). OTP for ${user.email}: ${otpCode}`);
         }
 
-        // الرد بأن مطلوب تفعيل الحساب عبر OTP
+        // الرد بأن مطلوب OTP
         res.status(201).json({
-            message: emailSent
-                ? 'تم إنشاء الحساب! يرجى إدخال رمز التحقق المرسل لبريدك الإلكتروني'
-                : `تم إنشاء الحساب، ولكن فشل إرسال البريد. كود التفعيل هو: ${otpCode}`,
+            message: 'Registration successful. Please verify your email.',
             requireOtp: true,
             email: user.email
         });
 
     } catch (error) {
-        console.error('Register error details:', error);
-        res.status(500).json({ error: `خطأ في التسجيل: ${error.message || 'حدث خطأ غير متوقع'}` });
+        console.error('Register error:', error);
+        res.status(500).json({ error: 'Server error during registration' });
     }
 };
 
@@ -91,17 +75,17 @@ const login = async (req, res) => {
         const { username, password } = req.body;
 
         if (!username || !password) {
-            return res.status(400).json({ error: 'يرجى إدخال اسم المستخدم وكلمة المرور' });
+            return res.status(400).json({ error: 'Username and password required' });
         }
 
         // البحث عن المستخدم
         const result = await pool.query(
-            'SELECT * FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1)',
+            'SELECT * FROM users WHERE username = $1 OR email = $1',
             [username]
         );
 
         if (result.rows.length === 0) {
-            return res.status(401).json({ error: 'بيانات الدخول غير صحيحة' });
+            return res.status(401).json({ error: 'Invalid credentials' });
         }
 
         const user = result.rows[0];
@@ -110,20 +94,20 @@ const login = async (req, res) => {
         if (user.lock_until && new Date(user.lock_until) > new Date()) {
             const waitMinutes = Math.ceil((new Date(user.lock_until) - new Date()) / 60000);
             return res.status(403).json({
-                error: `الحساب مقفل مؤقتاً. يرجى المحاولة بعد ${waitMinutes} دقيقة.`
+                error: `Account temporarily locked. Please try again in ${waitMinutes} minutes.`
             });
         }
 
         // التحقق من كلمة المرور
         const validPassword = await bcrypt.compare(password, user.password_hash);
         if (!validPassword) {
-            return res.status(401).json({ error: 'بيانات الدخول غير صحيحة' });
+            return res.status(401).json({ error: 'Invalid credentials' });
         }
 
         // التحقق من أن الحساب نشط
         // التحقق من أن الحساب نشط
         if (!user.is_active && user.is_active !== undefined) {
-            return res.status(403).json({ error: 'الحساب معطل. يرجى التواصل مع الدعم الفني.' });
+            return res.status(403).json({ error: 'Account suspended. Please contact support.' });
         }
 
         // === تعديل: إذا كان الحساب مفعل مسبقاً، يدخل مباشرة بدون رمز ===
@@ -144,7 +128,7 @@ const login = async (req, res) => {
                     email: user.email,
                     role: user.role || 'user'
                 },
-                process.env.JWT_SECRET || 'fallback_secret_for_emergency_only',
+                process.env.JWT_SECRET,
                 { expiresIn: '7d' }
             );
 
@@ -175,6 +159,8 @@ const login = async (req, res) => {
             [otpCode, otpExpiresAt, user.id]
         );
 
+        const { sendOtpEmail } = require('../utils/emailService');
+
         // إرسال كود التحقق عبر البريد الإلكتروني
         const emailSent = await sendOtpEmail(user.email, otpCode);
 
@@ -186,18 +172,12 @@ const login = async (req, res) => {
         res.json({
             requireOtp: true,
             email: user.email,
-            message: emailSent
-                ? 'Verification code sent to your email'
-                : `فشل الإرسال (حظر من السيرفر). كود الدخول المؤقت هو: ${otpCode}`
+            message: 'Verification code sent to your email'
         });
 
     } catch (error) {
         console.error('Login error:', error);
-        res.status(500).json({ 
-            error: 'Server error during login',
-            details: error.message,
-            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-        });
+        res.status(500).json({ error: 'Server error during login' });
     }
 };
 
@@ -275,7 +255,7 @@ const verifyOtp = async (req, res) => {
                 email: user.email,
                 role: user.role || 'user'
             },
-            process.env.JWT_SECRET || 'fallback_secret_for_emergency_only',
+            process.env.JWT_SECRET,
             { expiresIn: '7d' }
         );
 
@@ -295,10 +275,7 @@ const verifyOtp = async (req, res) => {
 
     } catch (error) {
         console.error('Verify OTP error:', error);
-        res.status(500).json({ 
-            error: 'Server error during verification',
-            details: error.message 
-        });
+        res.status(500).json({ error: 'Server error during verification' });
     }
 };
 
@@ -361,120 +338,37 @@ const updateLocation = async (req, res) => {
     }
 };
 
-
-/**
- * طلب إعادة تعيين كلمة المرور (نسيت كلمة المرور)
- */
 const forgotPassword = async (req, res) => {
     try {
         const { email } = req.body;
-
-        if (!email) {
-            return res.status(400).json({ error: 'Email is required' });
+        const userRes = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+        if (userRes.rows.length === 0) {
+            return res.status(404).json({ error: 'البريد الإلكتروني غير مسجّل' });
         }
-
-        // البحث عن المستخدم
-        const result = await pool.query(
-            'SELECT * FROM users WHERE email = $1',
-            [email]
-        );
-
-        if (result.rows.length === 0) {
-            // لا نخبر المستخدم أن البريد غير موجود لأسباب أمنية
-            return res.json({ message: 'If the email exists, a verification code has been sent.' });
-        }
-
-        const user = result.rows[0];
-
-        // إنشاء كود التحقق
         const otpCode = crypto.randomInt(100000, 999999).toString();
-        const otpExpiresAt = new Date(Date.now() + 10 * 60000); // صالح لمدة 10 دقائق
-
-        // حفظ الكود في قاعدة البيانات
-        await pool.query(
-            `UPDATE users 
-             SET otp_code = $1, otp_expires_at = $2, otp_attempts = 0 
-             WHERE id = $3`,
-            [otpCode, otpExpiresAt, user.id]
-        );
-
-        // إرسال كود التحقق عبر البريد الإلكتروني
-        // نفترض أن sendOtpEmail يمكن استخدامه هنا أيضاً، أو يمكن تعديل الرسالة لاحقاً
-        const emailSent = await sendOtpEmail(user.email, otpCode);
-
-        if (!emailSent) {
-            console.log(`⚠️ Email failed (Check .env). OTP for ${user.email}: ${otpCode}`);
-        }
-
-        res.json({
-            message: emailSent
-                ? 'If the email exists, a verification code has been sent.'
-                : `فشل الإرسال (حظر من السيرفر). كود الدخول المؤقت هو: ${otpCode}`,
-            email: user.email
-        });
-
-    } catch (error) {
-        console.error('Forgot password error:', error);
-        res.status(500).json({ error: 'Server error request password reset' });
+        const otpExpiresAt = new Date(Date.now() + 15 * 60000);
+        await pool.query('UPDATE users SET otp_code = $1, otp_expires_at = $2 WHERE email = $3', [otpCode, otpExpiresAt, email]);
+        await sendOtpEmail(email, otpCode);
+        return res.json({ message: 'تم إرسال رمز إعادة تعيين كلمة المرور إلى بريدك الإلكتروني' });
+    } catch (err) {
+        console.error('Forgot password error:', err);
+        return res.status(500).json({ error: 'فشل في طلب إعادة تعيين كلمة المرور' });
     }
 };
 
-/**
- * إعادة تعيين كلمة المرور
- */
 const resetPassword = async (req, res) => {
     try {
-        const { email, otp, newPassword } = req.body;
-
-        if (!email || !otp || !newPassword) {
-            return res.status(400).json({ error: 'Email, OTP, and new password are required' });
+        const { email, otp_code, new_password } = req.body;
+        const userRes = await pool.query('SELECT * FROM users WHERE email = $1 AND otp_code = $2 AND otp_expires_at > CURRENT_TIMESTAMP', [email, otp_code]);
+        if (userRes.rows.length === 0) {
+            return res.status(400).json({ error: 'رمز التحقق غير صحيح أو منتهي الصلاحية' });
         }
-
-        if (newPassword.length < 6) {
-            return res.status(400).json({ error: 'Password must be at least 6 characters' });
-        }
-
-        // البحث عن المستخدم
-        const result = await pool.query(
-            'SELECT * FROM users WHERE email = $1',
-            [email]
-        );
-
-        if (result.rows.length === 0) {
-            return res.status(400).json({ error: 'Invalid request' });
-        }
-
-        const user = result.rows[0];
-
-        // التحقق من صحة الكود والصلاحية
-        const isValid = user.otp_code === otp;
-        const isExpired = new Date() > new Date(user.otp_expires_at);
-
-        if (!isValid || isExpired) {
-            // زيادة عدد المحاولات الفاشلة
-            const attempts = (user.otp_attempts || 0) + 1;
-            await pool.query('UPDATE users SET otp_attempts = $1 WHERE id = $2', [attempts, user.id]);
-
-            return res.status(400).json({ error: 'Invalid or expired verification code' });
-        }
-
-        // تشفير كلمة المرور الجديدة
-        const saltRounds = 10;
-        const password_hash = await bcrypt.hash(newPassword, saltRounds);
-
-        // تحديث كلمة المرور ومسح الكود
-        await pool.query(
-            `UPDATE users 
-             SET password_hash = $1, otp_code = NULL, otp_expires_at = NULL, otp_attempts = 0 
-             WHERE id = $2`,
-            [password_hash, user.id]
-        );
-
-        res.json({ message: 'Password reset successfully. You can now login.' });
-
-    } catch (error) {
-        console.error('Reset password error:', error);
-        res.status(500).json({ error: 'Server error during password reset' });
+        const password_hash = await bcrypt.hash(new_password, 10);
+        await pool.query('UPDATE users SET password_hash = $1, otp_code = NULL, otp_expires_at = NULL WHERE email = $2', [password_hash, email]);
+        return res.json({ message: 'تم تحديث كلمة المرور بنجاح' });
+    } catch (err) {
+        console.error('Reset password error:', err);
+        return res.status(500).json({ error: 'فشل في إعادة تعيين كلمة المرور' });
     }
 };
 

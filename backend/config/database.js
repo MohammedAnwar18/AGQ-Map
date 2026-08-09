@@ -1,62 +1,30 @@
 const { Pool } = require('pg');
+require('dotenv').config();
 
-const path = require('path');
-
-// التحميل فقط في البيئة المحلية، في Vercel البيئة جاهزة تلقائياً
-if (!process.env.VERCEL) {
-  require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+console.log('🔌 Initializing database connection...');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+const dbUrl = process.env.DATABASE_URL;
+if (dbUrl) {
+  // Mask password in logs
+  const maskedUrl = dbUrl.replace(/:([^:@]+)@/, ':****@');
+  console.log('DATABASE_URL:', maskedUrl);
+} else {
+  console.error('❌ DATABASE_URL is missing in environment variables!');
 }
 
-let pool;
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
-/**
- * دالة الحصول على مجمع الاتصالات (Pool)
- * ملاحظة هامة لـ Vercel/Supabase:
- * يجب استخدام Port 6543 في DATABASE_URL لتفعيل الـ Transaction Mode
- * لتجنب خطأ MaxClientsInSessionMode
- */
-const getPool = () => {
-  if (!pool) {
-    let connectionString = process.env.DATABASE_URL;
-    
-    // تنظيف مسافات وعلامات تنصيص إن وجدت بالخطأ
-    if (connectionString) {
-      connectionString = connectionString.trim().replace(/^["']|["']$/g, '');
-    }
+// اختبار الاتصال
+pool.on('connect', () => {
+  console.log('✅ Connected to PostgreSQL database');
+});
 
-    if (!connectionString || (!connectionString.startsWith('postgres://') && !connectionString.startsWith('postgresql://'))) {
-      console.error('❌ CRITICAL: DATABASE_URL is missing or invalid. It must start with postgres:// or postgresql://');
-    }
+pool.on('error', (err) => {
+  console.error('❌ Unexpected error on idle client', err);
+  process.exit(-1);
+});
 
-    // التحقق من أن الرابط يستخدم المنفذ الصحيح للـ Pooling
-    if (connectionString && connectionString.includes(':5432') && process.env.VERCEL) {
-      console.warn('⚠️ تنبيه: أنت تستخدم المنفذ 5432 على Vercel. يفضل استخدام 6543 لتجنب نفاذ الاتصالات.');
-    }
-
-    pool = new Pool({
-      connectionString,
-      ssl: { rejectUnauthorized: false },
-      // إعدادات مثالية للـ Serverless Functions (Vercel)
-      max: 1, 
-      idleTimeoutMillis: 10000, // إغلاق الاتصالات الخاملة بسرعة
-      connectionTimeoutMillis: 15000, // عدم الانتظار طويلاً إذا كانت القاعدة مشغولة
-    });
-
-    pool.on('error', (err) => {
-      console.error('❌ Database pool error:', err.message);
-      // إذا حدث خطأ قاتل، نعيد تعيين الـ pool للمحاولة في الطلب القادم
-      if (err.message.includes('Session mode') || err.message.includes('max clients')) {
-        pool = null;
-      }
-    });
-  }
-  return pool;
-};
-
-module.exports = {
-  query: (text, params) => getPool().query(text, params),
-  on: (event, handler) => getPool().on(event, handler),
-  connect: () => getPool().connect(),
-  end: () => pool ? pool.end() : Promise.resolve(),
-  getPool
-};
+module.exports = pool;

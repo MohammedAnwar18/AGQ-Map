@@ -1,0 +1,225 @@
+/* ================================================================
+   Geoportal Viewer CSS — Public & Municipal GIS Portal Page
+   Inspired by Dubai DDA DIS / Modern Spatial Systems
+   ================================================================ */
+.geoportal-viewer {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background-color: #050B16;
+    font-family: 'Tajawal', system-ui, sans-serif;
+    color: #FFFFFF;
+}
+
+/* Header Navbar */
+.geoportal-navbar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    z-index: 1000;
+    background: linear-gradient(135deg, #0A1628 0%, #0F1E33 100%);
+    border-bottom: 2px solid rgba(245, 166, 35, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+}
+
+.brand-section {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.brand-logo {
+    height: 38px;
+    width: auto;
+    object-fit: contain;
+}
+
+.brand-title-group h1 {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #FFFFFF;
+    margin: 0;
+}
+
+.brand-title-group p {
+    font-size: 0.75rem;
+    color: #F5A623;
+    margin: 0;
+}
+
+.navbar-center-search {
+    position: relative;
+    width: 320px;
+}
+
+.navbar-search-input {
+    width: 100%;
+    padding: 8px 14px 8px 36px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 20px;
+    color: #FFFFFF;
+    font-size: 0.85rem;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.navbar-search-input:focus {
+    border-color: #F5A623;
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 0 12px rgba(245, 166, 35, 0.3);
+}
+
+.navbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.nav-action-btn {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #FFFFFF;
+    background: rgba(255, 255, 255, 0.05);
+    transition: all 0.2s ease;
+}
+
+.nav-action-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: #F5A623;
+}
+
+.nav-action-btn.primary {
+    background: linear-gradient(135deg, #F5A623 0%, #D88B0E 100%);
+    color: #050B16;
+    border: none;
+    font-weight: 700;
+    box-shadow: 0 2px 10px rgba(245, 166, 35, 0.3);
+}
+
+/* Floating Layer Control Panel (Matching Reference Image) */
+.floating-layers-card {
+    position: absolute;
+    top: 80px;
+    right: 24px;
+    z-index: 999;
+    width: 300px;
+    background: rgba(10, 22, 40, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    backdrop-filter: blur(16px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+    overflow: hidden;
+}
+
+.card-header {
+    background: rgba(15, 30, 51, 0.95);
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #F5A623;
+    letter-spacing: 0.5px;
+}
+
+.card-body {
+    padding: 12px 16px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.layer-legend-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.layer-legend-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.legend-swatch {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+/* Floating Tools Bar Right */
+.floating-tools-bar {
+    position: absolute;
+    top: 80px;
+    left: 24px;
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.tool-button {
+    width: 44px;
+    height: 44px;
+    background: rgba(10, 22, 40, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    color: #FFFFFF;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    transition: all 0.2s ease;
+}
+
+.tool-button:hover {
+    background: #F5A623;
+    color: #050B16;
+    transform: translateX(2px);
+}
+
+/* Map Viewport Fullscreen */
+.viewer-map {
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+/* Auth Modal */
+.auth-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: rgba(5, 11, 22, 0.85);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.auth-modal-card {
+    width: 400px;
+    background: #0A1628;
+    border: 1px solid rgba(245, 166, 35, 0.4);
+    border-radius: 16px;
+    padding: 28px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+    text-align: center;
+}
