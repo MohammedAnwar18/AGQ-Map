@@ -72,9 +72,11 @@ export default function GeoportalViewer() {
                 zoomControl: false
             });
 
-            // Add Satellite tile layer
-            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                attribution: 'Esri Satellite'
+            // Google Maps Hybrid (Satellite + Labels) — نفس خريطة الموقع
+            L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+                attribution: '© Google Maps',
+                maxZoom: 21,
+                subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
             }).addTo(mapInstance.current);
 
             L.control.zoom({ position: 'topleft' }).addTo(mapInstance.current);
