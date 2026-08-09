@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import L from 'leaflet';
@@ -9,8 +9,10 @@ export default function GeoportalViewer() {
     const { slug } = useParams();
     const [portal, setPortal] = useState(null);
     const [layers, setLayers] = useState([]);
+    // كل الطبقات مرئية بالافتراضي — المستخدم يخفيها هو إذا أراد
     const [visibleLayerIds, setVisibleLayerIds] = useState(new Set());
     const [loading, setLoading] = useState(true);
+    const [layersLoading, setLayersLoading] = useState(false);
 
     // Auth modal state
     const [showAuthModal, setShowAuthModal] = useState(false);
@@ -18,7 +20,7 @@ export default function GeoportalViewer() {
     const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
 
     // Tools state
-    const [activeTool, setActiveTool] = useState(null); // 'measure' | 'identify' | null
+    const [activeTool, setActiveTool] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedFeatureProps, setSelectedFeatureProps] = useState(null);
 
@@ -26,6 +28,8 @@ export default function GeoportalViewer() {
     const mapRef = useRef(null);
     const mapInstance = useRef(null);
     const featureGroupsRef = useRef({});
+    // كاش البيانات لتجنب إعادة الجلب
+    const layerDataCache = useRef({});
 
     // 1. Resolve & Fetch Portal Data
     useEffect(() => {
@@ -45,11 +49,9 @@ export default function GeoportalViewer() {
             const layerArr = Array.isArray(data.layers) ? data.layers : [];
             setLayers(layerArr);
 
-            const initialVisible = new Set();
-            layerArr.forEach(l => {
-                if (l.is_visible_by_default) initialVisible.add(l.id);
-            });
-            setVisibleLayerIds(initialVisible);
+            // ✅ كل الطبقات تظهر تلقائياً بدون أي تفاعل من المستخدم
+            const allLayerIds = new Set(layerArr.map(l => l.id));
+            setVisibleLayerIds(allLayerIds);
         } catch (err) {
             console.error('Error resolving portal:', err);
             setLayers([]);
@@ -87,59 +89,82 @@ export default function GeoportalViewer() {
 
     }, [portal, visibleLayerIds, isLoggedIn]);
 
-    const renderVisibleLayers = async () => {
-        if (!mapInstance.current || !layers) return;
-
-        // Clear existing layer feature groups
-        Object.values(featureGroupsRef.current).forEach(group => {
-            mapInstance.current.removeLayer(group);
-        });
-        featureGroupsRef.current = {};
-
+    // ✅ تحميل طبقة واحدة مع كاش
+    const fetchLayerData = useCallback(async (layer) => {
+        // إذا محملة مسبقاً — ارجعها من الكاش فوراً
+        if (layerDataCache.current[layer.id]) {
+            return layerDataCache.current[layer.id];
+        }
         const token = localStorage.getItem('token');
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
-        for (const layer of layers) {
-            if (!visibleLayerIds.has(layer.id)) continue;
-
-            try {
-                const res = await axios.get(`/api/geoportals/public/layers/${layer.id}/features`, { headers });
-                const geojson = res.data;
-
-                if (geojson && geojson.features && geojson.features.length > 0) {
-                    const style = layer.style_config || {};
-                    const group = L.geoJSON(geojson, {
-                        style: () => ({
-                            color: style.stroke_color || '#1D4ED8',
-                            weight: style.stroke_width || 2,
-                            fillColor: style.fill_color || '#3B82F6',
-                            fillOpacity: style.fill_opacity || 0.45
-                        }),
-                        pointToLayer: (feature, latlng) => {
-                            return L.circleMarker(latlng, {
-                                radius: style.point_radius || 7,
-                                fillColor: style.fill_color || '#F5A623',
-                                color: style.stroke_color || '#D88B0E',
-                                weight: 2,
-                                opacity: 1,
-                                fillOpacity: 0.9
-                            });
-                        },
-                        onEachFeature: (feature, leafletLayer) => {
-                            leafletLayer.on('click', () => {
-                                setSelectedFeatureProps(feature.properties);
-                            });
-                        }
-                    });
-
-                    featureGroupsRef.current[layer.id] = group;
-                    group.addTo(mapInstance.current);
-                }
-            } catch (err) {
-                console.warn(`Layer ${layer.layer_name} access restricted or failed:`, err.response?.data?.error);
-            }
+        try {
+            const res = await axios.get(`/api/geoportals/public/layers/${layer.id}/features`, { headers });
+            layerDataCache.current[layer.id] = res.data; // خزّنها في الكاش
+            return res.data;
+        } catch (err) {
+            // إذا محمية وما في token، تجاهل الخطأ بصمت
+            if (err.response?.status === 403) return null;
+            console.warn(`Layer ${layer.layer_name} failed:`, err.message);
+            return null;
         }
-    };
+    }, []);
+
+    // ✅ تحميل كل الطبقات المرئية بالتوازي (Promise.all) — أسرع بكثير
+    const renderVisibleLayers = useCallback(async () => {
+        if (!mapInstance.current || !layers.length) return;
+
+        // إزالة الطبقات المخفية فقط من الخريطة
+        Object.entries(featureGroupsRef.current).forEach(([id, group]) => {
+            if (!visibleLayerIds.has(id)) {
+                mapInstance.current.removeLayer(group);
+            }
+        });
+
+        const visibleLayers = layers.filter(l => visibleLayerIds.has(l.id));
+        setLayersLoading(true);
+
+        // ✅ تحميل كل الطبقات بالتوازي دفعة واحدة
+        await Promise.all(visibleLayers.map(async (layer) => {
+            // إذا مرسومة مسبقاً على الخريطة — تخطَّها
+            if (featureGroupsRef.current[layer.id]) {
+                if (!mapInstance.current.hasLayer(featureGroupsRef.current[layer.id])) {
+                    featureGroupsRef.current[layer.id].addTo(mapInstance.current);
+                }
+                return;
+            }
+
+            const geojson = await fetchLayerData(layer);
+            if (!geojson || !geojson.features?.length) return;
+
+            const style = layer.style_config || {};
+            const group = L.geoJSON(geojson, {
+                style: () => ({
+                    color: style.stroke_color || '#1D4ED8',
+                    weight: style.stroke_width || 2,
+                    fillColor: style.fill_color || '#3B82F6',
+                    fillOpacity: style.fill_opacity || 0.45
+                }),
+                pointToLayer: (feature, latlng) => {
+                    return L.circleMarker(latlng, {
+                        radius: style.point_radius || 7,
+                        fillColor: style.fill_color || '#F5A623',
+                        color: style.stroke_color || '#D88B0E',
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 0.9
+                    });
+                },
+                onEachFeature: (feature, leafletLayer) => {
+                    leafletLayer.on('click', () => setSelectedFeatureProps(feature.properties));
+                }
+            });
+
+            featureGroupsRef.current[layer.id] = group;
+            group.addTo(mapInstance.current);
+        }));
+
+        setLayersLoading(false);
+    }, [layers, visibleLayerIds, fetchLayerData]);
 
     const toggleLayerVisibility = (layerId) => {
         setVisibleLayerIds(prev => {
@@ -264,6 +289,11 @@ export default function GeoportalViewer() {
                             </div>
                         );
                     })}
+                    {layersLoading && (
+                        <div style={{ textAlign: 'center', padding: '8px 0', color: '#F5A623', fontSize: '0.78rem', opacity: 0.8 }}>
+                            ⏳ جاري تحميل بيانات الطبقات...
+                        </div>
+                    )}
                 </div>
             </div>
 
