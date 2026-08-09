@@ -42,15 +42,17 @@ export default function GeoportalViewer() {
             const res = await axios.get(url);
             const data = res.data;
             setPortal(data);
-            setLayers(data.layers || []);
+            const layerArr = Array.isArray(data.layers) ? data.layers : [];
+            setLayers(layerArr);
 
             const initialVisible = new Set();
-            (data.layers || []).forEach(l => {
+            layerArr.forEach(l => {
                 if (l.is_visible_by_default) initialVisible.add(l.id);
             });
             setVisibleLayerIds(initialVisible);
         } catch (err) {
             console.error('Error resolving portal:', err);
+            setLayers([]);
         } finally {
             setLoading(false);
         }
@@ -236,7 +238,7 @@ export default function GeoportalViewer() {
                     </span>
                 </div>
                 <div className="card-body">
-                    {layers.map(layer => {
+                    {(Array.isArray(layers) ? layers : []).map(layer => {
                         const style = layer.style_config || {};
                         const isVisible = visibleLayerIds.has(layer.id);
                         return (

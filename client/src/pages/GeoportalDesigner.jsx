@@ -50,12 +50,14 @@ export default function GeoportalDesigner() {
         try {
             setLoading(true);
             const res = await axios.get(API_BASE, authHeaders);
-            setPortals(res.data);
-            if (res.data.length > 0 && !selectedPortal) {
-                selectPortal(res.data[0]);
+            const list = Array.isArray(res.data) ? res.data : (res.data?.portals || res.data?.data || []);
+            setPortals(list);
+            if (list.length > 0 && !selectedPortal) {
+                selectPortal(list[0]);
             }
         } catch (err) {
             console.error('Error fetching portals:', err);
+            setPortals([]);
         } finally {
             setLoading(false);
         }
@@ -288,7 +290,7 @@ export default function GeoportalDesigner() {
                                     const p = portals.find(x => x.id === e.target.value);
                                     if (p) selectPortal(p);
                                 }}>
-                                    {portals.map(p => (
+                                    {(Array.isArray(portals) ? portals : []).map(p => (
                                         <option key={p.id} value={p.id}>{p.title_ar} ({p.slug})</option>
                                     ))}
                                 </select>
@@ -363,10 +365,10 @@ export default function GeoportalDesigner() {
                             {/* Layers List & Styling */}
                             <div className="designer-section">
                                 <div className="section-title">
-                                    <span>نظام الطبقات ({layerList.length})</span>
+                                    <span>نظام الطبقات ({Array.isArray(layerList) ? layerList.length : 0})</span>
                                 </div>
 
-                                {layerList.map(layer => {
+                                {(Array.isArray(layerList) ? layerList : []).map(layer => {
                                     const style = layer.style_config || {};
                                     return (
                                         <div key={layer.id} className="layer-item">
