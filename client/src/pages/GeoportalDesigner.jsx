@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -7,6 +8,7 @@ import './GeoportalDesigner.css';
 const API_BASE = '/api/geoportals';
 
 export default function GeoportalDesigner() {
+    const navigate = useNavigate();
     const [portals, setPortals] = useState([]);
     const [selectedPortal, setSelectedPortal] = useState(null);
     const [activeTab, setActiveTab] = useState('general'); // 'general' | 'layers' | 'map' | 'auth' | 'domain'
@@ -166,20 +168,29 @@ export default function GeoportalDesigner() {
 
     // 3. Create or Save Portal
     const handleSavePortal = async () => {
+        const payload = {
+            ...formData,
+            title_ar: formData.title_ar?.trim() || 'البوابة الجغرافية المكانية',
+            slug: formData.slug?.trim() || `portal-${Date.now()}`
+        };
+
         try {
             setLoading(true);
-            if (selectedPortal) {
-                const res = await axios.put(`${API_BASE}/${selectedPortal.id}`, formData, authHeaders);
+            if (selectedPortal && selectedPortal.id) {
+                const res = await axios.put(`${API_BASE}/${selectedPortal.id}`, payload, authHeaders);
                 alert('✅ تم حفظ التغييرات بنجاح');
                 fetchPortals();
             } else {
-                const res = await axios.post(API_BASE, formData, authHeaders);
+                const res = await axios.post(API_BASE, payload, authHeaders);
                 alert('🎉 تم إنشاء البوابة الجغرافية الجديدة بنجاح');
                 fetchPortals();
             }
         } catch (err) {
             console.error('Error saving portal:', err);
-            alert(err.response?.data?.error || 'فشل في حفظ البوابة');
+            const errMsg = typeof err.response?.data?.error === 'string'
+                ? err.response.data.error
+                : (err.response?.data?.message || err.message || 'فشل في حفظ البوابة');
+            alert('⚠️ ' + errMsg);
         } finally {
             setLoading(false);
         }
@@ -253,12 +264,17 @@ export default function GeoportalDesigner() {
                         <h2>تصميم البوابة الجغرافية</h2>
                         <span>Geoportal Studio</span>
                     </div>
-                    <button className="icon-btn" title="إنشاء بوابة جديدة" onClick={() => {
-                        setSelectedPortal(null);
-                        setFormData({ title_ar: 'بوابة جديدة', slug: `portal-${Date.now()}` });
-                    }}>
-                        ➕ جديدة
-                    </button>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="icon-btn" title="إنشاء بوابة جديدة" onClick={() => {
+                            setSelectedPortal(null);
+                            setFormData({ title_ar: 'بوابة جديدة', slug: `portal-${Date.now()}` });
+                        }}>
+                            ➕ جديدة
+                        </button>
+                        <button className="icon-btn" title="العودة للوحة الأدمن" onClick={() => navigate('/admin')}>
+                            🔙 للوحة الأدمن
+                        </button>
+                    </div>
                 </div>
 
                 {/* Tabs */}
