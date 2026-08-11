@@ -127,6 +127,8 @@ export default function GeoportalViewer() {
     const measurePointsRef = useRef([]);
     const dblclickGuardRef = useRef(false);   // 🚫 Prevents click firing during dblclick
     const layerDataCache = useRef({});
+    const lastMouseMoveRef = useRef(0);
+    const labelDebounceTimerRef = useRef(null);
     const hasFittedBoundsRef = useRef(false);
 
     // ✅ أداة تحديد الموقع بالـ GPS المباشر
@@ -603,8 +605,11 @@ export default function GeoportalViewer() {
         const mapBounds = mapInstance.current.getBounds();
         const visibleLayers = layers.filter(l => visibleLayerIds.has(l.id));
         const drawnBoxes = [];
+        const MAX_VISIBLE_LABELS = 60; // حد أقصى للبطاقات على الشاشة للحفاظ على سرعة 60fps
 
-        visibleLayers.forEach(layer => {
+        for (const layer of visibleLayers) {
+            if (drawnBoxes.length >= MAX_VISIBLE_LABELS) break;
+
             const style = typeof layer.style_config === 'string'
                 ? (() => { try { return JSON.parse(layer.style_config); } catch { return {}; } })()
                 : (layer.style_config || {});
@@ -615,11 +620,18 @@ export default function GeoportalViewer() {
                     const labelColor = style.label_color || '#FFFFFF';
                     const labelSize = style.label_size || 12;
 
-                    geojson.features.forEach(feature => {
+                    for (const feature of geojson.features) {
+                        if (drawnBoxes.length >= MAX_VISIBLE_LABELS) break;
+
                         const val = getFieldValue(feature.properties, style.label_field);
                         if (val !== null && val !== undefined && String(val).trim() !== '') {
                             const strVal = String(val).trim();
-                            const centroid = getTruePolygonCentroid(feature);
+                            
+                            // كاش المركز لسرعة الحساب أثناء التحريك
+                            if (!feature._centroid) {
+                                feature._centroid = getTruePolygonCentroid(feature);
+                            }
+                            const centroid = feature._centroid;
 
                             if (centroid) {
                                 const latLng = L.latLng(centroid[0], centroid[1]);
@@ -672,10 +684,10 @@ export default function GeoportalViewer() {
                                 }
                             }
                         }
-                    });
+                    }
                 }
             }
-        });
+        }
     }, [layers, visibleLayerIds]);
 
     // ✅ تحميل وعرض جميع الطبقات المرئية دائماً
