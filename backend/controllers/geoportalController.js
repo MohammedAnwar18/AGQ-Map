@@ -221,10 +221,54 @@ exports.uploadLayer = async (req, res) => {
     const client = await pool.connect();
     try {
         const { id } = req.params; // geoportal_id
-        const { layer_name, is_private, style_config } = req.body;
+        const { layer_name, is_private, style_config, file_url, file_key, file_size, storage_type } = req.body;
 
+        // ── Mode A: Presigned URL (file already uploaded to R2 by client) ──────────
+        if (storage_type === 'r2' && file_url) {
+            const layerName = layer_name || 'طبقة جغرافية';
+            const defaultStyle = JSON.stringify({
+                fill_color: '#3B82F6',
+                fill_opacity: 0.45,
+                stroke_color: '#1D4ED8',
+                stroke_width: 2,
+                point_radius: 7,
+                point_icon: 'circle'
+            });
+            const style = style_config
+                ? (typeof style_config === 'string' ? style_config : JSON.stringify(style_config))
+                : defaultStyle;
+
+            const insertQuery = `
+                INSERT INTO geoportal_layers (
+                    geoportal_id, layer_name, geometry_type,
+                    r2_file_key, r2_file_url, z_index,
+                    is_visible_by_default, is_private,
+                    style_config, feature_count, bbox
+                )
+                VALUES ($1, $2, 'Unknown', $3, $4,
+                    (SELECT COALESCE(MAX(z_index), 0) + 1 FROM geoportal_layers WHERE geoportal_id = $1),
+                    true, $5, $6, 0, $7
+                )
+                RETURNING *;
+            `;
+            const result = await pool.query(insertQuery, [
+                id, layerName,
+                file_key || null,
+                file_url,
+                is_private === true || is_private === 'true',
+                style,
+                JSON.stringify([35.15, 31.85, 35.30, 31.95])
+            ]);
+
+            return res.status(201).json({
+                message: 'تم تسجيل الطبقة الجغرافية بنجاح (Presigned R2)',
+                layer: result.rows[0]
+            });
+        }
+
+        // ── Mode B: Legacy multipart file upload ────────────────────────────────────
         if (!req.file) {
-            return res.status(400).json({ error: 'يرجى إرفاق ملف GeoJSON صحيح' });
+            return res.status(400).json({ error: 'يرجى إرفاق ملف GeoJSON صحيح أو استخدام Presigned URL' });
         }
 
         // Parse GeoJSON content
@@ -323,13 +367,14 @@ exports.uploadLayer = async (req, res) => {
         return res.status(201).json({ message: 'تم رفع وإضافة الطبقة الجغرافية بنجاح', layer });
 
     } catch (error) {
-        await client.query('ROLLBACK');
+        await client.query('ROLLBACK').catch(() => {});
         console.error('Error uploading layer:', error);
         return res.status(500).json({ error: 'فشل في رفع معالجة الطبقة الجغرافية' });
     } finally {
         client.release();
     }
 };
+
 
 // 7. Update Layer Style & Properties
 exports.updateLayerStyle = async (req, res) => {
