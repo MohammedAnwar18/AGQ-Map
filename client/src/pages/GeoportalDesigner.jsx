@@ -364,7 +364,9 @@ export default function GeoportalDesigner() {
         }
     };
 
-    // 4. Upload Spatial Layer (GeoJSON)
+    // 4. Upload Spatial Layer (GeoJSON) — via Presigned URL → direct to Cloudflare R2
+    const [uploadProgress, setUploadProgress] = useState(0);
+
     const handleUploadLayer = async (e) => {
         e.preventDefault();
         if (!selectedPortal) {
@@ -376,23 +378,66 @@ export default function GeoportalDesigner() {
             return;
         }
 
-        const data = new FormData();
-        data.append('file', fileToUpload);
-        data.append('layer_name', newLayerName || fileToUpload.name);
-        data.append('is_private', newLayerIsPrivate);
-
         try {
             setLayerUploading(true);
-            const res = await axios.post(`${API_BASE}/${selectedPortal.id}/layers`, data, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'multipart/form-data'
-                }
+            setUploadProgress(0);
+
+            // ---- الخطوة 1: اطلب Presigned URL من السيرفر ----
+            const presignRes = await axios.post('/api/storage/presigned-url', {
+                fileName: fileToUpload.name,
+                contentType: fileToUpload.type || 'application/geo+json'
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
             });
 
-            alert('✅ تم رفع ومعالجة الطبقة بنجاح في Cloudflare R2 & PostGIS');
+            if (!presignRes.data.success) {
+                throw new Error(presignRes.data.error || 'فشل الحصول على رابط الرفع');
+            }
+
+            const { uploadUrl, publicUrl, key } = presignRes.data;
+
+            // ---- الخطوة 2: ارفع الملف مباشرة إلى Cloudflare R2 ----
+            await new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('PUT', uploadUrl, true);
+                xhr.setRequestHeader('Content-Type', fileToUpload.type || 'application/geo+json');
+
+                xhr.upload.onprogress = (event) => {
+                    if (event.lengthComputable) {
+                        const percent = Math.round((event.loaded / event.total) * 90);
+                        setUploadProgress(percent);
+                    }
+                };
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve();
+                    } else {
+                        reject(new Error(`فشل الرفع إلى R2: ${xhr.status} ${xhr.statusText}`));
+                    }
+                };
+                xhr.onerror = () => reject(new Error('انقطع الاتصال أثناء الرفع إلى R2'));
+                xhr.send(fileToUpload);
+            });
+
+            setUploadProgress(92);
+
+            // ---- الخطوة 3: سجّل الطبقة في قاعدة البيانات ----
+            await axios.post(`${API_BASE}/${selectedPortal.id}/layers`, {
+                layer_name: newLayerName || fileToUpload.name.replace(/\.(geojson|json)$/i, ''),
+                is_private: newLayerIsPrivate,
+                file_url: publicUrl,
+                file_key: key,
+                file_size: fileToUpload.size,
+                storage_type: 'r2'
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            setUploadProgress(100);
+            alert('✅ تم رفع الطبقة بنجاح في Cloudflare R2');
             setFileToUpload(null);
             setNewLayerName('');
+            setUploadProgress(0);
             selectPortal(selectedPortal);
         } catch (err) {
             console.error('Error uploading layer:', err);
@@ -407,10 +452,12 @@ export default function GeoportalDesigner() {
                 errMsg = err.message;
             }
             alert('⚠️ ' + errMsg);
+            setUploadProgress(0);
         } finally {
             setLayerUploading(false);
         }
     };
+
 
     // 5a. Upload Portal Logo
     const handleUploadLogo = async (file) => {
@@ -610,8 +657,28 @@ export default function GeoportalDesigner() {
                                         </div>
 
                                         <button className="btn-primary" onClick={handleUploadLayer} disabled={layerUploading}>
-                                            {layerUploading ? 'جاري المعالجة والرفع لـ R2...' : 'رفع ومعالجة الطبقة'}
+                                            {layerUploading ? `⬆️ جاري الرفع... ${uploadProgress}%` : 'رفع ومعالجة الطبقة'}
                                         </button>
+
+                                        {layerUploading && (
+                                            <div style={{ marginTop: 12 }}>
+                                                <div style={{ background: '#1a2035', borderRadius: 8, height: 10, overflow: 'hidden' }}>
+                                                    <div style={{
+                                                        width: `${uploadProgress}%`,
+                                                        height: '100%',
+                                                        background: 'linear-gradient(90deg, #4f8ef7, #a78bfa)',
+                                                        transition: 'width 0.3s ease',
+                                                        borderRadius: 8
+                                                    }} />
+                                                </div>
+                                                <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: 6, textAlign: 'center' }}>
+                                                    {uploadProgress < 5 ? '🔗 جاري طلب رابط الرفع...' :
+                                                     uploadProgress < 92 ? `☁️ جاري الرفع مباشرةً لـ R2... ${uploadProgress}%` :
+                                                     uploadProgress < 100 ? '💾 جاري حفظ الطبقة في قاعدة البيانات...' :
+                                                     '✅ اكتمل الرفع!'}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
