@@ -225,11 +225,16 @@ exports.uploadLayer = async (req, res) => {
 
         // ── Mode A: Presigned URL (file already uploaded to R2 by client) ──────────
         if (storage_type === 'r2' && file_url) {
+            const { geometry_type, feature_count, bbox, properties_schema } = req.body;
             const layerName = layer_name || 'طبقة جغرافية';
+
+            // لون افتراضي حسب نوع الهندسة
+            const geomType = geometry_type || 'Unknown';
+            const isPoint = geomType.toLowerCase().includes('point');
             const defaultStyle = JSON.stringify({
-                fill_color: '#3B82F6',
+                fill_color: isPoint ? '#F5A623' : '#3B82F6',
                 fill_opacity: 0.45,
-                stroke_color: '#1D4ED8',
+                stroke_color: isPoint ? '#D88B0E' : '#1D4ED8',
                 stroke_width: 2,
                 point_radius: 7,
                 point_icon: 'circle'
@@ -238,6 +243,16 @@ exports.uploadLayer = async (req, res) => {
                 ? (typeof style_config === 'string' ? style_config : JSON.stringify(style_config))
                 : defaultStyle;
 
+            // حفظ مخطط الحقول في style_config لاستخدامه في قائمة الحقول
+            const styleObj = JSON.parse(style);
+            if (Array.isArray(properties_schema) && properties_schema.length > 0) {
+                styleObj.properties_schema = properties_schema;
+            }
+
+            const bboxValue = (Array.isArray(bbox) && bbox.length === 4)
+                ? JSON.stringify(bbox)
+                : JSON.stringify([35.15, 31.85, 35.30, 31.95]);
+
             const insertQuery = `
                 INSERT INTO geoportal_layers (
                     geoportal_id, layer_name, geometry_type,
@@ -245,19 +260,20 @@ exports.uploadLayer = async (req, res) => {
                     is_visible_by_default, is_private,
                     style_config, feature_count, bbox
                 )
-                VALUES ($1, $2, 'Unknown', $3, $4,
+                VALUES ($1, $2, $3, $4, $5,
                     (SELECT COALESCE(MAX(z_index), 0) + 1 FROM geoportal_layers WHERE geoportal_id = $1),
-                    true, $5, $6, 0, $7
+                    true, $6, $7, $8, $9
                 )
                 RETURNING *;
             `;
             const result = await pool.query(insertQuery, [
-                id, layerName,
+                id, layerName, geomType,
                 file_key || null,
                 file_url,
                 is_private === true || is_private === 'true',
-                style,
-                JSON.stringify([35.15, 31.85, 35.30, 31.95])
+                JSON.stringify(styleObj),
+                parseInt(feature_count) || 0,
+                bboxValue
             ]);
 
             return res.status(201).json({
@@ -265,6 +281,7 @@ exports.uploadLayer = async (req, res) => {
                 layer: result.rows[0]
             });
         }
+
 
         // ── Mode B: Legacy multipart file upload ────────────────────────────────────
         if (!req.file) {

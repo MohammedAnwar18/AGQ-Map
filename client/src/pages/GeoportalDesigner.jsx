@@ -282,15 +282,45 @@ export default function GeoportalDesigner() {
                 layerDataCache.current[layer.id] = geojson;
 
                 if (geojson && geojson.features && geojson.features.length > 0) {
-                    // ✅ استخراج أسماء حقول الخصائص للطبقة
+                    // ✅ استخراج أسماء حقول الخصائص للطبقة (PostGIS)
                     const sampleProps = geojson.features[0].properties || {};
                     const fields = Object.keys(sampleProps);
                     setLayerFieldsMap(prev => ({ ...prev, [layer.id]: fields }));
 
+                } else if (layer.r2_file_url) {
+                    // ✅ طبقة R2: استخرج الحقول من properties_schema المحفوظة
+                    const savedSchema = layer.style_config?.properties_schema;
+                    if (Array.isArray(savedSchema) && savedSchema.length > 0) {
+                        setLayerFieldsMap(prev => ({ ...prev, [layer.id]: savedSchema }));
+                    }
+
+                    // جلب من R2 لعرضها على الماب
+                    try {
+                        const r2Res = await fetch(layer.r2_file_url, {
+                            headers: { 'Accept': 'application/json, application/geo+json, */*' }
+                        });
+                        if (r2Res.ok) {
+                            const r2Geojson = await r2Res.json();
+                            if (r2Geojson?.features?.length > 0) {
+                                layerDataCache.current[layer.id] = r2Geojson;
+                                // استخراج الحقول من الملف الفعلي إذا ما في schema محفوظة
+                                if (!savedSchema || savedSchema.length === 0) {
+                                    const fields2 = Object.keys(r2Geojson.features[0]?.properties || {});
+                                    setLayerFieldsMap(prev => ({ ...prev, [layer.id]: fields2 }));
+                                }
+                            }
+                        }
+                    } catch (r2Err) {
+                        console.warn('Designer R2 fetch:', r2Err.message);
+                    }
+                }
+
+                if (layerDataCache.current[layer.id]?.features?.length > 0) {
+                    const geojsonToRender = layerDataCache.current[layer.id];
                     const style = layer.style_config || {};
                     const isTransparent = style.fill_color === 'transparent' || style.is_transparent;
 
-                    const leafletLayer = L.geoJSON(geojson, {
+                    const leafletLayer = L.geoJSON(geojsonToRender, {
                         style: () => ({
                             color: style.stroke_color || '#1D4ED8',
                             weight: style.stroke_width !== undefined ? style.stroke_width : 2,
@@ -367,6 +397,52 @@ export default function GeoportalDesigner() {
     // 4. Upload Spatial Layer (GeoJSON) — via Presigned URL → direct to Cloudflare R2
     const [uploadProgress, setUploadProgress] = useState(0);
 
+    // مساعد: استخراج بيانات الطبقة من ملف GeoJSON قبل الرفع
+    const parseGeoJSONMeta = (file) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const geojson = JSON.parse(e.target.result);
+                const features = geojson.type === 'FeatureCollection'
+                    ? geojson.features
+                    : geojson.type === 'Feature' ? [geojson] : [];
+
+                if (features.length === 0) return resolve(null);
+
+                // نوع الهندسة
+                const geomType = features[0]?.geometry?.type || 'Unknown';
+
+                // الحقول من أول عنصر
+                const firstProps = features[0]?.properties || {};
+                const fields = Object.keys(firstProps);
+
+                // Bounding Box
+                let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
+                const processCoords = (coords) => {
+                    if (typeof coords[0] === 'number') {
+                        if (coords[0] < minLng) minLng = coords[0];
+                        if (coords[1] < minLat) minLat = coords[1];
+                        if (coords[0] > maxLng) maxLng = coords[0];
+                        if (coords[1] > maxLat) maxLat = coords[1];
+                    } else coords.forEach(processCoords);
+                };
+                features.slice(0, 500).forEach(f => {
+                    if (f.geometry?.coordinates) processCoords(f.geometry.coordinates);
+                });
+                const bbox = minLng === Infinity
+                    ? [35.15, 31.85, 35.30, 31.95]
+                    : [minLng, minLat, maxLng, maxLat];
+
+                resolve({ geomType, fields, featureCount: features.length, bbox });
+            } catch (err) {
+                reject(new Error('الملف ليس GeoJSON صحيح'));
+            }
+        };
+        reader.onerror = () => reject(new Error('فشل قراءة الملف'));
+        // نقرأ أول 2MB فقط لاستخراج البيانات (لا داعي للملف كامل)
+        reader.readAsText(file.slice(0, 2 * 1024 * 1024));
+    });
+
     const handleUploadLayer = async (e) => {
         e.preventDefault();
         if (!selectedPortal) {
@@ -382,10 +458,19 @@ export default function GeoportalDesigner() {
             setLayerUploading(true);
             setUploadProgress(0);
 
+            // ---- الخطوة 0: استخراج بيانات الطبقة من الملف محلياً ----
+            let layerMeta = null;
+            try {
+                setUploadProgress(2);
+                layerMeta = await parseGeoJSONMeta(fileToUpload);
+            } catch (parseErr) {
+                console.warn('GeoJSON pre-parse warning:', parseErr.message);
+            }
+
             // ---- الخطوة 1: اطلب Presigned URL من السيرفر ----
             const presignRes = await axios.post('/api/storage/presigned-url', {
                 fileName: fileToUpload.name,
-                contentType: fileToUpload.type || 'application/geo+json'
+                contentType: 'application/geo+json'
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -400,11 +485,11 @@ export default function GeoportalDesigner() {
             await new Promise((resolve, reject) => {
                 const xhr = new XMLHttpRequest();
                 xhr.open('PUT', uploadUrl, true);
-                xhr.setRequestHeader('Content-Type', fileToUpload.type || 'application/geo+json');
+                xhr.setRequestHeader('Content-Type', 'application/geo+json');
 
                 xhr.upload.onprogress = (event) => {
                     if (event.lengthComputable) {
-                        const percent = Math.round((event.loaded / event.total) * 90);
+                        const percent = 5 + Math.round((event.loaded / event.total) * 85);
                         setUploadProgress(percent);
                     }
                 };
@@ -415,26 +500,31 @@ export default function GeoportalDesigner() {
                         reject(new Error(`فشل الرفع إلى R2: ${xhr.status} ${xhr.statusText}`));
                     }
                 };
-                xhr.onerror = () => reject(new Error('انقطع الاتصال أثناء الرفع إلى R2'));
+                xhr.onerror = () => reject(new Error('انقطع الاتصال أثناء الرفع — تأكد من تفعيل PUT في CORS على R2'));
                 xhr.send(fileToUpload);
             });
 
-            setUploadProgress(92);
+            setUploadProgress(93);
 
-            // ---- الخطوة 3: سجّل الطبقة في قاعدة البيانات ----
+            // ---- الخطوة 3: سجّل الطبقة في قاعدة البيانات مع كامل البيانات ----
             await axios.post(`${API_BASE}/${selectedPortal.id}/layers`, {
                 layer_name: newLayerName || fileToUpload.name.replace(/\.(geojson|json)$/i, ''),
                 is_private: newLayerIsPrivate,
                 file_url: publicUrl,
                 file_key: key,
                 file_size: fileToUpload.size,
-                storage_type: 'r2'
+                storage_type: 'r2',
+                // بيانات مستخرجة من الملف
+                geometry_type: layerMeta?.geomType || 'Unknown',
+                feature_count: layerMeta?.featureCount || 0,
+                bbox: layerMeta?.bbox || null,
+                properties_schema: layerMeta?.fields || []
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
             setUploadProgress(100);
-            alert('✅ تم رفع الطبقة بنجاح في Cloudflare R2');
+            alert(`✅ تم رفع الطبقة بنجاح!\n📊 ${layerMeta?.featureCount?.toLocaleString() || '?'} عنصر | ${layerMeta?.fields?.length || 0} حقل`);
             setFileToUpload(null);
             setNewLayerName('');
             setUploadProgress(0);
@@ -442,21 +532,17 @@ export default function GeoportalDesigner() {
         } catch (err) {
             console.error('Error uploading layer:', err);
             let errMsg = 'فشل في رفع الملف';
-            if (typeof err.response?.data?.error === 'string') {
-                errMsg = err.response.data.error;
-            } else if (err.response?.data?.error?.message) {
-                errMsg = err.response.data.error.message;
-            } else if (err.response?.data?.message) {
-                errMsg = err.response.data.message;
-            } else if (err.message) {
-                errMsg = err.message;
-            }
+            if (typeof err.response?.data?.error === 'string') errMsg = err.response.data.error;
+            else if (err.response?.data?.error?.message) errMsg = err.response.data.error.message;
+            else if (err.response?.data?.message) errMsg = err.response.data.message;
+            else if (err.message) errMsg = err.message;
             alert('⚠️ ' + errMsg);
             setUploadProgress(0);
         } finally {
             setLayerUploading(false);
         }
     };
+
 
 
     // 5a. Upload Portal Logo
