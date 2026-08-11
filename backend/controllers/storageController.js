@@ -55,14 +55,34 @@ exports.importArcGIS = async (req, res) => {
         };
 
         if (boundaryGeometry) {
-            queryParams.geometry = JSON.stringify(boundaryGeometry);
+            queryParams.geometry = typeof boundaryGeometry === 'object' ? JSON.stringify(boundaryGeometry) : boundaryGeometry;
             queryParams.geometryType = 'esriGeometryPolygon';
             queryParams.spatialRel = 'esriSpatialRelIntersects';
             queryParams.inSR = '4326';
         }
 
-        const response = await axios.get(queryUrl, { params: queryParams, timeout: 30000 });
-        const geojson = response.data;
+        // Helper to send request via POST (prevents 414 URI Too Long on large geometries)
+        const fetchArcGISData = async (targetFormat) => {
+            const params = { ...queryParams, f: targetFormat };
+            const formBody = new URLSearchParams();
+            Object.entries(params).forEach(([k, v]) => {
+                if (v !== undefined && v !== null) formBody.append(k, String(v));
+            });
+
+            try {
+                // Primary: HTTP POST with application/x-www-form-urlencoded
+                return await axios.post(queryUrl, formBody.toString(), {
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    timeout: 45000
+                });
+            } catch (postErr) {
+                // Fallback: HTTP GET
+                return await axios.get(queryUrl, { params, timeout: 45000 });
+            }
+        };
+
+        let response = await fetchArcGISData('geojson');
+        let geojson = response.data;
 
         if (geojson && (geojson.type === 'FeatureCollection' || geojson.features)) {
             return res.json({
@@ -73,8 +93,7 @@ exports.importArcGIS = async (req, res) => {
         }
 
         // Fallback: request esriJSON and convert
-        const esriParams = { ...queryParams, f: 'json' };
-        const esriRes = await axios.get(queryUrl, { params: esriParams, timeout: 30000 });
+        const esriRes = await fetchArcGISData('json');
         const esriData = esriRes.data;
 
         if (esriData && esriData.features) {
