@@ -908,6 +908,38 @@ export default function GeoportalDesigner() {
                                                     />
                                                 </div>
 
+                                                {/* Layer Grouping System */}
+                                                <div style={{ gridColumn: 'span 2', marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                                                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#06D6F2', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        <span>📁 تجميع الطبقات (Layer Grouping & Master Toggle)</span>
+                                                    </div>
+
+                                                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 10, alignItems: 'center' }}>
+                                                        <div>
+                                                            <label style={{ fontSize: '0.75rem', color: '#94a3b8' }}>اسم المجموعة الموحد (مثال: قطع الأراضي):</label>
+                                                            <input
+                                                                type="text"
+                                                                className="form-control"
+                                                                placeholder="أدخل اسم المجموعة الموحد"
+                                                                value={style.group_name || ''}
+                                                                onChange={e => handleLayerStyleChange(layer.id, { ...style, group_name: e.target.value })}
+                                                            />
+                                                        </div>
+
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16 }}>
+                                                            <input
+                                                                type="checkbox"
+                                                                id={`hide_sub_${layer.id}`}
+                                                                checked={!!style.hide_sublayers}
+                                                                onChange={e => handleLayerStyleChange(layer.id, { ...style, hide_sublayers: e.target.checked })}
+                                                            />
+                                                            <label htmlFor={`hide_sub_${layer.id}`} style={{ fontSize: '0.75rem', cursor: 'pointer', margin: 0, color: '#e2e8f0' }}>
+                                                                إخفاء هذه الطبقة ودمجها تحت اسم المجموعة فقط
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
                                                 {/* Feature Labeling System */}
                                                 <div style={{ gridColumn: 'span 2', marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
                                                     <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#F5A623', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>

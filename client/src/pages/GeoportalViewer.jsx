@@ -927,32 +927,140 @@ export default function GeoportalViewer() {
                                         <button className="close-dropdown-btn" onClick={() => setShowLayersDropdown(false)}>✕</button>
                                     </div>
                                     <div className="dropdown-body">
-                                        {(Array.isArray(layers) ? layers : []).length === 0 ? (
-                                            <div className="empty-layers-msg">لا توجد طبقات جغرافية مسجلة</div>
-                                        ) : (
-                                            (Array.isArray(layers) ? layers : []).map(layer => {
-                                                const style = layer.style_config || {};
-                                                const isVisible = visibleLayerIds.has(layer.id);
-                                                return (
-                                                    <div key={layer.id} className="layer-dropdown-item" onClick={() => toggleLayerVisibility(layer.id)}>
-                                                        <div className="layer-item-checkbox">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={isVisible}
-                                                                onChange={() => { }}
-                                                            />
-                                                            <span
-                                                                className="legend-swatch"
-                                                                style={{ backgroundColor: style.fill_color || '#2563eb', borderColor: style.stroke_color || '#1d4ed8' }}
-                                                            ></span>
-                                                            <span className="layer-item-name">
-                                                                {layer.layer_name}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })
-                                        )}
+                                        {(() => {
+                                            const layerArr = Array.isArray(layers) ? layers : [];
+                                            if (layerArr.length === 0) {
+                                                return <div className="empty-layers-msg">لا توجد طبقات جغرافية مسجلة</div>;
+                                            }
+
+                                            // تجميع الطبقات حسب group_name
+                                            const groupsMap = {};
+                                            const standaloneList = [];
+
+                                            layerArr.forEach(layer => {
+                                                const style = typeof layer.style_config === 'string'
+                                                    ? (() => { try { return JSON.parse(layer.style_config); } catch { return {}; } })()
+                                                    : (layer.style_config || {});
+                                                const gName = style.group_name;
+
+                                                if (gName) {
+                                                    if (!groupsMap[gName]) {
+                                                        groupsMap[gName] = {
+                                                            groupName: gName,
+                                                            layers: [],
+                                                            hideSublayers: style.hide_sublayers || false,
+                                                            color: style.fill_color || '#2563eb'
+                                                        };
+                                                    }
+                                                    groupsMap[gName].layers.push(layer);
+                                                } else {
+                                                    standaloneList.push(layer);
+                                                }
+                                            });
+
+                                            const groupsList = Object.values(groupsMap);
+
+                                            return (
+                                                <>
+                                                    {/* 1. مجموعات الطبقات الموحدة (Master Groups) */}
+                                                    {groupsList.map(grp => {
+                                                        const memberIds = grp.layers.map(l => l.id);
+                                                        const allChecked = memberIds.every(id => visibleLayerIds.has(id));
+                                                        const someChecked = memberIds.some(id => visibleLayerIds.has(id));
+
+                                                        const toggleGroup = () => {
+                                                            setVisibleLayerIds(prev => {
+                                                                const updated = new Set(prev);
+                                                                if (allChecked) {
+                                                                    memberIds.forEach(id => updated.delete(id));
+                                                                } else {
+                                                                    memberIds.forEach(id => updated.add(id));
+                                                                }
+                                                                return updated;
+                                                            });
+                                                        };
+
+                                                        return (
+                                                            <div key={grp.groupName} className="layer-group-box" style={{ marginBottom: 8, padding: '4px 0' }}>
+                                                                <div
+                                                                    className="layer-dropdown-item master-group-item"
+                                                                    onClick={toggleGroup}
+                                                                    style={{ fontWeight: 700, color: '#06D6F2', background: 'rgba(6, 214, 242, 0.08)', borderRadius: 8, padding: '6px 10px' }}
+                                                                >
+                                                                    <div className="layer-item-checkbox">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={allChecked}
+                                                                            ref={el => { if (el) el.indeterminate = !allChecked && someChecked; }}
+                                                                            onChange={() => { }}
+                                                                        />
+                                                                        <span
+                                                                            className="legend-swatch"
+                                                                            style={{ backgroundColor: grp.color, borderColor: '#06D6F2' }}
+                                                                        ></span>
+                                                                        <span className="layer-item-name" style={{ fontWeight: 700 }}>
+                                                                            📁 {grp.groupName} <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 400 }}>({grp.layers.length} طبقة)</span>
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* عرض الطبقات الفرعية فقط إذا لم يكن خيار الإخفاء مفعّلاً */}
+                                                                {!grp.hideSublayers && (
+                                                                    <div className="sublayer-list" style={{ paddingRight: 24, marginTop: 4 }}>
+                                                                        {grp.layers.map(l => {
+                                                                            const style = typeof l.style_config === 'string'
+                                                                                ? (() => { try { return JSON.parse(l.style_config); } catch { return {}; } })()
+                                                                                : (l.style_config || {});
+                                                                            const isVis = visibleLayerIds.has(l.id);
+                                                                            return (
+                                                                                <div
+                                                                                    key={l.id}
+                                                                                    className="layer-dropdown-item sub-item"
+                                                                                    onClick={(e) => { e.stopPropagation(); toggleLayerVisibility(l.id); }}
+                                                                                    style={{ opacity: 0.9, fontSize: '0.85rem', padding: '3px 6px' }}
+                                                                                >
+                                                                                    <div className="layer-item-checkbox">
+                                                                                        <input type="checkbox" checked={isVis} onChange={() => { }} />
+                                                                                        <span className="legend-swatch" style={{ backgroundColor: style.fill_color || '#2563eb', width: 8, height: 8 }}></span>
+                                                                                        <span className="layer-item-name">{l.layer_name}</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+
+                                                    {/* 2. الطبقات الفردية العادية */}
+                                                    {standaloneList.map(layer => {
+                                                        const style = typeof layer.style_config === 'string'
+                                                            ? (() => { try { return JSON.parse(layer.style_config); } catch { return {}; } })()
+                                                            : (layer.style_config || {});
+                                                        const isVisible = visibleLayerIds.has(layer.id);
+                                                        return (
+                                                            <div key={layer.id} className="layer-dropdown-item" onClick={() => toggleLayerVisibility(layer.id)}>
+                                                                <div className="layer-item-checkbox">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={isVisible}
+                                                                        onChange={() => { }}
+                                                                    />
+                                                                    <span
+                                                                        className="legend-swatch"
+                                                                        style={{ backgroundColor: style.fill_color || '#2563eb', borderColor: style.stroke_color || '#1d4ed8' }}
+                                                                    ></span>
+                                                                    <span className="layer-item-name">
+                                                                        {layer.layer_name}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </>
+                                            );
+                                        })()}
                                         {layersLoading && (
                                             <div className="layers-loading-text">
                                                 ⏳ جاري تحميل بيانات الخريطة...
