@@ -396,7 +396,17 @@ export default function GeoportalDesigner() {
             selectPortal(selectedPortal);
         } catch (err) {
             console.error('Error uploading layer:', err);
-            alert(err.response?.data?.error || 'فشل في رفع الملف');
+            let errMsg = 'فشل في رفع الملف';
+            if (typeof err.response?.data?.error === 'string') {
+                errMsg = err.response.data.error;
+            } else if (err.response?.data?.error?.message) {
+                errMsg = err.response.data.error.message;
+            } else if (err.response?.data?.message) {
+                errMsg = err.response.data.message;
+            } else if (err.message) {
+                errMsg = err.message;
+            }
+            alert('⚠️ ' + errMsg);
         } finally {
             setLayerUploading(false);
         }
