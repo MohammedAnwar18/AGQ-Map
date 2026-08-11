@@ -100,9 +100,9 @@ function App() {
 
         const isCustomInvitePath = window.location.pathname === '/walid-sheikha';
         const isGeoportalPath = window.location.pathname.startsWith('/geoportal');
-        const delay = (isCustomInvitePath || isGeoportalPath) ? 0 : 5000;
+        const delay = (isCustomInvitePath || isGeoportalPath) ? 0 : 3000;
 
-        // Splash Screen Logic
+        // Splash Screen Logic (3 Seconds)
         const timer = setTimeout(() => {
             const splash = document.getElementById('splash-screen');
             if (splash) {
@@ -126,11 +126,16 @@ function App() {
         };
     }, []);
 
-
+    const isGeoportalPath = window.location.pathname.startsWith('/geoportal');
+    const suspenseFallback = isGeoportalPath ? (
+        <div style={{ position: 'fixed', inset: 0, background: '#ffffff', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: 48, height: 48, border: '4px solid #e2e8f0', borderTopColor: '#1d4ed8', borderRadius: '50%', animation: 'spin 0.75s linear infinite' }}></div>
+        </div>
+    ) : <SplashLoading />;
 
     return (
         <BrowserRouter>
-            <React.Suspense fallback={<SplashLoading />}>
+            <React.Suspense fallback={suspenseFallback}>
                 <Routes>
                     {/* 🌐 Public Geoportal Viewer routes */}
                     <Route path="/geoportal/:slug" element={<GeoportalViewer />} />
