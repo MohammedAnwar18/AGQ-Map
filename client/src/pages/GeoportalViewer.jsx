@@ -116,6 +116,7 @@ export default function GeoportalViewer() {
     const featureGroupsRef = useRef({});
     const labelsLayerGroupRef = useRef(null);
     const measureLayerGroupRef = useRef(null);
+    const previewLayerRef = useRef(null);      // 🔄 Rubber-band preview layer (live line to cursor)
     const measurePointsRef = useRef([]);
     const layerDataCache = useRef({});
     const hasFittedBoundsRef = useRef(false);
@@ -151,6 +152,11 @@ export default function GeoportalViewer() {
     const clearMeasurements = useCallback(() => {
         if (measureLayerGroupRef.current) {
             measureLayerGroupRef.current.clearLayers();
+        }
+        // Also clear rubber-band ghost
+        if (previewLayerRef.current) {
+            previewLayerRef.current.remove();
+            previewLayerRef.current = null;
         }
         measurePointsRef.current = [];
         setMeasureData(null);
@@ -272,7 +278,7 @@ export default function GeoportalViewer() {
             const areaMarker = L.marker(centroid, {
                 icon: L.divIcon({
                     className: 'onmap-measure-area-label',
-                    html: `<div style="background: ${newColor}; color: #000; font-weight: 800; font-size: 12px; padding: 4px 10px; border-radius: 8px; border: 2px solid #FFF; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.6);">${areaLabelText}</div>`,
+                    html: `<div style="color: #FFF; font-weight: 800; font-size: 13px; white-space: nowrap; text-shadow: 0 0 4px rgba(0,0,0,0.95), -1px -1px 0 rgba(0,0,0,0.85), 1px -1px 0 rgba(0,0,0,0.85), -1px 1px 0 rgba(0,0,0,0.85), 1px 1px 0 rgba(0,0,0,0.85);">${areaLabelText}</div>`,
                     iconSize: [0, 0],
                     iconAnchor: [0, 0]
                 }),
@@ -302,6 +308,55 @@ export default function GeoportalViewer() {
         const pt = e.latlng;
         measurePointsRef.current.push(pt);
         redrawMeasurementsWithColor(color, measurePointsRef.current, tool);
+    }, []);
+
+    // ✨ Live rubber-band: draws a ghost line from last point to mouse cursor
+    const handleMouseMoveForMeasurement = useCallback((e) => {
+        const tool = activeToolRef.current;
+        const color = measureColorRef.current;
+        const pts = measurePointsRef.current;
+        if (!tool || (tool !== 'distance' && tool !== 'area')) return;
+        if (!pts.length || !measureLayerGroupRef.current || !mapInstance.current) return;
+
+        // Clear previous preview
+        if (previewLayerRef.current) {
+            previewLayerRef.current.remove();
+            previewLayerRef.current = null;
+        }
+
+        const lastPt = pts[pts.length - 1];
+        const cursor = e.latlng;
+        const liveDistance = lastPt.distanceTo(cursor);
+        const liveText = liveDistance >= 1000
+            ? `${(liveDistance / 1000).toFixed(2)} كم`
+            : `${liveDistance.toFixed(0)} م`;
+
+        // Ghost dashed line from last committed point to cursor
+        const previewGroup = L.featureGroup();
+
+        // Draw ghost line
+        L.polyline([lastPt, cursor], {
+            color: color,
+            weight: 3,
+            dashArray: '8, 6',
+            opacity: 0.7
+        }).addTo(previewGroup);
+
+        // Live distance counter floating label near cursor
+        L.marker(cursor, {
+            icon: L.divIcon({
+                className: 'measure-live-preview-label',
+                html: `<div style="color:#FFF; font-weight:900; font-size:13px; white-space:nowrap;
+                    text-shadow: 0 0 4px rgba(0,0,0,1), -1px -1px 0 rgba(0,0,0,0.9), 1px -1px 0 rgba(0,0,0,0.9),
+                    -1px 1px 0 rgba(0,0,0,0.9), 1px 1px 0 rgba(0,0,0,0.9);
+                    transform: translate(10px,-10px)">${liveText}</div>`,
+                iconSize: [0, 0],
+                iconAnchor: [0, 0]
+            }),
+            interactive: false
+        }).addTo(previewGroup);
+
+        previewLayerRef.current = previewGroup.addTo(mapInstance.current);
     }, []);
 
     // 1. Resolve & Fetch Portal Data
@@ -357,13 +412,19 @@ export default function GeoportalViewer() {
             labelsLayerGroupRef.current = L.featureGroup().addTo(mapInstance.current);
             measureLayerGroupRef.current = L.featureGroup().addTo(mapInstance.current);
 
-            // Listen to mousemove for live coordinates
+            // Listen to mousemove for live coordinates + rubber-band preview
             mapInstance.current.on('mousemove', (e) => {
                 setCursorCoords({ lat: e.latlng.lat, lng: e.latlng.lng });
+                handleMouseMoveForMeasurement(e);
             });
 
             // Listen to map click for live GIS measurement
             mapInstance.current.on('click', (e) => {
+                // Clear rubber-band ghost on each committed click
+                if (previewLayerRef.current) {
+                    previewLayerRef.current.remove();
+                    previewLayerRef.current = null;
+                }
                 handleMapClickForMeasurement(e);
             });
 
@@ -380,7 +441,7 @@ export default function GeoportalViewer() {
         // Load features for active visible layers
         renderVisibleLayers();
 
-    }, [portal, visibleLayerIds, isLoggedIn, handleMapClickForMeasurement]);
+    }, [portal, visibleLayerIds, isLoggedIn, handleMapClickForMeasurement, handleMouseMoveForMeasurement]);
 
     // ✅ تحميل طبقة واحدة مع كاش
     const fetchLayerData = useCallback(async (layer) => {
