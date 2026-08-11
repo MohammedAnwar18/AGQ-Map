@@ -784,9 +784,19 @@ export default function GeoportalDesigner() {
                                                     <span className="layer-color-dot" style={{ backgroundColor: style.fill_color || '#3B82F6' }}></span>
                                                     <span>{layer.layer_name}</span>
                                                     {layer.is_private && <span style={{ fontSize: '0.7rem', background: '#EF4444', padding: '2px 6px', borderRadius: 10 }}>محمية 🔒</span>}
+                                                    {layer.r2_file_url && <span style={{ fontSize: '0.65rem', background: '#0ea5e9', padding: '2px 5px', borderRadius: 8, marginLeft: 4 }}>☁️ R2</span>}
+                                                    {layer.feature_count > 0 && <span style={{ fontSize: '0.65rem', color: '#94a3b8', marginLeft: 4 }}>{layer.feature_count?.toLocaleString()} عنصر</span>}
                                                 </div>
 
                                                 <div className="layer-actions">
+                                                    {layer.r2_file_url && (
+                                                        <button
+                                                            className="icon-btn"
+                                                            title="اختبر رابط الملف في R2"
+                                                            onClick={() => window.open(layer.r2_file_url, '_blank')}
+                                                            style={{ fontSize: '0.8rem' }}
+                                                        >🔗</button>
+                                                    )}
                                                     <button className="icon-btn danger" title="حذف الطبقة" onClick={() => handleDeleteLayer(layer.id)}>🗑️</button>
                                                 </div>
                                             </div>
