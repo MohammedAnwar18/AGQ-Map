@@ -25,11 +25,45 @@ exports.uploadGeoJSON = async (req, res) => {
 };
 
 // 2. Presigned URL
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+const { PutObjectCommand } = require('@aws-sdk/client-s3');
+const { r2Client } = require('../config/r2');
+const { v4: uuidv4 } = require('uuid');
+
 exports.getPresignedUrl = async (req, res) => {
     try {
-        res.json({ success: true, url: '' });
+        const { fileName, contentType } = req.body;
+        const bucketName = process.env.R2_BUCKET_NAME;
+        const publicUrl = process.env.R2_PUBLIC_URL;
+
+        if (!bucketName || !process.env.R2_ACCESS_KEY_ID) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'R2 Storage is not configured in environment variables' 
+            });
+        }
+
+        const ext = fileName ? fileName.split('.').pop() : 'geojson';
+        const key = `uploads/${uuidv4()}.${ext}`;
+
+        const command = new PutObjectCommand({
+            Bucket: bucketName,
+            Key: key,
+            ContentType: contentType || 'application/json'
+        });
+
+        const uploadUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+        const finalPublicUrl = publicUrl ? `${publicUrl.replace(/\/+$/, '')}/${key}` : uploadUrl;
+
+        res.json({
+            success: true,
+            uploadUrl,
+            publicUrl: finalPublicUrl,
+            key
+        });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error('getPresignedUrl error:', err);
+        res.status(500).json({ success: false, error: err.message });
     }
 };
 
