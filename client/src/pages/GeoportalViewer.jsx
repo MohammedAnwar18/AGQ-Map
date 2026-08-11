@@ -291,20 +291,22 @@ export default function GeoportalViewer() {
                         properties: feature.properties
                     }));
 
-                    // ✅ إضافة مسميات الخصائص كـ Fixed DivIcon Labels مطبوعة وثابتة على الخريطة
+                    // ✅ إضافة مسميات الخصائص كـ Pure Floating Labels بدون أي إطار أو صندوق
                     if (showLabels && labelField && feature.properties && feature.properties[labelField] !== undefined) {
                         const val = feature.properties[labelField];
                         if (val !== null && val !== '') {
-                            const centroid = getFeatureCentroid(feature);
-                            if (centroid) {
-                                const labelIcon = L.divIcon({
-                                    className: 'fixed-map-label-wrapper',
-                                    html: `<div class="fixed-map-label" style="color: ${labelColor}; font-size: ${labelSize}px;">${String(val)}</div>`,
-                                    iconSize: [0, 0],
-                                    iconAnchor: [0, 0]
-                                });
-                                L.marker(centroid, { icon: labelIcon, interactive: false }).addTo(group);
-                            }
+                            leafletLayer.bindTooltip(String(val), {
+                                permanent: true,
+                                direction: 'center',
+                                className: 'pure-floating-map-label'
+                            });
+
+                            leafletLayer.on('tooltipopen', (e) => {
+                                if (e.tooltip && e.tooltip._container) {
+                                    e.tooltip._container.style.color = labelColor;
+                                    e.tooltip._container.style.fontSize = `${labelSize}px`;
+                                }
+                            });
                         }
                     }
                 }

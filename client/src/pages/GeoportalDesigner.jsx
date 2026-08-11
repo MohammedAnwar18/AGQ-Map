@@ -204,14 +204,24 @@ export default function GeoportalDesigner() {
                                     .join('<br/>');
                                 l.bindPopup(`<div style="font-family: Tajawal, sans-serif;">${popupContent}</div>`);
 
-                                // ✅ إضافة مسميات الخصائص كـ Labels مطبوعة على الخريطة
+                                // ✅ إضافة مسميات الخصائص كـ Pure Floating Labels بدون أي إطار أو صندوق
                                 if (showLabels && labelField && feature.properties[labelField] !== undefined) {
                                     const val = feature.properties[labelField];
                                     if (val !== null && val !== '') {
+                                        const labelColor = style.label_color || '#FFFFFF';
+                                        const labelSize = style.label_size || 12;
+
                                         l.bindTooltip(String(val), {
                                             permanent: true,
                                             direction: 'center',
-                                            className: 'map-feature-label'
+                                            className: 'pure-floating-map-label'
+                                        });
+
+                                        l.on('tooltipopen', (e) => {
+                                            if (e.tooltip && e.tooltip._container) {
+                                                e.tooltip._container.style.color = labelColor;
+                                                e.tooltip._container.style.fontSize = `${labelSize}px`;
+                                            }
                                         });
                                     }
                                 }

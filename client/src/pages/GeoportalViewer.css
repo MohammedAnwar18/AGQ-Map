@@ -417,29 +417,27 @@
     font-weight: 600;
 }
 
-/* Fixed Geographic Map Labels (Never Shifts on Zoom) */
-.fixed-map-label-wrapper {
-    background: none !important;
+/* Pure Floating Text Map Label (Clean Text Without Any Boxes or Borders) */
+.pure-floating-map-label {
+    background: transparent !important;
     border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    white-space: nowrap !important;
+    font-family: 'Tajawal', sans-serif !important;
+    font-weight: 800 !important;
+    pointer-events: none !important;
+    user-select: none !important;
+    text-shadow: 
+        -1.5px -1.5px 0 #000,  
+         1.5px -1.5px 0 #000,
+        -1.5px  1.5px 0 #000,
+         1.5px  1.5px 0 #000,
+         0px 2px 8px rgba(0, 0, 0, 0.95) !important;
 }
 
-.fixed-map-label {
-    position: absolute;
-    transform: translate(-50%, -50%);
-    background: rgba(15, 23, 42, 0.88);
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    padding: 3px 8px;
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
-    white-space: nowrap;
-    font-family: 'Tajawal', sans-serif;
-    font-weight: 700;
-    pointer-events: none;
-    user-select: none;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
-}
-
-.map-feature-label::before {
+.pure-floating-map-label::before {
     display: none !important;
 }
 
