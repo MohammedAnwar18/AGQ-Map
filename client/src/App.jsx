@@ -133,17 +133,22 @@ function App() {
         </div>
     ) : <SplashLoading />;
 
-    return (
-        <BrowserRouter>
-            <React.Suspense fallback={suspenseFallback}>
-                <Routes>
-                    {/* 🌐 Public Geoportal Viewer routes */}
-                    <Route path="/geoportal/:slug" element={<GeoportalViewer />} />
-                    <Route path="/geoportal" element={<GeoportalViewer />} />
-                    <Route path="/p/:slug" element={<PublishedView />} />
-                    <Route path="/l/:slug" element={<DigitalLetterView />} />
-                    <Route path="/enas-graduation" element={<GraduationEvent />} />
-                    <Route path="/walid-sheikha" element={<WeddingInvite />} />
+        const isBirzeitDomain = window.location.hostname.includes('birzeit') || window.location.hostname.includes('municipality.ps');
+
+        return (
+            <BrowserRouter>
+                <React.Suspense fallback={suspenseFallback}>
+                    <Routes>
+                        {/* 🌐 Custom Municipality Domain Direct Root Route */}
+                        {isBirzeitDomain && <Route path="/" element={<GeoportalViewer />} />}
+
+                        {/* 🌐 Public Geoportal Viewer routes */}
+                        <Route path="/geoportal/:slug" element={<GeoportalViewer />} />
+                        <Route path="/geoportal" element={<GeoportalViewer />} />
+                        <Route path="/p/:slug" element={<PublishedView />} />
+                        <Route path="/l/:slug" element={<DigitalLetterView />} />
+                        <Route path="/enas-graduation" element={<GraduationEvent />} />
+                        <Route path="/walid-sheikha" element={<WeddingInvite />} />
 
                     {/* All other routes inside AuthProvider */}
                     <Route path="*" element={
