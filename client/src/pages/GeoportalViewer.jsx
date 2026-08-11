@@ -517,11 +517,14 @@ export default function GeoportalViewer() {
         const token = localStorage.getItem('token');
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-        // Helper: جلب GeoJSON عبر Proxy السيرفر (يتجاوز CORS)
-        const fetchViaProxy = async (r2Url) => {
-            const proxyUrl = `/api/storage/proxy?url=${encodeURIComponent(r2Url)}`;
-            const r2Res = await axios.get(proxyUrl, { timeout: 300000 }); // 5 دقائق للضخمة
-            const r2Geojson = r2Res.data;
+        // Helper: جلب مباشر من R2 (CORS مفعّل على البuckets)
+        const fetchDirectFromR2 = async (r2Url) => {
+            const r2Res = await fetch(r2Url, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json, application/geo+json, */*' }
+            });
+            if (!r2Res.ok) throw new Error(`R2 returned ${r2Res.status}`);
+            const r2Geojson = await r2Res.json();
             if (r2Geojson && (r2Geojson.type === 'FeatureCollection' || r2Geojson.type === 'Feature')) {
                 return r2Geojson.type === 'Feature'
                     ? { type: 'FeatureCollection', features: [r2Geojson] }
@@ -531,21 +534,35 @@ export default function GeoportalViewer() {
         };
 
         try {
-            // أولاً: حاول جلب Features من PostGIS
-            const res = await axios.get(`/api/geoportals/public/layers/${layer.id}/features`, { headers });
-            const data = res.data;
-
-            // إذا لم تكن features (طبقة رُفعت بـ Presigned URL لـ R2) → جلب من R2 عبر Proxy
-            const hasFeatures = data && data.features && data.features.length > 0;
-            if (!hasFeatures && layer.r2_file_url) {
+            // أولاً: إذا الطبقة من R2 مباشرة (feature_count=0) → اجلبها من R2 مباشرة بدون Proxy
+            if (layer.r2_file_url && (!layer.feature_count || layer.feature_count === 0)) {
                 try {
-                    const geojson = await fetchViaProxy(layer.r2_file_url);
+                    const geojson = await fetchDirectFromR2(layer.r2_file_url);
                     if (geojson) {
                         layerDataCache.current[layer.id] = geojson;
                         return geojson;
                     }
                 } catch (r2Err) {
-                    console.warn(`Layer ${layer.layer_name} — R2 proxy failed:`, r2Err.message);
+                    console.warn(`Direct R2 fetch failed for ${layer.layer_name}:`, r2Err.message);
+                    // fallback للـ PostGIS
+                }
+            }
+
+            // ثانياً: جلب من PostGIS (للطبقات الصغيرة المخزنة في قاعدة البيانات)
+            const res = await axios.get(`/api/geoportals/public/layers/${layer.id}/features`, { headers });
+            const data = res.data;
+
+            // إذا ما فيه features في PostGIS وفي رابط R2 → اجلب من R2
+            const hasFeatures = data && data.features && data.features.length > 0;
+            if (!hasFeatures && layer.r2_file_url) {
+                try {
+                    const geojson = await fetchDirectFromR2(layer.r2_file_url);
+                    if (geojson) {
+                        layerDataCache.current[layer.id] = geojson;
+                        return geojson;
+                    }
+                } catch (r2Err) {
+                    console.warn(`Layer ${layer.layer_name} — R2 fallback failed:`, r2Err.message);
                 }
             }
 
@@ -554,16 +571,16 @@ export default function GeoportalViewer() {
         } catch (err) {
             if (err.response?.status === 403) return null;
 
-            // إذا فشل PostGIS تماماً وفي r2_file_url → جرب Proxy
+            // إذا فشل كل شيء وفي رابط R2 → آخر محاولة
             if (layer.r2_file_url) {
                 try {
-                    const geojson = await fetchViaProxy(layer.r2_file_url);
+                    const geojson = await fetchDirectFromR2(layer.r2_file_url);
                     if (geojson) {
                         layerDataCache.current[layer.id] = geojson;
                         return geojson;
                     }
                 } catch (r2Err) {
-                    console.warn(`Layer ${layer.layer_name} R2 proxy fallback failed:`, r2Err.message);
+                    console.warn(`Layer ${layer.layer_name} all fetches failed:`, r2Err.message);
                 }
             }
 
