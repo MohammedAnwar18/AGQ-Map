@@ -30,32 +30,41 @@ export default function GeoportalViewer() {
         return matchKey ? props[matchKey] : null;
     };
 
-    // Helper to calculate exact geographic centroid for fixed labels
-    const getFeatureCentroid = (feature) => {
+    // Helper to calculate true polygon geometric centroid (heart of feature)
+    const getTruePolygonCentroid = (feature) => {
         if (!feature || !feature.geometry) return null;
-        const type = feature.geometry.type;
-        const coords = feature.geometry.coordinates;
+        const geom = feature.geometry;
+        let coords = geom.coordinates;
 
-        if (type === 'Point') {
+        if (geom.type === 'Point') {
             return [coords[1], coords[0]];
         }
-        if (type === 'Polygon') {
-            let pts = coords[0];
-            let latSum = 0, lngSum = 0, count = pts.length;
-            pts.forEach(pt => { lngSum += pt[0]; latSum += pt[1]; });
-            return [latSum / count, lngSum / count];
-        }
-        if (type === 'MultiPolygon') {
-            let pts = coords[0][0];
-            let latSum = 0, lngSum = 0, count = pts.length;
-            pts.forEach(pt => { lngSum += pt[0]; latSum += pt[1]; });
-            return [latSum / count, lngSum / count];
-        }
-        if (type === 'LineString') {
+        if (geom.type === 'Polygon') {
+            coords = coords[0];
+        } else if (geom.type === 'MultiPolygon') {
+            let maxLen = 0;
+            let largestPoly = coords[0][0];
+            coords.forEach(poly => {
+                if (poly[0].length > maxLen) {
+                    maxLen = poly[0].length;
+                    largestPoly = poly[0];
+                }
+            });
+            coords = largestPoly;
+        } else if (geom.type === 'LineString') {
             const mid = Math.floor(coords.length / 2);
             return [coords[mid][1], coords[mid][0]];
+        } else {
+            return null;
         }
-        return null;
+
+        if (!coords || !coords.length) return null;
+        let latSum = 0, lngSum = 0;
+        coords.forEach(pt => {
+            lngSum += pt[0];
+            latSum += pt[1];
+        });
+        return [latSum / coords.length, lngSum / coords.length];
     };
 
     // Coordinate conversion utilities
@@ -99,8 +108,9 @@ export default function GeoportalViewer() {
     const mapRef = useRef(null);
     const mapInstance = useRef(null);
     const featureGroupsRef = useRef({});
+    const labelsLayerGroupRef = useRef(null);
     const layerDataCache = useRef({});
-    const hasFittedBoundsRef = useRef(false); // ✅ لمنع إعادة إرجاع الخريطة لنفس المركز عند التكبير والتصغير
+    const hasFittedBoundsRef = useRef(false);
 
     // 1. Resolve & Fetch Portal Data
     useEffect(() => {
@@ -120,7 +130,6 @@ export default function GeoportalViewer() {
             const layerArr = Array.isArray(data.layers) ? data.layers : [];
             setLayers(layerArr);
 
-            // ✅ كل الطبقات تظهر تلقائياً بدون أي تفاعل من المستخدم
             const allLayerIds = new Set(layerArr.map(l => l.id));
             setVisibleLayerIds(allLayerIds);
         } catch (err) {
@@ -152,17 +161,21 @@ export default function GeoportalViewer() {
                 subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
             }).addTo(mapInstance.current);
 
+            // مجموعة طبقة المسميات المستقلة لتجنب التكرار
+            labelsLayerGroupRef.current = L.featureGroup().addTo(mapInstance.current);
+
             // Listen to mousemove for live coordinates
             mapInstance.current.on('mousemove', (e) => {
                 setCursorCoords({ lat: e.latlng.lat, lng: e.latlng.lng });
             });
 
-            // Listen to zoomend for live map scale
+            // Listen to zoomend for live map scale & smart label re-rendering
             mapInstance.current.on('zoomend', () => {
                 const z = mapInstance.current.getZoom();
                 setCurrentZoom(z);
                 const scaleVal = Math.round(591657550.5 / Math.pow(2, z));
                 setMapScale(`1 : ${scaleVal.toLocaleString()}`);
+                updateSmartMapLabels();
             });
         }
 
@@ -173,7 +186,6 @@ export default function GeoportalViewer() {
 
     // ✅ تحميل طبقة واحدة مع كاش
     const fetchLayerData = useCallback(async (layer) => {
-        // إذا محملة مسبقاً — ارجعها من الكاش فوراً
         if (layerDataCache.current[layer.id]) {
             return layerDataCache.current[layer.id];
         }
@@ -181,21 +193,76 @@ export default function GeoportalViewer() {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         try {
             const res = await axios.get(`/api/geoportals/public/layers/${layer.id}/features`, { headers });
-            layerDataCache.current[layer.id] = res.data; // خزّنها في الكاش
+            layerDataCache.current[layer.id] = res.data;
             return res.data;
         } catch (err) {
-            // إذا محمية وما في token، تجاهل الخطأ بصمت
             if (err.response?.status === 403) return null;
             console.warn(`Layer ${layer.layer_name} failed:`, err.message);
             return null;
         }
     }, []);
 
-    // ✅ تحميل وعرض جميع الطبقات المرئية دائماً بدون تقييد زوم أو قص
+    // ✅ محرك رسم المسميات المكانيّة الذكي مع (Centroid & Zoom Threshold & Collision Detection)
+    const updateSmartMapLabels = useCallback(() => {
+        if (!mapInstance.current || !labelsLayerGroupRef.current) return;
+
+        // 1. مسح التسميات القديمة لمنع التكرار نهائياً
+        labelsLayerGroupRef.current.clearLayers();
+
+        const activeZoom = mapInstance.current.getZoom();
+
+        // 2. النقطة الثانية (Zoom Threshold): إخفاء المسميات عند الابتعاد الكامل منعاً للاكتظاظ والمظر المزدحم
+        if (activeZoom < 11) return;
+
+        const visibleLayers = layers.filter(l => visibleLayerIds.has(l.id));
+        const drawnPixelPoints = [];
+
+        visibleLayers.forEach(layer => {
+            const style = layer.style_config || {};
+            if (style.show_labels && style.label_field && layerDataCache.current[layer.id]) {
+                const geojson = layerDataCache.current[layer.id];
+                const labelColor = style.label_color || '#FFFFFF';
+                const labelSize = style.label_size || 12;
+
+                geojson.features.forEach(feature => {
+                    const val = getFieldValue(feature.properties, style.label_field);
+                    if (val !== null && val !== undefined && String(val).trim() !== '') {
+                        // النقطة الأولى: حساب المركز الهندي (Centroid) في قلب القطعة
+                        const centroid = getTruePolygonCentroid(feature);
+                        if (centroid) {
+                            const containerPt = mapInstance.current.latLngToContainerPoint(centroid);
+
+                            // النقطة الثالثة (Collision Detection): منع تداخل الكلمات المتجاورة
+                            const isColliding = drawnPixelPoints.some(pt => {
+                                const dx = pt.x - containerPt.x;
+                                const dy = pt.y - containerPt.y;
+                                return Math.sqrt(dx * dx + dy * dy) < 40; // مسافة أمان 40 بكسل
+                            });
+
+                            if (!isColliding) {
+                                drawnPixelPoints.push(containerPt);
+                                const labelMarker = L.marker(centroid, {
+                                    icon: L.divIcon({
+                                        className: 'pure-floating-label-marker',
+                                        html: `<div class="pure-floating-map-label" style="color: ${labelColor} !important; font-size: ${labelSize}px !important;">${String(val)}</div>`,
+                                        iconSize: [0, 0],
+                                        iconAnchor: [0, 0]
+                                    }),
+                                    interactive: false
+                                });
+                                labelsLayerGroupRef.current.addLayer(labelMarker);
+                            }
+                        }
+                    }
+                });
+            }
+        });
+    }, [layers, visibleLayerIds]);
+
+    // ✅ تحميل وعرض جميع الطبقات المرئية دائماً
     const renderVisibleLayers = useCallback(async () => {
         if (!mapInstance.current || !layers.length) return;
 
-        // إزالة الطبقات غير المرئية
         Object.entries(featureGroupsRef.current).forEach(([id, group]) => {
             const isVisible = visibleLayerIds.has(Number(id)) || visibleLayerIds.has(id);
             if (!isVisible) {
@@ -206,58 +273,11 @@ export default function GeoportalViewer() {
         const visibleLayers = layers.filter(l => visibleLayerIds.has(l.id));
         setLayersLoading(true);
 
-        // ✅ فحص وتطبيق قناع قص الخريطة الجوية (Clipping Mask Layer)
-        const clippingMaskLayerId = portal.map_config?.clipping_mask_layer_id;
-        if (clippingMaskLayerId) {
-            const maskLayer = layers.find(l => String(l.id) === String(clippingMaskLayerId));
-            if (maskLayer) {
-                const maskGeojson = await fetchLayerData(maskLayer);
-                if (maskGeojson && maskGeojson.features?.length) {
-                    if (featureGroupsRef.current['clipping_mask_overlay']) {
-                        mapInstance.current.removeLayer(featureGroupsRef.current['clipping_mask_overlay']);
-                    }
-                    const maskGroup = L.featureGroup();
-                    const worldOuter = [
-                        [90, -180],
-                        [90, 180],
-                        [-90, 180],
-                        [-90, -180]
-                    ];
-
-                    let holes = [];
-                    maskGeojson.features.forEach(feat => {
-                        if (feat.geometry?.type === 'Polygon') {
-                            holes.push(feat.geometry.coordinates.map(ring => ring.map(pt => [pt[1], pt[0]])));
-                        } else if (feat.geometry?.type === 'MultiPolygon') {
-                            feat.geometry.coordinates.forEach(poly => {
-                                holes.push(poly[0].map(pt => [pt[1], pt[0]]));
-                            });
-                        }
-                    });
-
-                    if (holes.length > 0) {
-                        const maskPoly = L.polygon([worldOuter, ...holes], {
-                            color: 'transparent',
-                            fillColor: '#FFFFFF',
-                            fillOpacity: 1,
-                            interactive: false
-                        });
-                        maskGroup.addLayer(maskPoly);
-                        featureGroupsRef.current['clipping_mask_overlay'] = maskGroup;
-                        maskGroup.addTo(mapInstance.current);
-                    }
-                }
-            }
-        } else if (featureGroupsRef.current['clipping_mask_overlay']) {
-            mapInstance.current.removeLayer(featureGroupsRef.current['clipping_mask_overlay']);
-        }
-
         let combinedBounds = L.latLngBounds([]);
 
         await Promise.all(visibleLayers.map(async (layer) => {
             const style = layer.style_config || {};
 
-            // إذا مرسومة مسبقاً على الخريطة
             if (featureGroupsRef.current[layer.id]) {
                 if (!mapInstance.current.hasLayer(featureGroupsRef.current[layer.id])) {
                     featureGroupsRef.current[layer.id].addTo(mapInstance.current);
@@ -271,10 +291,6 @@ export default function GeoportalViewer() {
             if (!geojson || !geojson.features?.length) return;
 
             const isTransparent = style.fill_color === 'transparent' || style.is_transparent;
-            const showLabels = style.show_labels;
-            const labelField = style.label_field;
-            const labelColor = style.label_color || '#FFFFFF';
-            const labelSize = style.label_size || 12;
 
             const group = L.geoJSON(geojson, {
                 style: () => ({
@@ -298,20 +314,6 @@ export default function GeoportalViewer() {
                         layerName: layer.layer_name,
                         properties: feature.properties
                     }));
-
-                    // ✅ إضافة مسميات الخصائص كـ Pure Floating Labels صريحة وبدقة عالية
-                    if (showLabels && labelField && feature.properties) {
-                        const val = getFieldValue(feature.properties, labelField);
-                        if (val !== null && val !== undefined && String(val).trim() !== '') {
-                            const htmlLabel = `<span style="color: ${labelColor} !important; font-size: ${labelSize}px !important; font-weight: 800 !important; font-family: 'Tajawal', sans-serif !important; text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000, 0 2px 6px rgba(0,0,0,0.95); white-space: nowrap; pointer-events: none; user-select: none;">${String(val)}</span>`;
-
-                            leafletLayer.bindTooltip(htmlLabel, {
-                                permanent: true,
-                                direction: 'center',
-                                className: 'pure-floating-map-label'
-                            });
-                        }
-                    }
                 }
             });
 
@@ -322,14 +324,16 @@ export default function GeoportalViewer() {
             if (b && b.isValid()) combinedBounds.extend(b);
         }));
 
-        // ✅ التوجّه التلقائي المباشر لموقع المعالم الحقيقي عند أول تحميل فقط
+        // رسم المسميات المكانيّة الذكية
+        updateSmartMapLabels();
+
         if (!hasFittedBoundsRef.current && combinedBounds && combinedBounds.isValid() && mapInstance.current) {
             mapInstance.current.fitBounds(combinedBounds, { padding: [50, 50], maxZoom: 17 });
             hasFittedBoundsRef.current = true;
         }
 
         setLayersLoading(false);
-    }, [layers, visibleLayerIds, fetchLayerData]);
+    }, [layers, visibleLayerIds, fetchLayerData, updateSmartMapLabels]);
 
     const toggleLayerVisibility = (layerId) => {
         setVisibleLayerIds(prev => {
