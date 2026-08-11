@@ -1,171 +1,305 @@
 /* ================================================================
-   Geoportal Viewer CSS — Public & Municipal GIS Portal Page
-   Inspired by Dubai DDA DIS / Modern Spatial Systems
+   Geoportal Viewer CSS — Ultra Modern Floating Navigation Bar & Spatial Viewer
    ================================================================ */
 .geoportal-viewer {
     position: relative;
     width: 100vw;
     height: 100vh;
     overflow: hidden;
-    background-color: #050B16;
-    font-family: 'Tajawal', system-ui, sans-serif;
-    color: #FFFFFF;
+    background-color: #030712;
+    font-family: 'Tajawal', system-ui, -apple-system, sans-serif;
+    color: #0f172a;
 }
 
-/* Header Navbar */
-.geoportal-navbar {
+/* Floating Top Navigation Container */
+.geoportal-navbar-container {
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 60px;
+    top: 16px;
+    left: 16px;
+    right: 16px;
     z-index: 1000;
-    background: linear-gradient(135deg, #0A1628 0%, #0F1E33 100%);
-    border-bottom: 2px solid rgba(245, 166, 35, 0.4);
+    pointer-events: none;
+}
+
+.geoportal-navbar {
+    pointer-events: auto;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    border-radius: 24px;
+    height: 62px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 24px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+    padding: 0 20px;
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.04);
 }
 
+/* Brand Section */
 .brand-section {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-.brand-logo {
-    height: 38px;
-    width: auto;
-    object-fit: contain;
-}
-
-.brand-title-group h1 {
-    font-size: 1.15rem;
-    font-weight: 800;
-    color: #FFFFFF;
-    margin: 0;
-}
-
-.brand-title-group p {
-    font-size: 0.75rem;
-    color: #F5A623;
-    margin: 0;
-}
-
-.navbar-center-search {
-    position: relative;
-    width: 320px;
-}
-
-.navbar-search-input {
-    width: 100%;
-    padding: 8px 14px 8px 36px;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 20px;
-    color: #FFFFFF;
-    font-size: 0.85rem;
-    outline: none;
-    transition: all 0.2s ease;
-}
-
-.navbar-search-input:focus {
-    border-color: #F5A623;
-    background: rgba(255, 255, 255, 0.12);
-    box-shadow: 0 0 12px rgba(245, 166, 35, 0.3);
-}
-
-.navbar-actions {
     display: flex;
     align-items: center;
     gap: 12px;
 }
 
-.nav-action-btn {
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: #FFFFFF;
-    background: rgba(255, 255, 255, 0.05);
-    transition: all 0.2s ease;
-}
-
-.nav-action-btn:hover {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: #F5A623;
-}
-
-.nav-action-btn.primary {
-    background: linear-gradient(135deg, #F5A623 0%, #D88B0E 100%);
-    color: #050B16;
-    border: none;
-    font-weight: 700;
-    box-shadow: 0 2px 10px rgba(245, 166, 35, 0.3);
-}
-
-/* Floating Layer Control Panel (Matching Reference Image) */
-.floating-layers-card {
-    position: absolute;
-    top: 80px;
-    right: 24px;
-    z-index: 999;
-    width: 300px;
-    background: rgba(10, 22, 40, 0.92);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+.brand-icon-box {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
     border-radius: 12px;
-    backdrop-filter: blur(16px);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-    overflow: hidden;
-}
-
-.card-header {
-    background: rgba(15, 30, 51, 0.95);
-    padding: 12px 16px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    font-weight: 700;
-    font-size: 0.9rem;
-    color: #F5A623;
-    letter-spacing: 0.5px;
+    justify-content: center;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(29, 78, 216, 0.3);
 }
 
-.card-body {
-    padding: 12px 16px;
-    max-height: 400px;
-    overflow-y: auto;
+.brand-logo {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
 }
 
-.layer-legend-row {
+.brand-name {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #1e3a8a;
+    letter-spacing: -0.3px;
+}
+
+/* Center Search Input */
+.navbar-center-search {
+    flex: 1;
+    max-width: 480px;
+    margin: 0 24px;
+}
+
+.search-input-wrapper {
+    position: relative;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 10px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    width: 100%;
 }
 
-.layer-legend-info {
+.search-icon {
+    position: absolute;
+    left: 14px;
+    pointer-events: none;
+}
+
+.filter-icon {
+    position: absolute;
+    right: 14px;
+    cursor: pointer;
+}
+
+.navbar-search-input {
+    width: 100%;
+    height: 42px;
+    padding: 0 40px;
+    background: #f1f5f9;
+    border: 1px solid transparent;
+    border-radius: 20px;
+    color: #0f172a;
+    font-size: 0.88rem;
+    font-family: inherit;
+    outline: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.navbar-search-input:focus {
+    background: #ffffff;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
+}
+
+/* Navbar Right Actions */
+.navbar-actions {
     display: flex;
     align-items: center;
     gap: 10px;
 }
 
-.legend-swatch {
-    width: 18px;
-    height: 18px;
-    border-radius: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.4);
+.layers-dropdown-wrapper {
+    position: relative;
 }
 
-/* Floating Tools Bar Right */
+.nav-action-btn.layers-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 16px;
+    color: #334155;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.nav-action-btn.layers-btn:hover,
+.nav-action-btn.layers-btn.active {
+    background: #f1f5f9;
+    color: #1d4ed8;
+}
+
+.layers-badge {
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 10px;
+}
+
+.icon-nav-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: transparent;
+    border: none;
+    color: #475569;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.icon-nav-btn:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+
+.user-profile-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #dbeafe;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.user-profile-btn:hover {
+    background: #2563eb;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+/* Layers Dropdown Menu */
+.layers-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    width: 300px;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(20px);
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    animation: fadeInDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    direction: rtl;
+}
+
+@keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.dropdown-header {
+    padding: 14px 16px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #1e293b;
+}
+
+.close-dropdown-btn {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 4px;
+}
+
+.close-dropdown-btn:hover {
+    color: #ef4444;
+}
+
+.dropdown-body {
+    padding: 10px 14px;
+    max-height: 360px;
+    overflow-y: auto;
+}
+
+.layer-dropdown-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    margin-bottom: 4px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.layer-dropdown-item:hover {
+    background: #f1f5f9;
+}
+
+.layer-item-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.layer-item-checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #2563eb;
+    cursor: pointer;
+}
+
+.legend-swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    flex-shrink: 0;
+}
+
+.layer-item-name {
+    font-size: 0.86rem;
+    font-weight: 700;
+    color: #334155;
+}
+
+.empty-layers-msg,
+.layers-loading-text {
+    text-align: center;
+    padding: 16px;
+    font-size: 0.82rem;
+    color: #64748b;
+}
+
+/* Floating Tools Bar Left */
 .floating-tools-bar {
     position: absolute;
-    top: 80px;
+    top: 92px;
     left: 24px;
     z-index: 999;
     display: flex;
@@ -176,23 +310,24 @@
 .tool-button {
     width: 44px;
     height: 44px;
-    background: rgba(10, 22, 40, 0.92);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 10px;
-    color: #FFFFFF;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    color: #1e293b;
     font-size: 1.1rem;
     display: flex;
     align-items: center;
     justify-content: center;
     backdrop-filter: blur(12px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    cursor: pointer;
     transition: all 0.2s ease;
 }
 
 .tool-button:hover {
-    background: #F5A623;
-    color: #050B16;
-    transform: translateX(2px);
+    background: #2563eb;
+    color: #ffffff;
+    transform: scale(1.05);
 }
 
 /* Map Viewport Fullscreen */
@@ -207,19 +342,20 @@
     position: fixed;
     inset: 0;
     z-index: 2000;
-    background: rgba(5, 11, 22, 0.85);
-    backdrop-filter: blur(8px);
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(10px);
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .auth-modal-card {
-    width: 400px;
-    background: #0A1628;
-    border: 1px solid rgba(245, 166, 35, 0.4);
-    border-radius: 16px;
-    padding: 28px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+    width: 380px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 24px;
+    padding: 32px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     text-align: center;
+    direction: rtl;
 }

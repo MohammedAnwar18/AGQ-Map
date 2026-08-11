@@ -74,8 +74,8 @@ export default function GeoportalViewer() {
                 zoomControl: false
             });
 
-            // Google Maps Hybrid (Satellite + Labels) — نفس خريطة الموقع
-            L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+            // Google Maps Plain Satellite (بدون كتابات ولا أسماء — سادة ناصعة)
+            L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
                 attribution: '© Google Maps',
                 maxZoom: 21,
                 subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
@@ -210,90 +210,136 @@ export default function GeoportalViewer() {
 
     return (
         <div className="geoportal-viewer">
-            {/* Top Navigation Bar */}
-            <div className="geoportal-navbar">
-                <div className="brand-section">
-                    {portal.logo_url ? (
-                        <img src={portal.logo_url} alt="Logo" className="brand-logo" />
-                    ) : (
-                        <div style={{ fontSize: '1.4rem' }}>🏛️</div>
-                    )}
-                    <div className="brand-title-group">
-                        <h1>{portal.title_ar}</h1>
-                        <p>{portal.title_en || 'Geoportal Information System'}</p>
-                    </div>
-                </div>
-
-                <div className="navbar-center-search">
-                    <input
-                        type="text"
-                        className="navbar-search-input"
-                        placeholder="البحث في القطع والطبقات (Search Plots)..."
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                    />
-                </div>
-
-                <div className="navbar-actions">
-                    {(portal.header_links || []).map((link, idx) => (
-                        <a key={idx} href={link.url} className="nav-action-btn" target="_blank" rel="noreferrer">
-                            {link.title}
-                        </a>
-                    ))}
-
-                    {isLoggedIn ? (
-                        <button className="nav-action-btn primary" onClick={() => {
-                            localStorage.removeItem('token');
-                            setIsLoggedIn(false);
-                        }}>
-                            تسجيل الخروج 🚪
-                        </button>
-                    ) : (
-                        <button className="nav-action-btn primary" onClick={() => setShowAuthModal(true)}>
-                            تسجيل الدخول 🔑
-                        </button>
-                    )}
-                </div>
-            </div>
-
-            {/* Floating Layer Control Panel (Matching Dubai DDA DIS layout) */}
-            <div className="floating-layers-card">
-                <div className="card-header">
-                    <span>MAIN MAP / الطبقات الجغرافية</span>
-                    <span style={{ fontSize: '0.75rem', color: '#FFFFFF', background: 'rgba(255, 255, 255, 0.1)', padding: '2px 8px', borderRadius: 10 }}>
-                        {layers.length} طبقات
-                    </span>
-                </div>
-                <div className="card-body">
-                    {(Array.isArray(layers) ? layers : []).map(layer => {
-                        const style = layer.style_config || {};
-                        const isVisible = visibleLayerIds.has(layer.id);
-                        return (
-                            <div key={layer.id} className="layer-legend-row">
-                                <div className="layer-legend-info">
-                                    <input
-                                        type="checkbox"
-                                        checked={isVisible}
-                                        onChange={() => toggleLayerVisibility(layer.id)}
-                                    />
-                                    <span
-                                        className="legend-swatch"
-                                        style={{ backgroundColor: style.fill_color || '#3B82F6', borderColor: style.stroke_color || '#1D4ED8' }}
-                                    ></span>
-                                    <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>
-                                        {layer.layer_name}
-                                    </span>
-                                </div>
-
-                                {layer.is_private && <span style={{ fontSize: '0.7rem' }}>🔒</span>}
-                            </div>
-                        );
-                    })}
-                    {layersLoading && (
-                        <div style={{ textAlign: 'center', padding: '8px 0', color: '#F5A623', fontSize: '0.78rem', opacity: 0.8 }}>
-                            ⏳ جاري تحميل بيانات الطبقات...
+            {/* Modern Floating Top Navigation Bar (Matching exact user UI reference) */}
+            <div className="geoportal-navbar-container">
+                <div className="geoportal-navbar">
+                    {/* Brand Section */}
+                    <div className="brand-section">
+                        <div className="brand-icon-box">
+                            {portal.logo_url ? (
+                                <img src={portal.logo_url} alt="Logo" className="brand-logo" />
+                            ) : (
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                                </svg>
+                            )}
                         </div>
-                    )}
+                        <div className="brand-title-group">
+                            <span className="brand-name">{portal.title_ar || 'GeoPulse'}</span>
+                        </div>
+                    </div>
+
+                    {/* Center Search Input */}
+                    <div className="navbar-center-search">
+                        <div className="search-input-wrapper">
+                            <svg className="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.2">
+                                <circle cx="11" cy="11" r="8" />
+                                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            </svg>
+                            <input
+                                type="text"
+                                className="navbar-search-input"
+                                placeholder="Search locations, coordinates or layers..."
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                            />
+                            <svg className="filter-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
+                                <line x1="4" y1="6" x2="20" y2="6" />
+                                <line x1="8" y1="12" x2="16" y2="12" />
+                                <line x1="10" y1="18" x2="14" y2="18" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    {/* Right Actions & Layers Dropdown */}
+                    <div className="navbar-actions">
+                        {/* Layers Button with Dropdown Trigger */}
+                        <div className="layers-dropdown-wrapper">
+                            <button
+                                className={`nav-action-btn layers-btn ${showLayersDropdown ? 'active' : ''}`}
+                                onClick={() => setShowLayersDropdown(!showLayersDropdown)}
+                            >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                                </svg>
+                                <span>Layers</span>
+                                <span className="layers-badge">{layers.length}</span>
+                            </button>
+
+                            {/* Dropdown Menu */}
+                            {showLayersDropdown && (
+                                <div className="layers-dropdown-menu">
+                                    <div className="dropdown-header">
+                                        <span>الطبقات الجغرافية المكانية</span>
+                                        <button className="close-dropdown-btn" onClick={() => setShowLayersDropdown(false)}>✕</button>
+                                    </div>
+                                    <div className="dropdown-body">
+                                        {(Array.isArray(layers) ? layers : []).length === 0 ? (
+                                            <div className="empty-layers-msg">لا توجد طبقات جغرافية مسجلة</div>
+                                        ) : (
+                                            (Array.isArray(layers) ? layers : []).map(layer => {
+                                                const style = layer.style_config || {};
+                                                const isVisible = visibleLayerIds.has(layer.id);
+                                                return (
+                                                    <div key={layer.id} className="layer-dropdown-item" onClick={() => toggleLayerVisibility(layer.id)}>
+                                                        <div className="layer-item-checkbox">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isVisible}
+                                                                onChange={() => { }} // Handled by parent click
+                                                            />
+                                                            <span
+                                                                className="legend-swatch"
+                                                                style={{ backgroundColor: style.fill_color || '#2563eb', borderColor: style.stroke_color || '#1d4ed8' }}
+                                                            ></span>
+                                                            <span className="layer-item-name">
+                                                                {layer.layer_name}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+                                        {layersLoading && (
+                                            <div className="layers-loading-text">
+                                                ⏳ جاري تحميل بيانات الخريطة...
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Globe Icon */}
+                        <button className="icon-nav-btn" title="اللغة / Language">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="2" y1="12" x2="22" y2="12" />
+                                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                            </svg>
+                        </button>
+
+                        {/* User Profile Button */}
+                        {isLoggedIn ? (
+                            <button className="user-profile-btn" title="تسجيل الخروج" onClick={() => {
+                                localStorage.removeItem('token');
+                                setIsLoggedIn(false);
+                            }}>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                    <circle cx="12" cy="7" r="4" />
+                                </svg>
+                            </button>
+                        ) : (
+                            <button className="user-profile-btn" title="تسجيل الدخول" onClick={() => setShowAuthModal(true)}>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                    <circle cx="12" cy="7" r="4" />
+                                </svg>
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 

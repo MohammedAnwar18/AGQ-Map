@@ -99,8 +99,10 @@ export default function GeoportalDesigner() {
                 zoomControl: false
             });
 
-            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                attribution: 'Esri Satellite'
+            L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+                attribution: '© Google Maps',
+                maxZoom: 21,
+                subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
             }).addTo(mapInstance.current);
 
             L.control.zoom({ position: 'topleft' }).addTo(mapInstance.current);
@@ -234,11 +236,12 @@ export default function GeoportalDesigner() {
         }
     };
 
-    // 5. Update layer styling
+    // 5. Update layer styling (Real-time local state + API save)
     const handleLayerStyleChange = async (layerId, newStyle) => {
+        // Update local layerList state immediately for smooth UI feedback
+        setLayerList(prev => prev.map(l => l.id === layerId ? { ...l, style_config: newStyle } : l));
         try {
             await axios.patch(`${API_BASE}/layers/${layerId}/style`, { style_config: newStyle }, authHeaders);
-            selectPortal(selectedPortal);
         } catch (err) {
             console.error('Error updating layer style:', err);
         }
@@ -402,12 +405,62 @@ export default function GeoportalDesigner() {
 
                                             <div className="layer-controls-grid">
                                                 <div>
-                                                    <label style={{ fontSize: '0.75rem' }}>لون التعبئة:</label>
-                                                    <input type="color" className="form-control" value={style.fill_color || '#3B82F6'} onChange={e => handleLayerStyleChange(layer.id, { ...style, fill_color: e.target.value })} />
+                                                    <label style={{ fontSize: '0.78rem', fontWeight: 600 }}>لون التعبئة:</label>
+                                                    <input type="color" className="form-control color-picker" value={style.fill_color || '#3B82F6'} onChange={e => handleLayerStyleChange(layer.id, { ...style, fill_color: e.target.value })} />
                                                 </div>
                                                 <div>
-                                                    <label style={{ fontSize: '0.75rem' }}>لون الحاشية:</label>
-                                                    <input type="color" className="form-control" value={style.stroke_color || '#1D4ED8'} onChange={e => handleLayerStyleChange(layer.id, { ...style, stroke_color: e.target.value })} />
+                                                    <label style={{ fontSize: '0.78rem', fontWeight: 600 }}>لون الحدود:</label>
+                                                    <input type="color" className="form-control color-picker" value={style.stroke_color || '#1D4ED8'} onChange={e => handleLayerStyleChange(layer.id, { ...style, stroke_color: e.target.value })} />
+                                                </div>
+                                            </div>
+
+                                            <div className="layer-sliders-grid" style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                                <div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#94a3b8' }}>
+                                                        <span>الشفافية (Opacity)</span>
+                                                        <span>{Math.round((style.fill_opacity !== undefined ? style.fill_opacity : 0.45) * 100)}%</span>
+                                                    </div>
+                                                    <input
+                                                        type="range"
+                                                        min="0"
+                                                        max="1"
+                                                        step="0.05"
+                                                        className="range-input"
+                                                        value={style.fill_opacity !== undefined ? style.fill_opacity : 0.45}
+                                                        onChange={e => handleLayerStyleChange(layer.id, { ...style, fill_opacity: parseFloat(e.target.value) })}
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#94a3b8' }}>
+                                                        <span>سمك الحدود (Stroke)</span>
+                                                        <span>{style.stroke_width || 2}px</span>
+                                                    </div>
+                                                    <input
+                                                        type="range"
+                                                        min="1"
+                                                        max="10"
+                                                        step="1"
+                                                        className="range-input"
+                                                        value={style.stroke_width || 2}
+                                                        onChange={e => handleLayerStyleChange(layer.id, { ...style, stroke_width: parseInt(e.target.value) })}
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#94a3b8' }}>
+                                                        <span>حجم النقاط (Point Radius)</span>
+                                                        <span>{style.point_radius || 7}px</span>
+                                                    </div>
+                                                    <input
+                                                        type="range"
+                                                        min="2"
+                                                        max="20"
+                                                        step="1"
+                                                        className="range-input"
+                                                        value={style.point_radius || 7}
+                                                        onChange={e => handleLayerStyleChange(layer.id, { ...style, point_radius: parseInt(e.target.value) })}
+                                                    />
                                                 </div>
                                             </div>
                                         </div>
