@@ -62,8 +62,7 @@ export async function subscribeToPushNotifications() {
         await api.post('/push/subscribe', { subscription });
 
     } catch (error) {
-        alert('❌ عذراً، فشل تفعيل الإشعارات: ' + error.message);
-        console.error('❌ Error subscribing to push notifications:', error);
+        console.warn('⚠️ Push notification subscription notice:', error.message);
     }
 }
 

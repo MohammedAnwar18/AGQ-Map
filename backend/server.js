@@ -21,6 +21,7 @@ const newsRoutes = require('./routes/news');
 const communityRoutes = require('./routes/communities');
 const adminRoutes = require('./routes/admin');
 const shopRoutes = require('./routes/shops');
+const pushRoutes = require('./routes/push');
 
 
 // إنشاء Express App
@@ -91,6 +92,7 @@ app.use('/api/news', newsRoutes);
 app.use('/api/communities', communityRoutes);
 app.use('/api/shops', shopRoutes);
 app.use('/api/geoportals', geoportalRoutes);
+app.use('/api/push', pushRoutes);
 
 
 // صفحة البداية
