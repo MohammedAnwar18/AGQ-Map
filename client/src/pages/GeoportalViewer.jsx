@@ -631,7 +631,9 @@ export default function GeoportalViewer() {
                     });
 
                     if (holes.length > 0) {
+                        const paddedRenderer = L.svg({ padding: 3.0 });
                         const maskPoly = L.polygon([worldOuterRing, ...holes], {
+                            renderer: paddedRenderer,
                             color: 'transparent',
                             fillColor: '#FFFFFF',
                             fillOpacity: 1,
@@ -640,6 +642,15 @@ export default function GeoportalViewer() {
                         maskGroup.addLayer(maskPoly);
                         featureGroupsRef.current['clipping_mask_overlay'] = maskGroup;
                         maskGroup.addTo(mapInstance.current);
+
+                        // Lock bounds and minZoom to prevent revealing outer map on zoom out
+                        const bounds = maskPoly.getBounds();
+                        if (bounds && bounds.isValid() && mapInstance.current) {
+                            const mapBounds = bounds.pad(0.35);
+                            mapInstance.current.setMaxBounds(mapBounds);
+                            mapInstance.current.options.maxBoundsViscosity = 1.0;
+                            mapInstance.current.setMinZoom(12);
+                        }
                     }
                 }
             }
@@ -754,59 +765,10 @@ export default function GeoportalViewer() {
 
     return (
         <div className="geoportal-viewer">
-            {/* 🌟 Custom High-End Geoportal Splash & Loading Screen Overlay */}
+            {/* 🌟 Pure White Minimal Loading Screen (Medium Spinner Only — No Text) */}
             {showSplashOverlay && (
                 <div className={`geoportal-splash-overlay ${splashFading ? 'fade-out' : ''}`}>
-                    <div className="geoportal-splash-grid"></div>
-                    <div className="geoportal-splash-glow-emerald"></div>
-                    <div className="geoportal-splash-glow-gold"></div>
-
-                    <div className="geoportal-splash-card">
-                        <div className="birzeit-logo-wrapper">
-                            <div className="radar-ring"></div>
-                            <div className="radar-ring-inner"></div>
-                            <div className="birzeit-logo-box">
-                                <img
-                                    src="/images/birzeit_logo.png"
-                                    alt="بلدية بيرزيت"
-                                    className="birzeit-logo-img"
-                                    onError={(e) => {
-                                        if (portal?.logo_url) e.target.src = portal.logo_url;
-                                    }}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="geoportal-welcome-badge">
-                            <span>✦</span> البوابة الجغرافية المكانية الرسمية <span>✦</span>
-                        </div>
-
-                        <h1 className="geoportal-splash-title">
-                            {portal?.title_ar || 'بلدية بيرزيت - Birzeit Municipality'}
-                        </h1>
-                        <p className="geoportal-splash-subtitle">
-                            نظام المعاينة التفاعلي للمخططات والأراضي والخدمات المكانية
-                        </p>
-
-                        <div className="geoportal-progress-bar-container">
-                            <div
-                                className="geoportal-progress-bar-fill"
-                                style={{ width: `${progressPercent}%` }}
-                            ></div>
-                        </div>
-
-                        <div className="geoportal-status-text">
-                            <div className="geoportal-status-spinner"></div>
-                            <span>{statusText}</span>
-                        </div>
-                    </div>
-
-                    <div className="geoportal-splash-footer">
-                        <span>تطوير وتكنولوجيا المكان</span>
-                        <div className="palnovaa-brand-pill">
-                            <span>⚡</span> PalNovaa Tech & GIS
-                        </div>
-                    </div>
+                    <div className="geoportal-minimal-spinner"></div>
                 </div>
             )}
             {/* Modern Floating Top Navigation Bar (Matching exact user UI reference) */}

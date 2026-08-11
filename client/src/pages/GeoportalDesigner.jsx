@@ -256,7 +256,9 @@ export default function GeoportalDesigner() {
                             }
                         });
                         if (holes.length > 0) {
+                            const paddedRenderer = L.svg({ padding: 3.0 });
                             const maskPoly = L.polygon([worldOuterRing, ...holes], {
+                                renderer: paddedRenderer,
                                 color: 'transparent',
                                 fillColor: '#FFFFFF',
                                 fillOpacity: 1,

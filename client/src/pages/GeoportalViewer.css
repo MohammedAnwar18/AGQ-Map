@@ -792,256 +792,43 @@
     direction: rtl;
 }
 
+/* Map Canvas Background — Pure White (Prevents tile flicker outside mask) */
+.leaflet-container, .viewer-map {
+    background-color: #ffffff !important;
+}
+
 /* ================================================================
-   Ultra-High-End Custom Geoportal Splash & Loading Screen
-   (Birzeit Municipality + PalNovaa GIS Technology)
+   Pure White Minimal Loading Screen Overlay (Medium Spinning Loader)
    ================================================================ */
 .geoportal-splash-overlay {
     position: fixed;
     inset: 0;
     z-index: 9999;
-    background: radial-gradient(circle at 50% 45%, #0b192e 0%, #030712 100%);
+    background: #ffffff !important;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
     opacity: 1;
-    transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: opacity 0.5s ease;
     pointer-events: auto;
-    overflow: hidden;
-    direction: rtl;
-    font-family: 'Tajawal', sans-serif;
 }
 
 .geoportal-splash-overlay.fade-out {
     opacity: 0;
-    transform: scale(1.04);
     pointer-events: none;
 }
 
-/* Background Animated Spatial Grid Lines */
-.geoportal-splash-grid {
-    position: absolute;
-    inset: 0;
-    background-image: 
-        linear-gradient(to right, rgba(59, 130, 246, 0.05) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(59, 130, 246, 0.05) 1px, transparent 1px);
-    background-size: 40px 40px;
-    mask-image: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 1) 30%, rgba(0, 0, 0, 0) 80%);
-    animation: gridPulse 8s ease-in-out infinite alternate;
-}
-
-@keyframes gridPulse {
-    0% { transform: scale(1); opacity: 0.6; }
-    100% { transform: scale(1.08); opacity: 0.9; }
-}
-
-/* Ambient Radial Glows */
-.geoportal-splash-glow-emerald {
-    position: absolute;
-    width: 450px;
-    height: 450px;
-    background: radial-gradient(circle, rgba(16, 185, 129, 0.18) 0%, rgba(0, 0, 0, 0) 70%);
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+.geoportal-minimal-spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid #e2e8f0;
+    border-top-color: #1d4ed8;
     border-radius: 50%;
-    pointer-events: none;
-    animation: pulseGlow 4s infinite alternate ease-in-out;
+    animation: geoportalSpin 0.75s linear infinite;
 }
 
-.geoportal-splash-glow-gold {
-    position: absolute;
-    width: 350px;
-    height: 350px;
-    background: radial-gradient(circle, rgba(245, 166, 35, 0.14) 0%, rgba(0, 0, 0, 0) 70%);
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    border-radius: 50%;
-    pointer-events: none;
+@keyframes geoportalSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
-@keyframes pulseGlow {
-    0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.6; }
-    100% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
-}
-
-/* Main Content Card */
-.geoportal-splash-card {
-    position: relative;
-    z-index: 2;
-    background: rgba(15, 23, 42, 0.72);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 32px;
-    padding: 44px 48px;
-    box-shadow: 
-        0 30px 60px -12px rgba(0, 0, 0, 0.6),
-        inset 0 1px 0 rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    text-align: center;
-    max-width: 480px;
-    width: 90%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-/* Logo Radar Container */
-.birzeit-logo-wrapper {
-    position: relative;
-    width: 128px;
-    height: 128px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 24px;
-}
-
-.radar-ring {
-    position: absolute;
-    inset: -12px;
-    border: 2px dashed rgba(16, 185, 129, 0.35);
-    border-radius: 50%;
-    animation: rotateRadar 14s linear infinite;
-}
-
-.radar-ring-inner {
-    position: absolute;
-    inset: -4px;
-    border: 1px solid rgba(245, 166, 35, 0.4);
-    border-radius: 50%;
-    animation: rotateRadarReverse 10s linear infinite;
-}
-
-@keyframes rotateRadar {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-@keyframes rotateRadarReverse {
-    from { transform: rotate(360deg); }
-    to { transform: rotate(0deg); }
-}
-
-.birzeit-logo-box {
-    width: 104px;
-    height: 104px;
-    background: #ffffff;
-    border-radius: 50%;
-    padding: 8px;
-    box-shadow: 
-        0 10px 25px rgba(0, 0, 0, 0.4),
-        0 0 20px rgba(16, 185, 129, 0.3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    z-index: 1;
-}
-
-.birzeit-logo-img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-}
-
-/* Welcome Badge */
-.geoportal-welcome-badge {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(245, 166, 35, 0.15) 100%);
-    border: 1px solid rgba(16, 185, 129, 0.35);
-    color: #34d399;
-    font-size: 0.84rem;
-    font-weight: 700;
-    padding: 6px 18px;
-    border-radius: 20px;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 12px;
-    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.1);
-}
-
-.geoportal-splash-title {
-    color: #ffffff;
-    font-size: 1.7rem;
-    font-weight: 900;
-    margin: 0 0 6px 0;
-    line-height: 1.3;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-}
-
-.geoportal-splash-subtitle {
-    color: #94a3b8;
-    font-size: 0.95rem;
-    font-weight: 500;
-    margin-bottom: 28px;
-}
-
-/* Progress Bar & Status */
-.geoportal-progress-bar-container {
-    width: 100%;
-    height: 6px;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 10px;
-    overflow: hidden;
-    position: relative;
-    margin-bottom: 16px;
-}
-
-.geoportal-progress-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #10b981 0%, #3b82f6 50%, #f5a623 100%);
-    border-radius: 10px;
-    transition: width 0.4s ease;
-    box-shadow: 0 0 12px rgba(16, 185, 129, 0.8);
-}
-
-.geoportal-status-text {
-    color: #f5a623;
-    font-size: 0.88rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-}
-
-.geoportal-status-spinner {
-    width: 14px;
-    height: 14px;
-    border: 2px solid rgba(245, 166, 35, 0.25);
-    border-top-color: #f5a623;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-/* Splash Footer (PalNovaa Tech Branding) */
-.geoportal-splash-footer {
-    position: absolute;
-    bottom: 28px;
-    color: rgba(148, 163, 184, 0.8);
-    font-size: 0.86rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    z-index: 2;
-}
-
-.palnovaa-brand-pill {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    padding: 4px 12px;
-    border-radius: 12px;
-    color: #f5a623;
-    font-weight: 800;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
