@@ -239,7 +239,7 @@ export default function GeoportalViewer() {
                 const segMarker = L.marker([midLat, midLng], {
                     icon: L.divIcon({
                         className: 'onmap-measure-segment-label',
-                        html: `<div style="background: ${newColor}; color: #000; font-weight: 800; font-size: 11px; padding: 2px 7px; border-radius: 6px; border: 1.5px solid #FFF; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,0.6);">${segText}</div>`,
+                        html: `<div style="color: #FFF; font-weight: 800; font-size: 12px; white-space: nowrap; text-shadow: 0 0 4px rgba(0,0,0,0.9), -1px -1px 0 rgba(0,0,0,0.8), 1px -1px 0 rgba(0,0,0,0.8), -1px 1px 0 rgba(0,0,0,0.8), 1px 1px 0 rgba(0,0,0,0.8);">${segText}</div>`,
                         iconSize: [0, 0],
                         iconAnchor: [0, 0]
                     }),
