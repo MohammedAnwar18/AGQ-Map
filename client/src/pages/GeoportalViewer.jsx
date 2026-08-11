@@ -1065,9 +1065,7 @@ export default function GeoportalViewer() {
             {/* Bottom Status & Coordinate Bar (Matching Exact User Reference Images) */}
             <div className="geoportal-bottom-bar">
                 <div className="bottom-bar-left">
-                    <span>Terms of Use</span>
-                    <span className="divider">|</span>
-                    <span>© {portal.title_ar || 'GeoPulse'} 2024</span>
+                    <span>© 2026 PalNovaa. جميع الحقوق محفوظة.</span>
                 </div>
 
                 <div className="bottom-bar-right">
@@ -1079,7 +1077,7 @@ export default function GeoportalViewer() {
                             title="اختيار نظام الإسقاط الإحداثي"
                         >
                             <span>
-                                {selectedCrs === '28191' && 'Default WKID: 28191 X/Y'}
+                                {selectedCrs === '28191' && 'Palestinian XY'}
                                 {selectedCrs === '2039' && 'Israeli XY'}
                                 {selectedCrs === '4326' && 'Lat/Long'}
                             </span>
@@ -1093,12 +1091,6 @@ export default function GeoportalViewer() {
                             <div className="crs-menu">
                                 <div
                                     className={`crs-option ${selectedCrs === '28191' ? 'active' : ''}`}
-                                    onClick={() => { setSelectedCrs('28191'); setShowCrsMenu(false); }}
-                                >
-                                    Default WKID: 28191 X/Y
-                                </div>
-                                <div
-                                    className={`crs-option ${selectedCrs === '28191_pal' ? 'active' : ''}`}
                                     onClick={() => { setSelectedCrs('28191'); setShowCrsMenu(false); }}
                                 >
                                     Palestinian XY
