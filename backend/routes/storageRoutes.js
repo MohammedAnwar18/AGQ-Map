@@ -5,9 +5,9 @@ const auth = require('../middleware/auth');
 const upload = require('../middleware/upload');
 
 // مسارات التخزين والاستيراد القديمة
-router.post('/upload', auth.authenticateToken, storageController.uploadGeoJSON);
-router.post('/presigned-url', auth.authenticateToken, storageController.getPresignedUrl);
-router.post('/import-arcgis', auth.authenticateToken, storageController.importArcGIS);
+router.post('/upload', auth.optionalAuth, storageController.uploadGeoJSON);
+router.post('/presigned-url', auth.optionalAuth, storageController.getPresignedUrl);
+router.post('/import-arcgis', auth.optionalAuth, storageController.importArcGIS);
 
 // مسارات مستودع بالنوفا (PalNovaa Repository)
 router.get('/layers', storageController.getLayers);
