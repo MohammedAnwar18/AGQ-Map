@@ -15,6 +15,12 @@ export default function GeoportalViewer() {
     const [layersLoading, setLayersLoading] = useState(false);
     const [showLayersDropdown, setShowLayersDropdown] = useState(false);
 
+    // Geoportal Custom Splash Overlay State
+    const [showSplashOverlay, setShowSplashOverlay] = useState(true);
+    const [splashFading, setSplashFading] = useState(false);
+    const [progressPercent, setProgressPercent] = useState(25);
+    const [statusText, setStatusText] = useState('جاري الاتصال بالنظام الجغرافي لبلدية بيرزيت...');
+
     // Live Coordinates & Projection System
     const [cursorCoords, setCursorCoords] = useState({ lat: 31.9038, lng: 35.2034 });
     const [mapScale, setMapScale] = useState('1 : 25,000');
@@ -412,6 +418,9 @@ export default function GeoportalViewer() {
     const loadPortalData = async () => {
         try {
             setLoading(true);
+            setProgressPercent(25);
+            setStatusText('جاري الاتصال بالسيرفر الجغرافي لبلدية بيرزيت...');
+
             const url = slug
                 ? `/api/geoportals/public/resolve?slug=${slug}`
                 : `/api/geoportals/public/resolve`;
@@ -424,6 +433,9 @@ export default function GeoportalViewer() {
 
             const allLayerIds = new Set(layerArr.map(l => l.id));
             setVisibleLayerIds(allLayerIds);
+
+            setProgressPercent(65);
+            setStatusText('جاري قراءة المخططات والطبقات المكانية...');
         } catch (err) {
             console.error('Error resolving portal:', err);
             setLayers([]);
@@ -696,6 +708,14 @@ export default function GeoportalViewer() {
         }
 
         setLayersLoading(false);
+        setProgressPercent(100);
+        setStatusText('تهيئة الخريطة والتوجيه المباشر إلى بلدة بيرزيت...');
+        setTimeout(() => {
+            setSplashFading(true);
+            setTimeout(() => {
+                setShowSplashOverlay(false);
+            }, 650);
+        }, 400);
     }, [layers, visibleLayerIds, fetchLayerData, updateSmartMapLabels]);
 
     const toggleLayerVisibility = (layerId) => {
@@ -724,15 +744,7 @@ export default function GeoportalViewer() {
         }
     };
 
-    if (loading) {
-        return (
-            <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#050B16', color: '#F5A623', fontFamily: 'Tajawal, sans-serif' }}>
-                <h2>🚀 جاري تحميل البوابة الجغرافية المكانية...</h2>
-            </div>
-        );
-    }
-
-    if (!portal) {
+    if (!portal && !loading) {
         return (
             <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#050B16', color: '#EF4444', fontFamily: 'Tajawal, sans-serif' }}>
                 <h2>❌ البوابة الجغرافية المطلوبة غير موجودة</h2>
@@ -742,6 +754,61 @@ export default function GeoportalViewer() {
 
     return (
         <div className="geoportal-viewer">
+            {/* 🌟 Custom High-End Geoportal Splash & Loading Screen Overlay */}
+            {showSplashOverlay && (
+                <div className={`geoportal-splash-overlay ${splashFading ? 'fade-out' : ''}`}>
+                    <div className="geoportal-splash-grid"></div>
+                    <div className="geoportal-splash-glow-emerald"></div>
+                    <div className="geoportal-splash-glow-gold"></div>
+
+                    <div className="geoportal-splash-card">
+                        <div className="birzeit-logo-wrapper">
+                            <div className="radar-ring"></div>
+                            <div className="radar-ring-inner"></div>
+                            <div className="birzeit-logo-box">
+                                <img
+                                    src="/images/birzeit_logo.png"
+                                    alt="بلدية بيرزيت"
+                                    className="birzeit-logo-img"
+                                    onError={(e) => {
+                                        if (portal?.logo_url) e.target.src = portal.logo_url;
+                                    }}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="geoportal-welcome-badge">
+                            <span>✦</span> البوابة الجغرافية المكانية الرسمية <span>✦</span>
+                        </div>
+
+                        <h1 className="geoportal-splash-title">
+                            {portal?.title_ar || 'بلدية بيرزيت - Birzeit Municipality'}
+                        </h1>
+                        <p className="geoportal-splash-subtitle">
+                            نظام المعاينة التفاعلي للمخططات والأراضي والخدمات المكانية
+                        </p>
+
+                        <div className="geoportal-progress-bar-container">
+                            <div
+                                className="geoportal-progress-bar-fill"
+                                style={{ width: `${progressPercent}%` }}
+                            ></div>
+                        </div>
+
+                        <div className="geoportal-status-text">
+                            <div className="geoportal-status-spinner"></div>
+                            <span>{statusText}</span>
+                        </div>
+                    </div>
+
+                    <div className="geoportal-splash-footer">
+                        <span>تطوير وتكنولوجيا المكان</span>
+                        <div className="palnovaa-brand-pill">
+                            <span>⚡</span> PalNovaa Tech & GIS
+                        </div>
+                    </div>
+                </div>
+            )}
             {/* Modern Floating Top Navigation Bar (Matching exact user UI reference) */}
             <div className="geoportal-navbar-container">
                 <div className="geoportal-navbar">

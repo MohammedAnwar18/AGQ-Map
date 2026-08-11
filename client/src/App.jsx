@@ -99,13 +99,14 @@ function App() {
         window.addEventListener('offline', handleOffline);
 
         const isCustomInvitePath = window.location.pathname === '/walid-sheikha';
-        const delay = isCustomInvitePath ? 0 : 5000;
+        const isGeoportalPath = window.location.pathname.startsWith('/geoportal');
+        const delay = (isCustomInvitePath || isGeoportalPath) ? 0 : 5000;
 
-        // Splash Screen Logic (Restored to original 1.8s)
+        // Splash Screen Logic
         const timer = setTimeout(() => {
             const splash = document.getElementById('splash-screen');
             if (splash) {
-                if (isCustomInvitePath) {
+                if (isCustomInvitePath || isGeoportalPath) {
                     splash.style.display = 'none';
                     document.body.classList.remove('splash-active');
                 } else {
