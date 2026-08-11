@@ -672,6 +672,53 @@ export default function GeoportalViewer() {
                         )}
                     </div>
                 </div>
+
+                {/* 🛠️ بار الأدوات الممتد الساحر (Floating Tools Extension Bar) */}
+                {showToolsBar && (
+                    <div className="floating-tools-extension-bar">
+                        <button
+                            className={`tool-bar-item ${activeTool === 'location' ? 'active' : ''}`}
+                            onClick={() => {
+                                setActiveTool('location');
+                                handleLocateUser();
+                            }}
+                        >
+                            <span>📍 موقعي الحالي (GPS)</span>
+                        </button>
+
+                        <button
+                            className={`tool-bar-item ${activeTool === 'distance' ? 'active' : ''}`}
+                            onClick={() => {
+                                setActiveTool(activeTool === 'distance' ? null : 'distance');
+                                clearMeasurements();
+                            }}
+                        >
+                            <span>📏 قياس مسافة</span>
+                        </button>
+
+                        <button
+                            className={`tool-bar-item ${activeTool === 'area' ? 'active' : ''}`}
+                            onClick={() => {
+                                setActiveTool(activeTool === 'area' ? null : 'area');
+                                clearMeasurements();
+                            }}
+                        >
+                            <span>📐 قياس مساحة</span>
+                        </button>
+
+                        {(measureData || activeTool === 'distance' || activeTool === 'area') && (
+                            <button
+                                className="tool-bar-item clear-btn"
+                                onClick={() => {
+                                    clearMeasurements();
+                                    setActiveTool(null);
+                                }}
+                            >
+                                <span>🗑️ مسح القياس</span>
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Feature Property Inspector Card */}

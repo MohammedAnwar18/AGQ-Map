@@ -14,6 +14,7 @@ export default function GeoportalDesigner() {
     const [activeTab, setActiveTab] = useState('general'); // 'general' | 'layers' | 'map' | 'auth' | 'domain'
     const [loading, setLoading] = useState(false);
     const [layerUploading, setLayerUploading] = useState(false);
+    const [logoUploading, setLogoUploading] = useState(false);
 
     // Form states
     const [formData, setFormData] = useState({
