@@ -653,14 +653,57 @@ export default function GeoportalDesigner() {
         }
     };
 
-    // 5. Update layer styling (Real-time local state + API save)
+    // 5. Update layer styling (Enforces group label field & style uniformity across all group member layers)
     const handleLayerStyleChange = async (layerId, newStyle) => {
-        // Update local layerList state immediately for smooth UI feedback
-        setLayerList(prev => prev.map(l => l.id === layerId ? { ...l, style_config: newStyle } : l));
+        const currentLayer = layerList.find(l => l.id === layerId);
+        const currentStyle = typeof currentLayer?.style_config === 'string'
+            ? (() => { try { return JSON.parse(currentLayer.style_config); } catch { return {}; } })()
+            : (currentLayer?.style_config || {});
+
+        const targetGroupName = newStyle.group_name !== undefined ? newStyle.group_name : currentStyle.group_name;
+
+        let layersToUpdate = [layerId];
+        if (targetGroupName && String(targetGroupName).trim() !== '') {
+            const groupMembers = layerList.filter(l => {
+                const st = typeof l.style_config === 'string'
+                    ? (() => { try { return JSON.parse(l.style_config); } catch { return {}; } })()
+                    : (l.style_config || {});
+                return st.group_name === targetGroupName || l.id === layerId;
+            });
+            layersToUpdate = groupMembers.map(m => m.id);
+        }
+
+        // تحديث الحالة المحلية فوراً لجميع طبقات المجموعة لتجربة سلسة
+        setLayerList(prev => prev.map(l => {
+            if (layersToUpdate.includes(l.id)) {
+                const oldSt = typeof l.style_config === 'string'
+                    ? (() => { try { return JSON.parse(l.style_config); } catch { return {}; } })()
+                    : (l.style_config || {});
+                const mergedStyle = {
+                    ...oldSt,
+                    ...newStyle,
+                    group_name: targetGroupName
+                };
+                return { ...l, style_config: mergedStyle };
+            }
+            return l;
+        }));
+
         try {
-            await axios.patch(`${API_BASE}/layers/${layerId}/style`, { style_config: newStyle }, authHeaders);
+            await Promise.all(layersToUpdate.map(id => {
+                const l = layerList.find(item => item.id === id);
+                const oldSt = typeof l?.style_config === 'string'
+                    ? (() => { try { return JSON.parse(l.style_config); } catch { return {}; } })()
+                    : (l?.style_config || {});
+                const mergedStyle = {
+                    ...oldSt,
+                    ...newStyle,
+                    group_name: targetGroupName
+                };
+                return axios.patch(`${API_BASE}/layers/${id}/style`, { style_config: mergedStyle }, authHeaders);
+            }));
         } catch (err) {
-            console.error('Error updating layer style:', err);
+            console.error('Error updating layer style uniformity:', err);
         }
     };
 
