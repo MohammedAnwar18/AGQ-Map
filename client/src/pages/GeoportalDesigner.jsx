@@ -234,6 +234,7 @@ export default function GeoportalDesigner() {
                 try {
                     const res = await axios.get(`${API_BASE}/public/layers/${maskLayer.id}/features`, authHeaders);
                     const maskGeojson = res.data;
+                    if (maskGeojson && maskGeojson.features?.length) {
                         const worldOuterRing = [
                             [90, -180],
                             [90, 180],
