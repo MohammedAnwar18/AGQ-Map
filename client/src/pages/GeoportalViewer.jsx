@@ -673,7 +673,7 @@ export default function GeoportalViewer() {
                     </div>
                 </div>
 
-                {/* 🛠️ بار الأدوات الممتد الساحر (Floating Tools Extension Bar) */}
+                {/* 🛠️ بار الأدوات الممتد الساحر الفاخر (Ultra-Sleek Floating Tools Bar) */}
                 {showToolsBar && (
                     <div className="floating-tools-extension-bar">
                         <button
@@ -683,7 +683,12 @@ export default function GeoportalViewer() {
                                 handleLocateUser();
                             }}
                         >
-                            <span>📍 موقعي الحالي (GPS)</span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                <circle cx="12" cy="12" r="10" />
+                                <polygon points="12 2 15 12 12 22 9 12 12 2" fill="currentColor" opacity="0.3" />
+                                <circle cx="12" cy="12" r="3" fill="currentColor" />
+                            </svg>
+                            <span>تحديد موقعي (GPS)</span>
                         </button>
 
                         <button
@@ -693,7 +698,10 @@ export default function GeoportalViewer() {
                                 clearMeasurements();
                             }}
                         >
-                            <span>📏 قياس مسافة</span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                <path d="M2 12h20M6 8v8M12 8v8M18 8v8" />
+                            </svg>
+                            <span>قياس مسافة</span>
                         </button>
 
                         <button
@@ -703,7 +711,12 @@ export default function GeoportalViewer() {
                                 clearMeasurements();
                             }}
                         >
-                            <span>📐 قياس مساحة</span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                <path d="M3 3h18v18H3z" strokeDasharray="4 4" />
+                                <polygon points="3 3 21 3 21 21 3 21" fill="currentColor" opacity="0.15" />
+                                <path d="M3 21L21 3" strokeWidth="1.5" />
+                            </svg>
+                            <span>قياس مساحة</span>
                         </button>
 
                         {(measureData || activeTool === 'distance' || activeTool === 'area') && (
@@ -714,7 +727,13 @@ export default function GeoportalViewer() {
                                     setActiveTool(null);
                                 }}
                             >
-                                <span>🗑️ مسح القياس</span>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                    <polyline points="3 6 5 6 21 6" />
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                    <line x1="10" y1="11" x2="10" y2="17" />
+                                    <line x1="14" y1="11" x2="14" y2="17" />
+                                </svg>
+                                <span>مسح القياس</span>
                             </button>
                         )}
                     </div>

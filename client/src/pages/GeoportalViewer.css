@@ -462,59 +462,78 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Floating Tools Extension Bar — Direct Flush Extension Below Navbar */
+/* Floating Tools Extension Bar — Ultra Modern Glassmorphic Design */
 .floating-tools-extension-bar {
     pointer-events: auto;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     padding: 10px 24px;
-    background: rgba(15, 23, 42, 0.98);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-    animation: fadeInDown 0.2s ease-out;
+    background: rgba(11, 19, 36, 0.95);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    animation: fadeInDown 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     width: 100%;
 }
 
 .tool-bar-item {
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: #F8FAFC;
-    padding: 6px 14px;
-    border-radius: 8px;
-    font-size: 0.82rem;
-    font-weight: 600;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: #E2E8F0;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.tool-bar-item svg {
+    transition: transform 0.2s ease;
 }
 
 .tool-bar-item:hover {
-    background: rgba(6, 214, 242, 0.2);
-    border-color: #06D6F2;
+    background: rgba(6, 214, 242, 0.15);
+    border-color: rgba(6, 214, 242, 0.5);
     color: #06D6F2;
+    transform: translateY(-1.5px);
+    box-shadow: 0 4px 14px rgba(6, 214, 242, 0.25);
+}
+
+.tool-bar-item:hover svg {
+    transform: scale(1.1);
 }
 
 .tool-bar-item.active {
-    background: #06D6F2 !important;
-    border-color: #06D6F2 !important;
-    color: #050B16 !important;
+    background: linear-gradient(135deg, #06D6F2 0%, #0284C7 100%) !important;
+    border-color: #38BDF8 !important;
+    color: #030712 !important;
+    box-shadow: 0 0 18px rgba(6, 214, 242, 0.5) !important;
+}
+
+.tool-bar-item.active svg {
+    stroke: #030712 !important;
+    transform: scale(1.1);
 }
 
 .tool-bar-item.clear-btn {
-    background: rgba(239, 68, 68, 0.2);
-    border-color: #EF4444;
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(239, 68, 68, 0.35);
     color: #FCA5A5;
     margin-right: auto;
 }
 
 .tool-bar-item.clear-btn:hover {
     background: #EF4444;
+    border-color: #EF4444;
     color: #FFFFFF;
+    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
 }
 
 /* GIS Measurement Result Card */
