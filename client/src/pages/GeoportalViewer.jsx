@@ -91,8 +91,8 @@ export default function GeoportalViewer() {
     const mapRef = useRef(null);
     const mapInstance = useRef(null);
     const featureGroupsRef = useRef({});
-    // كاش البيانات لتجنب إعادة الجلب
     const layerDataCache = useRef({});
+    const hasFittedBoundsRef = useRef(false); // ✅ لمنع إعادة إرجاع الخريطة لنفس المركز عند التكبير والتصغير
 
     // 1. Resolve & Fetch Portal Data
     useEffect(() => {
@@ -149,7 +149,7 @@ export default function GeoportalViewer() {
                 setCursorCoords({ lat: e.latlng.lat, lng: e.latlng.lng });
             });
 
-            // Listen to zoomend for live map scale & zoom threshold check
+            // Listen to zoomend for live map scale
             mapInstance.current.on('zoomend', () => {
                 const z = mapInstance.current.getZoom();
                 setCurrentZoom(z);
@@ -161,7 +161,7 @@ export default function GeoportalViewer() {
         // Load features for active visible layers
         renderVisibleLayers();
 
-    }, [portal, visibleLayerIds, isLoggedIn, currentZoom]);
+    }, [portal, visibleLayerIds, isLoggedIn]);
 
     // ✅ تحميل طبقة واحدة مع كاش
     const fetchLayerData = useCallback(async (layer) => {
@@ -271,9 +271,10 @@ export default function GeoportalViewer() {
             if (b && b.isValid()) combinedBounds.extend(b);
         }));
 
-        // ✅ التوجّه التلقائي المباشر لموقع المعالم الحقيقي
-        if (combinedBounds && combinedBounds.isValid() && mapInstance.current) {
+        // ✅ التوجّه التلقائي المباشر لموقع المعالم الحقيقي عند أول تحميل فقط
+        if (!hasFittedBoundsRef.current && combinedBounds && combinedBounds.isValid() && mapInstance.current) {
             mapInstance.current.fitBounds(combinedBounds, { padding: [50, 50], maxZoom: 17 });
+            hasFittedBoundsRef.current = true;
         }
 
         setLayersLoading(false);
