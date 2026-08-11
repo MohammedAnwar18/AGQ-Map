@@ -462,17 +462,20 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Floating Tools Extension Bar */
+/* Floating Tools Extension Bar — Direct Flush Extension Below Navbar */
 .floating-tools-extension-bar {
+    pointer-events: auto;
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 16px;
-    background: rgba(15, 23, 42, 0.95);
-    backdrop-filter: blur(12px);
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    animation: fadeInDown 0.25s ease-out;
+    padding: 10px 24px;
+    background: rgba(15, 23, 42, 0.98);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    animation: fadeInDown 0.2s ease-out;
+    width: 100%;
 }
 
 .tool-bar-item {
