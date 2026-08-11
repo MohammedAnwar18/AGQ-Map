@@ -11,29 +11,29 @@
     color: #0f172a;
 }
 
-/* Floating Top Navigation Container */
+/* Floating Top Navigation Container — Full Bleed Flush Top & Edges */
 .geoportal-navbar-container {
     position: absolute;
-    top: 16px;
-    left: 16px;
-    right: 16px;
+    top: 0;
+    left: 0;
+    right: 0;
     z-index: 1000;
     pointer-events: none;
 }
 
 .geoportal-navbar {
     pointer-events: auto;
-    background: rgba(255, 255, 255, 0.96);
+    background: rgba(255, 255, 255, 0.98);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(226, 232, 240, 0.8);
-    border-radius: 24px;
-    height: 62px;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+    border-radius: 0;
+    height: 58px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 20px;
-    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.04);
+    padding: 0 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 
 /* Brand Section */
@@ -44,20 +44,20 @@
 }
 
 .brand-icon-box {
-    width: 40px;
-    height: 40px;
+    width: 38px;
+    height: 38px;
     background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
-    border-radius: 12px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #ffffff;
-    box-shadow: 0 4px 12px rgba(29, 78, 216, 0.3);
+    box-shadow: 0 4px 12px rgba(29, 78, 216, 0.25);
 }
 
 .brand-logo {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     object-fit: contain;
 }
 
@@ -71,7 +71,7 @@
 /* Center Search Input */
 .navbar-center-search {
     flex: 1;
-    max-width: 480px;
+    max-width: 460px;
     margin: 0 24px;
 }
 
@@ -96,7 +96,7 @@
 
 .navbar-search-input {
     width: 100%;
-    height: 42px;
+    height: 40px;
     padding: 0 40px;
     background: #f1f5f9;
     border: 1px solid transparent;
@@ -114,11 +114,12 @@
     box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
 }
 
-/* Navbar Right Actions */
+/* Navbar Right Actions & Layers Dropdown */
 .navbar-actions {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
+    direction: rtl;
 }
 
 .layers-dropdown-wrapper {
@@ -130,10 +131,10 @@
     align-items: center;
     gap: 8px;
     padding: 8px 16px;
-    background: transparent;
-    border: 1px solid transparent;
-    border-radius: 16px;
-    color: #334155;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    color: #1e293b;
     font-size: 0.88rem;
     font-weight: 700;
     cursor: pointer;
@@ -142,7 +143,8 @@
 
 .nav-action-btn.layers-btn:hover,
 .nav-action-btn.layers-btn.active {
-    background: #f1f5f9;
+    background: #eff6ff;
+    border-color: #93c5fd;
     color: #1d4ed8;
 }
 
@@ -194,20 +196,124 @@
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
 
-/* Layers Dropdown Menu */
+/* Layers Dropdown Menu Right Aligned */
 .layers-dropdown-menu {
     position: absolute;
-    top: calc(100% + 12px);
+    top: calc(100% + 8px);
     right: 0;
-    width: 300px;
+    width: 310px;
     background: rgba(255, 255, 255, 0.98);
     backdrop-filter: blur(20px);
     border: 1px solid #e2e8f0;
-    border-radius: 20px;
-    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
+    border-radius: 16px;
+    box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.15);
     overflow: hidden;
     animation: fadeInDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     direction: rtl;
+    z-index: 1005;
+}
+
+/* Bottom Status & Coordinate Bar (Matching Reference Images Exactly) */
+.geoportal-bottom-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 32px;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    font-size: 0.78rem;
+    color: #475569;
+    font-weight: 500;
+    user-select: none;
+}
+
+.bottom-bar-left,
+.bottom-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.divider {
+    color: #cbd5e1;
+}
+
+.crs-selector-wrapper {
+    position: relative;
+}
+
+.crs-selector-btn {
+    background: none;
+    border: none;
+    color: #334155;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: background 0.15s ease;
+}
+
+.crs-selector-btn:hover {
+    background: #f1f5f9;
+    color: #1d4ed8;
+}
+
+.crs-menu {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    right: 0;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+    min-width: 200px;
+    overflow: hidden;
+    z-index: 1010;
+    direction: ltr;
+}
+
+.crs-option {
+    padding: 8px 12px;
+    font-size: 0.78rem;
+    color: #334155;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.crs-option:last-child {
+    border-bottom: none;
+}
+
+.crs-option:hover,
+.crs-option.active {
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-weight: 700;
+}
+
+.coords-display {
+    font-family: monospace;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #0f172a;
+    letter-spacing: 0.5px;
+}
+
+.scale-display {
+    font-weight: 600;
+    color: #334155;
 }
 
 @keyframes fadeInDown {

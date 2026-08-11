@@ -15,6 +15,35 @@ export default function GeoportalViewer() {
     const [layersLoading, setLayersLoading] = useState(false);
     const [showLayersDropdown, setShowLayersDropdown] = useState(false);
 
+    // Live Coordinates & Projection System
+    const [cursorCoords, setCursorCoords] = useState({ lat: 31.9038, lng: 35.2034 });
+    const [mapScale, setMapScale] = useState('1 : 25,000');
+    const [selectedCrs, setSelectedCrs] = useState('28191'); // '28191' (Palestine Grid) | '2039' (Israeli Grid) | '4326' (Lat/Long)
+    const [showCrsMenu, setShowCrsMenu] = useState(false);
+
+    // Coordinate conversion utilities
+    const formatCoordinates = () => {
+        const { lat, lng } = cursorCoords;
+        if (selectedCrs === '4326') {
+            return `X: ${lng.toFixed(4)}    Y: ${lat.toFixed(4)}`;
+        } else if (selectedCrs === '2039') {
+            const RAD = Math.PI / 180;
+            const dLat = (lat - 31.734) * 111132;
+            const dLng = (lng - 35.212) * 111132 * Math.cos(lat * RAD);
+            const x = Math.round(220000 + dLng);
+            const y = Math.round(626869 + dLat);
+            return `X: ${x}    Y: ${y}`;
+        } else {
+            // Default WKID: 28191 (Palestinian Grid)
+            const RAD = Math.PI / 180;
+            const dLat = (lat - 31.7340969444) * 111132;
+            const dLng = (lng - 35.2120805556) * 111132 * Math.cos(lat * RAD);
+            const x = Math.round(170000 + dLng);
+            const y = Math.round(1126869 + dLat);
+            return `X: ${x}    Y: ${y}`;
+        }
+    };
+
     // Auth modal state
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [loginCreds, setLoginCreds] = useState({ username: '', password: '' });
@@ -82,7 +111,17 @@ export default function GeoportalViewer() {
                 subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
             }).addTo(mapInstance.current);
 
-            L.control.zoom({ position: 'topleft' }).addTo(mapInstance.current);
+            // Listen to mousemove for live coordinates
+            mapInstance.current.on('mousemove', (e) => {
+                setCursorCoords({ lat: e.latlng.lat, lng: e.latlng.lng });
+            });
+
+            // Listen to zoomend for live map scale
+            mapInstance.current.on('zoomend', () => {
+                const z = mapInstance.current.getZoom();
+                const scaleVal = Math.round(591657550.5 / Math.pow(2, z));
+                setMapScale(`1 : ${scaleVal.toLocaleString()}`);
+            });
         }
 
         // Load features for active visible layers
@@ -264,7 +303,7 @@ export default function GeoportalViewer() {
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                                     <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
                                 </svg>
-                                <span>Layers</span>
+                                <span>طبقات</span>
                                 <span className="layers-badge">{layers.length}</span>
                             </button>
 
@@ -288,7 +327,7 @@ export default function GeoportalViewer() {
                                                             <input
                                                                 type="checkbox"
                                                                 checked={isVisible}
-                                                                onChange={() => { }} // Handled by parent click
+                                                                onChange={() => { }}
                                                             />
                                                             <span
                                                                 className="legend-swatch"
@@ -344,24 +383,11 @@ export default function GeoportalViewer() {
                 </div>
             </div>
 
-            {/* Floating Tools Bar */}
-            <div className="floating-tools-bar">
-                <button className="tool-button" title="استعلام القطع والمعالم" onClick={() => setActiveTool(activeTool === 'identify' ? null : 'identify')}>
-                    🔍
-                </button>
-                <button className="tool-button" title="قياس المسافات والمساحات" onClick={() => alert('أداة القياس المكانية التفاعلية موجهة على الخريطة')}>
-                    📏
-                </button>
-                <button className="tool-button" title="طباعة الخريطة" onClick={() => window.print()}>
-                    🖨️
-                </button>
-            </div>
-
             {/* Feature Property Drawer Popup */}
             {selectedFeatureProps && (
                 <div style={{
                     position: 'absolute',
-                    bottom: 24,
+                    bottom: 48,
                     right: 24,
                     zIndex: 1000,
                     width: 320,
@@ -421,6 +447,79 @@ export default function GeoportalViewer() {
                     </div>
                 </div>
             )}
+
+            {/* Bottom Status & Coordinate Bar (Matching Exact User Reference Images) */}
+            <div className="geoportal-bottom-bar">
+                <div className="bottom-bar-left">
+                    <span>Terms of Use</span>
+                    <span className="divider">|</span>
+                    <span>© {portal.title_ar || 'GeoPulse'} 2024</span>
+                </div>
+
+                <div className="bottom-bar-right">
+                    {/* Projection System Selector Trigger */}
+                    <div className="crs-selector-wrapper">
+                        <button
+                            className="crs-selector-btn"
+                            onClick={() => setShowCrsMenu(!showCrsMenu)}
+                            title="اختيار نظام الإسقاط الإحداثي"
+                        >
+                            <span>
+                                {selectedCrs === '28191' && 'Default WKID: 28191 X/Y'}
+                                {selectedCrs === '2039' && 'Israeli XY'}
+                                {selectedCrs === '4326' && 'Lat/Long'}
+                            </span>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M6 9l6 6 6-6" />
+                            </svg>
+                        </button>
+
+                        {/* Projection Selection Menu */}
+                        {showCrsMenu && (
+                            <div className="crs-menu">
+                                <div
+                                    className={`crs-option ${selectedCrs === '28191' ? 'active' : ''}`}
+                                    onClick={() => { setSelectedCrs('28191'); setShowCrsMenu(false); }}
+                                >
+                                    Default WKID: 28191 X/Y
+                                </div>
+                                <div
+                                    className={`crs-option ${selectedCrs === '28191_pal' ? 'active' : ''}`}
+                                    onClick={() => { setSelectedCrs('28191'); setShowCrsMenu(false); }}
+                                >
+                                    Palestinian XY
+                                </div>
+                                <div
+                                    className={`crs-option ${selectedCrs === '2039' ? 'active' : ''}`}
+                                    onClick={() => { setSelectedCrs('2039'); setShowCrsMenu(false); }}
+                                >
+                                    Israeli XY
+                                </div>
+                                <div
+                                    className={`crs-option ${selectedCrs === '4326' ? 'active' : ''}`}
+                                    onClick={() => { setSelectedCrs('4326'); setShowCrsMenu(false); }}
+                                >
+                                    Lat/Long
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <span className="divider">|</span>
+
+                    {/* Live Coordinates Display */}
+                    <div className="coords-display">
+                        {formatCoordinates()}
+                    </div>
+
+                    <span className="divider">|</span>
+
+                    {/* Live Map Scale Display */}
+                    <div className="scale-display">
+                        Scale: {mapScale}
+                    </div>
+                </div>
+            </div>
 
             {/* Map Canvas */}
             <div ref={mapRef} className="viewer-map"></div>
