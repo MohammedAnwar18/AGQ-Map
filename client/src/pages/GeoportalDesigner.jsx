@@ -88,6 +88,8 @@ export default function GeoportalDesigner() {
         }
     };
 
+    const [layerFieldsMap, setLayerFieldsMap] = useState({});
+
     // 2. Initialize Leaflet Map
     useEffect(() => {
         if (!mapRef.current) return;
@@ -126,22 +128,31 @@ export default function GeoportalDesigner() {
                 const geojson = res.data;
 
                 if (geojson && geojson.features && geojson.features.length > 0) {
+                    // ✅ استخراج أسماء حقول الخصائص للطبقة
+                    const sampleProps = geojson.features[0].properties || {};
+                    const fields = Object.keys(sampleProps);
+                    setLayerFieldsMap(prev => ({ ...prev, [layer.id]: fields }));
+
                     const style = layer.style_config || {};
+                    const isTransparent = style.fill_color === 'transparent' || style.is_transparent;
+                    const showLabels = style.show_labels;
+                    const labelField = style.label_field;
+
                     const leafletLayer = L.geoJSON(geojson, {
                         style: () => ({
                             color: style.stroke_color || '#1D4ED8',
-                            weight: style.stroke_width || 2,
-                            fillColor: style.fill_color || '#3B82F6',
-                            fillOpacity: style.fill_opacity || 0.45
+                            weight: style.stroke_width !== undefined ? style.stroke_width : 2,
+                            fillColor: isTransparent ? 'transparent' : (style.fill_color || '#3B82F6'),
+                            fillOpacity: isTransparent ? 0 : (style.fill_opacity !== undefined ? style.fill_opacity : 0.45)
                         }),
                         pointToLayer: (feature, latlng) => {
                             return L.circleMarker(latlng, {
                                 radius: style.point_radius || 7,
-                                fillColor: style.fill_color || '#F5A623',
+                                fillColor: isTransparent ? 'transparent' : (style.fill_color || '#F5A623'),
                                 color: style.stroke_color || '#D88B0E',
-                                weight: 2,
+                                weight: style.stroke_width || 2,
                                 opacity: 1,
-                                fillOpacity: 0.9
+                                fillOpacity: isTransparent ? 0 : (style.fill_opacity !== undefined ? style.fill_opacity : 0.9)
                             });
                         },
                         onEachFeature: (feature, l) => {
@@ -150,6 +161,18 @@ export default function GeoportalDesigner() {
                                     .map(([k, v]) => `<strong>${k}:</strong> ${v}`)
                                     .join('<br/>');
                                 l.bindPopup(`<div style="font-family: Tajawal, sans-serif;">${popupContent}</div>`);
+
+                                // ✅ إضافة مسميات الخصائص كـ Labels مطبوعة على الخريطة
+                                if (showLabels && labelField && feature.properties[labelField] !== undefined) {
+                                    const val = feature.properties[labelField];
+                                    if (val !== null && val !== '') {
+                                        l.bindTooltip(String(val), {
+                                            permanent: true,
+                                            direction: 'center',
+                                            className: 'map-feature-label'
+                                        });
+                                    }
+                                }
                             }
                         }
                     });
@@ -461,6 +484,81 @@ export default function GeoportalDesigner() {
                                                         value={style.point_radius || 7}
                                                         onChange={e => handleLayerStyleChange(layer.id, { ...style, point_radius: parseInt(e.target.value) })}
                                                     />
+                                                </div>
+
+                                                {/* Zoom Visibility Thresholds */}
+                                                <div style={{ gridColumn: 'span 2', marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                                                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#06D6F2', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        <span>🔍 نطاق ظهور الطبقة حسَب زوم ومقياس الخريطة (Zoom Threshold)</span>
+                                                    </div>
+                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                                        <div>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#94a3b8' }}>
+                                                                <span>أدنى زوم للظهور (Min Zoom)</span>
+                                                                <span>Zoom {style.min_zoom !== undefined ? style.min_zoom : 1}</span>
+                                                            </div>
+                                                            <input
+                                                                type="range"
+                                                                min="1"
+                                                                max="21"
+                                                                step="1"
+                                                                className="range-input"
+                                                                value={style.min_zoom !== undefined ? style.min_zoom : 1}
+                                                                onChange={e => handleLayerStyleChange(layer.id, { ...style, min_zoom: parseInt(e.target.value) })}
+                                                            />
+                                                        </div>
+
+                                                        <div>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#94a3b8' }}>
+                                                                <span>أقصى زوم للظهور (Max Zoom)</span>
+                                                                <span>Zoom {style.max_zoom !== undefined ? style.max_zoom : 21}</span>
+                                                            </div>
+                                                            <input
+                                                                type="range"
+                                                                min="1"
+                                                                max="21"
+                                                                step="1"
+                                                                className="range-input"
+                                                                value={style.max_zoom !== undefined ? style.max_zoom : 21}
+                                                                onChange={e => handleLayerStyleChange(layer.id, { ...style, max_zoom: parseInt(e.target.value) })}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Feature Labeling System */}
+                                                <div style={{ gridColumn: 'span 2', marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                                                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#F5A623', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        <span>🏷️ طباعة نصوص الخصائص ع الخريطة (Feature Labels)</span>
+                                                    </div>
+
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            id={`label_chk_${layer.id}`}
+                                                            checked={style.show_labels || false}
+                                                            onChange={e => handleLayerStyleChange(layer.id, { ...style, show_labels: e.target.checked })}
+                                                        />
+                                                        <label htmlFor={`label_chk_${layer.id}`} style={{ fontSize: '0.78rem', color: '#FFFFFF', cursor: 'pointer', margin: 0, fontWeight: 600 }}>
+                                                            إظهار مسميات وقيم الحقول كـ Label على العناصر
+                                                        </label>
+                                                    </div>
+
+                                                    {style.show_labels && (
+                                                        <div className="form-group" style={{ marginBottom: 0 }}>
+                                                            <label style={{ fontSize: '0.75rem', color: '#94a3b8' }}>اختيار الحقل المراد إظهاره كاسم/رقم:</label>
+                                                            <select
+                                                                className="form-control"
+                                                                value={style.label_field || ''}
+                                                                onChange={e => handleLayerStyleChange(layer.id, { ...style, label_field: e.target.value })}
+                                                            >
+                                                                <option value="">-- اختر حقل التسمية --</option>
+                                                                {(layerFieldsMap[layer.id] || []).map(f => (
+                                                                    <option key={f} value={f}>{f}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>

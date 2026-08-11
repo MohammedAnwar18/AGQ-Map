@@ -18,6 +18,7 @@ export default function GeoportalViewer() {
     // Live Coordinates & Projection System
     const [cursorCoords, setCursorCoords] = useState({ lat: 31.9038, lng: 35.2034 });
     const [mapScale, setMapScale] = useState('1 : 25,000');
+    const [currentZoom, setCurrentZoom] = useState(13);
     const [selectedCrs, setSelectedCrs] = useState('28191'); // '28191' (Palestine Grid) | '2039' (Israeli Grid) | '4326' (Lat/Long)
     const [showCrsMenu, setShowCrsMenu] = useState(false);
 
@@ -120,9 +121,10 @@ export default function GeoportalViewer() {
                 setCursorCoords({ lat: e.latlng.lat, lng: e.latlng.lng });
             });
 
-            // Listen to zoomend for live map scale
+            // Listen to zoomend for live map scale & zoom threshold check
             mapInstance.current.on('zoomend', () => {
                 const z = mapInstance.current.getZoom();
+                setCurrentZoom(z);
                 const scaleVal = Math.round(591657550.5 / Math.pow(2, z));
                 setMapScale(`1 : ${scaleVal.toLocaleString()}`);
             });
@@ -131,7 +133,7 @@ export default function GeoportalViewer() {
         // Load features for active visible layers
         renderVisibleLayers();
 
-    }, [portal, visibleLayerIds, isLoggedIn]);
+    }, [portal, visibleLayerIds, isLoggedIn, currentZoom]);
 
     // ✅ تحميل طبقة واحدة مع كاش
     const fetchLayerData = useCallback(async (layer) => {
@@ -153,13 +155,23 @@ export default function GeoportalViewer() {
         }
     }, []);
 
-    // ✅ تحميل كل الطبقات المرئية بالتوازي مع ضبط النطاق fitBounds
+    // ✅ تحميل وتطبيق نطاق الزوم والطباعة الحية على الخريطة
     const renderVisibleLayers = useCallback(async () => {
         if (!mapInstance.current || !layers.length) return;
 
-        // إزالة الطبقات المخفية فقط من الخريطة
+        const activeZoom = mapInstance.current.getZoom();
+
+        // إزالة أو إظهار الطبقات حسب الزوم والنطاق المسموح
         Object.entries(featureGroupsRef.current).forEach(([id, group]) => {
-            if (!visibleLayerIds.has(id)) {
+            const l = layers.find(x => String(x.id) === String(id));
+            const style = l?.style_config || {};
+            const minZ = style.min_zoom !== undefined ? style.min_zoom : 1;
+            const maxZ = style.max_zoom !== undefined ? style.max_zoom : 21;
+
+            const inZoomRange = activeZoom >= minZ && activeZoom <= maxZ;
+            const isVisible = visibleLayerIds.has(Number(id)) || visibleLayerIds.has(id);
+
+            if (!isVisible || !inZoomRange) {
                 mapInstance.current.removeLayer(group);
             }
         });
@@ -169,9 +181,17 @@ export default function GeoportalViewer() {
 
         let combinedBounds = L.latLngBounds([]);
 
-        // ✅ تحميل كل الطبقات بالتوازي دفعة واحدة
         await Promise.all(visibleLayers.map(async (layer) => {
-            // إذا مرسومة مسبقاً على الخريطة — تخطَّها
+            const style = layer.style_config || {};
+            const minZ = style.min_zoom !== undefined ? style.min_zoom : 1;
+            const maxZ = style.max_zoom !== undefined ? style.max_zoom : 21;
+
+            // إذا كان الزوم الحالي خارج نطاق الطبقة — لا تعرضها
+            if (activeZoom < minZ || activeZoom > maxZ) {
+                return;
+            }
+
+            // إذا مرسومة مسبقاً — أضفها ومسح/تعديل التسميات
             if (featureGroupsRef.current[layer.id]) {
                 if (!mapInstance.current.hasLayer(featureGroupsRef.current[layer.id])) {
                     featureGroupsRef.current[layer.id].addTo(mapInstance.current);
@@ -184,8 +204,9 @@ export default function GeoportalViewer() {
             const geojson = await fetchLayerData(layer);
             if (!geojson || !geojson.features?.length) return;
 
-            const style = layer.style_config || {};
             const isTransparent = style.fill_color === 'transparent' || style.is_transparent;
+            const showLabels = style.show_labels;
+            const labelField = style.label_field;
 
             const group = L.geoJSON(geojson, {
                 style: () => ({
@@ -209,11 +230,26 @@ export default function GeoportalViewer() {
                         layerName: layer.layer_name,
                         properties: feature.properties
                     }));
+
+                    // ✅ إضافة مسميات الخصائص كـ Labels مطبوعة على الخريطة
+                    if (showLabels && labelField && feature.properties && feature.properties[labelField] !== undefined) {
+                        const val = feature.properties[labelField];
+                        if (val !== null && val !== '') {
+                            leafletLayer.bindTooltip(String(val), {
+                                permanent: true,
+                                direction: 'center',
+                                className: 'map-feature-label'
+                            });
+                        }
+                    }
                 }
             });
 
             featureGroupsRef.current[layer.id] = group;
             group.addTo(mapInstance.current);
+
+            const b = group.getBounds();
+            if (b && b.isValid()) combinedBounds.extend(b);
         }));
 
         setLayersLoading(false);
