@@ -129,6 +129,7 @@ export default function GeoportalViewer() {
     const layerDataCache = useRef({});
     const lastMouseMoveRef = useRef(0);
     const labelDebounceTimerRef = useRef(null);
+    const sharedCanvasRendererRef = useRef(null);
     const hasFittedBoundsRef = useRef(false);
 
     // ✅ أداة تحديد الموقع بالـ GPS المباشر
@@ -695,13 +696,15 @@ export default function GeoportalViewer() {
         if (!mapInstance.current || !layers.length) return;
 
         Object.entries(featureGroupsRef.current).forEach(([id, group]) => {
-            const isVisible = visibleLayerIds.has(Number(id)) || visibleLayerIds.has(id);
+            const isVisible = visibleLayerIds.has(Number(id)) || visibleLayerIds.has(id) || visibleLayerIds.has(String(id));
             if (!isVisible) {
-                mapInstance.current.removeLayer(group);
+                if (mapInstance.current.hasLayer(group)) {
+                    mapInstance.current.removeLayer(group);
+                }
             }
         });
 
-        const visibleLayers = layers.filter(l => visibleLayerIds.has(l.id));
+        const visibleLayers = layers.filter(l => visibleLayerIds.has(l.id) || visibleLayerIds.has(Number(l.id)) || visibleLayerIds.has(String(l.id)));
         setLayersLoading(true);
 
         // ✅ رسم قناع قص الخريطة الجوية الحية (Clipping Mask Overlay)
@@ -770,8 +773,15 @@ export default function GeoportalViewer() {
         // Sort layers by z_index (base layers first, detail layers/parcels on top)
         const sortedLayers = [...visibleLayers].sort((a, b) => (a.z_index || 0) - (b.z_index || 0));
 
+        // ✅ محرك Canvas موحد لجميع الطبقات لمنع تداخل اللوحات ولضمان الاستجابة الكاملة للنقر ع أي قطعة
+        if (!sharedCanvasRendererRef.current) {
+            sharedCanvasRendererRef.current = L.canvas({ padding: 0.5 });
+        }
+
         for (const layer of sortedLayers) {
-            const style = layer.style_config || {};
+            const style = typeof layer.style_config === 'string'
+                ? (() => { try { return JSON.parse(layer.style_config); } catch { return {}; } })()
+                : (layer.style_config || {});
 
             // Clear cached group if it was stored empty
             if (featureGroupsRef.current[layer.id] && featureGroupsRef.current[layer.id].getLayers().length === 0) {
@@ -795,9 +805,8 @@ export default function GeoportalViewer() {
 
             const isTransparent = style.fill_color === 'transparent' || style.is_transparent;
 
-            const canvasRenderer = L.canvas({ padding: 0.5 });
             const group = L.geoJSON(geojson, {
-                renderer: canvasRenderer,
+                renderer: sharedCanvasRendererRef.current,
                 interactive: true,
                 style: () => ({
                     color: style.stroke_color || '#1D4ED8',
