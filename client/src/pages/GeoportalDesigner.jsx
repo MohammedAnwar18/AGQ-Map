@@ -80,7 +80,8 @@ export default function GeoportalDesigner() {
                 secondary_color: fullPortal.secondary_color || '#F5A623',
                 accent_color: fullPortal.accent_color || '#06D6F2',
                 is_public: fullPortal.is_public !== undefined ? fullPortal.is_public : true,
-                auth_config: fullPortal.auth_config || { require_login: false, welcome_msg: 'مرحباً بكم في البوابة المكانية الرسمية' }
+                auth_config: fullPortal.auth_config || { require_login: false, welcome_msg: 'مرحباً بكم في البوابة المكانية الرسمية' },
+                map_config: fullPortal.map_config || {}
             });
             setLayerList(fullPortal.layers || []);
         } catch (err) {
@@ -119,6 +120,47 @@ export default function GeoportalDesigner() {
         if (!mapInstance.current || !geojsonLayersGroup.current || !layerList) return;
 
         geojsonLayersGroup.current.clearLayers();
+
+        // ✅ رسم قناع قص الخريطة الجوية الحية في المعاينة (Clipping Mask Overlay)
+        const clippingMaskLayerId = selectedPortal?.map_config?.clipping_mask_layer_id || formData.map_config?.clipping_mask_layer_id;
+        if (clippingMaskLayerId) {
+            const maskLayer = layerList.find(l => String(l.id) === String(clippingMaskLayerId));
+            if (maskLayer) {
+                try {
+                    const res = await axios.get(`${API_BASE}/public/layers/${maskLayer.id}/features`, authHeaders);
+                    const maskGeojson = res.data;
+                    if (maskGeojson && maskGeojson.features?.length) {
+                        const worldOuter = [
+                            [90, -180],
+                            [90, 180],
+                            [-90, 180],
+                            [-90, -180]
+                        ];
+                        let holes = [];
+                        maskGeojson.features.forEach(feat => {
+                            if (feat.geometry?.type === 'Polygon') {
+                                holes.push(feat.geometry.coordinates.map(ring => ring.map(pt => [pt[1], pt[0]])));
+                            } else if (feat.geometry?.type === 'MultiPolygon') {
+                                feat.geometry.coordinates.forEach(poly => {
+                                    holes.push(poly[0].map(pt => [pt[1], pt[0]]));
+                                });
+                            }
+                        });
+                        if (holes.length > 0) {
+                            const maskPoly = L.polygon([worldOuter, ...holes], {
+                                color: 'transparent',
+                                fillColor: '#FFFFFF',
+                                fillOpacity: 1,
+                                interactive: false
+                            });
+                            geojsonLayersGroup.current.addLayer(maskPoly);
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Clipping mask error:', e);
+                }
+            }
+        }
 
         for (const layer of layerList) {
             if (!layer.is_visible_by_default) continue;
@@ -310,6 +352,9 @@ export default function GeoportalDesigner() {
                     </button>
                     <button className={`tab-btn ${activeTab === 'layers' ? 'active' : ''}`} onClick={() => setActiveTab('layers')}>
                         🗺️ الطبقات
+                    </button>
+                    <button className={`tab-btn ${activeTab === 'clip' ? 'active' : ''}`} onClick={() => setActiveTab('clip')}>
+                        ✂️ القص
                     </button>
                     <button className={`tab-btn ${activeTab === 'domain' ? 'active' : ''}`} onClick={() => setActiveTab('domain')}>
                         🌐 الدومين
@@ -552,6 +597,67 @@ export default function GeoportalDesigner() {
                                         </div>
                                     );
                                 })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Spatial Map Clipping */}
+                    {activeTab === 'clip' && (
+                        <div className="designer-section">
+                            <div className="section-title">✂️ قص الخريطة والصور الجوية (Spatial Map Clipping Mask)</div>
+                            <p style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.7)', marginBottom: 16, lineHeight: 1.6 }}>
+                                يتيح لك هذا الخيار تحديد طبقة مضلعات (GeoJSON) لـ **قص صور جوجل الجوية (Basemap)** بحيث يظهر للزوار على الخريطة المكان المضلع المحدد فقط، ويتحول باقي العالم الخارجي حول المساحة إلى لون أبيض ناصع ونظيف بالكامل!
+                            </p>
+
+                            <div className="form-group" style={{ marginBottom: 18 }}>
+                                <label style={{ fontWeight: 700, color: '#06D6F2' }}>اختيار طبقة GeoJSON الحالية لقص الخريطة:</label>
+                                <select
+                                    className="form-control"
+                                    value={formData.map_config?.clipping_mask_layer_id || ''}
+                                    onChange={e => {
+                                        const layerId = e.target.value;
+                                        setFormData({
+                                            ...formData,
+                                            map_config: { ...formData.map_config, clipping_mask_layer_id: layerId }
+                                        });
+                                    }}
+                                >
+                                    <option value="">-- بدون قص (إظهار الخريطة كاملة) --</option>
+                                    {(Array.isArray(layerList) ? layerList : []).map(l => (
+                                        <option key={l.id} value={l.id}>✂️ {l.layer_name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+                                <button className="btn-primary" onClick={handleSavePortal} disabled={loading}>
+                                    ✂️ تطبيق وقص الخريطة الآن
+                                </button>
+                                {formData.map_config?.clipping_mask_layer_id && (
+                                    <button
+                                        className="btn-secondary"
+                                        style={{ background: '#EF4444', color: '#FFF' }}
+                                        onClick={async () => {
+                                            const updatedFormData = {
+                                                ...formData,
+                                                map_config: { ...formData.map_config, clipping_mask_layer_id: null }
+                                            };
+                                            setFormData(updatedFormData);
+                                            try {
+                                                setLoading(true);
+                                                await axios.put(`${API_BASE}/${selectedPortal.id}`, updatedFormData, authHeaders);
+                                                setSelectedPortal({ ...selectedPortal, map_config: updatedFormData.map_config });
+                                                alert('✅ تم إلغاء قص الخريطة وعودتها للوضع الطبيعي الكامل');
+                                            } catch (err) {
+                                                alert('فشل إلغاء قص الخريطة');
+                                            } finally {
+                                                setLoading(false);
+                                            }
+                                        }}
+                                    >
+                                        🚫 إلغاء القص (عرض الخريطة كاملة)
+                                    </button>
+                                )}
                             </div>
                         </div>
                     )}
