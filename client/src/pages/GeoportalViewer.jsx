@@ -103,6 +103,7 @@ export default function GeoportalViewer() {
     const [showToolsBar, setShowToolsBar] = useState(false);
     const [activeTool, setActiveTool] = useState(null); // 'distance' | 'area' | 'search'
     const [measureData, setMeasureData] = useState(null);
+    const [savedMeasures, setSavedMeasures] = useState([]); // 📌 List of finalized measurements
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedFeatureProps, setSelectedFeatureProps] = useState(null);
 
@@ -118,6 +119,7 @@ export default function GeoportalViewer() {
     const measureLayerGroupRef = useRef(null);
     const previewLayerRef = useRef(null);      // 🔄 Rubber-band preview layer (live line to cursor)
     const measurePointsRef = useRef([]);
+    const dblclickGuardRef = useRef(false);   // 🚫 Prevents click firing during dblclick
     const layerDataCache = useRef({});
     const hasFittedBoundsRef = useRef(false);
 
@@ -148,7 +150,7 @@ export default function GeoportalViewer() {
     activeToolRef.current = activeTool;
     measureColorRef.current = measureColor;
 
-    // ✅ مسح وتفريغ رسومات وأرقام أداة القياس
+    // ✅ مسح وتفريغ رسومات وأرقام أداة القياس (كل شيء)
     const clearMeasurements = useCallback(() => {
         if (measureLayerGroupRef.current) {
             measureLayerGroupRef.current.clearLayers();
@@ -160,6 +162,48 @@ export default function GeoportalViewer() {
         }
         measurePointsRef.current = [];
         setMeasureData(null);
+        setSavedMeasures([]);
+    }, []);
+
+    // 📌 Finalize current measurement — save it to the list and start fresh
+    const finalizeMeasurement = useCallback(() => {
+        const tool = activeToolRef.current;
+        const pts = measurePointsRef.current;
+        const color = measureColorRef.current;
+        if (!tool || pts.length < 2) return;
+        if (tool === 'area' && pts.length < 3) return;
+
+        // Build a summary object from the drawn points
+        let summary = null;
+        if (tool === 'distance') {
+            let totalDist = 0;
+            for (let i = 0; i < pts.length - 1; i++) totalDist += pts[i].distanceTo(pts[i + 1]);
+            const val = totalDist >= 1000 ? `${(totalDist / 1000).toFixed(2)} كم` : `${totalDist.toFixed(1)} م`;
+            summary = { id: Date.now(), type: 'مسافة', value: val, color, pts: [...pts] };
+        } else if (tool === 'area') {
+            const radius = 6378137;
+            let area = 0;
+            for (let i = 0; i < pts.length; i++) {
+                const p1 = pts[i]; const p2 = pts[(i + 1) % pts.length];
+                area += (p2.lng - p1.lng) * (Math.PI / 180) * (2 + Math.sin(p1.lat * Math.PI / 180) + Math.sin(p2.lat * Math.PI / 180));
+            }
+            area = Math.abs((area * radius * radius) / 2);
+            const dunam = (area / 1000).toFixed(2);
+            const val = `${area.toFixed(1)} م² (‎${dunam} دونم)`;
+            summary = { id: Date.now(), type: 'مساحة', value: val, color, pts: [...pts] };
+        }
+
+        if (summary) setSavedMeasures(prev => [...prev, summary]);
+
+        // Reset points for next fresh measurement — keep the drawn lines on map
+        measurePointsRef.current = [];
+        setMeasureData(null);
+
+        // Clear rubber-band
+        if (previewLayerRef.current) {
+            previewLayerRef.current.remove();
+            previewLayerRef.current = null;
+        }
     }, []);
 
     // ✅ دالة حساب مساحة المضلع (Spherical Polygon Area)
@@ -298,8 +342,9 @@ export default function GeoportalViewer() {
     };
 
     // ✅ تفاعل النقر المباشر على الخريطة أثناء تفعيل أداة القياس
-    // Using refs (activeToolRef / measureColorRef) to avoid stale closure trap
+    // Using refs to avoid stale closure + dblclick guard to skip duplicate clicks
     const handleMapClickForMeasurement = useCallback((e) => {
+        if (dblclickGuardRef.current) return; // skip clicks fired during dblclick
         const tool = activeToolRef.current;
         const color = measureColorRef.current;
         if (!tool || (tool !== 'distance' && tool !== 'area')) return;
@@ -428,6 +473,15 @@ export default function GeoportalViewer() {
                 handleMapClickForMeasurement(e);
             });
 
+            // 📌 Double-click = finalize & save the current measurement
+            mapInstance.current.on('dblclick', (e) => {
+                L.DomEvent.stop(e); // prevent map zoom on dblclick
+                // Set guard to block the 2 extra click events fired by dblclick
+                dblclickGuardRef.current = true;
+                setTimeout(() => { dblclickGuardRef.current = false; }, 400);
+                finalizeMeasurement();
+            });
+
             // Listen to zoomend for live map scale & smart label re-rendering
             mapInstance.current.on('zoomend', () => {
                 const z = mapInstance.current.getZoom();
@@ -441,7 +495,7 @@ export default function GeoportalViewer() {
         // Load features for active visible layers
         renderVisibleLayers();
 
-    }, [portal, visibleLayerIds, isLoggedIn, handleMapClickForMeasurement, handleMouseMoveForMeasurement]);
+    }, [portal, visibleLayerIds, isLoggedIn, handleMapClickForMeasurement, handleMouseMoveForMeasurement, finalizeMeasurement]);
 
     // ✅ تحميل طبقة واحدة مع كاش
     const fetchLayerData = useCallback(async (layer) => {
@@ -1081,25 +1135,54 @@ export default function GeoportalViewer() {
                 </div>
             </div>
 
-            {/* GIS Measurement Result Card — Detailed GeoJSON Statistics Panel */}
-            {measureData && (
+            {/* GIS Measurement Result Card */}
+            {(measureData || savedMeasures.length > 0) && (
                 <div className="gis-measurement-card" style={{ borderColor: measureColor }}>
                     <div className="measure-card-header">
-                        <span style={{ color: measureColor, fontWeight: 800 }}>📊 {measureData.type}</span>
-                        <button onClick={clearMeasurements} title="إلغاء ومسح الرسم">✕</button>
+                        <span style={{ color: measureColor, fontWeight: 800 }}>📊 نتائج القياس</span>
+                        <button onClick={clearMeasurements} title="مسح كل القياسات">✕ مسح الكل</button>
                     </div>
-                    <div className="measure-card-val" style={{ color: measureColor }}>
-                        {measureData.value}
-                    </div>
-                    {measureData.secondaryValue && (
-                        <div style={{ fontSize: '0.78rem', color: '#94A3B8', marginTop: 2 }}>
-                            {measureData.secondaryValue}
+
+                    {/* Saved finalized measurements list */}
+                    {savedMeasures.map((m, i) => (
+                        <div key={m.id} style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.08)',
+                            gap: 8
+                        }}>
+                            <span style={{ fontSize: '0.78rem', color: '#94A3B8' }}>#{i + 1} {m.type}</span>
+                            <span style={{ color: m.color, fontWeight: 800, fontSize: '0.92rem' }}>{m.value}</span>
+                            <button
+                                onClick={() => setSavedMeasures(prev => prev.filter(x => x.id !== m.id))}
+                                style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', fontSize: '0.85rem', padding: '0 4px' }}
+                                title="حذف هذا القياس"
+                            >✕</button>
+                        </div>
+                    ))}
+
+                    {/* Current in-progress measurement */}
+                    {measureData && (
+                        <div style={{ marginTop: savedMeasures.length > 0 ? 8 : 0 }}>
+                            <div className="measure-card-val" style={{ color: measureColor }}>
+                                {measureData.value}
+                            </div>
+                            {measureData.secondaryValue && (
+                                <div style={{ fontSize: '0.78rem', color: '#94A3B8', marginTop: 2 }}>
+                                    {measureData.secondaryValue}
+                                </div>
+                            )}
+                            <div className="measure-card-hint" style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 6, paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                                <span>📍 {measureData.pointsCount} نقاط</span>
+                                {measureData.lastCoords && <span style={{ fontSize: '0.72rem', color: '#64748B' }}>🌐 {measureData.lastCoords}</span>}
+                            </div>
                         </div>
                     )}
-                    <div className="measure-card-hint" style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 6, paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                        <span>📍 المحطات: {measureData.pointsCount} نقاط</span>
-                        {measureData.lastCoords && <span>🌐 الإحداثي: {measureData.lastCoords}</span>}
-                    </div>
+
+                    {savedMeasures.length > 0 && (
+                        <div style={{ fontSize: '0.72rem', color: '#64748B', marginTop: 8, textAlign: 'center' }}>
+                            انقر مرتين لتثبيت القياس • اضغط ✕ لمسح كل شيء
+                        </div>
+                    )}
                 </div>
             )}
 
