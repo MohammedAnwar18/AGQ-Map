@@ -510,14 +510,28 @@ export default function GeoportalViewer() {
 
     }, [portal, visibleLayerIds, isLoggedIn, handleMapClickForMeasurement, handleMouseMoveForMeasurement, finalizeMeasurement]);
 
+    // Helper: توحيد هيكل GeoJSON ليدعم جميع التنسيقات
+    const normalizeGeoJSON = (data) => {
+        if (!data) return null;
+        if (data.type === 'FeatureCollection' && Array.isArray(data.features)) return data;
+        if (data.type === 'Feature') return { type: 'FeatureCollection', features: [data] };
+        if (Array.isArray(data)) return { type: 'FeatureCollection', features: data };
+        if (data.geometry) return { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: data.geometry, properties: data.properties || {} }] };
+        return null;
+    };
+
     // ✅ تحميل طبقة واحدة مع كاش
     const fetchLayerData = useCallback(async (layer) => {
         if (layerDataCache.current[layer.id]) {
             return layerDataCache.current[layer.id];
         }
 
+        const style = typeof layer.style_config === 'string'
+            ? (() => { try { return JSON.parse(layer.style_config); } catch { return {}; } })()
+            : (layer.style_config || {});
+
         // 1. إذا كانت الطبقة مقسّمة لأجزاء ذكية (Chunk URLs) -> اجلب الأجزاء بالتوازي واجمعها
-        const chunkUrls = layer.style_config?.chunk_urls;
+        const chunkUrls = style.chunk_urls;
         if (Array.isArray(chunkUrls) && chunkUrls.length > 0) {
             try {
                 const chunkResults = await Promise.all(
@@ -529,8 +543,8 @@ export default function GeoportalViewer() {
                 );
                 const allFeatures = [];
                 chunkResults.forEach(c => {
-                    if (c && Array.isArray(c.features)) allFeatures.push(...c.features);
-                    else if (c && c.type === 'Feature') allFeatures.push(c);
+                    const norm = normalizeGeoJSON(c);
+                    if (norm?.features) allFeatures.push(...norm.features);
                 });
                 if (allFeatures.length > 0) {
                     const combined = { type: 'FeatureCollection', features: allFeatures };
@@ -550,13 +564,11 @@ export default function GeoportalViewer() {
                     headers: { 'Accept': 'application/json, application/geo+json, */*' }
                 });
                 if (r2Res.ok) {
-                    const r2Geojson = await r2Res.json();
-                    if (r2Geojson && (r2Geojson.type === 'FeatureCollection' || r2Geojson.type === 'Feature')) {
-                        const normalized = r2Geojson.type === 'Feature'
-                            ? { type: 'FeatureCollection', features: [r2Geojson] }
-                            : r2Geojson;
-                        layerDataCache.current[layer.id] = normalized;
-                        return normalized;
+                    const rawData = await r2Res.json();
+                    const norm = normalizeGeoJSON(rawData);
+                    if (norm && norm.features && norm.features.length > 0) {
+                        layerDataCache.current[layer.id] = norm;
+                        return norm;
                     }
                 }
             } catch (r2Err) {
@@ -564,14 +576,14 @@ export default function GeoportalViewer() {
             }
         }
 
-        // 2. إذا لم تكن مخزنة في R2 -> اجلب من قاعدة البيانات (PostGIS)
+        // 3. إذا لم تكن مخزنة في R2 -> اجلب من قاعدة البيانات (PostGIS)
         const token = localStorage.getItem('token');
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         try {
             const res = await axios.get(`/api/geoportals/public/layers/${layer.id}/features`, { headers });
-            const data = res.data;
-            layerDataCache.current[layer.id] = data;
-            return data;
+            const norm = normalizeGeoJSON(res.data);
+            layerDataCache.current[layer.id] = norm;
+            return norm;
         } catch (err) {
             console.warn(`Layer ${layer.layer_name} fetch failed:`, err.message);
             return null;

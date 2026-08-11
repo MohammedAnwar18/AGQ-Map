@@ -274,51 +274,74 @@ export default function GeoportalDesigner() {
             }
         }
 
+        // Helper: توحيد هيكل GeoJSON ليدعم جميع الصيغ (FeatureCollection, Single Feature, Array)
+        const normalizeGeoJSON = (data) => {
+            if (!data) return null;
+            if (data.type === 'FeatureCollection' && Array.isArray(data.features)) return data;
+            if (data.type === 'Feature') return { type: 'FeatureCollection', features: [data] };
+            if (Array.isArray(data)) return { type: 'FeatureCollection', features: data };
+            if (data.geometry) return { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: data.geometry, properties: data.properties || {} }] };
+            return null;
+        };
+
         for (const layer of layerList) {
             if (!layer.is_visible_by_default) continue;
+            const style = typeof layer.style_config === 'string'
+                ? (() => { try { return JSON.parse(layer.style_config); } catch { return {}; } })()
+                : (layer.style_config || {});
 
             try {
-                const res = await axios.get(`${API_BASE}/public/layers/${layer.id}/features`, authHeaders);
-                const geojson = res.data;
-                layerDataCache.current[layer.id] = geojson;
-
-                if (geojson && geojson.features && geojson.features.length > 0) {
-                    // ✅ استخراج أسماء حقول الخصائص للطبقة (PostGIS)
-                    const sampleProps = geojson.features[0].properties || {};
-                    const fields = Object.keys(sampleProps);
-                    setLayerFieldsMap(prev => ({ ...prev, [layer.id]: fields }));
-
-                } else if (layer.r2_file_url) {
-                    // ✅ طبقة R2: استخرج الحقول من properties_schema المحفوظة
-                    const savedSchema = layer.style_config?.properties_schema;
-                    if (Array.isArray(savedSchema) && savedSchema.length > 0) {
-                        setLayerFieldsMap(prev => ({ ...prev, [layer.id]: savedSchema }));
-                    }
-
-                    // جلب من R2 لعرضها على الماب
+                // 1. إذا كانت الطبقة مقسمة لأجزاء (chunk_urls) -> اجلب الأجزاء بالتوازي
+                if (Array.isArray(style.chunk_urls) && style.chunk_urls.length > 0) {
                     try {
-                        const r2Res = await fetch(layer.r2_file_url, {
-                            headers: { 'Accept': 'application/json, application/geo+json, */*' }
+                        const chunkResults = await Promise.all(
+                            style.chunk_urls.map(url => fetch(url).then(r => r.json()).catch(() => null))
+                        );
+                        const allFeatures = [];
+                        chunkResults.forEach(c => {
+                            const norm = normalizeGeoJSON(c);
+                            if (norm?.features) allFeatures.push(...norm.features);
                         });
-                        if (r2Res.ok) {
-                            const r2Geojson = await r2Res.json();
-                            if (r2Geojson?.features?.length > 0) {
-                                layerDataCache.current[layer.id] = r2Geojson;
-                                // استخراج الحقول من الملف الفعلي إذا ما في schema محفوظة
-                                if (!savedSchema || savedSchema.length === 0) {
-                                    const fields2 = Object.keys(r2Geojson.features[0]?.properties || {});
-                                    setLayerFieldsMap(prev => ({ ...prev, [layer.id]: fields2 }));
-                                }
-                            }
+                        if (allFeatures.length > 0) {
+                            layerDataCache.current[layer.id] = { type: 'FeatureCollection', features: allFeatures };
                         }
-                    } catch (r2Err) {
-                        console.warn('Designer R2 fetch:', r2Err.message);
-                    }
+                    } catch (cErr) { console.warn('Designer chunk fetch:', cErr.message); }
                 }
 
-                if (layerDataCache.current[layer.id]?.features?.length > 0) {
-                    const geojsonToRender = layerDataCache.current[layer.id];
-                    const style = layer.style_config || {};
+                // 2. إذا ما وجدنا داتا للطبقة وفي r2_file_url -> اجلب مباشرة من R2
+                if (!layerDataCache.current[layer.id] && layer.r2_file_url) {
+                    try {
+                        const r2Res = await fetch(layer.r2_file_url, { headers: { 'Accept': 'application/json, application/geo+json, */*' } });
+                        if (r2Res.ok) {
+                            const rawData = await r2Res.json();
+                            const norm = normalizeGeoJSON(rawData);
+                            if (norm?.features?.length > 0) {
+                                layerDataCache.current[layer.id] = norm;
+                            }
+                        }
+                    } catch (r2Err) { console.warn('Designer R2 fetch:', r2Err.message); }
+                }
+
+                // 3. إذا لسه ما وجدنا داتا -> حاول من PostGIS backend
+                if (!layerDataCache.current[layer.id]) {
+                    try {
+                        const res = await axios.get(`${API_BASE}/public/layers/${layer.id}/features`, authHeaders);
+                        const norm = normalizeGeoJSON(res.data);
+                        if (norm?.features?.length > 0) {
+                            layerDataCache.current[layer.id] = norm;
+                        }
+                    } catch (pErr) { console.warn('Designer PostGIS fetch:', pErr.message); }
+                }
+
+                const geojsonToRender = layerDataCache.current[layer.id];
+                if (geojsonToRender && geojsonToRender.features && geojsonToRender.features.length > 0) {
+                    // تحديث حقول الطبقة للقائمة
+                    const sampleProps = geojsonToRender.features[0]?.properties || {};
+                    const fields = Object.keys(sampleProps);
+                    if (fields.length > 0) {
+                        setLayerFieldsMap(prev => ({ ...prev, [layer.id]: fields }));
+                    }
+
                     const isTransparent = style.fill_color === 'transparent' || style.is_transparent;
 
                     const canvasRenderer = L.canvas({ padding: 0.5 });
