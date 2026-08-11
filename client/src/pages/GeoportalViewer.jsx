@@ -594,17 +594,29 @@ export default function GeoportalViewer() {
     }, []);
 
 
+    const visibleLayerIdsRef = useRef(visibleLayerIds);
+    useEffect(() => {
+        visibleLayerIdsRef.current = visibleLayerIds;
+    }, [visibleLayerIds]);
+
     // ✅ محرك رسم المسميات المكانيّة الذكي بمركز القطعة الدقيق وبدون أي تداخل (Polygon Centroid & AABB Collision Detection)
     const updateSmartMapLabels = useCallback(() => {
         if (!mapInstance.current || !labelsLayerGroupRef.current) return;
 
         labelsLayerGroupRef.current.clearLayers();
 
+        const currentVisIds = visibleLayerIdsRef.current || new Set();
+        if (!currentVisIds || currentVisIds.size === 0) return;
+
         const activeZoom = mapInstance.current.getZoom();
         if (activeZoom < 13) return; // إخفاء عند الزوم المصغر لمنع التراكم
 
         const mapBounds = mapInstance.current.getBounds();
-        const visibleLayers = layers.filter(l => visibleLayerIds.has(l.id));
+        const visibleLayers = layers.filter(l =>
+            currentVisIds.has(l.id) ||
+            currentVisIds.has(Number(l.id)) ||
+            currentVisIds.has(String(l.id))
+        );
         const drawnBoxes = [];
         const MAX_VISIBLE_LABELS = 60; // حد أقصى للبطاقات على الشاشة للحفاظ على سرعة 60fps
 
