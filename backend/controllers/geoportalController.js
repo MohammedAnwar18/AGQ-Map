@@ -253,15 +253,18 @@ exports.uploadLayer = async (req, res) => {
         let r2Key = `geoportals/${id}/layers/${Date.now()}_${req.file.originalname}`;
         let r2Url = null;
 
-        if (process.env.R2_ENDPOINT && process.env.R2_BUCKET_NAME) {
+        const bucketName = process.env.R2_GIS_BUCKET_NAME || process.env.R2_BUCKET_NAME;
+        const publicUrl = process.env.R2_GIS_PUBLIC_URL || process.env.R2_PUBLIC_URL;
+
+        if (process.env.R2_ENDPOINT && bucketName) {
             try {
                 await r2Client.send(new PutObjectCommand({
-                    Bucket: process.env.R2_BUCKET_NAME,
+                    Bucket: bucketName,
                     Key: r2Key,
                     Body: req.file.buffer,
                     ContentType: 'application/geo+json'
                 }));
-                r2Url = `${process.env.R2_PUBLIC_URL || process.env.R2_ENDPOINT}/${r2Key}`;
+                r2Url = `${publicUrl || process.env.R2_ENDPOINT}/${r2Key}`;
             } catch (r2Err) {
                 console.warn('⚠️ Cloudflare R2 Upload warning (continuing with DB storage):', r2Err.message);
             }

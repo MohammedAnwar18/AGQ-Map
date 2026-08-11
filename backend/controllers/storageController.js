@@ -33,8 +33,8 @@ const { v4: uuidv4 } = require('uuid');
 exports.getPresignedUrl = async (req, res) => {
     try {
         const { fileName, contentType } = req.body;
-        const bucketName = process.env.R2_BUCKET_NAME;
-        const publicUrl = process.env.R2_PUBLIC_URL;
+        const bucketName = process.env.R2_GIS_BUCKET_NAME || process.env.R2_BUCKET_NAME;
+        const publicUrl = process.env.R2_GIS_PUBLIC_URL || process.env.R2_PUBLIC_URL;
 
         if (!bucketName || !process.env.R2_ACCESS_KEY_ID) {
             return res.status(400).json({ 
