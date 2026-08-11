@@ -406,7 +406,7 @@ export default function GeoportalDesigner() {
                                             <div className="layer-controls-grid">
                                                 <div>
                                                     <label style={{ fontSize: '0.78rem', fontWeight: 600 }}>لون التعبئة:</label>
-                                                    <input type="color" className="form-control color-picker" value={style.fill_color || '#3B82F6'} onChange={e => handleLayerStyleChange(layer.id, { ...style, fill_color: e.target.value })} />
+                                                    <input type="color" className="form-control color-picker" disabled={style.fill_color === 'transparent' || style.is_transparent} value={style.fill_color === 'transparent' ? '#3B82F6' : (style.fill_color || '#3B82F6')} onChange={e => handleLayerStyleChange(layer.id, { ...style, fill_color: e.target.value, is_transparent: false })} />
                                                 </div>
                                                 <div>
                                                     <label style={{ fontSize: '0.78rem', fontWeight: 600 }}>لون الحدود:</label>

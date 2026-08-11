@@ -25,7 +25,7 @@ export default function GeoportalViewer() {
     const formatCoordinates = () => {
         const { lat, lng } = cursorCoords;
         if (selectedCrs === '4326') {
-            return `X: ${lng.toFixed(4)}    Y: ${lat.toFixed(4)}`;
+            return `X: ${lng.toFixed(5)}    Y: ${lat.toFixed(5)}`;
         } else if (selectedCrs === '2039') {
             const RAD = Math.PI / 180;
             const dLat = (lat - 31.734) * 111132;
@@ -34,10 +34,14 @@ export default function GeoportalViewer() {
             const y = Math.round(626869 + dLat);
             return `X: ${x}    Y: ${y}`;
         } else {
-            // Default WKID: 28191 (Palestinian Grid)
+            // Default: Palestinian Grid (EPSG:28191)
             const RAD = Math.PI / 180;
-            const dLat = (lat - 31.7340969444) * 111132;
-            const dLng = (lng - 35.2120805556) * 111132 * Math.cos(lat * RAD);
+            const lat0 = 31.7340969444 * RAD;
+            const lng0 = 35.2120805556 * RAD;
+            const phi = lat * RAD;
+            const lam = lng * RAD;
+            const dLat = (phi - lat0) * 6378137;
+            const dLng = (lam - lng0) * 6378137 * Math.cos((phi + lat0) / 2);
             const x = Math.round(170000 + dLng);
             const y = Math.round(1126869 + dLat);
             return `X: ${x}    Y: ${y}`;
@@ -149,7 +153,7 @@ export default function GeoportalViewer() {
         }
     }, []);
 
-    // ✅ تحميل كل الطبقات المرئية بالتوازي (Promise.all) — أسرع بكثير
+    // ✅ تحميل كل الطبقات المرئية بالتوازي مع ضبط النطاق fitBounds
     const renderVisibleLayers = useCallback(async () => {
         if (!mapInstance.current || !layers.length) return;
 
@@ -163,6 +167,8 @@ export default function GeoportalViewer() {
         const visibleLayers = layers.filter(l => visibleLayerIds.has(l.id));
         setLayersLoading(true);
 
+        let combinedBounds = L.latLngBounds([]);
+
         // ✅ تحميل كل الطبقات بالتوازي دفعة واحدة
         await Promise.all(visibleLayers.map(async (layer) => {
             // إذا مرسومة مسبقاً على الخريطة — تخطَّها
@@ -170,6 +176,8 @@ export default function GeoportalViewer() {
                 if (!mapInstance.current.hasLayer(featureGroupsRef.current[layer.id])) {
                     featureGroupsRef.current[layer.id].addTo(mapInstance.current);
                 }
+                const existingBounds = featureGroupsRef.current[layer.id].getBounds();
+                if (existingBounds && existingBounds.isValid()) combinedBounds.extend(existingBounds);
                 return;
             }
 
@@ -177,25 +185,30 @@ export default function GeoportalViewer() {
             if (!geojson || !geojson.features?.length) return;
 
             const style = layer.style_config || {};
+            const isTransparent = style.fill_color === 'transparent' || style.is_transparent;
+
             const group = L.geoJSON(geojson, {
                 style: () => ({
                     color: style.stroke_color || '#1D4ED8',
-                    weight: style.stroke_width || 2,
-                    fillColor: style.fill_color || '#3B82F6',
-                    fillOpacity: style.fill_opacity || 0.45
+                    weight: style.stroke_width !== undefined ? style.stroke_width : 2,
+                    fillColor: isTransparent ? 'transparent' : (style.fill_color || '#3B82F6'),
+                    fillOpacity: isTransparent ? 0 : (style.fill_opacity !== undefined ? style.fill_opacity : 0.45)
                 }),
                 pointToLayer: (feature, latlng) => {
                     return L.circleMarker(latlng, {
                         radius: style.point_radius || 7,
-                        fillColor: style.fill_color || '#F5A623',
+                        fillColor: isTransparent ? 'transparent' : (style.fill_color || '#F5A623'),
                         color: style.stroke_color || '#D88B0E',
-                        weight: 2,
+                        weight: style.stroke_width || 2,
                         opacity: 1,
-                        fillOpacity: 0.9
+                        fillOpacity: isTransparent ? 0 : (style.fill_opacity !== undefined ? style.fill_opacity : 0.9)
                     });
                 },
                 onEachFeature: (feature, leafletLayer) => {
-                    leafletLayer.on('click', () => setSelectedFeatureProps(feature.properties));
+                    leafletLayer.on('click', () => setSelectedFeatureProps({
+                        layerName: layer.layer_name,
+                        properties: feature.properties
+                    }));
                 }
             });
 
@@ -383,30 +396,30 @@ export default function GeoportalViewer() {
                 </div>
             </div>
 
-            {/* Feature Property Drawer Popup */}
+            {/* Feature Property Inspector Card */}
             {selectedFeatureProps && (
-                <div style={{
-                    position: 'absolute',
-                    bottom: 48,
-                    right: 24,
-                    zIndex: 1000,
-                    width: 320,
-                    background: 'rgba(10, 22, 40, 0.95)',
-                    border: '1px solid #F5A623',
-                    borderRadius: 14,
-                    padding: 18,
-                    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.7)'
-                }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10, color: '#F5A623', fontWeight: 700 }}>
-                        <span>تفاصيل المعلم المحدّد</span>
-                        <button onClick={() => setSelectedFeatureProps(null)} style={{ color: '#fff' }}>✕</button>
-                    </div>
-                    <div style={{ maxHeight: 250, overflowY: 'auto', fontSize: '0.85rem' }}>
-                        {Object.entries(selectedFeatureProps).map(([k, v]) => (
-                            <div key={k} style={{ padding: '4px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                                <strong style={{ color: '#06D6F2' }}>{k}:</strong> {String(v)}
+                <div className="feature-inspector-card">
+                    <div className="feature-inspector-header">
+                        <div className="feature-title-group">
+                            <span className="feature-icon">📍</span>
+                            <div>
+                                <h4>{selectedFeatureProps.layerName || 'تفاصيل المعلم'}</h4>
+                                <span className="feature-sub">Spatial Attributes</span>
                             </div>
-                        ))}
+                        </div>
+                        <button className="close-inspector-btn" onClick={() => setSelectedFeatureProps(null)}>✕</button>
+                    </div>
+
+                    <div className="feature-inspector-body">
+                        {Object.entries(selectedFeatureProps.properties || selectedFeatureProps).map(([k, v]) => {
+                            if (k === 'layerName') return null;
+                            return (
+                                <div key={k} className="feature-prop-row">
+                                    <span className="prop-key">{k}</span>
+                                    <span className="prop-val">{v !== null && v !== undefined ? String(v) : '-'}</span>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             )}
