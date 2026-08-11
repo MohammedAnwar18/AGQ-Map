@@ -798,27 +798,38 @@ export default function GeoportalViewer() {
             const canvasRenderer = L.canvas({ padding: 0.5 });
             const group = L.geoJSON(geojson, {
                 renderer: canvasRenderer,
+                interactive: true,
                 style: () => ({
                     color: style.stroke_color || '#1D4ED8',
                     weight: style.stroke_width !== undefined ? style.stroke_width : 2,
-                    fillColor: isTransparent ? 'transparent' : (style.fill_color || '#3B82F6'),
-                    fillOpacity: isTransparent ? 0 : (style.fill_opacity !== undefined ? style.fill_opacity : 0.45)
+                    fillColor: style.fill_color || '#3B82F6',
+                    fillOpacity: isTransparent ? 0.01 : (style.fill_opacity !== undefined ? style.fill_opacity : 0.45),
+                    interactive: true
                 }),
                 pointToLayer: (feature, latlng) => {
                     return L.circleMarker(latlng, {
                         radius: style.point_radius || 7,
-                        fillColor: isTransparent ? 'transparent' : (style.fill_color || '#F5A623'),
+                        fillColor: isTransparent ? '#3B82F6' : (style.fill_color || '#F5A623'),
                         color: style.stroke_color || '#D88B0E',
                         weight: style.stroke_width || 2,
                         opacity: 1,
-                        fillOpacity: isTransparent ? 0 : (style.fill_opacity !== undefined ? style.fill_opacity : 0.9)
+                        fillOpacity: isTransparent ? 0.01 : (style.fill_opacity !== undefined ? style.fill_opacity : 0.9),
+                        interactive: true
                     });
                 },
                 onEachFeature: (feature, leafletLayer) => {
-                    leafletLayer.on('click', () => setSelectedFeatureProps({
-                        layerName: layer.layer_name,
-                        properties: feature.properties
-                    }));
+                    leafletLayer.on('click', (e) => {
+                        if (e && e.originalEvent) {
+                            L.DomEvent.stopPropagation(e);
+                        }
+                        const props = (feature.properties && Object.keys(feature.properties).length > 0)
+                            ? feature.properties
+                            : { 'معرف العنصر': feature.id || 'عنصر مكانـي بدون تفاصيل' };
+                        setSelectedFeatureProps({
+                            layerName: layer.layer_name,
+                            properties: props
+                        });
+                    });
                 }
             });
 
