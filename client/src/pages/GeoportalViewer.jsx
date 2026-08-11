@@ -515,77 +515,39 @@ export default function GeoportalViewer() {
         if (layerDataCache.current[layer.id]) {
             return layerDataCache.current[layer.id];
         }
+
+        // 1. إذا كانت الطبقة مخزنة في R2 ☁️ -> اجلب مباشرة من R2 URL فورا
+        if (layer.r2_file_url) {
+            try {
+                const r2Res = await fetch(layer.r2_file_url, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json, application/geo+json, */*' }
+                });
+                if (r2Res.ok) {
+                    const r2Geojson = await r2Res.json();
+                    if (r2Geojson && (r2Geojson.type === 'FeatureCollection' || r2Geojson.type === 'Feature')) {
+                        const normalized = r2Geojson.type === 'Feature'
+                            ? { type: 'FeatureCollection', features: [r2Geojson] }
+                            : r2Geojson;
+                        layerDataCache.current[layer.id] = normalized;
+                        return normalized;
+                    }
+                }
+            } catch (r2Err) {
+                console.warn(`Direct R2 fetch failed for ${layer.layer_name}:`, r2Err.message);
+            }
+        }
+
+        // 2. إذا لم تكن مخزنة في R2 -> اجلب من قاعدة البيانات (PostGIS)
         const token = localStorage.getItem('token');
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
-        // Helper: جلب مباشر من R2 (CORS مفعّل على البuckets)
-        const fetchDirectFromR2 = async (r2Url) => {
-            const r2Res = await fetch(r2Url, {
-                method: 'GET',
-                headers: { 'Accept': 'application/json, application/geo+json, */*' }
-            });
-            if (!r2Res.ok) throw new Error(`R2 returned ${r2Res.status}`);
-            const r2Geojson = await r2Res.json();
-            if (r2Geojson && (r2Geojson.type === 'FeatureCollection' || r2Geojson.type === 'Feature')) {
-                return r2Geojson.type === 'Feature'
-                    ? { type: 'FeatureCollection', features: [r2Geojson] }
-                    : r2Geojson;
-            }
-            return null;
-        };
-
         try {
-            // أولاً: إذا الطبقة من R2 مباشرة (feature_count=0) → اجلبها من R2 مباشرة بدون Proxy
-            if (layer.r2_file_url && (!layer.feature_count || layer.feature_count === 0)) {
-                try {
-                    const geojson = await fetchDirectFromR2(layer.r2_file_url);
-                    if (geojson) {
-                        layerDataCache.current[layer.id] = geojson;
-                        return geojson;
-                    }
-                } catch (r2Err) {
-                    console.warn(`Direct R2 fetch failed for ${layer.layer_name}:`, r2Err.message);
-                    // fallback للـ PostGIS
-                }
-            }
-
-            // ثانياً: جلب من PostGIS (للطبقات الصغيرة المخزنة في قاعدة البيانات)
             const res = await axios.get(`/api/geoportals/public/layers/${layer.id}/features`, { headers });
             const data = res.data;
-
-            // إذا ما فيه features في PostGIS وفي رابط R2 → اجلب من R2
-            const hasFeatures = data && data.features && data.features.length > 0;
-            if (!hasFeatures && layer.r2_file_url) {
-                try {
-                    const geojson = await fetchDirectFromR2(layer.r2_file_url);
-                    if (geojson) {
-                        layerDataCache.current[layer.id] = geojson;
-                        return geojson;
-                    }
-                } catch (r2Err) {
-                    console.warn(`Layer ${layer.layer_name} — R2 fallback failed:`, r2Err.message);
-                }
-            }
-
             layerDataCache.current[layer.id] = data;
             return data;
         } catch (err) {
-            if (err.response?.status === 403) return null;
-
-            // إذا فشل كل شيء وفي رابط R2 → آخر محاولة
-            if (layer.r2_file_url) {
-                try {
-                    const geojson = await fetchDirectFromR2(layer.r2_file_url);
-                    if (geojson) {
-                        layerDataCache.current[layer.id] = geojson;
-                        return geojson;
-                    }
-                } catch (r2Err) {
-                    console.warn(`Layer ${layer.layer_name} all fetches failed:`, r2Err.message);
-                }
-            }
-
-            console.warn(`Layer ${layer.layer_name} failed:`, err.message);
+            console.warn(`Layer ${layer.layer_name} fetch failed:`, err.message);
             return null;
         }
     }, []);
@@ -725,8 +687,19 @@ export default function GeoportalViewer() {
 
         let combinedBounds = L.latLngBounds([]);
 
-        await Promise.all(visibleLayers.map(async (layer) => {
+        // Sort layers by z_index (base layers first, detail layers/parcels on top)
+        const sortedLayers = [...visibleLayers].sort((a, b) => (a.z_index || 0) - (b.z_index || 0));
+
+        for (const layer of sortedLayers) {
             const style = layer.style_config || {};
+
+            // Clear cached group if it was stored empty
+            if (featureGroupsRef.current[layer.id] && featureGroupsRef.current[layer.id].getLayers().length === 0) {
+                if (mapInstance.current.hasLayer(featureGroupsRef.current[layer.id])) {
+                    mapInstance.current.removeLayer(featureGroupsRef.current[layer.id]);
+                }
+                delete featureGroupsRef.current[layer.id];
+            }
 
             if (featureGroupsRef.current[layer.id]) {
                 if (!mapInstance.current.hasLayer(featureGroupsRef.current[layer.id])) {
@@ -734,11 +707,11 @@ export default function GeoportalViewer() {
                 }
                 const existingBounds = featureGroupsRef.current[layer.id].getBounds();
                 if (existingBounds && existingBounds.isValid()) combinedBounds.extend(existingBounds);
-                return;
+                continue;
             }
 
             const geojson = await fetchLayerData(layer);
-            if (!geojson || !geojson.features?.length) return;
+            if (!geojson || !geojson.features?.length) continue;
 
             const isTransparent = style.fill_color === 'transparent' || style.is_transparent;
 
@@ -774,7 +747,7 @@ export default function GeoportalViewer() {
 
             const b = group.getBounds();
             if (b && b.isValid()) combinedBounds.extend(b);
-        }));
+        }
 
         // رسم المسميات المكانيّة الذكية
         updateSmartMapLabels();
