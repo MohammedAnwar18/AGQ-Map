@@ -472,7 +472,7 @@ exports.resolvePublicPortal = async (req, res) => {
     }
 };
 
-// 10. Upload Portal Logo (R2 & Local Fallback)
+// 10. Upload Portal Logo (Supports all image formats: PNG, JPG, SVG, WEBP, GIF, AVIF, ICO)
 exports.uploadLogo = async (req, res) => {
     try {
         const { id } = req.params;
@@ -482,6 +482,7 @@ exports.uploadLogo = async (req, res) => {
 
         let logoKey = `geoportals/${id}/logo_${Date.now()}_${req.file.originalname}`;
         let logoUrl = null;
+        const mimeType = req.file.mimetype || 'image/png';
 
         if (process.env.R2_ENDPOINT && process.env.R2_BUCKET_NAME) {
             try {
@@ -489,7 +490,7 @@ exports.uploadLogo = async (req, res) => {
                     Bucket: process.env.R2_BUCKET_NAME,
                     Key: logoKey,
                     Body: req.file.buffer,
-                    ContentType: req.file.mimetype || 'image/png'
+                    ContentType: mimeType
                 }));
                 logoUrl = `${process.env.R2_PUBLIC_URL || process.env.R2_ENDPOINT}/${logoKey}`;
             } catch (r2Err) {
@@ -499,8 +500,7 @@ exports.uploadLogo = async (req, res) => {
 
         if (!logoUrl) {
             const base64 = req.file.buffer.toString('base64');
-            const mime = req.file.mimetype || 'image/png';
-            logoUrl = `data:${mime};base64,${base64}`;
+            logoUrl = `data:${mimeType};base64,${base64}`;
         }
 
         const updateQuery = `

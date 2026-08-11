@@ -497,7 +497,7 @@ export default function GeoportalDesigner() {
                                     <input
                                         type="file"
                                         id="logoFileInput"
-                                        accept="image/*"
+                                        accept="image/*,.png,.jpg,.jpeg,.svg,.webp,.gif,.ico,.avif"
                                         style={{ display: 'none' }}
                                         onChange={e => {
                                             if (e.target.files && e.target.files[0]) {

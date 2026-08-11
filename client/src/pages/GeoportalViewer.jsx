@@ -163,73 +163,120 @@ export default function GeoportalViewer() {
         return area;
     };
 
-    // ✅ اعادة رسم خطوط ومضلعات القياس فوراً عند تغيير اللون المختار
+    // ✅ اعادة رسم خطوط ومضلعات القياس فوراً بستايل GeoJSON فاقع تفاعلي
     const redrawMeasurementsWithColor = (newColor, pts, tool) => {
         if (!measureLayerGroupRef.current || !pts || !pts.length) return;
         measureLayerGroupRef.current.clearLayers();
 
-        // رسم نقاط التثبيت الجغرافية
-        pts.forEach(p => {
-            L.circleMarker(p, {
-                radius: 6,
+        // 1. بناء الـ GeoJSON Feature الصريح
+        let geojsonFeature = null;
+        if (tool === 'distance' && pts.length > 1) {
+            geojsonFeature = {
+                type: 'Feature',
+                geometry: {
+                    type: 'LineString',
+                    coordinates: pts.map(p => [p.lng, p.lat])
+                },
+                properties: { title: 'مسافة مكانية' }
+            };
+        } else if (tool === 'area' && pts.length >= 3) {
+            geojsonFeature = {
+                type: 'Feature',
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [[...pts.map(p => [p.lng, p.lat]), [pts[0].lng, pts[0].lat]]]
+                },
+                properties: { title: 'مساحة مكانية' }
+            };
+        }
+
+        // 2. رسم الـ GeoJSON على الخريطة
+        if (geojsonFeature) {
+            const geoLayer = L.geoJSON(geojsonFeature, {
+                style: () => ({
+                    color: newColor,
+                    weight: 4,
+                    dashArray: tool === 'distance' ? '6, 6' : null,
+                    fillColor: newColor,
+                    fillOpacity: tool === 'area' ? 0.38 : 0,
+                    opacity: 0.95
+                })
+            });
+            measureLayerGroupRef.current.addLayer(geoLayer);
+        }
+
+        // 3. رسم نقاط التثبيت الدائرية المتوهجة (Corner Control Nodes)
+        pts.forEach((p, idx) => {
+            const nodeMarker = L.circleMarker(p, {
+                radius: 7,
                 fillColor: newColor,
                 color: '#FFFFFF',
-                weight: 2,
+                weight: 2.5,
                 fillOpacity: 1
-            }).addTo(measureLayerGroupRef.current);
+            });
+            nodeMarker.bindTooltip(`محطة #${idx + 1}`, { permanent: false, direction: 'top' });
+            measureLayerGroupRef.current.addLayer(nodeMarker);
         });
 
-        if (tool === 'distance') {
-            if (pts.length > 1) {
-                L.polyline(pts, { color: newColor, weight: 4, dashArray: '6, 6', opacity: 0.95 }).addTo(measureLayerGroupRef.current);
-                let totalDist = 0;
-                for (let i = 0; i < pts.length - 1; i++) {
-                    const segDist = pts[i].distanceTo(pts[i + 1]);
-                    totalDist += segDist;
-                    const midLat = (pts[i].lat + pts[i + 1].lat) / 2;
-                    const midLng = (pts[i].lng + pts[i + 1].lng) / 2;
-                    const segText = segDist >= 1000 ? `${(segDist / 1000).toFixed(2)} كم` : `${segDist.toFixed(0)} م`;
+        // 4. حساب بطاقات المسافات الإضافية فوق كل قطعة خط عائم
+        if (tool === 'distance' && pts.length > 1) {
+            let totalDist = 0;
+            for (let i = 0; i < pts.length - 1; i++) {
+                const segDist = pts[i].distanceTo(pts[i + 1]);
+                totalDist += segDist;
+                const midLat = (pts[i].lat + pts[i + 1].lat) / 2;
+                const midLng = (pts[i].lng + pts[i + 1].lng) / 2;
+                const segText = segDist >= 1000 ? `${(segDist / 1000).toFixed(2)} كم` : `${segDist.toFixed(0)} م`;
 
-                    // بطاقة حية على كل خط مقطع من المسافة
-                    const segMarker = L.marker([midLat, midLng], {
-                        icon: L.divIcon({
-                            className: 'onmap-measure-segment-label',
-                            html: `<div style="background: ${newColor}; color: #000; font-weight: 800; font-size: 11px; padding: 2px 7px; border-radius: 6px; border: 1.5px solid #FFF; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,0.6);">${segText}</div>`,
-                            iconSize: [0, 0],
-                            iconAnchor: [0, 0]
-                        }),
-                        interactive: false
-                    });
-                    measureLayerGroupRef.current.addLayer(segMarker);
-                }
-                const distText = totalDist >= 1000 ? `${(totalDist / 1000).toFixed(2)} كم` : `${totalDist.toFixed(1)} متر`;
-                setMeasureData({ type: 'مسافة 📏', value: distText, pointsCount: pts.length });
-            }
-        } else if (tool === 'area') {
-            if (pts.length >= 3) {
-                L.polygon(pts, { color: newColor, fillColor: newColor, fillOpacity: 0.35, weight: 3 }).addTo(measureLayerGroupRef.current);
-                const areaSqM = calculatePolygonArea(pts);
-                const dunam = (areaSqM / 1000).toFixed(2);
-                const areaText = `${areaSqM.toFixed(1)} م² (${dunam} دونم)`;
-
-                // حساب مركز المضلع لطباعة شارة المساحة بقلب المضلع على الخريطة
-                let latSum = 0, lngSum = 0;
-                pts.forEach(p => { latSum += p.lat; lngSum += p.lng; });
-                const centroid = [latSum / pts.length, lngSum / pts.length];
-
-                const areaMarker = L.marker(centroid, {
+                const segMarker = L.marker([midLat, midLng], {
                     icon: L.divIcon({
-                        className: 'onmap-measure-area-label',
-                        html: `<div style="background: ${newColor}; color: #000; font-weight: 800; font-size: 12px; padding: 4px 10px; border-radius: 8px; border: 2px solid #FFF; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.6);">${areaText}</div>`,
+                        className: 'onmap-measure-segment-label',
+                        html: `<div style="background: ${newColor}; color: #000; font-weight: 800; font-size: 11px; padding: 2px 7px; border-radius: 6px; border: 1.5px solid #FFF; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,0.6);">${segText}</div>`,
                         iconSize: [0, 0],
                         iconAnchor: [0, 0]
                     }),
                     interactive: false
                 });
-                measureLayerGroupRef.current.addLayer(areaMarker);
-
-                setMeasureData({ type: 'مساحة 📐', value: areaText, pointsCount: pts.length });
+                measureLayerGroupRef.current.addLayer(segMarker);
             }
+            const distText = totalDist >= 1000 ? `${(totalDist / 1000).toFixed(2)} كم` : `${totalDist.toFixed(1)} متر`;
+            const lastPt = pts[pts.length - 1];
+            setMeasureData({
+                type: 'مسافة 📏 (LineString)',
+                value: distText,
+                secondaryValue: totalDist >= 1000 ? `${totalDist.toFixed(1)} متر` : `${(totalDist / 1000).toFixed(3)} كم`,
+                pointsCount: pts.length,
+                lastCoords: `${lastPt.lat.toFixed(5)}, ${lastPt.lng.toFixed(5)}`
+            });
+        } else if (tool === 'area' && pts.length >= 3) {
+            const areaSqM = calculatePolygonArea(pts);
+            const dunam = (areaSqM / 1000).toFixed(2);
+            const hectare = (areaSqM / 10000).toFixed(3);
+            const areaText = `${areaSqM.toFixed(1)} م² (${dunam} دونم)`;
+
+            let latSum = 0, lngSum = 0;
+            pts.forEach(p => { latSum += p.lat; lngSum += p.lng; });
+            const centroid = [latSum / pts.length, lngSum / pts.length];
+
+            const areaMarker = L.marker(centroid, {
+                icon: L.divIcon({
+                    className: 'onmap-measure-area-label',
+                    html: `<div style="background: ${newColor}; color: #000; font-weight: 800; font-size: 12px; padding: 4px 10px; border-radius: 8px; border: 2px solid #FFF; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.6);">${areaText}</div>`,
+                    iconSize: [0, 0],
+                    iconAnchor: [0, 0]
+                }),
+                interactive: false
+            });
+            measureLayerGroupRef.current.addLayer(areaMarker);
+
+            const lastPt = pts[pts.length - 1];
+            setMeasureData({
+                type: 'مساحة 📐 (Polygon)',
+                value: areaText,
+                secondaryValue: `${hectare} هكتار`,
+                pointsCount: pts.length,
+                lastCoords: `${lastPt.lat.toFixed(5)}, ${lastPt.lng.toFixed(5)}`
+            });
         }
     };
 
@@ -947,6 +994,28 @@ export default function GeoportalViewer() {
                     </div>
                 </div>
             </div>
+
+            {/* GIS Measurement Result Card — Detailed GeoJSON Statistics Panel */}
+            {measureData && (
+                <div className="gis-measurement-card" style={{ borderColor: measureColor }}>
+                    <div className="measure-card-header">
+                        <span style={{ color: measureColor, fontWeight: 800 }}>📊 {measureData.type}</span>
+                        <button onClick={clearMeasurements} title="إلغاء ومسح الرسم">✕</button>
+                    </div>
+                    <div className="measure-card-val" style={{ color: measureColor }}>
+                        {measureData.value}
+                    </div>
+                    {measureData.secondaryValue && (
+                        <div style={{ fontSize: '0.78rem', color: '#94A3B8', marginTop: 2 }}>
+                            {measureData.secondaryValue}
+                        </div>
+                    )}
+                    <div className="measure-card-hint" style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 6, paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                        <span>📍 المحطات: {measureData.pointsCount} نقاط</span>
+                        {measureData.lastCoords && <span>🌐 الإحداثي: {measureData.lastCoords}</span>}
+                    </div>
+                </div>
+            )}
 
             {/* Map Canvas */}
             <div ref={mapRef} className="viewer-map"></div>
