@@ -183,23 +183,14 @@ export default function GeoportalViewer() {
         }
     }, []);
 
-    // ✅ تحميل وتطبيق نطاق الزوم والطباعة الحية على الخريطة
+    // ✅ تحميل وعرض جميع الطبقات المرئية دائماً بدون تقييد زوم أو قص
     const renderVisibleLayers = useCallback(async () => {
         if (!mapInstance.current || !layers.length) return;
 
-        const activeZoom = mapInstance.current.getZoom();
-
-        // إزالة أو إظهار الطبقات حسب الزوم والنطاق المسموح
+        // إزالة الطبقات غير المرئية
         Object.entries(featureGroupsRef.current).forEach(([id, group]) => {
-            const l = layers.find(x => String(x.id) === String(id));
-            const style = l?.style_config || {};
-            const minZ = style.min_zoom !== undefined ? style.min_zoom : 1;
-            const maxZ = style.max_zoom !== undefined ? style.max_zoom : 21;
-
-            const inZoomRange = activeZoom >= minZ && activeZoom <= maxZ;
             const isVisible = visibleLayerIds.has(Number(id)) || visibleLayerIds.has(id);
-
-            if (!isVisible || !inZoomRange) {
+            if (!isVisible) {
                 mapInstance.current.removeLayer(group);
             }
         });
@@ -211,15 +202,8 @@ export default function GeoportalViewer() {
 
         await Promise.all(visibleLayers.map(async (layer) => {
             const style = layer.style_config || {};
-            const minZ = style.min_zoom !== undefined ? style.min_zoom : 1;
-            const maxZ = style.max_zoom !== undefined ? style.max_zoom : 21;
 
-            // إذا كان الزوم الحالي خارج نطاق الطبقة — لا تعرضها
-            if (activeZoom < minZ || activeZoom > maxZ) {
-                return;
-            }
-
-            // إذا مرسومة مسبقاً — أضفها ومسح/تعديل التسميات
+            // إذا مرسومة مسبقاً على الخريطة
             if (featureGroupsRef.current[layer.id]) {
                 if (!mapInstance.current.hasLayer(featureGroupsRef.current[layer.id])) {
                     featureGroupsRef.current[layer.id].addTo(mapInstance.current);
@@ -237,42 +221,6 @@ export default function GeoportalViewer() {
             const labelField = style.label_field;
             const labelColor = style.label_color || '#FFFFFF';
             const labelSize = style.label_size || 12;
-            const isClippingMask = style.is_clipping_mask;
-
-            // ✅ إذا كانت الطبقة معرّفة كـ قناع قص الخريطة (Clipping Mask)
-            if (isClippingMask) {
-                const maskGroup = L.featureGroup();
-                const worldOuter = [
-                    [90, -180],
-                    [90, 180],
-                    [-90, 180],
-                    [-90, -180]
-                ];
-
-                geojson.features.forEach(feat => {
-                    if (feat.geometry?.type === 'Polygon' || feat.geometry?.type === 'MultiPolygon') {
-                        let holes = [];
-                        if (feat.geometry.type === 'Polygon') {
-                            holes = feat.geometry.coordinates.map(ring => ring.map(pt => [pt[1], pt[0]]));
-                        } else if (feat.geometry.type === 'MultiPolygon') {
-                            feat.geometry.coordinates.forEach(poly => {
-                                poly.forEach(ring => holes.push(ring.map(pt => [pt[1], pt[0]])));
-                            });
-                        }
-
-                        const maskPoly = L.polygon([worldOuter, ...holes], {
-                            color: 'transparent',
-                            fillColor: '#FFFFFF',
-                            fillOpacity: 1,
-                            interactive: false
-                        });
-                        maskGroup.addLayer(maskPoly);
-                    }
-                });
-
-                featureGroupsRef.current[`mask_${layer.id}`] = maskGroup;
-                maskGroup.addTo(mapInstance.current);
-            }
 
             const group = L.geoJSON(geojson, {
                 style: () => ({
@@ -322,6 +270,11 @@ export default function GeoportalViewer() {
             const b = group.getBounds();
             if (b && b.isValid()) combinedBounds.extend(b);
         }));
+
+        // ✅ التوجّه التلقائي المباشر لموقع المعالم الحقيقي
+        if (combinedBounds && combinedBounds.isValid() && mapInstance.current) {
+            mapInstance.current.fitBounds(combinedBounds, { padding: [50, 50], maxZoom: 17 });
+        }
 
         setLayersLoading(false);
     }, [layers, visibleLayerIds, fetchLayerData]);

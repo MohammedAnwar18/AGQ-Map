@@ -486,61 +486,6 @@ export default function GeoportalDesigner() {
                                                     />
                                                 </div>
 
-                                                {/* Map Clipping Mask Option */}
-                                                <div style={{ gridColumn: 'span 2', marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                        <input
-                                                            type="checkbox"
-                                                            id={`clip_chk_${layer.id}`}
-                                                            checked={style.is_clipping_mask || false}
-                                                            onChange={e => handleLayerStyleChange(layer.id, { ...style, is_clipping_mask: e.target.checked })}
-                                                        />
-                                                        <label htmlFor={`clip_chk_${layer.id}`} style={{ fontSize: '0.78rem', color: '#10D9A0', cursor: 'pointer', margin: 0, fontWeight: 700 }}>
-                                                            ✂️ قناع قص الخريطة (الصورة الجوية تظهر داخل مضلعات الطبقة فقط والحيط أبيض)
-                                                        </label>
-                                                    </div>
-                                                </div>
-
-                                                {/* Zoom Visibility Thresholds */}
-                                                <div style={{ gridColumn: 'span 2', marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                                                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#06D6F2', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                                        <span>🔍 نطاق ظهور الطبقة حسَب زوم ومقياس الخريطة</span>
-                                                    </div>
-                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                                        <div>
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#94a3b8' }}>
-                                                                <span>أدنى زوم للظهور (Min Zoom)</span>
-                                                                <span style={{ color: '#06D6F2', fontWeight: 700 }}>Zoom {style.min_zoom !== undefined ? style.min_zoom : 1}</span>
-                                                            </div>
-                                                            <input
-                                                                type="range"
-                                                                min="1"
-                                                                max="21"
-                                                                step="1"
-                                                                className="range-input"
-                                                                value={style.min_zoom !== undefined ? style.min_zoom : 1}
-                                                                onChange={e => handleLayerStyleChange(layer.id, { ...style, min_zoom: parseInt(e.target.value) })}
-                                                            />
-                                                        </div>
-
-                                                        <div>
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#94a3b8' }}>
-                                                                <span>أقصى زوم للظهور (Max Zoom)</span>
-                                                                <span style={{ color: '#06D6F2', fontWeight: 700 }}>Zoom {style.max_zoom !== undefined ? style.max_zoom : 21}</span>
-                                                            </div>
-                                                            <input
-                                                                type="range"
-                                                                min="1"
-                                                                max="21"
-                                                                step="1"
-                                                                className="range-input"
-                                                                value={style.max_zoom !== undefined ? style.max_zoom : 21}
-                                                                onChange={e => handleLayerStyleChange(layer.id, { ...style, max_zoom: parseInt(e.target.value) })}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </div>
-
                                                 {/* Feature Labeling System */}
                                                 <div style={{ gridColumn: 'span 2', marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
                                                     <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#F5A623', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
