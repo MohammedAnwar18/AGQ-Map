@@ -116,11 +116,10 @@ export default function GeoportalViewer() {
     const mapInstance = useRef(null);
     const featureGroupsRef = useRef({});
     const labelsLayerGroupRef = useRef(null);
-    const savedMeasuresLayerGroupRef = useRef(null); // 📌 Permanent layer group for finalized measurements
-    const measureLayerGroupRef = useRef(null);      // ✏️ Active layer group for in-progress drawing
-    const previewLayerRef = useRef(null);           // 🔄 Rubber-band preview layer (live line to cursor)
+    const measureLayerGroupRef = useRef(null);
+    const previewLayerRef = useRef(null);      // 🔄 Rubber-band preview layer (live line to cursor)
     const measurePointsRef = useRef([]);
-    const dblclickGuardRef = useRef(false);        // 🚫 Prevents click firing during dblclick
+    const dblclickGuardRef = useRef(false);   // 🚫 Prevents click firing during dblclick
     const layerDataCache = useRef({});
     const hasFittedBoundsRef = useRef(false);
 
@@ -151,14 +150,12 @@ export default function GeoportalViewer() {
     activeToolRef.current = activeTool;
     measureColorRef.current = measureColor;
 
-    // ✅ مسح وتفريغ كافة رسومات وأرقام أدوات القياس (النشطة والمحفوظة)
+    // ✅ مسح وتفريغ رسومات وأرقام أداة القياس (كل شيء)
     const clearMeasurements = useCallback(() => {
         if (measureLayerGroupRef.current) {
             measureLayerGroupRef.current.clearLayers();
         }
-        if (savedMeasuresLayerGroupRef.current) {
-            savedMeasuresLayerGroupRef.current.clearLayers();
-        }
+        // Also clear rubber-band ghost
         if (previewLayerRef.current) {
             previewLayerRef.current.remove();
             previewLayerRef.current = null;
@@ -168,21 +165,66 @@ export default function GeoportalViewer() {
         setSavedMeasures([]);
     }, []);
 
-    // 🗑️ حذف قياس واحد فقط من القائمة والخريطة
-    const deleteSavedMeasure = useCallback((id) => {
-        setSavedMeasures(prev => {
-            const target = prev.find(x => x.id === id);
-            if (target && target.group && savedMeasuresLayerGroupRef.current) {
-                savedMeasuresLayerGroupRef.current.removeLayer(target.group);
+    // 📌 Finalize current measurement — save it to the list and start fresh
+    const finalizeMeasurement = useCallback(() => {
+        const tool = activeToolRef.current;
+        const pts = measurePointsRef.current;
+        const color = measureColorRef.current;
+        if (!tool || pts.length < 2) return;
+        if (tool === 'area' && pts.length < 3) return;
+
+        // Build a summary object from the drawn points
+        let summary = null;
+        if (tool === 'distance') {
+            let totalDist = 0;
+            for (let i = 0; i < pts.length - 1; i++) totalDist += pts[i].distanceTo(pts[i + 1]);
+            const val = totalDist >= 1000 ? `${(totalDist / 1000).toFixed(2)} كم` : `${totalDist.toFixed(1)} م`;
+            summary = { id: Date.now(), type: 'مسافة', value: val, color, pts: [...pts] };
+        } else if (tool === 'area') {
+            const radius = 6378137;
+            let area = 0;
+            for (let i = 0; i < pts.length; i++) {
+                const p1 = pts[i]; const p2 = pts[(i + 1) % pts.length];
+                area += (p2.lng - p1.lng) * (Math.PI / 180) * (2 + Math.sin(p1.lat * Math.PI / 180) + Math.sin(p2.lat * Math.PI / 180));
             }
-            return prev.filter(x => x.id !== id);
-        });
+            area = Math.abs((area * radius * radius) / 2);
+            const dunam = (area / 1000).toFixed(2);
+            const val = `${area.toFixed(1)} م² (‎${dunam} دونم)`;
+            summary = { id: Date.now(), type: 'مساحة', value: val, color, pts: [...pts] };
+        }
+
+        if (summary) setSavedMeasures(prev => [...prev, summary]);
+
+        // Reset points for next fresh measurement — keep the drawn lines on map
+        measurePointsRef.current = [];
+        setMeasureData(null);
+
+        // Clear rubber-band
+        if (previewLayerRef.current) {
+            previewLayerRef.current.remove();
+            previewLayerRef.current = null;
+        }
     }, []);
 
-    // 🛠️ محرك إنشاء مجموعة طبقات الرسم الفضائية (GeoJSON + Nodes + Labels)
-    const buildMeasurementFeatureGroup = (tool, pts, newColor) => {
-        const group = L.featureGroup();
-        if (!pts || !pts.length) return group;
+    // ✅ دالة حساب مساحة المضلع (Spherical Polygon Area)
+    const calculatePolygonArea = (latlngs) => {
+        if (!latlngs || latlngs.length < 3) return 0;
+        const radius = 6378137;
+        let area = 0;
+        const len = latlngs.length;
+        for (let i = 0; i < len; i++) {
+            const p1 = latlngs[i];
+            const p2 = latlngs[(i + 1) % len];
+            area += (p2.lng - p1.lng) * (Math.PI / 180) * (2 + Math.sin(p1.lat * Math.PI / 180) + Math.sin(p2.lat * Math.PI / 180));
+        }
+        area = Math.abs((area * radius * radius) / 2);
+        return area;
+    };
+
+    // ✅ اعادة رسم خطوط ومضلعات القياس فوراً بستايل GeoJSON فاقع تفاعلي
+    const redrawMeasurementsWithColor = (newColor, pts, tool) => {
+        if (!measureLayerGroupRef.current || !pts || !pts.length) return;
+        measureLayerGroupRef.current.clearLayers();
 
         // 1. بناء الـ GeoJSON Feature الصريح
         let geojsonFeature = null;
@@ -206,6 +248,7 @@ export default function GeoportalViewer() {
             };
         }
 
+        // 2. رسم الـ GeoJSON على الخريطة
         if (geojsonFeature) {
             const geoLayer = L.geoJSON(geojsonFeature, {
                 style: () => ({
@@ -217,10 +260,10 @@ export default function GeoportalViewer() {
                     opacity: 0.95
                 })
             });
-            group.addLayer(geoLayer);
+            measureLayerGroupRef.current.addLayer(geoLayer);
         }
 
-        // 2. رسم نقاط التثبيت الدائرية المتوهجة (Corner Control Nodes)
+        // 3. رسم نقاط التثبيت الدائرية المتوهجة (Corner Control Nodes)
         pts.forEach((p, idx) => {
             const nodeMarker = L.circleMarker(p, {
                 radius: 4,
@@ -230,13 +273,15 @@ export default function GeoportalViewer() {
                 fillOpacity: 1
             });
             nodeMarker.bindTooltip(`محطة #${idx + 1}`, { permanent: false, direction: 'top' });
-            group.addLayer(nodeMarker);
+            measureLayerGroupRef.current.addLayer(nodeMarker);
         });
 
-        // 3. حساب وتثبيت التسميات والمسافات فوق الخريطة
+        // 4. حساب بطاقات المسافات الإضافية فوق كل قطعة خط عائم
         if (tool === 'distance' && pts.length > 1) {
+            let totalDist = 0;
             for (let i = 0; i < pts.length - 1; i++) {
                 const segDist = pts[i].distanceTo(pts[i + 1]);
+                totalDist += segDist;
                 const midLat = (pts[i].lat + pts[i + 1].lat) / 2;
                 const midLng = (pts[i].lng + pts[i + 1].lng) / 2;
                 const segText = segDist >= 1000 ? `${(segDist / 1000).toFixed(2)} كم` : `${segDist.toFixed(0)} م`;
@@ -250,11 +295,26 @@ export default function GeoportalViewer() {
                     }),
                     interactive: false
                 });
-                group.addLayer(segMarker);
+                measureLayerGroupRef.current.addLayer(segMarker);
             }
+            const distText = totalDist >= 1000 ? `${(totalDist / 1000).toFixed(2)} كم` : `${totalDist.toFixed(1)} متر`;
+            const lastPt = pts[pts.length - 1];
+            setMeasureData({
+                type: 'مسافة 📏 (LineString)',
+                value: distText,
+                secondaryValue: totalDist >= 1000 ? `${totalDist.toFixed(1)} متر` : `${(totalDist / 1000).toFixed(3)} كم`,
+                pointsCount: pts.length,
+                lastCoords: `${lastPt.lat.toFixed(5)}, ${lastPt.lng.toFixed(5)}`
+            });
         } else if (tool === 'area' && pts.length >= 3) {
             const areaSqM = calculatePolygonArea(pts);
+            const dunam = (areaSqM / 1000).toFixed(2);
+            const hectare = (areaSqM / 10000).toFixed(3);
+            // On-map label: show only m² (clean, no dunams)
             const areaLabelText = `${areaSqM.toFixed(1)} م²`;
+            // Stats card: show full details
+            const areaText = `${areaSqM.toFixed(1)} م² (${dunam} دونم)`;
+
             let latSum = 0, lngSum = 0;
             pts.forEach(p => { latSum += p.lat; lngSum += p.lng; });
             const centroid = [latSum / pts.length, lngSum / pts.length];
@@ -268,103 +328,11 @@ export default function GeoportalViewer() {
                 }),
                 interactive: false
             });
-            group.addLayer(areaMarker);
-        }
+            measureLayerGroupRef.current.addLayer(areaMarker);
 
-        return group;
-    };
-
-    // 📌 Finalize current measurement — save it permanently to map & list, then ready for next drawing!
-    const finalizeMeasurement = useCallback(() => {
-        const tool = activeToolRef.current;
-        const color = measureColorRef.current;
-        const pts = [...measurePointsRef.current];
-
-        // Clean up trailing duplicate points if any (from double click)
-        while (pts.length > 1) {
-            const pLast = pts[pts.length - 1];
-            const pPrev = pts[pts.length - 2];
-            if (Math.abs(pLast.lat - pPrev.lat) < 0.000005 && Math.abs(pLast.lng - pPrev.lng) < 0.000005) {
-                pts.pop();
-            } else {
-                break;
-            }
-        }
-
-        if (!tool || pts.length < 2) return;
-        if (tool === 'area' && pts.length < 3) return;
-
-        // Build permanent Leaflet group and add to saved measures layer group
-        const savedGroup = buildMeasurementFeatureGroup(tool, pts, color);
-        if (savedMeasuresLayerGroupRef.current) {
-            savedMeasuresLayerGroupRef.current.addLayer(savedGroup);
-        }
-
-        // Compute summary values for side panel
-        let summaryVal = '';
-        if (tool === 'distance') {
-            let totalDist = 0;
-            for (let i = 0; i < pts.length - 1; i++) totalDist += pts[i].distanceTo(pts[i + 1]);
-            summaryVal = totalDist >= 1000 ? `${(totalDist / 1000).toFixed(2)} كم` : `${totalDist.toFixed(1)} م`;
-        } else if (tool === 'area') {
-            const areaSqM = calculatePolygonArea(pts);
-            const dunam = (areaSqM / 1000).toFixed(2);
-            summaryVal = `${areaSqM.toFixed(1)} م² (‎${dunam} دونم)`;
-        }
-
-        const summaryObj = {
-            id: Date.now(),
-            type: tool === 'distance' ? 'مسافة 📏' : 'مساحة 📐',
-            value: summaryVal,
-            color,
-            group: savedGroup
-        };
-
-        setSavedMeasures(prev => [...prev, summaryObj]);
-
-        // Reset active measurement points — ready to draw next measurement on map!
-        measurePointsRef.current = [];
-        if (measureLayerGroupRef.current) {
-            measureLayerGroupRef.current.clearLayers();
-        }
-        setMeasureData(null);
-
-        // Clear rubber-band
-        if (previewLayerRef.current) {
-            previewLayerRef.current.remove();
-            previewLayerRef.current = null;
-        }
-    }, []);
-
-    // ✅ اعادة رسم خطوط ومضلعات القياس النشطة فوراً بستايل GeoJSON
-    const redrawMeasurementsWithColor = (newColor, pts, tool) => {
-        if (!measureLayerGroupRef.current || !pts || !pts.length) return;
-        measureLayerGroupRef.current.clearLayers();
-
-        const activeGroup = buildMeasurementFeatureGroup(tool, pts, newColor);
-        measureLayerGroupRef.current.addLayer(activeGroup);
-
-        // Update live stats card data
-        if (tool === 'distance' && pts.length > 1) {
-            let totalDist = 0;
-            for (let i = 0; i < pts.length - 1; i++) totalDist += pts[i].distanceTo(pts[i + 1]);
-            const distText = totalDist >= 1000 ? `${(totalDist / 1000).toFixed(2)} كم` : `${totalDist.toFixed(1)} متر`;
             const lastPt = pts[pts.length - 1];
             setMeasureData({
-                type: 'مسافة 📏 (نشط)',
-                value: distText,
-                secondaryValue: totalDist >= 1000 ? `${totalDist.toFixed(1)} متر` : `${(totalDist / 1000).toFixed(3)} كم`,
-                pointsCount: pts.length,
-                lastCoords: `${lastPt.lat.toFixed(5)}, ${lastPt.lng.toFixed(5)}`
-            });
-        } else if (tool === 'area' && pts.length >= 3) {
-            const areaSqM = calculatePolygonArea(pts);
-            const dunam = (areaSqM / 1000).toFixed(2);
-            const hectare = (areaSqM / 10000).toFixed(3);
-            const areaText = `${areaSqM.toFixed(1)} م² (${dunam} دونم)`;
-            const lastPt = pts[pts.length - 1];
-            setMeasureData({
-                type: 'مساحة 📐 (نشط)',
+                type: 'مساحة 📐 (Polygon)',
                 value: areaText,
                 secondaryValue: `${hectare} هكتار`,
                 pointsCount: pts.length,
@@ -485,9 +453,8 @@ export default function GeoportalViewer() {
                 subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
             }).addTo(mapInstance.current);
 
-            // مجموعة طبقة المسميات المستقلة والقياسات المحفوظة لتجنب التكرار
+            // مجموعة طبقة المسميات المستقلة لتجنب التكرار
             labelsLayerGroupRef.current = L.featureGroup().addTo(mapInstance.current);
-            savedMeasuresLayerGroupRef.current = L.featureGroup().addTo(mapInstance.current);
             measureLayerGroupRef.current = L.featureGroup().addTo(mapInstance.current);
 
             // Listen to mousemove for live coordinates + rubber-band preview
@@ -1178,9 +1145,9 @@ export default function GeoportalViewer() {
                             <span style={{ fontSize: '0.78rem', color: '#94A3B8' }}>#{i + 1} {m.type}</span>
                             <span style={{ color: m.color, fontWeight: 800, fontSize: '0.92rem' }}>{m.value}</span>
                             <button
-                                onClick={() => deleteSavedMeasure(m.id)}
-                                style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '0.9rem', padding: '0 4px', fontWeight: 'bold' }}
-                                title="حذف هذا القياس من الخريطة"
+                                onClick={() => setSavedMeasures(prev => prev.filter(x => x.id !== m.id))}
+                                style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', fontSize: '0.85rem', padding: '0 4px' }}
+                                title="حذف هذا القياس"
                             >✕</button>
                         </div>
                     ))}
