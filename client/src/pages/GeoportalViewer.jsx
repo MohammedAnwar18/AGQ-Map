@@ -100,7 +100,9 @@ export default function GeoportalViewer() {
     const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
 
     // Tools state
-    const [activeTool, setActiveTool] = useState(null);
+    const [showToolsBar, setShowToolsBar] = useState(false);
+    const [activeTool, setActiveTool] = useState(null); // 'distance' | 'area' | 'search'
+    const [measureData, setMeasureData] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedFeatureProps, setSelectedFeatureProps] = useState(null);
 
@@ -109,8 +111,97 @@ export default function GeoportalViewer() {
     const mapInstance = useRef(null);
     const featureGroupsRef = useRef({});
     const labelsLayerGroupRef = useRef(null);
+    const measureLayerGroupRef = useRef(null);
+    const measurePointsRef = useRef([]);
     const layerDataCache = useRef({});
     const hasFittedBoundsRef = useRef(false);
+
+    // ✅ أداة تحديد الموقع بالـ GPS المباشر
+    const handleLocateUser = useCallback(() => {
+        if (!mapInstance.current) return;
+        mapInstance.current.locate({ setView: true, maxZoom: 18, enableHighAccuracy: true });
+        mapInstance.current.once('locationfound', (e) => {
+            const radius = e.accuracy;
+            L.circle(e.latlng, radius, { color: '#06D6F2', fillColor: '#06D6F2', fillOpacity: 0.15, weight: 2 }).addTo(mapInstance.current);
+            L.circleMarker(e.latlng, {
+                radius: 9,
+                fillColor: '#06D6F2',
+                color: '#FFFFFF',
+                weight: 3,
+                opacity: 1,
+                fillOpacity: 1
+            }).addTo(mapInstance.current);
+        });
+        mapInstance.current.once('locationerror', () => {
+            alert('يرجى التثبت من إعطاء الصلاحية لخيار تحديد الموقع (GPS) بالمتصفح');
+        });
+    }, []);
+
+    // ✅ مسح وتفريغ رسومات وأرقام أداة القياس
+    const clearMeasurements = useCallback(() => {
+        if (measureLayerGroupRef.current) {
+            measureLayerGroupRef.current.clearLayers();
+        }
+        measurePointsRef.current = [];
+        setMeasureData(null);
+    }, []);
+
+    // ✅ دالة حساب مساحة المضلع (Spherical Polygon Area)
+    const calculatePolygonArea = (latlngs) => {
+        if (!latlngs || latlngs.length < 3) return 0;
+        const radius = 6378137;
+        let area = 0;
+        const len = latlngs.length;
+        for (let i = 0; i < len; i++) {
+            const p1 = latlngs[i];
+            const p2 = latlngs[(i + 1) % len];
+            area += (p2.lng - p1.lng) * (Math.PI / 180) * (2 + Math.sin(p1.lat * Math.PI / 180) + Math.sin(p2.lat * Math.PI / 180));
+        }
+        area = Math.abs((area * radius * radius) / 2);
+        return area;
+    };
+
+    // ✅ تفاعل النقر المباشر على الخريطة أثناء تفعيل أداة القياس
+    const handleMapClickForMeasurement = useCallback((e) => {
+        if (!activeTool || (activeTool !== 'distance' && activeTool !== 'area')) return;
+        if (!measureLayerGroupRef.current || !mapInstance.current) return;
+
+        const pt = e.latlng;
+        measurePointsRef.current.push(pt);
+        const pts = measurePointsRef.current;
+
+        measureLayerGroupRef.current.clearLayers();
+
+        pts.forEach(p => {
+            L.circleMarker(p, {
+                radius: 6,
+                fillColor: '#F5A623',
+                color: '#FFFFFF',
+                weight: 2,
+                fillOpacity: 1
+            }).addTo(measureLayerGroupRef.current);
+        });
+
+        if (activeTool === 'distance') {
+            if (pts.length > 1) {
+                L.polyline(pts, { color: '#06D6F2', weight: 4, dashArray: '6, 6' }).addTo(measureLayerGroupRef.current);
+                let totalDist = 0;
+                for (let i = 0; i < pts.length - 1; i++) {
+                    totalDist += pts[i].distanceTo(pts[i + 1]);
+                }
+                const distText = totalDist >= 1000 ? `${(totalDist / 1000).toFixed(2)} كم` : `${totalDist.toFixed(1)} متر`;
+                setMeasureData({ type: 'مسافة 📏', value: distText, pointsCount: pts.length });
+            }
+        } else if (activeTool === 'area') {
+            if (pts.length >= 3) {
+                L.polygon(pts, { color: '#10B981', fillColor: '#10B981', fillOpacity: 0.35, weight: 3 }).addTo(measureLayerGroupRef.current);
+                const areaSqM = calculatePolygonArea(pts);
+                const dunam = (areaSqM / 1000).toFixed(2);
+                const areaText = `${areaSqM.toFixed(1)} م² (${dunam} دونم)`;
+                setMeasureData({ type: 'مساحة 📐', value: areaText, pointsCount: pts.length });
+            }
+        }
+    }, [activeTool]);
 
     // 1. Resolve & Fetch Portal Data
     useEffect(() => {
@@ -163,10 +254,16 @@ export default function GeoportalViewer() {
 
             // مجموعة طبقة المسميات المستقلة لتجنب التكرار
             labelsLayerGroupRef.current = L.featureGroup().addTo(mapInstance.current);
+            measureLayerGroupRef.current = L.featureGroup().addTo(mapInstance.current);
 
             // Listen to mousemove for live coordinates
             mapInstance.current.on('mousemove', (e) => {
                 setCursorCoords({ lat: e.latlng.lat, lng: e.latlng.lng });
+            });
+
+            // Listen to map click for live GIS measurement
+            mapInstance.current.on('click', (e) => {
+                handleMapClickForMeasurement(e);
             });
 
             // Listen to zoomend for live map scale & smart label re-rendering
@@ -182,7 +279,7 @@ export default function GeoportalViewer() {
         // Load features for active visible layers
         renderVisibleLayers();
 
-    }, [portal, visibleLayerIds, isLoggedIn]);
+    }, [portal, visibleLayerIds, isLoggedIn, handleMapClickForMeasurement]);
 
     // ✅ تحميل طبقة واحدة مع كاش
     const fetchLayerData = useCallback(async (layer) => {
@@ -477,7 +574,10 @@ export default function GeoportalViewer() {
                         <div className="layers-dropdown-wrapper">
                             <button
                                 className={`nav-action-btn layers-btn ${showLayersDropdown ? 'active' : ''}`}
-                                onClick={() => setShowLayersDropdown(!showLayersDropdown)}
+                                onClick={() => {
+                                    setShowLayersDropdown(!showLayersDropdown);
+                                    if (showToolsBar) setShowToolsBar(false);
+                                }}
                             >
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                                     <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
@@ -529,6 +629,18 @@ export default function GeoportalViewer() {
                                 </div>
                             )}
                         </div>
+
+                        {/* 🛠️ زر الأدوات التفاعلي الجديد */}
+                        <button
+                            className={`nav-action-btn layers-btn ${showToolsBar ? 'active' : ''}`}
+                            style={{ background: showToolsBar ? '#06D6F2' : 'rgba(255, 255, 255, 0.08)', color: showToolsBar ? '#050B16' : '#FFF', border: '1px solid rgba(255, 255, 255, 0.15)' }}
+                            onClick={() => {
+                                setShowToolsBar(!showToolsBar);
+                                if (showLayersDropdown) setShowLayersDropdown(false);
+                            }}
+                        >
+                            <span>🛠️ الأدوات</span>
+                        </button>
 
                         {/* Globe Icon */}
                         <button className="icon-nav-btn" title="اللغة / Language">

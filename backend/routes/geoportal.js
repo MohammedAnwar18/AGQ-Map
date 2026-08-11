@@ -46,6 +46,7 @@ router.put('/:id', authenticateToken, isAdmin, geoportalController.updateGeoport
 router.delete('/:id', authenticateToken, isAdmin, geoportalController.deleteGeoportal);
 
 // Spatial Layer Operations
+router.post('/:id/logo', authenticateToken, isAdmin, upload.single('logo'), geoportalController.uploadLogo);
 router.post('/:id/layers', authenticateToken, isAdmin, upload.single('file'), geoportalController.uploadLayer);
 router.patch('/layers/:layerId/style', authenticateToken, isAdmin, geoportalController.updateLayerStyle);
 router.delete('/layers/:layerId', authenticateToken, isAdmin, geoportalController.deleteLayer);

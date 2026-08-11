@@ -471,3 +471,48 @@ exports.resolvePublicPortal = async (req, res) => {
         return res.status(500).json({ error: 'فشل في تحميل البوابة الجغرافية' });
     }
 };
+
+// 10. Upload Portal Logo (R2 & Local Fallback)
+exports.uploadLogo = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!req.file) {
+            return res.status(400).json({ error: 'يرجى إرفاق صورة الشعار' });
+        }
+
+        let logoKey = `geoportals/${id}/logo_${Date.now()}_${req.file.originalname}`;
+        let logoUrl = null;
+
+        if (process.env.R2_ENDPOINT && process.env.R2_BUCKET_NAME) {
+            try {
+                await r2Client.send(new PutObjectCommand({
+                    Bucket: process.env.R2_BUCKET_NAME,
+                    Key: logoKey,
+                    Body: req.file.buffer,
+                    ContentType: req.file.mimetype || 'image/png'
+                }));
+                logoUrl = `${process.env.R2_PUBLIC_URL || process.env.R2_ENDPOINT}/${logoKey}`;
+            } catch (r2Err) {
+                console.warn('R2 Logo upload warning:', r2Err.message);
+            }
+        }
+
+        if (!logoUrl) {
+            const base64 = req.file.buffer.toString('base64');
+            const mime = req.file.mimetype || 'image/png';
+            logoUrl = `data:${mime};base64,${base64}`;
+        }
+
+        const updateQuery = `
+            UPDATE geoportals
+            SET logo_url = $1, updated_at = CURRENT_TIMESTAMP
+            WHERE id = $2
+            RETURNING *;
+        `;
+        const result = await pool.query(updateQuery, [logoUrl, id]);
+        return res.json({ message: 'تم رفع شعار البوابة بنجاح', logo_url: logoUrl, portal: result.rows[0] });
+    } catch (error) {
+        console.error('Error uploading portal logo:', error);
+        return res.status(500).json({ error: 'فشل في رفع الشعار' });
+    }
+};

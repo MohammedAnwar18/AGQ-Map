@@ -422,49 +422,46 @@ export default function GeoportalDesigner() {
     };
 
     return (
-        <div className="geoportal-designer-container">
-            {/* Sidebar Controls */}
-            <div className="designer-sidebar">
-                <div className="designer-header">
-                    <div className="designer-title">
-                        <h2>تصميم البوابة الجغرافية</h2>
+        <div className="designer-container">
+            {/* Top Bar Navigation */}
+            <div className="designer-header">
+                <div className="designer-brand">
+                    <button className="btn-back" onClick={() => navigate('/admin')}>
+                        <span>🔙</span> للوحة الأدمن
+                    </button>
+                    <button className="btn-back" style={{ background: '#3B82F6', color: '#FFF' }} onClick={() => {
+                        setSelectedPortal(null);
+                        setFormData({ title_ar: 'بوابة جديدة', slug: `portal-${Date.now()}` });
+                    }}>
+                        <span>➕</span> جديدة
+                    </button>
+                    <div className="designer-logo-badge">
+                        <span className="designer-logo-icon">🗺️</span>
                         <span>Geoportal Studio</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                        <button className="icon-btn" title="إنشاء بوابة جديدة" onClick={() => {
-                            setSelectedPortal(null);
-                            setFormData({ title_ar: 'بوابة جديدة', slug: `portal-${Date.now()}` });
-                        }}>
-                            ➕ جديدة
-                        </button>
-                        <button className="icon-btn" title="العودة للوحة الأدمن" onClick={() => navigate('/admin')}>
-                            🔙 للوحة الأدمن
-                        </button>
                     </div>
                 </div>
 
-                {/* Tabs */}
-                <div className="designer-tabs">
-                    <button className={`tab-btn ${activeTab === 'general' ? 'active' : ''}`} onClick={() => setActiveTab('general')}>
+                <div className="header-nav-tabs">
+                    <button className={`nav-tab-btn ${activeTab === 'general' ? 'active' : ''}`} onClick={() => setActiveTab('general')}>
                         ⚙️ البوابة
                     </button>
-                    <button className={`tab-btn ${activeTab === 'layers' ? 'active' : ''}`} onClick={() => setActiveTab('layers')}>
-                        🗺️ الطبقات
+                    <button className={`nav-tab-btn ${activeTab === 'layers' ? 'active' : ''}`} onClick={() => setActiveTab('layers')}>
+                        📚 الطبقات
                     </button>
-                    <button className={`tab-btn ${activeTab === 'clip' ? 'active' : ''}`} onClick={() => setActiveTab('clip')}>
+                    <button className={`nav-tab-btn ${activeTab === 'clip' ? 'active' : ''}`} onClick={() => setActiveTab('clip')}>
                         ✂️ القص
                     </button>
-                    <button className={`tab-btn ${activeTab === 'domain' ? 'active' : ''}`} onClick={() => setActiveTab('domain')}>
+                    <button className={`nav-tab-btn ${activeTab === 'domain' ? 'active' : ''}`} onClick={() => setActiveTab('domain')}>
                         🌐 الدومين
                     </button>
-                    <button className={`tab-btn ${activeTab === 'auth' ? 'active' : ''}`} onClick={() => setActiveTab('auth')}>
+                    <button className={`nav-tab-btn ${activeTab === 'auth' ? 'active' : ''}`} onClick={() => setActiveTab('auth')}>
                         🔒 الأمان
                     </button>
                 </div>
+            </div>
 
-                {/* Content */}
-                <div className="designer-content">
-                    {/* General Settings */}
+            <div className="designer-workspace">
+                <div className="designer-sidebar">
                     {activeTab === 'general' && (
                         <div className="designer-section">
                             <div className="section-title">معلومات البوابة والمظهر</div>
@@ -486,7 +483,40 @@ export default function GeoportalDesigner() {
                                 <input type="text" className="form-control" value={formData.title_ar} onChange={e => setFormData({ ...formData, title_ar: e.target.value })} />
                             </div>
 
-                            <div className="form-group">
+                            <div className="form-group" style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                                <label style={{ fontWeight: 700, color: '#F5A623', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <span>🏛️ شعار البلدية / المؤسسة (Portal Logo):</span>
+                                </label>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 8 }}>
+                                    {formData.logo_url ? (
+                                        <img src={formData.logo_url} alt="Portal Logo" style={{ height: 48, width: 48, objectFit: 'contain', borderRadius: 8, background: '#1E293B', padding: 4, border: '1px solid #334155' }} />
+                                    ) : (
+                                        <div style={{ height: 48, width: 48, borderRadius: 8, background: '#1E293B', border: '1px dashed #475569', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>🏛️</div>
+                                    )}
+                                    <input
+                                        type="file"
+                                        id="logoFileInput"
+                                        accept="image/*"
+                                        style={{ display: 'none' }}
+                                        onChange={e => {
+                                            if (e.target.files && e.target.files[0]) {
+                                                handleUploadLogo(e.target.files[0]);
+                                            }
+                                        }}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="btn-secondary"
+                                        style={{ padding: '8px 14px', fontSize: '0.82rem', background: '#3B82F6', color: '#FFF' }}
+                                        onClick={() => document.getElementById('logoFileInput').click()}
+                                        disabled={logoUploading}
+                                    >
+                                        {logoUploading ? 'جاري الرفع لـ R2...' : '📷 رفع شعار جديد'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="form-group" style={{ marginTop: 14 }}>
                                 <label>المعرف السريع بالرابط (Slug):</label>
                                 <input type="text" className="form-control" value={formData.slug} onChange={e => setFormData({ ...formData, slug: e.target.value })} />
                             </div>

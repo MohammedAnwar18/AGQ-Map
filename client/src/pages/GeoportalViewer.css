@@ -462,6 +462,105 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
+/* Floating Tools Extension Bar */
+.floating-tools-extension-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    animation: fadeInDown 0.25s ease-out;
+}
+
+.tool-bar-item {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #F8FAFC;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.tool-bar-item:hover {
+    background: rgba(6, 214, 242, 0.2);
+    border-color: #06D6F2;
+    color: #06D6F2;
+}
+
+.tool-bar-item.active {
+    background: #06D6F2 !important;
+    border-color: #06D6F2 !important;
+    color: #050B16 !important;
+}
+
+.tool-bar-item.clear-btn {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: #EF4444;
+    color: #FCA5A5;
+    margin-right: auto;
+}
+
+.tool-bar-item.clear-btn:hover {
+    background: #EF4444;
+    color: #FFFFFF;
+}
+
+/* GIS Measurement Result Card */
+.gis-measurement-card {
+    position: fixed;
+    bottom: 45px;
+    left: 20px;
+    z-index: 1200;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(6, 214, 242, 0.4);
+    border-radius: 12px;
+    padding: 14px 18px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    color: #FFFFFF;
+    font-family: 'Tajawal', sans-serif;
+    min-width: 220px;
+    animation: fadeInDown 0.3s ease-out;
+}
+
+.measure-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.78rem;
+    color: #94A3B8;
+    margin-bottom: 6px;
+}
+
+.measure-card-header button {
+    background: none;
+    border: none;
+    color: #94A3B8;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.measure-card-val {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #06D6F2;
+}
+
+.measure-card-hint {
+    font-size: 0.72rem;
+    color: #64748B;
+    margin-top: 4px;
+}
+
 .dropdown-header {
     padding: 14px 16px;
     background: #f8fafc;
