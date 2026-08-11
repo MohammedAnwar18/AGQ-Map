@@ -455,7 +455,8 @@ export default function GeoportalViewer() {
             mapInstance.current = L.map(mapRef.current, {
                 center,
                 zoom,
-                zoomControl: false
+                zoomControl: false,
+                preferCanvas: true
             });
 
             // Google Maps Plain Satellite (بدون كتابات ولا أسماء — سادة ناصعة)
@@ -741,7 +742,9 @@ export default function GeoportalViewer() {
 
             const isTransparent = style.fill_color === 'transparent' || style.is_transparent;
 
+            const canvasRenderer = L.canvas({ padding: 0.5 });
             const group = L.geoJSON(geojson, {
+                renderer: canvasRenderer,
                 style: () => ({
                     color: style.stroke_color || '#1D4ED8',
                     weight: style.stroke_width !== undefined ? style.stroke_width : 2,

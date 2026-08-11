@@ -200,7 +200,8 @@ export default function GeoportalDesigner() {
             mapInstance.current = L.map(mapRef.current, {
                 center: [31.9038, 35.2034],
                 zoom: 13,
-                zoomControl: false
+                zoomControl: false,
+                preferCanvas: true
             });
 
             L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
@@ -320,7 +321,9 @@ export default function GeoportalDesigner() {
                     const style = layer.style_config || {};
                     const isTransparent = style.fill_color === 'transparent' || style.is_transparent;
 
+                    const canvasRenderer = L.canvas({ padding: 0.5 });
                     const leafletLayer = L.geoJSON(geojsonToRender, {
+                        renderer: canvasRenderer,
                         style: () => ({
                             color: style.stroke_color || '#1D4ED8',
                             weight: style.stroke_width !== undefined ? style.stroke_width : 2,
