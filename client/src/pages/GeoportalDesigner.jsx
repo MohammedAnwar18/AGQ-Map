@@ -400,6 +400,32 @@ export default function GeoportalDesigner() {
         }
     };
 
+    // 5a. Upload Portal Logo
+    const handleUploadLogo = async (file) => {
+        if (!selectedPortal?.id) {
+            alert('يرجى اختيار البوابة أولاً');
+            return;
+        }
+        try {
+            setLogoUploading(true);
+            const data = new FormData();
+            data.append('logo', file);
+            const res = await axios.post(`${API_BASE}/${selectedPortal.id}/logo`, data, {
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+            });
+            const logoUrl = res.data?.logo_url;
+            if (logoUrl) {
+                setFormData(prev => ({ ...prev, logo_url: logoUrl }));
+                alert('✅ تم رفع الشعار بنجاح! سيظهر في واجهة البوابة مباشرة');
+            }
+        } catch (err) {
+            console.error('Error uploading logo:', err);
+            alert('⚠️ فشل في رفع الشعار: ' + (err.response?.data?.error || err.message));
+        } finally {
+            setLogoUploading(false);
+        }
+    };
+
     // 5. Update layer styling (Real-time local state + API save)
     const handleLayerStyleChange = async (layerId, newStyle) => {
         // Update local layerList state immediately for smooth UI feedback

@@ -216,10 +216,10 @@ export default function GeoportalViewer() {
         // 3. رسم نقاط التثبيت الدائرية المتوهجة (Corner Control Nodes)
         pts.forEach((p, idx) => {
             const nodeMarker = L.circleMarker(p, {
-                radius: 7,
+                radius: 4,
                 fillColor: newColor,
                 color: '#FFFFFF',
-                weight: 2.5,
+                weight: 2,
                 fillOpacity: 1
             });
             nodeMarker.bindTooltip(`محطة #${idx + 1}`, { permanent: false, direction: 'top' });
@@ -260,6 +260,9 @@ export default function GeoportalViewer() {
             const areaSqM = calculatePolygonArea(pts);
             const dunam = (areaSqM / 1000).toFixed(2);
             const hectare = (areaSqM / 10000).toFixed(3);
+            // On-map label: show only m² (clean, no dunams)
+            const areaLabelText = `${areaSqM.toFixed(1)} م²`;
+            // Stats card: show full details
             const areaText = `${areaSqM.toFixed(1)} م² (${dunam} دونم)`;
 
             let latSum = 0, lngSum = 0;
@@ -269,7 +272,7 @@ export default function GeoportalViewer() {
             const areaMarker = L.marker(centroid, {
                 icon: L.divIcon({
                     className: 'onmap-measure-area-label',
-                    html: `<div style="background: ${newColor}; color: #000; font-weight: 800; font-size: 12px; padding: 4px 10px; border-radius: 8px; border: 2px solid #FFF; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.6);">${areaText}</div>`,
+                    html: `<div style="background: ${newColor}; color: #000; font-weight: 800; font-size: 12px; padding: 4px 10px; border-radius: 8px; border: 2px solid #FFF; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.6);">${areaLabelText}</div>`,
                     iconSize: [0, 0],
                     iconAnchor: [0, 0]
                 }),
