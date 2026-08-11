@@ -13,6 +13,7 @@ export default function GeoportalViewer() {
     const [visibleLayerIds, setVisibleLayerIds] = useState(new Set());
     const [loading, setLoading] = useState(true);
     const [layersLoading, setLayersLoading] = useState(false);
+    const [showLayersDropdown, setShowLayersDropdown] = useState(false);
 
     // Auth modal state
     const [showAuthModal, setShowAuthModal] = useState(false);
