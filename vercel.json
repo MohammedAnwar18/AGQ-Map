@@ -1,5 +1,10 @@
 {
   "version": 2,
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 300
+    }
+  },
   "rewrites": [
     { "source": "/api/geoportals/(.*)", "destination": "/api/index.js" },
     { "source": "/api/geoportals", "destination": "/api/index.js" },

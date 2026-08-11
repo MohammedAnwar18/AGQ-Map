@@ -259,14 +259,51 @@ exports.deleteRepositoryLayer = async (req, res) => {
     }
 };
 
-// 8. Proxy GeoJSON
+// 8. Proxy GeoJSON from R2 (fixes CORS for browser fetches)
 exports.proxyGeoJSON = async (req, res) => {
     try {
         const { url } = req.query;
         if (!url) return res.status(400).json({ error: 'URL query parameter required' });
-        const response = await axios.get(url, { responseType: 'stream' });
+
+        // Validate URL is from trusted R2 domains only
+        let parsedUrl;
+        try { parsedUrl = new URL(url); } catch { return res.status(400).json({ error: 'Invalid URL' }); }
+
+        const trustedHosts = [
+            'r2.dev', 'cloudflarestorage.com', 'r2.cloudflarestorage.com'
+        ];
+        const isTrusted = trustedHosts.some(h => parsedUrl.hostname.endsWith(h));
+        if (!isTrusted) {
+            return res.status(403).json({ error: 'URL not from a trusted R2 domain' });
+        }
+
+        // Set CORS headers so browser accepts the response
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Content-Type', 'application/geo+json; charset=utf-8');
+        res.setHeader('Cache-Control', 'public, max-age=300'); // 5 دقائق cache
+
+        // Stream the file — يدعم ملفات بالجيجابايت بدون تحميلها للذاكرة
+        const response = await axios.get(url, {
+            responseType: 'stream',
+            timeout: 600000, // 10 دقائق للملفات الضخمة جداً
+            headers: { 'Accept-Encoding': 'gzip, deflate' }
+        });
+
+        // مرر Content-Length إذا وُجد (لشريط التقدم)
+        if (response.headers['content-length']) {
+            res.setHeader('Content-Length', response.headers['content-length']);
+        }
+
         response.data.pipe(res);
+
+        response.data.on('error', (err) => {
+            console.error('Proxy stream error:', err.message);
+            if (!res.headersSent) res.status(500).json({ error: 'Stream error' });
+        });
+
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error('proxyGeoJSON error:', err.message);
+        if (!res.headersSent) res.status(500).json({ error: err.message });
     }
 };
+
