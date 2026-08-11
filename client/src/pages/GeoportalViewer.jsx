@@ -22,6 +22,34 @@ export default function GeoportalViewer() {
     const [selectedCrs, setSelectedCrs] = useState('28191'); // '28191' (Palestine Grid) | '2039' (Israeli Grid) | '4326' (Lat/Long)
     const [showCrsMenu, setShowCrsMenu] = useState(false);
 
+    // Helper to calculate exact geographic centroid for fixed labels
+    const getFeatureCentroid = (feature) => {
+        if (!feature || !feature.geometry) return null;
+        const type = feature.geometry.type;
+        const coords = feature.geometry.coordinates;
+
+        if (type === 'Point') {
+            return [coords[1], coords[0]];
+        }
+        if (type === 'Polygon') {
+            let pts = coords[0];
+            let latSum = 0, lngSum = 0, count = pts.length;
+            pts.forEach(pt => { lngSum += pt[0]; latSum += pt[1]; });
+            return [latSum / count, lngSum / count];
+        }
+        if (type === 'MultiPolygon') {
+            let pts = coords[0][0];
+            let latSum = 0, lngSum = 0, count = pts.length;
+            pts.forEach(pt => { lngSum += pt[0]; latSum += pt[1]; });
+            return [latSum / count, lngSum / count];
+        }
+        if (type === 'LineString') {
+            const mid = Math.floor(coords.length / 2);
+            return [coords[mid][1], coords[mid][0]];
+        }
+        return null;
+    };
+
     // Coordinate conversion utilities
     const formatCoordinates = () => {
         const { lat, lng } = cursorCoords;
@@ -207,6 +235,44 @@ export default function GeoportalViewer() {
             const isTransparent = style.fill_color === 'transparent' || style.is_transparent;
             const showLabels = style.show_labels;
             const labelField = style.label_field;
+            const labelColor = style.label_color || '#FFFFFF';
+            const labelSize = style.label_size || 12;
+            const isClippingMask = style.is_clipping_mask;
+
+            // ✅ إذا كانت الطبقة معرّفة كـ قناع قص الخريطة (Clipping Mask)
+            if (isClippingMask) {
+                const maskGroup = L.featureGroup();
+                const worldOuter = [
+                    [90, -180],
+                    [90, 180],
+                    [-90, 180],
+                    [-90, -180]
+                ];
+
+                geojson.features.forEach(feat => {
+                    if (feat.geometry?.type === 'Polygon' || feat.geometry?.type === 'MultiPolygon') {
+                        let holes = [];
+                        if (feat.geometry.type === 'Polygon') {
+                            holes = feat.geometry.coordinates.map(ring => ring.map(pt => [pt[1], pt[0]]));
+                        } else if (feat.geometry.type === 'MultiPolygon') {
+                            feat.geometry.coordinates.forEach(poly => {
+                                poly.forEach(ring => holes.push(ring.map(pt => [pt[1], pt[0]])));
+                            });
+                        }
+
+                        const maskPoly = L.polygon([worldOuter, ...holes], {
+                            color: 'transparent',
+                            fillColor: '#FFFFFF',
+                            fillOpacity: 1,
+                            interactive: false
+                        });
+                        maskGroup.addLayer(maskPoly);
+                    }
+                });
+
+                featureGroupsRef.current[`mask_${layer.id}`] = maskGroup;
+                maskGroup.addTo(mapInstance.current);
+            }
 
             const group = L.geoJSON(geojson, {
                 style: () => ({
@@ -231,15 +297,20 @@ export default function GeoportalViewer() {
                         properties: feature.properties
                     }));
 
-                    // ✅ إضافة مسميات الخصائص كـ Labels مطبوعة على الخريطة
+                    // ✅ إضافة مسميات الخصائص كـ Fixed DivIcon Labels مطبوعة وثابتة على الخريطة
                     if (showLabels && labelField && feature.properties && feature.properties[labelField] !== undefined) {
                         const val = feature.properties[labelField];
                         if (val !== null && val !== '') {
-                            leafletLayer.bindTooltip(String(val), {
-                                permanent: true,
-                                direction: 'center',
-                                className: 'map-feature-label'
-                            });
+                            const centroid = getFeatureCentroid(feature);
+                            if (centroid) {
+                                const labelIcon = L.divIcon({
+                                    className: 'fixed-map-label-wrapper',
+                                    html: `<div class="fixed-map-label" style="color: ${labelColor}; font-size: ${labelSize}px;">${String(val)}</div>`,
+                                    iconSize: [0, 0],
+                                    iconAnchor: [0, 0]
+                                });
+                                L.marker(centroid, { icon: labelIcon, interactive: false }).addTo(group);
+                            }
                         }
                     }
                 }
