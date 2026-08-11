@@ -90,6 +90,106 @@ export default function GeoportalDesigner() {
     };
 
     const [layerFieldsMap, setLayerFieldsMap] = useState({});
+    const labelsGroupRef = useRef(null);
+
+    // Helper for case-insensitive property lookup
+    const getFieldValue = (props, targetField) => {
+        if (!props || !targetField) return null;
+        if (props[targetField] !== undefined && props[targetField] !== null) return props[targetField];
+        const matchKey = Object.keys(props).find(k => k.toLowerCase() === targetField.toLowerCase());
+        return matchKey ? props[matchKey] : null;
+    };
+
+    // Helper to calculate true polygon geometric centroid (heart of feature)
+    const getTruePolygonCentroid = (feature) => {
+        if (!feature || !feature.geometry) return null;
+        const geom = feature.geometry;
+        let coords = geom.coordinates;
+
+        if (geom.type === 'Point') {
+            return [coords[1], coords[0]];
+        }
+        if (geom.type === 'Polygon') {
+            coords = coords[0];
+        } else if (geom.type === 'MultiPolygon') {
+            let maxLen = 0;
+            let largestPoly = coords[0][0];
+            coords.forEach(poly => {
+                if (poly[0].length > maxLen) {
+                    maxLen = poly[0].length;
+                    largestPoly = poly[0];
+                }
+            });
+            coords = largestPoly;
+        } else if (geom.type === 'LineString') {
+            const mid = Math.floor(coords.length / 2);
+            return [coords[mid][1], coords[mid][0]];
+        } else {
+            return null;
+        }
+
+        if (!coords || !coords.length) return null;
+        let latSum = 0, lngSum = 0;
+        coords.forEach(pt => {
+            lngSum += pt[0];
+            latSum += pt[1];
+        });
+        return [latSum / coords.length, lngSum / coords.length];
+    };
+
+    const layerDataCache = useRef({});
+
+    const updateSmartDesignerLabels = useCallback(() => {
+        if (!mapInstance.current || !labelsGroupRef.current || !layerList) return;
+        labelsGroupRef.current.clearLayers();
+
+        const activeZoom = mapInstance.current.getZoom();
+        if (activeZoom < 13) return;
+
+        const drawnPixelPoints = [];
+
+        layerList.forEach(layer => {
+            if (!layer.is_visible_by_default) return;
+            const style = layer.style_config || {};
+
+            if (style.show_labels && style.label_field && layerDataCache.current[layer.id]) {
+                const geojson = layerDataCache.current[layer.id];
+                if (geojson && geojson.features) {
+                    const labelColor = style.label_color || '#FFFFFF';
+                    const labelSize = style.label_size || 12;
+
+                    geojson.features.forEach(feature => {
+                        const val = getFieldValue(feature.properties, style.label_field);
+                        if (val !== null && val !== undefined && String(val).trim() !== '') {
+                            const centroid = getTruePolygonCentroid(feature);
+                            if (centroid) {
+                                const containerPt = mapInstance.current.latLngToContainerPoint(centroid);
+                                const isColliding = drawnPixelPoints.some(pt => {
+                                    const dx = pt.x - containerPt.x;
+                                    const dy = pt.y - containerPt.y;
+                                    return Math.sqrt(dx * dx + dy * dy) < 85;
+                                });
+
+                                if (!isColliding) {
+                                    drawnPixelPoints.push(containerPt);
+                                    const marker = L.marker(centroid, {
+                                        icon: L.divIcon({
+                                            className: 'pure-floating-label-marker',
+                                            html: `<div class="pure-floating-map-label" style="color: ${labelColor} !important; font-size: ${labelSize}px !important;">${String(val)}</div>`,
+                                            iconSize: [0, 0],
+                                            iconAnchor: [0, 0]
+                                        }),
+                                        interactive: false
+                                    });
+                                    labelsGroupRef.current.addLayer(marker);
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        });
+    }, [layerList]);
 
     // 2. Initialize Leaflet Map
     useEffect(() => {
@@ -110,6 +210,11 @@ export default function GeoportalDesigner() {
 
             L.control.zoom({ position: 'topleft' }).addTo(mapInstance.current);
             geojsonLayersGroup.current = L.featureGroup().addTo(mapInstance.current);
+            labelsGroupRef.current = L.featureGroup().addTo(mapInstance.current);
+
+            mapInstance.current.on('zoomend', () => {
+                updateSmartDesignerLabels();
+            });
         }
 
         // Render features on map
@@ -168,6 +273,7 @@ export default function GeoportalDesigner() {
             try {
                 const res = await axios.get(`${API_BASE}/public/layers/${layer.id}/features`, authHeaders);
                 const geojson = res.data;
+                layerDataCache.current[layer.id] = geojson;
 
                 if (geojson && geojson.features && geojson.features.length > 0) {
                     // ✅ استخراج أسماء حقول الخصائص للطبقة
@@ -177,8 +283,6 @@ export default function GeoportalDesigner() {
 
                     const style = layer.style_config || {};
                     const isTransparent = style.fill_color === 'transparent' || style.is_transparent;
-                    const showLabels = style.show_labels;
-                    const labelField = style.label_field;
 
                     const leafletLayer = L.geoJSON(geojson, {
                         style: () => ({
@@ -203,23 +307,6 @@ export default function GeoportalDesigner() {
                                     .map(([k, v]) => `<strong>${k}:</strong> ${v}`)
                                     .join('<br/>');
                                 l.bindPopup(`<div style="font-family: Tajawal, sans-serif;">${popupContent}</div>`);
-
-                                // ✅ إضافة مسميات الخصائص كـ Pure Floating Labels بدون أي إطار أو صندوق
-                                if (showLabels && labelField && feature.properties) {
-                                    const matchKey = Object.keys(feature.properties).find(k => k.toLowerCase() === labelField.toLowerCase());
-                                    const val = matchKey ? feature.properties[matchKey] : feature.properties[labelField];
-                                    if (val !== null && val !== undefined && String(val).trim() !== '') {
-                                        const labelColor = style.label_color || '#FFFFFF';
-                                        const labelSize = style.label_size || 12;
-                                        const htmlLabel = `<span style="color: ${labelColor} !important; font-size: ${labelSize}px !important; font-weight: 800 !important; font-family: 'Tajawal', sans-serif !important; text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000, 0 2px 6px rgba(0,0,0,0.95); white-space: nowrap; pointer-events: none; user-select: none;">${String(val)}</span>`;
-
-                                        l.bindTooltip(htmlLabel, {
-                                            permanent: true,
-                                            direction: 'center',
-                                            className: 'pure-floating-map-label'
-                                        });
-                                    }
-                                }
                             }
                         }
                     });
@@ -230,6 +317,9 @@ export default function GeoportalDesigner() {
                 console.error(`Error rendering layer ${layer.layer_name}:`, err);
             }
         }
+
+        // ✅ رسم المسميات المكانيّة الذكية الصافية في شاشة المصمم (Centroid + Zoom Threshold + Collision Detection)
+        updateSmartDesignerLabels();
 
         // Fit bounds if features exist
         const bounds = geojsonLayersGroup.current.getBounds();
