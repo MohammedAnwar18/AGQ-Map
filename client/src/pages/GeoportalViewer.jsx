@@ -517,15 +517,62 @@ export default function GeoportalViewer() {
         const token = localStorage.getItem('token');
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         try {
+            // أولاً: حاول جلب Features من PostGIS
             const res = await axios.get(`/api/geoportals/public/layers/${layer.id}/features`, { headers });
-            layerDataCache.current[layer.id] = res.data;
-            return res.data;
+            const data = res.data;
+
+            // إذا لم تكن هناك features (طبقة رُفعت بـ Presigned URL مباشرةً لـ R2)
+            // اجلب الـ GeoJSON مباشرةً من رابط R2
+            const hasFeatures = data && data.features && data.features.length > 0;
+            if (!hasFeatures && layer.r2_file_url) {
+                try {
+                    const r2Res = await axios.get(layer.r2_file_url, { 
+                        headers: { 'Accept': 'application/json, application/geo+json' },
+                        timeout: 120000 // 2 دقيقة للملفات الضخمة
+                    });
+                    const r2Geojson = r2Res.data;
+                    if (r2Geojson && (r2Geojson.type === 'FeatureCollection' || r2Geojson.type === 'Feature')) {
+                        const normalized = r2Geojson.type === 'Feature'
+                            ? { type: 'FeatureCollection', features: [r2Geojson] }
+                            : r2Geojson;
+                        layerDataCache.current[layer.id] = normalized;
+                        return normalized;
+                    }
+                } catch (r2Err) {
+                    console.warn(`Layer ${layer.layer_name} — failed to fetch from R2:`, r2Err.message);
+                }
+            }
+
+            layerDataCache.current[layer.id] = data;
+            return data;
         } catch (err) {
             if (err.response?.status === 403) return null;
+
+            // إذا فشل PostGIS وفي رابط R2، حاول مباشرةً من R2
+            if (layer.r2_file_url) {
+                try {
+                    const r2Res = await axios.get(layer.r2_file_url, {
+                        headers: { 'Accept': 'application/json, application/geo+json' },
+                        timeout: 120000
+                    });
+                    const r2Geojson = r2Res.data;
+                    if (r2Geojson && (r2Geojson.type === 'FeatureCollection' || r2Geojson.type === 'Feature')) {
+                        const normalized = r2Geojson.type === 'Feature'
+                            ? { type: 'FeatureCollection', features: [r2Geojson] }
+                            : r2Geojson;
+                        layerDataCache.current[layer.id] = normalized;
+                        return normalized;
+                    }
+                } catch (r2Err) {
+                    console.warn(`Layer ${layer.layer_name} R2 fallback failed:`, r2Err.message);
+                }
+            }
+
             console.warn(`Layer ${layer.layer_name} failed:`, err.message);
             return null;
         }
     }, []);
+
 
     // ✅ محرك رسم المسميات المكانيّة الذكي مع (Centroid & Zoom Threshold & Collision Detection)
     const updateSmartMapLabels = useCallback(() => {
