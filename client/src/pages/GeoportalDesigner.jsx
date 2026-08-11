@@ -234,25 +234,27 @@ export default function GeoportalDesigner() {
                 try {
                     const res = await axios.get(`${API_BASE}/public/layers/${maskLayer.id}/features`, authHeaders);
                     const maskGeojson = res.data;
-                    if (maskGeojson && maskGeojson.features?.length) {
-                        const worldOuter = [
+                        const worldOuterRing = [
                             [90, -180],
                             [90, 180],
                             [-90, 180],
-                            [-90, -180]
+                            [-90, -180],
+                            [90, -180]
                         ];
                         let holes = [];
                         maskGeojson.features.forEach(feat => {
                             if (feat.geometry?.type === 'Polygon') {
-                                holes.push(feat.geometry.coordinates.map(ring => ring.map(pt => [pt[1], pt[0]])));
+                                const ring = feat.geometry.coordinates[0].map(pt => [pt[1], pt[0]]);
+                                holes.push(ring);
                             } else if (feat.geometry?.type === 'MultiPolygon') {
                                 feat.geometry.coordinates.forEach(poly => {
-                                    holes.push(poly[0].map(pt => [pt[1], pt[0]]));
+                                    const ring = poly[0].map(pt => [pt[1], pt[0]]);
+                                    holes.push(ring);
                                 });
                             }
                         });
                         if (holes.length > 0) {
-                            const maskPoly = L.polygon([worldOuter, ...holes], {
+                            const maskPoly = L.polygon([worldOuterRing, ...holes], {
                                 color: 'transparent',
                                 fillColor: '#FFFFFF',
                                 fillOpacity: 1,

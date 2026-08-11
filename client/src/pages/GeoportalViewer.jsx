@@ -273,6 +273,56 @@ export default function GeoportalViewer() {
         const visibleLayers = layers.filter(l => visibleLayerIds.has(l.id));
         setLayersLoading(true);
 
+        // ✅ رسم قناع قص الخريطة الجوية الحية (Clipping Mask Overlay)
+        const clippingMaskLayerId = portal.map_config?.clipping_mask_layer_id;
+        if (clippingMaskLayerId) {
+            const maskLayer = layers.find(l => String(l.id) === String(clippingMaskLayerId));
+            if (maskLayer) {
+                const maskGeojson = await fetchLayerData(maskLayer);
+                if (maskGeojson && maskGeojson.features?.length) {
+                    if (featureGroupsRef.current['clipping_mask_overlay']) {
+                        mapInstance.current.removeLayer(featureGroupsRef.current['clipping_mask_overlay']);
+                    }
+                    const maskGroup = L.featureGroup();
+                    const worldOuterRing = [
+                        [90, -180],
+                        [90, 180],
+                        [-90, 180],
+                        [-90, -180],
+                        [90, -180]
+                    ];
+
+                    let holes = [];
+                    maskGeojson.features.forEach(feat => {
+                        if (feat.geometry?.type === 'Polygon') {
+                            const ring = feat.geometry.coordinates[0].map(pt => [pt[1], pt[0]]);
+                            holes.push(ring);
+                        } else if (feat.geometry?.type === 'MultiPolygon') {
+                            feat.geometry.coordinates.forEach(poly => {
+                                const ring = poly[0].map(pt => [pt[1], pt[0]]);
+                                holes.push(ring);
+                            });
+                        }
+                    });
+
+                    if (holes.length > 0) {
+                        const maskPoly = L.polygon([worldOuterRing, ...holes], {
+                            color: 'transparent',
+                            fillColor: '#FFFFFF',
+                            fillOpacity: 1,
+                            interactive: false
+                        });
+                        maskGroup.addLayer(maskPoly);
+                        featureGroupsRef.current['clipping_mask_overlay'] = maskGroup;
+                        maskGroup.addTo(mapInstance.current);
+                    }
+                }
+            }
+        } else if (featureGroupsRef.current['clipping_mask_overlay']) {
+            mapInstance.current.removeLayer(featureGroupsRef.current['clipping_mask_overlay']);
+            delete featureGroupsRef.current['clipping_mask_overlay'];
+        }
+
         let combinedBounds = L.latLngBounds([]);
 
         await Promise.all(visibleLayers.map(async (layer) => {
