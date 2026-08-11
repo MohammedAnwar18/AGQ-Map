@@ -211,8 +211,8 @@ export default function GeoportalViewer() {
 
         const activeZoom = mapInstance.current.getZoom();
 
-        // 2. النقطة الثانية (Zoom Threshold): إخفاء المسميات عند الابتعاد الكامل منعاً للاكتظاظ والمظر المزدحم
-        if (activeZoom < 11) return;
+        // 2. النقطة الثانية (Zoom Threshold): إخفاء المسميات عند الابتعاد والزوم المصغر (أقل من زوم 13 زوم البلدية والقطع) لمنع التراكم والاكتظاظ
+        if (activeZoom < 13) return;
 
         const visibleLayers = layers.filter(l => visibleLayerIds.has(l.id));
         const drawnPixelPoints = [];
@@ -227,16 +227,16 @@ export default function GeoportalViewer() {
                 geojson.features.forEach(feature => {
                     const val = getFieldValue(feature.properties, style.label_field);
                     if (val !== null && val !== undefined && String(val).trim() !== '') {
-                        // النقطة الأولى: حساب المركز الهندي (Centroid) في قلب القطعة
+                        // النقطة الأولى: حساب المركز الهندسي (Centroid) بقلب القطعة
                         const centroid = getTruePolygonCentroid(feature);
                         if (centroid) {
                             const containerPt = mapInstance.current.latLngToContainerPoint(centroid);
 
-                            // النقطة الثالثة (Collision Detection): منع تداخل الكلمات المتجاورة
+                            // النقطة الثالثة (Collision Detection): مسافة أمان 85 بكسل لمنع تداخل الأسماء والكلمات الطويلة
                             const isColliding = drawnPixelPoints.some(pt => {
                                 const dx = pt.x - containerPt.x;
                                 const dy = pt.y - containerPt.y;
-                                return Math.sqrt(dx * dx + dy * dy) < 40; // مسافة أمان 40 بكسل
+                                return Math.sqrt(dx * dx + dy * dy) < 85;
                             });
 
                             if (!isColliding) {
