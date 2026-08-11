@@ -140,49 +140,81 @@ export default function GeoportalDesigner() {
 
     const layerDataCache = useRef({});
 
-    const updateSmartDesignerLabels = useCallback(() => {
-        if (!mapInstance.current || !labelsGroupRef.current || !layerList) return;
+    // ✅ محرك رسم المسميات المكانيّة الذكية في المصمم بمركز القطعة وبدون أي تداخل
+    const updateSmartDesignerLabels = () => {
+        if (!mapInstance.current || !labelsGroupRef.current) return;
+
         labelsGroupRef.current.clearLayers();
 
         const activeZoom = mapInstance.current.getZoom();
         if (activeZoom < 13) return;
 
-        const drawnPixelPoints = [];
+        const mapBounds = mapInstance.current.getBounds();
+        const drawnBoxes = [];
 
         layerList.forEach(layer => {
             if (!layer.is_visible_by_default) return;
-            const style = layer.style_config || {};
+            const style = typeof layer.style_config === 'string'
+                ? (() => { try { return JSON.parse(layer.style_config); } catch { return {}; } })()
+                : (layer.style_config || {});
 
             if (style.show_labels && style.label_field && layerDataCache.current[layer.id]) {
                 const geojson = layerDataCache.current[layer.id];
-                if (geojson && geojson.features) {
+                if (geojson && Array.isArray(geojson.features)) {
                     const labelColor = style.label_color || '#FFFFFF';
                     const labelSize = style.label_size || 12;
 
                     geojson.features.forEach(feature => {
                         const val = getFieldValue(feature.properties, style.label_field);
                         if (val !== null && val !== undefined && String(val).trim() !== '') {
+                            const strVal = String(val).trim();
                             const centroid = getTruePolygonCentroid(feature);
                             if (centroid) {
-                                const containerPt = mapInstance.current.latLngToContainerPoint(centroid);
-                                const isColliding = drawnPixelPoints.some(pt => {
-                                    const dx = pt.x - containerPt.x;
-                                    const dy = pt.y - containerPt.y;
-                                    return Math.sqrt(dx * dx + dy * dy) < 85;
-                                });
+                                const latLng = L.latLng(centroid[0], centroid[1]);
+                                if (mapBounds.contains(latLng)) {
+                                    const pt = mapInstance.current.latLngToContainerPoint(latLng);
 
-                                if (!isColliding) {
-                                    drawnPixelPoints.push(containerPt);
-                                    const marker = L.marker(centroid, {
-                                        icon: L.divIcon({
-                                            className: 'pure-floating-label-marker',
-                                            html: `<div class="pure-floating-map-label" style="color: ${labelColor} !important; font-size: ${labelSize}px !important;">${String(val)}</div>`,
-                                            iconSize: [0, 0],
-                                            iconAnchor: [0, 0]
-                                        }),
-                                        interactive: false
-                                    });
-                                    labelsGroupRef.current.addLayer(marker);
+                                    const estimatedWidth = Math.max(26, strVal.length * (labelSize * 0.62) + 8);
+                                    const estimatedHeight = labelSize * 1.3 + 4;
+
+                                    const box = {
+                                        left: pt.x - estimatedWidth / 2,
+                                        right: pt.x + estimatedWidth / 2,
+                                        top: pt.y - estimatedHeight / 2,
+                                        bottom: pt.y + estimatedHeight / 2
+                                    };
+
+                                    const isColliding = drawnBoxes.some(b => !(
+                                        box.right < b.left ||
+                                        box.left > b.right ||
+                                        box.bottom < b.top ||
+                                        box.top > b.bottom
+                                    ));
+
+                                    if (!isColliding) {
+                                        drawnBoxes.push(box);
+
+                                        const marker = L.marker(latLng, {
+                                            icon: L.divIcon({
+                                                className: 'pure-floating-label-marker',
+                                                html: `<div class="pure-floating-map-label" style="
+                                                    color: ${labelColor} !important;
+                                                    font-size: ${labelSize}px !important;
+                                                    transform: translate(-50%, -50%);
+                                                    text-align: center;
+                                                    white-space: nowrap;
+                                                    font-weight: 700;
+                                                    text-shadow: 0 0 3px #000, 0 0 3px #000, 0 0 4px #000;
+                                                    pointer-events: none;
+                                                    user-select: none;
+                                                ">${strVal}</div>`,
+                                                iconSize: [0, 0],
+                                                iconAnchor: [0, 0]
+                                            }),
+                                            interactive: false
+                                        });
+                                        labelsGroupRef.current.addLayer(marker);
+                                    }
                                 }
                             }
                         }
@@ -190,7 +222,7 @@ export default function GeoportalDesigner() {
                 }
             }
         });
-    }, [layerList]);
+    };
 
     // 2. Initialize Leaflet Map
     useEffect(() => {

@@ -591,59 +591,89 @@ export default function GeoportalViewer() {
     }, []);
 
 
-    // ✅ محرك رسم المسميات المكانيّة الذكي مع (Centroid & Zoom Threshold & Collision Detection)
+    // ✅ محرك رسم المسميات المكانيّة الذكي بمركز القطعة الدقيق وبدون أي تداخل (Polygon Centroid & AABB Collision Detection)
     const updateSmartMapLabels = useCallback(() => {
         if (!mapInstance.current || !labelsLayerGroupRef.current) return;
 
-        // 1. مسح التسميات القديمة لمنع التكرار نهائياً
         labelsLayerGroupRef.current.clearLayers();
 
         const activeZoom = mapInstance.current.getZoom();
+        if (activeZoom < 13) return; // إخفاء عند الزوم المصغر لمنع التراكم
 
-        // 2. النقطة الثانية (Zoom Threshold): إخفاء المسميات عند الابتعاد والزوم المصغر (أقل من زوم 13 زوم البلدية والقطع) لمنع التراكم والاكتظاظ
-        if (activeZoom < 13) return;
-
+        const mapBounds = mapInstance.current.getBounds();
         const visibleLayers = layers.filter(l => visibleLayerIds.has(l.id));
-        const drawnPixelPoints = [];
+        const drawnBoxes = [];
 
         visibleLayers.forEach(layer => {
-            const style = layer.style_config || {};
+            const style = typeof layer.style_config === 'string'
+                ? (() => { try { return JSON.parse(layer.style_config); } catch { return {}; } })()
+                : (layer.style_config || {});
+
             if (style.show_labels && style.label_field && layerDataCache.current[layer.id]) {
                 const geojson = layerDataCache.current[layer.id];
-                const labelColor = style.label_color || '#FFFFFF';
-                const labelSize = style.label_size || 12;
+                if (geojson && Array.isArray(geojson.features)) {
+                    const labelColor = style.label_color || '#FFFFFF';
+                    const labelSize = style.label_size || 12;
 
-                geojson.features.forEach(feature => {
-                    const val = getFieldValue(feature.properties, style.label_field);
-                    if (val !== null && val !== undefined && String(val).trim() !== '') {
-                        // النقطة الأولى: حساب المركز الهندسي (Centroid) بقلب القطعة
-                        const centroid = getTruePolygonCentroid(feature);
-                        if (centroid) {
-                            const containerPt = mapInstance.current.latLngToContainerPoint(centroid);
+                    geojson.features.forEach(feature => {
+                        const val = getFieldValue(feature.properties, style.label_field);
+                        if (val !== null && val !== undefined && String(val).trim() !== '') {
+                            const strVal = String(val).trim();
+                            const centroid = getTruePolygonCentroid(feature);
 
-                            // النقطة الثالثة (Collision Detection): مسافة أمان 85 بكسل لمنع تداخل الأسماء والكلمات الطويلة
-                            const isColliding = drawnPixelPoints.some(pt => {
-                                const dx = pt.x - containerPt.x;
-                                const dy = pt.y - containerPt.y;
-                                return Math.sqrt(dx * dx + dy * dy) < 85;
-                            });
+                            if (centroid) {
+                                const latLng = L.latLng(centroid[0], centroid[1]);
+                                if (mapBounds.contains(latLng)) {
+                                    const pt = mapInstance.current.latLngToContainerPoint(latLng);
 
-                            if (!isColliding) {
-                                drawnPixelPoints.push(containerPt);
-                                const labelMarker = L.marker(centroid, {
-                                    icon: L.divIcon({
-                                        className: 'pure-floating-label-marker',
-                                        html: `<div class="pure-floating-map-label" style="color: ${labelColor} !important; font-size: ${labelSize}px !important;">${String(val)}</div>`,
-                                        iconSize: [0, 0],
-                                        iconAnchor: [0, 0]
-                                    }),
-                                    interactive: false
-                                });
-                                labelsLayerGroupRef.current.addLayer(labelMarker);
+                                    // حساب الأبعاد التقديرية لصندوق النص لمنع أي تداخل نهائياً
+                                    const estimatedWidth = Math.max(26, strVal.length * (labelSize * 0.62) + 8);
+                                    const estimatedHeight = labelSize * 1.3 + 4;
+
+                                    const box = {
+                                        left: pt.x - estimatedWidth / 2,
+                                        right: pt.x + estimatedWidth / 2,
+                                        top: pt.y - estimatedHeight / 2,
+                                        bottom: pt.y + estimatedHeight / 2
+                                    };
+
+                                    // فحص التداخل الفعلي (AABB Collision Check)
+                                    const isColliding = drawnBoxes.some(b => !(
+                                        box.right < b.left ||
+                                        box.left > b.right ||
+                                        box.bottom < b.top ||
+                                        box.top > b.bottom
+                                    ));
+
+                                    if (!isColliding) {
+                                        drawnBoxes.push(box);
+
+                                        const labelMarker = L.marker(latLng, {
+                                            icon: L.divIcon({
+                                                className: 'pure-floating-label-marker',
+                                                html: `<div class="pure-floating-map-label" style="
+                                                    color: ${labelColor} !important;
+                                                    font-size: ${labelSize}px !important;
+                                                    transform: translate(-50%, -50%);
+                                                    text-align: center;
+                                                    white-space: nowrap;
+                                                    font-weight: 700;
+                                                    text-shadow: 0 0 3px #000, 0 0 3px #000, 0 0 4px #000;
+                                                    pointer-events: none;
+                                                    user-select: none;
+                                                ">${strVal}</div>`,
+                                                iconSize: [0, 0],
+                                                iconAnchor: [0, 0]
+                                            }),
+                                            interactive: false
+                                        });
+                                        labelsLayerGroupRef.current.addLayer(labelMarker);
+                                    }
+                                }
                             }
                         }
-                    }
-                });
+                    });
+                }
             }
         });
     }, [layers, visibleLayerIds]);
