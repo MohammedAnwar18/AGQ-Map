@@ -814,15 +814,15 @@ export default function GeoportalViewer() {
                 <div className="geoportal-navbar">
                     {/* Brand Section */}
                     <div className="brand-section">
-                        {portal.logo_url ? (
+                        {portal?.logo_url ? (
                             <>
                                 <img
                                     src={portal.logo_url}
-                                    alt={portal.title_ar || 'Logo'}
+                                    alt={portal?.title_ar || 'Logo'}
                                     className="portal-logo-navbar"
                                 />
                                 <div className="brand-title-group-with-logo">
-                                    <span className="brand-name">{portal.title_ar || 'GeoPulse'}</span>
+                                    <span className="brand-name">{portal?.title_ar || 'GeoPulse'}</span>
                                 </div>
                             </>
                         ) : (
@@ -834,7 +834,7 @@ export default function GeoportalViewer() {
                                     </svg>
                                 </div>
                                 <div className="brand-title-group">
-                                    <span className="brand-name">{portal.title_ar || 'GeoPulse'}</span>
+                                    <span className="brand-name">{portal?.title_ar || 'GeoPulse'}</span>
                                 </div>
                             </>
                         )}
@@ -1098,7 +1098,7 @@ export default function GeoportalViewer() {
                     <div className="auth-modal-card">
                         <h3 style={{ color: '#F5A623', marginBottom: 10 }}>دخول موظفي البلدية / المؤسسة</h3>
                         <p style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.7)', marginBottom: 20 }}>
-                            {portal.auth_config?.welcome_msg || 'يرجى إدخال بيانات حسابك للوصول للطبقات المكانية المحمية'}
+                            {portal?.auth_config?.welcome_msg || 'يرجى إدخال بيانات حسابك للوصول للطبقات المكانية المحمية'}
                         </p>
 
                         <form onSubmit={handleLogin}>
