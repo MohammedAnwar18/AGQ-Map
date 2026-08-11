@@ -39,8 +39,11 @@
 /* Brand Section */
 .brand-section {
     display: flex;
-    align-items: center;
-    gap: 12px;
+    align-items: stretch;
+    gap: 0;
+    height: 58px;
+    margin-left: -24px;  /* flush to navbar left edge */
+    padding-left: 0;
 }
 
 .brand-icon-box {
@@ -55,14 +58,26 @@
     box-shadow: 0 4px 12px rgba(29, 78, 216, 0.25);
 }
 
-/* Portal Logo displayed in navbar instead of icon box */
+/* Portal Logo displayed in navbar — flush integrated, no visible separation */
 .portal-logo-navbar {
-    height: 44px;
+    height: 58px;          /* full navbar height */
     width: auto;
-    max-width: 140px;
+    max-width: 160px;
+    min-width: 58px;
     object-fit: contain;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+    background: rgba(255, 255, 255, 0.98);  /* match navbar bg exactly */
+    padding: 8px 14px 8px 18px;
+    border-radius: 0;      /* flush corners — no rounding on integrated logo */
+    border-right: 1px solid rgba(226, 232, 240, 0.7);
+    box-shadow: none;      /* no shadow = seamless */
+    display: block;
+}
+
+/* Title group next to logo */
+.brand-title-group-with-logo {
+    display: flex;
+    align-items: center;
+    padding-left: 16px;
 }
 
 .brand-logo {

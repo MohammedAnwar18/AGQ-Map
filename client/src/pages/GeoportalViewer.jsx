@@ -694,22 +694,29 @@ export default function GeoportalViewer() {
                     {/* Brand Section */}
                     <div className="brand-section">
                         {portal.logo_url ? (
-                            <img
-                                src={portal.logo_url}
-                                alt={portal.title_ar || 'Logo'}
-                                className="portal-logo-navbar"
-                            />
+                            <>
+                                <img
+                                    src={portal.logo_url}
+                                    alt={portal.title_ar || 'Logo'}
+                                    className="portal-logo-navbar"
+                                />
+                                <div className="brand-title-group-with-logo">
+                                    <span className="brand-name">{portal.title_ar || 'GeoPulse'}</span>
+                                </div>
+                            </>
                         ) : (
-                            <div className="brand-icon-box">
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                                    <circle cx="12" cy="12" r="10" />
-                                    <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-                                </svg>
-                            </div>
+                            <>
+                                <div className="brand-icon-box">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                        <circle cx="12" cy="12" r="10" />
+                                        <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                                    </svg>
+                                </div>
+                                <div className="brand-title-group">
+                                    <span className="brand-name">{portal.title_ar || 'GeoPulse'}</span>
+                                </div>
+                            </>
                         )}
-                        <div className="brand-title-group">
-                            <span className="brand-name">{portal.title_ar || 'GeoPulse'}</span>
-                        </div>
                     </div>
 
                     {/* Center Search Input */}
