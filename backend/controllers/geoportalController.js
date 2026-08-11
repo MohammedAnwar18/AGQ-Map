@@ -243,10 +243,14 @@ exports.uploadLayer = async (req, res) => {
                 ? (typeof style_config === 'string' ? style_config : JSON.stringify(style_config))
                 : defaultStyle;
 
-            // حفظ مخطط الحقول في style_config لاستخدامه في قائمة الحقول
+            // حفظ مخطط الحقول وروابط الأجزاء (chunk_urls) في style_config
+            const { chunk_urls } = req.body;
             const styleObj = JSON.parse(style);
             if (Array.isArray(properties_schema) && properties_schema.length > 0) {
                 styleObj.properties_schema = properties_schema;
+            }
+            if (Array.isArray(chunk_urls) && chunk_urls.length > 0) {
+                styleObj.chunk_urls = chunk_urls;
             }
 
             const bboxValue = (Array.isArray(bbox) && bbox.length === 4)

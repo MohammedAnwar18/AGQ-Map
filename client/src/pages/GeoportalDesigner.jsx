@@ -400,8 +400,8 @@ export default function GeoportalDesigner() {
     // 4. Upload Spatial Layer (GeoJSON) — via Presigned URL → direct to Cloudflare R2
     const [uploadProgress, setUploadProgress] = useState(0);
 
-    // مساعد: استخراج بيانات الطبقة من ملف GeoJSON قبل الرفع
-    const parseGeoJSONMeta = (file) => new Promise((resolve, reject) => {
+    // مساعد: قراءة وتحليل ملف GeoJSON محلياً وتقسيمه لأجزاء ذكية (Chunks)
+    const processAndChunkGeoJSON = (file) => new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
@@ -410,12 +410,9 @@ export default function GeoportalDesigner() {
                     ? geojson.features
                     : geojson.type === 'Feature' ? [geojson] : [];
 
-                if (features.length === 0) return resolve(null);
+                if (features.length === 0) return reject(new Error('الملف لا يحتوي على عناصر جغرافية'));
 
-                // نوع الهندسة
                 const geomType = features[0]?.geometry?.type || 'Unknown';
-
-                // الحقول من أول عنصر
                 const firstProps = features[0]?.properties || {};
                 const fields = Object.keys(firstProps);
 
@@ -429,21 +426,34 @@ export default function GeoportalDesigner() {
                         if (coords[1] > maxLat) maxLat = coords[1];
                     } else coords.forEach(processCoords);
                 };
-                features.slice(0, 500).forEach(f => {
+                features.forEach(f => {
                     if (f.geometry?.coordinates) processCoords(f.geometry.coordinates);
                 });
                 const bbox = minLng === Infinity
                     ? [35.15, 31.85, 35.30, 31.95]
                     : [minLng, minLat, maxLng, maxLat];
 
-                resolve({ geomType, fields, featureCount: features.length, bbox });
+                // إذا زاد عدد العناصر عن 1,000 -> قسّم لـ Chunks من 1,000 عنصر
+                const CHUNK_SIZE = 1000;
+                let chunks = [];
+                if (features.length > CHUNK_SIZE) {
+                    for (let i = 0; i < features.length; i += CHUNK_SIZE) {
+                        chunks.push({
+                            type: 'FeatureCollection',
+                            features: features.slice(i, i + CHUNK_SIZE)
+                        });
+                    }
+                } else {
+                    chunks.push(geojson);
+                }
+
+                resolve({ geomType, fields, featureCount: features.length, bbox, chunks });
             } catch (err) {
-                reject(new Error('الملف ليس GeoJSON صحيح'));
+                reject(new Error('الملف ليس GeoJSON صحيح أو تنسيقه تالف'));
             }
         };
         reader.onerror = () => reject(new Error('فشل قراءة الملف'));
-        // نقرأ أول 2MB فقط لاستخراج البيانات (لا داعي للملف كامل)
-        reader.readAsText(file.slice(0, 2 * 1024 * 1024));
+        reader.readAsText(file);
     });
 
     const handleUploadLayer = async (e) => {
@@ -461,73 +471,84 @@ export default function GeoportalDesigner() {
             setLayerUploading(true);
             setUploadProgress(0);
 
-            // ---- الخطوة 0: استخراج بيانات الطبقة من الملف محلياً ----
-            let layerMeta = null;
-            try {
-                setUploadProgress(2);
-                layerMeta = await parseGeoJSONMeta(fileToUpload);
-            } catch (parseErr) {
-                console.warn('GeoJSON pre-parse warning:', parseErr.message);
+            // ---- الخطوة 0: قراءة وتحليل الملف محلياً واستخراج التقطيع ----
+            setUploadProgress(5);
+            const parsed = await processAndChunkGeoJSON(fileToUpload);
+            const { geomType, fields, featureCount, bbox, chunks } = parsed;
+
+            const isChunked = chunks.length > 1;
+            const chunkUrls = [];
+            let mainPublicUrl = '';
+            let mainKey = '';
+
+            // ---- الخطوة 1 & 2: رفع كل الأجزاء (Chunks) لـ R2 ----
+            for (let idx = 0; idx < chunks.length; idx++) {
+                const chunkData = JSON.stringify(chunks[idx]);
+                const chunkBlob = new Blob([chunkData], { type: 'application/geo+json' });
+                const chunkFileName = isChunked
+                    ? `${fileToUpload.name.replace(/\.(geojson|json)$/i, '')}_part_${idx + 1}.json`
+                    : fileToUpload.name;
+
+                // طلب Presigned URL للـ Chunk
+                const presignRes = await axios.post('/api/storage/presigned-url', {
+                    fileName: chunkFileName,
+                    contentType: 'application/geo+json'
+                }, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                if (!presignRes.data.success) {
+                    throw new Error(presignRes.data.error || 'فشل الحصول على رابط الرفع');
+                }
+
+                const { uploadUrl, publicUrl, key } = presignRes.data;
+
+                if (idx === 0) {
+                    mainPublicUrl = publicUrl;
+                    mainKey = key;
+                }
+                chunkUrls.push(publicUrl);
+
+                // رفع البلوك لـ R2
+                await new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('PUT', uploadUrl, true);
+                    xhr.setRequestHeader('Content-Type', 'application/geo+json');
+                    xhr.upload.onprogress = (event) => {
+                        if (event.lengthComputable) {
+                            const chunkPercent = Math.round((event.loaded / event.total) * (85 / chunks.length));
+                            const basePercent = 10 + Math.round((idx / chunks.length) * 85);
+                            setUploadProgress(Math.min(95, basePercent + chunkPercent));
+                        }
+                    };
+                    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300) ? resolve() : reject(new Error(`R2 error ${xhr.status}`));
+                    xhr.onerror = () => reject(new Error('انقطع الاتصال أثناء رفع أجزاء R2'));
+                    xhr.send(chunkBlob);
+                });
             }
 
-            // ---- الخطوة 1: اطلب Presigned URL من السيرفر ----
-            const presignRes = await axios.post('/api/storage/presigned-url', {
-                fileName: fileToUpload.name,
-                contentType: 'application/geo+json'
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            setUploadProgress(96);
 
-            if (!presignRes.data.success) {
-                throw new Error(presignRes.data.error || 'فشل الحصول على رابط الرفع');
-            }
-
-            const { uploadUrl, publicUrl, key } = presignRes.data;
-
-            // ---- الخطوة 2: ارفع الملف مباشرة إلى Cloudflare R2 ----
-            await new Promise((resolve, reject) => {
-                const xhr = new XMLHttpRequest();
-                xhr.open('PUT', uploadUrl, true);
-                xhr.setRequestHeader('Content-Type', 'application/geo+json');
-
-                xhr.upload.onprogress = (event) => {
-                    if (event.lengthComputable) {
-                        const percent = 5 + Math.round((event.loaded / event.total) * 85);
-                        setUploadProgress(percent);
-                    }
-                };
-                xhr.onload = () => {
-                    if (xhr.status >= 200 && xhr.status < 300) {
-                        resolve();
-                    } else {
-                        reject(new Error(`فشل الرفع إلى R2: ${xhr.status} ${xhr.statusText}`));
-                    }
-                };
-                xhr.onerror = () => reject(new Error('انقطع الاتصال أثناء الرفع — تأكد من تفعيل PUT في CORS على R2'));
-                xhr.send(fileToUpload);
-            });
-
-            setUploadProgress(93);
-
-            // ---- الخطوة 3: سجّل الطبقة في قاعدة البيانات مع كامل البيانات ----
+            // ---- الخطوة 3: تسجيل الطبقة في قاعدة البيانات مع قائمة روابط الأجزاء (Chunk URLs) ----
             await axios.post(`${API_BASE}/${selectedPortal.id}/layers`, {
                 layer_name: newLayerName || fileToUpload.name.replace(/\.(geojson|json)$/i, ''),
                 is_private: newLayerIsPrivate,
-                file_url: publicUrl,
-                file_key: key,
+                file_url: mainPublicUrl,
+                file_key: mainKey,
                 file_size: fileToUpload.size,
                 storage_type: 'r2',
-                // بيانات مستخرجة من الملف
-                geometry_type: layerMeta?.geomType || 'Unknown',
-                feature_count: layerMeta?.featureCount || 0,
-                bbox: layerMeta?.bbox || null,
-                properties_schema: layerMeta?.fields || []
+                geometry_type: geomType,
+                feature_count: featureCount,
+                bbox: bbox,
+                properties_schema: fields,
+                chunk_urls: chunkUrls
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
             setUploadProgress(100);
-            alert(`✅ تم رفع الطبقة بنجاح!\n📊 ${layerMeta?.featureCount?.toLocaleString() || '?'} عنصر | ${layerMeta?.fields?.length || 0} حقل`);
+            const chunkMsg = isChunked ? `\n🧩 تم تقسيم الملف تلقائياً إلى ${chunks.length} أجزاء فائقة السرعة` : '';
+            alert(`✅ تم رفع ومعالجة الطبقة بنجاح!\n📊 ${featureCount.toLocaleString()} عنصر | ${fields.length} حقل${chunkMsg}`);
             setFileToUpload(null);
             setNewLayerName('');
             setUploadProgress(0);

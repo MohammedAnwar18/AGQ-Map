@@ -516,7 +516,33 @@ export default function GeoportalViewer() {
             return layerDataCache.current[layer.id];
         }
 
-        // 1. إذا كانت الطبقة مخزنة في R2 ☁️ -> اجلب مباشرة من R2 URL فورا
+        // 1. إذا كانت الطبقة مقسّمة لأجزاء ذكية (Chunk URLs) -> اجلب الأجزاء بالتوازي واجمعها
+        const chunkUrls = layer.style_config?.chunk_urls;
+        if (Array.isArray(chunkUrls) && chunkUrls.length > 0) {
+            try {
+                const chunkResults = await Promise.all(
+                    chunkUrls.map(async (url) => {
+                        const res = await fetch(url, { headers: { 'Accept': 'application/json, application/geo+json, */*' } });
+                        if (!res.ok) return null;
+                        return await res.json();
+                    })
+                );
+                const allFeatures = [];
+                chunkResults.forEach(c => {
+                    if (c && Array.isArray(c.features)) allFeatures.push(...c.features);
+                    else if (c && c.type === 'Feature') allFeatures.push(c);
+                });
+                if (allFeatures.length > 0) {
+                    const combined = { type: 'FeatureCollection', features: allFeatures };
+                    layerDataCache.current[layer.id] = combined;
+                    return combined;
+                }
+            } catch (chunkErr) {
+                console.warn(`Chunk fetch failed for ${layer.layer_name}:`, chunkErr.message);
+            }
+        }
+
+        // 2. إذا كانت الطبقة ملف واحد على R2 ☁️ -> اجلب مباشرة من R2 URL
         if (layer.r2_file_url) {
             try {
                 const r2Res = await fetch(layer.r2_file_url, {
