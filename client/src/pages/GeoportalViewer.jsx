@@ -22,6 +22,14 @@ export default function GeoportalViewer() {
     const [selectedCrs, setSelectedCrs] = useState('28191'); // '28191' (Palestine Grid) | '2039' (Israeli Grid) | '4326' (Lat/Long)
     const [showCrsMenu, setShowCrsMenu] = useState(false);
 
+    // Helper for case-insensitive property lookup
+    const getFieldValue = (props, targetField) => {
+        if (!props || !targetField) return null;
+        if (props[targetField] !== undefined && props[targetField] !== null) return props[targetField];
+        const matchKey = Object.keys(props).find(k => k.toLowerCase() === targetField.toLowerCase());
+        return matchKey ? props[matchKey] : null;
+    };
+
     // Helper to calculate exact geographic centroid for fixed labels
     const getFeatureCentroid = (feature) => {
         if (!feature || !feature.geometry) return null;
@@ -291,21 +299,16 @@ export default function GeoportalViewer() {
                         properties: feature.properties
                     }));
 
-                    // ✅ إضافة مسميات الخصائص كـ Pure Floating Labels بدون أي إطار أو صندوق
-                    if (showLabels && labelField && feature.properties && feature.properties[labelField] !== undefined) {
-                        const val = feature.properties[labelField];
-                        if (val !== null && val !== '') {
-                            leafletLayer.bindTooltip(String(val), {
+                    // ✅ إضافة مسميات الخصائص كـ Pure Floating Labels صريحة وبدقة عالية
+                    if (showLabels && labelField && feature.properties) {
+                        const val = getFieldValue(feature.properties, labelField);
+                        if (val !== null && val !== undefined && String(val).trim() !== '') {
+                            const htmlLabel = `<span style="color: ${labelColor} !important; font-size: ${labelSize}px !important; font-weight: 800 !important; font-family: 'Tajawal', sans-serif !important; text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000, 0 2px 6px rgba(0,0,0,0.95); white-space: nowrap; pointer-events: none; user-select: none;">${String(val)}</span>`;
+
+                            leafletLayer.bindTooltip(htmlLabel, {
                                 permanent: true,
                                 direction: 'center',
                                 className: 'pure-floating-map-label'
-                            });
-
-                            leafletLayer.on('tooltipopen', (e) => {
-                                if (e.tooltip && e.tooltip._container) {
-                                    e.tooltip._container.style.color = labelColor;
-                                    e.tooltip._container.style.fontSize = `${labelSize}px`;
-                                }
                             });
                         }
                     }

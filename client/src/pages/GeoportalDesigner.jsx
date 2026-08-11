@@ -205,23 +205,18 @@ export default function GeoportalDesigner() {
                                 l.bindPopup(`<div style="font-family: Tajawal, sans-serif;">${popupContent}</div>`);
 
                                 // ✅ إضافة مسميات الخصائص كـ Pure Floating Labels بدون أي إطار أو صندوق
-                                if (showLabels && labelField && feature.properties[labelField] !== undefined) {
-                                    const val = feature.properties[labelField];
-                                    if (val !== null && val !== '') {
+                                if (showLabels && labelField && feature.properties) {
+                                    const matchKey = Object.keys(feature.properties).find(k => k.toLowerCase() === labelField.toLowerCase());
+                                    const val = matchKey ? feature.properties[matchKey] : feature.properties[labelField];
+                                    if (val !== null && val !== undefined && String(val).trim() !== '') {
                                         const labelColor = style.label_color || '#FFFFFF';
                                         const labelSize = style.label_size || 12;
+                                        const htmlLabel = `<span style="color: ${labelColor} !important; font-size: ${labelSize}px !important; font-weight: 800 !important; font-family: 'Tajawal', sans-serif !important; text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000, 0 2px 6px rgba(0,0,0,0.95); white-space: nowrap; pointer-events: none; user-select: none;">${String(val)}</span>`;
 
-                                        l.bindTooltip(String(val), {
+                                        l.bindTooltip(htmlLabel, {
                                             permanent: true,
                                             direction: 'center',
                                             className: 'pure-floating-map-label'
-                                        });
-
-                                        l.on('tooltipopen', (e) => {
-                                            if (e.tooltip && e.tooltip._container) {
-                                                e.tooltip._container.style.color = labelColor;
-                                                e.tooltip._container.style.fontSize = `${labelSize}px`;
-                                            }
                                         });
                                     }
                                 }
