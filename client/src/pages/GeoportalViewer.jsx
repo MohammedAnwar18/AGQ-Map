@@ -916,7 +916,6 @@ export default function GeoportalViewer() {
                                     <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
                                 </svg>
                                 <span>طبقات</span>
-                                <span className="layers-badge">{layers.length}</span>
                             </button>
 
                             {/* Dropdown Menu */}
@@ -999,7 +998,7 @@ export default function GeoportalViewer() {
                                                                             style={{ backgroundColor: grp.color, borderColor: '#06D6F2' }}
                                                                         ></span>
                                                                         <span className="layer-item-name" style={{ fontWeight: 700 }}>
-                                                                            📁 {grp.groupName} <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 400 }}>({grp.layers.length} طبقة)</span>
+                                                                            📁 {grp.groupName}
                                                                         </span>
                                                                     </div>
                                                                 </div>
