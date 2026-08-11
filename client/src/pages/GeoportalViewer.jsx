@@ -137,6 +137,8 @@ export default function GeoportalViewer() {
         });
     }, []);
 
+    const [measureColor, setMeasureColor] = useState('#06D6F2');
+
     // ✅ مسح وتفريغ رسومات وأرقام أداة القياس
     const clearMeasurements = useCallback(() => {
         if (measureLayerGroupRef.current) {
@@ -161,6 +163,76 @@ export default function GeoportalViewer() {
         return area;
     };
 
+    // ✅ اعادة رسم خطوط ومضلعات القياس فوراً عند تغيير اللون المختار
+    const redrawMeasurementsWithColor = (newColor, pts, tool) => {
+        if (!measureLayerGroupRef.current || !pts || !pts.length) return;
+        measureLayerGroupRef.current.clearLayers();
+
+        // رسم نقاط التثبيت الجغرافية
+        pts.forEach(p => {
+            L.circleMarker(p, {
+                radius: 6,
+                fillColor: newColor,
+                color: '#FFFFFF',
+                weight: 2,
+                fillOpacity: 1
+            }).addTo(measureLayerGroupRef.current);
+        });
+
+        if (tool === 'distance') {
+            if (pts.length > 1) {
+                L.polyline(pts, { color: newColor, weight: 4, dashArray: '6, 6', opacity: 0.95 }).addTo(measureLayerGroupRef.current);
+                let totalDist = 0;
+                for (let i = 0; i < pts.length - 1; i++) {
+                    const segDist = pts[i].distanceTo(pts[i + 1]);
+                    totalDist += segDist;
+                    const midLat = (pts[i].lat + pts[i + 1].lat) / 2;
+                    const midLng = (pts[i].lng + pts[i + 1].lng) / 2;
+                    const segText = segDist >= 1000 ? `${(segDist / 1000).toFixed(2)} كم` : `${segDist.toFixed(0)} م`;
+
+                    // بطاقة حية على كل خط مقطع من المسافة
+                    const segMarker = L.marker([midLat, midLng], {
+                        icon: L.divIcon({
+                            className: 'onmap-measure-segment-label',
+                            html: `<div style="background: ${newColor}; color: #000; font-weight: 800; font-size: 11px; padding: 2px 7px; border-radius: 6px; border: 1.5px solid #FFF; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,0.6);">${segText}</div>`,
+                            iconSize: [0, 0],
+                            iconAnchor: [0, 0]
+                        }),
+                        interactive: false
+                    });
+                    measureLayerGroupRef.current.addLayer(segMarker);
+                }
+                const distText = totalDist >= 1000 ? `${(totalDist / 1000).toFixed(2)} كم` : `${totalDist.toFixed(1)} متر`;
+                setMeasureData({ type: 'مسافة 📏', value: distText, pointsCount: pts.length });
+            }
+        } else if (tool === 'area') {
+            if (pts.length >= 3) {
+                L.polygon(pts, { color: newColor, fillColor: newColor, fillOpacity: 0.35, weight: 3 }).addTo(measureLayerGroupRef.current);
+                const areaSqM = calculatePolygonArea(pts);
+                const dunam = (areaSqM / 1000).toFixed(2);
+                const areaText = `${areaSqM.toFixed(1)} م² (${dunam} دونم)`;
+
+                // حساب مركز المضلع لطباعة شارة المساحة بقلب المضلع على الخريطة
+                let latSum = 0, lngSum = 0;
+                pts.forEach(p => { latSum += p.lat; lngSum += p.lng; });
+                const centroid = [latSum / pts.length, lngSum / pts.length];
+
+                const areaMarker = L.marker(centroid, {
+                    icon: L.divIcon({
+                        className: 'onmap-measure-area-label',
+                        html: `<div style="background: ${newColor}; color: #000; font-weight: 800; font-size: 12px; padding: 4px 10px; border-radius: 8px; border: 2px solid #FFF; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.6);">${areaText}</div>`,
+                        iconSize: [0, 0],
+                        iconAnchor: [0, 0]
+                    }),
+                    interactive: false
+                });
+                measureLayerGroupRef.current.addLayer(areaMarker);
+
+                setMeasureData({ type: 'مساحة 📐', value: areaText, pointsCount: pts.length });
+            }
+        }
+    };
+
     // ✅ تفاعل النقر المباشر على الخريطة أثناء تفعيل أداة القياس
     const handleMapClickForMeasurement = useCallback((e) => {
         if (!activeTool || (activeTool !== 'distance' && activeTool !== 'area')) return;
@@ -168,40 +240,8 @@ export default function GeoportalViewer() {
 
         const pt = e.latlng;
         measurePointsRef.current.push(pt);
-        const pts = measurePointsRef.current;
-
-        measureLayerGroupRef.current.clearLayers();
-
-        pts.forEach(p => {
-            L.circleMarker(p, {
-                radius: 6,
-                fillColor: '#F5A623',
-                color: '#FFFFFF',
-                weight: 2,
-                fillOpacity: 1
-            }).addTo(measureLayerGroupRef.current);
-        });
-
-        if (activeTool === 'distance') {
-            if (pts.length > 1) {
-                L.polyline(pts, { color: '#06D6F2', weight: 4, dashArray: '6, 6' }).addTo(measureLayerGroupRef.current);
-                let totalDist = 0;
-                for (let i = 0; i < pts.length - 1; i++) {
-                    totalDist += pts[i].distanceTo(pts[i + 1]);
-                }
-                const distText = totalDist >= 1000 ? `${(totalDist / 1000).toFixed(2)} كم` : `${totalDist.toFixed(1)} متر`;
-                setMeasureData({ type: 'مسافة 📏', value: distText, pointsCount: pts.length });
-            }
-        } else if (activeTool === 'area') {
-            if (pts.length >= 3) {
-                L.polygon(pts, { color: '#10B981', fillColor: '#10B981', fillOpacity: 0.35, weight: 3 }).addTo(measureLayerGroupRef.current);
-                const areaSqM = calculatePolygonArea(pts);
-                const dunam = (areaSqM / 1000).toFixed(2);
-                const areaText = `${areaSqM.toFixed(1)} م² (${dunam} دونم)`;
-                setMeasureData({ type: 'مساحة 📐', value: areaText, pointsCount: pts.length });
-            }
-        }
-    }, [activeTool]);
+        redrawMeasurementsWithColor(measureColor, measurePointsRef.current, activeTool);
+    }, [activeTool, measureColor]);
 
     // 1. Resolve & Fetch Portal Data
     useEffect(() => {
@@ -718,6 +758,36 @@ export default function GeoportalViewer() {
                             </svg>
                             <span>قياس مساحة</span>
                         </button>
+
+                        {/* 🎨 لوحة اختيار لون القياس المباشر بالخريطة */}
+                        {(activeTool === 'distance' || activeTool === 'area') && (
+                            <div className="measure-color-picker-palette">
+                                <span style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 700 }}>لون الرسم:</span>
+                                {['#06D6F2', '#F5A623', '#10B981', '#EF4444', '#A855F7', '#FFFFFF'].map(c => (
+                                    <button
+                                        key={c}
+                                        className={`color-dot-btn ${measureColor === c ? 'active' : ''}`}
+                                        style={{ backgroundColor: c }}
+                                        title={`تغيير لون رسم القياس إلى ${c}`}
+                                        onClick={() => {
+                                            setMeasureColor(c);
+                                            redrawMeasurementsWithColor(c, measurePointsRef.current, activeTool);
+                                        }}
+                                    />
+                                ))}
+                                <input
+                                    type="color"
+                                    className="custom-color-input"
+                                    value={measureColor}
+                                    title="اختر لون مخصص"
+                                    onChange={e => {
+                                        const c = e.target.value;
+                                        setMeasureColor(c);
+                                        redrawMeasurementsWithColor(c, measurePointsRef.current, activeTool);
+                                    }}
+                                />
+                            </div>
+                        )}
 
                         {(measureData || activeTool === 'distance' || activeTool === 'area') && (
                             <button

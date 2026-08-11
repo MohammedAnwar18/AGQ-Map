@@ -536,6 +536,45 @@
     box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
 }
 
+/* Measure Color Picker Palette */
+.measure-color-picker-palette {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    padding: 4px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    margin-right: 6px;
+}
+
+.color-dot-btn {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.color-dot-btn:hover,
+.color-dot-btn.active {
+    transform: scale(1.25);
+    border-color: #FFFFFF;
+    box-shadow: 0 0 10px currentColor;
+}
+
+.custom-color-input {
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+}
+
 /* GIS Measurement Result Card */
 .gis-measurement-card {
     position: fixed;
