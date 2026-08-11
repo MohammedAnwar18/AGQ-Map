@@ -55,6 +55,16 @@
     box-shadow: 0 4px 12px rgba(29, 78, 216, 0.25);
 }
 
+/* Portal Logo displayed in navbar instead of icon box */
+.portal-logo-navbar {
+    height: 44px;
+    width: auto;
+    max-width: 140px;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+}
+
 .brand-logo {
     width: 22px;
     height: 22px;

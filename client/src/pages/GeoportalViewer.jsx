@@ -106,6 +106,10 @@ export default function GeoportalViewer() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedFeatureProps, setSelectedFeatureProps] = useState(null);
 
+    // 🔑 Refs to hold LIVE values inside map event closures (avoid stale closure)
+    const activeToolRef = useRef(null);
+    const measureColorRef = useRef('#06D6F2');
+
     // Map refs
     const mapRef = useRef(null);
     const mapInstance = useRef(null);
@@ -138,6 +142,10 @@ export default function GeoportalViewer() {
     }, []);
 
     const [measureColor, setMeasureColor] = useState('#06D6F2');
+
+    // Keep refs in sync with state every render
+    activeToolRef.current = activeTool;
+    measureColorRef.current = measureColor;
 
     // ✅ مسح وتفريغ رسومات وأرقام أداة القياس
     const clearMeasurements = useCallback(() => {
@@ -281,14 +289,17 @@ export default function GeoportalViewer() {
     };
 
     // ✅ تفاعل النقر المباشر على الخريطة أثناء تفعيل أداة القياس
+    // Using refs (activeToolRef / measureColorRef) to avoid stale closure trap
     const handleMapClickForMeasurement = useCallback((e) => {
-        if (!activeTool || (activeTool !== 'distance' && activeTool !== 'area')) return;
+        const tool = activeToolRef.current;
+        const color = measureColorRef.current;
+        if (!tool || (tool !== 'distance' && tool !== 'area')) return;
         if (!measureLayerGroupRef.current || !mapInstance.current) return;
 
         const pt = e.latlng;
         measurePointsRef.current.push(pt);
-        redrawMeasurementsWithColor(measureColor, measurePointsRef.current, activeTool);
-    }, [activeTool, measureColor]);
+        redrawMeasurementsWithColor(color, measurePointsRef.current, tool);
+    }, []);
 
     // 1. Resolve & Fetch Portal Data
     useEffect(() => {
@@ -618,16 +629,20 @@ export default function GeoportalViewer() {
                 <div className="geoportal-navbar">
                     {/* Brand Section */}
                     <div className="brand-section">
-                        <div className="brand-icon-box">
-                            {portal.logo_url ? (
-                                <img src={portal.logo_url} alt="Logo" className="brand-logo" />
-                            ) : (
+                        {portal.logo_url ? (
+                            <img
+                                src={portal.logo_url}
+                                alt={portal.title_ar || 'Logo'}
+                                className="portal-logo-navbar"
+                            />
+                        ) : (
+                            <div className="brand-icon-box">
                                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                                     <circle cx="12" cy="12" r="10" />
                                     <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
                                 </svg>
-                            )}
-                        </div>
+                            </div>
+                        )}
                         <div className="brand-title-group">
                             <span className="brand-name">{portal.title_ar || 'GeoPulse'}</span>
                         </div>
