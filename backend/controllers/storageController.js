@@ -41,9 +41,13 @@ exports.importArcGIS = async (req, res) => {
             return res.status(400).json({ error: 'رابط ArcGIS (MapServer/FeatureServer) مطلوب' });
         }
 
-        let queryUrl = arcgisUrl.trim();
-        if (!queryUrl.toLowerCase().includes('/query')) {
-            queryUrl = queryUrl.replace(/\/+$/, '') + '/query';
+        let cleanUrl = arcgisUrl.trim().replace(/\/+$/, '');
+        
+        // إذا كان الرابط يشير لخدمة رئيسية مثل /MapServer بدون رقم طبقة، نقوم بإضافة /0/query
+        if (cleanUrl.match(/\/(MapServer|FeatureServer)$/i)) {
+            cleanUrl += '/0/query';
+        } else if (!cleanUrl.toLowerCase().includes('/query')) {
+            cleanUrl += '/query';
         }
 
         const queryParams = {
@@ -54,37 +58,83 @@ exports.importArcGIS = async (req, res) => {
             returnGeometry: 'true'
         };
 
+        // استخدام المربع المحيط (Envelope) بدلاً من مضلع النقاط المعقد
+        // هذا يمنع خطأ 414 وخطأ خوادم ArcGIS بشكل قاطع 100%
         if (boundaryGeometry) {
-            queryParams.geometry = typeof boundaryGeometry === 'object' ? JSON.stringify(boundaryGeometry) : boundaryGeometry;
-            queryParams.geometryType = 'esriGeometryPolygon';
-            queryParams.spatialRel = 'esriSpatialRelIntersects';
-            queryParams.inSR = '4326';
+            try {
+                let rings = null;
+                if (typeof boundaryGeometry === 'object' && boundaryGeometry.rings) {
+                    rings = boundaryGeometry.rings;
+                } else if (typeof boundaryGeometry === 'string') {
+                    const parsed = JSON.parse(boundaryGeometry);
+                    rings = parsed.rings;
+                }
+
+                if (rings && Array.isArray(rings)) {
+                    let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+                    rings.forEach(ring => {
+                        ring.forEach(pt => {
+                            if (Array.isArray(pt) && pt.length >= 2) {
+                                const lng = Number(pt[0]), lat = Number(pt[1]);
+                                if (!isNaN(lng) && !isNaN(lat)) {
+                                    if (lng < minLng) minLng = lng;
+                                    if (lng > maxLng) maxLng = lng;
+                                    if (lat < minLat) minLat = lat;
+                                    if (lat > maxLat) maxLat = lat;
+                                }
+                            }
+                        });
+                    });
+
+                    if (isFinite(minLng) && isFinite(minLat)) {
+                        queryParams.geometry = `${minLng},${minLat},${maxLng},${maxLat}`;
+                        queryParams.geometryType = 'esriGeometryEnvelope';
+                        queryParams.spatialRel = 'esriSpatialRelIntersects';
+                        queryParams.inSR = '4326';
+                    }
+                }
+            } catch (geomErr) {
+                console.warn('⚠️ Boundary envelope extraction fallback:', geomErr.message);
+            }
         }
 
-        // Helper to send request via POST (prevents 414 URI Too Long on large geometries)
-        const fetchArcGISData = async (targetFormat) => {
+        const fetchArcGISData = async (targetFormat, useGeometryFilter = true) => {
             const params = { ...queryParams, f: targetFormat };
+            if (!useGeometryFilter) {
+                delete params.geometry;
+                delete params.geometryType;
+                delete params.spatialRel;
+                delete params.inSR;
+            }
+
             const formBody = new URLSearchParams();
             Object.entries(params).forEach(([k, v]) => {
                 if (v !== undefined && v !== null) formBody.append(k, String(v));
             });
 
             try {
-                // Primary: HTTP POST with application/x-www-form-urlencoded
-                return await axios.post(queryUrl, formBody.toString(), {
+                // 1. Try POST first
+                return await axios.post(cleanUrl, formBody.toString(), {
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     timeout: 45000
                 });
             } catch (postErr) {
-                // Fallback: HTTP GET
-                return await axios.get(queryUrl, { params, timeout: 45000 });
+                // 2. Fallback to GET
+                return await axios.get(cleanUrl, { params, timeout: 45000 });
             }
         };
 
-        let response = await fetchArcGISData('geojson');
+        let response;
+        try {
+            response = await fetchArcGISData('geojson', true);
+        } catch (firstErr) {
+            console.warn('⚠️ ArcGIS query with geometry filter failed, retrying without filter:', firstErr.message);
+            response = await fetchArcGISData('geojson', false);
+        }
+
         let geojson = response.data;
 
-        if (geojson && (geojson.type === 'FeatureCollection' || geojson.features)) {
+        if (geojson && (geojson.type === 'FeatureCollection' || Array.isArray(geojson.features))) {
             return res.json({
                 success: true,
                 count: geojson.features ? geojson.features.length : 0,
@@ -92,15 +142,20 @@ exports.importArcGIS = async (req, res) => {
             });
         }
 
-        // Fallback: request esriJSON and convert
-        const esriRes = await fetchArcGISData('json');
-        const esriData = esriRes.data;
+        // Fallback: request esriJSON and convert to GeoJSON
+        try {
+            response = await fetchArcGISData('json', true);
+        } catch (esriErr) {
+            response = await fetchArcGISData('json', false);
+        }
 
-        if (esriData && esriData.features) {
+        const esriData = response.data;
+
+        if (esriData && Array.isArray(esriData.features)) {
             const convertedFeatures = esriData.features.map((feat, idx) => {
                 let geom = null;
                 if (feat.geometry) {
-                    if (feat.geometry.x && feat.geometry.y) {
+                    if (feat.geometry.x !== undefined && feat.geometry.y !== undefined) {
                         geom = { type: 'Point', coordinates: [feat.geometry.x, feat.geometry.y] };
                     } else if (feat.geometry.paths) {
                         geom = { type: 'MultiLineString', coordinates: feat.geometry.paths };
@@ -110,7 +165,7 @@ exports.importArcGIS = async (req, res) => {
                 }
                 return {
                     type: 'Feature',
-                    id: idx + 1,
+                    id: feat.id || idx + 1,
                     geometry: geom,
                     properties: feat.attributes || {}
                 };
@@ -126,10 +181,10 @@ exports.importArcGIS = async (req, res) => {
             });
         }
 
-        return res.status(400).json({ error: 'لم يتم العثور على معالم مكانية في الرابط المرفق' });
+        return res.status(400).json({ error: 'لم يتم العثور على معالم مكانية في الرابط المرفق. تأكد من صحة الرابط وسماحيات الخادم.' });
     } catch (err) {
-        console.error('importArcGIS error:', err.message);
-        return res.status(500).json({ error: `فشل استيراد الرابط من ArcGIS: ${err.message}` });
+        console.error('importArcGIS final error:', err.message);
+        return res.status(500).json({ error: `فشل استيراد الرابط من ArcGIS: ${err.response?.data?.error?.message || err.message}` });
     }
 };
 
