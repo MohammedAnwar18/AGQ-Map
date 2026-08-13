@@ -72,6 +72,16 @@ const LAYER_DEFINITIONS = [
     types: ['news'],
     defaultEnabled: true,
   },
+  {
+    id: 'unrest',
+    name: 'احتجاجات واشتباكات',
+    description: 'أحداث مجمّعة حية — World Monitor',
+    icon: '🪧',
+    color: '#ef4444',
+    param: 'unrest',
+    types: ['unrest'],
+    defaultEnabled: true,
+  },
 ];
 
 // ─── التبويبات الجغرافية ──────────────────────────────────────────────────────────
@@ -142,6 +152,7 @@ const MapLayerControl = ({ mapRef }) => {
         humanitarian: layers.humanitarian ?? true,
         social:       layers.social     ?? false,
         news:         layers.news       ?? false,
+        unrest:       layers.unrest     ?? true,
       });
 
       const res = await fetch(`${API_BASE}/regional-events?${params.toString()}`, {
