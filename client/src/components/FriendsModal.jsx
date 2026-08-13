@@ -251,7 +251,9 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
             setFollowedShops(updatedFollowing.shops || []);
 
             if (onShopFollowed) onShopFollowed();
-            alert(`تم متابعة ${shop.name} بنجاح! سيظهر الآن على الخريطة.`);
+
+            // Switch to "following" sub-tab so user sees the newly followed shop immediately
+            setShopsSubTab('following');
         } catch (error) {
             console.error("Follow failed", error);
             alert("حدث خطأ أثناء محاولة متابعة المحل. يرجى التأكد من الاتصال بالإنترنت.");
