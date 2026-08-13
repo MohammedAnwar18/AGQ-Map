@@ -8,7 +8,7 @@
  *   - أحداث إنسانية (ReliefWeb)
  *   - منشورات اجتماعية محلية
  * كل طبقة قابلة للتشغيل والإخفاء بشكل مستقل
- * تصميم متجاوب: Sidebar على الحاسوب / Bottom Sheet على الهاتف
+ * تصميم متجاوب: Sidebar على الحاسوب / Bottom Sheet على الهاتف عبر createPortal
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
@@ -78,7 +78,7 @@ const LAYER_DEFINITIONS = [
 const REGION_TABS = [
   { id: 'wb+gz', label: '🇵🇸 فلسطين (كل)', westBank: true, gaza: true, middleEast: false },
   { id: 'wb',    label: '🏘️ الضفة الغربية',  westBank: true, gaza: false, middleEast: false },
-  { id: 'gz',    label: '🕌 غزة',             westBank: false, gaza: true, middleEast: false },
+  { id: 'gz',    label: '🕌 قطاع غزة',             westBank: false, gaza: true, middleEast: false },
   { id: 'me',    label: '🌍 الشرق الأوسط',    westBank: true, gaza: true, middleEast: true },
 ];
 
@@ -128,7 +128,6 @@ const MapLayerControl = ({ mapRef }) => {
 
   // ─── جلب البيانات من الـ API ──────────────────────────────────────────────────
   const fetchEvents = useCallback(async (region = activeRegion, layers = enabledLayers) => {
-    // إلغاء أي طلب سابق
     if (abortRef.current) abortRef.current.abort();
     abortRef.current = new AbortController();
 
@@ -162,17 +161,16 @@ const MapLayerControl = ({ mapRef }) => {
     }
   }, [activeRegion, enabledLayers]);
 
-  // ─── أول تحميل وكل تغيير في المنطقة أو الطبقات ──────────────────────────────
+  // ─── أول تحميل وكل تغيير في المنطقة ───────────────────────────────────────────
   useEffect(() => {
     fetchEvents(activeRegion, enabledLayers);
 
-    // تحديث تلقائي كل 10 دقائق
     const interval = setInterval(() => fetchEvents(activeRegion, enabledLayers), 10 * 60 * 1000);
     return () => {
       clearInterval(interval);
       if (abortRef.current) abortRef.current.abort();
     };
-  }, [activeRegion]);  // نعيد الجلب عند تغيير المنطقة فقط
+  }, [activeRegion]);
 
   // ─── تغيير المنطقة ────────────────────────────────────────────────────────────
   const handleRegionChange = useCallback((tab) => {
@@ -185,7 +183,6 @@ const MapLayerControl = ({ mapRef }) => {
   const handleToggleLayer = useCallback((layerId) => {
     setEnabledLayers(prev => {
       const updated = { ...prev, [layerId]: !prev[layerId] };
-      // إعادة الجلب مع الحالة الجديدة
       fetchEvents(activeRegion, updated);
       return updated;
     });
@@ -233,12 +230,10 @@ const MapLayerControl = ({ mapRef }) => {
     return { wb, gz, total: eventsData.features.length };
   }, [eventsData]);
 
-  // ─── نقر على خريطة للإغلاق ───────────────────────────────────────────────────
-  // (نُضيف مستمع للخريطة للإغلاق عند النقر خارج البانل)
+  // ─── نقر على الخريطة للإغلاق ───────────────────────────────────────────────────
   useEffect(() => {
     if (!isOpen) return;
     const onMapClick = () => setIsOpen(false);
-    // نستمع على مستوى document مع delay لتجنب الـ close الفوري
     const timeout = setTimeout(() => {
       document.addEventListener('click', onMapClick, { once: true });
     }, 50);
@@ -309,7 +304,96 @@ const MapLayerControl = ({ mapRef }) => {
               'circle-color': ['coalesce', ['get', 'color'], '#fbab15'],
               'circle-radius': [
                 'interpolate', ['linear'], ['zoom'],
-                    {/* ══════════════════════ FAB — زر التحكم بالطبقات ══════════════════════ */}
+                6, 5, 10, 8, 14, 11,
+              ],
+              'circle-stroke-width': 2,
+              'circle-stroke-color': 'rgba(255,255,255,0.6)',
+              'circle-opacity': 0.9,
+            }}
+          />
+
+          {/* تأثير Glow حول النقاط */}
+          <Layer
+            id="regional-events-glow"
+            type="circle"
+            filter={['!', ['has', 'point_count']]}
+            paint={{
+              'circle-color': ['coalesce', ['get', 'color'], '#fbab15'],
+              'circle-radius': [
+                'interpolate', ['linear'], ['zoom'],
+                6, 10, 10, 15, 14, 20,
+              ],
+              'circle-opacity': 0.15,
+              'circle-stroke-width': 0,
+            }}
+          />
+        </Source>
+      )}
+
+      {/* ══════════════════════ Popup تفاصيل الحدث ════════════════════════════ */}
+      {selectedEvent && (
+        <Popup
+          longitude={selectedEvent.geometry.coordinates[0]}
+          latitude={selectedEvent.geometry.coordinates[1]}
+          onClose={() => setSelectedEvent(null)}
+          closeButton={true}
+          closeOnClick={false}
+          maxWidth="300px"
+          anchor="bottom"
+          offset={[0, -8]}
+        >
+          <div className="mlc-event-popup">
+            <div className="mlc-event-popup-header">
+              <span className="mlc-event-popup-icon">
+                {selectedEvent.properties.icon || '📍'}
+              </span>
+              <p className="mlc-event-popup-title">
+                {selectedEvent.properties.title}
+              </p>
+            </div>
+
+            {selectedEvent.properties.region && (
+              <span className="mlc-event-popup-region">
+                📍 {selectedEvent.properties.region}
+              </span>
+            )}
+
+            {selectedEvent.properties.description && (
+              <p className="mlc-event-popup-desc">
+                {selectedEvent.properties.description}
+              </p>
+            )}
+
+            <div className="mlc-event-popup-meta">
+              {selectedEvent.properties.source && (
+                <span>📡 {selectedEvent.properties.source}</span>
+              )}
+              {selectedEvent.properties.date && (
+                <span>🕐 {timeAgo(selectedEvent.properties.date)}</span>
+              )}
+              {selectedEvent.properties.magnitude && (
+                <span>📊 ريختر {selectedEvent.properties.magnitude.toFixed(1)}</span>
+              )}
+              {selectedEvent.properties.frp && (
+                <span>🔥 {selectedEvent.properties.frp.toFixed(0)} MW</span>
+              )}
+            </div>
+
+            {selectedEvent.properties.url && (
+              <a
+                href={selectedEvent.properties.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mlc-event-popup-link"
+              >
+                عرض التفاصيل ←
+              </a>
+            )}
+          </div>
+        </Popup>
+      )}
+
+      {/* ══════════════════════ FAB — زر التحكم بالطبقات ══════════════════════ */}
       {createPortal(
         <>
           <button
@@ -328,7 +412,7 @@ const MapLayerControl = ({ mapRef }) => {
           {/* ══════════════════════ Panel (Sidebar / Bottom Sheet) ════════════════ */}
           {isOpen && (
             <>
-              {/* Overlay (يظهر على الهاتف فقط عبر CSS) */}
+              {/* Overlay */}
               <div
                 className="mlc-overlay"
                 onClick={() => setIsOpen(false)}
@@ -338,7 +422,7 @@ const MapLayerControl = ({ mapRef }) => {
                 className="mlc-panel"
                 onClick={(e) => e.stopPropagation()}
               >
-                {/* Drag Handle (هاتف) */}
+                {/* Drag Handle */}
                 <div className="mlc-drag-handle">
                   <div className="mlc-drag-handle-bar" />
                 </div>
@@ -496,149 +580,6 @@ const MapLayerControl = ({ mapRef }) => {
       )}
     </>
   );
-};  </div>
-
-            {/* ─── Layer Cards ────────────────────────────────────────────────── */}
-            <div className="mlc-body">
-              <div className="mlc-section-title">الطبقات المتاحة</div>
-
-              {LAYER_DEFINITIONS.map(layer => {
-                const count = countByLayer[layer.id] ?? 0;
-                const isEnabled = enabledLayers[layer.id];
-
-                return (
-                  <div
-                    key={layer.id}
-                    className={`mlc-layer-card ${isEnabled ? 'active' : ''} ${loading ? 'loading' : ''}`}
-                    onClick={() => handleToggleLayer(layer.id)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={e => e.key === 'Enter' && handleToggleLayer(layer.id)}
-                    aria-label={`${layer.name} — ${isEnabled ? 'مفعّل' : 'معطّل'}`}
-                  >
-                    {/* أيقونة */}
-                    <div className="mlc-layer-icon-wrap">
-                      {layer.icon}
-                    </div>
-
-                    {/* النص */}
-                    <div className="mlc-layer-info">
-                      <span className="mlc-layer-name">{layer.name}</span>
-                      <span className="mlc-layer-desc">{layer.description}</span>
-                    </div>
-
-                    {/* عداد الأحداث */}
-                    {isEnabled && (
-                      <span className="mlc-layer-count">
-                        {loading ? '…' : count}
-                      </span>
-                    )}
-
-                    {/* Toggle Switch */}
-                    <label
-                      className="mlc-toggle"
-                      onClick={e => e.stopPropagation()}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isEnabled}
-                        onChange={() => handleToggleLayer(layer.id)}
-                        aria-label={`تبديل طبقة ${layer.name}`}
-                      />
-                      <span className="mlc-toggle-slider" />
-                    </label>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* ─── Last Update ─────────────────────────────────────────────────── */}
-            {lastUpdate && (
-              <div className="mlc-last-update">
-                <span className={`mlc-live-dot ${loading ? 'loading' : ''}`} />
-                {loading
-                  ? 'جاري التحديث...'
-                  : `آخر تحديث: ${lastUpdate.toLocaleTimeString('ar-PS', { hour: '2-digit', minute: '2-digit' })}`
-                }
-              </div>
-            )}
-
-            {/* ─── Footer Buttons ─────────────────────────────────────────────── */}
-            <div className="mlc-footer">
-              <button
-                className="mlc-refresh-btn"
-                onClick={() => fetchEvents(activeRegion, enabledLayers)}
-                disabled={loading}
-              >
-                {loading
-                  ? <><div className="mlc-spinner" /> جاري التحديث...</>
-                  : <>🔄 تحديث البيانات</>
-                }
-              </button>
-              <button
-                className="mlc-all-btn"
-                onClick={() => {
-                  const allEnabled = LAYER_DEFINITIONS.every(l => enabledLayers[l.id]);
-                  const newState = {};
-                  LAYER_DEFINITIONS.forEach(l => { newState[l.id] = !allEnabled; });
-                  setEnabledLayers(newState);
-                  fetchEvents(activeRegion, newState);
-                }}
-              >
-                {LAYER_DEFINITIONS.every(l => enabledLayers[l.id]) ? 'إخفاء الكل' : 'إظهار الكل'}
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-    </>
-  );
 };
-
-// ─── Hook مساعد للنقر على الخريطة (يُستخدم في Map.jsx) ─────────────────────────
-/**
- * يُرجع callback للتعامل مع click على طبقات الأحداث الإقليمية
- * الاستخدام في Map.jsx:
- *   const { onRegionalEventClick, selectedRegionalEvent, setSelectedRegionalEvent }
- *     = useRegionalEventsClick();
- */
-export function useRegionalEventsClick() {
-  const [selectedRegionalEvent, setSelectedRegionalEvent] = useState(null);
-
-  const onRegionalEventClick = useCallback((e, mapRef) => {
-    if (!mapRef?.current) return false;
-    const map = mapRef.current.getMap();
-
-    const layers = [
-      'regional-events-unclustered',
-      'regional-events-clusters',
-    ];
-
-    const features = map.queryRenderedFeatures(e.point, { layers });
-    if (!features.length) return false;
-
-    const feature = features[0];
-
-    // إذا كانت cluster — نقوم بـ flyTo وزيادة الـ Zoom
-    if (feature.properties.cluster_id) {
-      const source = map.getSource('regional-events-source');
-      source.getClusterExpansionZoom(feature.properties.cluster_id, (err, zoom) => {
-        if (err) return;
-        map.easeTo({
-          center: feature.geometry.coordinates,
-          zoom: zoom + 1,
-          duration: 600,
-        });
-      });
-      return true;
-    }
-
-    // حدث فردي — نعرض الـ popup
-    setSelectedRegionalEvent(feature);
-    return true;
-  }, []);
-
-  return { onRegionalEventClick, selectedRegionalEvent, setSelectedRegionalEvent };
-}
 
 export default MapLayerControl;
