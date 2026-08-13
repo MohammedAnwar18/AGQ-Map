@@ -79,6 +79,7 @@ app.use('/uploads', express.static(uploadsDir));
 
 const geoportalRoutes = require('./routes/geoportal');
 const storageRoutes = require('./routes/storageRoutes');
+const regionalEventsRoutes = require('./routes/regionalEvents');
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -95,6 +96,8 @@ app.use('/api/shops', shopRoutes);
 app.use('/api/geoportals', geoportalRoutes);
 app.use('/api/push', pushRoutes);
 app.use('/api/storage', storageRoutes);
+app.use('/api/regional-events', regionalEventsRoutes);
+
 
 
 // صفحة البداية

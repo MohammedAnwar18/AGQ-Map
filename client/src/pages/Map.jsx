@@ -11,6 +11,7 @@ import ProfileSidebar from '../components/ProfileSidebar';
 import NavigationPanel from '../components/NavigationPanel';
 import HistoricalTimelinePanel from '../components/HistoricalTimelinePanel';
 import SplashLoading from '../components/SplashLoading';
+import MapLayerControl from '../components/MapLayerControl';
 
 // ─── Lazy-loaded modals: only downloaded when the user opens them ─────────────
 const CreatePostModal       = React.lazy(() => import('../components/CreatePostModal'));
@@ -2818,10 +2819,13 @@ const MapComponent = () => {
                     onLoad={onMapLoad}
                     style={{ width: '100%', height: '100%', cursor: isAdminPickingLocation ? 'crosshair' : 'grab' }}
                     onClick={handleMapClick}
-                    interactiveLayerIds={['friends-runs-layer-main', 'friends-runs-layer-glow', 'posts-paths-layer-main', 'posts-paths-layer-glow']}
+                    interactiveLayerIds={['friends-runs-layer-main', 'friends-runs-layer-glow', 'posts-paths-layer-main', 'posts-paths-layer-glow', 'regional-events-unclustered', 'regional-events-clusters']}
                     maxPitch={85}
                     attributionControl={false}
                 >
+                    {/* ═══ طبقات الأحداث الإقليمية — فلسطين والشرق الأوسط ═══ */}
+                    <MapLayerControl mapRef={mapRef} />
+
                     {/* Visual Route with Advanced Premium Layering */}
                     {routePath && (
                         <Source id="route" type="geojson" data={routePath} tolerance={0}>
