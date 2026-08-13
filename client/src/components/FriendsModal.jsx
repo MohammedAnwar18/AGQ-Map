@@ -51,6 +51,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
     const [friends, setFriends] = useState([]);
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(null);
     const [selectedFriendId, setSelectedFriendId] = useState(null);
 
     // Shops State
@@ -92,6 +93,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
     const loadData = async () => {
         try {
             setLoading(true);
+            setLoadError(null);
 
             // Only load what is necessary for the current view!
             if (isShopsMode || activeTab === 'shops') {
@@ -110,6 +112,12 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
             }
         } catch (error) {
             console.error('Failed to load data:', error);
+            const status = error.response?.status;
+            if (status === 401 || status === 403) {
+                setLoadError('انتهت صلاحية جلستك — يرجى تسجيل الخروج والدخول من جديد لعرض البيانات');
+            } else {
+                setLoadError('تعذر تحميل البيانات. تحقق من اتصالك بالإنترنت وحاول مجدداً');
+            }
         } finally {
             setLoading(false);
         }
@@ -447,6 +455,17 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                         <div className="loading-state">
                             <div className="spinner"></div>
                             <p>جاري التحميل...</p>
+                        </div>
+                    ) : loadError ? (
+                        <div className="empty-state">
+                            <p>{loadError}</p>
+                            <button
+                                className="btn-small btn-accept"
+                                style={{ marginTop: '10px' }}
+                                onClick={loadData}
+                            >
+                                إعادة المحاولة
+                            </button>
                         </div>
                     ) : (
                         <div className="friends-container">

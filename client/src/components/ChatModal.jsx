@@ -269,6 +269,7 @@ const ChatModal = ({ onClose }) => {
     const { user, socket } = useAuth();
     const navigate = useNavigate();
     const [friends, setFriends] = useState([]);
+    const [friendsLoadError, setFriendsLoadError] = useState(null);
     const [selectedFriend, setSelectedFriend] = useState(null);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
@@ -523,10 +524,17 @@ const ChatModal = ({ onClose }) => {
 
     const loadFriends = async () => {
         try {
+            setFriendsLoadError(null);
             const data = await friendService.getFriends();
             setFriends(data.friends);
         } catch (error) {
             console.error('Failed to load friends:', error);
+            const status = error.response?.status;
+            setFriendsLoadError(
+                status === 401 || status === 403
+                    ? 'انتهت صلاحية جلستك — سجّل الخروج والدخول من جديد'
+                    : 'تعذر تحميل الأصدقاء. تحقق من الاتصال وحاول مجدداً'
+            );
         } finally {
             setLoading(false);
         }
@@ -740,7 +748,19 @@ const ChatModal = ({ onClose }) => {
                                     )}
                                 </div>
 
-                                {filteredFriends.length === 0 ? (
+                                {friendsLoadError ? (
+                                    <div className="empty-state">
+                                        <span className="empty-state-icon">⚠️</span>
+                                        <p>{friendsLoadError}</p>
+                                        <button
+                                            className="btn-small btn-accept"
+                                            style={{ marginTop: '0.5rem' }}
+                                            onClick={loadFriends}
+                                        >
+                                            إعادة المحاولة
+                                        </button>
+                                    </div>
+                                ) : filteredFriends.length === 0 ? (
                                     <div className="empty-state">
                                         <span className="empty-state-icon">👥</span>
                                         <p>{searchQuery.trim() ? 'لم يتم العثور على صديق يطابق البحث' : 'لا توجد محادثات نشطة بعد'}</p>
