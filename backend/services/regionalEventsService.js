@@ -393,75 +393,6 @@ async function fetchReliefWebEvents() {
   }
 }
 
-// ─── 4.5 WorldMonitor Unrest — احتجاجات/اشتباكات مجمّعة من GDELT (بدون مفتاح API) ─
-// https://api.worldmonitor.app/api/unrest/v1/list-unrest-events — public endpoint,
-// no auth required (see docs/api/UnrestService.openapi.yaml, security: []).
-// The `country` query param on their side is unreliable, so we fetch unfiltered
-// and apply our own West Bank/Gaza/Middle East bounding-box filter downstream.
-const UNREST_EVENT_ICONS = {
-  UNREST_EVENT_TYPE_RIOT: '🔥',
-  UNREST_EVENT_TYPE_PROTEST: '✊',
-  UNREST_EVENT_TYPE_STRIKE: '🪧',
-  UNREST_EVENT_TYPE_CLASH: '⚔️',
-};
-
-function unrestSeverityColor(severity) {
-  if (severity === 'SEVERITY_LEVEL_HIGH') return '#ef4444';
-  if (severity === 'SEVERITY_LEVEL_MEDIUM') return '#f97316';
-  return '#fbbf24';
-}
-
-async function fetchWorldMonitorUnrest() {
-  const cacheKey = 'worldmonitor_unrest';
-  const cached = cacheGet(cacheKey);
-  if (cached) return cached;
-
-  try {
-    const res = await axios.get(
-      'https://api.worldmonitor.app/api/unrest/v1/list-unrest-events',
-      { timeout: 8000 }
-    );
-    const events = res.data?.events || [];
-
-    const features = events
-      .map((ev) => {
-        const lat = ev.location?.latitude;
-        const lon = ev.location?.longitude;
-        if (typeof lat !== 'number' || typeof lon !== 'number') return null;
-
-        let region = 'الشرق الأوسط';
-        if (isInWestBank(lon, lat)) region = 'الضفة الغربية';
-        else if (isInGaza(lon, lat)) region = 'قطاع غزة';
-
-        return {
-          type: 'Feature',
-          id: `wm_unrest_${ev.id}`,
-          geometry: { type: 'Point', coordinates: [lon, lat] },
-          properties: {
-            id: `wm_unrest_${ev.id}`,
-            type: 'unrest',
-            title: ev.title,
-            description: ev.fatalities > 0 ? `وفيات مسجّلة: ${ev.fatalities}` : '',
-            url: ev.sourceUrls?.[0] || '',
-            source: 'World Monitor (GDELT)',
-            date: ev.occurredAt ? new Date(ev.occurredAt).toISOString() : '',
-            category: 'احتجاجات واشتباكات',
-            region,
-            icon: UNREST_EVENT_ICONS[ev.eventType] || '🪧',
-            color: unrestSeverityColor(ev.severity),
-          },
-        };
-      })
-      .filter(Boolean);
-
-    cacheSet(cacheKey, features);
-    return features;
-  } catch (err) {
-    console.warn('[RegionalEvents] WorldMonitor unrest fetch failed:', err.message);
-    return [];
-  }
-}
-
 // ─── 5. أحداث اجتماعية محلية — قادمة من قاعدة البيانات المحلية للتطبيق ─────────
 async function fetchLocalSocialEvents(pool) {
   if (!pool) return [];
@@ -544,7 +475,6 @@ async function fetchLocalSocialEvents(pool) {
  * @param {boolean} options.humanitarian - تضمين الأحداث الإنسانية
  * @param {boolean} options.social - تضمين الأحداث الاجتماعية المحلية
  * @param {boolean} options.news - تضمين الأخبار
- * @param {boolean} options.unrest - تضمين الاحتجاجات/الاشتباكات (World Monitor)
  * @param {Object|null} options.pool - اتصال DB للمنشورات المحلية
  */
 async function fetchAllRegionalEvents(options = {}) {
@@ -557,7 +487,6 @@ async function fetchAllRegionalEvents(options = {}) {
     humanitarian = true,
     social = true,
     news = false,
-    unrest = true,
     pool = null,
   } = options;
 
@@ -567,7 +496,6 @@ async function fetchAllRegionalEvents(options = {}) {
   if (earthquake)    promises.push(fetchEarthquakes().catch(() => []));
   if (humanitarian)  promises.push(fetchReliefWebEvents().catch(() => []));
   if (news)          promises.push(fetchGdeltEvents().catch(() => []));
-  if (unrest)        promises.push(fetchWorldMonitorUnrest().catch(() => []));
   if (social)        promises.push(fetchLocalSocialEvents(pool).catch(() => []));
 
   const results = await Promise.allSettled(promises);
@@ -595,7 +523,7 @@ async function fetchAllRegionalEvents(options = {}) {
     meta: {
       total: filtered.length,
       generatedAt: new Date().toISOString(),
-      sources: { thermal, earthquake, humanitarian, news, unrest, social },
+      sources: { thermal, earthquake, humanitarian, news, social },
     },
   };
 }
@@ -606,7 +534,6 @@ module.exports = {
   fetchEarthquakes,
   fetchReliefWebEvents,
   fetchGdeltEvents,
-  fetchWorldMonitorUnrest,
   fetchLocalSocialEvents,
   reverseGeocode,
   isInWestBank,

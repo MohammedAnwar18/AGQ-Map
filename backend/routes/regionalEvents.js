@@ -19,7 +19,6 @@ const pool = require('../config/database');
  *  - humanitarian (boolean, default true)
  *  - social (boolean, default true)
  *  - news (boolean, default false)
- *  - unrest (boolean, default true)
  */
 router.get('/', async (req, res) => {
   try {
@@ -38,7 +37,6 @@ router.get('/', async (req, res) => {
       humanitarian: toBool(req.query.humanitarian, true),
       social:      toBool(req.query.social, true),
       news:        toBool(req.query.news, false),
-      unrest:      toBool(req.query.unrest, true),
       pool,
     };
 
