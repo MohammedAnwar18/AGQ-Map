@@ -98,6 +98,35 @@ app.use('/api/push', pushRoutes);
 app.use('/api/storage', storageRoutes);
 app.use('/api/regional-events', regionalEventsRoutes);
 
+// Auto-migrate: ensure shop_drivers table exists with all required columns
+(async () => {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS shop_drivers (
+                id SERIAL PRIMARY KEY,
+                shop_id INTEGER REFERENCES shops(id) ON DELETE CASCADE,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                car_type VARCHAR(100),
+                plate_number VARCHAR(50),
+                passengers_capacity INTEGER DEFAULT 4,
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(shop_id, user_id)
+            );
+        `);
+        await pool.query(`
+            ALTER TABLE shop_drivers
+                ADD COLUMN IF NOT EXISTS car_type VARCHAR(100),
+                ADD COLUMN IF NOT EXISTS plate_number VARCHAR(50),
+                ADD COLUMN IF NOT EXISTS passengers_capacity INTEGER DEFAULT 4;
+        `);
+        console.log('✅ shop_drivers table ready');
+    } catch (err) {
+        console.warn('⚠️ shop_drivers migration warning:', err.message);
+    }
+})();
+
+
 
 
 // صفحة البداية
