@@ -13,6 +13,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Source, Layer, Popup } from 'react-map-gl/maplibre';
 import './MapLayerControl.css';
 
@@ -308,181 +309,194 @@ const MapLayerControl = ({ mapRef }) => {
               'circle-color': ['coalesce', ['get', 'color'], '#fbab15'],
               'circle-radius': [
                 'interpolate', ['linear'], ['zoom'],
-                6, 5, 10, 8, 14, 11,
-              ],
-              'circle-stroke-width': 2,
-              'circle-stroke-color': 'rgba(255,255,255,0.6)',
-              'circle-opacity': 0.9,
-            }}
-          />
-
-          {/* تأثير Glow حول النقاط */}
-          <Layer
-            id="regional-events-glow"
-            type="circle"
-            filter={['!', ['has', 'point_count']]}
-            paint={{
-              'circle-color': ['coalesce', ['get', 'color'], '#fbab15'],
-              'circle-radius': [
-                'interpolate', ['linear'], ['zoom'],
-                6, 10, 10, 15, 14, 20,
-              ],
-              'circle-opacity': 0.15,
-              'circle-stroke-width': 0,
-            }}
-          />
-        </Source>
-      )}
-
-      {/* ══════════════════════ Popup تفاصيل الحدث ════════════════════════════ */}
-      {selectedEvent && (
-        <Popup
-          longitude={selectedEvent.geometry.coordinates[0]}
-          latitude={selectedEvent.geometry.coordinates[1]}
-          onClose={() => setSelectedEvent(null)}
-          closeButton={true}
-          closeOnClick={false}
-          maxWidth="300px"
-          anchor="bottom"
-          offset={[0, -8]}
-        >
-          <div className="mlc-event-popup">
-            <div className="mlc-event-popup-header">
-              <span className="mlc-event-popup-icon">
-                {selectedEvent.properties.icon || '📍'}
-              </span>
-              <p className="mlc-event-popup-title">
-                {selectedEvent.properties.title}
-              </p>
-            </div>
-
-            {selectedEvent.properties.region && (
-              <span className="mlc-event-popup-region">
-                📍 {selectedEvent.properties.region}
-              </span>
-            )}
-
-            {selectedEvent.properties.description && (
-              <p className="mlc-event-popup-desc">
-                {selectedEvent.properties.description}
-              </p>
-            )}
-
-            <div className="mlc-event-popup-meta">
-              {selectedEvent.properties.source && (
-                <span>📡 {selectedEvent.properties.source}</span>
-              )}
-              {selectedEvent.properties.date && (
-                <span>🕐 {timeAgo(selectedEvent.properties.date)}</span>
-              )}
-              {selectedEvent.properties.magnitude && (
-                <span>📊 ريختر {selectedEvent.properties.magnitude.toFixed(1)}</span>
-              )}
-              {selectedEvent.properties.frp && (
-                <span>🔥 {selectedEvent.properties.frp.toFixed(0)} MW</span>
-              )}
-            </div>
-
-            {selectedEvent.properties.url && (
-              <a
-                href={selectedEvent.properties.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mlc-event-popup-link"
-              >
-                عرض التفاصيل ←
-              </a>
-            )}
-          </div>
-        </Popup>
-      )}
-
-      {/* ══════════════════════ FAB — زر التحكم بالطبقات ══════════════════════ */}
-      <button
-        className={`mlc-fab ${isOpen ? 'is-open' : ''}`}
-        onClick={(e) => { e.stopPropagation(); setIsOpen(prev => !prev); }}
-        title="طبقات الأحداث الإقليمية"
-        aria-label="فتح لوحة التحكم بالطبقات"
-      >
-        <span className="mlc-fab-icon">{isOpen ? '✕' : '🗺️'}</span>
-        <span>{isOpen ? 'إغلاق' : 'طبقات فلسطين'}</span>
-        {!isOpen && totalVisible > 0 && (
-          <span className="mlc-fab-badge">{totalVisible > 99 ? '99+' : totalVisible}</span>
-        )}
-      </button>
-
-      {/* ══════════════════════ Panel (Sidebar / Bottom Sheet) ════════════════ */}
-      {isOpen && (
+                    {/* ══════════════════════ FAB — زر التحكم بالطبقات ══════════════════════ */}
+      {createPortal(
         <>
-          {/* Overlay (يظهر على الهاتف فقط عبر CSS) */}
-          <div
-            className="mlc-overlay"
-            onClick={() => setIsOpen(false)}
-          />
-
-          <div
-            className="mlc-panel"
-            onClick={(e) => e.stopPropagation()}
+          <button
+            className={`mlc-fab ${isOpen ? 'is-open' : ''}`}
+            onClick={(e) => { e.stopPropagation(); setIsOpen(prev => !prev); }}
+            title="طبقات الأحداث الإقليمية"
+            aria-label="فتح لوحة التحكم بالطبقات"
           >
-            {/* Drag Handle (هاتف) */}
-            <div className="mlc-drag-handle">
-              <div className="mlc-drag-handle-bar" />
-            </div>
+            <span className="mlc-fab-icon">{isOpen ? '✕' : '🗺️'}</span>
+            <span>{isOpen ? 'إغلاق' : 'طبقات فلسطين'}</span>
+            {!isOpen && totalVisible > 0 && (
+              <span className="mlc-fab-badge">{totalVisible > 99 ? '99+' : totalVisible}</span>
+            )}
+          </button>
 
-            {/* ─── Header ────────────────────────────────────────────────────── */}
-            <div className="mlc-header">
-              <div className="mlc-header-left">
-                <span className="mlc-header-flag">🇵🇸</span>
-                <div>
-                  <h2 className="mlc-header-title">طبقات الأحداث</h2>
-                  <p className="mlc-header-subtitle">فلسطين — الضفة الغربية وغزة</p>
+          {/* ══════════════════════ Panel (Sidebar / Bottom Sheet) ════════════════ */}
+          {isOpen && (
+            <>
+              {/* Overlay (يظهر على الهاتف فقط عبر CSS) */}
+              <div
+                className="mlc-overlay"
+                onClick={() => setIsOpen(false)}
+              />
+
+              <div
+                className="mlc-panel"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Drag Handle (هاتف) */}
+                <div className="mlc-drag-handle">
+                  <div className="mlc-drag-handle-bar" />
+                </div>
+
+                {/* ─── Header ────────────────────────────────────────────────────── */}
+                <div className="mlc-header">
+                  <div className="mlc-header-left">
+                    <span className="mlc-header-flag">🇵🇸</span>
+                    <div>
+                      <h2 className="mlc-header-title">طبقات الأحداث</h2>
+                      <p className="mlc-header-subtitle">فلسطين — الضفة الغربية وغزة</p>
+                    </div>
+                  </div>
+                  <button
+                    className="mlc-close-btn"
+                    onClick={() => setIsOpen(false)}
+                    aria-label="إغلاق"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* ─── Stats ────────────────────────────────────────────────────── */}
+                <div className="mlc-stats-bar">
+                  <div className="mlc-stat-item">
+                    <span className="mlc-stat-number">
+                      {loading ? '...' : totalVisible}
+                    </span>
+                    <span className="mlc-stat-label">حدث مرئي</span>
+                  </div>
+                  <div className="mlc-stat-item">
+                    <span className="mlc-stat-number">
+                      {loading ? '...' : regionCounts.wb}
+                    </span>
+                    <span className="mlc-stat-label">ضفة غربية</span>
+                  </div>
+                  <div className="mlc-stat-item">
+                    <span className="mlc-stat-number">
+                      {loading ? '...' : regionCounts.gz}
+                    </span>
+                    <span className="mlc-stat-label">قطاع غزة</span>
+                  </div>
+                </div>
+
+                {/* ─── Region Tabs ────────────────────────────────────────────────── */}
+                <div className="mlc-region-tabs" role="tablist">
+                  {REGION_TABS.map(tab => (
+                    <button
+                      key={tab.id}
+                      role="tab"
+                      aria-selected={activeRegion.id === tab.id}
+                      className={`mlc-region-tab ${activeRegion.id === tab.id ? 'active' : ''}`}
+                      onClick={() => handleRegionChange(tab)}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* ─── Layer Cards ────────────────────────────────────────────────── */}
+                <div className="mlc-body">
+                  <div className="mlc-section-title">الطبقات المتاحة</div>
+
+                  {LAYER_DEFINITIONS.map(layer => {
+                    const count = countByLayer[layer.id] ?? 0;
+                    const isEnabled = enabledLayers[layer.id];
+
+                    return (
+                      <div
+                        key={layer.id}
+                        className={`mlc-layer-card ${isEnabled ? 'active' : ''} ${loading ? 'loading' : ''}`}
+                        onClick={() => handleToggleLayer(layer.id)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={e => e.key === 'Enter' && handleToggleLayer(layer.id)}
+                        aria-label={`${layer.name} — ${isEnabled ? 'مفعّل' : 'معطّل'}`}
+                      >
+                        {/* أيقونة */}
+                        <div className="mlc-layer-icon-wrap">
+                          {layer.icon}
+                        </div>
+
+                        {/* النص */}
+                        <div className="mlc-layer-info">
+                          <span className="mlc-layer-name">{layer.name}</span>
+                          <span className="mlc-layer-desc">{layer.description}</span>
+                        </div>
+
+                        {/* عداد الأحداث */}
+                        {isEnabled && (
+                          <span className="mlc-layer-count">
+                            {loading ? '…' : count}
+                          </span>
+                        )}
+
+                        {/* Toggle Switch */}
+                        <label
+                          className="mlc-toggle"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isEnabled}
+                            onChange={() => handleToggleLayer(layer.id)}
+                            aria-label={`تبديل طبقة ${layer.name}`}
+                          />
+                          <span className="mlc-toggle-slider" />
+                        </label>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* ─── Last Update ─────────────────────────────────────────────────── */}
+                {lastUpdate && (
+                  <div className="mlc-last-update">
+                    <span className={`mlc-live-dot ${loading ? 'loading' : ''}`} />
+                    {loading
+                      ? 'جاري التحديث...'
+                      : `آخر تحديث: ${lastUpdate.toLocaleTimeString('ar-PS', { hour: '2-digit', minute: '2-digit' })}`
+                    }
+                  </div>
+                )}
+
+                {/* ─── Footer Buttons ─────────────────────────────────────────────── */}
+                <div className="mlc-footer">
+                  <button
+                    className="mlc-refresh-btn"
+                    onClick={() => fetchEvents(activeRegion, enabledLayers)}
+                    disabled={loading}
+                  >
+                    {loading
+                      ? <><div className="mlc-spinner" /> جاري التحديث...</>
+                      : <>🔄 تحديث البيانات</>
+                    }
+                  </button>
+                  <button
+                    className="mlc-all-btn"
+                    onClick={() => {
+                      const allEnabled = LAYER_DEFINITIONS.every(l => enabledLayers[l.id]);
+                      const newState = {};
+                      LAYER_DEFINITIONS.forEach(l => { newState[l.id] = !allEnabled; });
+                      setEnabledLayers(newState);
+                      fetchEvents(activeRegion, newState);
+                    }}
+                  >
+                    {LAYER_DEFINITIONS.every(l => enabledLayers[l.id]) ? 'إخفاء الكل' : 'إظهار الكل'}
+                  </button>
                 </div>
               </div>
-              <button
-                className="mlc-close-btn"
-                onClick={() => setIsOpen(false)}
-                aria-label="إغلاق"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* ─── Stats ─────────────────────────────────────────────────────── */}
-            <div className="mlc-stats-bar">
-              <div className="mlc-stat-item">
-                <span className="mlc-stat-number">
-                  {loading ? '...' : totalVisible}
-                </span>
-                <span className="mlc-stat-label">حدث مرئي</span>
-              </div>
-              <div className="mlc-stat-item">
-                <span className="mlc-stat-number">
-                  {loading ? '...' : regionCounts.wb}
-                </span>
-                <span className="mlc-stat-label">ضفة غربية</span>
-              </div>
-              <div className="mlc-stat-item">
-                <span className="mlc-stat-number">
-                  {loading ? '...' : regionCounts.gz}
-                </span>
-                <span className="mlc-stat-label">قطاع غزة</span>
-              </div>
-            </div>
-
-            {/* ─── Region Tabs ────────────────────────────────────────────────── */}
-            <div className="mlc-region-tabs" role="tablist">
-              {REGION_TABS.map(tab => (
-                <button
-                  key={tab.id}
-                  role="tab"
-                  aria-selected={activeRegion.id === tab.id}
-                  className={`mlc-region-tab ${activeRegion.id === tab.id ? 'active' : ''}`}
-                  onClick={() => handleRegionChange(tab)}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+            </>
+          )}
+        </>,
+        document.body
+      )}
+    </>
+  );
+};  </div>
 
             {/* ─── Layer Cards ────────────────────────────────────────────────── */}
             <div className="mlc-body">

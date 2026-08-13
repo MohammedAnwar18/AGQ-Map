@@ -29,13 +29,13 @@
    ═══════════════════════════════════════════════════════════════════════════════ */
 .mlc-fab {
   position: fixed;
-  z-index: 4000;
+  z-index: 99999;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   background: var(--mlc-bg);
-  border: 1px solid var(--mlc-border);
+  border: 1.5px solid var(--mlc-accent);
   color: var(--mlc-text);
   border-radius: 50px;
   padding: 0 18px;
@@ -43,25 +43,25 @@
   cursor: pointer;
   font-family: 'Cairo', sans-serif;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
   backdrop-filter: var(--mlc-blur);
   -webkit-backdrop-filter: var(--mlc-blur);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255,255,255,0.06);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(251, 171, 21, 0.3);
   transition: all var(--mlc-transition);
   user-select: none;
   -webkit-tap-highlight-color: transparent;
 
   /* ─ موضعه: أسفل يمين الشاشة على الهاتف، أعلى يمين على الحاسوب */
-  bottom: 100px;
-  right: 16px;
+  bottom: 110px;
+  right: 20px;
 }
 
 .mlc-fab:hover {
-  background: rgba(15, 22, 40, 0.92);
-  border-color: var(--mlc-accent);
-  box-shadow: 0 4px 20px rgba(251, 171, 21, 0.25), 0 0 0 1px rgba(251,171,21,0.3);
-  transform: translateY(-1px);
+  background: rgba(15, 22, 40, 0.95);
+  border-color: #ffffff;
+  box-shadow: 0 8px 35px rgba(251, 171, 21, 0.5), 0 0 0 2px rgba(251,171,21,0.5);
+  transform: translateY(-2px) scale(1.03);
 }
 
 .mlc-fab.is-open {
@@ -102,7 +102,7 @@
 .mlc-overlay {
   position: fixed;
   inset: 0;
-  z-index: 3999;
+  z-index: 99998;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
@@ -117,7 +117,7 @@
 /* Panel المشترك */
 .mlc-panel {
   position: fixed;
-  z-index: 4001;
+  z-index: 99999;
   background: var(--mlc-bg);
   border: 1px solid var(--mlc-border);
   backdrop-filter: var(--mlc-blur);
@@ -134,17 +134,17 @@
 /* ─── DESKTOP: لوحة جانبية ───────────────────────────────────────────────────── */
 @media (min-width: 769px) {
   .mlc-panel {
-    top: 70px;
-    right: 16px;
+    top: 140px;
+    right: 20px;
     width: 320px;
-    max-height: calc(100vh - 90px);
+    max-height: calc(100vh - 160px);
     border-radius: var(--mlc-radius);
     animation: mlcSlideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .mlc-fab {
-    top: 16px;
-    right: 16px;
+    top: 90px;
+    right: 20px;
     bottom: auto;
   }
 }
