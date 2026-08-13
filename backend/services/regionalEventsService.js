@@ -146,7 +146,7 @@ async function fetchGdeltEvents() {
     );
     const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${query}&mode=artlist&maxrecords=50&sort=datedesc&format=json`;
 
-    const res = await axios.get(url, { timeout: 8000 });
+    const res = await axios.get(url, { timeout: 15000 });
     const articles = res.data?.articles || [];
 
     const features = articles
@@ -320,9 +320,13 @@ async function fetchReliefWebEvents() {
   if (cached) return cached;
 
   try {
-    const url = 'https://api.reliefweb.int/v1/disasters';
+    // v1 was decommissioned by ReliefWeb; v2 requires a pre-approved appname
+    // (see https://apidoc.reliefweb.int/parameters#appname). Without one this
+    // call returns 403 and the catch below yields [] — request an appname and
+    // set RELIEFWEB_APPNAME to enable this source.
+    const url = 'https://api.reliefweb.int/v2/disasters';
     const payload = {
-      appname: 'PalNovaaApp',
+      appname: process.env.RELIEFWEB_APPNAME || 'PalNovaaApp',
       profile: 'minimal',
       preset: 'latest',
       limit: 30,

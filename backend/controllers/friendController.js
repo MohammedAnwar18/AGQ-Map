@@ -213,11 +213,18 @@ const getFriends = async (req, res) => {
             THEN u.last_latitude 
             ELSE NULL 
         END as last_latitude,
-        CASE 
+        CASE
             WHEN ((f.user1_id = $1 AND f.user2_shares_location) OR (f.user2_id = $1 AND f.user1_shares_location))
-            THEN u.last_longitude 
-            ELSE NULL 
-        END as last_longitude
+            THEN u.last_longitude
+            ELSE NULL
+        END as last_longitude,
+        (SELECT EXISTS (
+            SELECT 1 FROM messages
+            WHERE (sender_id = $1 AND receiver_id = u.id)
+               OR (sender_id = u.id AND receiver_id = $1)
+        )) as has_chatted,
+        (SELECT COUNT(*)::int FROM messages
+         WHERE sender_id = u.id AND receiver_id = $1 AND is_read = false) as unread_count
        FROM users u
        JOIN friendships f ON (
          (f.user1_id = $1 AND f.user2_id = u.id) OR
@@ -327,12 +334,42 @@ const cancelFriendRequest = async (req, res) => {
 };
 
 const acceptBySender = async (req, res) => {
+    const client = await pool.connect();
     try {
+        await client.query('BEGIN');
+
         const { senderId } = req.params;
-        await pool.query('UPDATE friend_requests SET status = \'accepted\' WHERE sender_id = $1 AND receiver_id = $2', [senderId, req.user.userId]);
+        const userId = req.user.userId;
+
+        const requestResult = await client.query(
+            `UPDATE friend_requests SET status = 'accepted', updated_at = CURRENT_TIMESTAMP
+             WHERE sender_id = $1 AND receiver_id = $2 AND status = 'pending'
+             RETURNING id`,
+            [senderId, userId]
+        );
+
+        if (requestResult.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Friend request not found' });
+        }
+
+        await client.query(
+            `INSERT INTO friendships (user1_id, user2_id)
+             VALUES ($1, $2)
+             ON CONFLICT DO NOTHING`,
+            [Math.min(senderId, userId), Math.max(senderId, userId)]
+        );
+
+        await createNotification(senderId, userId, 'friend_accepted', null);
+
+        await client.query('COMMIT');
         res.json({ message: 'Request accepted' });
     } catch (e) {
+        await client.query('ROLLBACK');
+        console.error('acceptBySender error:', e);
         res.status(500).json({ error: 'Failed to accept request' });
+    } finally {
+        client.release();
     }
 };
 

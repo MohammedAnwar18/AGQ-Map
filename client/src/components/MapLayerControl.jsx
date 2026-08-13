@@ -70,7 +70,7 @@ const LAYER_DEFINITIONS = [
     color: '#f59e0b',
     param: 'news',
     types: ['news'],
-    defaultEnabled: false,
+    defaultEnabled: true,
   },
 ];
 
