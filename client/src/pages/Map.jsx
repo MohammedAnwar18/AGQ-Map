@@ -2823,8 +2823,7 @@ const MapComponent = () => {
                     maxPitch={85}
                     attributionControl={false}
                 >
-                    {/* ═══ طبقات الأحداث الإقليمية — فلسطين والشرق الأوسط ═══ */}
-                    <MapLayerControl mapRef={mapRef} />
+                    {/* ═══ طبقات الأحداث الإقليمية — فلسطين والشرق الأوسط (تم الإخفاء بناءً على طلب المستخدم) ═══ */}
 
                     {/* Visual Route with Advanced Premium Layering */}
                     {routePath && (
@@ -3963,6 +3962,12 @@ const MapComponent = () => {
                         setShowSidebar(false);
                     } else if (action === 'spatial-ar') {
                         navigate('/ar');
+                        setShowSidebar(false);
+                    } else if (action === 'shops') {
+                        setShowShops(true);
+                        setShowSidebar(false);
+                    } else if (action === 'friends') {
+                        setShowFriends(true);
                         setShowSidebar(false);
                     } else if (action === 'settings') {
                         setShowProfile(true); // Opens profile which includes settings/privacy

@@ -4,14 +4,29 @@ const pool = require('../config/database');
 const searchShops = async (req, res) => {
     try {
         const { query } = req.query;
-        if (!query) return res.json({ shops: [] });
+        if (!query || !query.trim()) {
+            const result = await pool.query(`
+                SELECT s.id, s.name, s.category, s.profile_picture, s.latitude, s.longitude, s.parent_shop_id,
+                       p.name as parent_shop_name, 'shop' as type
+                FROM shops s
+                LEFT JOIN shops p ON s.parent_shop_id = p.id
+                WHERE s.is_hidden = FALSE
+                ORDER BY s.name ASC
+                LIMIT 100
+            `);
+            return res.json({ shops: result.rows });
+        }
 
+        const searchPattern = `%${query.trim()}%`;
         const result = await pool.query(`
-            SELECT id, name, category, profile_picture 
-            FROM shops 
-            WHERE name ILIKE $1 
-            LIMIT 10
-        `, [`%${query}%`]);
+            SELECT s.id, s.name, s.category, s.profile_picture, s.latitude, s.longitude, s.parent_shop_id,
+                   p.name as parent_shop_name, 'shop' as type
+            FROM shops s
+            LEFT JOIN shops p ON s.parent_shop_id = p.id
+            WHERE (s.name ILIKE $1 OR s.category ILIKE $1) AND s.is_hidden = FALSE
+            ORDER BY s.name ASC
+            LIMIT 50
+        `, [searchPattern]);
 
         res.json({ shops: result.rows });
     } catch (error) {

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { friendService, shopService, cameraService, getImageUrl } from '../services/api';
+import React, { useState, useEffect, useMemo } from 'react';
+import { friendService, shopService, cameraService, userService, getImageUrl } from '../services/api';
 import ProfileModal from './ProfileModal';
 import PalNovaaMarketDesign from './PalNovaaMarketDesign';
 import DefaultAvatar from './DefaultAvatar';
@@ -56,9 +56,16 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
 
     // Shops State
     const [followedShops, setFollowedShops] = useState(propFollowedShops || []);
+    const [allMapShops, setAllMapShops] = useState([]);
+    const [shopsSubTab, setShopsSubTab] = useState('all'); // 'all' (جميع المحلات والمؤسسات) or 'following' (المتابعات)
     const [shopSearchQuery, setShopSearchQuery] = useState('');
     const [shopSearchResults, setShopSearchResults] = useState([]);
     const [isSearchingShop, setIsSearchingShop] = useState(false);
+
+    // User Search State (for Friends tab)
+    const [userSearchQuery, setUserSearchQuery] = useState('');
+    const [userSearchResults, setUserSearchResults] = useState([]);
+    const [isSearchingUser, setIsSearchingUser] = useState(false);
 
     // Create Shop State
     const [isCreatingShop, setIsCreatingShop] = useState(false);
@@ -78,8 +85,6 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
     const [showMarketDesign, setShowMarketDesign] = useState(false);
     const [pendingDesign, setPendingDesign] = useState(null);
 
-
-
     useEffect(() => {
         loadData();
     }, [activeTab, isShopsMode]); // Re-run when tab changes
@@ -95,20 +100,28 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
             setLoading(true);
             setLoadError(null);
 
-            // Only load what is necessary for the current view!
-            if (isShopsMode || activeTab === 'shops') {
-                const shopsData = await shopService.getFollowing();
-                setFollowedShops(shopsData.shops || []);
-            } else if (activeTab === 'friends') {
-                const [friendsData, shopsData] = await Promise.all([
-                    friendService.getFriends(),
-                    shopService.getFollowing()
-                ]);
-                setFriends(friendsData.friends);
-                setFollowedShops(shopsData.shops || []);
-            } else if (activeTab === 'requests') {
-                const requestsData = await friendService.getPendingRequests();
-                setRequests(requestsData.requests);
+            const [followingRes, mapAllRes, friendsRes, requestsRes] = await Promise.allSettled([
+                shopService.getFollowing(),
+                shopService.getAllForMap(),
+                friendService.getFriends(),
+                friendService.getPendingRequests()
+            ]);
+
+            if (followingRes.status === 'fulfilled') {
+                setFollowedShops(followingRes.value?.shops || []);
+            }
+            if (mapAllRes.status === 'fulfilled') {
+                const shopsList = mapAllRes.value?.shops || [];
+                const facilitiesList = mapAllRes.value?.facilities || [];
+                // Merge all shops and facilities into one comprehensive list
+                const combined = [...shopsList, ...facilitiesList];
+                setAllMapShops(combined);
+            }
+            if (friendsRes.status === 'fulfilled') {
+                setFriends(friendsRes.value?.friends || []);
+            }
+            if (requestsRes.status === 'fulfilled') {
+                setRequests(requestsRes.value?.requests || []);
             }
         } catch (error) {
             console.error('Failed to load data:', error);
@@ -177,10 +190,45 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
         }
     };
 
+    // --- User Search Function (Friends Tab) ---
+    const handleUserSearch = async (query) => {
+        setUserSearchQuery(query);
+        if (!query || query.trim().length < 2) {
+            setUserSearchResults([]);
+            return;
+        }
+        setIsSearchingUser(true);
+        try {
+            const res = await userService.searchUsers(query.trim());
+            setUserSearchResults(res.users || []);
+        } catch (err) {
+            console.error('User search failed:', err);
+        } finally {
+            setIsSearchingUser(false);
+        }
+    };
+
+    // --- Filtered Shops List (All Map Places / Followed Places) ---
+    const displayShopsList = useMemo(() => {
+        let list = shopsSubTab === 'all' ? allMapShops : followedShops;
+        if (shopSearchQuery.trim()) {
+            const q = shopSearchQuery.trim().toLowerCase();
+            list = list.filter(item =>
+                (item.name && item.name.toLowerCase().includes(q)) ||
+                (item.category && item.category.toLowerCase().includes(q)) ||
+                (item.parent_shop_name && item.parent_shop_name.toLowerCase().includes(q))
+            );
+        }
+        return list.filter(Boolean);
+    }, [shopsSubTab, allMapShops, followedShops, shopSearchQuery]);
+
     // --- Shops Functions ---
     const handleShopSearch = async (e) => {
-        e.preventDefault();
-        if (!shopSearchQuery.trim()) return;
+        if (e) e.preventDefault();
+        if (!shopSearchQuery.trim()) {
+            setShopSearchResults([]);
+            return;
+        }
 
         setIsSearchingShop(true);
         try {
@@ -471,73 +519,143 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                         <div className="friends-container">
                             {activeTab === 'friends' && (
                                 <>
-                                    {friends.length === 0 ? (
-                                        <div className="empty-state">
-                                            <p>ليس لديك أصدقاء حالياً</p>
+                                    {/* User Search Input */}
+                                    <div style={{ padding: '12px 15px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--bg-tertiary)', position: 'sticky', top: 0, zIndex: 5 }}>
+                                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: 'var(--bg-tertiary)', borderRadius: '12px', padding: '5px 15px' }}>
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--text-muted)' }}>
+                                                <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                            </svg>
+                                            <input
+                                                type="text"
+                                                placeholder="ابحث عن أصدقاء أو مستخدمين باسم المستخدم..."
+                                                value={userSearchQuery}
+                                                onChange={(e) => handleUserSearch(e.target.value)}
+                                                style={{ flex: 1, padding: '8px 10px', background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-primary)', fontSize: '0.9rem', fontFamily: 'inherit' }}
+                                            />
+                                            {isSearchingUser && <div className="spinner-small"></div>}
                                         </div>
-                                    ) : (
+                                    </div>
+
+                                    {/* Search Results for Users */}
+                                    {userSearchResults.length > 0 && (
                                         <div className="user-list">
-                                            {friends.map(friend => (
-                                                <div key={friend.id} className="user-item" style={{ cursor: 'pointer', padding: '12px 15px' }}
-                                                    onClick={() => setSelectedFriendId(friend.id)}
-                                                >
+                                            <h4 style={{ padding: '10px 15px', fontSize: '0.9rem', color: '#fbab15' }}>نتائج البحث عن المستخدمين</h4>
+                                            {userSearchResults.map(foundUser => (
+                                                <div key={foundUser.id} className="user-item" onClick={() => setSelectedFriendId(foundUser.id)} style={{ cursor: 'pointer', padding: '12px 15px' }}>
                                                     <div className="chat-avatar">
-                                                        {friend.profile_picture ? (
-                                                            <img src={getImageUrl(friend.profile_picture)} alt={friend.username} />
+                                                        {foundUser.profile_picture ? (
+                                                            <img src={getImageUrl(foundUser.profile_picture)} alt={foundUser.username} />
                                                         ) : (
-                                                            <DefaultAvatar gender={friend.gender} size={50} uid={String(friend.id)} />
+                                                            <DefaultAvatar gender={foundUser.gender} size={50} uid={String(foundUser.id)} />
                                                         )}
-                                                        {friend.is_online && <div className="online-indicator" />}
                                                     </div>
                                                     <div className="chat-info" style={{ flex: 1, minWidth: 0 }}>
                                                         <div className="chat-name" style={{ fontWeight: '700', fontSize: '0.95rem' }}>
-                                                            {friend.full_name || friend.username}
+                                                            {foundUser.full_name || foundUser.username}
                                                         </div>
                                                         <div className="chat-last-message" style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                                                            @{friend.username}
+                                                            @{foundUser.username}
                                                         </div>
-                                                        
-                                                        {/* Action Buttons Below Name */}
-                                                        <div 
-                                                            style={{ display: 'flex', gap: '8px', marginTop: '10px' }}
-                                                            onClick={e => e.stopPropagation()}
-                                                        >
+                                                    </div>
+                                                    <div className="user-item-actions" onClick={e => e.stopPropagation()}>
+                                                        {foundUser.is_friend ? (
+                                                            <span style={{ color: '#10b981', fontSize: '0.85rem', fontWeight: 'bold' }}>صديق ✓</span>
+                                                        ) : foundUser.has_pending_request ? (
+                                                            <span style={{ color: '#f59e0b', fontSize: '0.85rem' }}>طلب معلق ⏳</span>
+                                                        ) : (
                                                             <button
-                                                                className={`btn-small ${friend.am_i_sharing ? 'btn-location-active' : 'btn-location'}`}
-                                                                onClick={() => handleToggleLocation(friend.id)}
-                                                                style={{ 
-                                                                    fontFamily: 'inherit', 
-                                                                    padding: '4px 10px', 
-                                                                    fontSize: '0.75rem', 
-                                                                    borderRadius: '8px',
-                                                                    height: '28px',
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    gap: '4px'
+                                                                className="btn-small btn-accept"
+                                                                onClick={async () => {
+                                                                    try {
+                                                                        await friendService.sendFriendRequest(foundUser.id);
+                                                                        alert(`تم إرسال طلب صداقة إلى ${foundUser.username}`);
+                                                                        handleUserSearch(userSearchQuery);
+                                                                    } catch (e) {
+                                                                        alert('تعذر إرسال طلب الصداقة');
+                                                                    }
                                                                 }}
                                                             >
-                                                                {friend.am_i_sharing ? 'إيقاف 📍' : 'مشاركة 📍'}
+                                                                إضافة صديق +
                                                             </button>
-                                                            <button
-                                                                className="btn-small btn-reject"
-                                                                onClick={() => handleRemoveFriend(friend.id)}
-                                                                style={{ 
-                                                                    fontFamily: 'inherit', 
-                                                                    padding: '4px 10px', 
-                                                                    fontSize: '0.75rem', 
-                                                                    borderRadius: '8px',
-                                                                    height: '28px',
-                                                                    background: 'rgba(239, 68, 68, 0.1)',
-                                                                    color: '#ef4444'
-                                                                }}
-                                                            >
-                                                                إلغاء الصداقة
-                                                            </button>
-                                                        </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             ))}
                                         </div>
+                                    )}
+
+                                    {/* Existing Friends List */}
+                                    {userSearchQuery.trim().length === 0 && (
+                                        friends.length === 0 ? (
+                                            <div className="empty-state">
+                                                <p style={{ fontSize: '1.05rem', marginBottom: '6px' }}>ليس لديك أصدقاء مضافون حالياً</p>
+                                                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>ابحث عن مستخدمين بالاسم أعلاه لإضافتهم كأصدقاء!</p>
+                                            </div>
+                                        ) : (
+                                            <div className="user-list">
+                                                <h4 style={{ padding: '10px 15px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>قائمة الأصدقاء ({friends.length})</h4>
+                                                {friends.map(friend => (
+                                                    <div key={friend.id} className="user-item" style={{ cursor: 'pointer', padding: '12px 15px' }}
+                                                        onClick={() => setSelectedFriendId(friend.id)}
+                                                    >
+                                                        <div className="chat-avatar">
+                                                            {friend.profile_picture ? (
+                                                                <img src={getImageUrl(friend.profile_picture)} alt={friend.username} />
+                                                            ) : (
+                                                                <DefaultAvatar gender={friend.gender} size={50} uid={String(friend.id)} />
+                                                            )}
+                                                            {friend.is_online && <div className="online-indicator" />}
+                                                        </div>
+                                                        <div className="chat-info" style={{ flex: 1, minWidth: 0 }}>
+                                                            <div className="chat-name" style={{ fontWeight: '700', fontSize: '0.95rem' }}>
+                                                                {friend.full_name || friend.username}
+                                                            </div>
+                                                            <div className="chat-last-message" style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                                                                @{friend.username}
+                                                            </div>
+                                                            
+                                                            {/* Action Buttons Below Name */}
+                                                            <div 
+                                                                style={{ display: 'flex', gap: '8px', marginTop: '10px' }}
+                                                                onClick={e => e.stopPropagation()}
+                                                            >
+                                                                <button
+                                                                    className={`btn-small ${friend.am_i_sharing ? 'btn-location-active' : 'btn-location'}`}
+                                                                    onClick={() => handleToggleLocation(friend.id)}
+                                                                    style={{ 
+                                                                        fontFamily: 'inherit', 
+                                                                        padding: '4px 10px', 
+                                                                        fontSize: '0.75rem', 
+                                                                        borderRadius: '8px',
+                                                                        height: '28px',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '4px'
+                                                                    }}
+                                                                >
+                                                                    {friend.am_i_sharing ? 'إيقاف 📍' : 'مشاركة 📍'}
+                                                                </button>
+                                                                <button
+                                                                    className="btn-small btn-reject"
+                                                                    onClick={() => handleRemoveFriend(friend.id)}
+                                                                    style={{ 
+                                                                        fontFamily: 'inherit', 
+                                                                        padding: '4px 10px', 
+                                                                        fontSize: '0.75rem', 
+                                                                        borderRadius: '8px',
+                                                                        height: '28px',
+                                                                        background: 'rgba(239, 68, 68, 0.1)',
+                                                                        color: '#ef4444'
+                                                                    }}
+                                                                >
+                                                                    إلغاء الصداقة
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )
                                     )}
                                 </>
                             )}
@@ -835,148 +953,145 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                         </div>
                                     ) : (
                                         <>
-                                            {/* ===== SHOPS VIEW ===== */}
-                                            <>
-                                                <form onSubmit={handleShopSearch} style={{ padding: '15px', position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 10, borderBottom: '1px solid var(--bg-tertiary)' }}>
+                                            {/* ===== SHOPS & INSTITUTIONS VIEW ===== */}
+                                            {/* Sub-tabs Header: All Map Places vs Followed Places */}
+                                            <div style={{ display: 'flex', gap: '8px', padding: '10px 15px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--bg-tertiary)' }}>
+                                                <button
+                                                    className="btn-small"
+                                                    onClick={() => setShopsSubTab('all')}
+                                                    style={{ flex: 1, borderRadius: '10px', padding: '8px', fontSize: '0.85rem', background: shopsSubTab === 'all' ? '#fbab15' : 'var(--bg-tertiary)', color: shopsSubTab === 'all' ? '#000' : 'var(--text-primary)', border: 'none', fontWeight: 'bold' }}
+                                                >
+                                                    🏢 جميع المحلات والمؤسسات ({allMapShops.length})
+                                                </button>
+                                                <button
+                                                    className="btn-small"
+                                                    onClick={() => setShopsSubTab('following')}
+                                                    style={{ flex: 1, borderRadius: '10px', padding: '8px', fontSize: '0.85rem', background: shopsSubTab === 'following' ? '#fbab15' : 'var(--bg-tertiary)', color: shopsSubTab === 'following' ? '#000' : 'var(--text-primary)', border: 'none', fontWeight: 'bold' }}
+                                                >
+                                                    🔔 المتابَعات ({followedShops.length})
+                                                </button>
+                                            </div>
+
+                                            {/* Live Search Input */}
+                                            <form onSubmit={handleShopSearch} style={{ padding: '15px', position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 10, borderBottom: '1px solid var(--bg-tertiary)' }}>
                                                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: 'var(--bg-tertiary)', borderRadius: '12px', padding: '5px 15px' }}>
                                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)' }}>
                                                         <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                                                     </svg>
                                                     <input
                                                         type="text"
-                                                        placeholder="ابحث عن ( مطعم , مركز تسوق , مؤسسة ..... )"
+                                                        placeholder="ابحث عن ( مطعم , مركز تسوق , مؤسسة , جامعة ..... )"
                                                         value={shopSearchQuery}
                                                         onChange={(e) => setShopSearchQuery(e.target.value)}
                                                         style={{ flex: 1, padding: '10px', background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-primary)', fontSize: '0.95rem', fontFamily: 'inherit' }}
-                                                        autoFocus
                                                     />
                                                     {isSearchingShop && <div className="spinner-small"></div>}
                                                 </div>
                                             </form>
 
-                                            {shopSearchResults.filter(Boolean).length > 0 && (
-                                                <div className="user-list">
-                                                    <h4 style={{ padding: '10px 15px', fontSize: '0.9rem', color: 'var(--primary)' }}>نتائج البحث</h4>
-                                                    {shopSearchResults.filter(Boolean).map(shop => (
-                                                        <div key={`${shop.type}-${shop.id}`} className="user-item" onClick={() => onShopClick && onShopClick(shop)} style={{ cursor: 'pointer' }}>
-                                                            <div className="chat-avatar" style={{
-                                                                background: shop.type === 'facility' ? '#1e293b' : 'linear-gradient(135deg, #fbab15, #f59e0b)',
-                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                borderRadius: '12px', overflow: 'hidden', flexShrink: 0,
-                                                                width: '50px', height: '50px', border: shop.type === 'facility' ? '1px solid #fbab15' : 'none'
-                                                            }}>
-                                                                {shop.type === 'facility' ? (
-                                                                    <span style={{ fontSize: '1.4rem' }}>🏛️</span>
-                                                                ) : (
-                                                                    <ShopAvatar shop={shop} />
-                                                                )}
-                                                            </div>
-                                                            <div className="chat-info" style={{ flex: 1, minWidth: 0 }}>
-                                                                <div className="chat-name" style={{ fontWeight: '700' }}>
-                                                                    {shop.name}
-                                                                    {shop.type === 'facility' && <span style={{ fontSize: '0.7rem', color: '#fbab15', marginRight: '8px', border: '1px solid #fbab15', padding: '1px 5px', borderRadius: '4px' }}>مرفق</span>}
-                                                                </div>
-                                                                <div className="chat-last-message" style={{ display: 'flex', alignItems: 'center', gap: '4.5px', flexWrap: 'wrap' }}>
-                                                                    <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{shop.category || (shop.type === 'facility' ? 'مبنى تعليمي' : 'عام')}</span>
-                                                                    {shop.parent_shop_name && (
-                                                                        <span style={{ 
-                                                                            fontSize: '0.75rem', 
-                                                                            color: '#fbab15', 
-                                                                            background: 'rgba(251,171,21,0.1)', 
-                                                                            padding: '2px 8px', 
-                                                                            borderRadius: '10px',
-                                                                            marginLeft: '5px'
-                                                                        }}>
-                                                                            {shop.type === 'facility' ? `في: ${shop.parent_shop_name}` : `في: ${shop.parent_shop_name}`}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                            <div className="user-item-actions">
-                                                                {shop.type === 'facility' ? (
-                                                                    <span style={{ color: '#fbab15', fontSize: '0.85rem' }}>عرض الموقع 📍</span>
-                                                                ) : (
-                                                                    isFollowingShop(shop.id) ? (
-                                                                        <span style={{ color: 'var(--success)', fontSize: '0.85rem', fontWeight: 'bold' }}>متابع ✓</span>
-                                                                    ) : (
-                                                                        <button className="btn-small btn-accept" onClick={(e) => { e.stopPropagation(); handleFollowShop(shop); }}>متابعة</button>
-                                                                    )
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-
+                                            {/* Shops List */}
                                             <div className="user-list">
-                                                <h4 style={{ padding: '10px 15px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>المحلات التي أتابعها</h4>
-                                                {followedShops.filter(Boolean).length === 0 ? (
+                                                <h4 style={{ padding: '10px 15px', fontSize: '0.9rem', color: '#fbab15' }}>
+                                                    {shopsSubTab === 'all' ? 'جميع المحلات والمؤسسات الظاهرة على الخريطة' : 'المحلات والمؤسسات التي أتابعها'}
+                                                    {shopSearchQuery.trim() && ` (نتائج البحث: ${displayShopsList.length})`}
+                                                </h4>
+
+                                                {displayShopsList.length === 0 ? (
                                                     <div className="empty-state">
-                                                        <p>لا تتابع أي محل حالياً</p>
+                                                        <p>{shopsSubTab === 'following' ? 'لا تتابع أي محل أو مؤسسة حالياً' : 'لم يتم العثور على محلات أو مؤسسات مطابقة'}</p>
+                                                        {shopsSubTab === 'following' && (
+                                                            <button
+                                                                className="btn-small btn-accept"
+                                                                onClick={() => setShopsSubTab('all')}
+                                                                style={{ marginTop: '10px', background: '#fbab15', color: '#000', fontWeight: 'bold' }}
+                                                            >
+                                                                تصفح جميع المحلات والمؤسسات 🏢
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 ) : (
-                                                    followedShops.filter(Boolean).map(shop => (
-                                                        <div key={shop.id} className="user-item" onClick={() => onShopClick && onShopClick(shop)} style={{ cursor: 'pointer' }}>
-                                                            <div className="chat-avatar" style={{
-                                                                background: shop.profile_picture ? 'transparent' : 'linear-gradient(135deg, #fbab15, #f59e0b)',
-                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                borderRadius: '12px', overflow: 'hidden', flexShrink: 0,
-                                                                width: '50px', height: '50px'
-                                                            }}>
-                                                                {shop.profile_picture ? (
-                                                                    <>
-                                                                        <img
-                                                                            src={getImageUrl(shop.profile_picture)}
-                                                                            alt={shop.name}
-                                                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                                                            onError={e => {
-                                                                                e.target.style.display = 'none';
-                                                                                if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
-                                                                            }}
-                                                                        />
-                                                                        <span className="fallback-icon" style={{ display: 'none', fontSize: '1.3rem', color: 'white', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
-                                                                            {shop.name?.charAt(0) || '🏪'}
+                                                    displayShopsList.map(shop => {
+                                                        const isFollowing = isFollowingShop(shop.id);
+                                                        return (
+                                                            <div
+                                                                key={`${shop.type || 'shop'}-${shop.id}`}
+                                                                className="user-item"
+                                                                onClick={() => onShopClick && onShopClick(shop)}
+                                                                style={{ cursor: 'pointer', padding: '12px 15px' }}
+                                                            >
+                                                                <div className="chat-avatar" style={{
+                                                                    background: shop.type === 'facility' ? '#1e293b' : 'linear-gradient(135deg, #fbab15, #f59e0b)',
+                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                    borderRadius: '12px', overflow: 'hidden', flexShrink: 0,
+                                                                    width: '50px', height: '50px', border: shop.type === 'facility' ? '1px solid #fbab15' : 'none'
+                                                                }}>
+                                                                    {shop.type === 'facility' ? (
+                                                                        <span style={{ fontSize: '1.4rem' }}>🏛️</span>
+                                                                    ) : (
+                                                                        <ShopAvatar shop={shop} />
+                                                                    )}
+                                                                </div>
+                                                                <div className="chat-info" style={{ flex: 1, minWidth: 0 }}>
+                                                                    <div className="chat-name" style={{ fontWeight: '700', fontSize: '0.95rem' }}>
+                                                                        {shop.name}
+                                                                        {shop.type === 'facility' && (
+                                                                            <span style={{ fontSize: '0.7rem', color: '#fbab15', marginRight: '8px', border: '1px solid #fbab15', padding: '1px 5px', borderRadius: '4px' }}>
+                                                                                مرفق
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="chat-last-message" style={{ display: 'flex', alignItems: 'center', gap: '4.5px', flexWrap: 'wrap' }}>
+                                                                        <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>
+                                                                            {shop.category || (shop.type === 'facility' ? 'مبنى تعليمي' : 'عام')}
                                                                         </span>
-                                                                    </>
-                                                                ) : (
-                                                                    <span style={{ fontSize: '1.3rem', color: 'white' }}>
-                                                                        {categoryEmoji(shop.category)}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            <div className="chat-info" style={{ flex: 1, minWidth: 0 }}>
-                                                                <div className="chat-name" style={{ fontWeight: '700' }}>{shop.name}</div>
-                                                                <div className="chat-last-message" style={{ display: 'flex', alignItems: 'center', gap: '4.5px', flexWrap: 'wrap' }}>
-                                                                    <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{shop.category}</span>
-                                                                    {shop.parent_shop_name && (
-                                                                        <span style={{ 
-                                                                            fontSize: '0.75rem', 
-                                                                            color: '#fbab15', 
-                                                                            background: 'rgba(251,171,21,0.1)', 
-                                                                            padding: '2px 8px', 
-                                                                            borderRadius: '10px',
-                                                                            marginLeft: '5px'
-                                                                        }}>
-                                                                            في: {shop.parent_shop_name}
-                                                                        </span>
+                                                                        {shop.parent_shop_name && (
+                                                                            <span style={{ 
+                                                                                fontSize: '0.75rem', 
+                                                                                color: '#fbab15', 
+                                                                                background: 'rgba(251,171,21,0.1)', 
+                                                                                padding: '2px 8px', 
+                                                                                borderRadius: '10px',
+                                                                                marginLeft: '5px'
+                                                                            }}>
+                                                                                في: {shop.parent_shop_name}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="user-item-actions" onClick={e => e.stopPropagation()}>
+                                                                    <button
+                                                                        className="btn-small"
+                                                                        onClick={() => onShopClick && onShopClick(shop)}
+                                                                        style={{ background: 'rgba(251,171,21,0.15)', color: '#fbab15', border: '1px solid #fbab15', borderRadius: '8px', padding: '4px 8px', fontSize: '0.78rem', marginLeft: '6px' }}
+                                                                    >
+                                                                        عرض 📍
+                                                                    </button>
+                                                                    {shop.type !== 'facility' && (
+                                                                        isFollowing ? (
+                                                                            <button
+                                                                                className="btn-small btn-reject"
+                                                                                onClick={() => handleUnfollowShop(shop.id)}
+                                                                                style={{ border: '1px solid var(--error)', color: 'var(--error)', fontSize: '0.75rem' }}
+                                                                            >
+                                                                                إلغاء المتابعة
+                                                                            </button>
+                                                                        ) : (
+                                                                            <button
+                                                                                className="btn-small btn-accept"
+                                                                                onClick={() => handleFollowShop(shop)}
+                                                                                style={{ background: '#fbab15', color: '#000', fontWeight: 'bold', fontSize: '0.75rem' }}
+                                                                            >
+                                                                                متابعة
+                                                                            </button>
+                                                                        )
                                                                     )}
                                                                 </div>
                                                             </div>
-                                                            <div className="user-item-actions">
-                                                                <button
-                                                                    className="btn-small btn-reject"
-                                                                    onClick={(e) => { e.stopPropagation(); handleUnfollowShop(shop.id); }}
-                                                                    style={{ border: '1px solid var(--error)', color: 'var(--error)' }}
-                                                                >
-                                                                    إلغاء المتابعة
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    ))
+                                                        );
+                                                    })
                                                 )}
                                             </div>
-                                        </> 
-                                    </>
+                                        </>
                                 )}
                             </div>
                         )}

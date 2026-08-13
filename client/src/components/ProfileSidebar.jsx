@@ -149,10 +149,34 @@ const ProfileSidebar = ({ isOpen, onClose, currentUser, onNavigate, followedShop
                                 <span className="item-label">البحث</span>
                             </button>
 
+                            {/* Shops & Institutions */}
+                            <button className="sidebar-menu-item" onClick={() => { onNavigate('shops'); onClose(); }}>
+                                <div className="item-icon-box">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                                        <line x1="3" y1="6" x2="21" y2="6" />
+                                        <path d="M16 10a4 4 0 0 1-8 0" />
+                                    </svg>
+                                </div>
+                                <span className="item-label">المحلات والمؤسسات</span>
+                            </button>
+
+                            {/* Friends */}
+                            <button className="sidebar-menu-item" onClick={() => { onNavigate('friends'); onClose(); }}>
+                                <div className="item-icon-box">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                                        <circle cx="9" cy="7" r="4" />
+                                        <line x1="19" y1="8" x2="19" y2="14" />
+                                        <line x1="22" y1="11" x2="16" y2="11" />
+                                    </svg>
+                                </div>
+                                <span className="item-label">الأصدقاء</span>
+                            </button>
+
                             {/* Liked / Followed — Fixed bookmark icon */}
                             <button className="sidebar-menu-item" onClick={() => setActiveSection('liked')}>
                                 <div className="item-icon-box">
-                                    {/* Bell icon = Following/Subscriptions — visually clear */}
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                                         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
                                         <path d="M13.73 21a2 2 0 0 1-3.46 0" />
