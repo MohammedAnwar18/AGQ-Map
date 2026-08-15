@@ -5,6 +5,7 @@ import { optimizeImage } from '../utils/imageOptimizer';
 import CartModal from './CartModal';
 import ImageCropperModal from './ImageCropperModal';
 import PostDetailModal from './PostDetailModal';
+import Panorama360Viewer from './Panorama360Viewer';
 import Map, { Marker, Source, Layer } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -230,6 +231,8 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     const [isLocked, setIsLocked] = useState(false);
     const [isFollowing, setIsFollowing] = useState(false);
     const [internalShops, setInternalShops] = useState([]); // Shops inside this mall
+    const [panoramas, setPanoramas] = useState(null); // 360 tour data (fetched once, null = not yet fetched)
+    const [show360Viewer, setShow360Viewer] = useState(false);
 
     // Design Engine
     const design = useMemo(() => {
@@ -706,6 +709,14 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
         window.addEventListener('cart-updated', updateCount);
         return () => window.removeEventListener('cart-updated', updateCount);
     }, [shop]);
+
+    // Fetch 360 panoramas once to decide whether to show the "360" button
+    useEffect(() => {
+        if (!shop?.id) return;
+        shopService.getPanoramas(shop.id)
+            .then(data => setPanoramas(data.panoramas || []))
+            .catch(() => setPanoramas([]));
+    }, [shop?.id]);
 
 
 
@@ -1479,6 +1490,28 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                     onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
                                                 >
                                                     <EditIcon />
+                                                </button>
+                                            )}
+                                            {(isSystemAdmin || (panoramas && panoramas.length > 0)) && (
+                                                <button
+                                                    onClick={() => setShow360Viewer(true)}
+                                                    style={{
+                                                        display: 'flex', alignItems: 'center', gap: 5,
+                                                        background: 'rgba(37,99,235,0.12)', border: '1px solid rgba(37,99,235,0.35)',
+                                                        color: '#2563eb', cursor: 'pointer', padding: '5px 12px',
+                                                        borderRadius: '20px', fontSize: '0.78rem', fontWeight: 700,
+                                                        transition: 'all 0.2s ease'
+                                                    }}
+                                                    title="جولة 360°"
+                                                    onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                                                    onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+                                                >
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                        <circle cx="12" cy="12" r="10" />
+                                                        <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+                                                        <path d="M2 12h20" />
+                                                    </svg>
+                                                    360°
                                                 </button>
                                             )}
                                         </div>
@@ -3603,6 +3636,16 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                 onClose={() => setShowCart(false)}
                                 shopId={shopData.id}
                                 shopName={shopData.name}
+                            />
+                        )}
+
+                        {show360Viewer && (
+                            <Panorama360Viewer
+                                shopId={shopData.id}
+                                shopName={shopData.name}
+                                isAdmin={isSystemAdmin}
+                                initialPanoramas={panoramas}
+                                onClose={() => setShow360Viewer(false)}
                             />
                         )}
 

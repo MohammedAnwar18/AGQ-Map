@@ -621,6 +621,30 @@ export const shopService = {
     deletePanorama: async (panoramaId) => {
         const response = await api.delete(`/shops/panoramas/${panoramaId}`);
         return response.data;
+    },
+
+    reorderPanoramas: async (orderedIds) => {
+        const response = await api.put(`/shops/panoramas/reorder`, { orderedIds });
+        return response.data;
+    },
+
+    addPanoramaHotspot: async (panoramaId, formData) => {
+        const response = await api.post(`/shops/panoramas/${panoramaId}/hotspots`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    },
+
+    updatePanoramaHotspot: async (hotspotId, formData) => {
+        const response = await api.put(`/shops/hotspots/${hotspotId}`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    },
+
+    deletePanoramaHotspot: async (hotspotId) => {
+        const response = await api.delete(`/shops/hotspots/${hotspotId}`);
+        return response.data;
     }
 };
 

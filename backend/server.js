@@ -126,7 +126,43 @@ app.use('/api/regional-events', regionalEventsRoutes);
     }
 })();
 
-
+// Auto-migrate: ensure 360 panorama tables exist (panoramas + hotspots)
+(async () => {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS university_panoramas (
+                id SERIAL PRIMARY KEY,
+                shop_id INTEGER REFERENCES shops(id) ON DELETE CASCADE,
+                title VARCHAR(255),
+                thumbnail_url TEXT,
+                equirect_url TEXT,
+                order_index INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        await pool.query(`
+            ALTER TABLE university_panoramas
+                ADD COLUMN IF NOT EXISTS order_index INTEGER DEFAULT 0;
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS panorama_hotspots (
+                id SERIAL PRIMARY KEY,
+                panorama_id INTEGER REFERENCES university_panoramas(id) ON DELETE CASCADE,
+                type VARCHAR(20) NOT NULL DEFAULT 'info',
+                yaw DOUBLE PRECISION NOT NULL,
+                pitch DOUBLE PRECISION NOT NULL,
+                label VARCHAR(255),
+                value TEXT,
+                image_url TEXT,
+                target_panorama_id INTEGER REFERENCES university_panoramas(id) ON DELETE SET NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        console.log('✅ 360 panorama tables ready');
+    } catch (err) {
+        console.warn('⚠️ panorama tables migration warning:', err.message);
+    }
+})();
 
 
 // صفحة البداية

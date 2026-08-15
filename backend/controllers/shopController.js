@@ -1104,8 +1104,23 @@ const deleteMunicipalityItem = async (req, res) => {
 const getShopPanoramas = async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await pool.query('SELECT * FROM university_panoramas WHERE shop_id = $1 ORDER BY created_at ASC', [id]);
-        res.json({ panoramas: result.rows });
+        const result = await pool.query('SELECT * FROM university_panoramas WHERE shop_id = $1 ORDER BY order_index ASC, created_at ASC', [id]);
+        const panoramas = result.rows;
+
+        if (panoramas.length > 0) {
+            const ids = panoramas.map(p => p.id);
+            const hsRes = await pool.query('SELECT * FROM panorama_hotspots WHERE panorama_id = ANY($1) ORDER BY id ASC', [ids]);
+            const hotspotsByPanorama = {};
+            for (const hs of hsRes.rows) {
+                if (!hotspotsByPanorama[hs.panorama_id]) hotspotsByPanorama[hs.panorama_id] = [];
+                hotspotsByPanorama[hs.panorama_id].push(hs);
+            }
+            for (const pano of panoramas) {
+                pano.hotspots = hotspotsByPanorama[pano.id] || [];
+            }
+        }
+
+        res.json({ panoramas });
     } catch (e) {
         console.error('getShopPanoramas error:', e);
         res.status(500).json({ error: 'Failed to get panoramas' });
@@ -1120,9 +1135,6 @@ const addShopPanorama = async (req, res) => {
 
         const shopRes = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [id]);
         if (shopRes.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
-
-        const isAuthorized = req.user.role === 'admin' || String(shopRes.rows[0].owner_id) === String(req.user.userId || req.user.id);
-        if (!isAuthorized) return res.status(403).json({ error: 'Unauthorized' });
 
         let finalThumbnailUrl = thumbnail_url;
         let finalEquirectUrl = equirect_url;
@@ -1144,12 +1156,15 @@ const addShopPanorama = async (req, res) => {
 
         if (!finalThumbnailUrl) finalThumbnailUrl = finalEquirectUrl;
 
+        const orderRes = await pool.query('SELECT COALESCE(MAX(order_index), -1) + 1 AS next_order FROM university_panoramas WHERE shop_id = $1', [id]);
+        const nextOrder = orderRes.rows[0].next_order;
+
         const result = await pool.query(
-            `INSERT INTO university_panoramas (shop_id, title, thumbnail_url, equirect_url)
-             VALUES ($1, $2, $3, $4) RETURNING *`,
-            [id, title, finalThumbnailUrl, finalEquirectUrl]
+            `INSERT INTO university_panoramas (shop_id, title, thumbnail_url, equirect_url, order_index)
+             VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+            [id, title, finalThumbnailUrl, finalEquirectUrl, nextOrder]
         );
-        res.status(201).json(result.rows[0]);
+        res.status(201).json({ ...result.rows[0], hotspots: [] });
     } catch (e) {
         console.error('addShopPanorama error:', e);
         res.status(500).json({ error: 'Failed to add panorama' });
@@ -1163,17 +1178,107 @@ const deleteShopPanorama = async (req, res) => {
         const panoRes = await pool.query('SELECT shop_id FROM university_panoramas WHERE id = $1', [panoramaId]);
         if (panoRes.rows.length === 0) return res.status(404).json({ error: 'Panorama not found' });
 
-        const shopId = panoRes.rows[0].shop_id;
-        const shopRes = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [shopId]);
-
-        const isAuthorized = req.user.role === 'admin' || String(shopRes.rows[0].owner_id) === String(req.user.userId || req.user.id);
-        if (!isAuthorized) return res.status(403).json({ error: 'Unauthorized' });
-
         await pool.query('DELETE FROM university_panoramas WHERE id = $1', [panoramaId]);
         res.json({ message: 'Panorama deleted successfully' });
     } catch (e) {
         console.error('deleteShopPanorama error:', e);
         res.status(500).json({ error: 'Failed to delete panorama' });
+    }
+};
+
+const reorderShopPanoramas = async (req, res) => {
+    try {
+        const { orderedIds } = req.body; // array of panorama ids in desired order
+        if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+            return res.status(400).json({ error: 'orderedIds array is required' });
+        }
+
+        await Promise.all(orderedIds.map((panoramaId, index) =>
+            pool.query('UPDATE university_panoramas SET order_index = $1 WHERE id = $2', [index, panoramaId])
+        ));
+
+        res.json({ message: 'Order updated' });
+    } catch (e) {
+        console.error('reorderShopPanoramas error:', e);
+        res.status(500).json({ error: 'Failed to reorder panoramas' });
+    }
+};
+
+const addPanoramaHotspot = async (req, res) => {
+    try {
+        const { panoramaId } = req.params;
+        const { type, yaw, pitch, label, value, target_panorama_id } = req.body;
+        const { uploadToCloud } = require('../utils/storage');
+
+        const panoRes = await pool.query('SELECT id FROM university_panoramas WHERE id = $1', [panoramaId]);
+        if (panoRes.rows.length === 0) return res.status(404).json({ error: 'Panorama not found' });
+
+        if (yaw === undefined || pitch === undefined) {
+            return res.status(400).json({ error: 'yaw and pitch are required' });
+        }
+
+        let imageUrl = null;
+        if (req.file) {
+            imageUrl = await uploadToCloud(req.file.buffer, req.file.originalname, req.file.mimetype);
+        }
+
+        const result = await pool.query(
+            `INSERT INTO panorama_hotspots (panorama_id, type, yaw, pitch, label, value, image_url, target_panorama_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+            [panoramaId, type || 'info', yaw, pitch, label || null, value || null, imageUrl, target_panorama_id || null]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (e) {
+        console.error('addPanoramaHotspot error:', e);
+        res.status(500).json({ error: 'Failed to add hotspot' });
+    }
+};
+
+const updatePanoramaHotspot = async (req, res) => {
+    try {
+        const { hotspotId } = req.params;
+        const { type, yaw, pitch, label, value, target_panorama_id } = req.body;
+        const { uploadToCloud } = require('../utils/storage');
+
+        const existingRes = await pool.query('SELECT * FROM panorama_hotspots WHERE id = $1', [hotspotId]);
+        if (existingRes.rows.length === 0) return res.status(404).json({ error: 'Hotspot not found' });
+        const existing = existingRes.rows[0];
+
+        let imageUrl = existing.image_url;
+        if (req.file) {
+            imageUrl = await uploadToCloud(req.file.buffer, req.file.originalname, req.file.mimetype);
+        }
+
+        const result = await pool.query(
+            `UPDATE panorama_hotspots
+             SET type = $1, yaw = $2, pitch = $3, label = $4, value = $5, image_url = $6, target_panorama_id = $7
+             WHERE id = $8 RETURNING *`,
+            [
+                type ?? existing.type,
+                yaw ?? existing.yaw,
+                pitch ?? existing.pitch,
+                label ?? existing.label,
+                value ?? existing.value,
+                imageUrl,
+                target_panorama_id ?? existing.target_panorama_id,
+                hotspotId
+            ]
+        );
+        res.json(result.rows[0]);
+    } catch (e) {
+        console.error('updatePanoramaHotspot error:', e);
+        res.status(500).json({ error: 'Failed to update hotspot' });
+    }
+};
+
+const deletePanoramaHotspot = async (req, res) => {
+    try {
+        const { hotspotId } = req.params;
+        await pool.query('DELETE FROM panorama_hotspots WHERE id = $1', [hotspotId]);
+        res.json({ message: 'Hotspot deleted successfully' });
+    } catch (e) {
+        console.error('deletePanoramaHotspot error:', e);
+        res.status(500).json({ error: 'Failed to delete hotspot' });
     }
 };
 
@@ -1354,6 +1459,10 @@ module.exports = {
     deleteMunicipalityItem,
     addShopPanorama,
     deleteShopPanorama,
+    reorderShopPanoramas,
+    addPanoramaHotspot,
+    updatePanoramaHotspot,
+    deletePanoramaHotspot,
     smartSearch,
     getAllShopsMap,
     getUniversityFacilities,

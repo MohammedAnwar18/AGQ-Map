@@ -60,9 +60,13 @@ router.put('/facilities/:facilityId', authenticateToken, upload.fields([{ name: 
 router.post('/:id/municipality-items', authenticateToken, upload.single('image'), shopController.addMunicipalityItem);
 router.delete('/municipality-items/:itemId', authenticateToken, shopController.deleteMunicipalityItem);
 
-// البانوراما (إضافة / حذف)
-router.post('/:id/panoramas', authenticateToken, upload.fields([{ name: 'thumbnail_file', maxCount: 1 }, { name: 'equirect_file', maxCount: 1 }]), shopController.addShopPanorama);
-router.delete('/panoramas/:panoramaId', authenticateToken, shopController.deleteShopPanorama);
+// البانوراما (إضافة / حذف / ترتيب / نقاط - للأدمن فقط)
+router.post('/:id/panoramas', authenticateToken, isAdmin, upload.fields([{ name: 'thumbnail_file', maxCount: 1 }, { name: 'equirect_file', maxCount: 1 }]), shopController.addShopPanorama);
+router.delete('/panoramas/:panoramaId', authenticateToken, isAdmin, shopController.deleteShopPanorama);
+router.put('/panoramas/reorder', authenticateToken, isAdmin, shopController.reorderShopPanoramas);
+router.post('/panoramas/:panoramaId/hotspots', authenticateToken, isAdmin, upload.single('image'), shopController.addPanoramaHotspot);
+router.put('/hotspots/:hotspotId', authenticateToken, isAdmin, upload.single('image'), shopController.updatePanoramaHotspot);
+router.delete('/hotspots/:hotspotId', authenticateToken, isAdmin, shopController.deletePanoramaHotspot);
 
 
 // ============================================================
