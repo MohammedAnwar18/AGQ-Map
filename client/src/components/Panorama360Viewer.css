@@ -51,6 +51,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
     padding-top: calc(14px + env(safe-area-inset-top, 0px));
     padding-bottom: 14px;
     padding-left: calc(20px + env(safe-area-inset-left, 0px));
@@ -63,12 +65,14 @@
     display: flex;
     align-items: center;
     gap: 12px;
+    min-width: 0;
 }
 
 .p360-topbar-right {
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-shrink: 0;
 }
 
 .p360-globe-icon {
@@ -88,6 +92,7 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
+    min-width: 0;
 }
 
 .p360-shop-name {
@@ -95,6 +100,10 @@
     font-weight: 700;
     color: #fff;
     text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 46vw;
 }
 
 .p360-pano-title {
@@ -117,6 +126,7 @@
     align-items: center;
     justify-content: center;
     transition: background 0.2s, transform 0.2s;
+    flex-shrink: 0;
 }
 
 .p360-close-btn:hover {
@@ -125,13 +135,16 @@
 }
 
 .p360-edit-toggle {
+    height: 40px;
+    box-sizing: border-box;
     background: rgba(0,0,0,0.4);
     border: 1.5px solid rgba(255,255,255,0.3);
     color: #fff;
-    padding: 8px 16px;
+    padding: 0 16px;
     border-radius: 20px;
     font-size: 0.82rem;
     font-weight: 600;
+    white-space: nowrap;
 }
 
 .p360-edit-toggle.active {
@@ -140,17 +153,46 @@
     color: #1a1a1a;
 }
 
-/* ── Canvas area ────────────────────────────────────────────── */
+/* ── Viewport (drag/zoom container) ────────────────────────────── */
 .p360-canvas-area {
+    position: relative;
     flex: 1;
     width: 100%;
     height: 100%;
+    overflow: hidden;
     cursor: grab;
     touch-action: none;
+    background: #050505;
+    user-select: none;
 }
 
 .p360-canvas-area:active { cursor: grabbing; }
 .p360-canvas-area.editing { cursor: crosshair; }
+
+/* The panned/zoomed image layer — hotspots are its children so they move
+   and scale with it automatically via percentage left/top, no per-frame math. */
+.p360-layer {
+    position: absolute;
+    background-position: center;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    will-change: left, top, width, height;
+}
+
+.p360-layer-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: rgba(255,255,255,0.55);
+    background: repeating-linear-gradient(135deg, #111 0 14px, #161616 14px 28px);
+    font-size: 0.9rem;
+    text-align: center;
+    padding: 20px;
+}
 
 .p360-transition-fade {
     position: absolute;
@@ -249,7 +291,32 @@
     justify-content: center;
 }
 
-/* ── Bottom panorama strip ─────────────────────────────────────── */
+/* ── Side navigation arrows (mobile primary nav, hidden on desktop) ── */
+.p360-side-nav {
+    display: none;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 18;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.45);
+    border: 1.5px solid rgba(255,255,255,0.3);
+    color: #fff;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+}
+
+.p360-side-nav:active { transform: translateY(-50%) scale(0.92); }
+.p360-side-nav:disabled { opacity: 0.25; pointer-events: none; }
+.p360-side-nav.left { left: 10px; }
+.p360-side-nav.right { right: 10px; }
+
+/* ── Bottom panorama strip (desktop primary nav) ─────────────────── */
 .p360-pano-strip {
     position: absolute;
     bottom: calc(28px + env(safe-area-inset-bottom, 0px));
@@ -329,14 +396,16 @@
 .p360-thumb-admin-row button.danger { background: rgba(239,68,68,0.25); border-color: rgba(239,68,68,0.5); }
 
 .p360-add-pano-btn {
-    width: 40px;
+    min-width: 40px;
     height: 40px;
+    padding: 0 10px;
     flex-shrink: 0;
-    border-radius: 50%;
+    border-radius: 20px;
     border: 1.5px dashed rgba(251,171,21,0.7);
     background: rgba(251,171,21,0.1);
     color: #fbab15;
-    font-size: 1.3rem;
+    font-size: 1rem;
+    font-weight: 700;
     cursor: pointer;
 }
 
@@ -355,13 +424,14 @@
     border-radius: 25px;
     pointer-events: none;
     white-space: nowrap;
+    max-width: 88vw;
+    text-align: center;
 }
 
 .p360-hint-edit {
     background: rgba(251,171,21,0.25);
     border: 1px solid rgba(251,171,21,0.6);
     color: #fff;
-    animation: none;
 }
 
 /* ── Info card ──────────────────────────────────────────────── */
@@ -470,6 +540,8 @@
     font-size: 0.88rem;
     font-family: inherit;
     outline: none;
+    box-sizing: border-box;
+    width: 100%;
 }
 
 .p360-input:focus, .p360-textarea:focus { border-color: rgba(251,171,21,0.6); }
@@ -513,6 +585,7 @@
 
 .p360-btn {
     flex: 1;
+    min-height: 42px;
     padding: 10px;
     border-radius: 10px;
     border: 1.5px solid rgba(255,255,255,0.2);
@@ -521,6 +594,7 @@
     font-size: 0.88rem;
     font-weight: 600;
     cursor: pointer;
+    box-sizing: border-box;
 }
 
 .p360-btn-primary {
@@ -531,13 +605,45 @@
 
 .p360-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
+/* ══════════════════════════════════════════════════════════════
+   Mobile (phones): side-arrow navigation replaces the bottom strip,
+   and the top bar / edit toolbar are tightened up for small screens.
+   Desktop layout above is left untouched.
+   ══════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    .p360-side-nav { display: flex; }
+    .p360-pano-strip { display: none; }
+}
+
+@media (max-width: 600px) {
+    .p360-topbar {
+        padding-top: calc(10px + env(safe-area-inset-top, 0px));
+        padding-bottom: 10px;
+        padding-left: calc(12px + env(safe-area-inset-left, 0px));
+        padding-right: calc(12px + env(safe-area-inset-right, 0px));
+    }
+    .p360-globe-icon { width: 32px; height: 32px; }
+    .p360-shop-name { font-size: 0.88rem; max-width: 40vw; }
+    .p360-pano-title { font-size: 0.7rem; }
+    .p360-close-btn, .p360-edit-toggle { height: 34px; width: 34px; padding: 0; font-size: 15px; }
+    .p360-edit-toggle { width: auto; padding: 0 12px; font-size: 0.72rem; }
+    .p360-hotspot-btn { width: 40px; height: 40px; }
+    .p360-hotspot-label { font-size: 0.68rem; padding: 3px 9px; }
+    .p360-side-nav { width: 40px; height: 40px; }
+    .p360-hint { bottom: 20px; font-size: 0.72rem; padding: 6px 14px; }
+    .p360-form { padding: 16px; border-radius: 14px 14px 0 0; max-width: 100%; }
+    .p360-form-overlay { align-items: flex-end; padding: 0; }
+}
+
 /* ── Mobile landscape optimization ─────────────────────────── */
 @media (max-height: 480px) and (orientation: landscape) {
-    .p360-topbar { padding: 10px 14px !important; }
+    .p360-topbar { padding: 8px 12px !important; }
     .p360-globe-icon { width: 28px !important; height: 28px !important; }
     .p360-shop-name { font-size: 0.85rem !important; }
     .p360-pano-title { font-size: 0.72rem !important; }
     .p360-close-btn { width: 32px !important; height: 32px !important; font-size: 14px !important; }
-    .p360-hotspot-btn { width: 38px !important; height: 38px !important; }
-    .p360-pano-strip { bottom: 8px !important; padding: 4px 10px !important; border-radius: 20px !important; }
+    .p360-edit-toggle { height: 32px !important; }
+    .p360-hotspot-btn { width: 36px !important; height: 36px !important; }
+    .p360-side-nav { width: 36px !important; height: 36px !important; }
+    .p360-hint { bottom: 10px !important; font-size: 0.7rem !important; padding: 4px 10px !important; }
 }

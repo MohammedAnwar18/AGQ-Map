@@ -149,8 +149,8 @@ app.use('/api/regional-events', regionalEventsRoutes);
                 id SERIAL PRIMARY KEY,
                 panorama_id INTEGER REFERENCES university_panoramas(id) ON DELETE CASCADE,
                 type VARCHAR(20) NOT NULL DEFAULT 'info',
-                yaw DOUBLE PRECISION NOT NULL,
-                pitch DOUBLE PRECISION NOT NULL,
+                pos_x DOUBLE PRECISION,
+                pos_y DOUBLE PRECISION,
                 label VARCHAR(255),
                 value TEXT,
                 image_url TEXT,
@@ -158,6 +158,15 @@ app.use('/api/regional-events', regionalEventsRoutes);
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
+        // pos_x/pos_y (percentage position on the flat panorama image) replaced the old
+        // yaw/pitch (spherical-degree) columns from the sphere-based viewer.
+        await pool.query(`
+            ALTER TABLE panorama_hotspots
+                ADD COLUMN IF NOT EXISTS pos_x DOUBLE PRECISION,
+                ADD COLUMN IF NOT EXISTS pos_y DOUBLE PRECISION;
+        `);
+        await pool.query(`ALTER TABLE panorama_hotspots ALTER COLUMN yaw DROP NOT NULL;`).catch(() => {});
+        await pool.query(`ALTER TABLE panorama_hotspots ALTER COLUMN pitch DROP NOT NULL;`).catch(() => {});
         console.log('✅ 360 panorama tables ready');
     } catch (err) {
         console.warn('⚠️ panorama tables migration warning:', err.message);

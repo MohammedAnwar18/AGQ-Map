@@ -1207,25 +1207,25 @@ const reorderShopPanoramas = async (req, res) => {
 const addPanoramaHotspot = async (req, res) => {
     try {
         const { panoramaId } = req.params;
-        const { type, yaw, pitch, label, value, target_panorama_id } = req.body;
+        const { type, pos_x, pos_y, label, value, target_panorama_id, image_url } = req.body;
         const { uploadToCloud } = require('../utils/storage');
 
         const panoRes = await pool.query('SELECT id FROM university_panoramas WHERE id = $1', [panoramaId]);
         if (panoRes.rows.length === 0) return res.status(404).json({ error: 'Panorama not found' });
 
-        if (yaw === undefined || pitch === undefined) {
-            return res.status(400).json({ error: 'yaw and pitch are required' });
+        if (pos_x === undefined || pos_y === undefined) {
+            return res.status(400).json({ error: 'pos_x and pos_y are required' });
         }
 
-        let imageUrl = null;
+        let imageUrl = image_url || null;
         if (req.file) {
             imageUrl = await uploadToCloud(req.file.buffer, req.file.originalname, req.file.mimetype);
         }
 
         const result = await pool.query(
-            `INSERT INTO panorama_hotspots (panorama_id, type, yaw, pitch, label, value, image_url, target_panorama_id)
+            `INSERT INTO panorama_hotspots (panorama_id, type, pos_x, pos_y, label, value, image_url, target_panorama_id)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-            [panoramaId, type || 'info', yaw, pitch, label || null, value || null, imageUrl, target_panorama_id || null]
+            [panoramaId, type || 'info', pos_x, pos_y, label || null, value || null, imageUrl, target_panorama_id || null]
         );
         res.status(201).json(result.rows[0]);
     } catch (e) {
@@ -1237,30 +1237,32 @@ const addPanoramaHotspot = async (req, res) => {
 const updatePanoramaHotspot = async (req, res) => {
     try {
         const { hotspotId } = req.params;
-        const { type, yaw, pitch, label, value, target_panorama_id } = req.body;
+        const { type, pos_x, pos_y, label, value, target_panorama_id, image_url } = req.body;
         const { uploadToCloud } = require('../utils/storage');
 
         const existingRes = await pool.query('SELECT * FROM panorama_hotspots WHERE id = $1', [hotspotId]);
         if (existingRes.rows.length === 0) return res.status(404).json({ error: 'Hotspot not found' });
         const existing = existingRes.rows[0];
 
-        let imageUrl = existing.image_url;
+        let imageUrl = image_url !== undefined ? (image_url || null) : existing.image_url;
         if (req.file) {
             imageUrl = await uploadToCloud(req.file.buffer, req.file.originalname, req.file.mimetype);
         }
 
+        const targetId = target_panorama_id === '' ? null : (target_panorama_id ?? existing.target_panorama_id);
+
         const result = await pool.query(
             `UPDATE panorama_hotspots
-             SET type = $1, yaw = $2, pitch = $3, label = $4, value = $5, image_url = $6, target_panorama_id = $7
+             SET type = $1, pos_x = $2, pos_y = $3, label = $4, value = $5, image_url = $6, target_panorama_id = $7
              WHERE id = $8 RETURNING *`,
             [
                 type ?? existing.type,
-                yaw ?? existing.yaw,
-                pitch ?? existing.pitch,
+                pos_x ?? existing.pos_x,
+                pos_y ?? existing.pos_y,
                 label ?? existing.label,
                 value ?? existing.value,
                 imageUrl,
-                target_panorama_id ?? existing.target_panorama_id,
+                targetId,
                 hotspotId
             ]
         );

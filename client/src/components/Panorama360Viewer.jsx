@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import * as THREE from 'three';
-import { shopService, getImageUrl } from '../services/api';
+import { shopService, directUploadService, getImageUrl } from '../services/api';
 import './Panorama360Viewer.css';
 
 // ── Small icons ──────────────────────────────────────────────────────────
@@ -26,73 +25,58 @@ const TagIcon = () => (
     </svg>
 );
 
-// ── Placeholder texture when a panorama has no image yet ──────────────────
-const createPlaceholderTexture = (label) => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 2048;
-    canvas.height = 1024;
-    const ctx = canvas.getContext('2d');
-    const sky = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.55);
-    sky.addColorStop(0, '#0f1e3a');
-    sky.addColorStop(1, '#1a4a7a');
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, canvas.width, canvas.height * 0.55);
-    const ground = ctx.createLinearGradient(0, canvas.height * 0.55, 0, canvas.height);
-    ground.addColorStop(0, '#3a5c3a');
-    ground.addColorStop(1, '#1a2e1a');
-    ctx.fillStyle = ground;
-    ctx.fillRect(0, canvas.height * 0.55, canvas.width, canvas.height * 0.45);
-    ctx.fillStyle = 'rgba(255,255,255,0.9)';
-    ctx.font = 'bold 56px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(label || 'صورة 360', canvas.width / 2, canvas.height * 0.42);
-    return new THREE.CanvasTexture(canvas);
-};
+const ChevronIcon = ({ dir = 'right' }) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+        {dir === 'right'
+            ? <polyline points="9 6 15 12 9 18" />
+            : <polyline points="15 6 9 12 15 18" />}
+    </svg>
+);
 
+// ── Layout constants ───────────────────────────────────────────────────
+const VERTICAL_OVERSCAN = 1.18; // gives a little vertical look-around room beyond the flat photo
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 3.5;
 const CLICK_MOVE_THRESHOLD = 8;
+const PLACEHOLDER_ASPECT = 3; // width / height, used when a panorama has no image yet
+
+const clampAxis = (pos, dispSize, containerSize) => {
+    if (dispSize <= containerSize) return (containerSize - dispSize) / 2;
+    return Math.min(0, Math.max(containerSize - dispSize, pos));
+};
 
 const Panorama360Viewer = ({ shopId, shopName, isAdmin, initialPanoramas, onClose }) => {
     const containerRef = useRef(null);
-    const sceneRef = useRef(null);
-    const cameraRef = useRef(null);
-    const rendererRef = useRef(null);
-    const meshRef = useRef(null);
-    const raycasterRef = useRef(new THREE.Raycaster());
-    const rafRef = useRef(null);
+    const layerRef = useRef(null);
 
-    const isDragging = useRef(false);
-    const prevMouseRef = useRef({ x: 0, y: 0 });
-    const downPosRef = useRef({ x: 0, y: 0 });
-    const lonRef = useRef(0);
-    const latRef = useRef(0);
-    const pinchStartDistRef = useRef(null);
-    const pinchStartFovRef = useRef(75);
+    const panRef = useRef({ x: 0, y: 0 });
+    const baseSizeRef = useRef({ w: 0, h: 0 });
+    const zoomRef = useRef(MIN_ZOOM);
+    const dragRef = useRef({ active: false, startX: 0, startY: 0, startPan: { x: 0, y: 0 } });
+    const pinchRef = useRef(null); // { startDist, startZoom }
 
     const [panoramas, setPanoramas] = useState(initialPanoramas || []);
     const [loading, setLoading] = useState(!initialPanoramas);
-    const [error, setError] = useState(null);
     const [busy, setBusy] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(null);
 
-    const currentIdRef = useRef(null);
     const [currentId, setCurrentId] = useState(null);
+    const [imgReady, setImgReady] = useState(false);
+    const [bgUrl, setBgUrl] = useState(null);
     const [isTransition, setIsTransition] = useState(false);
-    const [hotspotPos, setHotspotPos] = useState([]);
+    const [zoomTick, setZoomTick] = useState(0); // forces re-layout after zoom changes
     const [showControls, setShowControls] = useState(true);
 
     const [editMode, setEditMode] = useState(false);
-    const [infoCard, setInfoCard] = useState(null); // hotspot object being shown to a normal viewer
+    const [infoCard, setInfoCard] = useState(null);
     const [hotspotForm, setHotspotForm] = useState(null); // { mode: 'create'|'edit', point?, hotspot? }
     const [uploadingPano, setUploadingPano] = useState(false);
     const fileInputRef = useRef(null);
 
-    // ── Data helpers ────────────────────────────────────────────────────
-    const panoramasRef = useRef(panoramas);
-    useEffect(() => { panoramasRef.current = panoramas; }, [panoramas]);
-
     const getPanorama = useCallback((id) => panoramas.find(p => p.id === id) || panoramas[0], [panoramas]);
-    const getPanoramaLive = useCallback((id) => panoramasRef.current.find(p => p.id === id) || panoramasRef.current[0], []);
+    const currentIndex = panoramas.findIndex(p => p.id === currentId);
 
+    // ── Data loading ────────────────────────────────────────────────────
     const refreshPanoramas = useCallback(async (keepId) => {
         try {
             const data = await shopService.getPanoramas(shopId);
@@ -100,21 +84,18 @@ const Panorama360Viewer = ({ shopId, shopName, isAdmin, initialPanoramas, onClos
             setPanoramas(list);
             if (list.length) {
                 const stillExists = keepId && list.some(p => p.id === keepId);
-                const nextId = stillExists ? keepId : list[0].id;
-                currentIdRef.current = nextId;
-                setCurrentId(nextId);
+                setCurrentId(stillExists ? keepId : list[0].id);
             }
             return list;
         } catch (e) {
             console.error('refreshPanoramas error:', e);
             return panoramas;
         }
-    }, [shopId, panoramas]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [shopId]);
 
-    // Initial fetch (if not provided)
     useEffect(() => {
         if (initialPanoramas && initialPanoramas.length) {
-            currentIdRef.current = initialPanoramas[0].id;
             setCurrentId(initialPanoramas[0].id);
             setLoading(false);
             return;
@@ -125,15 +106,9 @@ const Panorama360Viewer = ({ shopId, shopName, isAdmin, initialPanoramas, onClos
                 const data = await shopService.getPanoramas(shopId);
                 const list = data.panoramas || [];
                 setPanoramas(list);
-                if (list.length) {
-                    currentIdRef.current = list[0].id;
-                    setCurrentId(list[0].id);
-                } else {
-                    setError('no-panoramas');
-                }
+                if (list.length) setCurrentId(list[0].id);
             } catch (e) {
                 console.error('getPanoramas error:', e);
-                setError('load-failed');
             } finally {
                 setLoading(false);
             }
@@ -141,223 +116,183 @@ const Panorama360Viewer = ({ shopId, shopName, isAdmin, initialPanoramas, onClos
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [shopId]);
 
-    // ── Screen <-> sphere angle helpers ─────────────────────────────────
-    const projectHotspot = useCallback((yaw, pitch, camera, width, height) => {
-        const phi = THREE.MathUtils.degToRad(90 - (pitch || 0));
-        const theta = THREE.MathUtils.degToRad(yaw);
-        const world = new THREE.Vector3(
-            500 * Math.sin(phi) * Math.cos(theta),
-            500 * Math.cos(phi),
-            500 * Math.sin(phi) * Math.sin(theta)
-        );
-        world.project(camera);
-        return {
-            x: (world.x * 0.5 + 0.5) * width,
-            y: (-world.y * 0.5 + 0.5) * height,
-            visible: world.z < 1
-        };
+    // ── Layout: size/position the pan+zoom layer to fill the viewport ────
+    const applyLayout = useCallback(() => {
+        const container = containerRef.current;
+        const layer = layerRef.current;
+        if (!container || !layer) return;
+        const cw = container.clientWidth;
+        const ch = container.clientHeight;
+        const { w: baseW, h: baseH } = baseSizeRef.current;
+        if (!baseW || !baseH) return;
+
+        const z = zoomRef.current;
+        const dispW = baseW * z;
+        const dispH = baseH * z;
+
+        panRef.current.x = clampAxis(panRef.current.x, dispW, cw);
+        panRef.current.y = clampAxis(panRef.current.y, dispH, ch);
+
+        layer.style.width = `${dispW}px`;
+        layer.style.height = `${dispH}px`;
+        layer.style.left = `${panRef.current.x}px`;
+        layer.style.top = `${panRef.current.y}px`;
     }, []);
 
-    const screenToYawPitch = useCallback((clientX, clientY) => {
-        if (!containerRef.current || !meshRef.current || !cameraRef.current) return null;
-        const rect = containerRef.current.getBoundingClientRect();
-        const mouse = new THREE.Vector2(
-            ((clientX - rect.left) / rect.width) * 2 - 1,
-            -((clientY - rect.top) / rect.height) * 2 + 1
-        );
-        raycasterRef.current.setFromCamera(mouse, cameraRef.current);
-        const intersects = raycasterRef.current.intersectObject(meshRef.current);
-        if (!intersects.length) return null;
-        const p = intersects[0].point;
-        const r = p.length();
-        const phi = Math.acos(THREE.MathUtils.clamp(p.y / r, -1, 1));
-        const theta = Math.atan2(p.z, p.x);
-        let yaw = THREE.MathUtils.radToDeg(theta);
-        if (yaw < 0) yaw += 360;
-        const pitch = 90 - THREE.MathUtils.radToDeg(phi);
-        return { yaw, pitch };
-    }, []);
+    const recomputeBaseSize = useCallback((naturalW, naturalH, recenter) => {
+        const container = containerRef.current;
+        if (!container) return;
+        const ch = container.clientHeight;
+        const baseH = ch * VERTICAL_OVERSCAN;
+        const baseW = naturalW * (baseH / naturalH);
+        baseSizeRef.current = { w: baseW, h: baseH };
+        if (recenter) {
+            const cw = container.clientWidth;
+            panRef.current = {
+                x: clampAxis((cw - baseW * zoomRef.current) / 2, baseW * zoomRef.current, cw),
+                y: clampAxis((ch - baseH * zoomRef.current) / 2, baseH * zoomRef.current, ch)
+            };
+        }
+        applyLayout();
+    }, [applyLayout]);
 
-    // ── Texture loading ──────────────────────────────────────────────────
-    const loadTexture = useCallback((panorama) => {
-        if (!meshRef.current) return;
-        const loader = new THREE.TextureLoader();
-        loader.setCrossOrigin('anonymous');
-        const src = panorama?.equirect_url ? getImageUrl(panorama.equirect_url) : null;
+    // Load the current panorama's image (or a placeholder aspect ratio)
+    useEffect(() => {
+        if (!currentId) return;
+        const pano = getPanorama(currentId);
+        if (!pano) return;
 
-        const applyTexture = (tex) => {
-            if (!meshRef.current) return;
-            const old = meshRef.current.material.map;
-            meshRef.current.material.map = tex;
-            meshRef.current.material.needsUpdate = true;
-            if (old) old.dispose();
+        setImgReady(false);
+        zoomRef.current = MIN_ZOOM;
+        setZoomTick(t => t + 1);
+
+        const src = pano.equirect_url ? getImageUrl(pano.equirect_url) : null;
+        if (!src) {
+            recomputeBaseSize(1000, 1000 / PLACEHOLDER_ASPECT, true);
+            setBgUrl(null);
+            setImgReady(true);
+            return;
+        }
+
+        const img = new Image();
+        img.onload = () => {
+            recomputeBaseSize(img.naturalWidth || 1000, img.naturalHeight || (1000 / PLACEHOLDER_ASPECT), true);
+            setBgUrl(src);
+            setImgReady(true);
             setIsTransition(false);
         };
-
-        if (src) {
-            loader.load(src, applyTexture, undefined, () => applyTexture(createPlaceholderTexture(panorama.title)));
-        } else {
-            applyTexture(createPlaceholderTexture(panorama?.title));
-        }
-    }, []);
-
-    const navigateTo = useCallback((targetId) => {
-        if (isTransition || !targetId) return;
-        setIsTransition(true);
-        setInfoCard(null);
-        currentIdRef.current = targetId;
-        setCurrentId(targetId);
-        const pano = panoramas.find(p => p.id === targetId);
-        if (pano) loadTexture(pano);
-    }, [isTransition, panoramas, loadTexture]);
-
-    // ── Three.js scene init (once panoramas are ready) ───────────────────
-    useEffect(() => {
-        if (loading || !panoramas.length || !containerRef.current) return;
-
-        const w = containerRef.current.clientWidth;
-        const h = containerRef.current.clientHeight;
-
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, w / h, 0.1, 1000);
-        camera.position.set(0, 0, 0.1);
-
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(w, h);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        containerRef.current.appendChild(renderer.domElement);
-
-        const geo = new THREE.SphereGeometry(500, 60, 40);
-        geo.scale(-1, 1, 1);
-        const mat = new THREE.MeshBasicMaterial({ map: null });
-        const mesh = new THREE.Mesh(geo, mat);
-        scene.add(mesh);
-
-        sceneRef.current = scene;
-        cameraRef.current = camera;
-        rendererRef.current = renderer;
-        meshRef.current = mesh;
-
-        loadTexture(getPanorama(currentIdRef.current));
-
-        const animate = () => {
-            rafRef.current = requestAnimationFrame(animate);
-            const lat = Math.max(-85, Math.min(85, latRef.current));
-            const phi = THREE.MathUtils.degToRad(90 - lat);
-            const theta = THREE.MathUtils.degToRad(lonRef.current);
-            camera.lookAt(
-                500 * Math.sin(phi) * Math.cos(theta),
-                500 * Math.cos(phi),
-                500 * Math.sin(phi) * Math.sin(theta)
-            );
-            renderer.render(scene, camera);
-
-            const cw = containerRef.current?.clientWidth || w;
-            const ch = containerRef.current?.clientHeight || h;
-            const pano = getPanoramaLive(currentIdRef.current);
-            if (pano?.hotspots?.length) {
-                setHotspotPos(pano.hotspots.map(hs => ({ ...hs, ...projectHotspot(hs.yaw, hs.pitch, camera, cw, ch) })));
-            } else {
-                setHotspotPos([]);
-            }
+        img.onerror = () => {
+            recomputeBaseSize(1000, 1000 / PLACEHOLDER_ASPECT, true);
+            setBgUrl(null);
+            setImgReady(true);
+            setIsTransition(false);
         };
-        animate();
-
-        const onResize = () => {
-            if (!containerRef.current) return;
-            const nw = containerRef.current.clientWidth;
-            const nh = containerRef.current.clientHeight;
-            camera.aspect = nw / nh;
-            camera.updateProjectionMatrix();
-            renderer.setSize(nw, nh);
-        };
-        window.addEventListener('resize', onResize);
-
-        return () => {
-            cancelAnimationFrame(rafRef.current);
-            window.removeEventListener('resize', onResize);
-            if (containerRef.current && renderer.domElement.parentNode === containerRef.current) {
-                containerRef.current.removeChild(renderer.domElement);
-            }
-            geo.dispose();
-            mat.dispose();
-            if (mat.map) mat.map.dispose();
-            renderer.dispose();
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [loading, panoramas.length === 0]);
-
-    // Swap texture whenever currentId changes (after the scene already exists)
-    useEffect(() => {
-        if (!meshRef.current || !currentId) return;
-        const pano = getPanorama(currentId);
-        if (pano) loadTexture(pano);
+        img.src = src;
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentId]);
 
-    // ── Pointer / touch interaction ───────────────────────────────────────
-    const getPoint = (e) => ({
+    // Re-layout on container resize / orientation change
+    useEffect(() => {
+        const onResize = () => {
+            const pano = getPanorama(currentId);
+            if (!pano) return;
+            const src = pano.equirect_url ? getImageUrl(pano.equirect_url) : null;
+            if (src) {
+                const img = new Image();
+                img.onload = () => recomputeBaseSize(img.naturalWidth, img.naturalHeight, false);
+                img.src = src;
+            } else {
+                recomputeBaseSize(1000, 1000 / PLACEHOLDER_ASPECT, false);
+            }
+        };
+        window.addEventListener('resize', onResize);
+        window.addEventListener('orientationchange', onResize);
+        return () => {
+            window.removeEventListener('resize', onResize);
+            window.removeEventListener('orientationchange', onResize);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentId]);
+
+    useEffect(() => { applyLayout(); }, [zoomTick, applyLayout]);
+
+    const navigateTo = useCallback((targetId) => {
+        if (!targetId || targetId === currentId) return;
+        setIsTransition(true);
+        setInfoCard(null);
+        setCurrentId(targetId);
+    }, [currentId]);
+
+    const goPrev = useCallback(() => {
+        if (currentIndex > 0) navigateTo(panoramas[currentIndex - 1].id);
+    }, [currentIndex, panoramas, navigateTo]);
+
+    const goNext = useCallback(() => {
+        if (currentIndex < panoramas.length - 1) navigateTo(panoramas[currentIndex + 1].id);
+    }, [currentIndex, panoramas, navigateTo]);
+
+    // ── Pointer / touch interaction (drag to pan, wheel/pinch to zoom) ────
+    const point = (e) => ({
         x: e.clientX ?? e.touches?.[0]?.clientX,
         y: e.clientY ?? e.touches?.[0]?.clientY
     });
 
-    const onPointerDown = useCallback((e) => {
+    const onDown = useCallback((e) => {
         if (e.touches && e.touches.length === 2) {
             const dx = e.touches[0].clientX - e.touches[1].clientX;
             const dy = e.touches[0].clientY - e.touches[1].clientY;
-            pinchStartDistRef.current = Math.hypot(dx, dy);
-            pinchStartFovRef.current = cameraRef.current?.fov || 75;
-            isDragging.current = false;
+            pinchRef.current = { startDist: Math.hypot(dx, dy), startZoom: zoomRef.current };
+            dragRef.current.active = false;
             return;
         }
-        isDragging.current = true;
-        const { x, y } = getPoint(e);
-        downPosRef.current = { x, y };
-        prevMouseRef.current = { x, y, lon: lonRef.current, lat: latRef.current };
+        const { x, y } = point(e);
+        dragRef.current = { active: true, startX: x, startY: y, startPan: { ...panRef.current } };
     }, []);
 
-    const onPointerMove = useCallback((e) => {
-        if (e.touches && e.touches.length === 2 && pinchStartDistRef.current) {
+    const onMove = useCallback((e) => {
+        if (e.touches && e.touches.length === 2 && pinchRef.current) {
             const dx = e.touches[0].clientX - e.touches[1].clientX;
             const dy = e.touches[0].clientY - e.touches[1].clientY;
             const dist = Math.hypot(dx, dy);
-            const ratio = pinchStartDistRef.current / Math.max(dist, 1);
-            if (cameraRef.current) {
-                cameraRef.current.fov = THREE.MathUtils.clamp(pinchStartFovRef.current * ratio, 20, 100);
-                cameraRef.current.updateProjectionMatrix();
-            }
+            const ratio = dist / Math.max(pinchRef.current.startDist, 1);
+            zoomRef.current = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, pinchRef.current.startZoom * ratio));
+            applyLayout();
             return;
         }
-        if (!isDragging.current) return;
-        const { x, y } = getPoint(e);
-        lonRef.current = (prevMouseRef.current.x - x) * 0.1 + prevMouseRef.current.lon;
-        latRef.current = (y - prevMouseRef.current.y) * 0.1 + prevMouseRef.current.lat;
-    }, []);
+        if (!dragRef.current.active) return;
+        const { x, y } = point(e);
+        panRef.current = {
+            x: dragRef.current.startPan.x + (x - dragRef.current.startX),
+            y: dragRef.current.startPan.y + (y - dragRef.current.startY)
+        };
+        applyLayout();
+    }, [applyLayout]);
 
-    const onPointerUp = useCallback((e) => {
-        pinchStartDistRef.current = null;
-        if (!isDragging.current) return;
-        isDragging.current = false;
+    const onUp = useCallback((e) => {
+        pinchRef.current = null;
+        if (!dragRef.current.active) return;
+        dragRef.current.active = false;
 
-        const { x, y } = getPoint(e) || {};
+        const { x, y } = point(e) || {};
         if (x === undefined) return;
-        const moved = Math.hypot(x - downPosRef.current.x, y - downPosRef.current.y);
-        if (moved > CLICK_MOVE_THRESHOLD) return; // was a drag, not a tap
+        const moved = Math.hypot(x - dragRef.current.startX, y - dragRef.current.startY);
+        if (moved > CLICK_MOVE_THRESHOLD) return; // was a drag/pinch, not a tap
 
-        if (editMode) {
-            const angles = screenToYawPitch(x, y);
-            if (angles) {
-                setHotspotForm({ mode: 'create', point: angles });
+        if (editMode && layerRef.current) {
+            const rect = layerRef.current.getBoundingClientRect();
+            const px = ((x - rect.left) / rect.width) * 100;
+            const py = ((y - rect.top) / rect.height) * 100;
+            if (px >= 0 && px <= 100 && py >= 0 && py <= 100) {
+                setHotspotForm({ mode: 'create', point: { pos_x: px, pos_y: py } });
             }
         }
-    }, [editMode, screenToYawPitch]);
+    }, [editMode]);
 
     const onWheel = useCallback((e) => {
-        if (!cameraRef.current) return;
-        const fov = THREE.MathUtils.clamp(cameraRef.current.fov + e.deltaY * 0.05, 20, 100);
-        cameraRef.current.fov = fov;
-        cameraRef.current.updateProjectionMatrix();
-    }, []);
+        e.preventDefault();
+        zoomRef.current = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoomRef.current - e.deltaY * 0.0015));
+        applyLayout();
+    }, [applyLayout]);
 
     useEffect(() => {
         const t = setTimeout(() => setShowControls(false), 4000);
@@ -365,7 +300,8 @@ const Panorama360Viewer = ({ shopId, shopName, isAdmin, initialPanoramas, onClos
     }, [currentId]);
 
     // ── Admin actions ──────────────────────────────────────────────────
-    const handleHotspotClick = (hs) => {
+    const handleHotspotClick = (e, hs) => {
+        e.stopPropagation();
         if (editMode) {
             setHotspotForm({ mode: 'edit', hotspot: hs });
         } else if (hs.type === 'link') {
@@ -393,22 +329,43 @@ const Panorama360Viewer = ({ shopId, shopName, isAdmin, initialPanoramas, onClos
     const submitHotspotForm = async (values) => {
         setBusy(true);
         try {
-            const fd = new FormData();
-            fd.append('type', values.type);
-            fd.append('label', values.label || '');
-            fd.append('value', values.value || '');
-            if (values.type === 'link' && values.target_panorama_id) {
-                fd.append('target_panorama_id', values.target_panorama_id);
+            let imageUrl = null;
+            if (values.imageFile) {
+                try {
+                    imageUrl = await directUploadService.upload(values.imageFile, { maxSizeMB: 50 });
+                } catch (uploadErr) {
+                    console.warn('Direct hotspot image upload failed, falling back to server upload:', uploadErr);
+                }
             }
-            if (values.imageFile) fd.append('image', values.imageFile);
+
+            const payload = {
+                type: values.type,
+                label: values.label || '',
+                value: values.value || '',
+                target_panorama_id: values.type === 'link' ? (values.target_panorama_id || '') : ''
+            };
+            if (imageUrl) payload.image_url = imageUrl;
 
             if (hotspotForm.mode === 'create') {
-                fd.append('yaw', hotspotForm.point.yaw);
-                fd.append('pitch', hotspotForm.point.pitch);
-                await shopService.addPanoramaHotspot(currentId, fd);
+                payload.pos_x = hotspotForm.point.pos_x;
+                payload.pos_y = hotspotForm.point.pos_y;
+                if (imageUrl || !values.imageFile) {
+                    await shopService.addPanoramaHotspotJson(currentId, payload);
+                } else {
+                    const fd = new FormData();
+                    Object.entries(payload).forEach(([k, v]) => fd.append(k, v));
+                    fd.append('image', values.imageFile);
+                    await shopService.addPanoramaHotspot(currentId, fd);
+                }
+            } else if (imageUrl || !values.imageFile) {
+                await shopService.updatePanoramaHotspotJson(hotspotForm.hotspot.id, payload);
             } else {
+                const fd = new FormData();
+                Object.entries(payload).forEach(([k, v]) => fd.append(k, v));
+                fd.append('image', values.imageFile);
                 await shopService.updatePanoramaHotspot(hotspotForm.hotspot.id, fd);
             }
+
             setHotspotForm(null);
             await refreshPanoramas(currentId);
         } catch (err) {
@@ -422,19 +379,40 @@ const Panorama360Viewer = ({ shopId, shopName, isAdmin, initialPanoramas, onClos
     const handleUploadPanorama = async (file) => {
         if (!file) return;
         setUploadingPano(true);
+        setUploadProgress(0);
         try {
-            const fd = new FormData();
-            fd.append('title', `صورة ${panoramas.length + 1}`);
-            fd.append('equirect_file', file);
-            const created = await shopService.addPanorama(shopId, fd);
+            let equirectUrl = null;
+            try {
+                equirectUrl = await directUploadService.upload(file, {
+                    maxSizeMB: 50,
+                    onProgress: setUploadProgress
+                });
+            } catch (uploadErr) {
+                console.warn('Direct panorama upload failed, falling back to server upload:', uploadErr);
+            }
+
+            let created;
+            if (equirectUrl) {
+                created = await shopService.addPanoramaFromUrl(shopId, {
+                    title: `صورة ${panoramas.length + 1}`,
+                    equirect_url: equirectUrl
+                });
+            } else {
+                const fd = new FormData();
+                fd.append('title', `صورة ${panoramas.length + 1}`);
+                fd.append('equirect_file', file);
+                created = await shopService.addPanorama(shopId, fd);
+            }
+
             const list = await refreshPanoramas(created.id);
             const target = list.find(p => p.id === created.id);
             if (target) navigateTo(target.id);
         } catch (err) {
             console.error('addPanorama error:', err);
-            alert('فشل رفع الصورة');
+            alert(err.message || 'فشل رفع الصورة');
         } finally {
             setUploadingPano(false);
+            setUploadProgress(null);
         }
     };
 
@@ -491,10 +469,10 @@ const Panorama360Viewer = ({ shopId, shopName, isAdmin, initialPanoramas, onClos
                     {isAdmin && (
                         <>
                             <button className="p360-btn p360-btn-primary" onClick={() => fileInputRef.current?.click()} disabled={uploadingPano}>
-                                {uploadingPano ? 'جاري الرفع...' : '+ إضافة أول صورة 360'}
+                                {uploadingPano ? `جاري الرفع... ${uploadProgress ?? ''}%` : '+ إضافة أول صورة 360'}
                             </button>
                             <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }}
-                                onChange={e => handleUploadPanorama(e.target.files?.[0])} />
+                                onChange={e => { handleUploadPanorama(e.target.files?.[0]); e.target.value = ''; }} />
                         </>
                     )}
                 </div>
@@ -504,6 +482,7 @@ const Panorama360Viewer = ({ shopId, shopName, isAdmin, initialPanoramas, onClos
     }
 
     const currentPano = getPanorama(currentId);
+    const currentHotspots = currentPano?.hotspots || [];
 
     return (
         <div className="p360-overlay" onClick={e => e.stopPropagation()}>
@@ -529,40 +508,71 @@ const Panorama360Viewer = ({ shopId, shopName, isAdmin, initialPanoramas, onClos
                 </div>
             </div>
 
-            {/* Canvas */}
+            {/* Viewport */}
             <div
                 ref={containerRef}
                 className={`p360-canvas-area ${editMode ? 'editing' : ''}`}
-                onMouseDown={onPointerDown}
-                onMouseMove={onPointerMove}
-                onMouseUp={onPointerUp}
-                onMouseLeave={onPointerUp}
-                onTouchStart={onPointerDown}
-                onTouchMove={onPointerMove}
-                onTouchEnd={onPointerUp}
+                onMouseDown={onDown}
+                onMouseMove={onMove}
+                onMouseUp={onUp}
+                onMouseLeave={onUp}
+                onTouchStart={onDown}
+                onTouchMove={onMove}
+                onTouchEnd={onUp}
                 onWheel={onWheel}
-            />
+            >
+                <div
+                    ref={layerRef}
+                    className="p360-layer"
+                    style={bgUrl ? { backgroundImage: `url(${bgUrl})` } : undefined}
+                >
+                    {!bgUrl && imgReady && (
+                        <div className="p360-layer-placeholder">
+                            <GlobeIcon size={36} />
+                            <span>{currentPano?.title || 'صورة 360'}</span>
+                        </div>
+                    )}
 
+                    {currentHotspots.map(hs => (
+                        <div key={hs.id} className="p360-hotspot" style={{ left: `${hs.pos_x}%`, top: `${hs.pos_y}%` }}>
+                            <button
+                                className={`p360-hotspot-btn ${hs.type === 'link' ? 'link' : 'info'}`}
+                                onMouseDown={e => e.stopPropagation()}
+                                onTouchStart={e => e.stopPropagation()}
+                                onClick={(e) => handleHotspotClick(e, hs)}
+                            >
+                                {hs.type === 'link' ? <ArrowIcon /> : <TagIcon />}
+                            </button>
+                            {hs.label && <span className="p360-hotspot-label">{hs.label}</span>}
+                            {editMode && (
+                                <button
+                                    className="p360-hotspot-delete"
+                                    onMouseDown={e => e.stopPropagation()}
+                                    onTouchStart={e => e.stopPropagation()}
+                                    onClick={(e) => handleDeleteHotspot(e, hs.id)}
+                                >×</button>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {!imgReady && <div className="p360-busy-overlay"><div className="p360-spinner" /></div>}
             {isTransition && <div className="p360-transition-fade" />}
             {busy && <div className="p360-busy-overlay"><div className="p360-spinner" /></div>}
 
-            {/* Hotspots */}
-            {hotspotPos.map(hs => hs.visible && (
-                <div key={hs.id} className="p360-hotspot" style={{ left: hs.x, top: hs.y }}>
-                    <button
-                        className={`p360-hotspot-btn ${hs.type === 'link' ? 'link' : 'info'}`}
-                        onClick={() => handleHotspotClick(hs)}
-                    >
-                        {hs.type === 'link' ? <ArrowIcon /> : <TagIcon />}
+            {/* Desktop: bottom thumbnail strip. Mobile: side arrows (see CSS breakpoints) */}
+            {panoramas.length > 1 && (
+                <>
+                    <button className="p360-side-nav left" onClick={goPrev} disabled={currentIndex <= 0} aria-label="الصورة السابقة">
+                        <ChevronIcon dir="left" />
                     </button>
-                    {hs.label && <span className="p360-hotspot-label">{hs.label}</span>}
-                    {editMode && (
-                        <button className="p360-hotspot-delete" onClick={(e) => handleDeleteHotspot(e, hs.id)}>×</button>
-                    )}
-                </div>
-            ))}
+                    <button className="p360-side-nav right" onClick={goNext} disabled={currentIndex >= panoramas.length - 1} aria-label="الصورة التالية">
+                        <ChevronIcon dir="right" />
+                    </button>
+                </>
+            )}
 
-            {/* Bottom thumbnail strip */}
             <div className="p360-pano-strip">
                 {panoramas.map((pano, idx) => (
                     <div key={pano.id} className={`p360-pano-thumb-wrap ${pano.id === currentId ? 'active' : ''}`}>
@@ -582,7 +592,7 @@ const Panorama360Viewer = ({ shopId, shopName, isAdmin, initialPanoramas, onClos
                 {editMode && (
                     <>
                         <button className="p360-add-pano-btn" onClick={() => fileInputRef.current?.click()} disabled={uploadingPano}>
-                            {uploadingPano ? '...' : '+'}
+                            {uploadingPano ? `${uploadProgress ?? 0}%` : '+'}
                         </button>
                         <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }}
                             onChange={e => { handleUploadPanorama(e.target.files?.[0]); e.target.value = ''; }} />
@@ -591,7 +601,7 @@ const Panorama360Viewer = ({ shopId, shopName, isAdmin, initialPanoramas, onClos
             </div>
 
             {showControls && !editMode && (
-                <div className="p360-hint">اسحب للتدوير · عجلة الفأرة أو التقريب بإصبعين للتكبير</div>
+                <div className="p360-hint">اسحب للتنقل داخل الصورة · عجلة الفأرة أو التقريب بإصبعين للتكبير</div>
             )}
             {editMode && (
                 <div className="p360-hint p360-hint-edit">اضغط بأي مكان على الصورة لإضافة نقطة جديدة</div>

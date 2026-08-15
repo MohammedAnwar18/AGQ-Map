@@ -618,6 +618,12 @@ export const shopService = {
         return response.data;
     },
 
+    // Metadata-only variant: pass an already-uploaded (e.g. direct-to-R2) URL instead of a file
+    addPanoramaFromUrl: async (shopId, { title, equirect_url, thumbnail_url }) => {
+        const response = await api.post(`/shops/${shopId}/panoramas`, { title, equirect_url, thumbnail_url });
+        return response.data;
+    },
+
     deletePanorama: async (panoramaId) => {
         const response = await api.delete(`/shops/panoramas/${panoramaId}`);
         return response.data;
@@ -635,6 +641,11 @@ export const shopService = {
         return response.data;
     },
 
+    addPanoramaHotspotJson: async (panoramaId, payload) => {
+        const response = await api.post(`/shops/panoramas/${panoramaId}/hotspots`, payload);
+        return response.data;
+    },
+
     updatePanoramaHotspot: async (hotspotId, formData) => {
         const response = await api.put(`/shops/hotspots/${hotspotId}`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
@@ -642,9 +653,39 @@ export const shopService = {
         return response.data;
     },
 
+    updatePanoramaHotspotJson: async (hotspotId, payload) => {
+        const response = await api.put(`/shops/hotspots/${hotspotId}`, payload);
+        return response.data;
+    },
+
     deletePanoramaHotspot: async (hotspotId) => {
         const response = await api.delete(`/shops/hotspots/${hotspotId}`);
         return response.data;
+    }
+};
+
+// ── Direct-to-R2 upload (bypasses the serverless function body-size limit) ──
+export const directUploadService = {
+    // Uploads a File straight to Cloudflare R2 via a presigned URL and returns its public URL.
+    upload: async (file, { maxSizeMB = 50, onProgress } = {}) => {
+        if (file.size > maxSizeMB * 1024 * 1024) {
+            throw new Error(`الملف أكبر من الحد المسموح (${maxSizeMB} ميجابايت)`);
+        }
+        const presigned = await api.post('/storage/presigned-url', {
+            fileName: file.name,
+            contentType: file.type || 'application/octet-stream'
+        });
+        if (!presigned.data || !presigned.data.success) {
+            throw new Error('تعذر تجهيز رابط الرفع المباشر');
+        }
+        const { uploadUrl, publicUrl } = presigned.data;
+        await axios.put(uploadUrl, file, {
+            headers: { 'Content-Type': file.type || 'application/octet-stream' },
+            onUploadProgress: onProgress
+                ? (evt) => onProgress(evt.total ? Math.round((evt.loaded * 100) / evt.total) : 0)
+                : undefined
+        });
+        return publicUrl;
     }
 };
 
