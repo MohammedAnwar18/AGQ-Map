@@ -573,7 +573,7 @@ const MapComponent = () => {
     }, [user]);
 
     const mapRef = useRef(null);
-    const [activeMapType, setActiveMapType] = useState('geomolg-2024');
+    const [activeMapType, setActiveMapType] = useState('satellite');
     const [showMapLayersMenu, setShowMapLayersMenu] = useState(false);
 
     const PALESTINIAN_CITIES = [
@@ -3634,7 +3634,7 @@ const MapComponent = () => {
                         setActiveCustomStart(null);
                         setAiResults([]); // Also clear the destination marker
                         setIsTracking(false); // Stop tracking when nav ends
-                        setActiveMapType('geomolg-2024'); // REVERT TO DEFAULT MAP
+                        setActiveMapType('satellite'); // REVERT TO DEFAULT MAP (Google Satellite)
                     }}
                 />
             )}
