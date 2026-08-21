@@ -3,6 +3,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/api';
 import CustomCalendar from '../components/CustomCalendar';
+import { GoogleLogin } from '@react-oauth/google';
 import './Login.css';
 
 const Login = () => {
@@ -21,6 +22,34 @@ const Login = () => {
     const [isForgotPassword, setIsForgotPassword] = useState(false);
     const [resetStep, setResetStep] = useState(1); // 1: Email, 2: OTP & New Password
     const [successMessage, setSuccessMessage] = useState('');
+
+    const handleGoogleSuccess = async (credentialResponse) => {
+        try {
+            setLoading(true);
+            setError('');
+            if (!credentialResponse.credential) {
+                setError('لم يتم الحصول على توكين جوجل');
+                setLoading(false);
+                return;
+            }
+            const response = await authService.googleLogin(credentialResponse.credential);
+            if (response.token && response.user) {
+                login(response.user, response.token);
+                navigate('/');
+            } else {
+                setError(response.error || 'فشل في تسجيل الدخول من جوجل');
+            }
+        } catch (err) {
+            console.error('Google login error:', err);
+            setError(err.response?.data?.error || 'حدث خطأ أثناء الاتصال بجوجل');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleGoogleError = () => {
+        setError('فشلت عملية تسجيل الدخول بحساب جوجل');
+    };
 
     const [formData, setFormData] = useState({
         username: '',
@@ -515,6 +544,26 @@ const Login = () => {
                                         isLogin ? (isOtpStep ? 'تحقق' : 'دخول') : 'إنشاء الحساب'
                                     )}
                                 </button>
+
+                                {!isOtpStep && (
+                                    <div className="google-login-container">
+                                        <div className="divider">
+                                            <span>أو</span>
+                                        </div>
+                                        <div className="google-btn-wrapper">
+                                            <GoogleLogin
+                                                onSuccess={handleGoogleSuccess}
+                                                onError={handleGoogleError}
+                                                useOneTap
+                                                theme="filled_blue"
+                                                shape="pill"
+                                                text="continue_with"
+                                                locale="ar"
+                                                width="100%"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
                             </>
                         )}
 

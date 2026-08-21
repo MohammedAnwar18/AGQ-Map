@@ -173,8 +173,14 @@ setTimeout(() => {
     }
 }, 1800);
 
+import { GoogleOAuthProvider } from '@react-oauth/google';
+
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '235648434381-dcra09f58o560m3t9e2h8uct30nn1db7.apps.googleusercontent.com';
+
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
-        <App />
+        <GoogleOAuthProvider clientId={googleClientId}>
+            <App />
+        </GoogleOAuthProvider>
     </React.StrictMode>
 );

@@ -341,3 +341,47 @@
         height: 250px;
     }
 }
+
+/* Google Login Styles */
+.google-login-container {
+    margin-top: 1.25rem;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    width: 100%;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.85rem;
+    margin: 0.25rem 0;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.divider span {
+    padding: 0 0.75rem;
+    font-weight: 500;
+}
+
+.google-btn-wrapper {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.google-btn-wrapper > div {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+}

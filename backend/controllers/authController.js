@@ -372,4 +372,93 @@ const resetPassword = async (req, res) => {
     }
 };
 
-module.exports = { register, login, verifyOtp, getMe, logout, updateLocation, forgotPassword, resetPassword };
+const { OAuth2Client } = require('google-auth-library');
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+/**
+ * تسجيل الدخول / إنشاء حساب عبر Google
+ */
+const googleLogin = async (req, res) => {
+    try {
+        const { credential } = req.body;
+        if (!credential) {
+            return res.status(400).json({ error: 'رمز التحقق من جوجل مطلوب' });
+        }
+
+        const clientId = process.env.GOOGLE_CLIENT_ID;
+        const ticket = await googleClient.verifyIdToken({
+            idToken: credential,
+            audience: clientId,
+        });
+
+        const payload = ticket.getPayload();
+        const { email, name, picture, sub: googleId } = payload;
+
+        if (!email) {
+            return res.status(400).json({ error: 'البريد الإلكتروني غير متوفر في حساب جوجل' });
+        }
+
+        // التأكد من وجود عمود google_id في الجدول
+        try {
+            await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(255)');
+        } catch (e) {
+            console.warn('DB alter column warning:', e.message);
+        }
+
+        // البحث عن المستخدم بحسب البريد أو google_id
+        let userRes = await pool.query('SELECT * FROM users WHERE email = $1 OR google_id = $2', [email, googleId]);
+        let user;
+
+        if (userRes.rows.length === 0) {
+            // حساب جديد
+            let baseUsername = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '');
+            if (baseUsername.length < 3) baseUsername = `user_${Date.now().toString().slice(-4)}`;
+            
+            let username = baseUsername;
+            let userCheck = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
+            if (userCheck.rows.length > 0) {
+                username = `${baseUsername}_${Math.floor(Math.random() * 1000)}`;
+            }
+
+            const insertRes = await pool.query(
+                `INSERT INTO users (username, email, full_name, profile_picture, google_id, is_online, role)
+                 VALUES ($1, $2, $3, $4, $5, TRUE, 'user')
+                 RETURNING id, username, email, full_name, profile_picture, role`,
+                [username, email, name || username, picture || null, googleId]
+            );
+            user = insertRes.rows[0];
+        } else {
+            user = userRes.rows[0];
+            // تحديث البيانات إذا لم تكن موجودة
+            await pool.query(
+                'UPDATE users SET google_id = COALESCE(google_id, $1), profile_picture = COALESCE(profile_picture, $2), is_online = TRUE WHERE id = $3',
+                [googleId, picture, user.id]
+            );
+        }
+
+        // إنشاء التوكين الخاص بالنظام JWT
+        const token = jwt.sign(
+            { userId: user.id, username: user.username, role: user.role || 'user' },
+            process.env.JWT_SECRET || 'spatial_social_network_secret_key_2024_change_in_production',
+            { expiresIn: '30d' }
+        );
+
+        res.json({
+            message: 'تم تسجيل الدخول عبر جوجل بنجاح',
+            token,
+            user: {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                full_name: user.full_name,
+                profile_picture: user.profile_picture || picture,
+                role: user.role || 'user'
+            }
+        });
+    } catch (error) {
+        console.error('Google login error:', error);
+        res.status(500).json({ error: 'فشل في تسجيل الدخول عبر حساب جوجل: ' + (error.message || 'خطأ في الخادم') });
+    }
+};
+
+module.exports = { register, login, verifyOtp, getMe, logout, updateLocation, forgotPassword, resetPassword, googleLogin };

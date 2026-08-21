@@ -114,6 +114,11 @@ export const authService = {
         return response.data;
     },
 
+    googleLogin: async (credential) => {
+        const response = await api.post('/auth/google', { credential });
+        return response.data;
+    },
+
     verifyOtp: async (data) => {
         const response = await api.post('/auth/verify-otp', data);
         return response.data;

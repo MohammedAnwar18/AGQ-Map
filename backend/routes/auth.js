@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
-const { register, login, verifyOtp, getMe, logout, updateLocation, forgotPassword, resetPassword } = require('../controllers/authController');
+const { register, login, verifyOtp, getMe, logout, updateLocation, forgotPassword, resetPassword, googleLogin } = require('../controllers/authController');
 const { authenticateToken } = require('../middleware/auth');
 
 // تسجيل مستخدم جديد
@@ -14,6 +14,9 @@ router.post('/register', [
 
 // تسجيل الدخول
 router.post('/login', login);
+
+// تسجيل الدخول عبر Google
+router.post('/google', googleLogin);
 
 // التحقق من OTP
 router.post('/verify-otp', verifyOtp);
