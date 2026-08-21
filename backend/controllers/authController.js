@@ -410,7 +410,7 @@ const googleLogin = async (req, res) => {
         let user;
 
         if (userRes.rows.length === 0) {
-            // حساب جديد
+            // حساب جديد - توليد password_hash عشوائي لأن الحقل NOT NULL
             let baseUsername = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '');
             if (baseUsername.length < 3) baseUsername = `user_${Date.now().toString().slice(-4)}`;
             
@@ -420,11 +420,15 @@ const googleLogin = async (req, res) => {
                 username = `${baseUsername}_${Math.floor(Math.random() * 1000)}`;
             }
 
+            // توليد كلمة مرور عشوائية آمنة لأن المستخدم لن يستخدمها
+            const randomPassword = crypto.randomBytes(32).toString('hex');
+            const password_hash = await bcrypt.hash(randomPassword, 10);
+
             const insertRes = await pool.query(
-                `INSERT INTO users (username, email, full_name, profile_picture, google_id, is_online, role)
-                 VALUES ($1, $2, $3, $4, $5, TRUE, 'user')
+                `INSERT INTO users (username, email, password_hash, full_name, profile_picture, google_id, is_online, role)
+                 VALUES ($1, $2, $3, $4, $5, $6, TRUE, 'user')
                  RETURNING id, username, email, full_name, profile_picture, role`,
-                [username, email, name || username, picture || null, googleId]
+                [username, email, password_hash, name || username, picture || null, googleId]
             );
             user = insertRes.rows[0];
         } else {
