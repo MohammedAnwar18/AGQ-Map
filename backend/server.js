@@ -84,6 +84,9 @@ app.use('/uploads', express.static(uploadsDir));
 const geoportalRoutes = require('./routes/geoportal');
 const storageRoutes = require('./routes/storageRoutes');
 const regionalEventsRoutes = require('./routes/regionalEvents');
+const cameraRoutes = require('./routes/cameras');
+const reelsRoutes = require('./routes/reels');
+const studySpaceRoutes = require('./routes/studySpace');
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -101,6 +104,9 @@ app.use('/api/geoportals', geoportalRoutes);
 app.use('/api/push', pushRoutes);
 app.use('/api/storage', storageRoutes);
 app.use('/api/regional-events', regionalEventsRoutes);
+app.use('/api/cameras', cameraRoutes);
+app.use('/api/reels', reelsRoutes);
+app.use('/api/study-space', studySpaceRoutes);
 
 // Auto-migrate: ensure shop_drivers table exists with all required columns
 (async () => {
