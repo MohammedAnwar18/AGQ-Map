@@ -329,7 +329,13 @@ exports.uploadLayer = async (req, res) => {
                     Body: req.file.buffer,
                     ContentType: 'application/geo+json'
                 }));
-                r2Url = `${publicUrl || process.env.R2_ENDPOINT}/${r2Key}`;
+                let cleanBaseUrl = publicUrl || process.env.R2_ENDPOINT || '';
+                if (cleanBaseUrl) {
+                    cleanBaseUrl = cleanBaseUrl.trim();
+                    if (!cleanBaseUrl.startsWith('http://') && !cleanBaseUrl.startsWith('https://')) cleanBaseUrl = `https://${cleanBaseUrl}`;
+                    cleanBaseUrl = cleanBaseUrl.replace(/\/+$/, '');
+                }
+                r2Url = `${cleanBaseUrl}/${r2Key}`;
             } catch (r2Err) {
                 console.warn('⚠️ Cloudflare R2 Upload warning (continuing with DB storage):', r2Err.message);
             }
@@ -561,7 +567,13 @@ exports.uploadLogo = async (req, res) => {
                     Body: req.file.buffer,
                     ContentType: mimeType
                 }));
-                logoUrl = `${process.env.R2_PUBLIC_URL || process.env.R2_ENDPOINT}/${logoKey}`;
+                let cleanPublicUrl = process.env.R2_PUBLIC_URL || process.env.R2_ENDPOINT || '';
+                if (cleanPublicUrl) {
+                    cleanPublicUrl = cleanPublicUrl.trim();
+                    if (!cleanPublicUrl.startsWith('http://') && !cleanPublicUrl.startsWith('https://')) cleanPublicUrl = `https://${cleanPublicUrl}`;
+                    cleanPublicUrl = cleanPublicUrl.replace(/\/+$/, '');
+                }
+                logoUrl = `${cleanPublicUrl}/${logoKey}`;
             } catch (r2Err) {
                 console.warn('R2 Logo upload warning:', r2Err.message);
             }

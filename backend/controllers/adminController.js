@@ -256,7 +256,14 @@ const deletePost = async (req, res) => {
 const createAdminPost = async (req, res) => {
     try {
         const { content, latitude, longitude, address } = req.body;
-        const image_url = req.file ? `/uploads/${req.file.filename}` : null;
+        const { uploadToCloud } = require('../utils/storage');
+
+        let image_url = null;
+        if (req.file) {
+            image_url = req.file.buffer 
+                ? await uploadToCloud(req.file.buffer, req.file.originalname, req.file.mimetype)
+                : `/uploads/${req.file.filename}`;
+        }
 
         const result = await pool.query(
             `INSERT INTO posts (user_id, content, image_url, location, address)

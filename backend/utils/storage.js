@@ -4,8 +4,23 @@ const { r2Client } = require('../config/r2');
 const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const { v4: uuidv4 } = require('uuid');
 
-const BUCKET_NAME = process.env.R2_BUCKET_NAME;
-const PUBLIC_URL = process.env.R2_PUBLIC_URL; // e.g. https://pub-xyz.r2.dev
+/**
+ * Helper to get normalized R2 configuration from environment
+ */
+const getR2Config = () => {
+    const bucketName = process.env.R2_BUCKET_NAME;
+    let publicUrl = process.env.R2_PUBLIC_URL || '';
+    
+    if (publicUrl) {
+        publicUrl = publicUrl.trim();
+        if (!publicUrl.startsWith('http://') && !publicUrl.startsWith('https://')) {
+            publicUrl = `https://${publicUrl}`;
+        }
+        publicUrl = publicUrl.replace(/\/+$/, '');
+    }
+
+    return { bucketName, publicUrl };
+};
 
 /**
  * Helper to save a file locally on the server
@@ -38,9 +53,11 @@ const uploadToCloud = async (fileBuffer, fileName, mimeType) => {
     try {
         if (!fileBuffer) throw new Error('No file buffer provided');
 
+        const { bucketName, publicUrl } = getR2Config();
+
         // Check if R2 is configured
-        if (!BUCKET_NAME || !PUBLIC_URL) {
-            console.log('静态/R2 not configured. Checking environment for fallback.');
+        if (!bucketName || !publicUrl) {
+            console.log('⚠️ Cloudflare R2 not fully configured. Checking environment for fallback.');
             // On Vercel or serverless, local disk is read-only, so we store as Base64 in database
             if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
                 console.log('📦 Serverless environment (Vercel) detected. Storing as Base64.');
@@ -49,25 +66,25 @@ const uploadToCloud = async (fileBuffer, fileName, mimeType) => {
             return await saveFileLocally(fileBuffer, fileName);
         }
 
-        const extension = fileName.split('.').pop();
+        const extension = fileName ? fileName.split('.').pop() : 'png';
         const key = `uploads/${uuidv4()}.${extension}`;
 
         const command = new PutObjectCommand({
-            Bucket: BUCKET_NAME,
+            Bucket: bucketName,
             Key: key,
             Body: fileBuffer,
-            ContentType: mimeType,
+            ContentType: mimeType || 'image/png',
         });
 
         await r2Client.send(command);
 
-        // Generate public URL
-        const fileUrl = `${PUBLIC_URL}/${key}`;
-        console.log('✅ Upload successful to R2:', fileUrl);
+        // Generate public URL cleanly without trailing slash issues
+        const fileUrl = `${publicUrl}/${key}`;
+        console.log('✅ Upload successful to Cloudflare R2:', fileUrl);
         return fileUrl;
 
     } catch (err) {
-        console.error('❌ Upload Error, trying fallbacks:', err.message);
+        console.error('❌ R2 Upload Error, trying fallbacks:', err.message);
         try {
             // On Vercel or serverless, write will fail, so we catch and use Base64
             if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
@@ -108,14 +125,16 @@ const deleteFileFromCloud = async (fileUrl) => {
         return;
     }
 
-    if (!PUBLIC_URL || !fileUrl.includes(PUBLIC_URL)) return;
+    const { bucketName, publicUrl } = getR2Config();
+
+    if (!publicUrl || !fileUrl.includes(publicUrl)) return;
 
     try {
         // Extract key from URL
-        const key = fileUrl.replace(`${PUBLIC_URL}/`, '');
+        const key = fileUrl.replace(`${publicUrl}/`, '');
 
         const command = new DeleteObjectCommand({
-            Bucket: BUCKET_NAME,
+            Bucket: bucketName,
             Key: key,
         });
 

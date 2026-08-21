@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { uploadToCloud } = require('../utils/storage');
 
 /**
  * البحث عن المستخدمين
@@ -116,7 +117,15 @@ const updateProfile = async (req, res) => {
     try {
         const userId = req.user.userId;
         const { full_name, bio, gender, date_of_birth } = req.body;
-        const profile_picture = req.file ? `/uploads/${req.file.filename}` : null;
+        
+        let profile_picture = null;
+        if (req.file) {
+            profile_picture = req.file.buffer 
+                ? await uploadToCloud(req.file.buffer, req.file.originalname, req.file.mimetype)
+                : `/uploads/${req.file.filename}`;
+        } else if (req.body.profile_picture) {
+            profile_picture = req.body.profile_picture;
+        }
 
         let query = 'UPDATE users SET';
         let params = [];

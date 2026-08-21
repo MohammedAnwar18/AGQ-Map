@@ -34,13 +34,22 @@ exports.getPresignedUrl = async (req, res) => {
     try {
         const { fileName, contentType } = req.body;
         const bucketName = process.env.R2_GIS_BUCKET_NAME || process.env.R2_BUCKET_NAME;
-        const publicUrl = process.env.R2_GIS_PUBLIC_URL || process.env.R2_PUBLIC_URL;
+        const rawPublicUrl = process.env.R2_GIS_PUBLIC_URL || process.env.R2_PUBLIC_URL || '';
 
         if (!bucketName || !process.env.R2_ACCESS_KEY_ID) {
             return res.status(400).json({ 
                 success: false, 
                 error: 'R2 Storage is not configured in environment variables' 
             });
+        }
+
+        let cleanPublicUrl = '';
+        if (rawPublicUrl) {
+            const trimmed = rawPublicUrl.trim();
+            cleanPublicUrl = (!trimmed.startsWith('http://') && !trimmed.startsWith('https://'))
+                ? `https://${trimmed}`
+                : trimmed;
+            cleanPublicUrl = cleanPublicUrl.replace(/\/+$/, '');
         }
 
         const ext = fileName ? fileName.split('.').pop() : 'geojson';
@@ -53,7 +62,7 @@ exports.getPresignedUrl = async (req, res) => {
         });
 
         const uploadUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
-        const finalPublicUrl = publicUrl ? `${publicUrl.replace(/\/+$/, '')}/${key}` : uploadUrl;
+        const finalPublicUrl = cleanPublicUrl ? `${cleanPublicUrl}/${key}` : uploadUrl;
 
         res.json({
             success: true,
@@ -272,7 +281,16 @@ exports.proxyGeoJSON = async (req, res) => {
         const trustedHosts = [
             'r2.dev', 'cloudflarestorage.com', 'r2.cloudflarestorage.com'
         ];
-        const isTrusted = trustedHosts.some(h => parsedUrl.hostname.endsWith(h));
+        [process.env.R2_PUBLIC_URL, process.env.R2_GIS_PUBLIC_URL].forEach(envUrl => {
+            if (envUrl) {
+                try {
+                    const host = new URL(envUrl.startsWith('http') ? envUrl : `https://${envUrl}`).hostname;
+                    if (host && !trustedHosts.includes(host)) trustedHosts.push(host);
+                } catch (e) {}
+            }
+        });
+
+        const isTrusted = trustedHosts.some(h => parsedUrl.hostname.endsWith(h) || parsedUrl.hostname === h);
         if (!isTrusted) {
             return res.status(403).json({ error: 'URL not from a trusted R2 domain' });
         }

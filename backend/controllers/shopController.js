@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { uploadToCloud, uploadToSupabase } = require('../utils/storage');
 
 // --- 1. Search Shops ---
 const searchShops = async (req, res) => {
@@ -279,14 +280,18 @@ const updateShopImages = async (req, res) => {
         let params = [];
         let index = 1;
 
-        if (req.files['profile_picture']) {
+        if (req.files && req.files['profile_picture']) {
+            const file = req.files['profile_picture'][0];
+            const url = file.buffer ? await uploadToCloud(file.buffer, file.originalname, file.mimetype) : `/uploads/${file.filename}`;
             updateQueryPart.push(`profile_picture = $${index++}`);
-            params.push(`/uploads/${req.files['profile_picture'][0].filename}`);
+            params.push(url);
         }
 
-        if (req.files['cover_picture']) {
+        if (req.files && req.files['cover_picture']) {
+            const file = req.files['cover_picture'][0];
+            const url = file.buffer ? await uploadToCloud(file.buffer, file.originalname, file.mimetype) : `/uploads/${file.filename}`;
             updateQueryPart.push(`cover_picture = $${index++}`);
-            params.push(`/uploads/${req.files['cover_picture'][0].filename}`);
+            params.push(url);
         }
 
         if (updateQueryPart.length === 0) {
@@ -332,7 +337,9 @@ const createShopPost = async (req, res) => {
         const { latitude, longitude } = shopRes.rows[0];
 
         if (req.files && req.files.length > 0) {
-            media_urls = req.files.map(file => `/uploads/${file.filename}`);
+            media_urls = await Promise.all(req.files.map(file => 
+                file.buffer ? uploadToCloud(file.buffer, file.originalname, file.mimetype) : Promise.resolve(`/uploads/${file.filename}`)
+            ));
             image_url = media_urls[0];
             media_type = req.files[0].mimetype.startsWith('video/') ? 'video' : 'image';
         }
@@ -376,7 +383,7 @@ const addProduct = async (req, res) => {
 
         let image_url = null;
         if (req.file) { // Assuming single file for product for now
-            image_url = `/uploads/${req.file.filename}`;
+            image_url = req.file.buffer ? await uploadToCloud(req.file.buffer, req.file.originalname, req.file.mimetype) : `/uploads/${req.file.filename}`;
         }
 
         const result = await pool.query(`
@@ -415,8 +422,9 @@ const updateProduct = async (req, res) => {
         if (old_price !== undefined) { queryParts.push(`old_price = $${index++}`); values.push(old_price || null); }
 
         if (req.file) {
+            const url = req.file.buffer ? await uploadToCloud(req.file.buffer, req.file.originalname, req.file.mimetype) : `/uploads/${req.file.filename}`;
             queryParts.push(`image_url = $${index++}`);
-            values.push(`/uploads/${req.file.filename}`);
+            values.push(url);
         }
 
         if (queryParts.length === 0) return res.json({ message: 'No changes provided' });

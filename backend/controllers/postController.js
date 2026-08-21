@@ -20,14 +20,20 @@ const createPost = async (req, res) => {
             return res.status(400).json({ error: 'Invalid coordinates' });
         }
 
-        // معالجة الملفات المتعددة
+        // معالجة الملفات المتعددة لرفعها على Cloudflare R2
         let media_urls = [];
         let image_url = null;
         let media_type = 'text';
 
+        const { uploadToCloud } = require('../utils/storage');
+
         if (req.files && req.files.length > 0) {
-            // Map all files to their URLs
-            media_urls = req.files.map(file => `/uploads/${file.filename}`);
+            // Map all files to R2 URLs
+            media_urls = await Promise.all(req.files.map(file => 
+                file.buffer 
+                    ? uploadToCloud(file.buffer, file.originalname, file.mimetype)
+                    : Promise.resolve(`/uploads/${file.filename}`)
+            ));
 
             // Set defaults from the first file
             image_url = media_urls[0];
@@ -38,8 +44,10 @@ const createPost = async (req, res) => {
                 media_type = 'image';
             }
         } else if (req.file) {
-            // Fallback for single file upload if needed (though route is array now)
-            image_url = `/uploads/${req.file.filename}`;
+            // Fallback for single file upload if needed
+            image_url = req.file.buffer 
+                ? await uploadToCloud(req.file.buffer, req.file.originalname, req.file.mimetype)
+                : `/uploads/${req.file.filename}`;
             media_urls = [image_url];
             if (req.file.mimetype.startsWith('video/')) {
                 media_type = 'video';
