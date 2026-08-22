@@ -45,13 +45,13 @@ export default function EarthGlobe({ className = '' }) {
                 });
             }
 
-            // Atmosphere, Glow & Space Background blending seamlessly with page
+            // Atmosphere, Glow & Seamless Space Background blending 100% with site
             map.setFog({
                 'color': 'rgb(186, 210, 235)',
                 'high-color': 'rgb(36, 92, 223)',
-                'horizon-blend': 0.02,
+                'horizon-blend': 0.04,
                 'space-color': 'rgb(4, 8, 20)',
-                'star-intensity': 0.75
+                'star-intensity': 0.0
             });
 
             // Smooth slow auto-rotation (cinematic 60fps)

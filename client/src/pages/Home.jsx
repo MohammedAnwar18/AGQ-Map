@@ -135,8 +135,6 @@ export default function Home() {
 
             {/* ================= HERO SECTION WITH BORDERLESS REALISTIC 3D GLOBE ================= */}
             <section id="hero" className="hero-section">
-                {/* Background Space Ambient */}
-                <div className="hero-space-stars"></div>
                 <div className="hero-atmosphere-glow"></div>
 
                 <div className="hero-content-wrapper">
@@ -148,12 +146,8 @@ export default function Home() {
                         </div>
 
                         <h1 className="hero-title">
-                            استكشف العالم، تواصل مع مجتمعك، <span className="title-highlight">وعِش كل لحظة بموقعك</span>
+                            <span className="title-highlight">PalNovaa</span> هي منصة تواصل اجتماعي مكاني تمكّنك من استكشاف المحتوى والأحداث بناءً على موقعك الجغرافي، ومشاركة تجاربك مع الناس القريبين منك بطريقة تفاعلية جديدة تماماً.
                         </h1>
-
-                        <p className="hero-description">
-                            <strong>PalNovaa</strong> هي منصة تواصل اجتماعي مكاني تمكّنك من استكشاف المحتوى والأحداث بناءً على موقعك الجغرافي، ومشاركة تجاربك مع الناس القريبين منك بطريقة تفاعلية جديدة تماماً.
-                        </p>
 
                         <div className="hero-cta-group">
                             <button
@@ -167,24 +161,6 @@ export default function Home() {
                             <a href="#services" className="btn-cta-secondary">
                                 <span>استكشف الخدمات</span>
                             </a>
-                        </div>
-
-                        {/* Quick Metrics */}
-                        <div className="hero-stats-row">
-                            <div className="hero-stat-card">
-                                <div className="stat-value">+50K</div>
-                                <div className="stat-label">معلم وموقع مسجل</div>
-                            </div>
-                            <div className="hero-stat-divider"></div>
-                            <div className="hero-stat-card">
-                                <div className="stat-value">WebGL</div>
-                                <div className="stat-label">محاكاة كروية دقيقة</div>
-                            </div>
-                            <div className="hero-stat-divider"></div>
-                            <div className="hero-stat-card">
-                                <div className="stat-value">100%</div>
-                                <div className="stat-label">تغطية جغرافية حية</div>
-                            </div>
                         </div>
                     </div>
 
