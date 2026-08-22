@@ -244,6 +244,31 @@ const Login = () => {
             </div>
 
             <div className="login-content fade-in">
+                <div style={{ display: 'flex', justifyContent: 'flex-start', width: '100%', marginBottom: '10px' }}>
+                    <button
+                        onClick={() => navigate('/home')}
+                        style={{
+                            background: 'rgba(255, 255, 255, 0.06)',
+                            border: '1px solid rgba(255, 255, 255, 0.12)',
+                            color: '#cbd5e1',
+                            fontFamily: 'Tajawal, sans-serif',
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            padding: '6px 14px',
+                            borderRadius: '10px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(251, 171, 21, 0.15)'; e.currentTarget.style.color = '#fbab15'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'; e.currentTarget.style.color = '#cbd5e1'; }}
+                    >
+                        <span>→</span>
+                        <span>الرئيسية</span>
+                    </button>
+                </div>
                 <div className="login-header">
                     <div className="logo" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem', marginTop: '1rem' }}>
                         <svg width="130" height="130" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginBottom: '1rem', overflow: 'visible' }}>

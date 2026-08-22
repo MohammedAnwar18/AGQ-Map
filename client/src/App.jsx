@@ -16,6 +16,7 @@ const DigitalLetterView = React.lazy(() => import('./pages/DigitalLetterView'));
 const GraduationEvent = React.lazy(() => import('./pages/GraduationEvent'));
 const GeoportalDesigner = React.lazy(() => import('./pages/GeoportalDesigner'));
 const GeoportalViewer = React.lazy(() => import('./pages/GeoportalViewer'));
+const Home = React.lazy(() => import('./pages/Home'));
 import WeddingInvite from './pages/WeddingInvite';
 
 import OfflinePage from './components/OfflinePage';
@@ -86,6 +87,14 @@ const PublicRoute = ({ children }) => {
     if (loading) return <SplashLoading />;
 
     return isAuthenticated ? <Navigate to="/map" /> : children;
+};
+
+const HomeRoute = () => {
+    const { isAuthenticated, loading } = useAuth();
+
+    if (loading) return <SplashLoading />;
+
+    return isAuthenticated ? <Navigate to="/map" /> : <Home />;
 };
 
 function App() {
@@ -160,6 +169,7 @@ function App() {
                             <PwaInstallPrompt />
                             <OnboardingManager />
                             <Routes>
+                                <Route path="/home" element={<Home />} />
                                 <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
                                 <Route path="/map" element={<ProtectedRoute><Map /></ProtectedRoute>} />
                                 <Route path="/streets" element={<ProtectedRoute><StreetMap /></ProtectedRoute>} />
@@ -172,7 +182,7 @@ function App() {
                                 <Route path="/ar" element={<ProtectedRoute><ARView /></ProtectedRoute>} />
                                 <Route path="/ar-workspace" element={<ProtectedRoute><ARWorkspace /></ProtectedRoute>} />
                                 <Route path="/virtual-tour" element={<ProtectedRoute><VirtualTourMap /></ProtectedRoute>} />
-                                <Route path="/" element={<Navigate to="/map" />} />
+                                <Route path="/" element={<HomeRoute />} />
                                 <Route path="*" element={<OfflinePage />} />
                             </Routes>
                         </AuthProvider>
