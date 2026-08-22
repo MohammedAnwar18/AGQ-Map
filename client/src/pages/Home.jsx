@@ -135,8 +135,6 @@ export default function Home() {
 
             {/* ================= HERO SECTION WITH BORDERLESS REALISTIC 3D GLOBE ================= */}
             <section id="hero" className="hero-section">
-                <div className="hero-atmosphere-glow"></div>
-
                 <div className="hero-content-wrapper">
                     {/* Right / Hero Information Content */}
                     <div className="hero-text-col">
@@ -146,7 +144,10 @@ export default function Home() {
                         </div>
 
                         <h1 className="hero-title">
-                            <span className="title-highlight">PalNovaa</span> هي منصة تواصل اجتماعي مكاني تمكّنك من استكشاف المحتوى والأحداث بناءً على موقعك الجغرافي، ومشاركة تجاربك مع الناس القريبين منك بطريقة تفاعلية جديدة تماماً.
+                            <span className="title-brand-highlight">منصة بالنوفا</span>
+                            <span className="hero-title-main">
+                                شبكة تواصل اجتماعي مكاني تمكّنك من استكشاف المحتوى والأحداث بناءً على موقعك الجغرافي، ومشاركة تجاربك مع الناس القريبين منك بطريقة تفاعلية جديدة تماماً.
+                            </span>
                         </h1>
 
                         <div className="hero-cta-group">

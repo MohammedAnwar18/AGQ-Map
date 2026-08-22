@@ -3,7 +3,7 @@
    ========================================================= */
 
 :root {
-    --home-bg-0: #040814;
+    --home-bg-0: #020813;
     --home-bg-1: #070f26;
     --home-bg-card: rgba(11, 19, 43, 0.72);
     --home-border: rgba(251, 171, 21, 0.16);
@@ -18,11 +18,7 @@
 }
 
 .home-container {
-    background-color: var(--home-bg-0);
-    background-image: 
-        radial-gradient(120% 90% at 75% 25%, rgba(14, 56, 122, 0.22) 0%, transparent 60%),
-        radial-gradient(90% 80% at 20% 70%, rgba(251, 171, 21, 0.04) 0%, transparent 60%),
-        linear-gradient(180deg, #030712 0%, #060c20 40%, #030712 100%);
+    background-color: #020813;
     color: var(--home-ink);
     font-family: var(--font-tajawal);
     min-height: 100vh;
@@ -204,6 +200,7 @@ html {
 
 /* ================= HERO SECTION (BORDERLESS GOOGLE EARTH) ================= */
 .hero-section {
+    background-color: #020813;
     padding-top: 100px;
     min-height: 92vh;
     display: flex;
@@ -213,19 +210,8 @@ html {
     overflow: hidden;
 }
 
-
-
 .hero-atmosphere-glow {
-    position: absolute;
-    top: 50%;
-    left: 20%;
-    transform: translate(-50%, -50%);
-    width: 600px;
-    height: 600px;
-    background: radial-gradient(circle, rgba(37, 99, 235, 0.12) 0%, rgba(56, 189, 248, 0.05) 50%, transparent 75%);
-    filter: blur(80px);
-    pointer-events: none;
-    z-index: 1;
+    display: none;
 }
 
 .hero-content-wrapper {
@@ -279,21 +265,30 @@ html {
 }
 
 .hero-title {
-    font-size: clamp(24px, 2.7vw, 38px);
-    font-weight: 800;
-    line-height: 1.45;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
     margin: 0;
-    letter-spacing: -0.3px;
-    color: #ffffff;
-    max-width: 620px;
+    max-width: 640px;
 }
 
-.title-highlight {
+.title-brand-highlight {
+    font-size: clamp(34px, 3.8vw, 48px);
+    font-weight: 900;
+    line-height: 1.25;
     background: linear-gradient(135deg, #ffffff 0%, #ffd27a 35%, var(--home-amber) 70%, #ff8c00 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
     display: inline-block;
+}
+
+.hero-title-main {
+    font-size: clamp(17px, 1.8vw, 22px);
+    font-weight: 500;
+    line-height: 1.75;
+    color: #cbd5e1;
+    letter-spacing: 0;
 }
 
 .hero-description {

@@ -50,7 +50,7 @@ export default function EarthGlobe({ className = '' }) {
                 'color': 'rgb(186, 210, 235)',
                 'high-color': 'rgb(36, 92, 223)',
                 'horizon-blend': 0.04,
-                'space-color': 'rgb(4, 8, 20)',
+                'space-color': '#020813',
                 'star-intensity': 0.0
             });
 
