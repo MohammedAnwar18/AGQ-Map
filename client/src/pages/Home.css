@@ -433,6 +433,28 @@ html {
     box-shadow: none;
 }
 
+.borderless-globe-viewport .mapboxgl-map {
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+}
+
+.borderless-globe-viewport .mapboxgl-canvas {
+    outline: none !important;
+    border: none !important;
+}
+
+.borderless-globe-viewport .mapboxgl-ctrl-bottom-left,
+.borderless-globe-viewport .mapboxgl-ctrl-bottom-right {
+    opacity: 0.35;
+    transition: opacity 0.3s;
+}
+
+.borderless-globe-viewport:hover .mapboxgl-ctrl-bottom-left,
+.borderless-globe-viewport:hover .mapboxgl-ctrl-bottom-right {
+    opacity: 0.8;
+}
+
 /* 3D Pin Tooltip */
 .pin-hud-card {
     background: rgba(11, 19, 43, 0.92);
