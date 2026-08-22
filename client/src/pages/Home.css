@@ -845,30 +845,15 @@ html {
     box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6), 0 0 20px rgba(251, 171, 21, 0.15);
 }
 
-.blog-image-wrapper {
-    position: relative;
-    width: 100%;
-    height: 190px;
-    overflow: hidden;
-}
-
-.blog-thumb {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.4s ease;
-}
-
-.blog-card:hover .blog-thumb {
-    transform: scale(1.08);
+.blog-card-header {
+    padding: 16px 22px 0;
+    display: flex;
+    align-items: center;
 }
 
 .blog-category-badge {
-    position: absolute;
-    top: 14px;
-    right: 14px;
-    background: rgba(6, 10, 23, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(251, 171, 21, 0.12);
+    border: 1px solid rgba(251, 171, 21, 0.3);
     color: var(--home-amber);
     font-size: 11.5px;
     font-weight: 700;
@@ -977,32 +962,8 @@ html {
     border-color: #ef4444;
 }
 
-.article-modal-hero {
-    position: relative;
-    width: 100%;
-    height: 260px;
-}
-
-.article-modal-hero img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.article-modal-badge {
-    position: absolute;
-    bottom: 16px;
-    right: 24px;
-    background: var(--home-amber);
-    color: #060a17;
-    font-size: 12.5px;
-    font-weight: 800;
-    padding: 6px 14px;
-    border-radius: 999px;
-}
-
 .article-modal-content {
-    padding: 32px;
+    padding: 52px 32px 32px;
     display: flex;
     flex-direction: column;
     gap: 16px;

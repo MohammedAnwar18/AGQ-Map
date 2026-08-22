@@ -5,10 +5,8 @@ import './Home.css';
 
 export default function Home() {
     const navigate = useNavigate();
-    const [activeCity, setActiveCity] = useState(null);
     const [selectedArticle, setSelectedArticle] = useState(null);
     const [activeFaq, setActiveFaq] = useState(null);
-    const [liveLocationCoords, setLiveLocationCoords] = useState(null);
 
     // Blog Articles (All AR mentions removed)
     const articles = [
@@ -88,21 +86,6 @@ export default function Home() {
         }
     ];
 
-    // World Cities
-    const worldCities = [
-        { name: 'القدس', lat: 31.7683, lon: 35.2137, country: 'فلسطين' },
-        { name: 'رام الله', lat: 31.9038, lon: 35.2034, country: 'فلسطين' },
-        { name: 'غزة', lat: 31.5017, lon: 34.4668, country: 'فلسطين' },
-        { name: 'نابلس', lat: 32.2211, lon: 35.2544, country: 'فلسطين' },
-        { name: 'الخليل', lat: 31.5326, lon: 35.0998, country: 'فلسطين' },
-        { name: 'عمان', lat: 31.9454, lon: 35.9284, country: 'الأردن' },
-        { name: 'دبي', lat: 25.2048, lon: 55.2708, country: 'الإمارات' },
-        { name: 'الرياض', lat: 24.7136, lon: 46.6753, country: 'السعودية' },
-        { name: 'القاهرة', lat: 30.0444, lon: 31.2357, country: 'مصر' },
-        { name: 'بيروت', lat: 33.8938, lon: 35.5018, country: 'لبنان' },
-        { name: 'لندن', lat: 51.5074, lon: -0.1278, country: 'المملكة المتحدة' },
-        { name: 'نيويورك', lat: 40.7128, lon: -74.0060, country: 'الولايات المتحدة' }
-    ];
 
     return (
         <div className="home-container">
@@ -161,15 +144,15 @@ export default function Home() {
                     <div className="hero-text-col">
                         <div className="hero-badge">
                             <span className="badge-pulse"></span>
-                            <span>الجيل الجديد من الخرائط الاجتماعية والمكانية ثلاثية الأبعاد</span>
+                            <span>الجيل الجديد من الشبكات الاجتماعية المكانية</span>
                         </div>
 
                         <h1 className="hero-title">
-                            استكشف كوكبك، تواصل مع مدينتك، وعِش تجربة العالم <span className="title-highlight">بأبعاد ثلاثية</span>
+                            استكشف العالم، تواصل مع مجتمعك، <span className="title-highlight">وعِش كل لحظة بموقعك</span>
                         </h1>
 
                         <p className="hero-description">
-                            منصة <strong>PalNovaa</strong> تدمج الخرائط المكانية الذكية مع الجولات الافتراضية 360°، ونظم الجيوبورتال الحضرية لتقريبك من كل ما يهمك حولك بأقصى درجات الإبداع والدقة.
+                            <strong>PalNovaa</strong> هي منصة تواصل اجتماعي مكاني تمكّنك من استكشاف المحتوى والأحداث بناءً على موقعك الجغرافي، ومشاركة تجاربك مع الناس القريبين منك بطريقة تفاعلية جديدة تماماً.
                         </p>
 
                         <div className="hero-cta-group">
@@ -179,12 +162,10 @@ export default function Home() {
                             >
                                 <span className="cta-glow"></span>
                                 <span>دخول الخريطة الآن</span>
-                                <span className="icon">🚀</span>
                             </button>
 
                             <a href="#services" className="btn-cta-secondary">
                                 <span>استكشف الخدمات</span>
-                                <span className="icon">⬇</span>
                             </a>
                         </div>
 
@@ -196,7 +177,7 @@ export default function Home() {
                             </div>
                             <div className="hero-stat-divider"></div>
                             <div className="hero-stat-card">
-                                <div className="stat-value">3D WebGL</div>
+                                <div className="stat-value">WebGL</div>
                                 <div className="stat-label">محاكاة كروية دقيقة</div>
                             </div>
                             <div className="hero-stat-divider"></div>
@@ -207,42 +188,21 @@ export default function Home() {
                         </div>
                     </div>
 
-                    {/* Left / Borderless Realistic 3D Globe (Google Earth Style) */}
+                    {/* Left / Borderless Realistic Globe */}
                     <div className="hero-globe-col">
                         <div className="borderless-globe-viewport">
-                            <EarthGlobe
-                                targetCity={activeCity}
-                                onLocationFound={(loc) => setLiveLocationCoords(loc)}
-                            />
+                            <EarthGlobe />
                         </div>
                     </div>
                 </div>
 
-                {/* City Quick Flyover Bar */}
-                <div className="city-flyover-bar">
-                    <div className="flyover-title">
-                        <span>✈️ محطات التحليق السريع:</span>
-                    </div>
-                    <div className="flyover-scroll">
-                        {worldCities.map((city) => (
-                            <button
-                                key={city.name}
-                                className={`flyover-chip ${activeCity?.name === city.name ? 'active' : ''}`}
-                                onClick={() => setActiveCity(city)}
-                            >
-                                <span className="city-flag">📍</span>
-                                <span className="city-name">{city.name}</span>
-                                <span className="country-sub">{city.country}</span>
-                            </button>
-                        ))}
-                    </div>
-                </div>
+
             </section>
 
             {/* ================= SERVICES SECTION ================= */}
             <section id="services" className="section-block services-section">
                 <div className="section-header">
-                    <div className="section-tag">⚡ منظومة خدماتنا المتكاملة</div>
+                    <div className="section-tag">منظومة خدماتنا المتكاملة</div>
                     <h2 className="section-title">حلول مبتكرة مصممة لربط الإنسان بالمكان</h2>
                     <p className="section-subtitle">
                         نقدم باقة فريدة من الأدوات المتقدمة التي تدمج التفاعل الاجتماعي بالموقع الجغرافي واستكشاف المدن.
@@ -376,7 +336,7 @@ export default function Home() {
             <section id="features" className="section-block features-section">
                 <div className="features-container-card">
                     <div className="features-content">
-                        <div className="section-tag">🌟 لماذا تختار PalNovaa؟</div>
+                        <div className="section-tag">لماذا تختار PalNovaa؟</div>
                         <h2 className="features-main-title">سرعة فائقة، أمان متين، وتجربة ثلاثية الأبعاد سلسة</h2>
                         <p className="features-lead">
                             بنيت منصة بالنوفا بأحدث المعايير البرمجية لتقديم أداء سريع وخفيف على متصفح الحاسوب والهاتف دون الحاجة لتثبيت برامج ثقيلة.
@@ -429,7 +389,7 @@ export default function Home() {
             {/* ================= BLOG & ARTICLES SECTION ================= */}
             <section id="blog" className="section-block blog-section">
                 <div className="section-header">
-                    <div className="section-tag">📰 المدونة والمقالات</div>
+                    <div className="section-tag">المدونة والمقالات</div>
                     <h2 className="section-title">أحدث الأفكار، الرؤى، والتطورات المكانية</h2>
                     <p className="section-subtitle">
                         اكتشف مقالات متخصصة حول تكنولوجيا الخرائط المكانية، استكشاف المدن، ومستقبل التخطيط الجغرافي.
@@ -443,14 +403,13 @@ export default function Home() {
                             className="blog-card"
                             onClick={() => setSelectedArticle(article)}
                         >
-                            <div className="blog-image-wrapper">
-                                <img src={article.image} alt={article.title} className="blog-thumb" loading="lazy" />
+                            <div className="blog-card-header">
                                 <span className="blog-category-badge">{article.category}</span>
                             </div>
                             <div className="blog-body">
                                 <div className="blog-meta">
-                                    <span>📅 {article.date}</span>
-                                    <span>⏱️ {article.readTime}</span>
+                                    <span>{article.date}</span>
+                                    <span>{article.readTime}</span>
                                 </div>
                                 <h3 className="blog-card-title">{article.title}</h3>
                                 <p className="blog-card-excerpt">{article.excerpt}</p>
@@ -469,14 +428,11 @@ export default function Home() {
                 <div className="article-modal-overlay" onClick={() => setSelectedArticle(null)}>
                     <div className="article-modal-card" onClick={(e) => e.stopPropagation()}>
                         <button className="article-modal-close" onClick={() => setSelectedArticle(null)}>✕</button>
-                        <div className="article-modal-hero">
-                            <img src={selectedArticle.image} alt={selectedArticle.title} />
-                            <div className="article-modal-badge">{selectedArticle.category}</div>
-                        </div>
                         <div className="article-modal-content">
                             <div className="article-modal-meta">
-                                <span>📅 {selectedArticle.date}</span>
-                                <span>⏱️ وقت القراءة: {selectedArticle.readTime}</span>
+                                <span className="blog-category-badge">{selectedArticle.category}</span>
+                                <span>{selectedArticle.date}</span>
+                                <span>وقت القراءة: {selectedArticle.readTime}</span>
                             </div>
                             <h2 className="article-modal-title">{selectedArticle.title}</h2>
                             <div className="article-modal-text">
@@ -487,7 +443,6 @@ export default function Home() {
                             <div className="article-modal-footer">
                                 <button className="btn-article-share" onClick={() => navigate('/login')}>
                                     <span>شارك على PalNovaa</span>
-                                    <span>🚀</span>
                                 </button>
                                 <button className="btn-article-close-secondary" onClick={() => setSelectedArticle(null)}>
                                     إغلاق
@@ -501,7 +456,7 @@ export default function Home() {
             {/* ================= FAQ SECTION ================= */}
             <section id="faq" className="section-block faq-section">
                 <div className="section-header">
-                    <div className="section-tag">❓ مركز المساعدة</div>
+                    <div className="section-tag">مركز المساعدة</div>
                     <h2 className="section-title">الأسئلة الشائعة</h2>
                     <p className="section-subtitle">إجابات سريعة وواضحة على أكثر الأسئلة تكراراً حول المنصة</p>
                 </div>
