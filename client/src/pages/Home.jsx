@@ -10,11 +10,11 @@ export default function Home() {
     const [activeFaq, setActiveFaq] = useState(null);
     const [liveLocationCoords, setLiveLocationCoords] = useState(null);
 
-    // Blog Articles Data
+    // Blog Articles (All AR mentions removed)
     const articles = [
         {
             id: 1,
-            title: 'مستقبل الخرائط الاجتماعية المكانية: كيف تدمج PalNovaa الواقع بالمكان؟',
+            title: 'مستقبل الخرائط الاجتماعية المكانية: كيف تدمج PalNovaa المكان بالواقع الرقمي؟',
             category: 'تقنية وابتكار',
             date: '2025-05-10',
             readTime: '4 دقائق',
@@ -22,21 +22,21 @@ export default function Home() {
             excerpt: 'استكشف كيف تعمل تكنولوجيا الخرائط المكانية ثلاثية الأبعاد على تحويل تجربة التواصل الاجتماعي وتوثيق اللحظات الجغرافية.',
             content: `في عصرنا الرقمي الحالي، لم تعد الخرائط مجرد خطوط وطرق للتنقل فقط، بل أصبحت وسيطاً حيوياً يجمع الناس ويعيد تعريف كيفية تفاعلنا مع محيطنا.
 
-تقدم منصة PalNovaa مفهوماً ثورياً وهو "الشبكة الاجتماعية المكانية" (Spatial Social Network)، حيث يرتبط كل منشور، تفاعل، أو نشاط بإحداثيات حقيقية ومعالم ثلاثية الأبعاد. 
+تقدم منصة PalNovaa مفهوماً ثورياً وهو "الشبكة الاجتماعية المكانية" (Spatial Social Network)، حيث يرتبط كل منشور، تفاعل، أو نشاط بإحداثيات حقيقية ومعالم ثلاثية الأبعاد على كوكب الأرض.
 
-من خلال الجمع بين محركات الرندرة ثلاثية الأبعاد (WebGL) ونظم المعلومات الجغرافية، تتيح المنصة للمستخدمين اكتشاف ما يدور حولهم لحظياً، بدءاً من المناسبات المجتمعية والأنشطة الطلابية وحتى العروض التجارية المحلية.`
+من خلال الجمع بين محركات الرندرة الجغرافية ونظم المعلومات المكانية، تتيح المنصة للمستخدمين اكتشاف ما يدور حولهم لحظياً، بدءاً من المناسبات المجتمعية والأنشطة الطلابية وحتى العروض التجارية والخدمات المحلية.`
         },
         {
             id: 2,
-            title: 'الواقع المعزز (AR) في استكشاف المدن والتسوق المكاني الذكي',
-            category: 'الواقع المعزز',
+            title: 'استكشاف المدن والتسوق المكاني الذكي عبر الخرائط التفاعلية',
+            category: 'استكشاف المدن',
             date: '2025-05-02',
             readTime: '3 دقائق',
-            image: 'https://images.unsplash.com/photo-1633493106115-026046e11423?auto=format&fit=crop&w=800&q=80',
-            excerpt: 'كيف تتيح لك كاميرا هاتفك رؤية أسماء المتاجر، المعالم التاريخية، والعروض المخفية في شوارع مدينتك بالواقع المعزز.',
-            content: `تخيل أن تسير في شارع رئيسي، وبمجرد رفع كاميرا هاتفك تظهر أمامك أسماء المباني، قوائم الطعام للمطاعم المحيطة، والمقاعد الشاغرة في مقاهيك المفضلة مع مسار بصري ثلاثي الأبعاد يقودك خطوة بخطوة.
+            image: 'https://images.unsplash.com/photo-1577083552431-6e5fd01aa342?auto=format&fit=crop&w=800&q=80',
+            excerpt: 'كيف تتيح لك خرائط PalNovaa الذكية استكشاف الشوارع والمتاجر، المعالم التاريخية، والأنشطة الحية في مدينتك.',
+            content: `تخيل أن تستكشف مدينتك بنقرة واحدة، لتشاهد فوراً أدق تفاصيل الشوارع، قوائم الخدمات للمتاجر المحيطة، والمقاعد الشاغرة في مقاهيك ومطاعمك المفضلة مع مسار ملاحة ذكي يقودك خطوة بخطوة.
 
-هذا هو صميم تقنية AR Workspace في PalNovaa. باستخدام تقنيات الرؤية الحاسوبية وتحديد الموقع فائق الدقة، ندمج الواقع الملموس مع العالم الرقمي لتقديم تجربة استكشاف غامرة وسلسة.`
+هذا هو صميم تجربة الاستكشاف المكاني في PalNovaa. باستخدام تقنيات الملاحة وتحديد الموقع فائق الدقة، ندمج حركة المدينة الحية مع العالم الرقمي لتقديم تجربة استكشاف غامرة وسلسة.`
         },
         {
             id: 3,
@@ -64,19 +64,19 @@ export default function Home() {
         }
     ];
 
-    // FAQ Data
+    // FAQ Data (Clean of AR)
     const faqs = [
         {
             q: 'ما هي منصة PalNovaa وكيف تفيدني؟',
-            a: 'PalNovaa هي أول شبكة اجتماعية مكانية متكاملة تجمع بين الخرائط الذكية ثلاثية الأبعاد، الواقع المعزز (AR)، الجولات الافتراضية، والخدمات المجتمعية والبلدية لتمنحك وسيلة عصرية للتواصل واكتشاف كل ما يحيط بك.'
+            a: 'PalNovaa هي شبكة اجتماعية مكانية متكاملة تجمع بين الخرائط الذكية ثلاثية الأبعاد، الجولات الافتراضية 360°، والخدمات المجتمعية والبلدية لتمنحك وسيلة عصرية للتواصل واكتشاف كل ما يحيط بك.'
         },
         {
             q: 'كيف يمكنني تسجيل الدخول أو إنشاء حساب؟',
-            a: 'يمكنك النقر على زر "تسجيل الدخول" في أعلى الصفحة للانتقال فوراً لصفحة تسجيل الدخول، حيث يمكنك الدخول بحسابك أو استخدام حساب Google بضغطة زر واحدة مجاناً.'
+            a: 'يمكنك النقر على زر "تسجيل الدخول" في أعلى الصفحة للانتقال فوراً لصفحة تسجيل الدخول في نفس التبويب، حيث يمكنك الدخول بحسابك أو استخدام حساب Google بضغطة زر واحدة مجاناً.'
         },
         {
             q: 'هل يتطلب استخدام الكرة الأرضية ثلاثية الأبعاد تحميل أي برامج؟',
-            a: 'لا، تعمل الكرة الأرضية وكافة تقنيات PalNovaa مباشرة على متصفح جهازك (حاسوب أو هاتف) وبأعلى سرعة وسلاسة بفضل تقنية WebGL الحديثة.'
+            a: 'لا، تعمل محاكاة الكرة الأرضية وكافة تقنيات PalNovaa مباشرة على متصفح جهازك (حاسوب أو هاتف) وبأعلى سرعة وسلاسة بفضل تقنية WebGL الحديثة.'
         },
         {
             q: 'كيف تحافظ المنصة على خصوصية موقعي؟',
@@ -88,7 +88,7 @@ export default function Home() {
         }
     ];
 
-    // City Quick Jumps
+    // World Cities
     const worldCities = [
         { name: 'القدس', lat: 31.7683, lon: 35.2137, country: 'فلسطين' },
         { name: 'رام الله', lat: 31.9038, lon: 35.2034, country: 'فلسطين' },
@@ -109,7 +109,6 @@ export default function Home() {
             {/* ================= TOP NAVIGATION BAR ================= */}
             <header className="home-header">
                 <div className="header-inner">
-                    {/* Brand Logo */}
                     <div className="home-brand" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
                         <div className="brand-icon-box">
                             <svg viewBox="0 0 64 80" fill="none" xmlns="http://www.w3.org/2000/svg" className="brand-pin-svg">
@@ -123,7 +122,6 @@ export default function Home() {
                         </div>
                     </div>
 
-                    {/* Navigation Links */}
                     <nav className="home-nav-links">
                         <a href="#hero" className="nav-link active">الرئيسية</a>
                         <a href="#services" className="nav-link">الخدمات</a>
@@ -132,7 +130,6 @@ export default function Home() {
                         <a href="#faq" className="nav-link">الأسئلة الشائعة</a>
                     </nav>
 
-                    {/* Header Action Buttons */}
                     <div className="header-actions">
                         <button
                             className="btn-header-login"
@@ -153,17 +150,18 @@ export default function Home() {
                 </div>
             </header>
 
-            {/* ================= HERO SECTION WITH 3D GLOBE ================= */}
+            {/* ================= HERO SECTION WITH BORDERLESS REALISTIC 3D GLOBE ================= */}
             <section id="hero" className="hero-section">
-                <div className="hero-grid-ambient"></div>
-                <div className="hero-glow-ambient"></div>
+                {/* Background Space Ambient */}
+                <div className="hero-space-stars"></div>
+                <div className="hero-atmosphere-glow"></div>
 
                 <div className="hero-content-wrapper">
-                    {/* Right / Text Hero Content */}
+                    {/* Right / Hero Information Content */}
                     <div className="hero-text-col">
                         <div className="hero-badge">
                             <span className="badge-pulse"></span>
-                            <span>الجيل الجديد من الخرائط الاجتماعية المكانية ثلاثية الأبعاد</span>
+                            <span>الجيل الجديد من الخرائط الاجتماعية والمكانية ثلاثية الأبعاد</span>
                         </div>
 
                         <h1 className="hero-title">
@@ -171,7 +169,7 @@ export default function Home() {
                         </h1>
 
                         <p className="hero-description">
-                            منصة <strong>PalNovaa</strong> تدمج الخرائط المكانية الذكية مع الواقع المعزز (AR)، الجولات الافتراضية 360، ونظم الجيوبورتال الحضرية لتقريبك من كل ما يهمك حولك بأقصى درجات الإبداع والدقة.
+                            منصة <strong>PalNovaa</strong> تدمج الخرائط المكانية الذكية مع الجولات الافتراضية 360°، ونظم الجيوبورتال الحضرية لتقريبك من كل ما يهمك حولك بأقصى درجات الإبداع والدقة.
                         </p>
 
                         <div className="hero-cta-group">
@@ -190,7 +188,7 @@ export default function Home() {
                             </a>
                         </div>
 
-                        {/* Quick Live Stats in Hero */}
+                        {/* Quick Metrics */}
                         <div className="hero-stats-row">
                             <div className="hero-stat-card">
                                 <div className="stat-value">+50K</div>
@@ -198,8 +196,8 @@ export default function Home() {
                             </div>
                             <div className="hero-stat-divider"></div>
                             <div className="hero-stat-card">
-                                <div className="stat-value">3D &amp; AR</div>
-                                <div className="stat-label">واقع معزز فوري</div>
+                                <div className="stat-value">3D WebGL</div>
+                                <div className="stat-label">محاكاة كروية دقيقة</div>
                             </div>
                             <div className="hero-stat-divider"></div>
                             <div className="hero-stat-card">
@@ -209,42 +207,13 @@ export default function Home() {
                         </div>
                     </div>
 
-                    {/* Left / 3D Globe Interactive Visualization */}
+                    {/* Left / Borderless Realistic 3D Globe (Google Earth Style) */}
                     <div className="hero-globe-col">
-                        <div className="globe-card-container">
-                            <div className="globe-header-hud">
-                                <div className="hud-title-wrap">
-                                    <span className="globe-status-dot"></span>
-                                    <span className="globe-hud-text">محاكاة الكرة الأرضية الحية (Live 3D Globe)</span>
-                                </div>
-                                <div className="globe-hud-tip">💡 اسحب للتمرير والتدوير ثلاثي الأبعاد</div>
-                            </div>
-
-                            {/* 3D Earth Component */}
-                            <div className="globe-canvas-wrapper">
-                                <EarthGlobe
-                                    targetCity={activeCity}
-                                    onLocationFound={(loc) => setLiveLocationCoords(loc)}
-                                />
-                            </div>
-
-                            {/* Live Coordinates Footer Ribbon */}
-                            <div className="globe-footer-hud">
-                                <div className="hud-metric">
-                                    <span className="label">الحالة:</span>
-                                    <span className="val success">متصل بالرادار</span>
-                                </div>
-                                <div className="hud-metric">
-                                    <span className="label">الوضع:</span>
-                                    <span className="val">WebGL 3D Accelerated</span>
-                                </div>
-                                {liveLocationCoords && (
-                                    <div className="hud-metric">
-                                        <span className="label">إحداثياتك:</span>
-                                        <span className="val highlight">{liveLocationCoords.lat}°, {liveLocationCoords.lon}°</span>
-                                    </div>
-                                )}
-                            </div>
+                        <div className="borderless-globe-viewport">
+                            <EarthGlobe
+                                targetCity={activeCity}
+                                onLocationFound={(loc) => setLiveLocationCoords(loc)}
+                            />
                         </div>
                     </div>
                 </div>
@@ -276,7 +245,7 @@ export default function Home() {
                     <div className="section-tag">⚡ منظومة خدماتنا المتكاملة</div>
                     <h2 className="section-title">حلول مبتكرة مصممة لربط الإنسان بالمكان</h2>
                     <p className="section-subtitle">
-                        نقدم باقة فريدة من الأدوات المتقدمة التي تدمج التفاعل الاجتماعي بالموقع الجغرافي والواقع المعزز.
+                        نقدم باقة فريدة من الأدوات المتقدمة التي تدمج التفاعل الاجتماعي بالموقع الجغرافي واستكشاف المدن.
                     </p>
                 </div>
 
@@ -291,7 +260,7 @@ export default function Home() {
                             شبكة اجتماعية تفاعلية ترتبط بالواقع. استكشف منشورات الأصدقاء، قصص الأماكن، والفعاليات القريبة منك على خريطة حية لحظة بلحظة.
                         </p>
                         <div className="service-features-list">
-                            <span>✓ نشر قصص مكانية (Spatial Reels)</span>
+                            <span>✓ نشر قصص مكانية (Spatial Stories)</span>
                             <span>✓ غرف محادثة جغرافية حية</span>
                             <span>✓ اكتشاف الأصدقاء والمجتمعات</span>
                         </div>
@@ -304,19 +273,19 @@ export default function Home() {
                     {/* Service 2 */}
                     <div className="service-card" onClick={() => navigate('/login')}>
                         <div className="service-icon-wrap cyan-glow">
-                            <span className="service-icon">👓</span>
+                            <span className="service-icon">🧭</span>
                         </div>
-                        <h3 className="service-title">الواقع المعزز الذكي (AR View)</h3>
+                        <h3 className="service-title">استكشاف الشوارع والأماكن الحية</h3>
                         <p className="service-desc">
-                            وجه كاميرا هاتفك نحو أي شارع أو معلم لتشاهد فوراً طبقات الواقع المعزز ثلاثية الأبعاد، إرشادات الملاحة، ومعلومات المتاجر المحيطة.
+                            تصفح معالم المدن والشوارع التفاعلية، وتعرف على الأماكن المجاورة والأنشطة والمسارات الذكية بدقة وسهولة فائقة.
                         </p>
                         <div className="service-features-list">
-                            <span>✓ رصد المعالم بالكاميرا الحية</span>
-                            <span>✓ أسهم وتوجيهات ثلاثية الأبعاد</span>
-                            <span>✓ فحص المنتجات والعروض القريبة</span>
+                            <span>✓ استكشاف تفاعلي للشوارع</span>
+                            <span>✓ معلومات المعالم والأنشطة</span>
+                            <span>✓ ملاحة مكانية ذكية</span>
                         </div>
                         <div className="service-action-link">
-                            <span>استكشف الواقع المعزز</span>
+                            <span>استكشف الشوارع</span>
                             <span className="arrow">←</span>
                         </div>
                     </div>
@@ -328,12 +297,12 @@ export default function Home() {
                         </div>
                         <h3 className="service-title">الجولات الافتراضية 360°</h3>
                         <p className="service-desc">
-                            تجول داخل الجامعات، المعالم التاريخية، المنشآت السياحية، وقاعات المناسبات بدقة بانورامية فائقة مع نقاط تفاعلية غنية.
+                            تجول داخل الجامعات، المعالم التاريخية، المنشآت السياحية، وقاعات المناسبات بدقة بانورامية كروية فائقة مع نقاط تفاعلية غنية.
                         </p>
                         <div className="service-features-list">
                             <span>✓ صور بانورامية كروية عالية الجودة</span>
                             <span>✓ نقاط توجيه ذكية داخل المنشآت</span>
-                            <span>✓ دعم التصفح عبر النظارات والشاشات</span>
+                            <span>✓ تجربة غامرة على شاشتك</span>
                         </div>
                         <div className="service-action-link">
                             <span>ابدأ الجولة الافتراضية</span>
@@ -371,7 +340,7 @@ export default function Home() {
                             صمم وشارك دعوات رقمية فاخرة للأعراس والتخرج مع مسار ملاحة دقيق، تأكيد حضور إلكتروني (RSVP)، وسجل تهاني تفاعلي.
                         </p>
                         <div className="service-features-list">
-                            <span>✓ تصاميم تفاعلية بمؤثرات سينمائية</span>
+                            <span>✓ تصاميم تفاعلية بمؤثرات أنيقة</span>
                             <span>✓ ربط مباشر بمسارات الوصول</span>
                             <span>✓ جدار أمنيات وتهاني المدعوين</span>
                         </div>
@@ -391,7 +360,7 @@ export default function Home() {
                             منظومة شاملة للمتاجر والمطاعم والخدمات تمكن أصحاب الأعمال من الترويج لمنتجاتهم والوصول للزبائن في نطاقهم الجغرافي.
                         </p>
                         <div className="service-features-list">
-                            <span>✓ صفحات ومتاجر إلكترونية مصغرة</span>
+                            <span>✓ صفحات ومتاجر مصغرة معتمدة</span>
                             <span>✓ عروض وخصومات جغرافية حية</span>
                             <span>✓ تقييمات موثقة من زوار المكان</span>
                         </div>
@@ -410,7 +379,7 @@ export default function Home() {
                         <div className="section-tag">🌟 لماذا تختار PalNovaa؟</div>
                         <h2 className="features-main-title">سرعة فائقة، أمان متين، وتجربة ثلاثية الأبعاد سلسة</h2>
                         <p className="features-lead">
-                            بنيت منصة بالنوفا بأحدث المعايير البرمجية لتقديم أداء سريع وخفيف على متصفح الحاسوب دون الحاجة لتثبيت برامج ثقيلة.
+                            بنيت منصة بالنوفا بأحدث المعايير البرمجية لتقديم أداء سريع وخفيف على متصفح الحاسوب والهاتف دون الحاجة لتثبيت برامج ثقيلة.
                         </p>
 
                         <div className="feature-bullets-grid">
@@ -463,7 +432,7 @@ export default function Home() {
                     <div className="section-tag">📰 المدونة والمقالات</div>
                     <h2 className="section-title">أحدث الأفكار، الرؤى، والتطورات المكانية</h2>
                     <p className="section-subtitle">
-                        اكتشف مقالات متخصصة حول تكنولوجيا الخرائط، الواقع المعزز، ومستقبل المدن الذكية.
+                        اكتشف مقالات متخصصة حول تكنولوجيا الخرائط المكانية، استكشاف المدن، ومستقبل التخطيط الجغرافي.
                     </p>
                 </div>
 
@@ -594,7 +563,7 @@ export default function Home() {
                                 <span className="brand-title">PalNovaa</span>
                             </div>
                             <p className="footer-desc">
-                                شبكة اجتماعية مكانية ذكية تجمع بين الخرائط ثلاثية الأبعاد، الواقع المعزز، والجولات الافتراضية لتقريبك من مجتمعك.
+                                شبكة اجتماعية مكانية ذكية تجمع بين الخرائط ثلاثية الأبعاد، الجولات الافتراضية، ونظم الجيوبورتال لتقريبك من مجتمعك.
                             </p>
                             <div className="footer-credits-badge">
                                 <span>Built with passion by <strong>Mohammed Housheya</strong> &amp; <strong>Momen Kalefh</strong></span>
@@ -614,8 +583,8 @@ export default function Home() {
                         <div className="footer-links-col">
                             <h4>الخدمات والحلول</h4>
                             <ul>
-                                <li><span onClick={() => navigate('/login')}>الخريطة الاجتماعية</span></li>
-                                <li><span onClick={() => navigate('/login')}>الواقع المعزز (AR)</span></li>
+                                <li><span onClick={() => navigate('/login')}>الخريطة المكانية</span></li>
+                                <li><span onClick={() => navigate('/login')}>استكشاف الشوارع</span></li>
                                 <li><span onClick={() => navigate('/login')}>الجولات الافتراضية</span></li>
                                 <li><span onClick={() => navigate('/login')}>الجيوبورتال الحضري</span></li>
                             </ul>

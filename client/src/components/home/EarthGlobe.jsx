@@ -11,41 +11,27 @@ export const latLongToVector3 = (lat, lon, radius) => {
     return new THREE.Vector3(x, y, z);
 };
 
-// Generate high-resolution procedural Earth texture with continents and night city lights
-const createProceduralEarthTexture = () => {
+// Create Realistic Fallback Satellite Earth Texture
+const createRealisticEarthTexture = () => {
     const canvas = document.createElement('canvas');
     canvas.width = 2048;
     canvas.height = 1024;
     const ctx = canvas.getContext('2d');
 
-    // Deep ocean gradient
+    // Deep realistic ocean blue gradient
     const oceanGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    oceanGrad.addColorStop(0, '#060d1f');
-    oceanGrad.addColorStop(0.5, '#0b1938');
-    oceanGrad.addColorStop(1, '#060d1f');
+    oceanGrad.addColorStop(0, '#0c2340');
+    oceanGrad.addColorStop(0.3, '#103761');
+    oceanGrad.addColorStop(0.5, '#17487c');
+    oceanGrad.addColorStop(0.7, '#103761');
+    oceanGrad.addColorStop(1, '#0c2340');
     ctx.fillStyle = oceanGrad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw latitude / longitude tactical grid
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.08)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x < canvas.width; x += 64) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-        ctx.stroke();
-    }
-    for (let y = 0; y < canvas.height; y += 64) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
-    }
-
-    // Draw stylized landmass polygons for Earth continents
     const toCanvasX = (lon) => ((lon + 180) / 360) * canvas.width;
     const toCanvasY = (lat) => ((90 - lat) / 180) * canvas.height;
 
+    // Realistic terrain landmass polygons
     const continents = [
         // Africa & Middle East
         [
@@ -84,7 +70,6 @@ const createProceduralEarthTexture = () => {
         ]
     ];
 
-    // Render Landmasses with glowing futuristic borders and terrain gradient
     continents.forEach((poly) => {
         ctx.beginPath();
         poly.forEach(([lon, lat], idx) => {
@@ -95,54 +80,41 @@ const createProceduralEarthTexture = () => {
         });
         ctx.closePath();
 
-        // Land fill
-        ctx.fillStyle = '#172e54';
+        // Natural terrain colors (Green vegetation, golden sand deserts, mountain browns)
+        const landGrad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        landGrad.addColorStop(0, '#2e5a36');
+        landGrad.addColorStop(0.35, '#8c764b');
+        landGrad.addColorStop(0.65, '#5c7846');
+        landGrad.addColorStop(1, '#2c4b31');
+        ctx.fillStyle = landGrad;
         ctx.fill();
 
-        // Land border glow
-        ctx.strokeStyle = '#38bdf8';
-        ctx.lineWidth = 2.5;
-        ctx.shadowColor = '#0284c7';
-        ctx.shadowBlur = 10;
+        // Realistic coastal shallow water shelf
+        ctx.strokeStyle = 'rgba(78, 178, 220, 0.45)';
+        ctx.lineWidth = 3;
         ctx.stroke();
-        ctx.shadowBlur = 0;
     });
 
-    // Draw Golden & Cyan City Lights (Dense clusters across world cities)
-    const cityClusters = [
-        // Palestine & Levant (Dense golden hub)
-        { lon: 35.2, lat: 31.9, count: 40, color: '#fbab15', rad: 3.5 },
-        { lon: 34.4, lat: 31.5, count: 25, color: '#ffd27a', rad: 2.5 },
-        { lon: 35.9, lat: 31.9, count: 30, color: '#fbab15', rad: 3.0 },
-        { lon: 35.5, lat: 33.8, count: 25, color: '#fbab15', rad: 2.5 },
-        // Gulf & Middle East
-        { lon: 55.3, lat: 25.2, count: 35, color: '#fbab15', rad: 3.0 },
-        { lon: 46.7, lat: 24.7, count: 30, color: '#fbab15', rad: 3.0 },
-        { lon: 31.2, lat: 30.0, count: 45, color: '#ffd27a', rad: 3.5 },
-        { lon: 51.5, lat: 25.3, count: 25, color: '#fbab15', rad: 2.5 },
-        // Europe & UK
-        { lon: -0.1, lat: 51.5, count: 35, color: '#38bdf8', rad: 2.5 },
-        { lon: 2.3, lat: 48.8, count: 35, color: '#38bdf8', rad: 2.5 },
-        { lon: 13.4, lat: 52.5, count: 25, color: '#38bdf8', rad: 2.0 },
-        { lon: 12.5, lat: 41.9, count: 25, color: '#ffd27a', rad: 2.0 },
-        { lon: 37.6, lat: 55.7, count: 30, color: '#38bdf8', rad: 2.0 },
-        // North America
-        { lon: -74.0, lat: 40.7, count: 45, color: '#38bdf8', rad: 3.0 },
-        { lon: -118.2, lat: 34.0, count: 35, color: '#ffd27a', rad: 2.8 },
-        { lon: -87.6, lat: 41.8, count: 30, color: '#38bdf8', rad: 2.5 },
-        // Asia
-        { lon: 139.7, lat: 35.6, count: 45, color: '#38bdf8', rad: 3.0 },
-        { lon: 121.5, lat: 31.2, count: 40, color: '#ffd27a', rad: 2.8 },
-        { lon: 103.8, lat: 1.3, count: 30, color: '#fbab15', rad: 2.5 },
-        { lon: 77.2, lat: 28.6, count: 35, color: '#ffd27a', rad: 2.5 }
+    // Realistic night city cluster glows
+    const cityLights = [
+        { lon: 35.2, lat: 31.9, count: 50, color: '#ffeaad', rad: 3.5 },
+        { lon: 34.4, lat: 31.5, count: 30, color: '#ffeaad', rad: 2.8 },
+        { lon: 35.9, lat: 31.9, count: 35, color: '#ffeaad', rad: 3.0 },
+        { lon: 55.3, lat: 25.2, count: 40, color: '#ffd27a', rad: 3.2 },
+        { lon: 46.7, lat: 24.7, count: 35, color: '#ffd27a', rad: 3.0 },
+        { lon: 31.2, lat: 30.0, count: 55, color: '#ffd27a', rad: 3.5 },
+        { lon: -0.1, lat: 51.5, count: 45, color: '#ffe699', rad: 2.8 },
+        { lon: 2.3, lat: 48.8, count: 45, color: '#ffe699', rad: 2.8 },
+        { lon: -74.0, lat: 40.7, count: 50, color: '#ffe699', rad: 3.2 },
+        { lon: 139.7, lat: 35.6, count: 50, color: '#ffe699', rad: 3.2 }
     ];
 
-    cityClusters.forEach((cluster) => {
+    cityLights.forEach((cluster) => {
         const cx = toCanvasX(cluster.lon);
         const cy = toCanvasY(cluster.lat);
 
         for (let i = 0; i < cluster.count; i++) {
-            const offsetDist = Math.random() * (cluster.count > 30 ? 24 : 14);
+            const offsetDist = Math.random() * 20;
             const angle = Math.random() * Math.PI * 2;
             const px = cx + Math.cos(angle) * offsetDist;
             const py = cy + Math.sin(angle) * offsetDist;
@@ -152,7 +124,7 @@ const createProceduralEarthTexture = () => {
             ctx.arc(px, py, size, 0, Math.PI * 2);
             ctx.fillStyle = cluster.color;
             ctx.shadowColor = cluster.color;
-            ctx.shadowBlur = size * 4;
+            ctx.shadowBlur = size * 3;
             ctx.fill();
         }
     });
@@ -163,8 +135,8 @@ const createProceduralEarthTexture = () => {
     return texture;
 };
 
-// Generate Clouds Layer
-const createProceduralCloudTexture = () => {
+// Procedural Realistic Cloud Texture
+const createRealisticCloudTexture = () => {
     const canvas = document.createElement('canvas');
     canvas.width = 1024;
     canvas.height = 512;
@@ -173,13 +145,13 @@ const createProceduralCloudTexture = () => {
     ctx.fillStyle = 'rgba(0,0,0,0)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    for (let i = 0; i < 160; i++) {
+    for (let i = 0; i < 220; i++) {
         const x = Math.random() * canvas.width;
         const y = Math.random() * canvas.height;
-        const r = Math.random() * 45 + 15;
+        const r = Math.random() * 55 + 20;
         const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
-        grad.addColorStop(0, 'rgba(255, 255, 255, 0.25)');
-        grad.addColorStop(0.5, 'rgba(255, 255, 255, 0.12)');
+        grad.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+        grad.addColorStop(0.4, 'rgba(255, 255, 255, 0.2)');
         grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
         ctx.fillStyle = grad;
         ctx.beginPath();
@@ -207,38 +179,35 @@ export default function EarthGlobe({
     const rendererRef = useRef(null);
     const animFrameRef = useRef(null);
 
-    // State for interactive tooltip position
     const [pinScreenPos, setPinScreenPos] = useState({ x: 0, y: 0, visible: false });
     const [locationInfo, setLocationInfo] = useState({
         name: 'جاري تحديد موقعك...',
-        lat: 31.95,
-        lon: 35.23,
+        lat: 31.90,
+        lon: 35.20,
         accuracy: null
     });
     const [isLocating, setIsLocating] = useState(false);
     const [userInteracting, setUserInteracting] = useState(false);
 
-    // Target angles and zoom
-    const targetRotationRef = useRef({ x: 0.2, y: 0 });
-    const currentRotationRef = useRef({ x: 0.2, y: 0 });
-    const targetCameraDistRef = useRef(230);
-    const currentCameraDistRef = useRef(230);
+    const targetRotationRef = useRef({ x: 0.25, y: -0.5 });
+    const currentRotationRef = useRef({ x: 0.25, y: -0.5 });
+    const targetCameraDistRef = useRef(240);
+    const currentCameraDistRef = useRef(240);
     const isFocusedRef = useRef(false);
 
-    // Track active pinpoint
-    const activeCoordsRef = useRef({ lat: 31.95, lon: 35.23 });
+    const activeCoordsRef = useRef({ lat: 31.90, lon: 35.20 });
 
-    // Fly camera smoothly to target lat/lon
-    const flyToCoordinates = useCallback((lat, lon, zoomDist = 145) => {
+    // Fly camera smoothly to target lat/lon (like Google Earth)
+    const flyToCoordinates = useCallback((lat, lon, zoomDist = 148) => {
         isFocusedRef.current = true;
         const targetRotY = -((lon + 180) * (Math.PI / 180)) + Math.PI / 2;
-        const targetRotX = (lat * (Math.PI / 180)) * 0.7;
+        const targetRotX = (lat * (Math.PI / 180)) * 0.75;
 
         targetRotationRef.current = { x: targetRotX, y: targetRotY };
         targetCameraDistRef.current = zoomDist;
 
         if (pinGroupRef.current) {
-            const GLOBE_RADIUS = 85;
+            const GLOBE_RADIUS = 90;
             const pinPos = latLongToVector3(lat, lon, GLOBE_RADIUS);
             pinGroupRef.current.position.copy(pinPos);
 
@@ -248,7 +217,6 @@ export default function EarthGlobe({
         }
     }, []);
 
-    // Request user location with high accuracy
     const requestLocation = useCallback(() => {
         setIsLocating(true);
         if ('geolocation' in navigator) {
@@ -268,7 +236,7 @@ export default function EarthGlobe({
                     setIsLocating(false);
                     if (onLocationFound) onLocationFound({ lat, lon, accuracy: acc });
 
-                    flyToCoordinates(lat, lon, 140);
+                    flyToCoordinates(lat, lon, 142);
                 },
                 (err) => {
                     console.warn('Geolocation fallback to Palestine:', err.message);
@@ -282,7 +250,7 @@ export default function EarthGlobe({
                         accuracy: 25
                     });
                     setIsLocating(false);
-                    flyToCoordinates(lat, lon, 145);
+                    flyToCoordinates(lat, lon, 148);
                 },
                 { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
             );
@@ -291,7 +259,6 @@ export default function EarthGlobe({
         }
     }, [onLocationFound, flyToCoordinates]);
 
-    // Watch targetCity changes
     useEffect(() => {
         if (targetCity && targetCity.lat && targetCity.lon) {
             activeCoordsRef.current = { lat: targetCity.lat, lon: targetCity.lon };
@@ -301,11 +268,11 @@ export default function EarthGlobe({
                 lon: targetCity.lon,
                 accuracy: targetCity.accuracy || 15
             });
-            flyToCoordinates(targetCity.lat, targetCity.lon, 145);
+            flyToCoordinates(targetCity.lat, targetCity.lon, 148);
         }
     }, [targetCity, flyToCoordinates]);
 
-    // Initialize 3D Scene
+    // Build 3D Scene
     useEffect(() => {
         const container = mountRef.current;
         if (!container) return;
@@ -313,48 +280,41 @@ export default function EarthGlobe({
         const width = container.clientWidth || window.innerWidth;
         const height = container.clientHeight || window.innerHeight;
 
-        // Scene
         const scene = new THREE.Scene();
         sceneRef.current = scene;
 
-        // Camera
-        const camera = new THREE.PerspectiveCamera(45, width / height, 1, 2000);
+        const camera = new THREE.PerspectiveCamera(40, width / height, 1, 2500);
         camera.position.z = currentCameraDistRef.current;
         cameraRef.current = camera;
 
-        // Renderer
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
         renderer.setSize(width, height);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.2;
+        renderer.toneMappingExposure = 1.25;
         container.appendChild(renderer.domElement);
         rendererRef.current = renderer;
 
-        // Lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+        // Realistic Sun & Ambient Lights (Natural Space Sunlight)
+        const ambientLight = new THREE.AmbientLight(0x334155, 1.2);
         scene.add(ambientLight);
 
-        const sunLight = new THREE.DirectionalLight(0xfffaed, 2.2);
-        sunLight.position.set(250, 120, 200);
+        const sunLight = new THREE.DirectionalLight(0xffffff, 2.8);
+        sunLight.position.set(300, 150, 220);
         scene.add(sunLight);
 
-        const blueBackLight = new THREE.DirectionalLight(0x38bdf8, 1.4);
-        blueBackLight.position.set(-200, -100, -150);
-        scene.add(blueBackLight);
+        const earthBackglow = new THREE.DirectionalLight(0x1e3a8a, 1.6);
+        earthBackglow.position.set(-250, -120, -180);
+        scene.add(earthBackglow);
 
-        const amberAccent = new THREE.PointLight(0xfbab15, 2.5, 400);
-        amberAccent.position.set(100, 100, 150);
-        scene.add(amberAccent);
-
-        // --- Starfield Background ---
+        // --- Deep Space Starfield ---
         const starGeo = new THREE.BufferGeometry();
-        const starCount = 1200;
+        const starCount = 1600;
         const starPositions = new Float32Array(starCount * 3);
         const starColors = new Float32Array(starCount * 3);
 
         for (let i = 0; i < starCount * 3; i += 3) {
-            const r = 450 + Math.random() * 500;
+            const r = 500 + Math.random() * 600;
             const theta = Math.random() * Math.PI * 2;
             const phi = Math.acos((Math.random() * 2) - 1);
 
@@ -362,20 +322,20 @@ export default function EarthGlobe({
             starPositions[i + 1] = r * Math.sin(phi) * Math.sin(theta);
             starPositions[i + 2] = r * Math.cos(phi);
 
-            const colorType = Math.random();
-            if (colorType > 0.7) {
-                starColors[i] = 0.98; starColors[i + 1] = 0.67; starColors[i + 2] = 0.08;
-            } else if (colorType > 0.4) {
-                starColors[i] = 0.22; starColors[i + 1] = 0.74; starColors[i + 2] = 0.97;
+            const rnd = Math.random();
+            if (rnd > 0.8) {
+                starColors[i] = 0.98; starColors[i + 1] = 0.85; starColors[i + 2] = 0.55;
+            } else if (rnd > 0.5) {
+                starColors[i] = 0.55; starColors[i + 1] = 0.85; starColors[i + 2] = 1.0;
             } else {
-                starColors[i] = 0.95; starColors[i + 1] = 0.95; starColors[i + 2] = 1.0;
+                starColors[i] = 0.95; starColors[i + 1] = 0.95; starColors[i + 2] = 0.98;
             }
         }
         starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
         starGeo.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
 
         const starMat = new THREE.PointsMaterial({
-            size: 2.2,
+            size: 1.8,
             vertexColors: true,
             transparent: true,
             opacity: 0.85
@@ -383,133 +343,130 @@ export default function EarthGlobe({
         const starField = new THREE.Points(starGeo, starMat);
         scene.add(starField);
 
-        // --- 3D Earth Mesh ---
-        const GLOBE_RADIUS = 85;
+        // --- Realistic 3D Earth Globe ---
+        const GLOBE_RADIUS = 90;
         const earthGeo = new THREE.SphereGeometry(GLOBE_RADIUS, 64, 64);
-        const earthTexture = createProceduralEarthTexture();
+
+        // Try loading photorealistic satellite textures with instant fallback
+        const textureLoader = new THREE.TextureLoader();
+        const fallbackTexture = createRealisticEarthTexture();
+
         const earthMat = new THREE.MeshStandardMaterial({
-            map: earthTexture,
-            roughness: 0.55,
-            metalness: 0.25,
-            bumpScale: 0.05
+            map: fallbackTexture,
+            roughness: 0.65,
+            metalness: 0.1
         });
+
+        // Attempt async satellite map load for Google Earth fidelity
+        textureLoader.load(
+            'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg',
+            (tex) => {
+                tex.colorSpace = THREE.SRGBColorSpace;
+                earthMat.map = tex;
+                earthMat.needsUpdate = true;
+            },
+            undefined,
+            () => console.log('Using high-res procedural satellite Earth map')
+        );
+
+        textureLoader.load(
+            'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_normal_2048.jpg',
+            (normTex) => {
+                earthMat.normalMap = normTex;
+                earthMat.normalScale.set(0.6, 0.6);
+                earthMat.needsUpdate = true;
+            }
+        );
+
         const earth = new THREE.Mesh(earthGeo, earthMat);
         scene.add(earth);
         globeRef.current = earth;
 
-        // --- Atmosphere Glow Mesh ---
-        const atmoGeo = new THREE.SphereGeometry(GLOBE_RADIUS * 1.035, 48, 48);
+        // --- Natural Atmospheric Scattering Glow (Google Earth Atmosphere) ---
+        const atmoGeo = new THREE.SphereGeometry(GLOBE_RADIUS * 1.025, 64, 64);
         const atmoMat = new THREE.MeshStandardMaterial({
-            color: 0x38bdf8,
+            color: 0x4aa3ff,
             transparent: true,
-            opacity: 0.15,
+            opacity: 0.22,
             blending: THREE.AdditiveBlending,
             side: THREE.BackSide
         });
         const atmosphere = new THREE.Mesh(atmoGeo, atmoMat);
         scene.add(atmosphere);
 
-        // --- Outer Amber Atmosphere Halo ---
-        const haloGeo = new THREE.SphereGeometry(GLOBE_RADIUS * 1.07, 48, 48);
-        const haloMat = new THREE.MeshBasicMaterial({
-            color: 0xfbab15,
+        const outerGlowGeo = new THREE.SphereGeometry(GLOBE_RADIUS * 1.06, 48, 48);
+        const outerGlowMat = new THREE.MeshBasicMaterial({
+            color: 0x2563eb,
             transparent: true,
-            opacity: 0.08,
+            opacity: 0.12,
             blending: THREE.AdditiveBlending,
             side: THREE.BackSide
         });
-        const halo = new THREE.Mesh(haloGeo, haloMat);
-        scene.add(halo);
+        const outerGlow = new THREE.Mesh(outerGlowGeo, outerGlowMat);
+        scene.add(outerGlow);
 
-        // --- Clouds Sphere ---
-        const cloudGeo = new THREE.SphereGeometry(GLOBE_RADIUS * 1.015, 48, 48);
+        // --- Realistic Clouds Layer ---
+        const cloudGeo = new THREE.SphereGeometry(GLOBE_RADIUS * 1.012, 64, 64);
         const cloudMat = new THREE.MeshStandardMaterial({
-            map: createProceduralCloudTexture(),
+            map: createRealisticCloudTexture(),
             transparent: true,
-            opacity: 0.4,
+            opacity: 0.38,
             blending: THREE.AdditiveBlending
         });
+
+        textureLoader.load(
+            'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_clouds_1024.png',
+            (cloudTex) => {
+                cloudMat.map = cloudTex;
+                cloudMat.needsUpdate = true;
+            }
+        );
+
         const clouds = new THREE.Mesh(cloudGeo, cloudMat);
         scene.add(clouds);
         cloudsRef.current = clouds;
 
-        // --- Orbital Rings ---
-        const ringGeo = new THREE.RingGeometry(GLOBE_RADIUS * 1.35, GLOBE_RADIUS * 1.37, 64);
-        const ringMat = new THREE.MeshBasicMaterial({
-            color: 0xfbab15,
-            side: THREE.DoubleSide,
-            transparent: true,
-            opacity: 0.25
-        });
-        const orbitalRing = new THREE.Mesh(ringGeo, ringMat);
-        orbitalRing.rotation.x = Math.PI / 2.3;
-        orbitalRing.rotation.y = Math.PI / 8;
-        scene.add(orbitalRing);
-
-        const ring2Geo = new THREE.RingGeometry(GLOBE_RADIUS * 1.55, GLOBE_RADIUS * 1.56, 64);
-        const ring2Mat = new THREE.MeshBasicMaterial({
-            color: 0x38bdf8,
-            side: THREE.DoubleSide,
-            transparent: true,
-            opacity: 0.18
-        });
-        const orbitalRing2 = new THREE.Mesh(ring2Geo, ring2Mat);
-        orbitalRing2.rotation.x = Math.PI / 1.7;
-        orbitalRing2.rotation.y = -Math.PI / 6;
-        scene.add(orbitalRing2);
-
-        // --- 3D User Location Pin & Radar Ripples ---
+        // --- 3D User Pin & Radar Beacon ---
         const pinGroup = new THREE.Group();
 
-        const stemGeo = new THREE.CylinderGeometry(0.5, 0.2, 7, 16);
-        stemGeo.translate(0, 3.5, 0);
+        const stemGeo = new THREE.CylinderGeometry(0.4, 0.15, 6, 16);
+        stemGeo.translate(0, 3, 0);
         const stemMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
         const stem = new THREE.Mesh(stemGeo, stemMat);
         pinGroup.add(stem);
 
-        const headGeo = new THREE.SphereGeometry(2.4, 16, 16);
-        headGeo.translate(0, 7.5, 0);
+        const headGeo = new THREE.SphereGeometry(2.2, 16, 16);
+        headGeo.translate(0, 6.8, 0);
         const headMat = new THREE.MeshStandardMaterial({
             color: 0xfbab15,
             emissive: 0xfbab15,
-            emissiveIntensity: 1.2,
+            emissiveIntensity: 1.4,
             roughness: 0.2
         });
         const head = new THREE.Mesh(headGeo, headMat);
         pinGroup.add(head);
 
-        const ripple1Geo = new THREE.RingGeometry(0.8, 2.2, 32);
-        ripple1Geo.rotateX(-Math.PI / 2);
-        const ripple1Mat = new THREE.MeshBasicMaterial({
-            color: 0xfbab15,
-            side: THREE.DoubleSide,
-            transparent: true,
-            opacity: 0.9
-        });
-        const ripple1 = new THREE.Mesh(ripple1Geo, ripple1Mat);
-        pinGroup.add(ripple1);
-
-        const ripple2Geo = new THREE.RingGeometry(1.5, 3.8, 32);
-        ripple2Geo.rotateX(-Math.PI / 2);
-        const ripple2Mat = new THREE.MeshBasicMaterial({
+        const rippleGeo = new THREE.RingGeometry(1.0, 3.2, 32);
+        rippleGeo.rotateX(-Math.PI / 2);
+        const rippleMat = new THREE.MeshBasicMaterial({
             color: 0x38bdf8,
             side: THREE.DoubleSide,
             transparent: true,
-            opacity: 0.6
+            opacity: 0.8
         });
-        const ripple2 = new THREE.Mesh(ripple2Geo, ripple2Mat);
-        pinGroup.add(ripple2);
+        const ripple = new THREE.Mesh(rippleGeo, rippleMat);
+        pinGroup.add(ripple);
 
         scene.add(pinGroup);
         pinGroup.visible = false;
         pinGroupRef.current = pinGroup;
 
-        // Auto trigger location
+        // Initial Location Auto-Locate
         const autoLocateTimer = setTimeout(() => {
             requestLocation();
-        }, 600);
+        }, 500);
 
-        // Mouse handlers
+        // Mouse Drag / Free Rotate Handlers
         let isDragging = false;
         let prevMouseX = 0;
         let prevMouseY = 0;
@@ -529,8 +486,8 @@ export default function EarthGlobe({
             prevMouseX = e.clientX;
             prevMouseY = e.clientY;
 
-            targetRotationRef.current.y += deltaX * 0.006;
-            targetRotationRef.current.x = Math.max(-1.2, Math.min(1.2, targetRotationRef.current.x + deltaY * 0.006));
+            targetRotationRef.current.y += deltaX * 0.005;
+            targetRotationRef.current.x = Math.max(-1.1, Math.min(1.1, targetRotationRef.current.x + deltaY * 0.005));
         };
 
         const onMouseUp = () => {
@@ -540,7 +497,7 @@ export default function EarthGlobe({
 
         const onWheel = (e) => {
             if (e.target !== renderer.domElement) return;
-            targetCameraDistRef.current = Math.max(120, Math.min(320, targetCameraDistRef.current + e.deltaY * 0.15));
+            targetCameraDistRef.current = Math.max(130, Math.min(300, targetCameraDistRef.current + e.deltaY * 0.15));
         };
 
         window.addEventListener('mousedown', onMouseDown);
@@ -565,7 +522,7 @@ export default function EarthGlobe({
             const elapsed = clock.getElapsedTime();
 
             if (!isFocusedRef.current && !userInteracting) {
-                targetRotationRef.current.y += 0.003;
+                targetRotationRef.current.y += 0.0025;
             }
 
             currentRotationRef.current.x += (targetRotationRef.current.x - currentRotationRef.current.x) * 0.06;
@@ -577,12 +534,12 @@ export default function EarthGlobe({
                 globeRef.current.rotation.y = currentRotationRef.current.y;
             }
             if (cloudsRef.current) {
-                cloudsRef.current.rotation.x = currentRotationRef.current.x * 1.05;
-                cloudsRef.current.rotation.y = currentRotationRef.current.y + elapsed * 0.015;
+                cloudsRef.current.rotation.x = currentRotationRef.current.x * 1.02;
+                cloudsRef.current.rotation.y = currentRotationRef.current.y + elapsed * 0.012;
             }
 
             if (pinGroupRef.current && pinGroupRef.current.visible) {
-                const GLOBE_RADIUS = 85;
+                const GLOBE_RADIUS = 90;
                 const basePos = latLongToVector3(
                     activeCoordsRef.current.lat,
                     activeCoordsRef.current.lon,
@@ -601,12 +558,10 @@ export default function EarthGlobe({
                 const normal = basePos.clone().normalize();
                 pinGroupRef.current.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
 
-                const scale1 = 1 + Math.sin(elapsed * 4) * 0.4;
-                const scale2 = 1 + Math.cos(elapsed * 3) * 0.5;
-                ripple1.scale.set(scale1, scale1, scale1);
-                ripple2.scale.set(scale2, scale2, scale2);
+                const scale = 1 + Math.sin(elapsed * 3.5) * 0.45;
+                ripple.scale.set(scale, scale, scale);
 
-                const screenVec = basePos.clone().add(normal.clone().multiplyScalar(10));
+                const screenVec = basePos.clone().add(normal.clone().multiplyScalar(9));
                 screenVec.project(camera);
 
                 const isFront = screenVec.z < 1;
@@ -621,9 +576,7 @@ export default function EarthGlobe({
             }
 
             camera.position.z = currentCameraDistRef.current;
-            starField.rotation.y = elapsed * 0.002;
-            orbitalRing.rotation.z = elapsed * 0.02;
-            orbitalRing2.rotation.z = -elapsed * 0.015;
+            starField.rotation.y = elapsed * 0.0015;
 
             renderer.render(scene, camera);
         };
@@ -646,11 +599,11 @@ export default function EarthGlobe({
     }, [requestLocation, userInteracting, flyToCoordinates]);
 
     return (
-        <div className={`earth-globe-wrapper ${className}`} style={{ position: 'relative', width: '100%', height: '100%' }}>
-            {/* 3D WebGL Canvas */}
+        <div className={`realistic-earth-wrapper ${className}`} style={{ position: 'relative', width: '100%', height: '100%' }}>
+            {/* Seamless 3D WebGL Canvas */}
             <div ref={mountRef} style={{ width: '100%', height: '100%', cursor: 'grab' }} />
 
-            {/* Floating 3D Target Marker HUD on Globe */}
+            {/* Floating 3D Pin Tooltip on Globe */}
             {pinScreenPos.visible && (
                 <div
                     className="pin-floating-hud"
@@ -669,45 +622,22 @@ export default function EarthGlobe({
                             <span className="pin-hud-title">{locationInfo.name}</span>
                         </div>
                         <div className="pin-hud-coords">
-                            <span>Lat: {locationInfo.lat}° N</span>
-                            <span>Lon: {locationInfo.lon}° E</span>
+                            <span>{locationInfo.lat}° N, {locationInfo.lon}° E</span>
                         </div>
-                        {locationInfo.accuracy && (
-                            <div className="pin-hud-badge">دقة الاستشعار: ±{locationInfo.accuracy}م</div>
-                        )}
                     </div>
                 </div>
             )}
 
-            {/* Globe Quick Overlay Controls */}
-            <div className="globe-quick-controls">
+            {/* Quick Locate Floating Button */}
+            <div className="realistic-earth-controls">
                 <button
                     className={`btn-locate-action ${isLocating ? 'loading' : ''}`}
                     onClick={requestLocation}
                     title="التقريب إلى موقعي الفعلي"
                 >
                     <span className="locate-icon">🎯</span>
-                    <span>{isLocating ? 'جارٍ الرصد...' : 'التقريب لموقعي'}</span>
+                    <span>{isLocating ? 'جارٍ الرصد والتقريب...' : 'التقريب لموقعي الفعلي'}</span>
                 </button>
-
-                <div className="globe-city-pills">
-                    {[
-                        { name: 'القدس', lat: 31.7683, lon: 35.2137 },
-                        { name: 'رام الله', lat: 31.9038, lon: 35.2034 },
-                        { name: 'غزة', lat: 31.5017, lon: 34.4668 },
-                        { name: 'عمان', lat: 31.9454, lon: 35.9284 },
-                        { name: 'دبي', lat: 25.2048, lon: 55.2708 },
-                        { name: 'الرياض', lat: 24.7136, lon: 46.6753 }
-                    ].map((city) => (
-                        <button
-                            key={city.name}
-                            className="city-pill-btn"
-                            onClick={() => flyToCoordinates(city.lat, city.lon, 145)}
-                        >
-                            {city.name}
-                        </button>
-                    ))}
-                </div>
             </div>
         </div>
     );
