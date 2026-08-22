@@ -3,14 +3,13 @@ import { useAuth } from '../context/AuthContext';
 import { smartSearchService, shopService, aiService, getImageUrl } from '../services/api';
 import './AIChatModal.css';
 
-const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
+const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation, onShopClick }) => {
     const { user } = useAuth();
 
     // UI State
     const [theme, setTheme] = useState(localStorage.getItem('palnovaa-ai-theme') || 'dark');
     const [accent, setAccent] = useState(localStorage.getItem('palnovaa-ai-accent') || '#F5A623');
     const [showSettings, setShowSettings] = useState(false);
-    const [showCamera, setShowCamera] = useState(false);
     const [showResults, setShowResults] = useState(false);
     const [viewMode, setViewMode] = useState('grid');
     const [navMode, setNavMode] = useState(false);
@@ -24,17 +23,20 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
     // Search & Chat State
     const [query, setQuery] = useState('');
     const [loading, setLoading] = useState(false);
-    const [aiText, setAiText] = useState('');
     const [results, setResults] = useState([]);
     const [chatHistory, setChatHistory] = useState([]);
 
     const scrollRef = useRef(null);
+    const navTimeoutRef = useRef(null);
 
-    // Initial setup
+    // Initial setup & cleanup
     useEffect(() => {
         document.body.style.overflow = 'hidden';
         return () => {
             document.body.style.overflow = '';
+            if (navTimeoutRef.current) {
+                clearTimeout(navTimeoutRef.current);
+            }
         };
     }, []);
 
@@ -109,9 +111,22 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
         return result;
     };
 
+    const triggerNavigation = (target, mode = 'driving', customStartLoc = null) => {
+        if (navTimeoutRef.current) {
+            clearTimeout(navTimeoutRef.current);
+        }
+        if (onNavigate && target) {
+            onNavigate(target, mode, customStartLoc);
+        }
+    };
+
     const handleSearch = async (overrideQuery = null) => {
         const activeQuery = overrideQuery || query;
         if (!activeQuery.trim()) return;
+
+        if (navTimeoutRef.current) {
+            clearTimeout(navTimeoutRef.current);
+        }
 
         const newHistory = [...chatHistory, { role: 'user', message: activeQuery }];
         setChatHistory(newHistory);
@@ -122,20 +137,35 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
 
         try {
             const filters = parseQuery(activeQuery);
-            const searchData = await smartSearchService.search({
-                query: filters.shopQuery,
-                productQuery: filters.productQuery,
-                priceMin: filters.priceMin,
-                priceMax: filters.priceMax,
-                priceExact: filters.priceExact
-            });
-            let fetchedResults = searchData.results || [];
+            let fetchedResults = [];
 
-            const aiResp = await aiService.chat(activeQuery, chatHistory, userLocation, { name: user?.full_name });
-            let replyText = aiResp.reply;
+            try {
+                const searchData = await smartSearchService.search({
+                    query: filters.shopQuery,
+                    productQuery: filters.productQuery,
+                    priceMin: filters.priceMin,
+                    priceMax: filters.priceMax,
+                    priceExact: filters.priceExact
+                });
+                fetchedResults = searchData.results || [];
+            } catch (err) {
+                console.warn('Smart search service fallback:', err);
+            }
 
-            // Use AI context results if direct search found nothing
-            if (fetchedResults.length === 0 && aiResp.results && aiResp.results.length > 0) {
+            let replyText = '';
+            let aiResp = null;
+
+            try {
+                aiResp = await aiService.chat(activeQuery, chatHistory, userLocation, { name: user?.full_name });
+                if (aiResp && aiResp.reply) {
+                    replyText = aiResp.reply;
+                }
+            } catch (aiErr) {
+                console.warn('AI chat service error:', aiErr);
+            }
+
+            // If smart search found nothing, use AI response results if available
+            if (fetchedResults.length === 0 && aiResp?.results && aiResp.results.length > 0) {
                 fetchedResults = aiResp.results;
             }
 
@@ -146,22 +176,69 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                 longitude: r.longitude || r.location?.lon
             }));
 
+            // Calculate distances from userLocation if available
+            if (userLocation?.latitude && userLocation?.longitude) {
+                fetchedResults = fetchedResults.map(r => {
+                    if (r.latitude && r.longitude) {
+                        const d = calculateDistance(userLocation.latitude, userLocation.longitude, parseFloat(r.latitude), parseFloat(r.longitude));
+                        return { ...r, distance: d ? Math.round(d * 1000) : r.distance };
+                    }
+                    return r;
+                });
+            }
+
             setResults(fetchedResults);
 
-            // Navigation Prompt Logic (Ask user to choose walking or driving instead of auto-navigating)
-            const qLower = activeQuery.toLowerCase();
-            const isAskingForLocation = qLower.includes('وين') || qLower.includes('اين') || qLower.includes('كيف اروح') || qLower.includes('موقع') || qLower.includes('طريق') || qLower.includes('ديلني') || qLower.includes('اقرب') || qLower.includes('وديني') || qLower.includes('اذهب') || qLower.includes('روح') || qLower.includes('نروح') || qLower.includes('توجه') || qLower.includes('خذني') || qLower.includes('وصلني');
+            // If no replyText from AI, craft an intelligent friendly message
+            if (!replyText) {
+                if (fetchedResults.length > 0) {
+                    replyText = `عثرت لك على ${fetchedResults.length} من الأماكن والخدمات المطابقة لبحثك:`;
+                } else {
+                    replyText = `عذراً، لم أجد نتائج مطابقة لـ "${activeQuery}". جرب البحث باسم مكان آخر أو تصنيف معين.`;
+                }
+            }
 
-            if (fetchedResults.length > 0 && (isAskingForLocation || replyText.includes('يبعد') || aiResp.type === 'route' || aiResp.type === 'navigation_options')) {
+            // Auto-Navigation Logic (Like before with prompt countdown and immediate options)
+            const qLower = activeQuery.toLowerCase();
+            const isAskingForLocation = qLower.includes('وين') || qLower.includes('اين') || qLower.includes('أين') || 
+                                       qLower.includes('كيف اروح') || qLower.includes('كيف أروح') || qLower.includes('موقع') || 
+                                       qLower.includes('طريق') || qLower.includes('ديلني') || qLower.includes('دلني') || 
+                                       qLower.includes('اقرب') || qLower.includes('أقرب') || qLower.includes('وديني') || 
+                                       qLower.includes('اذهب') || qLower.includes('أذهب') || qLower.includes('روح') || 
+                                       qLower.includes('نروح') || qLower.includes('توجه') || qLower.includes('خذني') || 
+                                       qLower.includes('وصلني') || qLower.includes('مسار') || qLower.includes('توجيه');
+
+            const isDriving = qLower.match(/(سيارة|سياره|قيادة|بسيارة|تكسي|تاكسي|سواقة)/);
+            const isWalking = qLower.match(/(مشي|سير|اقدام|أقدام|مشيًا|مشيا|رجليه)/);
+
+            if (fetchedResults.length > 0 && (isAskingForLocation || isDriving || isWalking || replyText.includes('يبعد') || aiResp?.type === 'route' || aiResp?.type === 'navigation_options')) {
                 const target = fetchedResults[0];
-                replyText += `<br/><br/><div style="background: rgba(251, 171, 21, 0.08); border-right: 3.5px solid #fbab15; padding: 10px; border-radius: 8px; margin-top: 10px; font-weight: bold; color: #fbab15; direction: rtl; text-align: right;">📍 لقد عثرت على "${target.name}". اختر طريقة الذهاب المفضلة لديك بالأسفل (سيارة 🚗 أو مشي 🚶) لبدء رسم المسار على الخريطة.</div>`;
+                let mode = 'driving';
+
+                if (isWalking || aiResp?.mode === 'walking') {
+                    mode = 'walking';
+                } else if (isDriving || aiResp?.mode === 'driving') {
+                    mode = 'driving';
+                } else if (userLocation && target.latitude && target.longitude) {
+                    const distKm = calculateDistance(userLocation.latitude, userLocation.longitude, parseFloat(target.latitude), parseFloat(target.longitude));
+                    if (distKm !== null && distKm <= 1.2) {
+                        mode = 'walking';
+                    }
+                }
+
+                const modeLabel = mode === 'walking' ? 'مشياً على الأقدام 🚶' : 'بالسيارة 🚗';
+                replyText += `<br/><br/><div style="background: rgba(251, 171, 21, 0.12); border-right: 4px solid #fbab15; padding: 12px; border-radius: 12px; margin-top: 12px; font-weight: bold; color: #fbab15; direction: rtl; text-align: right; line-height: 1.6;">📍 يتم الآن فتح الخريطة لتوجيهك ${modeLabel} إلى "${target.name}"...<br/><small style="font-size: 11px; opacity: 0.85; color: #fff;">يمكنك التبديل أو البدء فوراً عبر الأزرار أدناه.</small></div>`;
+
+                navTimeoutRef.current = setTimeout(() => {
+                    triggerNavigation(target, mode);
+                }, 2200);
             }
 
             setChatHistory(prev => [...prev, { role: 'assistant', message: replyText, results: fetchedResults }]);
 
         } catch (error) {
             console.error('Search error:', error);
-            const errorMsg = error.response?.data?.error || 'عذراً، واجهت مشكلة في الاتصال بالمساعد الذكي. يرجى المحاولة مرة أخرى.';
+            const errorMsg = 'عذراً، واجهت مشكلة أثناء المعالجة. يرجى المحاولة مرة أخرى.';
             setChatHistory(prev => [...prev, { role: 'assistant', message: errorMsg }]);
         } finally {
             setLoading(false);
@@ -177,11 +254,6 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
         const fromStr = navFrom.trim();
         const toStr = navTo.trim();
 
-        if (!fromStr) {
-            alert('يرجى تحديد نقطة الانطلاق (من)');
-            return;
-        }
-
         if (!toStr) {
             alert('يرجى تحديد الوجهة (إلى)');
             return;
@@ -189,17 +261,24 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
 
         setLoading(true);
         try {
-            // Search for the "from" location
-            const fromData = await smartSearchService.search({ query: fromStr });
             let fromLocation = null;
-            if (fromData.results && fromData.results.length > 0) {
-                fromLocation = fromData.results[0];
-                fromLocation.latitude = fromLocation.latitude || fromLocation.location?.lat;
-                fromLocation.longitude = fromLocation.longitude || fromLocation.location?.lon;
-            } else {
-                alert(`لم نتمكن من العثور على موقع "${fromStr}" كـ نقطة انطلاق.`);
-                setLoading(false);
-                return;
+            if (fromStr && fromStr !== 'موقعي الحالي') {
+                const fromData = await smartSearchService.search({ query: fromStr });
+                if (fromData.results && fromData.results.length > 0) {
+                    fromLocation = fromData.results[0];
+                    fromLocation.latitude = fromLocation.latitude || fromLocation.location?.lat;
+                    fromLocation.longitude = fromLocation.longitude || fromLocation.location?.lon;
+                } else {
+                    alert(`لم نتمكن من العثور على موقع "${fromStr}" كنقطة انطلاق.`);
+                    setLoading(false);
+                    return;
+                }
+            } else if (userLocation?.latitude && userLocation?.longitude) {
+                fromLocation = {
+                    latitude: userLocation.latitude,
+                    longitude: userLocation.longitude,
+                    name: 'موقعي الحالي'
+                };
             }
 
             // Search for the "to" location
@@ -216,10 +295,7 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
             }
 
             setNavMode(false);
-            if (onNavigate) {
-                // onNavigate expects (target, mode, startLoc)
-                onNavigate(toLocation, navTransportMode, fromLocation);
-            }
+            triggerNavigation(toLocation, navTransportMode, fromLocation);
         } catch (error) {
             console.error(error);
             alert('حدث خطأ أثناء البحث عن المسار.');
@@ -230,7 +306,7 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
 
     const handleFromChange = async (val) => {
         setNavFrom(val);
-        if (val.trim().length > 1) {
+        if (val.trim().length > 1 && val !== 'موقعي الحالي') {
             try {
                 const data = await smartSearchService.search({ query: val });
                 setFromSuggestions(data.results ? data.results.slice(0, 4) : []);
@@ -245,7 +321,7 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
         if (val.trim().length > 1) {
             try {
                 const data = await smartSearchService.search({ query: val });
-                setToSuggestions(data.results ? data.results.slice(0, 4) : []);
+                setToSuggestions(data.results ? data.results.slice(0, 5) : []);
             } catch(e) {}
         } else {
             setToSuggestions([]);
@@ -280,12 +356,18 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                             </div>
                             <div className="ai-logo-text" style={{ display: 'flex', flexDirection: 'column' }}>
                                 <span style={{ fontWeight: 'bold', fontSize: '15px' }}>المساعد الذكي</span>
-                                <small style={{ fontSize: '10px', opacity: 0.6, marginTop: '2px' }}>PalNovaa AI</small>
+                                <small style={{ fontSize: '10px', opacity: 0.6, marginTop: '2px' }}>PalNovaa AI Guide</small>
                             </div>
                         </div>
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
-                        <button className="ai-icon-btn" onClick={onClose}>
+                        <button className="ai-icon-btn" onClick={() => setShowSettings(true)} title="تخصيص الواجهة">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                            </svg>
+                        </button>
+                        <button className="ai-icon-btn" onClick={onClose} title="إغلاق">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                             </svg>
@@ -299,29 +381,29 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                         {!showResults ? (
                             /* Hero State */
                             <section className="ai-hero hero">
-                                <div className="ai-hero-icon">
+                                <div className="ai-hero-icon" onClick={() => setNavMode(prev => !prev)}>
                                 </div>
                                 <h1>مرحباً <span className="accent">{user?.full_name || 'صديقي'}</span> 👋</h1>
-                                <p>أنا مساعدك الذكي في PalNovaa، اسألني عن أي مكان وسأساعدك بكل سهولة وذكاء</p>
+                                <p>أنا دليلك ومساعدك الذكي في PalNovaa، اسألني عن أي مكان أو خدمة أو مسار وسأوجهك فوراً</p>
 
                                 <div className="ai-search-wrap">
                                     {!navMode ? (
                                         <div className="ai-search-box">
                                             <input
                                                 className="ai-search-input"
-                                                placeholder="ابحث عن أي مكان، خدمة، أو وجهة..."
+                                                placeholder="ابحث عن مكان، مطعم، مرفق، أو وجهة (مثل: وديني على مطعم قطنة)..."
                                                 value={query}
                                                 onChange={(e) => setQuery(e.target.value)}
                                                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                                             />
-                                            <button className="ai-tool-btn" onClick={() => setNavMode(true)} title="تحديد مسار" style={{ width: '46px', height: '46px', borderRadius: '14px', background: 'rgba(245, 166, 35, 0.1)', border: '1px solid var(--primary)', color: 'var(--primary)', flexShrink: 0 }}>
+                                            <button className="ai-tool-btn" onClick={() => setNavMode(true)} title="تحديد مسار مخصص" style={{ width: '46px', height: '46px', borderRadius: '14px', background: 'rgba(245, 166, 35, 0.1)', border: '1px solid var(--primary)', color: 'var(--primary)', flexShrink: 0 }}>
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px' }}>
                                                     <circle cx="6" cy="19" r="3" />
                                                     <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" />
                                                     <circle cx="18" cy="5" r="3" />
                                                 </svg>
                                             </button>
-                                            <button className="ai-send-btn" onClick={() => handleSearch()}>
+                                            <button className="ai-send-btn" onClick={() => handleSearch()} title="بحث وإرشاد">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                                     <path d="M22 2L11 13" />
                                                     <polygon points="22 2 15 22 11 13 2 9 22 2" />
@@ -331,57 +413,86 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                     ) : (
                                         <div className="nav-box" style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'var(--surface)', padding: '16px', borderRadius: '24px', border: '1px solid var(--primary)', boxShadow: '0 8px 24px var(--primary-glow)' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                                <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--primary)' }}>تحديد المسار الذكي</span>
-                                                <button onClick={() => setNavMode(false)} style={{ color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}>
-                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '16px', height: '16px' }}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                                                <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '18px' }}>
+                                                        <polygon points="3 11 22 2 13 21 11 13 3 11" />
+                                                    </svg>
+                                                    تحديد المسار والتوجيه الذكي
+                                                </span>
+                                                <button onClick={() => setNavMode(false)} style={{ color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', height: '18px' }}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                                                 </button>
                                             </div>
 
+                                            {/* From Input */}
                                             <div style={{ position: 'relative' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '16px', padding: '8px 12px', border: '1px solid var(--border)' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '16px', padding: '8px 12px', border: '1px solid var(--border)' }}>
                                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', color: 'var(--text-muted)' }}><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="3" /></svg>
-                                                    <input type="text" value={navFrom} onChange={(e) => handleFromChange(e.target.value)} placeholder="من: نقطة الانطلاق" style={{ background: 'none', border: 'none', color: 'white', outline: 'none', flex: 1, fontSize: '14px' }} />
+                                                    <input 
+                                                        type="text" 
+                                                        value={navFrom} 
+                                                        onChange={(e) => handleFromChange(e.target.value)} 
+                                                        placeholder="من: موقعي الحالي أو ابحث عن مكان..." 
+                                                        style={{ background: 'none', border: 'none', color: 'white', outline: 'none', flex: 1, fontSize: '14px' }} 
+                                                    />
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => setNavFrom('موقعي الحالي')}
+                                                        style={{ background: 'rgba(251, 171, 21, 0.15)', border: '1px solid var(--primary)', color: 'var(--primary)', borderRadius: '8px', padding: '4px 8px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
+                                                    >
+                                                        📍 موقعي
+                                                    </button>
                                                 </div>
                                                 {fromSuggestions.length > 0 && (
-                                                    <div className="ai-suggestions" style={{ marginTop: '8px', marginBottom: '8px', justifyContent: 'flex-start' }}>
+                                                    <div className="ai-suggestions" style={{ marginTop: '8px', marginBottom: '8px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                                         {fromSuggestions.map((s, idx) => (
-                                                            <span key={idx} className="ai-chip" onClick={() => { setNavFrom(s.name); setFromSuggestions([]); }}>{s.name}</span>
+                                                            <span key={idx} className="ai-chip" style={{ cursor: 'pointer', padding: '4px 10px', background: 'rgba(255,255,255,0.08)', borderRadius: '12px', fontSize: '12px' }} onClick={() => { setNavFrom(s.name); setFromSuggestions([]); }}>{s.name}</span>
                                                         ))}
                                                     </div>
                                                 )}
                                             </div>
 
+                                            {/* To Input */}
                                             <div style={{ position: 'relative' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '16px', padding: '8px 12px', border: '1px solid var(--primary)' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '16px', padding: '8px 12px', border: '1px solid var(--primary)' }}>
                                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', color: 'var(--primary)' }}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-                                                    <input type="text" value={navTo} onChange={(e) => handleToChange(e.target.value)} onFocus={() => setShowNavSuggestions(true)} onBlur={() => setTimeout(() => setShowNavSuggestions(false), 200)} placeholder="إلى: أين تريد الذهاب؟" style={{ background: 'none', border: 'none', color: 'white', outline: 'none', flex: 1, fontSize: '14px' }} />
+                                                    <input 
+                                                        type="text" 
+                                                        value={navTo} 
+                                                        onChange={(e) => handleToChange(e.target.value)} 
+                                                        onFocus={() => setShowNavSuggestions(true)} 
+                                                        onBlur={() => setTimeout(() => setShowNavSuggestions(false), 200)} 
+                                                        placeholder="إلى: أين وجهتك؟ (محل، مرفق، مبنى...)" 
+                                                        style={{ background: 'none', border: 'none', color: 'white', outline: 'none', flex: 1, fontSize: '14px' }} 
+                                                    />
                                                 </div>
                                                 {showNavSuggestions && toSuggestions.length > 0 && (
                                                     <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface-solid)', border: '1px solid var(--primary)', borderRadius: '12px', marginTop: '4px', zIndex: 10, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
                                                         {toSuggestions.map((s, i) => (
-                                                            <div key={i} onClick={() => { setNavTo(s.name); setShowNavSuggestions(false); setToSuggestions([]); }} style={{ padding: '10px 14px', cursor: 'pointer', fontSize: '14px', borderBottom: '1px solid var(--border)', display: 'flex', gap: '8px', alignItems: 'center' }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'} onMouseLeave={(e) => e.currentTarget.style.background = 'none'}>
+                                                            <div key={i} onClick={() => { setNavTo(s.name); setShowNavSuggestions(false); setToSuggestions([]); }} style={{ padding: '10px 14px', cursor: 'pointer', fontSize: '14px', borderBottom: '1px solid var(--border)', display: 'flex', gap: '8px', alignItems: 'center', color: 'white' }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'} onMouseLeave={(e) => e.currentTarget.style.background = 'none'}>
                                                                 <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" style={{ width: '16px' }}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-                                                                {s.name}
+                                                                {s.name} {s.category ? `(${s.category})` : ''}
                                                             </div>
                                                         ))}
                                                     </div>
                                                 )}
                                             </div>
 
+                                            {/* Mode Selector */}
                                             <div style={{ display: 'flex', gap: '8px', marginTop: '4px', marginBottom: '4px' }}>
-                                                <button onClick={() => setNavTransportMode('driving')} style={{ flex: 1, padding: '10px', borderRadius: '16px', border: navTransportMode === 'driving' ? '2px solid var(--primary)' : '1px solid rgba(255,255,255,0.1)', background: navTransportMode === 'driving' ? 'rgba(var(--primary-rgb), 0.1)' : 'rgba(255,255,255,0.05)', color: navTransportMode === 'driving' ? 'var(--primary)' : 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s', fontWeight: navTransportMode === 'driving' ? 'bold' : 'normal' }}>
+                                                <button onClick={() => setNavTransportMode('driving')} style={{ flex: 1, padding: '10px', borderRadius: '16px', border: navTransportMode === 'driving' ? '2px solid var(--primary)' : '1px solid rgba(255,255,255,0.1)', background: navTransportMode === 'driving' ? 'rgba(251, 171, 21, 0.15)' : 'rgba(255,255,255,0.05)', color: navTransportMode === 'driving' ? 'var(--primary)' : 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s', fontWeight: navTransportMode === 'driving' ? 'bold' : 'normal' }}>
                                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px' }}><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
-                                                    سيارة
+                                                    🚗 بالسيارة
                                                 </button>
-                                                <button onClick={() => setNavTransportMode('walking')} style={{ flex: 1, padding: '10px', borderRadius: '16px', border: navTransportMode === 'walking' ? '2px solid var(--primary)' : '1px solid rgba(255,255,255,0.1)', background: navTransportMode === 'walking' ? 'rgba(var(--primary-rgb), 0.1)' : 'rgba(255,255,255,0.05)', color: navTransportMode === 'walking' ? 'var(--primary)' : 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s', fontWeight: navTransportMode === 'walking' ? 'bold' : 'normal' }}>
+                                                <button onClick={() => setNavTransportMode('walking')} style={{ flex: 1, padding: '10px', borderRadius: '16px', border: navTransportMode === 'walking' ? '2px solid var(--primary)' : '1px solid rgba(255,255,255,0.1)', background: navTransportMode === 'walking' ? 'rgba(251, 171, 21, 0.15)' : 'rgba(255,255,255,0.05)', color: navTransportMode === 'walking' ? 'var(--primary)' : 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s', fontWeight: navTransportMode === 'walking' ? 'bold' : 'normal' }}>
                                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px' }}><path d="M12 4a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/><path d="M14 21.999 12 15l-3 4"/><path d="m9 10 2 1 1-3.999L14 10l3-1.999"/></svg>
-                                                    مشي
+                                                    🚶 مشياً
                                                 </button>
                                             </div>
 
-                                            <button onClick={handleNavigation} style={{ background: 'linear-gradient(135deg, var(--primary), var(--primary-dark))', color: 'white', border: 'none', borderRadius: '24px', padding: '10px', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', boxShadow: '0 4px 15px var(--primary-glow)', marginTop: '4px' }}>
+                                            <button onClick={handleNavigation} style={{ background: 'linear-gradient(135deg, var(--primary), var(--primary-dark))', color: 'white', border: 'none', borderRadius: '24px', padding: '12px', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', boxShadow: '0 4px 15px var(--primary-glow)', marginTop: '4px' }}>
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '18px' }}><polyline points="9 18 15 12 9 6" /></svg>
-                                                ارسم المسار الآن
+                                                ارسم المسار على الخريطة الآن
                                             </button>
                                         </div>
                                     )}
@@ -396,7 +507,7 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                             </svg>
                                         </div>
                                         <h4>ارسم مسار</h4>
-                                        <p>تحديد وجهتك بدقة</p>
+                                        <p>تحديد نقطة الانطلاق والوجهة بدقة</p>
                                     </div>
 
                                     <div className="ai-feature-card" onClick={() => setShowSettings(true)}>
@@ -410,7 +521,7 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                             </svg>
                                         </div>
                                         <h4>تخصيص الواجهة</h4>
-                                        <p>اختر الثيم الذي يناسبك</p>
+                                        <p>اختر الثيم واللون وطريقة العرض</p>
                                     </div>
                                 </div>
                             </section>
@@ -429,21 +540,42 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                                 <div className="ai-badge"><span className="ai-badge-dot" />المساعد الذكي</div>
                                                 <p className="ai-response-text" dangerouslySetInnerHTML={{ __html: msg.message }} />
 
+                                                {/* Navigation Action Buttons for AI Responses */}
                                                 {(idx === chatHistory.length - 1) && msg.results && msg.results.length > 0 && (
                                                     <div className="ai-nav-options" style={{ marginTop: '15px', borderTop: '1px solid var(--border)', paddingTop: '15px' }}>
-                                                        <button className="ai-nav-btn" onClick={() => onNavigate(msg.results[0], 'walking')}>
-                                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                <path d="M13 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM6 14l3-3 4-4 3 3 4-2M8.5 22l.5-5 2-4 2 5 .5 5" />
-                                                            </svg>
-                                                            مشي
-                                                        </button>
-                                                        <button className="ai-nav-btn" onClick={() => onNavigate(msg.results[0], 'driving')}>
+                                                        <button 
+                                                            className="ai-nav-btn" 
+                                                            onClick={() => triggerNavigation(msg.results[0], 'driving')}
+                                                            style={{ background: 'rgba(251, 171, 21, 0.15)', borderColor: 'var(--primary)', color: 'var(--primary)', fontWeight: 'bold' }}
+                                                        >
                                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                                                 <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
                                                                 <circle cx="7" cy="17" r="2" /><path d="M9 17h6" /><circle cx="17" cy="17" r="2" />
                                                             </svg>
-                                                            سيارة
+                                                            توجيه بالسيارة 🚗
                                                         </button>
+                                                        <button 
+                                                            className="ai-nav-btn" 
+                                                            onClick={() => triggerNavigation(msg.results[0], 'walking')}
+                                                            style={{ background: 'rgba(255, 255, 255, 0.05)' }}
+                                                        >
+                                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                <path d="M13 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM6 14l3-3 4-4 3 3 4-2M8.5 22l.5-5 2-4 2 5 .5 5" />
+                                                            </svg>
+                                                            توجيه مشياً 🚶
+                                                        </button>
+                                                        {onShopClick && (
+                                                            <button 
+                                                                className="ai-nav-btn" 
+                                                                onClick={() => { if (navTimeoutRef.current) clearTimeout(navTimeoutRef.current); onShopClick(msg.results[0]); }}
+                                                                style={{ background: 'rgba(255, 255, 255, 0.05)' }}
+                                                            >
+                                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                    <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
+                                                                </svg>
+                                                                التفاصيل
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 )}
                                             </>
@@ -454,7 +586,7 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                 {loading && (
                                     <div className="ai-loading-box">
                                         <div className="ai-dots"><span></span><span></span><span></span></div>
-                                        <span>جاري البحث والتحليل...</span>
+                                        <span>جاري البحث وتحليل البيانات وتجهيز المسار...</span>
                                     </div>
                                 )}
 
@@ -466,7 +598,10 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                                 <div
                                                     key={shop.id}
                                                     className="ai-place-card"
-                                                    onClick={() => onShopClick && onShopClick(shop)}
+                                                    onClick={() => {
+                                                        if (navTimeoutRef.current) clearTimeout(navTimeoutRef.current);
+                                                        if (onShopClick) onShopClick(shop);
+                                                    }}
                                                     style={{
                                                         cursor: 'pointer',
                                                         overflow: 'hidden',
@@ -475,13 +610,13 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                                         background: '#1e293b',
                                                         display: 'flex',
                                                         flexDirection: 'column',
-                                                        transition: 'transform 0.2s',
+                                                        transition: 'all 0.25s ease',
                                                         boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
                                                     }}
-                                                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
-                                                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                                                    onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.borderColor = 'var(--primary)'; }}
+                                                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
                                                 >
-                                                     {/* Top Section - Image or Orange Gradient */}
+                                                     {/* Top Section - Image or Gradient Banner */}
                                                      <div style={{ 
                                                          height: '140px', 
                                                          position: 'relative', 
@@ -490,9 +625,9 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                                          alignItems: 'center', 
                                                          justifyContent: 'center' 
                                                      }}>
-                                                         {/* Rating Badge - Hide for facilities */}
+                                                         {/* Rating Badge */}
                                                          {shop.result_type !== 'facility' && (
-                                                             <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.5)', padding: '4px 10px', borderRadius: '14px', fontSize: '13px', color: 'white', fontWeight: 'bold', display: 'flex', gap: '4px', alignItems: 'center', backdropFilter: 'blur(4px)', zIndex: 2 }}>
+                                                             <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.6)', padding: '4px 10px', borderRadius: '14px', fontSize: '13px', color: 'white', fontWeight: 'bold', display: 'flex', gap: '4px', alignItems: 'center', backdropFilter: 'blur(4px)', zIndex: 2 }}>
                                                                  <span style={{ color: '#fbab15' }}>⭐</span> {shop.rating || '4.8'}
                                                              </div>
                                                          )}
@@ -510,7 +645,7 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                                              disabled={shop.is_followed && shop.result_type !== 'facility'}
                                                              style={{
                                                                  position: 'absolute', top: '10px', left: '10px',
-                                                                 background: shop.is_followed ? 'rgba(251, 171, 21, 0.9)' : 'rgba(0,0,0,0.5)',
+                                                                 background: shop.is_followed ? 'rgba(251, 171, 21, 0.9)' : 'rgba(0,0,0,0.6)',
                                                                  padding: '4px 10px', borderRadius: '14px', fontSize: '11px', color: 'white', fontWeight: 'bold', border: 'none', cursor: (shop.is_followed && shop.result_type !== 'facility') ? 'default' : 'pointer', backdropFilter: 'blur(4px)', zIndex: 2
                                                              }}
                                                          >
@@ -534,9 +669,9 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                                      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
                                                          <h3 style={{ fontSize: '17px', fontWeight: 'bold', margin: '0 0 6px 0', color: 'white', textAlign: 'right' }}>{shop.name}</h3>
 
-                                                         <div style={{ fontSize: '13px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '16px', justifyContent: 'flex-start' }}>
+                                                         <div style={{ fontSize: '13px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px', justifyContent: 'flex-start' }}>
                                                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '15px', height: '15px' }}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-                                                             {shop.distance ? `${Math.round(shop.distance)} م عنك` : (shop.parent_shop_name || (shop.result_type === 'facility' ? 'مبنى جامعي' : 'محل'))}
+                                                             {shop.distance ? `يبعد ${Math.round(shop.distance)} م عنك` : (shop.parent_shop_name || (shop.result_type === 'facility' ? 'مبنى جامعي' : 'محل مسجل'))}
                                                          </div>
 
                                                          {shop.result_type === 'facility' && (
@@ -546,21 +681,24 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                                          )}
 
                                                          {shop.products && shop.products.length > 0 && (
-                                                             <div className="ai-place-products" style={{ marginBottom: '16px', paddingTop: '0', borderTop: 'none' }}>
+                                                             <div className="ai-place-products" style={{ marginBottom: '14px', paddingTop: '0', borderTop: 'none' }}>
                                                                  {shop.products.slice(0, 3).map(p => (
                                                                      <div
                                                                          key={p.id}
                                                                          className="ai-prod-item"
-                                                                         onClick={(e) => { e.stopPropagation(); onNavigate(shop, 'driving'); }}
-                                                                         style={{
-                                                                             display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', marginBottom: '8px', padding: '6px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', transition: 'all 0.2s ease'
+                                                                         onClick={(e) => { 
+                                                                             e.stopPropagation(); 
+                                                                             triggerNavigation(shop, 'driving'); 
                                                                          }}
-                                                                         onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(251, 171, 21, 0.1)'; e.currentTarget.style.borderColor = 'rgba(251, 171, 21, 0.3)'; }}
-                                                                         onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'; }}
-                                                                         title="انقر للحصول على مسار لهذا المنتج"
+                                                                         style={{
+                                                                             display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', marginBottom: '6px', padding: '6px 8px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', transition: 'all 0.2s ease'
+                                                                         }}
+                                                                         onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(251, 171, 21, 0.12)'; e.currentTarget.style.borderColor = 'rgba(251, 171, 21, 0.3)'; }}
+                                                                         onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; }}
+                                                                         title="انقر للتوجه والحصول على مسار"
                                                                      >
                                                                          {p.image_url && viewMode === 'grid' && (
-                                                                             <img src={getImageUrl(p.image_url)} alt={p.name} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px' }} />
+                                                                             <img src={getImageUrl(p.image_url)} alt={p.name} style={{ width: '36px', height: '36px', objectFit: 'cover', borderRadius: '6px' }} />
                                                                          )}
                                                                          <div style={{ flex: 1, display: 'flex', flexDirection: viewMode === 'grid' ? 'column' : 'row', justifyContent: viewMode === 'list' ? 'space-between' : 'center', alignItems: viewMode === 'list' ? 'center' : 'flex-start', gap: '4px' }}>
                                                                              <span className="ai-prod-name" style={{ color: 'white', fontWeight: '500' }}>{p.name}</span>
@@ -572,14 +710,60 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                                          )}
 
                                                          {/* Tags Array */}
-                                                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: 'auto', justifyContent: 'flex-start' }}>
-                                                             <span style={{ padding: '6px 12px', background: 'rgba(251, 171, 21, 0.15)', color: '#fbab15', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' }}>
+                                                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '14px', justifyContent: 'flex-start' }}>
+                                                             <span style={{ padding: '4px 10px', background: 'rgba(251, 171, 21, 0.15)', color: '#fbab15', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold' }}>
                                                                  {shop.category || (shop.result_type === 'facility' ? 'مرفق جامعي' : 'عام')}
                                                              </span>
                                                              {shop.result_type !== 'facility' && (
-                                                                 <span style={{ padding: '6px 12px', background: 'rgba(251, 171, 21, 0.15)', color: '#fbab15', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' }}>
+                                                                 <span style={{ padding: '4px 10px', background: 'rgba(255, 255, 255, 0.08)', color: '#94a3b8', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold' }}>
                                                                      {shop.is_open !== false ? 'مفتوح الآن' : 'مغلق'}
                                                                  </span>
+                                                             )}
+                                                         </div>
+
+                                                         {/* Action Navigation Buttons on Each Card */}
+                                                         <div style={{ display: 'flex', gap: '8px', marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                                                             <button
+                                                                 onClick={(e) => {
+                                                                     e.stopPropagation();
+                                                                     triggerNavigation(shop, 'driving');
+                                                                 }}
+                                                                 style={{
+                                                                     flex: 1, padding: '8px', borderRadius: '10px', background: 'linear-gradient(135deg, var(--primary), var(--primary-dark))',
+                                                                     color: 'white', border: 'none', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'
+                                                                 }}
+                                                                 title="توجيه بالسيارة"
+                                                             >
+                                                                 🚗 سيارة
+                                                             </button>
+                                                             <button
+                                                                 onClick={(e) => {
+                                                                     e.stopPropagation();
+                                                                     triggerNavigation(shop, 'walking');
+                                                                 }}
+                                                                 style={{
+                                                                     flex: 1, padding: '8px', borderRadius: '10px', background: 'rgba(255,255,255,0.08)',
+                                                                     color: 'white', border: '1px solid rgba(255,255,255,0.15)', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'
+                                                                 }}
+                                                                 title="توجيه مشياً"
+                                                             >
+                                                                 🚶 مشي
+                                                             </button>
+                                                             {onShopClick && (
+                                                                 <button
+                                                                     onClick={(e) => {
+                                                                         e.stopPropagation();
+                                                                         if (navTimeoutRef.current) clearTimeout(navTimeoutRef.current);
+                                                                         onShopClick(shop);
+                                                                     }}
+                                                                     style={{
+                                                                         padding: '8px 12px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)',
+                                                                         color: 'var(--text-secondary)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '12px', cursor: 'pointer'
+                                                                     }}
+                                                                     title="فتح الملف والتفاصيل"
+                                                                 >
+                                                                     ℹ️
+                                                                 </button>
                                                              )}
                                                          </div>
                                                      </div>
@@ -590,9 +774,12 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                         <button
                                             className="ai-follow-btn"
                                             style={{ marginTop: '30px', width: 'auto', padding: '12px 30px', margin: '30px auto', display: 'block' }}
-                                            onClick={() => { setShowResults(false); setQuery(''); setChatHistory([]); setResults([]); }}
+                                            onClick={() => { 
+                                                if (navTimeoutRef.current) clearTimeout(navTimeoutRef.current);
+                                                setShowResults(false); setQuery(''); setChatHistory([]); setResults([]); 
+                                            }}
                                         >
-                                            ← محادثة جديدة
+                                            ← بدء محادثة جديدة
                                         </button>
                                     </>
                                 )}
@@ -605,12 +792,12 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                             <div className="ai-search-box">
                                 <input
                                     className="ai-search-input"
-                                    placeholder="اسأل شيئاً آخر..."
+                                    placeholder="اسأل شيئاً آخر أو اطلب توجيهك لمكان آخر..."
                                     value={query}
                                     onChange={(e) => setQuery(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                                 />
-                                <button className="ai-send-btn" onClick={() => handleSearch()}>
+                                <button className="ai-send-btn" onClick={() => handleSearch()} title="إرسال">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                         <path d="M22 2L11 13" />
                                         <polygon points="22 2 15 22 11 13 2 9 22 2" />
@@ -694,60 +881,10 @@ const AIChatModal = ({ isOpen, onClose, onNavigate, userLocation }) => {
                                     </svg>
                                     <span>قائمة</span>
                                 </div>
-                                <div className={`view-mode ${viewMode === 'map' ? 'active' : ''}`} onClick={() => setViewMode('map')}>
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" /><line x1="8" y1="2" x2="8" y2="18" /><line x1="16" y1="6" x2="16" y2="22" />
-                                    </svg>
-                                    <span>خريطة</span>
-                                </div>
                             </div>
                         </div>
                     </div>
                 </aside>
-
-                {showCamera && (
-                    <div className="ai-camera-modal">
-                        <header className="ai-header" style={{ margin: '0' }}>
-                            <div className="ai-header-right">
-                                <h3 style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '20px' }}>
-                                        <path d="M5 8h14M5 8a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2M5 8V6a2 2 0 0 1 2-2h2M19 8V6a2 2 0 0 0-2-2h-2" />
-                                        <path d="M9 14h6M9 18h4" />
-                                    </svg>
-                                    الترجمة الذكية بالكاميرا
-                                </h3>
-                            </div>
-                            <button className="ai-icon-btn" onClick={() => setShowCamera(false)}>
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                                </svg>
-                            </button>
-                        </header>
-                        <div className="ai-camera-view">
-                            <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)', padding: '40px' }}>
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: '60px', marginBottom: '20px', color: 'var(--primary)' }}>
-                                    <path d="M5 8h14M5 8a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2M5 8V6a2 2 0 0 1 2-2h2M19 8V6a2 2 0 0 0-2-2h-2" />
-                                    <path d="M9 14h6M9 18h4" />
-                                </svg>
-                                <p>وجّه الكاميرا نحو أي نص وسأترجمه فوراً للعربية</p>
-                            </div>
-                            <div className="ai-scan-frame"><div className="ai-scan-line" /></div>
-                        </div>
-                        <div style={{ padding: '20px', display: 'flex', justifyContent: 'center', gap: '20px', alignItems: 'center' }}>
-                            <button className="ai-camera-control-btn" title="معرض">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
-                                </svg>
-                            </button>
-                            <button className="ai-camera-capture" onClick={() => setShowCamera(false)}></button>
-                            <button className="ai-camera-control-btn" title="قلب الكاميرا">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                )}
 
             </div>
         </div>

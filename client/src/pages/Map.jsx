@@ -4018,7 +4018,7 @@ const MapComponent = () => {
                     onClose={() => setShowAIChat(false)} 
                     userLocation={userLocation}
                     onNavigate={(shop, mode, customStartLoc) => {
-                        const routeMode = mode === 'walking' ? 'foot-walking' : 'driving-car';
+                        const routeMode = (mode === 'walking' || mode === 'foot-walking') ? 'walking' : 'driving';
                         if (customStartLoc) {
                             setActiveCustomStart(customStartLoc);
                             setIsTracking(false);
