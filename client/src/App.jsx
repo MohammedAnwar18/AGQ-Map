@@ -20,8 +20,6 @@ import WeddingInvite from './pages/WeddingInvite';
 
 import OfflinePage from './components/OfflinePage';
 import PushNotificationManager from './components/PushNotificationManager';
-import IosInstallPrompt from './components/IosInstallPrompt';
-import PwaInstallPrompt from './components/PwaInstallPrompt';
 import SplashLoading from './components/SplashLoading';
 import ProfileSetupModal from './components/ProfileSetupModal';
 import './index.css';
@@ -156,8 +154,6 @@ function App() {
                             <div className="bg-blob blob-primary"></div>
                             <div className="bg-blob blob-secondary"></div>
                             <PushNotificationManager />
-                            <IosInstallPrompt />
-                            <PwaInstallPrompt />
                             <OnboardingManager />
                             <Routes>
                                 <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />

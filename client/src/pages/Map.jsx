@@ -639,40 +639,8 @@ const MapComponent = () => {
         };
     });
 
-    const [userLocation, setUserLocation] = useState(() => {
-        const simulate = localStorage.getItem('simulate_location') === 'true';
-        if (!simulate) {
-            try {
-                const saved = localStorage.getItem('last_user_location');
-                if (saved) {
-                    return JSON.parse(saved);
-                }
-            } catch (e) {}
-        }
-
-        let lat = 31.9038;
-        let lng = 35.2034;
-        try {
-            const cached = localStorage.getItem('user_cache');
-            if (cached) {
-                const parsed = JSON.parse(cached);
-                if (parsed) {
-                    if (parsed.role === 'admin' || parsed.username === 'admin') {
-                        lat = 31.9060;
-                        lng = 35.2053;
-                    } else if (parsed.username === 'test1') {
-                        lat = 31.9046;
-                        lng = 35.2022;
-                    }
-                }
-            }
-        } catch (e) {}
-
-        return {
-            latitude: lat,
-            longitude: lng
-        };
-    });
+    // لا يوجد موقع افتراضي - يبقى فارغاً حتى يمنح المستخدم صلاحية الموقع فعلياً
+    const [userLocation, setUserLocation] = useState(null);
 
     const updateUserLocation = (coords) => {
         const simulate = localStorage.getItem('simulate_location') === 'true';
@@ -714,7 +682,6 @@ const MapComponent = () => {
     const [selectedProfileId, setSelectedProfileId] = useState(null);
     const [showSidebar, setShowSidebar] = useState(false);
     const [showCreatePost, setShowCreatePost] = useState(false);
-    const [showCenterActions, setShowCenterActions] = useState(false); // قائمة الدائرة المركزية (منشور + مساعد ذكي)
     const [isUserInfoExpanded, setIsUserInfoExpanded] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isAdminPickingLocation, setIsAdminPickingLocation] = useState(false);
@@ -741,8 +708,11 @@ const MapComponent = () => {
     const [showMoreMenu, setShowMoreMenu] = useState(false);
     const [isEmergencyActive, setIsEmergencyActive] = useState(false);
     const [hasUnreadCommunity, setHasUnreadCommunity] = useState(false);
-    const [showGPSGuide, setShowGPSGuide] = useState(false);
-    const [gpsErrorType, setGpsErrorType] = useState(null); // 'denied' or 'generic'
+    // نافذة طلب صلاحية الموقع - لا تظهر تلقائياً أبداً،
+    // فقط عند ضغط المستخدم على زر تحديد الموقع في البار السفلي
+    const [showLocationPermission, setShowLocationPermission] = useState(false);
+    const [locationPermissionBlocked, setLocationPermissionBlocked] = useState(false);
+    const [requestingLocation, setRequestingLocation] = useState(false);
     const [lineDashOffset, setLineDashOffset] = useState(0);
     const [showSpatialReels, setShowSpatialReels] = useState(false);
     const [showARViewer, setShowARViewer] = useState(false);
@@ -771,6 +741,40 @@ const MapComponent = () => {
 
     // هل يُسمح للمستخدم بإنشاء منشور في السياق الحالي؟
     const canCreatePost = !currentCommunity || isFloraComm || user?.role === 'admin';
+
+    // الدائرة المركزية: نقرة واحدة تفتح المساعد الذكي، ونقرتان متتاليتان تفتحان إنشاء منشور
+    const centerTapTimer = useRef(null);
+
+    const openAIAssistant = () => {
+        setShowAIChat(true);
+        setShowSearch(false);
+        setShowCommunities(false);
+        setShowProfile(false);
+    };
+
+    const handleCenterFabClick = () => {
+        // النقرة الثانية وصلت قبل انتهاء المهلة => إنشاء منشور
+        if (centerTapTimer.current) {
+            clearTimeout(centerTapTimer.current);
+            centerTapTimer.current = null;
+            if (canCreatePost) {
+                setShowCreatePost(true);
+            } else {
+                openAIAssistant();
+            }
+            return;
+        }
+
+        // نقرة أولى: ننتظر قليلاً تحسّباً لنقرة ثانية
+        centerTapTimer.current = setTimeout(() => {
+            centerTapTimer.current = null;
+            openAIAssistant();
+        }, 260);
+    };
+
+    useEffect(() => () => {
+        if (centerTapTimer.current) clearTimeout(centerTapTimer.current);
+    }, []);
 
     // Shop Profile State
     const [showShopProfile, setShowShopProfile] = useState(false);
@@ -1349,6 +1353,55 @@ const MapComponent = () => {
     }, [routePath]);
 
     // Center on User
+    // طلب صلاحية الموقع فعلياً (يُشغّل نافذة النظام إن لم يسبق الرفض)
+    const requestLocationAccess = () => {
+        if (!navigator.geolocation) {
+            setLocationPermissionBlocked(true);
+            setShowLocationPermission(true);
+            return;
+        }
+
+        setRequestingLocation(true);
+
+        const onSuccess = (position) => {
+            const newLoc = {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy: position.coords.accuracy
+            };
+            updateUserLocation(newLoc);
+            setRequestingLocation(false);
+            setShowLocationPermission(false);
+            setLocationPermissionBlocked(false);
+            mapRef.current?.flyTo({
+                center: [newLoc.longitude, newLoc.latitude],
+                zoom: 17,
+                pitch: 45,
+                bearing: 0
+            });
+        };
+
+        const onFinalError = (err) => {
+            setRequestingLocation(false);
+            // رفض صريح => نوجّه المستخدم لتفعيلها من إعدادات المتصفح
+            setLocationPermissionBlocked(err?.code === 1);
+            setShowLocationPermission(true);
+        };
+
+        navigator.geolocation.getCurrentPosition(
+            onSuccess,
+            () => {
+                // محاولة ثانية بدقة أقل قبل إظهار النافذة
+                navigator.geolocation.getCurrentPosition(
+                    onSuccess,
+                    onFinalError,
+                    { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
+                );
+            },
+            { enableHighAccuracy: true, timeout: 8000 }
+        );
+    };
+
     const handleCenterOnUser = () => {
         if (userLocation) {
             mapRef.current?.flyTo({
@@ -1357,55 +1410,12 @@ const MapComponent = () => {
                 pitch: 45, // Tilt for 3D effect
                 bearing: 0
             });
-        } else {
-            // If location isn't available yet, force a fresh request and inform user
-            if (!navigator.geolocation) {
-                alert("حدد الموقع غير مدعوم في هذا المتصفح.");
-                return;
-            }
-
-            // Optional: Simple visual feedback that we are trying
-            console.log("Requesting location for center...");
-
-            const onSuccess = (position) => {
-                const newLoc = {
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude
-                };
-                updateUserLocation(newLoc);
-                mapRef.current?.flyTo({
-                    center: [newLoc.longitude, newLoc.latitude],
-                    zoom: 17,
-                    pitch: 45,
-                    bearing: 0
-                });
-            };
-
-            const onError = (error) => {
-                console.warn("High accuracy failed, trying low accuracy...", error);
-
-                // Fallback: Try requesting without high accuracy
-                navigator.geolocation.getCurrentPosition(
-                    onSuccess,
-                    (errLow) => {
-                        console.error("All location attempts failed:", errLow);
-                        if (errLow.code === 1) { // PERMISSION_DENIED
-                            alert("تم رفض إذن الوصول للموقع. يرجى الضغط على أيقونة القفل 🔒 بجانب الرابط والسماح بالموقع.");
-                        } else {
-                            alert("تعذر تحديد موقعك. يرجى المحاولة مرة أخرى في منطقة مفتوحة.");
-                        }
-                    },
-                    { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 } // Accept older cached position if available
-                );
-            };
-
-            // First try: High Accuracy
-            navigator.geolocation.getCurrentPosition(
-                onSuccess,
-                onError,
-                { enableHighAccuracy: true, timeout: 8000 }
-            );
+            return;
         }
+
+        // لا يوجد موقع بعد => اعرض نافذة الموافقة على الصلاحية
+        setLocationPermissionBlocked(false);
+        setShowLocationPermission(true);
     };
 
     // Connect User and Shared Shop/Place
@@ -1820,9 +1830,8 @@ const MapComponent = () => {
                     updateUserLocation(coords);
                 },
                 (err) => {
-                    console.error("Native Geolocation Error:", err);
-                    setGpsErrorType('generic');
-                    setShowGPSGuide(true);
+                    // صامت تماماً: لا نوافذ ولا موقع افتراضي
+                    console.warn("Native Geolocation unavailable:", err?.message || err);
                 }
             );
 
@@ -1878,9 +1887,7 @@ const MapComponent = () => {
                     (err) => {
                         console.error("GPS Error:", err);
                         if (err.code === 1) {
-                            // Permission Denied - Show Guide
-                            setGpsErrorType('denied');
-                            setShowGPSGuide(true);
+                            // رفض المستخدم الصلاحية - نكمل بصمت بدون أي نافذة
                             console.warn("User denied GPS permissions.");
                         } else {
                             // Technical error, retry after 5s
@@ -3469,14 +3476,6 @@ const MapComponent = () => {
                 )}
             </div>
 
-            {/* خلفية شفافة لإغلاق قائمة الدائرة المركزية عند النقر خارجها */}
-            {showCenterActions && (
-                <div
-                    className="center-fab-backdrop"
-                    onClick={() => setShowCenterActions(false)}
-                />
-            )}
-
             {/* Bottom Navigation Panel - Instagram Style */}
             {!isGuestMode && !isEmergencyActive && (
                 <nav className="bottom-nav">
@@ -3508,67 +3507,19 @@ const MapComponent = () => {
                     </button>
                 )}
 
-                {/* الدائرة المركزية المدمجة: المساعد الذكي + إنشاء منشور */}
-                <div className={`center-fab-wrapper ${showCenterActions ? 'open' : ''}`}>
-                    <div className="center-fab-actions" aria-hidden={!showCenterActions}>
-                        <button
-                            className="center-fab-action ai"
-                            tabIndex={showCenterActions ? 0 : -1}
-                            onClick={() => {
-                                setShowCenterActions(false);
-                                setShowAIChat(true);
-                                setShowSearch(false);
-                                setShowCommunities(false);
-                                setShowProfile(false);
-                            }}
-                        >
-                            <span className="center-fab-action-label">المساعد الذكي</span>
-                            <span className="center-fab-action-icon">
-                                <svg viewBox="0 0 100 100" fill="currentColor" width="24" height="24">
-                                    <path d="M22 15 C24 28 28 32 40 34 C28 36 24 40 22 53 C20 40 16 36 4 34 C16 32 20 28 22 15 Z" />
-                                    <path d="M35 2 C36 7 38 9 43 10 C38 11 36 13 35 18 C34 13 32 11 27 10 C32 9 34 7 35 2 Z" />
-                                    <path d="M42 36 C43 42 45 44 50 45 C45 46 43 48 42 54 C41 48 39 46 34 45 C39 44 41 42 42 36 Z" />
-                                    <path d="M48 12 A38 38 0 1 1 15 55" fill="none" stroke="currentColor" strokeWidth="9" strokeLinecap="round" />
-                                    <path d="M77 77 L95 95" fill="none" stroke="currentColor" strokeWidth="13" strokeLinecap="round" />
-                                </svg>
-                            </span>
-                        </button>
-
-                        {canCreatePost && (
-                            <button
-                                className="center-fab-action post"
-                                tabIndex={showCenterActions ? 0 : -1}
-                                onClick={() => { setShowCenterActions(false); setShowCreatePost(true); }}
-                            >
-                                <span className="center-fab-action-label">{isFloraComm ? 'التقط صورة نبتة' : 'إنشاء منشور'}</span>
-                                <span className="center-fab-action-icon">
-                                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                        <line x1="12" y1="5" x2="12" y2="19" />
-                                        <line x1="5" y1="12" x2="19" y2="12" />
-                                    </svg>
-                                </span>
-                            </button>
-                        )}
-                    </div>
-
+                {/* الدائرة المركزية: نقرة = المساعد الذكي | نقرتان = إنشاء منشور */}
+                <div className="center-fab-wrapper">
                     <button
-                        className={`nav-item center-btn ${showCenterActions ? 'is-open' : ''} ${showAIChat ? 'active' : ''}`}
-                        onClick={() => {
-                            if (!canCreatePost) {
-                                setShowAIChat(true);
-                                setShowSearch(false);
-                                setShowCommunities(false);
-                                setShowProfile(false);
-                                return;
-                            }
-                            setShowCenterActions(prev => !prev);
+                        className={`nav-item center-btn ${showAIChat ? 'active' : ''}`}
+                        onClick={handleCenterFabClick}
+                        style={{
+                            touchAction: 'manipulation',
+                            ...(isFloraComm ? {
+                                background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                                boxShadow: '0 10px 30px rgba(22,163,74,0.5)'
+                            } : {})
                         }}
-                        style={isFloraComm ? {
-                            background: 'linear-gradient(135deg, #16a34a, #15803d)',
-                            boxShadow: '0 10px 30px rgba(22,163,74,0.5)'
-                        } : {}}
-                        aria-expanded={showCenterActions}
-                        title="المساعد الذكي وإنشاء منشور"
+                        title={canCreatePost ? 'المساعد الذكي (نقرتان لإنشاء منشور)' : 'المساعد الذكي'}
                     >
                         <span className="center-btn-glyph">
                             <svg viewBox="0 0 100 100" fill="currentColor">
@@ -3579,13 +3530,6 @@ const MapComponent = () => {
                                 <path d="M77 77 L95 95" fill="none" stroke="currentColor" strokeWidth="13" strokeLinecap="round" />
                             </svg>
                         </span>
-                        <span className="center-btn-close" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
-                                <line x1="6" y1="6" x2="18" y2="18" />
-                                <line x1="18" y1="6" x2="6" y2="18" />
-                            </svg>
-                        </span>
-                        {canCreatePost && <span className="center-btn-plus-badge" aria-hidden="true">+</span>}
                     </button>
                 </div>
 
@@ -4138,80 +4082,69 @@ const MapComponent = () => {
             )}
 
             {/* GPS Helper - Mobile & Desktop Support */}
-            {showGPSGuide && (
-                <div style={{
-                    position: 'fixed', inset: 0,
-                    background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)',
-                    zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
-                }}>
-                    <div style={{
-                        background: '#0f172a', border: '1px solid #1e293b',
-                        borderRadius: '24px', width: '100%', maxWidth: '400px',
-                        padding: '30px', color: 'white', textAlign: 'center',
-                        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
-                        animation: 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
-                    }}>
-                        <div style={{ marginBottom: '20px' }}>
-                            <svg viewBox="0 0 24 24" width="60" height="60" fill="none" stroke="#fbab15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+            {showLocationPermission && (
+                <div
+                    style={{
+                        position: 'fixed', inset: 0,
+                        background: 'rgba(2, 6, 23, 0.8)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+                        zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+                    }}
+                    onClick={() => setShowLocationPermission(false)}
+                >
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            background: '#0f172a', border: '1px solid #1e293b',
+                            borderRadius: '24px', width: '100%', maxWidth: '360px',
+                            padding: '28px 24px', color: 'white', textAlign: 'center',
+                            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.6)',
+                            animation: 'slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1)'
+                        }}
+                    >
+                        <div style={{
+                            width: '68px', height: '68px', borderRadius: '50%', margin: '0 auto 18px',
+                            background: 'rgba(251, 171, 21, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="#fbab15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
                         </div>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '15px' }}>تفعيل تحديد الموقع</h2>
 
-                        <p style={{ fontSize: '0.95rem', color: '#94a3b8', lineHeight: '1.6', marginBottom: '20px' }}>
-                            يرجى تحديد نظام التشغيل الخاص بجهازك لعرض خطوات تفعيل الموقع (GPS) بكل سهولة:
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '10px' }}>
+                            السماح بالوصول إلى موقعك
+                        </h2>
+
+                        <p style={{ fontSize: '0.92rem', color: '#94a3b8', lineHeight: '1.7', marginBottom: '22px' }}>
+                            {locationPermissionBlocked
+                                ? 'صلاحية الموقع مرفوضة حالياً. فعّلها من إعدادات المتصفح (أيقونة القفل 🔒 بجانب الرابط ← الموقع ← السماح) ثم أعد المحاولة.'
+                                : 'نحتاج إذن الوصول لموقعك لعرض مكانك على الخريطة وحساب المسارات القريبة منك.'}
                         </p>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
-                            <button
-                                onClick={() => window.location.href = '/support?os=android'}
-                                style={{
-                                    fontFamily: 'inherit',
-                                    background: '#1e293b', border: '1px solid #334155', color: 'white',
-                                    borderRadius: '16px', padding: '20px 10px', cursor: 'pointer',
-                                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
-                                    transition: 'all 0.2s'
-                                }}
-                            >
-                                <div style={{ height: '40px', display: 'flex', alignItems: 'center' }}>
-                                    <svg viewBox="0 0 24 24" width="35" height="35" fill="currentColor" style={{ color: '#3ddc84' }}><path d="M17.6,9.48l1.84-3.18c0.16-0.31,0.04-0.69-0.26-0.85c-0.29-0.15-0.65-0.06-0.83,0.22l-1.88,3.24 c-2.86-1.21-6.08-1.21-8.94,0L5.65,5.67C5.46,5.4,5.1,5.31,4.82,5.46C4.52,5.62,4.4,6,4.56,6.3l1.84,3.18 C2.69,11.56,0,16.2,0,21.5h24C24,16.2,21.31,11.56,17.6,9.48z M6.42,17.43c-0.65,0-1.18-0.53-1.18-1.18 c0-0.65,0.53-1.18,1.18-1.18s1.18,0.53,1.18,1.18C7.59,16.9,7.06,17.43,6.42,17.43z M17.58,17.43c-0.65,0-1.18-0.53-1.18-1.18 c0-0.65,0.53-1.18,1.18-1.18s1.18,0.53,1.18,1.18C18.76,16.9,18.23,17.43,17.58,17.43z" /></svg>
-                                </div>
-                                <span style={{ fontWeight: 'bold' }}>أندرويد (Android)</span>
-                            </button>
-                            <button
-                                onClick={() => window.location.href = '/support?os=ios'}
-                                style={{
-                                    fontFamily: 'inherit',
-                                    background: '#1e293b', border: '1px solid #334155', color: 'white',
-                                    borderRadius: '16px', padding: '20px 10px', cursor: 'pointer',
-                                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
-                                    transition: 'all 0.2s'
-                                }}
-                            >
-                                <div style={{ height: '40px', display: 'flex', alignItems: 'center' }}>
-                                    <svg viewBox="0 0 24 24" width="35" height="35" fill="currentColor"><path d="M16.96,18.06c-0.78,1.14-1.61,2.27-2.85,2.3c-1.21,0.03-1.62-0.71-2.99-0.71c-1.37,0-1.81,0.68-2.95,0.71 c-1.2,0-1.95-1.04-2.73-2.18c-1.61-2.32-2.84-6.55-1.19-9.42c0.82-1.42,2.26-2.33,3.84-2.36c1.17-0.03,2.27,0.78,2.99,0.78 c0.72,0,2.05-1,3.46-0.85c1.47,0.06,2.8,0.71,3.54,1.82c-3.08,1.86-2.58,6.23,0.5,7.41C18.17,16.48,17.6,17.33,16.96,18.06z M14.61,4.64c0.63-0.76,1.06-1.83,0.94-2.89c-0.93,0.04-2.04,0.62-2.69,1.41C12.3,3.85,11.8,4.96,11.96,5.99 C12.98,6.07,14.03,5.43,14.61,4.64z" /></svg>
-                                </div>
-                                <span style={{ fontWeight: 'bold' }}>آيفون (iOS)</span>
-                            </button>
-                        </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             <button
-                                onClick={() => window.location.reload()}
+                                onClick={requestLocationAccess}
+                                disabled={requestingLocation}
                                 style={{
                                     fontFamily: 'inherit',
-                                    background: '#fbab15', color: 'black', fontWeight: 'bold',
-                                    padding: '12px', borderRadius: '12px', border: 'none', cursor: 'pointer'
+                                    background: '#fbab15', color: '#0f172a', fontWeight: 'bold', fontSize: '0.95rem',
+                                    padding: '13px', borderRadius: '14px', border: 'none',
+                                    cursor: requestingLocation ? 'default' : 'pointer',
+                                    opacity: requestingLocation ? 0.7 : 1,
+                                    transition: 'opacity 0.2s'
                                 }}
                             >
-                                تحديث الصفحة الآن
+                                {requestingLocation ? 'جارٍ تحديد موقعك...' : 'السماح بالوصول للموقع'}
                             </button>
                             <button
-                                onClick={() => setShowGPSGuide(false)}
+                                onClick={() => setShowLocationPermission(false)}
                                 style={{
+                                    fontFamily: 'inherit',
                                     background: 'transparent', color: '#94a3b8', border: 'none',
-                                    padding: '10px', cursor: 'pointer', fontSize: '0.9rem'
+                                    padding: '8px', cursor: 'pointer', fontSize: '0.88rem'
                                 }}
                             >
-                                إغلاق
+                                ليس الآن
                             </button>
                         </div>
                     </div>

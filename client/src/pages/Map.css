@@ -448,7 +448,7 @@
 }
 
 /* ========================================================
-   الدائرة المركزية المدمجة (المساعد الذكي + إنشاء منشور)
+   الدائرة المركزية (المساعد الذكي - نقرتان لإنشاء منشور)
    ======================================================== */
 
 .center-fab-wrapper {
@@ -460,185 +460,34 @@
     align-self: center;
 }
 
-/* الزر نفسه يملأ الغلاف بالكامل */
 .center-fab-wrapper .nav-item.center-btn {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
     margin-top: 0;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
 }
 
 .center-fab-wrapper .nav-item.center-btn:hover {
     transform: scale(1.06) translateY(-3px);
 }
 
-/* الأيقونة الأساسية (المساعد الذكي) */
+.center-fab-wrapper .nav-item.center-btn:active {
+    transform: scale(0.95);
+}
+
 .center-btn-glyph {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
 }
 
 .center-btn-glyph svg {
     width: 32px;
     height: 32px;
     display: block;
-}
-
-/* أيقونة الإغلاق (تظهر عند فتح القائمة) */
-.center-btn-close {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transform: rotate(-90deg) scale(0.5);
-    transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
-    pointer-events: none;
-}
-
-.center-btn-close svg {
-    width: 30px;
-    height: 30px;
-}
-
-/* شارة الزائد الصغيرة - تلميح لإنشاء منشور */
-.center-btn-plus-badge {
-    position: absolute;
-    bottom: 1px;
-    inset-inline-start: 1px;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: var(--bg-primary, #0f172a);
-    color: #fbab15;
-    font-size: 16px;
-    font-weight: 900;
-    line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
-    transition: transform 0.22s ease, opacity 0.18s ease;
-    pointer-events: none;
-}
-
-/* الحالة المفتوحة */
-.center-fab-wrapper .nav-item.center-btn.is-open .center-btn-glyph {
-    opacity: 0;
-    transform: rotate(90deg) scale(0.5);
-}
-
-.center-fab-wrapper .nav-item.center-btn.is-open .center-btn-close {
-    opacity: 1;
-    transform: rotate(0deg) scale(1);
-}
-
-.center-fab-wrapper .nav-item.center-btn.is-open .center-btn-plus-badge {
-    opacity: 0;
-    transform: scale(0.4);
-}
-
-/* ---- قائمة الإجراءات المنبثقة ---- */
-.center-fab-actions {
-    position: absolute;
-    bottom: calc(100% + 14px);
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 12px;
-    z-index: 2;
-}
-
-.center-fab-action {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    white-space: nowrap;
-    font-family: inherit;
-
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(14px) scale(0.85);
-    transition: opacity 0.22s ease, transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), visibility 0.22s;
-}
-
-.center-fab-wrapper.open .center-fab-action {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0) scale(1);
-}
-
-/* تدرّج بسيط في ظهور العناصر */
-.center-fab-wrapper.open .center-fab-action:nth-child(1) { transition-delay: 0.02s; }
-.center-fab-wrapper.open .center-fab-action:nth-child(2) { transition-delay: 0.08s; }
-
-.center-fab-action-label {
-    background: rgba(15, 23, 42, 0.96);
-    -webkit-backdrop-filter: blur(14px);
-    backdrop-filter: blur(14px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #e2e8f0;
-    font-size: 0.8rem;
-    font-weight: 700;
-    padding: 7px 13px;
-    border-radius: 10px;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
-}
-
-.center-fab-action-icon {
-    width: 46px;
-    height: 46px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4);
-    transition: transform 0.2s ease;
-}
-
-.center-fab-action.ai .center-fab-action-icon {
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-    box-shadow: 0 8px 22px rgba(99, 102, 241, 0.5);
-}
-
-.center-fab-action.post .center-fab-action-icon {
-    background: linear-gradient(135deg, #fbab15 0%, #f59e0b 100%);
-    box-shadow: 0 8px 22px rgba(251, 171, 21, 0.5);
-}
-
-.center-fab-action:hover .center-fab-action-icon {
-    transform: scale(1.1);
-}
-
-.center-fab-action:active .center-fab-action-icon {
-    transform: scale(0.94);
-}
-
-/* خلفية الإغلاق بالنقر خارج القائمة */
-.center-fab-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 2199;
-    background: rgba(2, 6, 23, 0.45);
-    -webkit-backdrop-filter: blur(2px);
-    backdrop-filter: blur(2px);
-    animation: centerFabFadeIn 0.2s ease;
-}
-
-@keyframes centerFabFadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
 }
 
 /* Floating Actions Override */
@@ -683,22 +532,6 @@
     .center-btn-glyph svg {
         width: 28px;
         height: 28px;
-    }
-
-    .center-btn-close svg {
-        width: 26px;
-        height: 26px;
-    }
-
-    .center-btn-plus-badge {
-        width: 20px;
-        height: 20px;
-        font-size: 14px;
-    }
-
-    .center-fab-action-icon {
-        width: 44px;
-        height: 44px;
     }
 
     .top-bar {

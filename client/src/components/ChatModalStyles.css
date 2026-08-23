@@ -345,3 +345,25 @@
     0%, 100% { background: rgba(239, 68, 68, 0.08); }
     50% { background: rgba(239, 68, 68, 0.15); }
 }
+/* ============================================================
+   تناسق نافذة الدردشة مع البار العلوي على شاشات الهواتف
+   البار العلوي ارتفاعه 65px + المساحة الآمنة العلوية
+   ============================================================ */
+@media (max-width: 768px) {
+    .chat-modal-overlay {
+        top: calc(65px + env(safe-area-inset-top, 0px));
+        height: auto;
+        padding: 0;
+        /* أقل من z-index البار العلوي (2600) حتى يبقى ظاهراً فوقها */
+        z-index: 2400;
+        background: rgba(15, 23, 42, 0.4);
+    }
+
+    .chat-modal-overlay .chat-modal-container {
+        height: 100% !important;
+        max-height: 100% !important;
+        width: 100%;
+        border-radius: 0;
+        border: none;
+    }
+}
