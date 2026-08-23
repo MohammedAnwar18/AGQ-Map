@@ -401,9 +401,7 @@ const MunicipalityProfileModal = ({ shop, currentUser, onClose, onFollowChange, 
                                 <span>🏩</span>
                                 {muniData.category || 'بلدية'}
                             </p>
-                            <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px', fontWeight: '500' }}>
-                                المتابعين: {muniData.followers_count || 0}
-                            </div>
+                            {/* عدد المتابعين - مخفي بطلب من المستخدم */}
                         </div>
                         <div style={{ display: 'flex', gap: '8px' }}>
                             <button className="muni-follow-btn" style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255,255,255,0.2)', color: 'white', padding: '10px' }} onClick={handleShare} title="مشاركة">

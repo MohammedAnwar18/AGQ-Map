@@ -850,18 +850,11 @@ const ProfileModal = ({ userId, onClose }) => {
 
                             <div style={{
                                 display: 'grid',
-                                gridTemplateColumns: '1fr 1fr 1fr',
+                                gridTemplateColumns: '1fr 1fr',
                                 gap: '0.5rem',
                                 marginBottom: '1.5rem'
                             }}>
-                                <div className="info-card" style={{ padding: '0.75rem' }}>
-                                    <div style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--primary)' }}>
-                                        {profile.posts_count || 0}
-                                    </div>
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                        منشورات
-                                    </div>
-                                </div>
+                                {/* عدد المنشورات - مخفي بطلب من المستخدم */}
 
                                 <div className="info-card" style={{ padding: '0.75rem' }}>
                                     <div style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--secondary)' }}>

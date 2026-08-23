@@ -2349,13 +2349,16 @@ const MapComponent = () => {
                 </div>
 
                 <div className="top-bar-right" style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                    <button className={`top-nav-icon ${showNotifications ? 'active' : ''}`} onClick={() => setShowNotifications(true)} style={{ position: 'relative' }}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
-                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                        </svg>
-                        {unreadCount > 0 && <span className="notification-badge" style={{ top: '-4px', right: '-4px' }}>{unreadCount}</span>}
-                    </button>
+                    {/* الإشعارات - ملغاة ومخفية بطلب من المستخدم */}
+                    {false && (
+                        <button className={`top-nav-icon ${showNotifications ? 'active' : ''}`} onClick={() => setShowNotifications(true)} style={{ position: 'relative' }}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                            </svg>
+                            {unreadCount > 0 && <span className="notification-badge" style={{ top: '-4px', right: '-4px' }}>{unreadCount}</span>}
+                        </button>
+                    )}
 
                     {/* Search for Users Button */}
                     <button className={`top-nav-icon ${showSearch ? 'active' : ''}`} onClick={() => setShowSearch(true)} title="البحث">
@@ -2426,7 +2429,8 @@ const MapComponent = () => {
                           )}
                       </div>
 
-                    {!isMobileDevice && (
+                    {/* مستودع بالنوفا - مخفي بطلب من المستخدم */}
+                    {false && !isMobileDevice && (
                         <button
                             className={`top-nav-icon ${showRepositoryModal ? 'active' : ''}`}
                             onClick={() => setShowRepositoryModal(true)}
@@ -2498,8 +2502,8 @@ const MapComponent = () => {
                             </div>
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
-                        {/* الأخبار - مفعل بطلب من المستخدم */}
-                        {true && (
+                        {/* الأخبار - مخفي بطلب من المستخدم */}
+                        {false && (
                             <button onClick={() => { setShowNews(true); setShowMoreMenu(false); }}>
                                 <div className="menu-item-content">
                                     <div className="menu-icon-wrapper">
@@ -2511,23 +2515,25 @@ const MapComponent = () => {
                             </button>
                         )}
 
-                        {/* الطوارئ (Emergency) */}
-                        <button 
-                            onClick={handleActivateEmergency}
-                            className="emergency-menu-item"
-                        >
-                            <div className="menu-item-content">
-                                <div className="menu-icon-wrapper" style={{ color: '#ef4444' }}>
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="26" height="26" fill="#ef4444" style={{ color: '#ef4444' }} className="menu-icon-svg">
-                                        <path d="M200-160v-80h64l79-263q8-26 29.5-41.5T420-560h120q26 0 47.5 15.5T617-503l79 263h64v80H200Zm148-80h264l-72-240H420l-72 240Zm92-400v-200h80v200h-80Zm238 99-57-57 142-141 56 56-141 142Zm42 181v-80h200v80H720ZM282-541 141-683l56-56 142 141-57 57ZM40-360v-80h200v80H40Zm440 120Z"/>
-                                    </svg>
+                        {/* الطوارئ (Emergency) - مخفي بطلب من المستخدم */}
+                        {false && (
+                            <button 
+                                onClick={handleActivateEmergency}
+                                className="emergency-menu-item"
+                            >
+                                <div className="menu-item-content">
+                                    <div className="menu-icon-wrapper" style={{ color: '#ef4444' }}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="26" height="26" fill="#ef4444" style={{ color: '#ef4444' }} className="menu-icon-svg">
+                                            <path d="M200-160v-80h64l79-263q8-26 29.5-41.5T420-560h120q26 0 47.5 15.5T617-503l79 263h64v80H200Zm148-80h264l-72-240H420l-72 240Zm92-400v-200h80v200h-80Zm238 99-57-57 142-141 56 56-141 142Zm42 181v-80h200v80H720ZM282-541 141-683l56-56 142 141-57 57ZM40-360v-80h200v80H40Zm440 120Z"/>
+                                        </svg>
+                                    </div>
+                                    <span style={{ color: '#ef4444', fontWeight: 'bold' }}>الطوارئ</span>
                                 </div>
-                                <span style={{ color: '#ef4444', fontWeight: 'bold' }}>الطوارئ</span>
-                            </div>
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ef4444" strokeWidth="2.5">
-                                <polyline points="9 18 15 12 9 6" />
-                            </svg>
-                        </button>
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ef4444" strokeWidth="2.5">
+                                    <polyline points="9 18 15 12 9 6" />
+                                </svg>
+                            </button>
+                        )}
 
                         {/* مسار اللياقة (Fitness Path) */}
                         <button 
@@ -2568,8 +2574,8 @@ const MapComponent = () => {
                             </button>
                         )}
 
-                        {/* مختبر بالنوفا - مفعل بطلب من المستخدم */}
-                        {true && (
+                        {/* مختبر بالنوفا - مخفي بطلب من المستخدم */}
+                        {false && (
                             <button
                                 onClick={() => {
                                     setShowLabModal(true);
@@ -2594,8 +2600,8 @@ const MapComponent = () => {
                             </button>
                         )}
 
-                        {/* مساحة دراسة */}
-                        {true && (
+                        {/* مساحة دراسة - مخفي بطلب من المستخدم */}
+                        {false && (
                             <button
                                 onClick={() => {
                                     setShowStudySpace(true);
@@ -3479,13 +3485,16 @@ const MapComponent = () => {
                     </div>
                 </button>
 
-                <button className={`nav-item reels-nav-btn ${showSpatialReels ? 'active' : ''}`} onClick={() => { setShowSpatialReels(true); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); setShowProfile(false); }}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" width="36" height="36" style={{ marginBottom: '-2px' }}>
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                        <polygon points="10 6.5 16.5 10 10 13.5" fill="currentColor" stroke="none" />
-                    </svg>
-                    <span>ريلز</span>
-                </button>
+                {/* ريلز - مخفي بطلب من المستخدم */}
+                {false && (
+                    <button className={`nav-item reels-nav-btn ${showSpatialReels ? 'active' : ''}`} onClick={() => { setShowSpatialReels(true); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); setShowProfile(false); }}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" width="36" height="36" style={{ marginBottom: '-2px' }}>
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                            <polygon points="10 6.5 16.5 10 10 13.5" fill="currentColor" stroke="none" />
+                        </svg>
+                        <span>ريلز</span>
+                    </button>
+                )}
 
                 {(!currentCommunity || isFloraComm || user?.role === 'admin') && (
                     <button

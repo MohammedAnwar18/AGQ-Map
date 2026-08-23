@@ -23,6 +23,15 @@ const Login = () => {
     const [resetStep, setResetStep] = useState(1); // 1: Email, 2: OTP & New Password
     const [successMessage, setSuccessMessage] = useState('');
 
+    // زائر عائد أم أول مرة؟ (لإخفاء "مرحباً بعودتك" عن المستخدم الجديد)
+    const RETURNING_VISITOR_KEY = 'palnovaa_returning_visitor';
+    const [isReturningVisitor] = useState(() => {
+        try { return localStorage.getItem(RETURNING_VISITOR_KEY) === '1'; } catch (e) { return false; }
+    });
+    const markReturningVisitor = () => {
+        try { localStorage.setItem(RETURNING_VISITOR_KEY, '1'); } catch (e) { /* ignore */ }
+    };
+
     const handleGoogleSuccess = async (credentialResponse) => {
         try {
             setLoading(true);
@@ -34,8 +43,9 @@ const Login = () => {
             }
             const response = await authService.googleLogin(credentialResponse.credential);
             if (response.token && response.user) {
+                markReturningVisitor();
                 login(response.user, response.token);
-                navigate('/');
+                navigate('/map');
             } else {
                 setError(response.error || 'فشل في تسجيل الدخول من جوجل');
             }
@@ -145,6 +155,8 @@ const Login = () => {
                         otp: otpCode
                     });
 
+                    markReturningVisitor();
+
                     login(response.user, response.token);
                     navigate('/map');
                 } else {
@@ -161,6 +173,7 @@ const Login = () => {
                             alert(response.message);
                         }
                     } else {
+                        markReturningVisitor();
                         login(response.user, response.token);
                         navigate('/map');
                     }
@@ -208,6 +221,7 @@ const Login = () => {
                         alert(response.message);
                     }
                 } else {
+                    markReturningVisitor();
                     login(response.user, response.token);
                     navigate('/map');
                 }
@@ -244,31 +258,6 @@ const Login = () => {
             </div>
 
             <div className="login-content fade-in">
-                <div style={{ display: 'flex', justifyContent: 'flex-start', width: '100%', marginBottom: '10px' }}>
-                    <button
-                        onClick={() => navigate('/home')}
-                        style={{
-                            background: 'rgba(255, 255, 255, 0.06)',
-                            border: '1px solid rgba(255, 255, 255, 0.12)',
-                            color: '#cbd5e1',
-                            fontFamily: 'Tajawal, sans-serif',
-                            fontSize: '13px',
-                            fontWeight: '600',
-                            padding: '6px 14px',
-                            borderRadius: '10px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            transition: 'all 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(251, 171, 21, 0.15)'; e.currentTarget.style.color = '#fbab15'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'; e.currentTarget.style.color = '#cbd5e1'; }}
-                    >
-                        <span>→</span>
-                        <span>الرئيسية</span>
-                    </button>
-                </div>
                 <div className="login-header">
                     <div className="logo" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem', marginTop: '1rem' }}>
                         <svg width="130" height="130" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginBottom: '1rem', overflow: 'visible' }}>
@@ -332,7 +321,7 @@ const Login = () => {
                         </h2>
                         {!isForgotPassword && (
                             <p className="subtitle">
-                                {!isLogin ? 'انضم إلى المجتمع' : 'مرحباً بعودتك!'}
+                                {!isLogin ? 'انضم إلى المجتمع' : (isReturningVisitor ? 'مرحباً بعودتك!' : 'سجّل دخولك للمتابعة')}
                             </p>
                         )}
                     </div>

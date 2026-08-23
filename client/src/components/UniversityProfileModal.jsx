@@ -641,9 +641,7 @@ const UniversityProfileModal = ({ university, currentUser, onClose, onFollowChan
                                     </div>
                                 )}
                                 <p className="uni-category">مؤسسة تعليمية</p>
-                                <div className="uni-followers-count" style={{ fontSize: '0.85rem', color: '#ccc', marginTop: '4px' }}>
-                                    {uniData.followers_count || 0} متابع
-                                </div>
+                                {/* عدد المتابعين - مخفي بطلب من المستخدم */}
                             </div>
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                                 <button className={`uni-follow-btn ${uniData.is_followed ? 'is-unfollow' : ''}`} onClick={handleFollow}>

@@ -1573,10 +1573,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                         )}
                                     </p>
                                 )}
-                                <div style={{ display: 'flex', gap: 20, marginTop: 10, color: 'var(--text-muted)' }}>
-                                    <span><b>{shopData.followers_count}</b> متابع</span>
-                                    <span><b>{posts.length}</b> منشور</span>
-                                </div>
+                                {/* عدد المتابعين والمنشورات - مخفي بطلب من المستخدم */}
                             </div>
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center', justifyContent: design.layout === 'classic' ? 'center' : (design.layout === 'minimal' ? 'flex-end' : 'flex-start'), marginTop: design.layout === 'classic' ? '15px' : '0' }}>
                                 {canEditShop && (
