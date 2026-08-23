@@ -714,6 +714,7 @@ const MapComponent = () => {
     const [selectedProfileId, setSelectedProfileId] = useState(null);
     const [showSidebar, setShowSidebar] = useState(false);
     const [showCreatePost, setShowCreatePost] = useState(false);
+    const [showCenterActions, setShowCenterActions] = useState(false); // قائمة الدائرة المركزية (منشور + مساعد ذكي)
     const [isUserInfoExpanded, setIsUserInfoExpanded] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isAdminPickingLocation, setIsAdminPickingLocation] = useState(false);
@@ -767,6 +768,9 @@ const MapComponent = () => {
     const FLORA_PALESTINA_COMMUNITY_ID = 6;
     // eslint-disable-next-line eqeqeq
     const isFloraComm = currentCommunity?.id == FLORA_PALESTINA_COMMUNITY_ID;
+
+    // هل يُسمح للمستخدم بإنشاء منشور في السياق الحالي؟
+    const canCreatePost = !currentCommunity || isFloraComm || user?.role === 'admin';
 
     // Shop Profile State
     const [showShopProfile, setShowShopProfile] = useState(false);
@@ -3465,6 +3469,14 @@ const MapComponent = () => {
                 )}
             </div>
 
+            {/* خلفية شفافة لإغلاق قائمة الدائرة المركزية عند النقر خارجها */}
+            {showCenterActions && (
+                <div
+                    className="center-fab-backdrop"
+                    onClick={() => setShowCenterActions(false)}
+                />
+            )}
+
             {/* Bottom Navigation Panel - Instagram Style */}
             {!isGuestMode && !isEmergencyActive && (
                 <nav className="bottom-nav">
@@ -3496,35 +3508,86 @@ const MapComponent = () => {
                     </button>
                 )}
 
-                {(!currentCommunity || isFloraComm || user?.role === 'admin') && (
+                {/* الدائرة المركزية المدمجة: المساعد الذكي + إنشاء منشور */}
+                <div className={`center-fab-wrapper ${showCenterActions ? 'open' : ''}`}>
+                    <div className="center-fab-actions" aria-hidden={!showCenterActions}>
+                        <button
+                            className="center-fab-action ai"
+                            tabIndex={showCenterActions ? 0 : -1}
+                            onClick={() => {
+                                setShowCenterActions(false);
+                                setShowAIChat(true);
+                                setShowSearch(false);
+                                setShowCommunities(false);
+                                setShowProfile(false);
+                            }}
+                        >
+                            <span className="center-fab-action-label">المساعد الذكي</span>
+                            <span className="center-fab-action-icon">
+                                <svg viewBox="0 0 100 100" fill="currentColor" width="24" height="24">
+                                    <path d="M22 15 C24 28 28 32 40 34 C28 36 24 40 22 53 C20 40 16 36 4 34 C16 32 20 28 22 15 Z" />
+                                    <path d="M35 2 C36 7 38 9 43 10 C38 11 36 13 35 18 C34 13 32 11 27 10 C32 9 34 7 35 2 Z" />
+                                    <path d="M42 36 C43 42 45 44 50 45 C45 46 43 48 42 54 C41 48 39 46 34 45 C39 44 41 42 42 36 Z" />
+                                    <path d="M48 12 A38 38 0 1 1 15 55" fill="none" stroke="currentColor" strokeWidth="9" strokeLinecap="round" />
+                                    <path d="M77 77 L95 95" fill="none" stroke="currentColor" strokeWidth="13" strokeLinecap="round" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        {canCreatePost && (
+                            <button
+                                className="center-fab-action post"
+                                tabIndex={showCenterActions ? 0 : -1}
+                                onClick={() => { setShowCenterActions(false); setShowCreatePost(true); }}
+                            >
+                                <span className="center-fab-action-label">{isFloraComm ? 'التقط صورة نبتة' : 'إنشاء منشور'}</span>
+                                <span className="center-fab-action-icon">
+                                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                        <line x1="12" y1="5" x2="12" y2="19" />
+                                        <line x1="5" y1="12" x2="19" y2="12" />
+                                    </svg>
+                                </span>
+                            </button>
+                        )}
+                    </div>
+
                     <button
-                        className="nav-item center-btn"
-                        onClick={() => setShowCreatePost(true)}
+                        className={`nav-item center-btn ${showCenterActions ? 'is-open' : ''} ${showAIChat ? 'active' : ''}`}
+                        onClick={() => {
+                            if (!canCreatePost) {
+                                setShowAIChat(true);
+                                setShowSearch(false);
+                                setShowCommunities(false);
+                                setShowProfile(false);
+                                return;
+                            }
+                            setShowCenterActions(prev => !prev);
+                        }}
                         style={isFloraComm ? {
                             background: 'linear-gradient(135deg, #16a34a, #15803d)',
-                            boxShadow: '0 4px 18px rgba(22,163,74,0.5)'
+                            boxShadow: '0 10px 30px rgba(22,163,74,0.5)'
                         } : {}}
-                        title={isFloraComm ? 'التقط صورة نبتة' : 'إنشاء منشور'}
+                        aria-expanded={showCenterActions}
+                        title="المساعد الذكي وإنشاء منشور"
                     >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            <line x1="12" y1="5" x2="12" y2="19" />
-                            <line x1="5" y1="12" x2="19" y2="12" />
-                        </svg>
+                        <span className="center-btn-glyph">
+                            <svg viewBox="0 0 100 100" fill="currentColor">
+                                <path d="M22 15 C24 28 28 32 40 34 C28 36 24 40 22 53 C20 40 16 36 4 34 C16 32 20 28 22 15 Z" />
+                                <path d="M35 2 C36 7 38 9 43 10 C38 11 36 13 35 18 C34 13 32 11 27 10 C32 9 34 7 35 2 Z" />
+                                <path d="M42 36 C43 42 45 44 50 45 C45 46 43 48 42 54 C41 48 39 46 34 45 C39 44 41 42 42 36 Z" />
+                                <path d="M48 12 A38 38 0 1 1 15 55" fill="none" stroke="currentColor" strokeWidth="9" strokeLinecap="round" />
+                                <path d="M77 77 L95 95" fill="none" stroke="currentColor" strokeWidth="13" strokeLinecap="round" />
+                            </svg>
+                        </span>
+                        <span className="center-btn-close" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                            </svg>
+                        </span>
+                        {canCreatePost && <span className="center-btn-plus-badge" aria-hidden="true">+</span>}
                     </button>
-                )}
-
-                <button className={`nav-item ${showAIChat ? 'active' : ''}`} onClick={() => { setShowAIChat(true); setShowSearch(false); setShowCommunities(false); setShowProfile(false); }}>
-                    <svg viewBox="0 0 100 100" fill="currentColor" width="30" height="30">
-                        {/* Sparkles */}
-                        <path d="M22 15 C24 28 28 32 40 34 C28 36 24 40 22 53 C20 40 16 36 4 34 C16 32 20 28 22 15 Z" />
-                        <path d="M35 2 C36 7 38 9 43 10 C38 11 36 13 35 18 C34 13 32 11 27 10 C32 9 34 7 35 2 Z" />
-                        <path d="M42 36 C43 42 45 44 50 45 C45 46 43 48 42 54 C41 48 39 46 34 45 C39 44 41 42 42 36 Z" />
-                        {/* Ring with Gap */}
-                        <path d="M48 12 A38 38 0 1 1 15 55" fill="none" stroke="currentColor" strokeWidth="9" strokeLinecap="round" />
-                        {/* Outer Handle - Starting exactly on the edge */}
-                        <path d="M77 77 L95 95" fill="none" stroke="currentColor" strokeWidth="13" strokeLinecap="round" />
-                    </svg>
-                </button>
+                </div>
 
                 <button className={`nav-item ${showChat ? 'active' : ''}`} onClick={() => { setShowChat(true); setUnreadChatCount(0); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); setShowProfile(false); }}>
                     <div style={{ position: 'relative' }}>
