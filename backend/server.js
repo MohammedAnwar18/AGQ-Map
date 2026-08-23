@@ -87,6 +87,7 @@ const regionalEventsRoutes = require('./routes/regionalEvents');
 const cameraRoutes = require('./routes/cameras');
 const reelsRoutes = require('./routes/reels');
 const studySpaceRoutes = require('./routes/studySpace');
+const fitnessRoutes = require('./routes/fitness');
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -107,6 +108,7 @@ app.use('/api/regional-events', regionalEventsRoutes);
 app.use('/api/cameras', cameraRoutes);
 app.use('/api/reels', reelsRoutes);
 app.use('/api/study-space', studySpaceRoutes);
+app.use('/api/fitness', fitnessRoutes);
 
 // Auto-migrate: ensure shop_drivers table exists with all required columns
 (async () => {

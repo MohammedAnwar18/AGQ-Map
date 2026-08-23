@@ -10,6 +10,9 @@
     "@aws-sdk/lib-storage": "^3.700.0",
     "@aws-sdk/s3-request-presigner": "^3.700.0",
     "@supabase/supabase-js": "^2.39.7",
+    "@tensorflow/tfjs": "^4.22.0",
+    "@tensorflow/tfjs-backend-wasm": "^4.22.0",
+    "@vladmandic/face-api": "^1.7.15",
     "axios": "^1.13.2",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^1.41.3",
@@ -27,6 +30,7 @@
     "nodemailer": "^7.0.12",
     "pg": "^8.11.3",
     "resend": "^6.9.3",
+    "sharp": "^0.35.3",
     "socket.io": "^4.6.1",
     "uuid": "^9.0.1",
     "web-push": "^3.6.7"

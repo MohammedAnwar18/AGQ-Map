@@ -3,7 +3,7 @@
   "functions": {
     "api/index.js": {
       "maxDuration": 300,
-      "includeFiles": "{backend/models/**,backend/node_modules/@tensorflow/tfjs-backend-wasm/dist/*.wasm}"
+      "includeFiles": "{backend/models/**,backend/node_modules/@tensorflow/tfjs-backend-wasm/dist/*.wasm,node_modules/@tensorflow/tfjs-backend-wasm/dist/*.wasm}"
     }
   },
   "rewrites": [

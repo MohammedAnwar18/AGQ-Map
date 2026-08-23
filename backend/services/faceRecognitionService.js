@@ -1,7 +1,31 @@
 const path = require('path');
-const sharp = require('sharp');
-// Pure-JS/WASM build: no native tfjs-node / canvas addon required (safe for Vercel serverless).
-const faceapi = require('@vladmandic/face-api/dist/face-api.node-wasm.js');
+
+let sharp = null;
+function getSharp() {
+    if (!sharp) {
+        try {
+            sharp = require('sharp');
+        } catch (err) {
+            console.error('Failed to load sharp:', err);
+            throw new Error('مكتبة معالجة الصور (sharp) غير متوفرة أو لم يتم تثبيتها');
+        }
+    }
+    return sharp;
+}
+
+let faceapi = null;
+function getFaceApi() {
+    if (!faceapi) {
+        try {
+            // Pure-JS/WASM build: no native tfjs-node / canvas addon required (safe for Vercel serverless).
+            faceapi = require('@vladmandic/face-api/dist/face-api.node-wasm.js');
+        } catch (err) {
+            console.error('Failed to load face-api:', err);
+            throw new Error('مكتبة التعرف على الوجوه (face-api) غير متوفرة أو لم يتم تثبيتها');
+        }
+    }
+    return faceapi;
+}
 
 const MODELS_PATH = path.join(__dirname, '..', 'models');
 const MAX_DIMENSION = 1280; // downscale huge uploads before running inference (speed, memory)
@@ -42,12 +66,13 @@ function classifyDistance(distance) {
 async function ensureModelsLoaded() {
     if (!modelsLoadedPromise) {
         modelsLoadedPromise = (async () => {
-            await faceapi.tf.setBackend('wasm');
-            await faceapi.tf.ready();
-            await faceapi.nets.tinyFaceDetector.loadFromDisk(MODELS_PATH);
-            await faceapi.nets.faceLandmark68Net.loadFromDisk(MODELS_PATH);
-            await faceapi.nets.faceRecognitionNet.loadFromDisk(MODELS_PATH);
-            console.log('✅ Face recognition models loaded (backend:', faceapi.tf.getBackend(), ')');
+            const api = getFaceApi();
+            await api.tf.setBackend('wasm');
+            await api.tf.ready();
+            await api.nets.tinyFaceDetector.loadFromDisk(MODELS_PATH);
+            await api.nets.faceLandmark68Net.loadFromDisk(MODELS_PATH);
+            await api.nets.faceRecognitionNet.loadFromDisk(MODELS_PATH);
+            console.log('✅ Face recognition models loaded (backend:', api.tf.getBackend(), ')');
         })();
     }
     return modelsLoadedPromise;
@@ -58,7 +83,9 @@ async function ensureModelsLoaded() {
  * of raw RGB pixels, auto-rotated per EXIF and capped to MAX_DIMENSION.
  */
 async function imageBufferToTensor(buffer) {
-    const { data, info } = await sharp(buffer)
+    const s = getSharp();
+    const api = getFaceApi();
+    const { data, info } = await s(buffer)
         .rotate() // apply EXIF orientation
         .resize({ width: MAX_DIMENSION, height: MAX_DIMENSION, fit: 'inside', withoutEnlargement: true })
         .removeAlpha()
@@ -66,7 +93,7 @@ async function imageBufferToTensor(buffer) {
         .raw()
         .toBuffer({ resolveWithObject: true });
 
-    return faceapi.tf.tensor3d(new Uint8Array(data), [info.height, info.width, info.channels]);
+    return api.tf.tensor3d(new Uint8Array(data), [info.height, info.width, info.channels]);
 }
 
 function boxArea(box) {
@@ -80,14 +107,15 @@ function boxArea(box) {
  */
 async function extractAllFaces(buffer) {
     await ensureModelsLoaded();
+    const api = getFaceApi();
     const tensor = await imageBufferToTensor(buffer);
     try {
-        const options = new faceapi.TinyFaceDetectorOptions({
+        const options = new api.TinyFaceDetectorOptions({
             inputSize: DETECTOR_INPUT_SIZE,
             scoreThreshold: DETECTOR_SCORE_THRESHOLD
         });
 
-        const results = await faceapi
+        const results = await api
             .detectAllFaces(tensor, options)
             .withFaceLandmarks()
             .withFaceDescriptors();
@@ -108,7 +136,7 @@ async function extractAllFaces(buffer) {
             }))
             .sort((a, b) => boxArea(b.box) - boxArea(a.box));
     } finally {
-        faceapi.tf.dispose(tensor);
+        api.tf.dispose(tensor);
     }
 }
 
