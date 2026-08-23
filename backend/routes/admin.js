@@ -26,6 +26,27 @@ const {
 
 const upload = require('../middleware/upload');
 
+const {
+    getAllPeople,
+    getPersonDetails,
+    createPerson,
+    updatePerson,
+    deletePerson,
+    addPersonPhotos,
+    deletePersonPhoto,
+    searchByImage
+} = require('../controllers/faceController');
+
+// صور التعرف على الوجوه: حد 10 ميجابايت لكل صورة كما طُلب
+const faceUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) cb(null, true);
+        else cb(new Error('Only images are allowed'), false);
+    }
+});
+
 // جميع الـ routes محمية بـ authenticateToken و isAdmin
 router.use(authenticateToken);
 router.use(isAdmin);
@@ -60,5 +81,17 @@ router.delete('/event-photos/:photoId', deleteEventPhoto);
 
 // Admin Notifications
 router.post('/notifications/send', sendAdminNotification);
+
+// Face Recognition — People Registry
+router.get('/face/people', getAllPeople);
+router.get('/face/people/:id', getPersonDetails);
+router.post('/face/people', faceUpload.array('photos', 5), createPerson);
+router.put('/face/people/:id', updatePerson);
+router.delete('/face/people/:id', deletePerson);
+router.post('/face/people/:id/photos', faceUpload.array('photos', 5), addPersonPhotos);
+router.delete('/face/photos/:photoId', deletePersonPhoto);
+
+// Face Recognition — Search by Image
+router.post('/face/search', faceUpload.single('image'), searchByImage);
 
 module.exports = router;

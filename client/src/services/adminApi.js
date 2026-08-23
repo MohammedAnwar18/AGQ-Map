@@ -141,6 +141,53 @@ export const adminService = {
     deleteEventPhoto: async (photoId) => {
         const response = await adminApi.delete(`/event-photos/${photoId}`);
         return response.data;
+    },
+
+    // Face Recognition — People Registry
+    getFacePeople: async (search = '', page = 1, limit = 20) => {
+        const response = await adminApi.get('/face/people', { params: { search, page, limit } });
+        return response.data;
+    },
+
+    getFacePersonDetails: async (personId) => {
+        const response = await adminApi.get(`/face/people/${personId}`);
+        return response.data;
+    },
+
+    createFacePerson: async (formData) => {
+        const response = await adminApi.post('/face/people', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    },
+
+    updateFacePerson: async (personId, data) => {
+        const response = await adminApi.put(`/face/people/${personId}`, data);
+        return response.data;
+    },
+
+    deleteFacePerson: async (personId) => {
+        const response = await adminApi.delete(`/face/people/${personId}`);
+        return response.data;
+    },
+
+    addFacePersonPhotos: async (personId, formData) => {
+        const response = await adminApi.post(`/face/people/${personId}/photos`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    },
+
+    deleteFacePhoto: async (photoId) => {
+        const response = await adminApi.delete(`/face/photos/${photoId}`);
+        return response.data;
+    },
+
+    searchFaceByImage: async (formData) => {
+        const response = await adminApi.post('/face/search', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
     }
 };
 

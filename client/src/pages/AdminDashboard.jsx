@@ -10,6 +10,7 @@ import AdminDigitalLetters from './AdminDigitalLetters';
 import OrbisControlCenter from '../components/OrbisControlCenter';
 import OrbisMobileLens from '../components/OrbisMobileLens';
 import GeoportalDesigner from './GeoportalDesigner';
+import AdminFaceRecognition from './AdminFaceRecognition';
 
 const OrbisDashboard = ({ setActiveTab }) => {
     const [forceMode, setForceMode] = useState(null);
@@ -327,6 +328,7 @@ const AdminDashboard = () => {
                         { id: 'ar', icon: '🕶️', label: 'إدارة الواقع المعزز' },
                         { id: 'letters', icon: '✉️', label: 'أظرف ودعوات 3D' },
                         { id: 'event-photos', icon: '📸', label: 'صور الفعاليات/الدعوات' },
+                        { id: 'face-recognition', icon: '🧬', label: 'التعرف على الوجوه' },
                         { id: 'palnovaa-orbis', icon: '🛰️', label: 'PalNovaa Orbis' },
                     ].map(tab => (
                         <a
@@ -364,6 +366,7 @@ const AdminDashboard = () => {
                                                         activeTab === 'ar' ? 'إدارة محتوى الواقع المعزز' : 
                                                             activeTab === 'letters' ? 'إدارة الأظرف والدعوات الرقمية' :
                                                                 activeTab === 'event-photos' ? 'إدارة صور ألبوم الفعاليات والدعوات' :
+                                                                    activeTab === 'face-recognition' ? 'نظام التعرف على الوجوه' :
                                                                     activeTab === 'palnovaa-orbis' ? 'نظام PalNovaa Orbis للمراقبة والتحليل بالذكاء الاصطناعي' : 'خارطة النشاط الموحدة'
                         }</h2>
                         <p>مرحباً بك يا {user.full_name || user.username} • {new Date().toLocaleDateString('ar-SA', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
@@ -1219,6 +1222,11 @@ const AdminDashboard = () => {
 
                 {activeTab === 'palnovaa-orbis' && (
                     <OrbisDashboard setActiveTab={setActiveTab} />
+                )}
+
+                {/* Face Recognition Management */}
+                {activeTab === 'face-recognition' && (
+                    <AdminFaceRecognition />
                 )}
             </div>
         </div>
