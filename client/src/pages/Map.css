@@ -478,13 +478,18 @@
     transform: scale(0.95);
 }
 
-.center-btn-glyph {
+/* ملاحظة مهمة: قاعدة .nav-item span:not(.notification-badge) تخفي كل span داخل عناصر
+   البار السفلي، لذلك نستخدم محدداً أعلى أولوية حتى تظهر أيقونة المساعد الذكي */
+.nav-item.center-btn span.center-btn-glyph {
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 100%;
+    height: 100%;
+    color: inherit;
 }
 
-.center-btn-glyph svg {
+.nav-item.center-btn span.center-btn-glyph svg {
     width: 32px;
     height: 32px;
     display: block;
@@ -529,7 +534,7 @@
         margin-top: 0;
     }
 
-    .center-btn-glyph svg {
+    .nav-item.center-btn span.center-btn-glyph svg {
         width: 28px;
         height: 28px;
     }
