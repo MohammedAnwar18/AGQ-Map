@@ -2546,25 +2546,27 @@ const MapComponent = () => {
                             </button>
                         )}
 
-                        {/* مسار اللياقة (Fitness Path) */}
-                        <button 
-                            onClick={() => { setShowFitnessModal(true); setShowMoreMenu(false); }}
-                            className="fitness-menu-item"
-                        >
-                            <div className="menu-item-content">
-                                <div className="menu-icon-wrapper" style={{ color: '#10D9A0' }}>
-                                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg">
-                                        <path d="M18.8 19c.4-1.2.6-2.5.6-3.8 0-4.4-3.6-8-8-8a8 8 0 00-6.8 3.8"/>
-                                        <path d="M2 19h20M9 19c.4-1.2.6-2.5.6-3.8M5 19a4 4 0 014-4"/>
-                                        <circle cx="12" cy="5" r="2"/>
-                                    </svg>
+                        {/* مسار اللياقة (Fitness Path) - مخفي من القائمة الرئيسية */}
+                        {false && (
+                            <button 
+                                onClick={() => { setShowFitnessModal(true); setShowMoreMenu(false); }}
+                                className="fitness-menu-item"
+                            >
+                                <div className="menu-item-content">
+                                    <div className="menu-icon-wrapper" style={{ color: '#10D9A0' }}>
+                                        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg">
+                                            <path d="M18.8 19c.4-1.2.6-2.5.6-3.8 0-4.4-3.6-8-8-8a8 8 0 00-6.8 3.8"/>
+                                            <path d="M2 19h20M9 19c.4-1.2.6-2.5.6-3.8M5 19a4 4 0 014-4"/>
+                                            <circle cx="12" cy="5" r="2"/>
+                                        </svg>
+                                    </div>
+                                    <span style={{ color: '#10D9A0', fontWeight: 'bold' }}>مسار اللياقة</span>
                                 </div>
-                                <span style={{ color: '#10D9A0', fontWeight: 'bold' }}>مسار اللياقة</span>
-                            </div>
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#10D9A0" strokeWidth="2.5">
-                                <polyline points="9 18 15 12 9 6" />
-                            </svg>
-                        </button>
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#10D9A0" strokeWidth="2.5">
+                                    <polyline points="9 18 15 12 9 6" />
+                                </svg>
+                            </button>
+                        )}
 
                         {/* الجولة الافتراضية - مخفية مؤقتاً */}
                         {false && (
