@@ -12,8 +12,25 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/logo.png" />
   <meta name="viewport"
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="description"
-    content="PalNovaa (بالنوفا) | شبكة اجتماعية ذكية تتيح لك اكتشاف الأماكن القريبة، مشاركة لحظاتك الاجتماعية، والتواصل مع الأصدقاء بسهولة وأمان." />
+  <meta name="description" content="خريطة تفاعلية تجمع المحلات والمتاجر الفلسطينية في مكان واحد. تصفّح المحلات القريبة منك، استعرض منتجاتها وأسعارها وعروضها، واعرف طريقك إليها مباشرة على الخريطة." />
+  <meta name="keywords"
+    content="خريطة المحلات, محلات فلسطين, متاجر فلسطينية, بالنوفا, PalNovaa, دليل المحلات, منتجات فلسطينية, عروض المحلات, خريطة تسوق" />
+  <link rel="canonical" href="/" id="canonical-url" />
+
+  <!-- Open Graph / مشاركة الروابط -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="PalNovaa" />
+  <meta property="og:locale" content="ar_PS" />
+  <meta property="og:title" content="PalNovaa | خريطة المحلات الفلسطينية" />
+  <meta property="og:description" content="خريطة تفاعلية تجمع المحلات والمتاجر الفلسطينية في مكان واحد. تصفّح المحلات القريبة منك، استعرض منتجاتها وأسعارها وعروضها، واعرف طريقك إليها مباشرة على الخريطة." />
+  <meta property="og:image" content="/logo.png" />
+  <meta property="og:url" content="/" id="og-url" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="PalNovaa | خريطة المحلات الفلسطينية" />
+  <meta name="twitter:description" content="خريطة تفاعلية تجمع المحلات والمتاجر الفلسطينية في مكان واحد. تصفّح المحلات القريبة منك، استعرض منتجاتها وأسعارها وعروضها، واعرف طريقك إليها مباشرة على الخريطة." />
+  <meta name="twitter:image" content="/logo.png" />
   <meta name="theme-color" content="#131417" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -33,7 +50,37 @@
   </script>
 
   <link rel="manifest" href="/manifest.json" />
-  <title>PalNovaa | خريطتك الاجتماعية</title>
+
+  <!-- بيانات منظّمة لمحركات البحث (تُبنى من الدومين الحالي) -->
+  <script>
+    (function () {
+      var origin = window.location.origin;
+      var canonical = document.getElementById('canonical-url');
+      if (canonical) canonical.href = origin + '/';
+      var ogUrl = document.getElementById('og-url');
+      if (ogUrl) ogUrl.setAttribute('content', origin + '/');
+
+      var ld = document.createElement('script');
+      ld.type = 'application/ld+json';
+      ld.textContent = JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "PalNovaa",
+        "alternateName": "بالنوفا",
+        "url": origin + '/',
+        "description": document.querySelector('meta[name="description"]').content,
+        "inLanguage": "ar",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": origin + '/map?q={search_term_string}',
+          "query-input": "required name=search_term_string"
+        }
+      });
+      document.head.appendChild(ld);
+    })();
+  </script>
+
+  <title>PalNovaa | خريطة المحلات الفلسطينية</title>
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -175,37 +222,9 @@
       filter: drop-shadow(0 3px 6px rgba(120, 70, 0, .28));
     }
 
-    /* النصوص */
-    .splash-text-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      animation: splashFadeUp 700ms cubic-bezier(0.22, 1, 0.36, 1) 420ms both;
-    }
-
     @keyframes splashFadeUp {
       from { transform: translateY(10px); opacity: 0; }
       to { transform: translateY(0); opacity: 1; }
-    }
-
-    .splash-title {
-      margin: 0;
-      direction: ltr;
-      font-size: clamp(32px, 6.4vmin, 58px);
-      font-weight: 700;
-      letter-spacing: -.015em;
-      line-height: 1.1;
-      color: #FFFFFF;
-    }
-
-    .splash-tagline {
-      margin: 0;
-      max-width: 30ch;
-      font-size: clamp(14px, 2.2vmin, 18px);
-      font-weight: 300;
-      line-height: 1.7;
-      color: rgba(255, 255, 255, .62);
     }
 
     /* شريط التقدم والحالة */
@@ -213,11 +232,10 @@
       position: relative;
       z-index: 3;
       display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
+      justify-content: center;
       width: 100%;
-      animation: splashFadeUp 700ms cubic-bezier(0.22, 1, 0.36, 1) 720ms both;
+      padding-bottom: clamp(8px, 4vh, 28px);
+      animation: splashFadeUp 700ms cubic-bezier(0.22, 1, 0.36, 1) 560ms both;
     }
 
     .splash-progress {
@@ -240,19 +258,6 @@
       0% { transform: translateX(-100%); }
       100% { transform: translateX(0); }
     }
-
-    .splash-status {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 12px;
-      font-weight: 400;
-      letter-spacing: .1em;
-      color: rgba(255, 255, 255, .34);
-    }
-
-    .splash-status .sep { color: rgba(255, 255, 255, .2); direction: ltr; }
-    .splash-status .en { direction: ltr; letter-spacing: .14em; }
 
     @media (prefers-reduced-motion: reduce) {
       #splash-screen *, #splash-screen { animation: none !important; }
@@ -304,22 +309,12 @@
           </svg>
         </div>
       </div>
-
-      <div class="splash-text-container">
-        <h1 class="splash-title">PalNovaa</h1>
-        <p class="splash-tagline">دليلك الأقرب إلى كل مكان حولك</p>
-      </div>
     </div>
 
     <div class="splash-footer">
       <div class="splash-progress">
         <div class="splash-progress-bar"></div>
       </div>
-      <span class="splash-status">
-        جاري تحديد موقعك
-        <span class="sep">·</span>
-        <span class="en">LOCATING</span>
-      </span>
     </div>
   </div>
 

@@ -61,6 +61,16 @@ const ProtectedRoute = ({ children }) => {
     return isAuthenticated ? children : <Navigate to="/login" />;
 };
 
+// الخريطة مفتوحة للجميع: نحن ننتظر انتهاء التحقق من الجلسة فقط،
+// حتى يعرف التطبيق إن كان الزائر مسجّلاً أم لا، ثم نعرضها في الحالتين.
+const PublicMapRoute = ({ children }) => {
+    const { loading } = useAuth();
+
+    if (loading) return <SplashLoading />;
+
+    return children;
+};
+
 const AdminRoute = ({ children }) => {
     const { isAuthenticated, user, loading } = useAuth();
 
@@ -157,7 +167,7 @@ function App() {
                             <OnboardingManager />
                             <Routes>
                                 <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-                                <Route path="/map" element={<ProtectedRoute><Map /></ProtectedRoute>} />
+                                <Route path="/map" element={<PublicMapRoute><Map /></PublicMapRoute>} />
                                 <Route path="/streets" element={<ProtectedRoute><StreetMap /></ProtectedRoute>} />
                                 <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
                                 <Route path="/admin/geoportal" element={<AdminRoute><GeoportalDesigner /></AdminRoute>} />
@@ -168,7 +178,7 @@ function App() {
                                 <Route path="/ar" element={<ProtectedRoute><ARView /></ProtectedRoute>} />
                                 <Route path="/ar-workspace" element={<ProtectedRoute><ARWorkspace /></ProtectedRoute>} />
                                 <Route path="/virtual-tour" element={<ProtectedRoute><VirtualTourMap /></ProtectedRoute>} />
-                                <Route path="/" element={<Navigate to="/login" replace />} />
+                                <Route path="/" element={<Navigate to="/map" replace />} />
                                 <Route path="*" element={<OfflinePage />} />
                             </Routes>
                         </AuthProvider>

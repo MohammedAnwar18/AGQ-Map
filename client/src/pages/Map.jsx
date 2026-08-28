@@ -682,6 +682,8 @@ const MapComponent = () => {
     const [selectedProfileId, setSelectedProfileId] = useState(null);
     const [showSidebar, setShowSidebar] = useState(false);
     const [showCreatePost, setShowCreatePost] = useState(false);
+    // الزائر بلا حساب: أي ميزة شخصية تعرض دعوة لإنشاء حساب بدل الخطأ
+    const [showAuthPrompt, setShowAuthPrompt] = useState(false);
     const [isUserInfoExpanded, setIsUserInfoExpanded] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isAdminPickingLocation, setIsAdminPickingLocation] = useState(false);
@@ -739,6 +741,15 @@ const MapComponent = () => {
     // eslint-disable-next-line eqeqeq
     const isFloraComm = currentCommunity?.id == FLORA_PALESTINA_COMMUNITY_ID;
 
+    // هل الزائر يتصفّح بدون حساب؟
+    const isVisitor = !user;
+
+    // ينفّذ الإجراء للمسجّلين، ويعرض دعوة تسجيل الدخول للزوار
+    const requireAccount = (action) => {
+        if (isVisitor) { setShowAuthPrompt(true); return; }
+        action();
+    };
+
     // هل يُسمح للمستخدم بإنشاء منشور في السياق الحالي؟
     const canCreatePost = !currentCommunity || isFloraComm || user?.role === 'admin';
 
@@ -746,6 +757,7 @@ const MapComponent = () => {
     const centerTapTimer = useRef(null);
 
     const openAIAssistant = () => {
+        if (isVisitor) { setShowAuthPrompt(true); return; }
         setShowAIChat(true);
         setShowSearch(false);
         setShowCommunities(false);
@@ -758,7 +770,7 @@ const MapComponent = () => {
             clearTimeout(centerTapTimer.current);
             centerTapTimer.current = null;
             if (canCreatePost) {
-                setShowCreatePost(true);
+                requireAccount(() => setShowCreatePost(true));
             } else {
                 openAIAssistant();
             }
@@ -1637,6 +1649,7 @@ const MapComponent = () => {
     // Initial Data Fetch
     useEffect(() => {
         if (isGuestMode) return;
+        if (!user) return; // زائر بلا حساب: لا بيانات شخصية
         const fetchData = async () => {
             // Note: Location handling moved to dedicated effect below
             try {
@@ -2262,8 +2275,8 @@ const MapComponent = () => {
     // Refresh posts when mode changes or interval
     // (Logic included in main fetch effect above via dependency)
 
-    if (!isGuestMode && !user) return <SplashLoading />;
-    if (!isGuestMode && !isInitialDataLoaded) return <SplashLoading />;
+    // الخريطة مفتوحة للزوار: ننتظر تحميل بيانات المستخدم فقط إن كان مسجّلاً
+    if (user && !isGuestMode && !isInitialDataLoaded) return <SplashLoading />;
 
     return (
         <div className="map-page" style={{ position: 'relative', height: '100dvh', width: '100vw', overflow: 'hidden' }}>
@@ -2327,7 +2340,7 @@ const MapComponent = () => {
                 <div className="top-bar-left" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                     <button
                         className={`top-nav-icon profile-top-icon ${showProfile ? 'active' : ''}`}
-                        onClick={() => { setShowProfile(true); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); setShowChat(false); }}
+                        onClick={() => requireAccount(() => { setShowProfile(true); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); setShowChat(false); })}
                         style={{ padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', position: 'relative' }}
                         title="الملف الشخصي"
                     >
@@ -2372,7 +2385,7 @@ const MapComponent = () => {
                     )}
 
                     {/* Search for Users Button */}
-                    <button className={`top-nav-icon ${showSearch ? 'active' : ''}`} onClick={() => setShowSearch(true)} title="البحث">
+                    <button className={`top-nav-icon ${showSearch ? 'active' : ''}`} onClick={() => requireAccount(() => setShowSearch(true))} title="البحث">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -2495,7 +2508,7 @@ const MapComponent = () => {
                             </div>
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
-                        <button onClick={() => { setShowCommunities(true); setShowMoreMenu(false); }}>
+                        <button onClick={() => { setShowMoreMenu(false); requireAccount(() => setShowCommunities(true)); }}>
                             <div className="menu-item-content">
                                 <div className="menu-icon-wrapper">
                                     <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
@@ -2504,7 +2517,7 @@ const MapComponent = () => {
                             </div>
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
-                        <button onClick={() => { setShowFriends(true); setShowMoreMenu(false); }}>
+                        <button onClick={() => { setShowMoreMenu(false); requireAccount(() => setShowFriends(true)); }}>
                             <div className="menu-item-content">
                                 <div className="menu-icon-wrapper">
                                     <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" y1="8" x2="19" y2="14" /><line x1="22" y1="11" x2="16" y2="11" /></svg>
@@ -2701,19 +2714,35 @@ const MapComponent = () => {
                             </>
                         )}
                         <div className="menu-divider"></div>
-                        <button onClick={logout} className="logout-btn">
-                            <div className="menu-item-content">
-                                <div className="menu-icon-wrapper">
-                                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#ff6b6b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="menu-icon-svg">
-                                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                                        <polyline points="16 17 21 12 16 7"></polyline>
-                                        <line x1="21" y1="12" x2="9" y2="12"></line>
-                                    </svg>
+                        {isVisitor ? (
+                            <button onClick={() => { setShowMoreMenu(false); navigate('/login'); }} className="logout-btn">
+                                <div className="menu-item-content">
+                                    <div className="menu-icon-wrapper">
+                                        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fbab15" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="menu-icon-svg">
+                                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                                            <polyline points="10 17 15 12 10 7"></polyline>
+                                            <line x1="15" y1="12" x2="3" y2="12"></line>
+                                        </svg>
+                                    </div>
+                                    <span style={{ fontWeight: '700', color: '#fbab15' }}>تسجيل الدخول / حساب جديد</span>
                                 </div>
-                                <span style={{ fontWeight: '700' }}>تسجيل خروج</span>
-                            </div>
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ff6b6b" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
-                        </button>
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fbab15" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+                            </button>
+                        ) : (
+                            <button onClick={logout} className="logout-btn">
+                                <div className="menu-item-content">
+                                    <div className="menu-icon-wrapper">
+                                        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#ff6b6b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="menu-icon-svg">
+                                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                            <polyline points="16 17 21 12 16 7"></polyline>
+                                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                                        </svg>
+                                    </div>
+                                    <span style={{ fontWeight: '700' }}>تسجيل خروج</span>
+                                </div>
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ff6b6b" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+                            </button>
+                        )}
                     </div>
                 </>
             )}
@@ -3535,7 +3564,7 @@ const MapComponent = () => {
                     </button>
                 </div>
 
-                <button className={`nav-item ${showChat ? 'active' : ''}`} onClick={() => { setShowChat(true); setUnreadChatCount(0); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); setShowProfile(false); }}>
+                <button className={`nav-item ${showChat ? 'active' : ''}`} onClick={() => requireAccount(() => { setShowChat(true); setUnreadChatCount(0); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); setShowProfile(false); })}>
                     <div style={{ position: 'relative' }}>
                         <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M22 2L11 13" />
@@ -4002,9 +4031,9 @@ const MapComponent = () => {
                     }
                 }}
             />
-            {(showProfile || selectedProfileId) && (
+            {(showProfile || selectedProfileId) && (selectedProfileId || user?.id) && (
                 <ProfileModal 
-                    userId={selectedProfileId || user.id} 
+                    userId={selectedProfileId || user?.id} 
                     onClose={() => { 
                         setShowProfile(false); 
                         setSelectedProfileId(null); 
@@ -4084,6 +4113,70 @@ const MapComponent = () => {
             )}
 
             {/* GPS Helper - Mobile & Desktop Support */}
+            {/* دعوة إنشاء حساب — تظهر للزائر عند أي ميزة تحتاج تسجيل دخول */}
+            {showAuthPrompt && (
+                <div
+                    style={{
+                        position: 'fixed', inset: 0,
+                        background: 'rgba(2, 6, 23, 0.8)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+                        zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+                    }}
+                    onClick={() => setShowAuthPrompt(false)}
+                >
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            background: '#0f172a', border: '1px solid #1e293b',
+                            borderRadius: '24px', width: '100%', maxWidth: '360px',
+                            padding: '28px 24px', color: 'white', textAlign: 'center',
+                            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.6)',
+                            animation: 'slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1)'
+                        }}
+                    >
+                        <div style={{
+                            width: '68px', height: '68px', borderRadius: '50%', margin: '0 auto 18px',
+                            background: 'rgba(251, 171, 21, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="#fbab15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                        </div>
+
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '10px' }}>
+                            هذه الميزة تحتاج حساباً
+                        </h2>
+
+                        <p style={{ fontSize: '0.92rem', color: '#94a3b8', lineHeight: '1.7', marginBottom: '22px' }}>
+                            تصفّح الخريطة والمحلات متاح للجميع بدون حساب. لاستخدام الملف الشخصي والدردشة والمنشورات، أنشئ حساباً مجانياً.
+                        </p>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            <button
+                                onClick={() => { setShowAuthPrompt(false); navigate('/login'); }}
+                                style={{
+                                    fontFamily: 'inherit',
+                                    background: '#fbab15', color: '#0f172a', fontWeight: 'bold', fontSize: '0.95rem',
+                                    padding: '13px', borderRadius: '14px', border: 'none', cursor: 'pointer'
+                                }}
+                            >
+                                تسجيل الدخول / إنشاء حساب
+                            </button>
+                            <button
+                                onClick={() => setShowAuthPrompt(false)}
+                                style={{
+                                    fontFamily: 'inherit',
+                                    background: 'transparent', color: '#94a3b8', border: 'none',
+                                    padding: '8px', cursor: 'pointer', fontSize: '0.88rem'
+                                }}
+                            >
+                                متابعة التصفح
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {showLocationPermission && (
                 <div
                     style={{
