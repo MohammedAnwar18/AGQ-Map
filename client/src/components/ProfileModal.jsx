@@ -366,9 +366,9 @@ const ProfileModal = ({ userId, onClose }) => {
                                             : '0 8px 16px rgba(0,0,0,0.2)'
                                     }}>
                                         {profile.profile_picture ? (
-                                            <img src={profile.profile_picture} alt={profile.username || profile.full_name} />
+                                            <img src={profile.profile_picture} alt={profile.username || profile.full_name} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/default-avatar.png'; }} />
                                         ) : (
-                                            <DefaultAvatar gender={profile.gender} size={110} uid={String(profile.id || 'p')} style={{ borderRadius: '50%' }} />
+                                            <DefaultAvatar size={110} style={{ borderRadius: '50%' }} />
                                         )}
 
                                         {editing && (
@@ -1104,9 +1104,9 @@ const ProfileModal = ({ userId, onClose }) => {
                                 justifyContent: 'center'
                             }}>
                                 {profile.profile_picture ? (
-                                    <img src={profile.profile_picture} alt={profile.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    <img src={profile.profile_picture} alt={profile.full_name} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/default-avatar.png'; }} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                 ) : (
-                                    <DefaultAvatar gender={profile.gender} size={60} uid={String(profile.id)} />
+                                    <DefaultAvatar size={60} />
                                 )}
                             </div>
                             <h3 style={{ fontSize: '1.1rem', fontWeight: '800', margin: 0 }}>

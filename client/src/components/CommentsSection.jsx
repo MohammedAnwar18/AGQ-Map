@@ -106,6 +106,7 @@ const CommentsSection = ({ postId, onCommentAdded, onReply, hideInput = false })
                                     src={comment.profile_picture || '/default-avatar.png'}
                                     alt={comment.username}
                                     className="comment-avatar"
+                                    onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/default-avatar.png'; }}
                                 />
                                 <div className="comment-content-wrapper">
                                     <div className="comment-header">
@@ -140,6 +141,7 @@ const CommentsSection = ({ postId, onCommentAdded, onReply, hideInput = false })
                                             src={reply.profile_picture || '/default-avatar.png'}
                                             alt={reply.username}
                                             className="comment-avatar small"
+                                            onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/default-avatar.png'; }}
                                         />
                                         <div className="comment-content-wrapper">
                                             <div className="comment-header">

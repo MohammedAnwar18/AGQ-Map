@@ -788,9 +788,9 @@ const ChatModal = ({ onClose }) => {
                                             >
                                                 <div className="chat-avatar">
                                                     {friend.profile_picture ? (
-                                                        <img src={friend.profile_picture} alt={friend.username} />
+                                                        <img src={friend.profile_picture} alt={friend.username} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/default-avatar.png'; }} />
                                                     ) : (
-                                                        <DefaultAvatar gender={friend.gender} size={50} uid={String(friend.id)} />
+                                                        <DefaultAvatar size={50} />
                                                     )}
                                                     {friend.is_online && <div className="online-indicator" />}
                                                 </div>
@@ -820,9 +820,9 @@ const ChatModal = ({ onClose }) => {
                             </button>
                             <div className="chat-avatar" style={{ width: '40px', height: '40px' }}>
                                 {selectedFriend.profile_picture ? (
-                                    <img src={selectedFriend.profile_picture} alt={selectedFriend.username} />
+                                    <img src={selectedFriend.profile_picture} alt={selectedFriend.username} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/default-avatar.png'; }} />
                                 ) : (
-                                    <DefaultAvatar gender={selectedFriend.gender} size={40} uid={`hdr-${selectedFriend.id}`} />
+                                    <DefaultAvatar size={40} />
                                 )}
                                 {selectedFriend.is_online && <div className="online-indicator" />}
                             </div>
@@ -845,15 +845,15 @@ const ChatModal = ({ onClose }) => {
                                     <div className="message-avatar">
                                         {message.sender_id === user.id ? (
                                             user.profile_picture ? (
-                                                <img src={user.profile_picture} alt="You" />
+                                                <img src={user.profile_picture} alt="You" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/default-avatar.png'; }} />
                                             ) : (
-                                                <DefaultAvatar gender={user.gender} size={36} uid={`me-${user.id}`} />
+                                                <DefaultAvatar size={36} />
                                             )
                                         ) : (
                                             selectedFriend.profile_picture ? (
-                                                <img src={selectedFriend.profile_picture} alt={selectedFriend.username} />
+                                                <img src={selectedFriend.profile_picture} alt={selectedFriend.username} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/default-avatar.png'; }} />
                                             ) : (
-                                                <DefaultAvatar gender={selectedFriend.gender} size={36} uid={`fr-${selectedFriend.id}`} />
+                                                <DefaultAvatar size={36} />
                                             )
                                         )}
                                     </div>

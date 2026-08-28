@@ -91,9 +91,9 @@ const ProfileSetupModal = ({ onClose }) => {
                     <div style={styles.avatarWrapper} onClick={() => fileInputRef.current?.click()}>
                         <div style={styles.avatarRing}>
                             {previewUrl ? (
-                                <img src={previewUrl} alt="preview" style={styles.previewImg} />
+                                <img src={previewUrl} alt="preview" style={styles.previewImg} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/default-avatar.png'; }} />
                             ) : (
-                                <DefaultAvatar gender={gender} size={110} uid={String(user?.id || 'setup')} />
+                                <DefaultAvatar size={110} />
                             )}
                         </div>
                         <p style={styles.tapHint}>اضغط لاختيار صورة</p>

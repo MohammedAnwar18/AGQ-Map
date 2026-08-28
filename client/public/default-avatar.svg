@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="palNovaaAvatarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFB829"/>
+      <stop offset="52%" stop-color="#F5A310"/>
+      <stop offset="100%" stop-color="#E08D05"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" fill="url(#palNovaaAvatarGrad)" />
+  <!-- User silhouette icon -->
+  <g fill="#FFFFFF">
+    <circle cx="100" cy="72" r="34" />
+    <path d="M100 118 c-38 0 -68 22 -72 56 c8 10 40 18 72 18 s64 -8 72 -18 c-4 -34 -34 -56 -72 -56 z" />
+  </g>
+</svg>

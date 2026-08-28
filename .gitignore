@@ -25,6 +25,11 @@ uploads/
 *.jpeg
 *.gif
 *.webp
+!client/public/*.png
+!client/public/*.jpg
+!client/public/*.jpeg
+!client/public/*.webp
+!client/public/*.svg
 
 # OS Files
 .DS_Store

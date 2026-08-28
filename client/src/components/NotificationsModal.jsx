@@ -205,7 +205,7 @@ const NotificationsModal = ({ onClose, onNotificationClick }) => {
                                     )}
 
                                     <div className="detail-image" style={{ margin: 0 }}>
-                                        <img src={getImageUrl(selectedRequest.sender_picture) || '/default-avatar.png'} alt={selectedRequest.sender_name} />
+                                        <img src={getImageUrl(selectedRequest.sender_picture) || '/default-avatar.png'} alt={selectedRequest.sender_name} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/default-avatar.png'; }} />
                                     </div>
 
                                     {/* Age (Left Side) */}

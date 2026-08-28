@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="palNovaaShopGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFB829"/>
+      <stop offset="52%" stop-color="#F5A310"/>
+      <stop offset="100%" stop-color="#E08D05"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" fill="url(#palNovaaShopGrad)" />
+  <!-- Store icon -->
+  <path fill="#FFFFFF" d="M40 70 L52 40 L148 40 L160 70 Z M35 76 L165 76 L165 92 C165 98 158 104 150 104 C142 104 136 98 136 92 C136 98 130 104 122 104 C114 104 108 98 108 92 C108 98 102 104 94 104 C86 104 80 98 80 92 C80 98 74 104 66 104 C58 104 52 98 52 92 C52 98 46 104 38 104 C30 104 25 98 25 92 Z M45 106 L45 156 C45 160 48 164 52 164 L148 164 C152 164 155 160 155 156 L155 106 C153 107 151 108 150 108 C144 108 138 104 135 100 C132 104 126 108 120 108 C114 108 108 104 105 100 C102 104 96 108 90 108 C84 108 78 104 75 100 C72 104 66 108 60 108 C54 108 48 105 45 106 Z M85 164 L85 120 L115 120 L115 164 Z" />
+</svg>

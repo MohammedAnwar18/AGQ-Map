@@ -377,7 +377,7 @@ const AdminDashboard = () => {
                             <h4 style={{ margin: 0 }}>{user.username}</h4>
                             <p style={{ margin: 0, fontSize: '0.8rem' }}>المدير العام</p>
                         </div>
-                        <img src={user.profile_picture || '/default-avatar.png'} alt="Admin" className="user-avatar" style={{ width: '45px', height: '45px' }} />
+                        <img src={user.profile_picture || '/default-avatar.png'} alt="Admin" className="user-avatar" style={{ width: '45px', height: '45px' }} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/default-avatar.png'; }} />
                     </div>
                 </div>
 
@@ -476,7 +476,7 @@ const AdminDashboard = () => {
                                                     <div className="user-cell">
                                                         <div className="user-avatar-wrapper">
                                                             <a href={u.profile_picture || '/default-avatar.png'} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
-                                                                <img src={u.profile_picture || '/default-avatar.png'} alt={u.username} className="user-avatar" title="مشاهدة الصورة بالحجم الكامل" />
+                                                                <img src={u.profile_picture || '/default-avatar.png'} alt={u.username} className="user-avatar" title="مشاهدة الصورة بالحجم الكامل" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/default-avatar.png'; }} />
                                                             </a>
                                                             {u.is_active && <div className="user-status-dot"></div>}
                                                         </div>

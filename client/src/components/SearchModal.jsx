@@ -156,9 +156,9 @@ const SearchModal = ({ onClose }) => {
                                 <div key={user.id} className="user-item">
                                     <div className="chat-avatar">
                                         {user.profile_picture ? (
-                                            <img src={user.profile_picture} alt={user.username} />
+                                            <img src={user.profile_picture} alt={user.username} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/default-avatar.png'; }} />
                                         ) : (
-                                            <DefaultAvatar gender={user.gender} size={50} uid={String(user.id)} />
+                                            <DefaultAvatar size={50} />
                                         )}
                                     </div>
                                     <div className="chat-info">

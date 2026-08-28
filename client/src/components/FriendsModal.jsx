@@ -546,9 +546,9 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                 <div key={foundUser.id} className="user-item" onClick={() => setSelectedFriendId(foundUser.id)} style={{ cursor: 'pointer', padding: '12px 15px' }}>
                                                     <div className="chat-avatar">
                                                         {foundUser.profile_picture ? (
-                                                            <img src={getImageUrl(foundUser.profile_picture)} alt={foundUser.username} />
+                                                            <img src={getImageUrl(foundUser.profile_picture)} alt={foundUser.username} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/default-avatar.png'; }} />
                                                         ) : (
-                                                            <DefaultAvatar gender={foundUser.gender} size={50} uid={String(foundUser.id)} />
+                                                            <DefaultAvatar size={50} />
                                                         )}
                                                     </div>
                                                     <div className="chat-info" style={{ flex: 1, minWidth: 0 }}>
@@ -602,9 +602,9 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                     >
                                                         <div className="chat-avatar">
                                                             {friend.profile_picture ? (
-                                                                <img src={getImageUrl(friend.profile_picture)} alt={friend.username} />
+                                                                <img src={getImageUrl(friend.profile_picture)} alt={friend.username} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/default-avatar.png'; }} />
                                                             ) : (
-                                                                <DefaultAvatar gender={friend.gender} size={50} uid={String(friend.id)} />
+                                                                <DefaultAvatar size={50} />
                                                             )}
                                                             {friend.is_online && <div className="online-indicator" />}
                                                         </div>
@@ -673,9 +673,9 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                             <div key={request.id} className="user-item">
                                                 <div className="chat-avatar">
                                                     {request.profile_picture ? (
-                                                        <img src={getImageUrl(request.profile_picture)} alt={request.username} />
+                                                        <img src={getImageUrl(request.profile_picture)} alt={request.username} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/default-avatar.png'; }} />
                                                     ) : (
-                                                        <DefaultAvatar gender={request.gender} size={50} uid={`req-${request.id}`} />
+                                                        <DefaultAvatar size={50} />
                                                     )}
                                                 </div>
                                                 <div className="chat-info">

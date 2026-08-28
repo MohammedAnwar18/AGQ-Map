@@ -354,7 +354,7 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate, isFloraCommunityCo
                             {/* Simple user info floating in image-only mode (Shows Plant Name if available) */}
                             {!showDetails && (
                                 <div className="post-modal-user-floating">
-                                    <img src={post.user.profile_picture || '/default-avatar.png'} alt="user" />
+                                    <img src={post.user.profile_picture || '/default-avatar.png'} alt="user" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/default-avatar.png'; }} />
                                     {plantInfo ? (
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', direction: 'rtl', minWidth: 0, flex: 1 }}>
                                             <span style={{ fontSize: '1.05rem', color: '#dcfce7', lineHeight: '1.3', textAlign: 'center', wordBreak: 'break-word', whiteSpace: 'normal' }}>
@@ -456,6 +456,7 @@ const PostDetailModal = ({ post, onClose, onDelete, onUpdate, isFloraCommunityCo
                                     src={post.user.profile_picture || '/default-avatar.png'}
                                     alt={post.user.username}
                                     className="post-modal-avatar"
+                                    onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/default-avatar.png'; }}
                                 />
                                 <div className="post-modal-user-text">
                                     <h4 className="post-modal-username">{post.user.full_name || post.user.username}</h4>

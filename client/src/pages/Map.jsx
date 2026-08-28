@@ -12,6 +12,7 @@ import NavigationPanel from '../components/NavigationPanel';
 import HistoricalTimelinePanel from '../components/HistoricalTimelinePanel';
 import SplashLoading from '../components/SplashLoading';
 import MapLayerControl from '../components/MapLayerControl';
+import DefaultAvatar from '../components/DefaultAvatar';
 
 // ─── Lazy-loaded modals: only downloaded when the user opens them ─────────────
 const CreatePostModal       = React.lazy(() => import('../components/CreatePostModal'));
@@ -2344,11 +2345,16 @@ const MapComponent = () => {
                         style={{ padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', position: 'relative' }}
                         title="الملف الشخصي"
                     >
-                        <img
-                            src={getImageUrl(user?.profile_picture) || '/default-avatar.png'}
-                            alt="Profile"
-                            style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #fbab15', boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }}
-                        />
+                        {user?.profile_picture ? (
+                            <img
+                                src={getImageUrl(user.profile_picture) || '/default-avatar.png'}
+                                alt="Profile"
+                                onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/default-avatar.png'; }}
+                                style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #fbab15', boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }}
+                            />
+                        ) : (
+                            <DefaultAvatar size={42} style={{ border: '2px solid #fbab15', boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }} />
+                        )}
                     </button>
                     <div className="app-logo">
                         <svg version="1.0" xmlns="http://www.w3.org/2000/svg"
