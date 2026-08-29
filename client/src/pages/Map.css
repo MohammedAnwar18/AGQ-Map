@@ -549,16 +549,18 @@
     }
 
     .map-layers-dropdown {
-        position: fixed;
-        top: 75px;
-        left: 20px;
-        right: auto;
-        width: calc(100vw - 40px);
-        max-width: 300px;
-        max-height: calc(100dvh - 160px);
-        border: 1.5px solid rgba(251, 171, 21, 0.45);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-        border-radius: 16px;
+        position: absolute !important;
+        top: 52px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        right: auto !important;
+        width: auto !important;
+        max-width: unset !important;
+        max-height: unset !important;
+        border: 1.5px solid rgba(251, 171, 21, 0.45) !important;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6) !important;
+        border-radius: 14px !important;
+        padding: 6px !important;
     }
 }
 
@@ -1673,166 +1675,75 @@
     transform: scale(0.9) rotate(-10deg) !important;
 }
 
-/* Map Layers Dropdown Menu Styles - Premium Glassmorphic */
+/* Map Layers Dropdown Menu Styles - Sleek Compact Icon Bar */
 .map-layers-dropdown {
     position: absolute;
-    top: 55px;
-    left: 0;
+    top: 52px;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 2600;
-    background: rgba(15, 23, 42, 0.96);
+    background: rgba(15, 23, 42, 0.94);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1.5px solid rgba(251, 171, 21, 0.35);
-    border-radius: 16px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 15px rgba(251, 171, 21, 0.1);
-    width: 310px;
-    padding: 12px;
-    direction: rtl;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    animation: slideDownMenu 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    max-height: calc(100vh - 120px); /* Dynamic height on laptop */
-    overflow-y: auto;
-}
-
-/* Custom Scrollbar for Dropdown */
-.map-layers-dropdown::-webkit-scrollbar {
-    width: 8px;
-}
-.map-layers-dropdown::-webkit-scrollbar-track {
-    background: transparent;
-}
-.map-layers-dropdown::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
-}
-.map-layers-dropdown::-webkit-scrollbar-thumb:hover {
-    background: rgba(251, 171, 21, 0.3);
+    border: 1.5px solid rgba(251, 171, 21, 0.4);
+    border-radius: 14px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.55), 0 0 15px rgba(251, 171, 21, 0.15);
+    width: auto !important;
+    min-width: unset !important;
+    padding: 6px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 6px !important;
+    animation: slideDownMenu 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes slideDownMenu {
     from {
         opacity: 0;
-        transform: translateY(-12px) scale(0.95);
+        transform: translate(-50%, -10px) scale(0.95);
     }
     to {
         opacity: 1;
-        transform: translateY(0) scale(1);
+        transform: translate(-50%, 0) scale(1);
     }
 }
 
-.map-layers-dropdown .dropdown-title {
-    font-size: 0.92rem;
-    font-weight: 800;
-    color: #fbab15;
-    padding: 6px 12px;
-    letter-spacing: 0.02em;
-    text-shadow: 0 0 10px rgba(251, 171, 21, 0.2);
-}
-
-.map-layers-dropdown .dropdown-section-title {
-    font-size: 0.72rem;
-    font-weight: 800;
-    color: rgba(255, 255, 255, 0.4);
-    padding: 12px 12px 4px 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    border-top: 1px solid rgba(255, 255, 255, 0.04);
-    margin-top: 4px;
-}
-
-.map-layers-dropdown .dropdown-divider {
-    height: 1px;
-    background: rgba(255, 255, 255, 0.08);
-    margin: 6px 0;
-}
-
 .map-layers-dropdown .dropdown-item {
-    background: none;
-    border: none;
+    background: transparent;
+    border: 1.5px solid transparent;
     border-radius: 10px;
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 10px 12px;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    padding: 0;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    width: 100%;
-    text-align: right;
-    color: rgba(255, 255, 255, 0.8);
-    font-family: inherit;
-    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
 }
 
 .map-layers-dropdown .dropdown-item:hover {
-    background: rgba(255, 255, 255, 0.06);
-    color: #fbab15;
-    transform: translateX(-4px);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(251, 171, 21, 0.3);
+    transform: scale(1.08);
 }
 
 .map-layers-dropdown .dropdown-item.active {
-    background: rgba(251, 171, 21, 0.12);
-    color: #fbab15;
-    font-weight: 700;
-    border-right: 3px solid #fbab15;
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
+    background: rgba(251, 171, 21, 0.2);
+    border-color: #fbab15;
+    box-shadow: 0 0 10px rgba(251, 171, 21, 0.35);
 }
 
 .map-layers-dropdown .dropdown-item .item-icon {
-    font-size: 1.15rem;
+    font-size: 1.5rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-}
-
-.map-layers-dropdown .dropdown-item .item-text {
-    font-size: 0.85rem;
-    line-height: 1.2;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex: 1;
-    text-align: right;
-}
-
-/* Compact map layers dropdown for emoji-only style */
-.map-layers-dropdown.geomolg-layers-compact {
-    width: auto !important;
-    min-width: 50px !important;
-    padding: 6px !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 6px !important;
-    align-items: center !important;
-}
-
-.map-layers-dropdown.geomolg-layers-compact .dropdown-item {
-    padding: 8px !important;
-    width: 38px !important;
-    height: 38px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    border-radius: 8px !important;
-    border-right: none !important;
-}
-
-.map-layers-dropdown.geomolg-layers-compact .dropdown-item .item-icon {
-    font-size: 1.4rem !important;
-    margin: 0 !important;
-    width: auto !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-
-.map-layers-dropdown.geomolg-layers-compact .dropdown-item.active {
-    border-right: none !important;
-    border: 1.5px solid #fbab15 !important;
-    background: rgba(251, 171, 21, 0.15) !important;
+    line-height: 1;
+    margin: 0;
+    width: auto;
 }
 
 /* Fitness Route Popup details */
