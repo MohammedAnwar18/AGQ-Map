@@ -104,8 +104,8 @@ const smartSmoothPolyline = (coords, ratio = 0.15, iterations = 2) => {
 };
 
 // Helper: Haversine Distance (Meters)
-// الخريطة الافتراضية عند فتح الموقع: أورثوفوتو جيومولج 2023 (الضفة 15 سم)
-const DEFAULT_MAP_TYPE = 'geomolg-2023';
+// الخريطة الافتراضية عند فتح الموقع: أورثوفوتو جيومولج 2024 (الضفة 15 سم)
+const DEFAULT_MAP_TYPE = 'geomolg-2024';
 
 // المحلات العادية تفتح واجهة العرض الجديدة (Storefront).
 // الفئات ذات الواجهات الخاصة (بنوك، مجمعات، كاميرات، جامعات...) تبقى على ملفها القديم.
@@ -1110,11 +1110,11 @@ const MapComponent = () => {
 
         // Preference 3: Geomolg Layer (Or specific year orthophotos from Geomolg)
         if (activeMapType === 'geomolg' || (activeMapType && activeMapType.startsWith('geomolg-'))) {
-            const year = (activeMapType && activeMapType.includes('-')) ? activeMapType.split('-')[1] : '2023';
+            const year = (activeMapType && activeMapType.includes('-')) ? activeMapType.split('-')[1] : '2024';
             
-            // الافتراضي: أورثوفوتو الضفة 2023 بدقة 15 سم
-            let wbService = 'Orthophotos_WB_2023_15cm_jp2_PG1923_jp2';
-            let gazaService = 'Orthophotos_GS_2022_Satellite_40cm_jp2_PG1923';
+            // الافتراضي: أورثوفوتو الضفة 2024 بدقة 15 سم وغزة 2024
+            let wbService = 'Orthophotos_WB_2024_15cm_tif_PG1923';
+            let gazaService = 'Orthophotos_GS_2024_m12_Satellite_tif_PG1923';
 
             if (year === '2024') {
                 wbService = 'Orthophotos_WB_2024_15cm_tif_PG1923';
@@ -2465,7 +2465,7 @@ const MapComponent = () => {
                                       <button 
                                           className={`dropdown-item ${activeMapType && activeMapType.startsWith('geomolg') ? 'active' : ''}`}
                                           onClick={() => { setActiveMapType(DEFAULT_MAP_TYPE); setShowMapLayersMenu(false); }}
-                                          title="أورثوفوتو جيومولج 2023 (GeoMOLG)"
+                                          title="أورثوفوتو جيومولج 2024 (GeoMOLG)"
                                       >
                                           <span className="item-icon">🛰️</span>
                                       </button>
